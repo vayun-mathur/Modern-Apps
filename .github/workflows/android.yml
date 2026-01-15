@@ -39,23 +39,20 @@ jobs:
       - name: Change Gradle Wrapper Permissions
         run: chmod +x ./gradlew
 
-      # 1. UPDATE VERSION NAME & INCREMENT VERSION CODE
+      # 1. CLEAN VERSION BUMP (Handles both Groovy and Kotlin DSL)
       - name: Bump Version Name and Code
         run: |
           NEW_NAME="${{ github.event.inputs.version_name }}"
           echo "Updating to Version Name: $NEW_NAME"
           
-          # Find all build.gradle files
           find . -name "build.gradle*" | while read file; do
             # Update versionName
             sed -i "s/versionName\([[:space:]]*=[[:space:]]*\|[[:space:]]*\)\"[^\"]*\"/versionName\1\"$NEW_NAME\"/g" "$file"
           
-            # Find current versionCode, increment it, and replace it
-            # Supports 'versionCode 123' and 'versionCode = 123'
+            # Increment versionCode
             CURRENT_CODE=$(grep -E "versionCode\s*(=?)\s*[0-9]+" "$file" | sed 's/[^0-9]*//g' | head -1)
             if [ ! -z "$CURRENT_CODE" ]; then
               NEXT_CODE=$((CURRENT_CODE + 1))
-              echo "Bumping $file: Code $CURRENT_CODE -> $NEXT_CODE"
               sed -i "s/versionCode\([[:space:]]*=[[:space:]]*\|[[:space:]]*\)$CURRENT_CODE/versionCode\1$NEXT_CODE/g" "$file"
             fi
           done
@@ -69,10 +66,14 @@ jobs:
           git commit -m "chore: bump version to ${{ github.event.inputs.version_name }}" || echo "No changes to commit"
           git push
 
-      # 3. AUTO-DETECT APP MODULES
+      # 3. ROBUST APP MODULE DETECTION (Fixed the syntax error issue)
       - name: Detect App Modules
         run: |
-          MODULES=$(grep -rE "com.android.application" . --include="build.gradle*" | cut -d "/" -f 2 | sort -u | tr '\n' ' ')
+          # 1. Grep for the plugin
+          # 2. Get the directory (module name)
+          # 3. Filter out the root '.' and clean up characters
+          MODULES=$(grep -rE "com.android.application" . --include="build.gradle*" | awk -F/ '{print $2}' | grep -v "build.gradle" | sort -u | tr '\n' ' ')
+          echo "Detected clean modules: $MODULES"
           echo "modules=$MODULES" >> $GITHUB_ENV
 
       - name: Download Bundletool
@@ -80,11 +81,12 @@ jobs:
           mkdir -p .github/lib
           curl -L https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar -o .github/lib/bundletool.jar
 
-      # 4. BUILD & SIGN
+      # 4. BUILD & SIGN (Using the cleaned module list)
       - name: Build and Sign
         run: |
           mkdir -p distribution_apks
           for module in ${{ env.modules }}; do
+            echo "Building module: $module"
             ./gradlew :$module:bundleRelease
           
             java -jar ".github/lib/bundletool.jar" build-apks \
