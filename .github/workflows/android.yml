@@ -1,10 +1,13 @@
-name: Generate Multi-Module APKs (Fully Secret)
+name: Build Specific Module APKs
 
 env:
+  # MANUAL LIST: Add or remove modules here as needed
   modules: "calendar contacts"
-  # Name for the temporary file created from the secret
+  
+  # Temporary filename for the decoded keystore
   ks_filename: release_keystore.jks
-
+  
+  # Credentials pulled from GitHub Secrets
   ks_store_pass: ${{ secrets.KS_STORE_PASS }}
   ks_alias: ${{ secrets.KS_ALIAS }}
   ks_alias_pass: ${{ secrets.KS_ALIAS_PASS }}
@@ -30,25 +33,30 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      # DECODE KEYSTORE FROM SECRET
-      - name: Decode Keystore
-        id: decode_keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ env.ks_filename }}
+      - name: Decode Keystore from Secret
+        run: echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ env.ks_filename }}
 
-      - name: Change wrapper permissions
+      - name: Change Gradle Wrapper Permissions
         run: chmod +x ./gradlew
 
-      - name: Build and Rename APKs
+      - name: Download Bundletool
+        run: |
+          mkdir -p .github/lib
+          curl -L https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar -o .github/lib/bundletool.jar
+
+      - name: Build and Sign Loop
         run: |
           mkdir -p distribution_apks
+          # Iterates through the space-separated list in env.modules
           for module in ${{ env.modules }}; do
-            echo "Processing module: $module"
-          
-            # Build AAB
+            echo "--------------------------------------------"
+            echo "Building Module: $module"
+            echo "--------------------------------------------"
+            
+            # 1. Build the App Bundle (AAB)
             ./gradlew :$module:bundleRelease
-          
-            # Use Bundletool to generate and sign the Universal APK
+            
+            # 2. Convert AAB to Universal Signed APK using Bundletool
             java -jar ".github/lib/bundletool.jar" build-apks \
               --bundle=$module/build/outputs/bundle/release/$module-release.aab \
               --output=$module/build/outputs/bundle/release/$module.apks \
@@ -57,13 +65,13 @@ jobs:
               --ks-pass=pass:${{ env.ks_store_pass }} \
               --ks-key-alias=${{ env.ks_alias }} \
               --key-pass=pass:${{ env.ks_alias_pass }}
-          
-            # Extract and Rename to module_name-release.apk
+            
+            # 3. Extract and rename: module_name-release.apk
             unzip -p $module/build/outputs/bundle/release/$module.apks universal.apk > distribution_apks/$module-release.apk
           done
 
-      - name: Upload Renamed APKs
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Signed-Module-APKs
+          name: Signed-Release-APKs
           path: distribution_apks/
