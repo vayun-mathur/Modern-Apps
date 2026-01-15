@@ -2,8 +2,8 @@ android {
     namespace = "com.vayunmathur.games.chess"
     defaultConfig {
         applicationId = "com.vayunmathur.games.chess"
-        versionCode = 20
-        versionName = "2.0"
+        versionCode = 21
+        versionName = "v2.0.0"
     }
 
     externalNativeBuild {
