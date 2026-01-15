@@ -1,0 +1,21 @@
+name: ✨ Feature Request
+description: Suggest a new idea for a specific app.
+title: "[feat] [<app-name>]: "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: app_name
+    attributes:
+      label: App Name
+      description: Enter the name of the app this request is for.
+      placeholder: e.g., MobileUI, Backend-API
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: What feature should be added and why is it important?
+      placeholder: Describe the "what" and the "why" here.
+    validations:
+      required: true

@@ -1,0 +1,37 @@
+name: 🐛 Bug Report
+description: Report a bug or crash in a specific app.
+title: "[bug] [<app-name>]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: app_name
+    attributes:
+      label: App Name
+      description: Enter the name of the app where the bug occurs.
+      placeholder: e.g., MobileUI, Backend-API
+    validations:
+      required: true
+  - type: textarea
+    id: bug_description
+    attributes:
+      label: What is the bug?
+      description: A clear and concise description of the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: What specific steps cause the bug to happen?
+      placeholder: |
+        1. Open the app
+        2. Click on '...'
+        3. See error...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Files
+      description: If the app crashed, please paste the log files here.
+      render: shell
