@@ -8,7 +8,7 @@ body:
     attributes:
       label: App Name
       description: Enter the name of the app this request is for.
-      placeholder: e.g., MobileUI, Backend-API
+      placeholder: e.g., calendar, contacts, pdf, ...
     validations:
       required: true
   - type: textarea
