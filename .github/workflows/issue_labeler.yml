@@ -1,0 +1,35 @@
+name: "Precise Issue App Labeler"
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-labels:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Extract App Name and Label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body;
+            
+            // This regex finds the text immediately following the "### App Name" header
+            // It accounts for potential whitespace and newlines
+            const match = body.match(/### App Name\s+([\s\S]*?)(?:\n\n|###|$)/);
+            
+            if (match && match[1]) {
+              const selectedApp = match[1].trim().toLowerCase();
+              const validApps = ['pdf', 'openassistant', 'crypto', 'chess', 'calendar', 'contacts'];
+            
+              if (validApps.includes(selectedApp)) {
+                await github.rest.issues.addLabels({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  labels: [selectedApp]
+                });
+                console.log(`Successfully added label: ${selectedApp}`);
+              }
+            }

@@ -1,14 +1,20 @@
 name: ✨ Feature Request
 description: Suggest a new idea for a specific app.
-title: "[feat] [<app-name>]: "
+title: "[feat]: "
 labels: ["enhancement"]
 body:
-  - type: input
+  - type: dropdown
     id: app_name
     attributes:
       label: App Name
-      description: Enter the name of the app this request is for.
-      placeholder: e.g., calendar, contacts, pdf, ...
+      description: Which app is this feature for?
+      options:
+        - pdf
+        - openassistant
+        - crypto
+        - chess
+        - calendar
+        - contacts
     validations:
       required: true
   - type: textarea

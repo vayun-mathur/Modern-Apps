@@ -1,14 +1,28 @@
 name: 🐛 Bug Report
 description: Report a bug or crash in a specific app.
-title: "[bug] [<app-name>]: "
+title: "[bug]: "
 labels: ["bug"]
 body:
-  - type: input
+  - type: dropdown
     id: app_name
     attributes:
       label: App Name
-      description: Enter the name of the app where the bug occurs.
-      placeholder: e.g., calendar, contacts, pdf, ...
+      description: Which app is experiencing the issue?
+      options:
+        - pdf
+        - openassistant
+        - crypto
+        - chess
+        - calendar
+        - contacts
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App Version
+      description: What version of the app are you running? (e.g., v1.0.2)
+      placeholder: vX.X.X
     validations:
       required: true
   - type: textarea
@@ -23,10 +37,6 @@ body:
     attributes:
       label: Steps to Reproduce
       description: What specific steps cause the bug to happen?
-      placeholder: |
-        1. Open the app
-        2. Click on '...'
-        3. See error...
     validations:
       required: true
   - type: textarea
