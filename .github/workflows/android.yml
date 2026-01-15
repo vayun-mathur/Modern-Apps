@@ -1,30 +1,30 @@
-name: Build Specific Module APKs
+name: "🚀 Auto-Increment & Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'New Version Name (e.g. v2.0)'
+        required: true
+        default: 'v1.0'
 
 env:
-  # MANUAL LIST: Add or remove modules here as needed
-  modules: "calendar contacts"
-  
-  # Temporary filename for the decoded keystore
   ks_filename: release_keystore.jks
-  
-  # Credentials pulled from GitHub Secrets
   ks_store_pass: ${{ secrets.KS_STORE_PASS }}
   ks_alias: ${{ secrets.KS_ALIAS }}
   ks_alias_pass: ${{ secrets.KS_ALIAS_PASS }}
 
-on:
-  push:
-    branches:
-      - 'release/**'
-  workflow_dispatch:
-
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set Up JDK 17
         uses: actions/setup-java@v4
@@ -33,30 +33,60 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Decode Keystore from Secret
+      - name: Decode Keystore
         run: echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ env.ks_filename }}
 
       - name: Change Gradle Wrapper Permissions
         run: chmod +x ./gradlew
+
+      # 1. UPDATE VERSION NAME & INCREMENT VERSION CODE
+      - name: Bump Version Name and Code
+        run: |
+          NEW_NAME="${{ github.event.inputs.version_name }}"
+          echo "Updating to Version Name: $NEW_NAME"
+          
+          # Find all build.gradle files
+          find . -name "build.gradle*" | while read file; do
+            # Update versionName
+            sed -i "s/versionName\([[:space:]]*=[[:space:]]*\|[[:space:]]*\)\"[^\"]*\"/versionName\1\"$NEW_NAME\"/g" "$file"
+          
+            # Find current versionCode, increment it, and replace it
+            # Supports 'versionCode 123' and 'versionCode = 123'
+            CURRENT_CODE=$(grep -E "versionCode\s*(=?)\s*[0-9]+" "$file" | sed 's/[^0-9]*//g' | head -1)
+            if [ ! -z "$CURRENT_CODE" ]; then
+              NEXT_CODE=$((CURRENT_CODE + 1))
+              echo "Bumping $file: Code $CURRENT_CODE -> $NEXT_CODE"
+              sed -i "s/versionCode\([[:space:]]*=[[:space:]]*\|[[:space:]]*\)$CURRENT_CODE/versionCode\1$NEXT_CODE/g" "$file"
+            fi
+          done
+
+      # 2. COMMIT CHANGES
+      - name: Commit & Push Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: bump version to ${{ github.event.inputs.version_name }}" || echo "No changes to commit"
+          git push
+
+      # 3. AUTO-DETECT APP MODULES
+      - name: Detect App Modules
+        run: |
+          MODULES=$(grep -rE "com.android.application" . --include="build.gradle*" | cut -d "/" -f 2 | sort -u | tr '\n' ' ')
+          echo "modules=$MODULES" >> $GITHUB_ENV
 
       - name: Download Bundletool
         run: |
           mkdir -p .github/lib
           curl -L https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar -o .github/lib/bundletool.jar
 
-      - name: Build and Sign Loop
+      # 4. BUILD & SIGN
+      - name: Build and Sign
         run: |
           mkdir -p distribution_apks
-          # Iterates through the space-separated list in env.modules
           for module in ${{ env.modules }}; do
-            echo "--------------------------------------------"
-            echo "Building Module: $module"
-            echo "--------------------------------------------"
-            
-            # 1. Build the App Bundle (AAB)
             ./gradlew :$module:bundleRelease
-            
-            # 2. Convert AAB to Universal Signed APK using Bundletool
+          
             java -jar ".github/lib/bundletool.jar" build-apks \
               --bundle=$module/build/outputs/bundle/release/$module-release.aab \
               --output=$module/build/outputs/bundle/release/$module.apks \
@@ -65,13 +95,17 @@ jobs:
               --ks-pass=pass:${{ env.ks_store_pass }} \
               --ks-key-alias=${{ env.ks_alias }} \
               --key-pass=pass:${{ env.ks_alias_pass }}
-            
-            # 3. Extract and rename: module_name-release.apk
+          
             unzip -p $module/build/outputs/bundle/release/$module.apks universal.apk > distribution_apks/$module-release.apk
           done
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      # 5. CREATE RELEASE & TAG
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: Signed-Release-APKs
-          path: distribution_apks/
+          tag_name: ${{ github.event.inputs.version_name }}
+          name: "Release ${{ github.event.inputs.version_name }}"
+          body: "Automated release for version ${{ github.event.inputs.version_name }}. VersionCode has been auto-incremented."
+          files: distribution_apks/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
