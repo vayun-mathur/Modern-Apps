@@ -2,7 +2,7 @@ android {
     defaultConfig {
         minSdk = 35
         applicationId = "com.vayunmathur.pdf"
-        versionCode = 21
+        versionCode = 22
         versionName = "v2.0.0"
     }
 }
