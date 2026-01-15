@@ -2,7 +2,7 @@ android {
     namespace = "com.vayunmathur.games.chess"
     defaultConfig {
         applicationId = "com.vayunmathur.games.chess"
-        versionCode = 21
+        versionCode = 22
         versionName = "v2.0.0"
     }
 
