@@ -5,7 +5,7 @@ plugins {
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.openassistant"
-        versionCode = 22
+        versionCode = 23
         versionName = "v2.0.0"
     }
 }
