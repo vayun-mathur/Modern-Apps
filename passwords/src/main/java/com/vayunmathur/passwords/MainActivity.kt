@@ -5,12 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.passwords.ui.MenuPage
-import com.vayunmathur.passwords.ui.PasswordDetailsPage
+import com.vayunmathur.passwords.ui.PasswordEditPage
 import com.vayunmathur.passwords.ui.PasswordPage
 import kotlinx.serialization.Serializable
 
@@ -18,16 +19,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val viewModel = ViewModelProvider(this, PasswordViewModelFactory(application))[PasswordViewModel::class.java]
         setContent {
             DynamicTheme {
-                Navigation()
+                Navigation(viewModel)
             }
         }
     }
 }
-
-@Serializable
-data class Password(val id: Long)
 
 @Serializable
 sealed interface Route: NavKey {
@@ -38,22 +37,22 @@ sealed interface Route: NavKey {
     data class PasswordPage(val pass: Password): Route
 
     @Serializable
-    data class PasswordDetailsPage(val pass: Password): Route
+    data class PasswordEditPage(val pass: Password): Route
 }
 
 
 @Composable
-fun Navigation() {
+fun Navigation(viewModel: PasswordViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Menu)
     MainNavigation(backStack) {
         entry<Route.Menu> {
-            MenuPage(backStack)
+            MenuPage(backStack, viewModel)
         }
         entry<Route.PasswordPage> {
-            PasswordPage(backStack, it.pass)
+            PasswordPage(backStack, it.pass, viewModel)
         }
-        entry<Route.PasswordDetailsPage> {
-            PasswordDetailsPage(backStack, it.pass)
+        entry<Route.PasswordEditPage> {
+            PasswordEditPage(backStack, it.pass, viewModel)
         }
     }
 }
