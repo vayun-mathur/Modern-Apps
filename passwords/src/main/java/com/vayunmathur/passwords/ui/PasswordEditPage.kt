@@ -1,5 +1,6 @@
 package com.vayunmathur.passwords.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -132,23 +134,17 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
 
                     // websites preview as chips with remove X
                     if (websitesList.isNotEmpty()) {
-                        Row(Modifier
-                            .horizontalScroll(rememberScrollState())
-                            .padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             for ((index, w) in websitesList.withIndex()) {
-                                Surface(
-                                    tonalElevation = 2.dp,
-                                    shape = RoundedCornerShape(16.dp),
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(w)
-                                        Spacer(Modifier.width(8.dp))
-                                        TextButton(onClick = { websitesList.removeAt(index) }, modifier = Modifier.size(28.dp)) {
-                                            Text("✕")
+                                InputChip(true, {}, label = { Text(w)}, modifier = Modifier.padding(vertical = 4.dp),
+                                    trailingIcon = {
+                                        Box(Modifier.clickable { websitesList.removeAt(index) }) {
+                                            IconClose()
                                         }
-                                    }
-                                }
+                                    })
                             }
                         }
                     }
