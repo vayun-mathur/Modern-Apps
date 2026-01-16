@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant.data.dao
+package com.vayunmathur.openassistant.data.database
 
 import androidx.room.Dao
 import androidx.room.Delete

@@ -1,9 +1,7 @@
-package com.vayunmathur.openassistant.data.dao
+package com.vayunmathur.openassistant.data.database
 
 import androidx.room.Dao
 import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.vayunmathur.library.util.TrueDao

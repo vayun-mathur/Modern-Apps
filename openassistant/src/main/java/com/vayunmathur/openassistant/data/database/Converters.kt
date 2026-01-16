@@ -1,10 +1,10 @@
-package com.vayunmathur.openassistant.data
+package com.vayunmathur.openassistant.data.database
 
 import androidx.room.TypeConverter
 import com.vayunmathur.openassistant.ToolCall
 import kotlinx.serialization.json.Json
 
-class Converters {
+object Converters {
 
     @TypeConverter
     fun fromToolCalls(toolCalls: List<ToolCall>): String {

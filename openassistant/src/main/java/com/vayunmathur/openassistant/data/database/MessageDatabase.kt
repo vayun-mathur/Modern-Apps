@@ -1,12 +1,10 @@
-package com.vayunmathur.openassistant.data
+package com.vayunmathur.openassistant.data.database
 
-import android.content.Context
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.vayunmathur.openassistant.data.dao.ConversationDao
-import com.vayunmathur.openassistant.data.dao.MessageDao
+import com.vayunmathur.openassistant.data.Conversation
+import com.vayunmathur.openassistant.data.Message
 
 @TypeConverters(Converters::class)
 @Database(entities = [Message::class, Conversation::class], version = 5)

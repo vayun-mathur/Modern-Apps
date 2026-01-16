@@ -11,6 +11,7 @@ import com.vayunmathur.openassistant.ImageUrl
 import com.vayunmathur.openassistant.ImageUrlContent
 import com.vayunmathur.openassistant.TextContent
 import com.vayunmathur.openassistant.ToolCall
+import com.vayunmathur.openassistant.data.database.Converters
 
 @Entity(
     tableName = "messages",

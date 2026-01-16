@@ -69,16 +69,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
-import com.vayunmathur.openassistant.data.MessageDatabase
 import com.vayunmathur.openassistant.data.Tools
-import com.vayunmathur.openassistant.data.dao.ConversationDao
-import com.vayunmathur.openassistant.data.dao.MessageDao
+import com.vayunmathur.openassistant.data.database.MessageDatabase
 import com.vayunmathur.openassistant.data.toGrokMessage
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.delay
@@ -86,7 +83,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
 import kotlin.random.Random
-import kotlin.random.nextLong
 
 
 class MainActivity : ComponentActivity() {
