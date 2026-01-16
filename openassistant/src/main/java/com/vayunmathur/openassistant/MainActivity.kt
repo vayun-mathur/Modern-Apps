@@ -54,6 +54,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,7 +69,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.MessageDatabase
@@ -82,6 +86,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
 import kotlin.random.Random
+import kotlin.random.nextLong
 
 
 class MainActivity : ComponentActivity() {
@@ -89,9 +94,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val database = MessageDatabase.getDatabase(this)
-        val messageDao = database.messageDao()
-        val conversationDao = database.conversationDao()
+        val database = buildDatabase<MessageDatabase>()
+        val viewModel =
+            DatabaseViewModel(Message::class to database.messageDao(), Conversation::class to database.conversationDao())
 
         setContent {
             DynamicTheme {
@@ -102,8 +107,7 @@ class MainActivity : ComponentActivity() {
 
                 ConversationScreen(
                     grokApi = grokApi,
-                    conversationDao = conversationDao,
-                    messageDao = messageDao,
+                    viewModel = viewModel,
                     onApiKeyChanged = { newApiKey ->
                         settingsManager.apiKey = newApiKey
                         apiKey = newApiKey
@@ -119,35 +123,16 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ConversationScreen(
     grokApi: GrokApi,
-    conversationDao: ConversationDao,
-    messageDao: MessageDao,
+    viewModel: DatabaseViewModel,
     onApiKeyChanged: (String) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var conversations by remember { mutableStateOf(emptyList<Conversation>()) }
+    val conversations by viewModel.data<Conversation>().collectAsState()
     var activeConversation by remember { mutableStateOf<Conversation?>(null) }
-    var messages by remember { mutableStateOf(emptyList<Message>()) }
-
-    LaunchedEffect(Unit) {
-        conversationDao.getAllConversations().collect { conversationList ->
-            conversations = conversationList
-            if (activeConversation == null && conversationList.isNotEmpty()) {
-                activeConversation = conversationList.first()
-            }
-        }
-    }
-
-    LaunchedEffect(activeConversation) {
-        if (activeConversation != null) {
-            messageDao.getMessagesForConversation(activeConversation!!.id).collect {
-                messages = it
-            }
-        } else {
-            messages = emptyList()
-        }
-    }
+    val allMessages by viewModel.data<Message>().collectAsState()
+    val messages = allMessages.filter { it.conversationId == activeConversation?.id }
 
     val visibleMessages by remember(messages, activeConversation) {
         derivedStateOf {
@@ -167,25 +152,17 @@ fun ConversationScreen(
     }
     val lazyListState = rememberLazyListState()
 
-    fun insertMessage(message: Message) {
-        coroutineScope.launch {
-            messageDao.insertMessage(message)
+    fun createNewConversation() {
+        val newConversation = Conversation(title = "Conv #${conversations.size + 1}")
+        viewModel.upsert(newConversation) {
+            activeConversation = newConversation.copy(id = it)
         }
     }
 
-    suspend fun createNewConversation() {
-        val newConversation = Conversation(title = "Conv #${conversations.size + 1}")
-        val id = conversationDao.insert(newConversation)
-        activeConversation = newConversation.copy(id = id)
-    }
-
     fun deleteConversation(conversation: Conversation) {
-        coroutineScope.launch {
-            val wasActive = activeConversation?.id == conversation.id
-            messageDao.deleteMessagesForConversation(conversation.id)
-            conversationDao.delete(conversation)
-            if (wasActive) {
-                activeConversation = conversations.firstOrNull { it.id != conversation.id }
+        viewModel.delete(conversation) {
+            if (activeConversation?.id == conversation.id) {
+                activeConversation = conversations.firstOrNull()
             }
         }
     }
@@ -205,17 +182,17 @@ fun ConversationScreen(
             tools = Tools.API_TOOLS
         )
         if (userMessage != null)
-            insertMessage(userMessage)
+            viewModel.upsert(userMessage)
 
         var assistantMessage = Message(
-            id = Random.nextInt(),
+            id = Random.nextLong(),
             conversationId = activeConversation!!.id,
             role = "assistant",
             textContent = "",
             images = emptyList(),
             toolCalls = listOf()
         )
-        insertMessage(assistantMessage)
+        viewModel.upsert(assistantMessage)
 
         var fullResponse = ""
         var usedTools = false
@@ -240,16 +217,16 @@ fun ConversationScreen(
                             images = emptyList(),
                             toolCallId = it.id,
                         )
-                        insertMessage(message)
+                        viewModel.upsert(message)
                     }
                     assistantMessage =
                         assistantMessage.copy(toolCalls = assistantMessage.toolCalls + it)
-                    insertMessage(assistantMessage)
+                    viewModel.upsert(assistantMessage)
                 }
                 delta.content?.let {
                     fullResponse += it
                     assistantMessage = assistantMessage.copy(textContent = fullResponse)
-                    insertMessage(assistantMessage) // This will be an upsert
+                    viewModel.upsert(assistantMessage)
                 }
             }
         } catch (e: GrokApi.GrokException) {
@@ -525,8 +502,7 @@ fun ConversationScreen(
                                 },
                                 trailingIcon = {
                                     IconButton(onClick = {
-                                        selectedImageUris.value =
-                                            selectedImageUris.value - uri
+                                        selectedImageUris.value -= uri
                                     }) {
                                         Icon(
                                             painterResource(id = R.drawable.baseline_close_24),

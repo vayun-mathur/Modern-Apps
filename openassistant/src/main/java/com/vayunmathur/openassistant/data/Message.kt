@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
+import com.vayunmathur.library.util.DatabaseItem
 import com.vayunmathur.openassistant.GrokRequest
 import com.vayunmathur.openassistant.ImageUrl
 import com.vayunmathur.openassistant.ImageUrlContent
@@ -23,7 +24,8 @@ import com.vayunmathur.openassistant.ToolCall
 )
 @TypeConverters(Converters::class)
 data class Message(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true)
+    override val id: Long = 0,
     val conversationId: Long, // Foreign key to Conversation
     val role: String,
     val textContent: String,
@@ -32,7 +34,7 @@ data class Message(
     val toolCallId: String? = null,
     val toolCalls: List<ToolCall> = listOf(),
     val timestamp: Long = System.currentTimeMillis()
-)
+): DatabaseItem
 
 fun Message.toGrokMessage(): GrokRequest.Message {
     return GrokRequest.Message(
