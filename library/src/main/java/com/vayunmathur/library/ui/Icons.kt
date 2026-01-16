@@ -29,7 +29,7 @@ fun IconDelete() {
 @Composable
 fun IconNavigation(navBack: () -> Unit) {
     IconButton({
-        navBack
+        navBack()
     }) {
         Icon(painterResource(R.drawable.arrow_back_24px), "Navigation")
     }
