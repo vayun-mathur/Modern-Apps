@@ -9,6 +9,8 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.ListDetailPage
+import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.passwords.data.PasswordDatabase
@@ -48,13 +50,13 @@ sealed interface Route: NavKey {
 fun Navigation(viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Menu)
     MainNavigation(backStack) {
-        entry<Route.Menu> {
+        entry<Route.Menu>(metadata = ListPage()) {
             MenuPage(backStack, viewModel)
         }
-        entry<Route.PasswordPage> {
+        entry<Route.PasswordPage>(metadata = ListDetailPage()) {
             PasswordPage(backStack, it.pass, viewModel)
         }
-        entry<Route.PasswordEditPage> {
+        entry<Route.PasswordEditPage>(metadata = ListDetailPage()) {
             PasswordEditPage(backStack, it.pass, viewModel)
         }
     }

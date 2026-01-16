@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.reset
+import com.vayunmathur.library.util.setLast
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
 import com.vayunmathur.passwords.R
@@ -27,7 +29,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: 
     var websitesText by remember { mutableStateOf(pass.websites.joinToString(",")) }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text(if (pass.id == null) "Add Password" else "Edit Password") })
+        TopAppBar(title = { Text(if (pass.isNew()) "Add Password" else "Edit Password") })
     }, floatingActionButton = {
         FloatingActionButton(onClick = {
             // validation
@@ -42,15 +44,13 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: 
                 totpSecret = totp.ifBlank { null },
                 websites = websites
             )
-            if (pass.id == 0L) {
+            if (pass.isNew()) {
                 viewModel.upsert(newPass) { id ->
-                    // navigate to detail
-                    backStack.add(Route.PasswordPage(newPass.copy(id = id)))
+                    backStack.setLast(Route.PasswordPage(newPass.copy(id = id)))
                 }
             } else {
                 viewModel.upsert(newPass) {
                     backStack.removeLastOrNull()
-                    backStack.add(Route.PasswordPage(newPass))
                 }
             }
         }) {

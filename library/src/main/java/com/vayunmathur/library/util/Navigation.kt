@@ -60,6 +60,10 @@ fun <T: NavKey> NavBackStack<T>.pop() {
     removeAt(lastIndex)
 }
 
+fun <T: NavKey> NavBackStack<T>.setLast(value: T) {
+    set(lastIndex, value)
+}
+
 fun <T: NavKey> NavBackStack<T>.reset(vararg keys: T) {
     // set values
     clear()

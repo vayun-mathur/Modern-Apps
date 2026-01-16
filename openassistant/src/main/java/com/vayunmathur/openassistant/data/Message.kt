@@ -35,7 +35,7 @@ data class Message(
     val toolCallId: String? = null,
     val toolCalls: List<ToolCall> = listOf(),
     val timestamp: Long = System.currentTimeMillis()
-): DatabaseItem
+): DatabaseItem()
 
 fun Message.toGrokMessage(): GrokRequest.Message {
     return GrokRequest.Message(

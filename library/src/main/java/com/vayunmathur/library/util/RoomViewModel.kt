@@ -60,8 +60,10 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
     }
 }
 
-interface DatabaseItem {
-    val id: Long
+abstract class DatabaseItem {
+    abstract val id: Long
+
+    fun isNew() = id == 0L
 }
 
 interface TrueDao<T: DatabaseItem> {

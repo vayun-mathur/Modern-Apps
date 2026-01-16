@@ -10,4 +10,4 @@ data class Conversation(
     override val id: Long = 0,
     var title: String,
     val createdAt: Long = System.currentTimeMillis()
-): DatabaseItem
+): DatabaseItem()

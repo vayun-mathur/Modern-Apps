@@ -14,4 +14,4 @@ data class Password(
     val password: String = "",
     val totpSecret: String? = null,
     val websites: List<String> = emptyList()
-): DatabaseItem
+): DatabaseItem()
