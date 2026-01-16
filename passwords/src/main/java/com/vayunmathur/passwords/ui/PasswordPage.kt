@@ -12,6 +12,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
@@ -26,7 +27,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
         FloatingActionButton(onClick = {
             backStack.add(Route.PasswordEditPage(pass))
         }) {
-            Icon(painterResource(R.drawable.edit_24px), null)
+            IconEdit()
         }
 
     }) { paddingValues ->

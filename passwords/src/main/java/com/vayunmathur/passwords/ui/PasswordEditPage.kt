@@ -10,6 +10,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
@@ -53,7 +54,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: 
                 }
             }
         }) {
-            Icon(painterResource(R.drawable.save_24px), null)
+            IconSave()
         }
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues).padding(16.dp)) {

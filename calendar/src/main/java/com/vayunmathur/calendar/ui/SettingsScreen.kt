@@ -40,6 +40,9 @@ import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.pop
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,17 +70,17 @@ fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                         // open rename dialog via navigation
                         backStack.add(Route.Settings.RenameCalendar(selectedCalendarId!!))
                     }) {
-                        Icon(painterResource(R.drawable.edit_24px), contentDescription = "Rename")
+                        IconEdit()
                     }
                     IconButton(onClick = { backStack.add(Route.Settings.DeleteCalendar(selectedCalendarId!!)) }) {
-                        Icon(painterResource(R.drawable.delete_24px), contentDescription = "Delete")
+                        IconDelete()
                     }
                 }
             })
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { backStack.add(Route.Settings.AddCalendar()) }) {
-                Icon(painterResource(R.drawable.add_24px), contentDescription = "Add calendar")
+                IconAdd()
             }
         },
         contentWindowInsets = WindowInsets()

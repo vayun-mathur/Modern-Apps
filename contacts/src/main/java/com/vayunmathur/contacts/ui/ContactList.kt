@@ -60,6 +60,7 @@ import com.vayunmathur.contacts.ContactViewModel
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.VcfUtils
+import com.vayunmathur.library.ui.IconAdd
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -127,7 +128,7 @@ fun ContactList(
         floatingActionButton = {
             if(backStack.last() !is Route.EditContact) {
                 FloatingActionButton(onClick = { onAddContactClick() }) {
-                    Icon(painterResource(R.drawable.add_24px), contentDescription = "Add contact")
+                    IconAdd()
                 }
             }
         }

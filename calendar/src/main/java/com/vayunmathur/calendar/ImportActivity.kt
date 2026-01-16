@@ -25,6 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.ui.dateRangeString
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.IconSave
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
 import kotlinx.datetime.toInstant
@@ -109,7 +110,7 @@ fun ImportScreen(events: List<Event>, calendars: List<Calendar>, onImportClick: 
         floatingActionButton = {
             if(selectedCalendar != null) {
                 FloatingActionButton(onClick = {onImportClick(selectedCalendar!!.id)}) {
-                    Icon(painterResource(R.drawable.save_24px), null)
+                    IconSave()
                 }
             }
         }

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.IconSave
 
 class ImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +56,7 @@ fun ImportScreen(contacts: List<Contact>, onImport: () -> Unit) {
         topBar = { TopAppBar({Text("Import Contacts")}) },
         floatingActionButton = {
             FloatingActionButton(onClick = onImport) {
-                Icon(painterResource(R.drawable.save_24px), contentDescription = "Save all")
+                IconSave()
             }
         }
     ) { paddingValues ->

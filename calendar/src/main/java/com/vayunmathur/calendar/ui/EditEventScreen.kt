@@ -47,6 +47,7 @@ import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.RRule
 import com.vayunmathur.calendar.RecurrenceParams
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
@@ -228,7 +229,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             viewModel.upsertEvent(eventId, values)
             backStack.pop()
         }) {
-            Icon(painterResource(R.drawable.save_24px), contentDescription = "Save")
+            IconSave()
         }
     }, contentWindowInsets = WindowInsets()) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {

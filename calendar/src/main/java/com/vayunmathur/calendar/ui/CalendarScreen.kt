@@ -62,6 +62,7 @@ import com.vayunmathur.calendar.Event
 import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.util.ResultEffect
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -129,7 +130,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                 viewModel.setLastViewedDate(dateViewing)
                 backStack.add(Route.EditEvent(null))
             }) {
-                Icon(painterResource(R.drawable.add_24px), contentDescription = "Add")
+                IconAdd()
             }
         },
     ) { innerPadding ->

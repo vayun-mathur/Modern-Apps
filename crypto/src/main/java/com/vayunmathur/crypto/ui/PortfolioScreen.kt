@@ -64,6 +64,7 @@ import com.vayunmathur.crypto.token.JupiterLendRepository
 import com.vayunmathur.crypto.token.Token
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.library.ui.IconAdd
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,7 +116,7 @@ fun PortfolioScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
             })
         }, floatingActionButton = {
             FloatingActionButton(onClick = { showTokenDialog = true }) {
-                Icon(painterResource(R.drawable.add_24px), contentDescription = "Add Token")
+                IconAdd()
             }
         }, contentWindowInsets = WindowInsets()) { paddingValues ->
             Column(

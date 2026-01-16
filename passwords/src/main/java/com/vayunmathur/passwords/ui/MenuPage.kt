@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Route
 import com.vayunmathur.passwords.Password
@@ -24,7 +25,7 @@ fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
         FloatingActionButton(onClick = {
             backStack.add(Route.PasswordEditPage(Password()))
         }) {
-            Icon(painterResource(R.drawable.add_24px), null)
+            IconAdd()
         }
     }) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {

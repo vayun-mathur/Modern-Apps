@@ -27,6 +27,8 @@ import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -61,13 +63,13 @@ fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavB
                 IconButton({
                     backStack.add(Route.EditEvent(event.id))
                 }) {
-                    Icon(painterResource(R.drawable.edit_24px), contentDescription = "Edit")
+                    IconEdit()
                 }
                 IconButton({
                     viewModel.deleteEvent(event.id!!)
                     backStack.pop()
                 }) {
-                    Icon(painterResource(R.drawable.delete_24px), contentDescription = "Edit")
+                    IconDelete()
                 }
             }
         })
