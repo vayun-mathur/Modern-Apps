@@ -4,10 +4,14 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
@@ -27,11 +31,22 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
     var userId by remember { mutableStateOf(pass.userId) }
     var password by remember { mutableStateOf(pass.password) }
     var totp by remember { mutableStateOf(pass.totpSecret ?: "") }
-    var websitesText by remember { mutableStateOf(pass.websites.joinToString(",")) }
+    // websites: maintain list and an input box for new site
+    val websitesList = remember { mutableStateListOf<String>().apply { addAll(pass.websites) } }
+    var websiteInput by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+
+    fun addWebsiteFromInput() {
+        val candidate = websiteInput.trim()
+        if (candidate.isNotEmpty() && !websitesList.contains(candidate)) {
+            websitesList.add(candidate)
+        }
+        websiteInput = ""
+    }
 
     Scaffold(
         topBar = {
@@ -52,13 +67,12 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
                     return@FloatingActionButton
                 }
 
-                val websites = websitesText.split(',').map { it.trim() }.filter { it.isNotEmpty() }
                 val newPass = pass.copy(
                     name = name,
                     userId = userId,
                     password = password,
                     totpSecret = totp.ifBlank { null },
-                    websites = websites
+                    websites = websitesList.toList()
                 )
 
                 if (pass.isNew()) {
@@ -103,16 +117,38 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
 
             Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = websitesText, onValueChange = { websitesText = it }, label = { Text("Websites (comma-separated)") }, modifier = Modifier.fillMaxWidth())
+                    // Input for websites: pressing IME Done (Enter) adds to list
+                    OutlinedTextField(
+                        value = websiteInput,
+                        onValueChange = { websiteInput = it },
+                        label = { Text("Add website") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            addWebsiteFromInput()
+                            focusManager.clearFocus()
+                        })
+                    )
 
-                    // websites preview as simple chips (buttons)
-                    val websites = websitesText.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-                    if (websites.isNotEmpty()) {
+                    // websites preview as chips with remove X
+                    if (websitesList.isNotEmpty()) {
                         Row(Modifier
                             .horizontalScroll(rememberScrollState())
                             .padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            for (w in websites) {
-                                AssistChip(onClick = { /* maybe open or edit site */ }, label = { Text(w) })
+                            for ((index, w) in websitesList.withIndex()) {
+                                Surface(
+                                    tonalElevation = 2.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                ) {
+                                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(w)
+                                        Spacer(Modifier.width(8.dp))
+                                        TextButton(onClick = { websitesList.removeAt(index) }, modifier = Modifier.size(28.dp)) {
+                                            Text("✕")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
