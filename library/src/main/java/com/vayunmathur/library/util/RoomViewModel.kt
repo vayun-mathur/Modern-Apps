@@ -58,16 +58,9 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
     }
 
     @Composable
-    inline fun <reified E: DatabaseItem> get(id: Long): State<E> {
+    inline fun <reified E: DatabaseItem> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
         val data by getDaoInterface<E>().data.collectAsState()
-        val derived = remember { derivedStateOf { data.first { it.id == id } } }
-        return derived
-    }
-
-    @Composable
-    inline fun <reified E: DatabaseItem> getNullable(id: Long): State<E?> {
-        val data by getDaoInterface<E>().data.collectAsState()
-        val derived = remember { derivedStateOf { data.firstOrNull { it.id == id } } }
+        val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id } ?: default())!! } }
         return derived
     }
 

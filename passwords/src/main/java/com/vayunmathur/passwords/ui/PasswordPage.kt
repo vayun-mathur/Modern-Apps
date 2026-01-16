@@ -26,6 +26,7 @@ import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
 import com.vayunmathur.passwords.R
 import androidx.core.net.toUri
+import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.passwords.TOTP
 import kotlinx.coroutines.delay
@@ -34,7 +35,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseViewModel) {
-    val password by viewModel.get<Password>(id)
+    val password by viewModel.get<Password>(id){Password()}
+    if(password == Password()) return
     val context = LocalContext.current
     var showPassword by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -44,6 +46,11 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
         topBar = {
             TopAppBar(
                 title = { Text(password.name.ifBlank { "Password" }) },
+                actions = {
+                    IconButton(onClick = { viewModel.delete(password); backStack.removeLastOrNull() }) {
+                        IconDelete()
+                    }
+                },
                 navigationIcon = {
                     IconNavigation{ backStack.removeLastOrNull() }
                 }
@@ -193,7 +200,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                                 .fillMaxWidth()
                                 .clickable {
                                     // open link
-                                    val intent = Intent(Intent.ACTION_VIEW, w.toUri())
+                                    val intent = Intent(Intent.ACTION_VIEW, sanitizeUrl(w).toUri())
                                     context.startActivity(intent)
                                 }
                                 .padding(vertical = 6.dp)) {
@@ -205,5 +212,14 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                 }
             }
         }
+    }
+}
+
+fun sanitizeUrl(input: String): String {
+    val trimmed = input.trim()
+    return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        trimmed
+    } else {
+        "https://$trimmed"
     }
 }
