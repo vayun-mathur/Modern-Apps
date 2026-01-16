@@ -11,7 +11,7 @@ composeMarkdown = "0.5.8"
 lifecycleRuntimeKtx = "2.10.0"
 lifecycleViewmodel = "2.10.0"
 activityCompose = "1.12.2"
-material3 = "1.5.0-alpha11"
+material3 = "1.5.0-alpha12"
 
 # Compose & UI
 composeBom = "2025.12.01"

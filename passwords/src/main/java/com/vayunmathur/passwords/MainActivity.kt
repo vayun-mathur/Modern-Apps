@@ -5,11 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.ViewModelProvider
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
+import com.vayunmathur.passwords.data.PasswordDatabase
 import com.vayunmathur.passwords.ui.MenuPage
 import com.vayunmathur.passwords.ui.PasswordEditPage
 import com.vayunmathur.passwords.ui.PasswordPage
@@ -19,7 +21,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val viewModel = ViewModelProvider(this, PasswordViewModelFactory(application))[PasswordViewModel::class.java]
+        val database = buildDatabase<PasswordDatabase>()
+        val viewModel = DatabaseViewModel(Password::class to database.passwordDao())
         setContent {
             DynamicTheme {
                 Navigation(viewModel)
@@ -42,7 +45,7 @@ sealed interface Route: NavKey {
 
 
 @Composable
-fun Navigation(viewModel: PasswordViewModel) {
+fun Navigation(viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Menu)
     MainNavigation(backStack) {
         entry<Route.Menu> {

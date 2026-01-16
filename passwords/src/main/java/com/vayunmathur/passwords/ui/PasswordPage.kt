@@ -8,15 +8,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Password
-import com.vayunmathur.passwords.PasswordViewModel
 import com.vayunmathur.passwords.Route
+import com.vayunmathur.passwords.R
 
 @Composable
-fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: PasswordViewModel) {
+fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
     var showPassword by remember { mutableStateOf(false) }
 
@@ -24,7 +26,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Pass
         FloatingActionButton(onClick = {
             backStack.add(Route.PasswordEditPage(pass))
         }) {
-            Text("Edit")
+            Icon(painterResource(R.drawable.edit_24px), null)
         }
 
     }) { paddingValues ->

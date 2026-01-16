@@ -8,26 +8,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Route
 import com.vayunmathur.passwords.Password
-import com.vayunmathur.passwords.PasswordViewModel
+import com.vayunmathur.passwords.R
 
 @Composable
-fun MenuPage(backStack: NavBackStack<Route>, viewModel: PasswordViewModel) {
-    val list = viewModel.passwords.collectAsState()
+fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
+    val passwords = viewModel.data<Password>().collectAsState()
 
     Scaffold(floatingActionButton = {
         FloatingActionButton(onClick = {
-            // navigate to edit page for creating new password
             backStack.add(Route.PasswordEditPage(Password()))
         }) {
-            Text("+")
+            Icon(painterResource(R.drawable.add_24px), null)
         }
     }) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
-            items(list.value, key = { it.id ?: it.hashCode().toLong() }) { pass ->
+            items(passwords.value, key = { it.id }) { pass ->
                 PasswordListItem(pass) {
                     backStack.add(Route.PasswordPage(pass))
                 }

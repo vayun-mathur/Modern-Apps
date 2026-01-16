@@ -5,17 +5,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Password
-import com.vayunmathur.passwords.PasswordViewModel
 import com.vayunmathur.passwords.Route
+import com.vayunmathur.passwords.R
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: PasswordViewModel) {
+fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: DatabaseViewModel) {
     var name by remember { mutableStateOf(pass.name) }
     var userId by remember { mutableStateOf(pass.userId) }
     var password by remember { mutableStateOf(pass.password) }
@@ -38,19 +41,19 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: 
                 totpSecret = totp.ifBlank { null },
                 websites = websites
             )
-            if (pass.id == null) {
-                viewModel.insert(newPass) { id ->
+            if (pass.id == 0L) {
+                viewModel.upsert(newPass) { id ->
                     // navigate to detail
                     backStack.add(Route.PasswordPage(newPass.copy(id = id)))
                 }
             } else {
-                viewModel.update(newPass) {
+                viewModel.upsert(newPass) {
                     backStack.removeLastOrNull()
                     backStack.add(Route.PasswordPage(newPass))
                 }
             }
         }) {
-            Text("Save")
+            Icon(painterResource(R.drawable.save_24px), null)
         }
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues).padding(16.dp)) {
