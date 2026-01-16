@@ -3,74 +3,145 @@ package com.vayunmathur.passwords.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
+import kotlinx.coroutines.launch
 import com.vayunmathur.passwords.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
     var showPassword by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    Scaffold(floatingActionButton = {
-        FloatingActionButton(onClick = {
-            backStack.add(Route.PasswordEditPage(pass))
-        }) {
-            IconEdit()
-        }
-
-    }) { paddingValues ->
-        Column(Modifier.padding(paddingValues).padding(16.dp)) {
-            Text(text = "Name", style = MaterialTheme.typography.titleMedium)
-            Text(text = pass.name.ifBlank { "(no name)" })
-            Spacer(Modifier.height(8.dp))
-
-            Text(text = "User ID / Email", style = MaterialTheme.typography.titleMedium)
-            Text(text = pass.userId)
-            Spacer(Modifier.height(8.dp))
-
-            Text(text = "Password", style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = if (showPassword) pass.password else "••••••••",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                TextButton(onClick = {
-                    showPassword = !showPassword
-                }) {
-                    Text(if (showPassword) "Hide" else "Show")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(pass.name.ifBlank { "Password" }) },
+                navigationIcon = {
+                    IconNavigation{ backStack.removeLastOrNull() }
                 }
-                TextButton(onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("password", pass.password))
-                }) {
-                    Text("Copy")
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { backStack.add(Route.PasswordEditPage(pass)) }) {
+                IconEdit()
+            }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            Modifier
+                .padding(paddingValues)
+                .padding(16.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val initial = pass.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+                    Box(
+                        Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(initial, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(Modifier.weight(1f)) {
+                        Text(pass.name.ifBlank { "(no name)" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(4.dp))
+                        Text(pass.userId.ifBlank { "(no user)" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
-            Spacer(Modifier.height(8.dp))
 
-            Text(text = "TOTP Secret", style = MaterialTheme.typography.titleMedium)
-            Text(text = pass.totpSecret ?: "(none)")
-            Spacer(Modifier.height(8.dp))
+            // Password
+            Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("Password", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
 
-            Text(text = "Websites", style = MaterialTheme.typography.titleMedium)
-            if (pass.websites.isEmpty()) {
-                Text("(none)")
-            } else {
-                for (w in pass.websites) {
-                    Text(text = w, modifier = Modifier.padding(vertical = 2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = if (showPassword) pass.password else pass.password.replace(Regex("."), "•"),
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        IconButton(onClick = { showPassword = !showPassword }) {
+                            if (showPassword) Icon(painterResource(R.drawable.visibility_off_24px), contentDescription = "Hide")
+                            else Icon(painterResource(R.drawable.visibility_24px), contentDescription = "Show")
+                        }
+
+                        IconButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("password", pass.password))
+                            scope.launch { snackbarHostState.showSnackbar("Password copied") }
+                        }) {
+                            Icon(painterResource(R.drawable.content_copy_24px), contentDescription = "Copy")
+                        }
+                    }
+                }
+            }
+
+            // TOTP
+            Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("TOTP Secret", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(pass.totpSecret ?: "(not configured)", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+            // Websites
+            Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("Websites", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    if (pass.websites.isEmpty()) {
+                        Text("(none)")
+                    } else {
+                        for (w in pass.websites) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { /* open link if desired */ }
+                                .padding(vertical = 6.dp)) {
+                                Text(w, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                Icon(painterResource(R.drawable.link_24px), contentDescription = "Open site")
+                            }
+                        }
+                    }
                 }
             }
         }
