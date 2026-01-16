@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +25,6 @@ import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-
 
 // The Registry that holds the events
 class NavResultRegistry {
@@ -72,15 +74,17 @@ fun <T: NavKey> NavBackStack<T>.reset(vararg keys: T) {
     }
 }
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider:  EntryProviderScope<T>.() -> Unit) {
+    val sceneStrategy: ListDetailSceneStrategy<T> = rememberListDetailSceneStrategy()
     val resultRegistry = remember { NavResultRegistry() }
     Scaffold(contentWindowInsets = WindowInsets.displayCutout
     ) { paddingValues ->
         CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
             NavDisplay(
                 modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues),
-                sceneStrategy = DialogSceneStrategy(),
+                sceneStrategy = DialogSceneStrategy<T>().then(sceneStrategy),
                 backStack = backStack, entryProvider = entryProvider {
                     entryProvider()
                 })
@@ -96,6 +100,14 @@ fun <T: NavKey> rememberNavBackStack(vararg elements: T): NavBackStack<T> {
         NavBackStack(*elements)
     }
 }
+
+fun DialogPage() = DialogSceneStrategy.dialog()
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+fun ListPage(detailPlaceholder: @Composable () -> Unit = {}) = ListDetailSceneStrategy.listPane(detailPlaceholder)
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+fun ListDetailPage() = ListDetailSceneStrategy.detailPane()
 
 @Composable
 inline fun <reified T: NavKey> rememberNavBackStack(elements: List<T>): NavBackStack<T> {

@@ -15,8 +15,6 @@ dependencies {
 
     // navigation 3
     implementation(libs.androidx.navigation3.runtime)
-    implementation(libs.androidx.navigation3.ui)
-    implementation(libs.androidx.compose.material3)
 
     // solana
     implementation(libs.sol4k)

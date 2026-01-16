@@ -17,10 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
 import com.vayunmathur.crypto.ui.LendDetailScreen
 import com.vayunmathur.crypto.ui.LoginScreen
 import com.vayunmathur.crypto.ui.PortfolioScreen
@@ -32,6 +29,8 @@ import com.vayunmathur.crypto.ui.SendScreen
 import com.vayunmathur.crypto.ui.StockDetailScreen
 import com.vayunmathur.crypto.ui.SwapScreen
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
@@ -88,45 +87,33 @@ fun Navigation(viewModel: PortfolioViewModel) {
         }
     }
 
-    NavDisplay(backStack = backStack, onBack = { backStack.removeLastOrNull() }) { key ->
-        when (key) {
-            is LoginPage -> NavEntry(key) {
-                LoginScreen(viewModel, backStack)
-            }
-
-            is PortfolioPage -> NavEntry(key) {
-                PortfolioScreen(viewModel, backStack)
-            }
-
-            is LendDetailPage -> NavEntry(key) {
-                LendDetailScreen(viewModel, backStack, key.jlTokenMint)
-            }
-
-            is PredictionMarketPage -> NavEntry(key) {
-                PredictionMarketScreen(viewModel, backStack)
-            }
-
-            is PredictionMarketDetailPage -> NavEntry(key) {
-                PredictionMarketDetailScreen(viewModel, backStack, key.marketId)
-            }
-
-            is SwapPage -> NavEntry(key) {
-                SwapScreen(viewModel, backStack)
-            }
-
-            is SendPage -> NavEntry(key) {
-                SendScreen(viewModel, backStack)
-            }
-
-            is StockDetailPage -> NavEntry(key) {
-                StockDetailScreen(viewModel, backStack, key.stockTokenMint)
-            }
-
-            is PrivateKeyPage -> NavEntry(key) {
-                PrivateKeyScreen(viewModel, backStack)
-            }
-
-            else -> NavEntry(key) { Text("Unknown route") }
+    MainNavigation(backStack) {
+        entry<LoginPage> {
+            LoginScreen(viewModel, backStack)
+        }
+        entry<PortfolioPage> {
+            PortfolioScreen(viewModel, backStack)
+        }
+        entry<LendDetailPage> { key ->
+            LendDetailScreen(viewModel, backStack, key.jlTokenMint)
+        }
+        entry<PredictionMarketPage> {
+            PredictionMarketScreen(viewModel, backStack)
+        }
+        entry<PredictionMarketDetailPage> { key ->
+            PredictionMarketDetailScreen(viewModel, backStack, key.marketId)
+        }
+        entry<SwapPage> {
+            SwapScreen(viewModel, backStack)
+        }
+        entry<SendPage> {
+            SendScreen(viewModel, backStack)
+        }
+        entry<StockDetailPage> { key ->
+            StockDetailScreen(viewModel, backStack, key.stockTokenMint)
+        }
+        entry<PrivateKeyPage> {
+            PrivateKeyScreen(viewModel, backStack)
         }
     }
 }

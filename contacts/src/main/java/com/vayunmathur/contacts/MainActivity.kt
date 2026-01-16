@@ -18,7 +18,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,12 +30,14 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.scene.DialogSceneStrategy
 import com.vayunmathur.contacts.ui.ContactList
 import com.vayunmathur.contacts.ui.ContactListPick
 import com.vayunmathur.contacts.ui.dialog.EventDatePickerDialog
 import com.vayunmathur.contacts.ui.dialog.EventDeleteConfirmDialog
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.DialogPage
+import com.vayunmathur.library.util.ListDetailPage
+import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.pop
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -111,11 +112,11 @@ fun Navigation(viewModel: ContactViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.ContactsList)
 
     MainNavigation(backStack) {
-        entry<Route.ContactsList>(metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = {
+        entry<Route.ContactsList>(metadata = ListPage {
             Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
                 Text("Select a contact to view details")
             }
-        })) {
+        }) {
             ContactList(
                 viewModel = viewModel,
                 backStack = backStack,
@@ -134,7 +135,7 @@ fun Navigation(viewModel: ContactViewModel) {
                 }
             )
         }
-        entry<Route.ContactDetail>(metadata = ListDetailSceneStrategy.detailPane()) { key ->
+        entry<Route.ContactDetail>(metadata = ListDetailPage()) { key ->
             ContactDetailsPage(
                 viewModel = viewModel,
                 contactId = key.contactId,
@@ -148,15 +149,15 @@ fun Navigation(viewModel: ContactViewModel) {
                 showBackButton = true
             )
         }
-        entry<Route.EditContact>(metadata = ListDetailSceneStrategy.detailPane()) { key ->
+        entry<Route.EditContact>(metadata = ListDetailPage()) { key ->
             EditContactPage(backStack, viewModel, key.contactId)
         }
 
-        entry<Route.EventDatePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EventDatePickerDialog>(metadata = DialogPage()) { key ->
             EventDatePickerDialog(key.id, key.initialDate) { backStack.pop() }
         }
 
-        entry<Route.EventDeleteConfirmDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EventDeleteConfirmDialog>(metadata = DialogPage()) { key ->
             EventDeleteConfirmDialog(key.contactId, key.contactName, viewModel, onConfirm = {
                 // After confirming deletion, pop the dialog and the detail page
                 backStack.pop()

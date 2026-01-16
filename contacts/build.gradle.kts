@@ -11,7 +11,5 @@ dependencies {
     implementation(libs.libphonenumber)
 
     // Navigation 3
-    implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
-    implementation(libs.androidx.compose.adaptive.navigation3)
 }

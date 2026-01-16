@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.scene.DialogSceneStrategy
 import com.vayunmathur.calendar.ui.CalendarScreen
 import com.vayunmathur.calendar.ui.dialog.CalendarSetDateDialog
 import com.vayunmathur.calendar.ui.EditEventScreen
@@ -44,6 +43,7 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.util.reset
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.DialogPage
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
@@ -167,48 +167,48 @@ fun Navigation(instance: Instance?) {
             EditEventScreen(viewModel, key.id, backStack)
         }
 
-        entry<Route.Calendar.GotoDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.Calendar.GotoDialog>(metadata = DialogPage()) { key ->
             CalendarSetDateDialog(backStack, key.dateViewing)
         }
 
         // Dialog entries for the new date/time pickers (nested under EditEvent)
-        entry<Route.EditEvent.DatePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EditEvent.DatePickerDialog>(metadata = DialogPage()) { key ->
             DatePickerDialog(backStack, key.key, key.initialDate, key.minDate)
         }
 
-        entry<Route.EditEvent.TimePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EditEvent.TimePickerDialog>(metadata = DialogPage()) { key ->
             // initialTime is already a LocalTime? so pass directly, along with optional minTime
             TimePickerDialogContent(backStack, key.key, key.initialTime, key.minTime)
         }
 
-        entry<Route.EditEvent.CalendarPickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EditEvent.CalendarPickerDialog>(metadata = DialogPage()) { key ->
             CalendarPickerDialog(backStack, key.key)
         }
 
-        entry<Route.EditEvent.TimezonePickerDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EditEvent.TimezonePickerDialog>(metadata = DialogPage()) { key ->
             // show timezone selection dialog
             TimezonePickerDialog(backStack, key.key)
         }
 
-        entry<Route.EditEvent.RecurrenceDialog>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.EditEvent.RecurrenceDialog>(metadata = DialogPage()) { key ->
             // show recurrence picker dialog; RecurrenceParams is passed as initial value optionally
             RecurrenceDialog(backStack, key.key, key.startDate, key.initial)
         }
 
         // Settings-related dialog entries
-        entry<Route.Settings.ChangeColor>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.Settings.ChangeColor>(metadata = DialogPage()) { key ->
             SettingsChangeColorDialog(viewModel, backStack, key.id)
         }
 
-        entry<Route.Settings.AddCalendar>(metadata = DialogSceneStrategy.dialog()) { _ ->
+        entry<Route.Settings.AddCalendar>(metadata = DialogPage()) { _ ->
             SettingsAddCalendarDialog(viewModel, backStack)
         }
 
-        entry<Route.Settings.RenameCalendar>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.Settings.RenameCalendar>(metadata = DialogPage()) { key ->
             SettingsRenameCalendarDialog(viewModel, backStack, key.id)
         }
 
-        entry<Route.Settings.DeleteCalendar>(metadata = DialogSceneStrategy.dialog()) { key ->
+        entry<Route.Settings.DeleteCalendar>(metadata = DialogPage()) { key ->
             SettingsDeleteCalendarDialog(viewModel, backStack, key.id)
         }
     }
