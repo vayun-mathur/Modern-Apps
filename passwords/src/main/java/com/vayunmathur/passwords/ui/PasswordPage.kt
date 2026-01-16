@@ -23,32 +23,29 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
-import kotlinx.coroutines.launch
 import com.vayunmathur.passwords.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: DatabaseViewModel) {
+fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseViewModel) {
+    val password by viewModel.get<Password>(id)
     val context = LocalContext.current
     var showPassword by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(pass.name.ifBlank { "Password" }) },
+                title = { Text(password.name.ifBlank { "Password" }) },
                 navigationIcon = {
                     IconNavigation{ backStack.removeLastOrNull() }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { backStack.add(Route.PasswordEditPage(pass)) }) {
+            FloatingActionButton(onClick = { backStack.add(Route.PasswordEditPage(id)) }) {
                 IconEdit()
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             Modifier
@@ -63,7 +60,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val initial = pass.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+                    val initial = password.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
                     Box(
                         Modifier
                             .size(56.dp)
@@ -77,9 +74,9 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
                     Spacer(Modifier.width(12.dp))
 
                     Column(Modifier.weight(1f)) {
-                        Text(pass.name.ifBlank { "(no name)" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(password.name.ifBlank { "(no name)" }, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Spacer(Modifier.height(4.dp))
-                        Text(pass.userId.ifBlank { "(no user)" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(password.userId.ifBlank { "(no user)" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -92,7 +89,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
 
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = if (showPassword) pass.password else pass.password.replace(Regex("."), "•"),
+                            text = if (showPassword) password.password else password.password.replace(Regex("."), "•"),
                             style = MaterialTheme.typography.bodyLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -106,8 +103,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
 
                         IconButton(onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            clipboard.setPrimaryClip(ClipData.newPlainText("password", pass.password))
-                            scope.launch { snackbarHostState.showSnackbar("Password copied") }
+                            clipboard.setPrimaryClip(ClipData.newPlainText("password", password.password))
                         }) {
                             Icon(painterResource(R.drawable.content_copy_24px), contentDescription = "Copy")
                         }
@@ -120,7 +116,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
                 Column(Modifier.padding(12.dp)) {
                     Text("TOTP Secret", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
-                    Text(pass.totpSecret ?: "(not configured)", style = MaterialTheme.typography.bodyMedium)
+                    Text(password.totpSecret ?: "(not configured)", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
@@ -129,10 +125,10 @@ fun PasswordPage(backStack: NavBackStack<Route>, pass: Password, viewModel: Data
                 Column(Modifier.padding(12.dp)) {
                     Text("Websites", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
-                    if (pass.websites.isEmpty()) {
+                    if (password.websites.isEmpty()) {
                         Text("(none)")
                     } else {
-                        for (w in pass.websites) {
+                        for (w in password.websites) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { /* open link if desired */ }

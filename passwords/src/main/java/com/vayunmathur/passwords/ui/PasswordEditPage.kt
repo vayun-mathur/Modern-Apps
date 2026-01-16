@@ -20,7 +20,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: DatabaseViewModel) {
+fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseViewModel) {
+    val passDatabase by viewModel.getNullable<Password>(id)
+    val pass = passDatabase ?: Password()
     var name by remember { mutableStateOf(pass.name) }
     var userId by remember { mutableStateOf(pass.userId) }
     var password by remember { mutableStateOf(pass.password) }
@@ -61,13 +63,11 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, pass: Password, viewModel: 
 
                 if (pass.isNew()) {
                     viewModel.upsert(newPass) { id ->
-                        backStack.setLast(Route.PasswordPage(newPass.copy(id = id)))
-                        scope.launch { snackbarHostState.showSnackbar("Saved") }
+                        backStack.setLast(Route.PasswordPage(id))
                     }
                 } else {
                     viewModel.upsert(newPass) {
                         backStack.removeLastOrNull()
-                        scope.launch { snackbarHostState.showSnackbar("Saved") }
                     }
                 }
             }) {

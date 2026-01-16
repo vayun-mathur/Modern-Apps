@@ -1,6 +1,12 @@
 package com.vayunmathur.library.util
 
 import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -49,6 +55,20 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
 
     inline fun <reified E: DatabaseItem> data(): StateFlow<List<E>> {
         return getDaoInterface<E>().data
+    }
+
+    @Composable
+    inline fun <reified E: DatabaseItem> get(id: Long): State<E> {
+        val data by getDaoInterface<E>().data.collectAsState()
+        val derived = remember { derivedStateOf { data.first { it.id == id } } }
+        return derived
+    }
+
+    @Composable
+    inline fun <reified E: DatabaseItem> getNullable(id: Long): State<E?> {
+        val data by getDaoInterface<E>().data.collectAsState()
+        val derived = remember { derivedStateOf { data.firstOrNull { it.id == id } } }
+        return derived
     }
 
     inline fun <reified E: DatabaseItem> upsert(t: E, noinline andThen: (Long) -> Unit = {}) {

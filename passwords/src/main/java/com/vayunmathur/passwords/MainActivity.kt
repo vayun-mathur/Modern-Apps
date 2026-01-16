@@ -39,10 +39,10 @@ sealed interface Route: NavKey {
     data object Menu: Route
 
     @Serializable
-    data class PasswordPage(val pass: Password): Route
+    data class PasswordPage(val id: Long): Route
 
     @Serializable
-    data class PasswordEditPage(val pass: Password): Route
+    data class PasswordEditPage(val id: Long): Route
 }
 
 
@@ -54,10 +54,10 @@ fun Navigation(viewModel: DatabaseViewModel) {
             MenuPage(backStack, viewModel)
         }
         entry<Route.PasswordPage>(metadata = ListDetailPage()) {
-            PasswordPage(backStack, it.pass, viewModel)
+            PasswordPage(backStack, it.id, viewModel)
         }
         entry<Route.PasswordEditPage>(metadata = ListDetailPage()) {
-            PasswordEditPage(backStack, it.pass, viewModel)
+            PasswordEditPage(backStack, it.id, viewModel)
         }
     }
 }

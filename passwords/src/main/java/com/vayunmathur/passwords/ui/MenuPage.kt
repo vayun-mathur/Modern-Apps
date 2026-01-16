@@ -23,7 +23,7 @@ fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 
     Scaffold(floatingActionButton = {
         FloatingActionButton(onClick = {
-            backStack.add(Route.PasswordEditPage(Password()))
+            backStack.add(Route.PasswordEditPage(0))
         }) {
             IconAdd()
         }
@@ -31,7 +31,7 @@ fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
         LazyColumn(Modifier.padding(paddingValues)) {
             items(passwords.value, key = { it.id }) { pass ->
                 PasswordListItem(pass) {
-                    backStack.add(Route.PasswordPage(pass))
+                    backStack.add(Route.PasswordPage(pass.id))
                 }
             }
         }
