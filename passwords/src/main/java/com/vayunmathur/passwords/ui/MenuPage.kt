@@ -24,11 +24,18 @@ import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.TOTP
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val passwords = viewModel.data<Password>().collectAsState()
 
-    Scaffold(floatingActionButton = {
+    Scaffold(topBar = {
+        TopAppBar(title = { Text("Passwords") }, actions = {
+            IconButton(onClick = { backStack.add(Route.Settings) }) {
+                Icon(painterResource(R.drawable.settings_24px), contentDescription = "Settings")
+            }
+        })
+    }, floatingActionButton = {
         FloatingActionButton(onClick = {
             backStack.add(Route.PasswordEditPage(0))
         }) {
@@ -48,7 +55,6 @@ fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 @Composable
 private fun PasswordListItem(pass: Password, onClick: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     if (pass.totpSecret.isNullOrBlank()) {
         // No TOTP: simple list item

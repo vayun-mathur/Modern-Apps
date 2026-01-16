@@ -19,4 +19,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.kotlinx.serialization.json)
+
+    // CSV parsing library for Bitwarden CSV imports
+    implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.10.0")
 }

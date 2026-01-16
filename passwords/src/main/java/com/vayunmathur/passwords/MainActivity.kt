@@ -17,6 +17,7 @@ import com.vayunmathur.passwords.data.PasswordDatabase
 import com.vayunmathur.passwords.ui.MenuPage
 import com.vayunmathur.passwords.ui.PasswordEditPage
 import com.vayunmathur.passwords.ui.PasswordPage
+import com.vayunmathur.passwords.ui.SettingsPage
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +44,9 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class PasswordEditPage(val id: Long): Route
+
+    @Serializable
+    data object Settings: Route
 }
 
 
@@ -58,6 +62,9 @@ fun Navigation(viewModel: DatabaseViewModel) {
         }
         entry<Route.PasswordEditPage>(metadata = ListDetailPage()) {
             PasswordEditPage(backStack, it.id, viewModel)
+        }
+        entry<Route.Settings>(metadata = ListDetailPage()) {
+            SettingsPage(backStack, viewModel)
         }
     }
 }
