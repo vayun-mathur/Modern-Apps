@@ -32,6 +32,11 @@ fun IconClose() {
 }
 
 @Composable
+fun IconSettings() {
+    Icon(painterResource(R.drawable.settings_24px), "Settings")
+}
+
+@Composable
 fun IconNavigation(navBack: () -> Unit) {
     IconButton({
         navBack()
