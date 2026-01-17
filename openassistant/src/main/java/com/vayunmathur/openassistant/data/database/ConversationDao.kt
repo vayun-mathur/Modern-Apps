@@ -12,10 +12,4 @@ import kotlinx.coroutines.flow.Flow
 interface ConversationDao: TrueDao<Conversation> {
     @Query("SELECT * FROM conversations ORDER BY createdAt DESC")
     override fun getAll(): Flow<List<Conversation>>
-
-    @Upsert
-    override suspend fun upsert(value: Conversation): Long
-
-    @Delete
-    override suspend fun delete(value: Conversation): Int
 }

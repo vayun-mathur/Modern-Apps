@@ -9,8 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.Delete
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Upsert
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -81,7 +83,9 @@ abstract class DatabaseItem {
 
 interface TrueDao<T: DatabaseItem> {
     fun getAll(): Flow<List<T>>
+    @Upsert
     suspend fun upsert(value: T): Long
+    @Delete
     suspend fun delete(value: T): Int
 }
 

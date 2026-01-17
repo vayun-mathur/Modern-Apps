@@ -10,13 +10,4 @@ import kotlin.reflect.KClass
 interface PasswordDao: TrueDao<Password> {
     @Query("SELECT * FROM passwords ORDER BY name")
     override fun getAll(): Flow<List<Password>>
-
-    @Query("SELECT * FROM passwords WHERE id = :id")
-    fun getById(id: Long): Flow<Password?>
-
-    @Upsert
-    override suspend fun upsert(value: Password): Long
-
-    @Delete
-    override suspend fun delete(value: Password): Int
 }
