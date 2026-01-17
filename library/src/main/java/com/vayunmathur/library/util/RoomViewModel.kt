@@ -74,43 +74,47 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
 
     @Composable
     inline fun <reified E : DatabaseItem> getEditable(
-        id: Long,
+        initialId: Long,
         crossinline default: () -> E? = { null }
     ): MutableState<E> {
         val scope = rememberCoroutineScope()
-        val dao = getDaoInterface<E>()
+        val daoInterface = getDaoInterface<E>()
 
-        // 1. Get the source of truth from the DB
-        val data by dao.data.collectAsState(initial = emptyList())
+        // 1. Track the current ID. If it's 0, it will be updated after the first upsert.
+        var currentId by remember { mutableLongStateOf(initialId) }
 
-        // 2. Create a local state to hold the "in-progress" edits
-        // We initialize it when the data first loads
+        // 2. Observe the database state
+        val data by daoInterface.data.collectAsState()
+
+        // 3. Local state for immediate UI feedback
         val localState = remember { mutableStateOf<E?>(null) }
 
-        var id by remember { mutableLongStateOf(id) }
-
-        // Update local state when the DB record changes
-        LaunchedEffect(data) {
-            if (localState.value == null) {
-                localState.value = data.firstOrNull { it.id == id }
+        // Sync local state when the database data changes or the ID changes
+        LaunchedEffect(data, currentId) {
+            val dbItem = data.firstOrNull { it.id == currentId }
+            if (dbItem != null) {
+                localState.value = dbItem
             }
         }
 
-        // 3. Return a custom MutableState
+        // 4. Wrap in a custom MutableState
         return remember {
             object : MutableState<E> {
                 override var value: E
-                    get() = (localState.value ?: default())!!
+                    get() = localState.value ?: default() ?: throw Exception("Entity not found and no default provided")
                     set(newValue) {
+                        // Optimistically update the UI local state
                         localState.value = newValue
-                        scope.launch {
-                            dao.upsert(newValue) {
-                                id = it
+
+                        // Push to database
+                        daoInterface.upsert(newValue) { newId ->
+                            // If this was a new item (ID 0), update our pointer to the new ID
+                            if (currentId == 0L) {
+                                currentId = newId
                             }
                         }
                     }
 
-                // Standard boilerplate for MutableState implementation
                 override fun component1(): E = value
                 override fun component2(): (E) -> Unit = { value = it }
             }
