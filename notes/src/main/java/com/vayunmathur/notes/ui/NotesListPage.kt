@@ -21,6 +21,6 @@ fun NoteListItem(note: Note, onClick: () -> Unit) {
     ListItem(
         { Text(note.title) },
         Modifier.clickable { onClick() },
-        supportingContent = { Text(note.content.take(40)) }
+        supportingContent = { Text(note.content.substringBefore('\n').take(40)) }
     )
 }
