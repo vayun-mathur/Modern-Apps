@@ -3,6 +3,7 @@ package com.vayunmathur.library.util
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -87,7 +88,7 @@ fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider:  Entry
     ) { paddingValues ->
         CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
             NavDisplay(
-                modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues),
+                modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues).imePadding(),
                 sceneStrategy = DialogSceneStrategy<T>().then(sceneStrategy),
                 backStack = backStack, entryProvider = entryProvider {
                     entryProvider()
