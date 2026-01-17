@@ -43,9 +43,7 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
-    ListPage<Password, Route, Route.PasswordEditPage>(backStack, viewModel, "Passwords", { pass, onClick ->
-        PasswordListItem(pass, onClick)
-    }, { Route.PasswordPage(it) }, { Route.PasswordEditPage(0) }, Route.Settings)
+    ListPage<Password, Route, Route.PasswordEditPage>(backStack, viewModel, "Passwords", ::PasswordListItem, { Route.PasswordPage(it) }, { Route.PasswordEditPage(0) }, Route.Settings)
 }
 
 @Composable

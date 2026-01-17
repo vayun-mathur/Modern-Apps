@@ -1,0 +1,26 @@
+package com.vayunmathur.notes.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.ui.ListPage
+import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.notes.Route
+import com.vayunmathur.notes.data.Note
+
+@Composable
+fun NotesListPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
+    ListPage<Note, Route, Route.Note>(backStack, viewModel, "Notes", ::NoteListItem, { Route.Note(it) }, { Route.Note(0) })
+}
+
+@Composable
+fun NoteListItem(note: Note, onClick: () -> Unit) {
+    ListItem(
+        { Text(note.title) },
+        Modifier.clickable { onClick() },
+        supportingContent = { Text(note.content.take(40)) }
+    )
+}

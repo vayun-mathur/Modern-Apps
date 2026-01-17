@@ -2,11 +2,17 @@ package com.vayunmathur.library.util
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Delete
@@ -64,6 +70,51 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         val data by getDaoInterface<E>().data.collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id } ?: default())!! } }
         return derived
+    }
+
+    @Composable
+    inline fun <reified E : DatabaseItem> getEditable(
+        id: Long,
+        crossinline default: () -> E? = { null }
+    ): MutableState<E> {
+        val scope = rememberCoroutineScope()
+        val dao = getDaoInterface<E>()
+
+        // 1. Get the source of truth from the DB
+        val data by dao.data.collectAsState(initial = emptyList())
+
+        // 2. Create a local state to hold the "in-progress" edits
+        // We initialize it when the data first loads
+        val localState = remember { mutableStateOf<E?>(null) }
+
+        var id by remember { mutableLongStateOf(id) }
+
+        // Update local state when the DB record changes
+        LaunchedEffect(data) {
+            if (localState.value == null) {
+                localState.value = data.firstOrNull { it.id == id }
+            }
+        }
+
+        // 3. Return a custom MutableState
+        return remember {
+            object : MutableState<E> {
+                override var value: E
+                    get() = (localState.value ?: default())!!
+                    set(newValue) {
+                        localState.value = newValue
+                        scope.launch {
+                            dao.upsert(newValue) {
+                                id = it
+                            }
+                        }
+                    }
+
+                // Standard boilerplate for MutableState implementation
+                override fun component1(): E = value
+                override fun component2(): (E) -> Unit = { value = it }
+            }
+        }
     }
 
     inline fun <reified E: DatabaseItem> upsert(t: E, noinline andThen: (Long) -> Unit = {}) {
