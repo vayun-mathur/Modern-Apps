@@ -1,5 +1,6 @@
 package com.vayunmathur.notes.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,10 +43,10 @@ import com.vayunmathur.notes.data.Note
 @Composable
 fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteID: Long) {
     var note by viewModel.getEditable<Note>(noteID) {Note(0, "", "")}
-    var isEditing by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(true) }
 
     Scaffold(topBar = {
-        TopAppBar({ Text("Note") }, navigationIcon = {
+        TopAppBar({ }, navigationIcon = {
             IconNavigation { backStack.pop() }
         }, actions = {
             IconButton({
@@ -70,7 +71,13 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 singleLine = true,
                 readOnly = !isEditing,
                 textStyle = MaterialTheme.typography.headlineMedium.copy(color = LocalContentColor.current),
-                cursorBrush = SolidColor(LocalContentColor.current)
+                cursorBrush = SolidColor(LocalContentColor.current),
+                decorationBox = {innerTextField ->
+                    Box(){
+                        if(note.title.isEmpty()) Text(text = "Title", style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+                        innerTextField()
+                    }
+                }
             )
             Spacer(Modifier.height(8.dp))
             BasicTextField(
@@ -79,7 +86,16 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 Modifier.fillMaxSize(),
                 readOnly = !isEditing,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = LocalContentColor.current),
-                cursorBrush = SolidColor(LocalContentColor.current)
+                cursorBrush = SolidColor(LocalContentColor.current),
+                decorationBox = { innerTextField ->
+                    Box() {
+                        if (note.content.isEmpty()) Text(
+                            text = "Content",
+                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        )
+                        innerTextField()
+                    }
+                }
             )
         }
     }
