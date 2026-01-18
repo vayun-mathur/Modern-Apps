@@ -43,49 +43,33 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
-    ListPage<Password, Route, Route.PasswordEditPage>(backStack, viewModel, "Passwords", ::PasswordListItem, { Route.PasswordPage(it) }, { Route.PasswordEditPage(0) }, Route.Settings)
-}
-
-@Composable
-private fun PasswordListItem(pass: Password, modifier: Modifier, onClick: () -> Unit) {
     val context = LocalContext.current
-
-    if (pass.totpSecret.isNullOrBlank()) {
-        ListItem(
-            { Text(pass.name.ifBlank { "(no name)" }) },
-            Modifier.clickable { onClick() },
-            supportingContent = { Text(pass.userId) }
-        )
-        return
-    }
-
-    var currentCode by remember { mutableStateOf("") }
-    var progress by remember { mutableFloatStateOf(1f) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            val timeBucket = System.currentTimeMillis() / 1000 / 30
-            currentCode = tryOrDefault("----") { TOTP.generate(pass.totpSecret, timeBucket * 30) }
-            progress = 1f - (System.currentTimeMillis() / 30000f) % 1f
-            delay(50)
-        }
-    }
-
-    ListItem(
-        { Text(pass.name.ifBlank { "(no name)" }) },
-        modifier.clickable { onClick() },
-        supportingContent = { Text(pass.userId) },
-        trailingContent = {
-            Row(Modifier.clickable {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                clipboard.setPrimaryClip(ClipData.newPlainText("totp", currentCode))
-            }.wrapContentHeight(), verticalAlignment = Alignment.CenterVertically) {
-                Text(currentCode, style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.width(8.dp))
-                Box(contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator({progress}, Modifier.size(40.dp))
-                    Icon(painterResource(R.drawable.content_copy_24px), contentDescription = "Copy TOTP", Modifier.size(16.dp))
-                }
+    ListPage<Password, Route, Route.PasswordEditPage>(backStack, viewModel, "Passwords", {
+        Text(it.name.ifBlank {"(no name)"})
+    }, {
+        Text(it.userId)
+    }, { Route.PasswordPage(it) }, { Route.PasswordEditPage(0) }, Route.Settings, trailingContent = {
+        if(it.totpSecret.isNullOrBlank()) return@ListPage
+        var currentCode by remember { mutableStateOf("") }
+        var progress by remember { mutableFloatStateOf(1f) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                val timeBucket = System.currentTimeMillis() / 1000 / 30
+                currentCode = tryOrDefault("----") { TOTP.generate(it.totpSecret, timeBucket * 30) }
+                progress = 1f - (System.currentTimeMillis() / 30000f) % 1f
+                delay(50)
             }
         }
-    )
+        Row(Modifier.clickable {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("totp", currentCode))
+        }.wrapContentHeight(), verticalAlignment = Alignment.CenterVertically) {
+            Text(currentCode, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.width(8.dp))
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator({progress}, Modifier.size(40.dp))
+                Icon(painterResource(R.drawable.content_copy_24px), contentDescription = "Copy TOTP", Modifier.size(16.dp))
+            }
+        }
+    })
 }

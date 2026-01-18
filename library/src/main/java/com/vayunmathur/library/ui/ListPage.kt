@@ -53,11 +53,10 @@ inline fun <reified T : DatabaseItem<T>, Route : NavKey, reified EditPage : Rout
     crossinline editPage: () -> Route,
     settingsPage: Route? = null,
     crossinline otherActions: @Composable () -> Unit = {},
-    isReorderable: Boolean = false
+    isReorderable: Boolean = false,
+    crossinline trailingContent: @Composable (T) -> Unit = {},
 ) {
     val dbData by viewModel.data<T>().collectAsState()
-
-
 
     val hapticFeedback = LocalHapticFeedback.current
 
@@ -129,18 +128,30 @@ inline fun <reified T : DatabaseItem<T>, Route : NavKey, reified EditPage : Rout
                         ListItem({headlineContent(item)}, Modifier.clickable{
                             backStack.add(viewPage(item.id))
                         }, {}, {supportingContent(item)}, {}, {
-                            IconButton(
-                                modifier = Modifier.draggableHandle(
-                                    onDragStarted = {
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                    },
-                                    onDragStopped = {
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                    },
-                                ),
-                                onClick = {},
-                            ) {
-                                Icon(painterResource(R.drawable.drag_handle_24px), contentDescription = "Reorder")
+                            Row {
+                                trailingContent(item)
+                                if(isReorderable) {
+                                    IconButton(
+                                        modifier = Modifier.draggableHandle(
+                                            onDragStarted = {
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.GestureThresholdActivate
+                                                )
+                                            },
+                                            onDragStopped = {
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.GestureEnd
+                                                )
+                                            },
+                                        ),
+                                        onClick = {},
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.drag_handle_24px),
+                                            contentDescription = "Reorder"
+                                        )
+                                    }
+                                }
                             }
                         }, ListItemDefaults.colors(), elevation, elevation)
                     }

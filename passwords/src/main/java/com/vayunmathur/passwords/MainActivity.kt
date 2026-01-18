@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.NavKey
+import androidx.room.migration.Migration
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -24,7 +25,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val database = buildDatabase<PasswordDatabase>()
+        val database = buildDatabase<PasswordDatabase>(listOf(Migration(1, 2, {
+            it.execSQL("ALTER TABLE passwords ADD COLUMN position REAL NOT NULL DEFAULT 0.0")
+        })))
         val viewModel = DatabaseViewModel(Password::class to database.passwordDao())
         setContent {
             DynamicTheme {

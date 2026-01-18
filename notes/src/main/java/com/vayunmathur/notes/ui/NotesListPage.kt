@@ -17,5 +17,5 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) 
         Text(it.title)
     }, {
         Text(it.content.substringBefore('\n').take(40))
-    }, { Route.Note(it) }, { Route.Note(0) })
+    }, { Route.Note(it) }, { Route.Note(0) }, isReorderable = true)
 }
