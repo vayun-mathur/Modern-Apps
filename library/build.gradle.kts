@@ -13,6 +13,9 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
 
+    //reorderable
+    implementation("sh.calvin.reorderable:reorderable:3.0.0")
+
     // room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

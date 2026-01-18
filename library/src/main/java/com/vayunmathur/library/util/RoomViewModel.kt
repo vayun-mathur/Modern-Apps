@@ -19,8 +19,10 @@ import androidx.room.Delete
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -28,7 +30,7 @@ import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.to
 
-class DaoInterface<T: DatabaseItem>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
+class DaoInterface<T: DatabaseItem<T>>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
     val data: StateFlow<List<T>> = dao.getAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun delete(t: T, andThen: (Int) -> Unit = {}) {
@@ -44,6 +46,12 @@ class DaoInterface<T: DatabaseItem>(val dao: TrueDao<T>, val viewModelScope: Cor
             andThen(id)
         }
     }
+
+    fun upsertAll(t: List<T>) {
+        viewModelScope.launch {
+            dao.upsertAll(t)
+        }
+    }
 }
 
 class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() {
@@ -51,29 +59,33 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         it.first to DaoInterface(it.second, viewModelScope)
     }
 
-    inline fun <reified E : DatabaseItem> getDaoInterface(): DaoInterface<E> {
+    inline fun <reified E : DatabaseItem<E>> getDaoInterface(): DaoInterface<E> {
         val daoInterface = daoMap[E::class] ?: throw Exception("No DAO registered for ${E::class.simpleName}")
         @Suppress("UNCHECKED_CAST")
         return daoInterface as DaoInterface<E>
     }
 
-    inline fun <reified E : DatabaseItem> getDao(): TrueDao<E> {
+    inline fun <reified E : DatabaseItem<E>> getDao(): TrueDao<E> {
         return getDaoInterface<E>().dao
     }
 
-    inline fun <reified E: DatabaseItem> data(): StateFlow<List<E>> {
+    inline fun <reified E: DatabaseItem<E>> data(): StateFlow<List<E>> {
         return getDaoInterface<E>().data
     }
 
     @Composable
-    inline fun <reified E: DatabaseItem> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
+    inline fun <reified E: DatabaseItem<E>> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
         val data by getDaoInterface<E>().data.collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id } ?: default())!! } }
         return derived
     }
 
+    inline fun <reified E: DatabaseItem<E>> upsertAll(items: List<E>) {
+        getDaoInterface<E>().upsertAll(items)
+    }
+
     @Composable
-    inline fun <reified E : DatabaseItem> getEditable(
+    inline fun <reified E : DatabaseItem<E>> getEditable(
         initialId: Long,
         crossinline default: () -> E? = { null }
     ): MutableState<E> {
@@ -121,33 +133,37 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         }
     }
 
-    inline fun <reified E: DatabaseItem> upsert(t: E, noinline andThen: (Long) -> Unit = {}) {
+    inline fun <reified E: DatabaseItem<E>> upsert(t: E, noinline andThen: (Long) -> Unit = {}) {
         getDaoInterface<E>().upsert(t, andThen)
     }
 
-    inline fun <reified E: DatabaseItem> delete(t: E, noinline andThen: (Int) -> Unit = {}) {
+    inline fun <reified E: DatabaseItem<E>> delete(t: E, noinline andThen: (Int) -> Unit = {}) {
         getDaoInterface<E>().delete(t, andThen)
     }
 }
 
-abstract class DatabaseItem {
+abstract class DatabaseItem<T: DatabaseItem<T>> {
     abstract val id: Long
+    abstract val position: Double
 
     fun isNew() = id == 0L
+    abstract fun withPosition(position: Double): T
 }
 
-interface TrueDao<T: DatabaseItem> {
+interface TrueDao<T: DatabaseItem<T>> {
     fun getAll(): Flow<List<T>>
     @Upsert
     suspend fun upsert(value: T): Long
     @Delete
     suspend fun delete(value: T): Int
+    @Upsert
+    suspend fun upsertAll(t: List<T>)
 }
 
-inline fun <reified T: RoomDatabase> Context.buildDatabase(): T {
+inline fun <reified T: RoomDatabase> Context.buildDatabase(migrations: List<Migration> = emptyList()): T {
     return Room.databaseBuilder(
         this,
         T::class.java,
         "passwords-db"
-    ).build()
+    ).addMigrations(*migrations.toTypedArray()).build()
 }

@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavKey
+import androidx.room.migration.Migration
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ListDetailPage
@@ -26,7 +27,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<NoteDatabase>()
+        val db = buildDatabase<NoteDatabase>(listOf(Migration(1, 2, {
+            it.execSQL("ALTER TABLE Note ADD COLUMN position REAL NOT NULL DEFAULT 0.0")
+        })))
         val viewModel = DatabaseViewModel(Note::class to db.noteDao())
         setContent {
             DynamicTheme {

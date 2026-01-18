@@ -34,8 +34,11 @@ data class Message(
     val images: List<String>,
     val toolCallId: String? = null,
     val toolCalls: List<ToolCall> = listOf(),
-    val timestamp: Long = System.currentTimeMillis()
-): DatabaseItem()
+    val timestamp: Long = System.currentTimeMillis(),
+    override val position: Double = 0.0
+): DatabaseItem<Message>() {
+    override fun withPosition(position: Double) = copy(position = position)
+}
 
 fun Message.toGrokMessage(): GrokRequest.Message {
     return GrokRequest.Message(

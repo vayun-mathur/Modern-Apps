@@ -47,7 +47,7 @@ fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 }
 
 @Composable
-private fun PasswordListItem(pass: Password, onClick: () -> Unit) {
+private fun PasswordListItem(pass: Password, modifier: Modifier, onClick: () -> Unit) {
     val context = LocalContext.current
 
     if (pass.totpSecret.isNullOrBlank()) {
@@ -72,7 +72,7 @@ private fun PasswordListItem(pass: Password, onClick: () -> Unit) {
 
     ListItem(
         { Text(pass.name.ifBlank { "(no name)" }) },
-        Modifier.clickable { onClick() },
+        modifier.clickable { onClick() },
         supportingContent = { Text(pass.userId) },
         trailingContent = {
             Row(Modifier.clickable {

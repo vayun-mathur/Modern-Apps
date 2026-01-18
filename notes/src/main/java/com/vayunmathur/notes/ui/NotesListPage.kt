@@ -13,14 +13,9 @@ import com.vayunmathur.notes.data.Note
 
 @Composable
 fun NotesListPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
-    ListPage<Note, Route, Route.Note>(backStack, viewModel, "Notes", ::NoteListItem, { Route.Note(it) }, { Route.Note(0) })
-}
-
-@Composable
-fun NoteListItem(note: Note, onClick: () -> Unit) {
-    ListItem(
-        { Text(note.title) },
-        Modifier.clickable { onClick() },
-        supportingContent = { Text(note.content.substringBefore('\n').take(40)) }
-    )
+    ListPage<Note, Route, Route.Note>(backStack, viewModel, "Notes", {
+        Text(it.title)
+    }, {
+        Text(it.content.substringBefore('\n').take(40))
+    }, { Route.Note(it) }, { Route.Note(0) })
 }
