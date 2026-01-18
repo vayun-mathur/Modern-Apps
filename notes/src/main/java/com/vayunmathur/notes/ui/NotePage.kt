@@ -33,6 +33,7 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
+import com.vayunmathur.library.ui.IconVisible
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.pop
 import com.vayunmathur.notes.R
@@ -52,7 +53,7 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
             IconButton({
                 isEditing = !isEditing
             }) {
-                if(isEditing) Icon(painterResource(R.drawable.visibility_24px), "View") else IconEdit()
+                if(isEditing) IconVisible() else IconEdit()
             }
             IconButton(onClick = {
                 viewModel.delete(note) {

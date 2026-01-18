@@ -37,6 +37,11 @@ fun IconSettings() {
 }
 
 @Composable
+fun IconVisible() {
+    Icon(painterResource(R.drawable.visibility_24px), "Visible")
+}
+
+@Composable
 fun IconNavigation(navBack: () -> Unit) {
     IconButton({
         navBack()
