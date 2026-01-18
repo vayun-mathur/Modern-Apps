@@ -5,18 +5,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -29,15 +28,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
-import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconVisible
-import com.vayunmathur.library.util.pop
 
 class TextEditorActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,51 +47,64 @@ class TextEditorActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class) // Only needed if on older 1.7.x versions
 @Composable
 private fun TextEditorScreen(uri: Uri) {
     val context = LocalContext.current
-    // have an edit / view mode
-    // when saving, write to file
-    var originalContent by remember { mutableStateOf(context.contentResolver.openInputStream(uri)?.use {
-        it.bufferedReader().readText()
-    } ?: "") }
-    var content by remember { mutableStateOf(originalContent) }
-    val fileName = uri.lastPathSegment!!
-    var isEditing by remember { mutableStateOf(true) }
 
-    Scaffold(topBar = {
-        TopAppBar({ Text(fileName) }, actions = {
-            IconButton({
-                if(isEditing && content != originalContent) {
-                    context.contentResolver.openOutputStream(uri)?.use {
-                        it.bufferedWriter().write(content)
+    var initialContent by remember {
+        mutableStateOf(context.contentResolver.openInputStream(uri)?.use {
+            it.bufferedReader().readText()
+        } ?: "")
+    }
+
+    // 1. Initialize the state with the file content
+    val state = remember { TextFieldState(initialText = initialContent) }
+
+    var isEditing by remember { mutableStateOf(false) }
+
+    Scaffold(
+        Modifier.imePadding(),
+        topBar = {
+            TopAppBar(
+                title = { Text(uri.lastPathSegment ?: "File") },
+                actions = {
+                    IconButton(onClick = {
+                        if (isEditing && state.text != initialContent) {
+                            // Save Logic: Use the state.text buffer directly
+                            context.contentResolver.openOutputStream(uri)?.use {
+                                it.bufferedWriter().write(state.text.toString())
+                            }
+                        }
+                        isEditing = !isEditing
+                    }) {
+                        if (isEditing) if(initialContent == state.text) IconVisible() else IconSave() else IconEdit()
                     }
-                    originalContent = content
                 }
-                isEditing = !isEditing
-            }) {
-                if(isEditing) (if(content == originalContent) IconVisible() else IconSave()) else IconEdit()
-            }
-        })
-    }) { paddingValues ->
-        Column(Modifier.padding(paddingValues).padding(horizontal = 16.dp)) {
+            )
+        }
+    ) { paddingValues ->
+        // 2. Wrap in a scrollable container that is NOT a LazyColumn
+        // BasicTextField2 handles its own internal scrolling much better
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize() // This works correctly with BasicTextField2
+        ) {
             BasicTextField(
-                content,
-                { content = it },
-                Modifier.fillMaxSize(),
+                state = state,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
                 readOnly = !isEditing,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = LocalContentColor.current),
-                cursorBrush = SolidColor(LocalContentColor.current),
-                decorationBox = { innerTextField ->
-                    Box() {
-                        if (content.isEmpty()) Text(
-                            text = "Start typing here...",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        )
-                        innerTextField()
-                    }
-                }
+                // 3. Set the text style to match your theme
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurface
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                // 4. Enable efficient line-based scrolling
+                lineLimits = TextFieldLineLimits.Default,
+                scrollState = rememberScrollState()
             )
         }
     }
