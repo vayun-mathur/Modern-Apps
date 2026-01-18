@@ -19,7 +19,10 @@
         </activity>
 
         <!-- Text editor activity to open/edit/save text files using SAF -->
-        <activity android:name=".TextEditorActivity" android:exported="true">
+        <activity android:name=".TextEditorActivity"
+            android:exported="true"
+            android:launchMode="standard"
+            android:documentLaunchMode="intoExisting">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.EDIT" />
