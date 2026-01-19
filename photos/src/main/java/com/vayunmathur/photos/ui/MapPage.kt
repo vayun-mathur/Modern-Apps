@@ -12,8 +12,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -34,6 +36,11 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.photos.NavigationBar
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.spatialk.geojson.Position
@@ -51,38 +58,67 @@ data class MapCluster(
 fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val photos by viewModel.data<Photo>().collectAsState()
 
-    // Shuffle and take subset
-    val photosFiltered = remember(photos) { photos.shuffled().take(100) }
-
     // Prepare raw GPS positions
-    val positions = remember(photosFiltered) {
-        photosFiltered.filter { it.lat != null && it.long != null }
+    val positions = remember(photos) {
+        photos.filter { it.lat != null && it.long != null }
             .map { (it.lat!! to it.long!!) to it }
     }
 
     val cameraState = rememberCameraState()
-    val density = LocalDensity.current
 
     // State now holds Clusters instead of raw offsets
+    var generatedClusters: List<MapCluster> by remember { mutableStateOf(listOf()) }
     var clusters: List<MapCluster> by remember { mutableStateOf(listOf()) }
+
+    val dpsize = LocalWindowInfo.current.containerDpSize
+
+    LaunchedEffect(photos) {
+        val now = System.currentTimeMillis()
+        cameraState.awaitProjection()
+        while (true) {
+            val projection = cameraState.projection ?: continue
+            val rawLocations = positions.map { (gps, photo) ->
+                val dpOffset = projection.screenLocationFromPosition(
+                    Position(gps.second, gps.first)
+                )
+                dpOffset to photo
+            }.filter { (dpOffset, _) ->
+                dpOffset.x.value > 0 && dpOffset.y.value > 0 && dpOffset.x < dpsize.width && dpOffset.y < dpsize.height
+            }
+            withContext(Dispatchers.IO) {
+                // Update groupings
+                generatedClusters = clusterPhotos(rawLocations, 50.dp)
+            }
+            delay(100)
+        }
+    }
 
     Scaffold(bottomBar = { NavigationBar(Route.Map, backStack) }) { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxSize()) {
             MaplibreMap(
                 cameraState = cameraState,
                 onFrame = {
-                    // 1. Calculate Screen Locations (Pixels)
                     val projection = cameraState.projection
-                    if (projection != null) {
-                        val rawLocations = positions.map { (gps, photo) ->
-                            val screenLoc = projection.screenLocationFromPosition(
-                                Position(gps.second, gps.first)
-                            )
-                            screenLoc to photo
-                        }
 
-                        // 3. Cluster them based on 50.dp threshold
-                        clusters = clusterPhotos(rawLocations, 50.dp)
+                    if (projection != null) {
+                        // 1. FAST PATH: Update positions of EXISTING clusters every frame.
+                        // This prevents markers from "drifting" or "lagging" when panning/zooming
+                        // between re-clustering intervals.
+                        val updatedClusters = generatedClusters.mapNotNull { cluster ->
+                            // Use the photo's original GPS to calculate new screen position
+                            val lat = cluster.coverPhoto.lat
+                            val long = cluster.coverPhoto.long
+
+                            if (lat != null && long != null) {
+                                val newOffset = projection.screenLocationFromPosition(
+                                    Position(long, lat)
+                                )
+                                cluster.copy(position = newOffset)
+                            } else {
+                                null
+                            }
+                        }
+                        clusters = updatedClusters
                     }
                 }
             ) {}
