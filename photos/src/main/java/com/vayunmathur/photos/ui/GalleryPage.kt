@@ -2,21 +2,14 @@ package com.vayunmathur.photos.ui
 
 import android.content.ContentUris
 import android.content.Context
-import android.graphics.Bitmap
-import android.media.ExifInterface
 import android.provider.MediaStore
-import android.util.Size
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -30,17 +23,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.exifinterface.media.ExifInterface
 import androidx.navigation3.runtime.NavBackStack
 import coil.ImageLoader
 import coil.compose.AsyncImage
@@ -50,13 +41,15 @@ import coil.request.ImageRequest
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format.MonthNames
-import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
@@ -79,10 +72,13 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
         .respectCacheHeaders(false) // Important for local files/mediastore
         .build() }
     LaunchedEffect(Unit) {
-        println(photos.size)
-        delay(100)
-        if(photos.isEmpty()) {
-            addAllPhotos(context, viewModel)
+        delay(1000)
+        withContext(Dispatchers.IO) {
+            if (photos.isEmpty()) {
+                addAllPhotos(context, viewModel)
+            }
+            println(photos.count { !it.exifSet })
+            setExifData(photos, viewModel, context)
         }
     }
     val photosGroupedByMonth by remember {
@@ -167,7 +163,6 @@ fun addAllPhotos(context: Context, viewModel: DatabaseViewModel) {
         val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
         val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
 
-
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
             val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
@@ -175,8 +170,35 @@ fun addAllPhotos(context: Context, viewModel: DatabaseViewModel) {
             val date = cursor.getLong(dateColumn)
             val width = cursor.getInt(widthColumn)
             val height = cursor.getInt(heightColumn)
-            photos += Photo(id, name, contentUri.toString(), date, width, height)
+
+            photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null)
+
         }
     }
     viewModel.upsertAll(photos.sortedByDescending { it.date })
+}
+
+suspend fun CoroutineScope.setExifData(photos: List<Photo>, viewModel: DatabaseViewModel, context: Context) {
+    val ps = photos.filter { !it.exifSet }.sortedByDescending { it.date }
+    ps.chunked(50).forEachIndexed { it, photos ->
+        val newPhotos = photos.map { photo ->
+            async {
+                val (lat, long) = context.contentResolver.openInputStream(
+                    MediaStore.setRequireOriginal(
+                        photo.uri.toUri()
+                    )
+                )?.use { inputStream ->
+                    val exif = ExifInterface(inputStream)
+                    val latLong = exif.latLong
+                    val lat = latLong?.getOrNull(0)
+                    val long = latLong?.getOrNull(1)
+                    listOf(lat, long)
+                } ?: listOf(null, null)
+                photo.copy(exifSet = true, lat = lat, long = long)
+            }
+        }.awaitAll()
+        viewModel.upsertAll(newPhotos)
+        println("${it * 50} / ${ps.size}")
+    }
+
 }

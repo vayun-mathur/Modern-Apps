@@ -2,6 +2,7 @@
 # Tooling & Plugins
 agp = "9.0.0-beta05"
 coilCompose = "2.7.0"
+exifinterface = "1.4.2"
 kotlin = "2.3.0"
 
 # Core AndroidX & Lifecycle
@@ -42,6 +43,7 @@ pdfViewer = "1.0.0-alpha12"
 
 [libraries]
 # Core AndroidX
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 compose-markdown = { group = "com.github.jeziellago", name = "compose-markdown", version.ref = "composeMarkdown" }
 

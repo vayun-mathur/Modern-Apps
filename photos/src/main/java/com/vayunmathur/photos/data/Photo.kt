@@ -14,7 +14,9 @@ data class Photo(
     val date: Long,
     val width: Int,
     val height: Int,
-    val country: String? = null,
+    val exifSet: Boolean,
+    val lat: Double?,
+    val long: Double?,
     override val position: Double = 0.0
 ) : DatabaseItem<Photo>() {
     override fun withPosition(position: Double): Photo = copy(position = position)
