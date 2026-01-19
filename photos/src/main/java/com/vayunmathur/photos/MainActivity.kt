@@ -4,8 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.res.painterResource
+import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -15,6 +21,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.ui.GalleryPage
+import com.vayunmathur.photos.ui.MapPage
 import com.vayunmathur.photos.ui.PhotoPage
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
@@ -40,6 +47,9 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class Photo(val id: Long): Route
+
+    @Serializable
+    data object Map: Route
 }
 
 @Composable
@@ -50,8 +60,30 @@ fun Navigation(viewModel: DatabaseViewModel) {
             GalleryPage(backStack, viewModel)
         }
 
+        entry<Route.Map> {
+            MapPage(backStack, viewModel)
+        }
+
         entry<Route.Photo>() {
             PhotoPage(backStack, viewModel, it.id)
+        }
+    }
+}
+
+private enum class MainRoute(val route: Route, val title: String, val icon: Int) {
+    Gallery(Route.Gallery, "Gallery", R.drawable.gallery_thumbnail_24px),
+    Map(Route.Map, "Map", R.drawable.map_24px)
+}
+
+@Composable
+fun NavigationBar(currentRoute: Route, backStack: NavBackStack<Route>) {
+    ShortNavigationBar {
+        MainRoute.entries.forEach {
+            ShortNavigationBarItem(it.route == currentRoute, { backStack.add(it.route) }, {
+                Icon(painterResource(it.icon), null)
+            }, {
+                Text(it.title)
+            })
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +40,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.ImageRequest
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.photos.NavigationBar
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.CoroutineScope
@@ -91,7 +93,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             }
         }
     }
-    Scaffold() { paddingValues ->
+    Scaffold(bottomBar = { NavigationBar(Route.Gallery, backStack) }) { paddingValues ->
         LazyVerticalGrid(
             GridCells.Adaptive(40.dp),
             Modifier.padding(paddingValues),
