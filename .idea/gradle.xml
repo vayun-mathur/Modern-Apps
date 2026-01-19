@@ -20,6 +20,7 @@
             <option value="$PROJECT_DIR$/openassistant" />
             <option value="$PROJECT_DIR$/passwords" />
             <option value="$PROJECT_DIR$/pdf" />
+            <option value="$PROJECT_DIR$/photos" />
           </set>
         </option>
       </GradleProjectSettings>

@@ -1,6 +1,7 @@
 [versions]
 # Tooling & Plugins
 agp = "9.0.0-beta05"
+coilCompose = "2.7.0"
 kotlin = "2.3.0"
 
 # Core AndroidX & Lifecycle
@@ -41,6 +42,7 @@ pdfViewer = "1.0.0-alpha12"
 
 [libraries]
 # Core AndroidX
+coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 compose-markdown = { group = "com.github.jeziellago", name = "compose-markdown", version.ref = "composeMarkdown" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
