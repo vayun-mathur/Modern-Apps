@@ -43,6 +43,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.MaplibreMap
+import org.maplibre.compose.style.BaseStyle
 import org.maplibre.spatialk.geojson.Position
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -96,6 +97,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     Scaffold(bottomBar = { NavigationBar(Route.Map, backStack) }) { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxSize()) {
             MaplibreMap(
+                baseStyle = BaseStyle.Uri("https://tiles.openfreemap.org/styles/liberty"),
                 cameraState = cameraState,
                 onFrame = {
                     val projection = cameraState.projection
