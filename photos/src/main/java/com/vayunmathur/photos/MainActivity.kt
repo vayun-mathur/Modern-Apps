@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val db = buildDatabase<PhotoDatabase>()
         val viewModel = DatabaseViewModel(Photo::class to db.noteDao())
+        ImageLoader.init(this)
         setContent {
             DynamicTheme {
                 Navigation(viewModel)

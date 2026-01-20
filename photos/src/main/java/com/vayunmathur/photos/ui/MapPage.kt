@@ -2,14 +2,27 @@ package com.vayunmathur.photos.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +31,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,18 +48,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
+import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.photos.ImageLoader
 import com.vayunmathur.photos.NavigationBar
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.util.ClickResult
 import org.maplibre.spatialk.geojson.Position
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -52,6 +72,7 @@ import kotlin.math.sqrt
 data class MapCluster(
     val position: DpOffset,
     val coverPhoto: Photo,
+    val allPhotos: List<Photo>,
     val count: Int
 )
 
@@ -70,11 +91,11 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     // State now holds Clusters instead of raw offsets
     var generatedClusters: List<MapCluster> by remember { mutableStateOf(listOf()) }
     var clusters: List<MapCluster> by remember { mutableStateOf(listOf()) }
+    var selectedCluster: MapCluster? by remember { mutableStateOf(null) }
 
     val dpsize = LocalWindowInfo.current.containerDpSize
 
     LaunchedEffect(photos) {
-        val now = System.currentTimeMillis()
         cameraState.awaitProjection()
         while (true) {
             val projection = cameraState.projection ?: continue
@@ -89,8 +110,11 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             withContext(Dispatchers.IO) {
                 // Update groupings
                 generatedClusters = clusterPhotos(rawLocations, 50.dp)
+                if(selectedCluster != null) {
+                    selectedCluster = generatedClusters.find { selectedCluster!!.coverPhoto.id in it.allPhotos.map { it.id } }
+                }
             }
-            delay(100)
+            delay(200)
         }
     }
 
@@ -99,6 +123,10 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             MaplibreMap(
                 baseStyle = BaseStyle.Uri("https://tiles.openfreemap.org/styles/liberty"),
                 cameraState = cameraState,
+                onMapClick = { _, _ ->
+                    selectedCluster = null
+                    ClickResult.Pass
+                },
                 onFrame = {
                     val projection = cameraState.projection
 
@@ -111,7 +139,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                             val lat = cluster.coverPhoto.lat
                             val long = cluster.coverPhoto.long
 
-                            if (lat != null && long != null) {
+                            val nc = if (lat != null && long != null) {
                                 val newOffset = projection.screenLocationFromPosition(
                                     Position(long, lat)
                                 )
@@ -119,11 +147,17 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                             } else {
                                 null
                             }
+
+                            if(cluster == selectedCluster) {
+                                selectedCluster = nc
+                            }
+
+                            nc
                         }
                         clusters = updatedClusters
                     }
                 }
-            ) {}
+            )
 
             // Layer: Markers
             Box(Modifier.fillMaxSize()) {
@@ -138,14 +172,9 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                             .padding(2.dp) // creates a small white border effect
                     ) {
                         // The Image
-                        AsyncImage(
-                            model = cluster.coverPhoto.uri,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(MaterialTheme.shapes.extraSmall),
-                            contentScale = ContentScale.Crop
-                        )
+                        ImageLoader.PhotoItem(cluster.coverPhoto, Modifier.fillMaxSize()) {
+                            selectedCluster = cluster
+                        }
 
                         // The "Bubble" Count Indicator
                         if (cluster.count > 1) {
@@ -164,6 +193,25 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
+                            }
+                        }
+                    }
+                }
+                selectedCluster?.let {
+                    Surface(Modifier.align(Alignment.BottomCenter), color = MaterialTheme.colorScheme.background, ) {
+                        LazyRow(
+                            Modifier.height(100.dp).padding(vertical = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            item {
+                                Spacer(Modifier.padding(8.dp))
+                            }
+                            items(it.allPhotos, key = {it.id}, contentType = { "photo_thumbnail" }) {
+                                ImageLoader.PhotoItem(it, Modifier.fillMaxHeight().aspectRatio(1f)) {
+                                    backStack.add(Route.Photo(it.id))
+                                }
+                            }
+                            item {
+                                Spacer(Modifier.padding(8.dp))
                             }
                         }
                     }
@@ -196,10 +244,10 @@ fun clusterPhotos(
         if (existingIndex >= 0) {
             // "Absorb" into existing cluster
             val existing = result[existingIndex]
-            result[existingIndex] = existing.copy(count = existing.count + 1)
+            result[existingIndex] = existing.copy(count = existing.count + 1, allPhotos = existing.allPhotos + photo)
         } else {
             // Create new cluster
-            result.add(MapCluster(pos, photo, 1))
+            result.add(MapCluster(pos, photo, listOf(photo), 1))
         }
     }
     return result

@@ -58,7 +58,6 @@ androidx-pdf-viewer = { module = "androidx.pdf:pdf-viewer", version.ref = "pdfVi
 maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version = "0.12.1" }
 maplibre-composeMaterial3 = { module = "org.maplibre.compose:maplibre-compose-material3", version = "0.12.1" }
 
-
 # Compose (BOM Managed)
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }

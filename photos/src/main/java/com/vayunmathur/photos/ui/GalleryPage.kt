@@ -34,12 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
 import androidx.navigation3.runtime.NavBackStack
-import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.ImageRequest
+import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.photos.ImageLoader
 import com.vayunmathur.photos.NavigationBar
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
@@ -59,20 +60,7 @@ import kotlin.time.Instant
 fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val photos by viewModel.data<Photo>().collectAsState()
     val context = LocalContext.current
-    val imageLoader = remember { ImageLoader.Builder(context)
-        .memoryCache {
-            MemoryCache.Builder(context)
-                .maxSizePercent(0.25) // Use 25% of available RAM
-                .build()
-        }
-        .diskCache {
-            DiskCache.Builder()
-                .directory(context.cacheDir.resolve("image_cache"))
-                .maxSizePercent(0.05) // Use 5% of disk space (or a fixed size like 512MB)
-                .build()
-        }
-        .respectCacheHeaders(false) // Important for local files/mediastore
-        .build() }
+
     LaunchedEffect(Unit) {
         delay(1000)
         withContext(Dispatchers.IO) {
@@ -111,36 +99,16 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                     )
                 }
                 items(photos, { it.id }, contentType = { "photo_thumbnail" }) {
-                    PhotoItem(it, imageLoader, backStack)
+                    ImageLoader.PhotoItem(it, Modifier.fillMaxWidth().aspectRatio(1f)) {
+                        backStack.add(Route.Photo(it.id))
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun PhotoItem(photo: Photo, imageLoader: ImageLoader, backStack: NavBackStack<Route>) {
-    AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current)
-            .data(photo.uri.toUri())
-            .diskCacheKey(photo.id.toString())
-            .memoryCacheKey(photo.id.toString())
-            .crossfade(true)
-            .size(128) // Coil will handle the downsampling for you
-            .build(),
-        imageLoader = imageLoader,
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                backStack.add(Route.Photo(photo.id))
-            }
-            .background(Color.LightGray) // Placeholder while loading
-    )
-}
+
 
 fun addAllPhotos(context: Context, viewModel: DatabaseViewModel) {
     val projection = arrayOf(
