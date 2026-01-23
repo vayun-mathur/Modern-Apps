@@ -37,6 +37,17 @@ subprojects {
 
                 testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             }
+
+            buildTypes {
+                release {
+                    isMinifyEnabled = true
+                    signingConfig = signingConfigs.getByName("debug")
+                }
+                getByName("debug") {
+                    applicationIdSuffix = ".debug"
+                    versionNameSuffix = "-DEBUG" // Helpful to see in App Info
+                }
+            }
         }
 
         dependencies {
