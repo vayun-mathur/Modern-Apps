@@ -40,7 +40,6 @@ subprojects {
 
             buildTypes {
                 release {
-                    isMinifyEnabled = true
                     signingConfig = signingConfigs.getByName("debug")
                 }
                 getByName("debug") {

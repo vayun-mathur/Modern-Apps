@@ -197,7 +197,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                         }
                     }
                 }
-                selectedCluster?.let {
+                selectedCluster?.let { selectedCluster ->
                     Surface(Modifier.align(Alignment.BottomCenter), color = MaterialTheme.colorScheme.background, ) {
                         LazyRow(
                             Modifier.height(100.dp).padding(vertical = 8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -205,9 +205,9 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                             item {
                                 Spacer(Modifier.padding(8.dp))
                             }
-                            items(it.allPhotos, key = {it.id}, contentType = { "photo_thumbnail" }) {
+                            items(selectedCluster.allPhotos, key = {it.id}, contentType = { "photo_thumbnail" }) {
                                 ImageLoader.PhotoItem(it, Modifier.fillMaxHeight().aspectRatio(1f)) {
-                                    backStack.add(Route.Photo(it.id))
+                                    backStack.add(Route.PhotoPage(it.id, selectedCluster.allPhotos))
                                 }
                             }
                             item {
@@ -250,7 +250,7 @@ fun clusterPhotos(
             result.add(MapCluster(pos, photo, listOf(photo), 1))
         }
     }
-    return result
+    return result.map { it.copy(allPhotos = it.allPhotos.sortedByDescending { it.date }) }
 }
 
 private fun calculateDistance(p1: DpOffset, p2: DpOffset): Float {

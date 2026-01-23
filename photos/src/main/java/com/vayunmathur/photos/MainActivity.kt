@@ -47,7 +47,7 @@ sealed interface Route: NavKey {
     data object Gallery: Route
 
     @Serializable
-    data class Photo(val id: Long): Route
+    data class PhotoPage(val id: Long, val overridePhotosList: List<Photo>?): Route
 
     @Serializable
     data object Map: Route
@@ -65,8 +65,8 @@ fun Navigation(viewModel: DatabaseViewModel) {
             MapPage(backStack, viewModel)
         }
 
-        entry<Route.Photo>() {
-            PhotoPage(backStack, viewModel, it.id)
+        entry<Route.PhotoPage>() {
+            PhotoPage(backStack, viewModel, it.id, it.overridePhotosList)
         }
     }
 }

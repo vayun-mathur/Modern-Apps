@@ -6,8 +6,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,9 +27,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -34,7 +40,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
@@ -44,16 +52,21 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.absoluteValue
-import kotlin.time.Instant
+
+// Helper class to store zoom information
+data class ZoomState(val scale: Float = 1f, val offset: Offset = Offset.Zero)
 
 @Composable
-fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: Long) {
-    val photos by viewModel.data<Photo>().collectAsState(initial = emptyList())
+fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<Photo>?) {
+    val photosAll by viewModel.data<Photo>().collectAsState(initial = emptyList())
+    val photos = overridePhotosList ?: photosAll
     val context = LocalContext.current
     val photosSorted = remember(photos) { photos.sortedByDescending { it.date } }
 
@@ -62,8 +75,10 @@ fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: 
         if (index == -1) 0 else index
     }
 
-    // State to toggle metadata visibility globally (or per page)
     var isMetadataVisible by remember { mutableStateOf(true) }
+
+    // Persist zoom states in a map that survives as long as this screen is active
+    val zoomStates = remember { mutableStateMapOf<Long, ZoomState>() }
 
     if (photosSorted.isNotEmpty()) {
         val pagerState = rememberPagerState(
@@ -76,10 +91,10 @@ fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: 
                 state = pagerState,
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
                 beyondViewportPageCount = 1,
-                // Disable paging if the user is zoomed in (handled in the child)
                 userScrollEnabled = true
             ) { pageIndex ->
                 val photo = photosSorted[pageIndex]
+                val zoomState = zoomStates[photo.id] ?: ZoomState()
 
                 PhotoDetailView(
                     photo = photo,
@@ -87,6 +102,8 @@ fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: 
                     pagerState = pagerState,
                     pageIndex = pageIndex,
                     isMetadataVisible = isMetadataVisible,
+                    currentZoom = zoomState,
+                    onZoomUpdate = { newState -> zoomStates[photo.id] = newState },
                     onToggleMetadata = { isMetadataVisible = !isMetadataVisible }
                 )
             }
@@ -101,20 +118,35 @@ fun PhotoDetailView(
     pagerState: PagerState,
     pageIndex: Int,
     isMetadataVisible: Boolean,
+    currentZoom: ZoomState,
+    onZoomUpdate: (ZoomState) -> Unit,
     onToggleMetadata: () -> Unit
 ) {
     var countryName by remember(photo.id) { mutableStateOf<String?>(null) }
+    var size by remember { mutableStateOf(IntSize.Zero) }
 
-    // Zoom/Pan States
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    val updatedZoomState by rememberUpdatedState(currentZoom)
+    val updatedOnZoomUpdate by rememberUpdatedState(onZoomUpdate)
+    val updatedOnToggleMetadata by rememberUpdatedState(onToggleMetadata)
 
-    // Reset zoom when the page is swiped away
-    LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage != pageIndex) {
-            scale = 1f
-            offset = Offset.Zero
+    // Derived state for how far this specific page is from the center
+    val pageOffset by remember {
+        derivedStateOf {
+            ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction).absoluteValue
         }
+    }
+
+    // Reset zoom only when the page is fully scrolled out of view (offset >= 1.0)
+    // This allows the "fadeOut" to happen while the image is still zoomed.
+    LaunchedEffect(Unit) {
+        snapshotFlow { pageOffset }
+            .filter { it >= 0.99f }
+            .distinctUntilChanged()
+            .collect {
+                if (updatedZoomState.scale > 1f) {
+                    updatedOnZoomUpdate(ZoomState())
+                }
+            }
     }
 
     LaunchedEffect(photo.id) {
@@ -132,45 +164,74 @@ fun PhotoDetailView(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                // Handle Tap to Hide/Show
                 detectTapGestures(
-                    onTap = { onToggleMetadata() },
+                    onTap = { updatedOnToggleMetadata() },
                     onDoubleTap = {
-                        // Simple double tap to reset or zoom in
-                        scale = if (scale > 1f) 1f else 2.5f
-                        offset = Offset.Zero
+                        val newScale = if (updatedZoomState.scale > 1f) 1f else 2.5f
+                        updatedOnZoomUpdate(ZoomState(scale = newScale, offset = Offset.Zero))
                     }
                 )
             }
             .pointerInput(Unit) {
-                // Handle Pinch and Pan
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, 5f)
-                    // Only allow panning if zoomed in
-                    if (scale > 1f) {
-                        offset += pan
-                    } else {
-                        offset = Offset.Zero
-                    }
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val zoomChange = event.calculateZoom()
+                        val panChange = event.calculatePan()
+
+                        val isPinching = zoomChange != 1f
+                        val isZoomed = updatedZoomState.scale > 1.01f
+
+                        if (isZoomed || isPinching) {
+                            val newScale = (updatedZoomState.scale * zoomChange).coerceIn(1f, 5f)
+
+                            if (newScale > 1f) {
+                                val maxX = (size.width * (newScale - 1) / 2)
+                                val maxY = (size.height * (newScale - 1) / 2)
+
+                                val newOffset = updatedZoomState.offset + panChange
+
+                                val isAtLeftEdge = newOffset.x >= maxX && panChange.x > 0
+                                val isAtRightEdge = newOffset.x <= -maxX && panChange.x < 0
+
+                                val boundedOffset = Offset(
+                                    newOffset.x.coerceIn(-maxX, maxX),
+                                    newOffset.y.coerceIn(-maxY, maxY)
+                                )
+
+                                updatedOnZoomUpdate(ZoomState(scale = newScale, offset = boundedOffset))
+
+                                if (isPinching || (!isAtLeftEdge && !isAtRightEdge)) {
+                                    event.changes.forEach { it.consume() }
+                                }
+                            } else {
+                                updatedOnZoomUpdate(ZoomState(scale = 1f, offset = Offset.Zero))
+                            }
+                        }
+                    } while (event.changes.any { it.pressed })
                 }
             }
     ) {
-        // 1. The Zoomable Image
         AsyncImage(
-            model = ImageRequest.Builder(context).data(photo.uri.toUri()).build(),
+            model = ImageRequest.Builder(context)
+                .data(photo.uri.toUri())
+                .build(),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
+                .onGloballyPositioned { layoutCoordinates ->
+                    size = layoutCoordinates.size
+                }
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
+                    scaleX = currentZoom.scale
+                    scaleY = currentZoom.scale
+                    translationX = currentZoom.offset.x
+                    translationY = currentZoom.offset.y
                 },
             contentScale = ContentScale.Fit
         )
 
-        // 2. The Fading & Toggling Metadata Overlay
         AnimatedVisibility(
             visible = isMetadataVisible,
             enter = fadeIn(),
@@ -181,8 +242,7 @@ fun PhotoDetailView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .graphicsLayer {
-                        // Fade out based on swiping distance
-                        val pageOffset = ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction).absoluteValue
+                        // Keep the metadata fade-out tied to the swiping distance
                         alpha = 1f - pageOffset.coerceIn(0f, 1f)
                     }
                     .background(Color.Black.copy(alpha = 0.6f))
@@ -193,7 +253,7 @@ fun PhotoDetailView(
                 val dateFormatted = remember(photo.date) {
                     Instant.fromEpochMilliseconds(photo.date)
                         .toLocalDateTime(TimeZone.currentSystemDefault())
-                        .let { "${it.dayOfMonth} ${it.month.name.lowercase().capitalize()} ${it.year}" }
+                        .let { "${it.dayOfMonth} ${it.month.name.lowercase().replaceFirstChar { c -> c.uppercase() }} ${it.year}" }
                 }
 
                 Text(text = "Taken on: $dateFormatted", color = Color.LightGray)

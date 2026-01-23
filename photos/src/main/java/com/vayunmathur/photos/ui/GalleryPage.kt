@@ -100,7 +100,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 }
                 items(photos, { it.id }, contentType = { "photo_thumbnail" }) {
                     ImageLoader.PhotoItem(it, Modifier.fillMaxWidth().aspectRatio(1f)) {
-                        backStack.add(Route.Photo(it.id))
+                        backStack.add(Route.PhotoPage(it.id, null))
                     }
                 }
             }
