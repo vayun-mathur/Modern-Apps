@@ -40,7 +40,7 @@ fun SettingsPage(backStack: androidx.navigation3.runtime.NavBackStack<com.vayunm
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Settings") }, navigationIcon = {
-            IconNavigation { backStack.removeLastOrNull() }
+            IconNavigation(backStack)
         })
     }) { paddingValues ->
         Column(Modifier

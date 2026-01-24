@@ -63,6 +63,7 @@ import com.vayunmathur.calendar.Instance
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.ResultEffect
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -118,7 +119,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                 },
                 actions = {
                     IconButton(onClick = { backStack.add(Route.Settings) }) {
-                        Icon(painterResource(R.drawable.settings_24px), contentDescription = "Settings")
+                        IconSettings()
                     }
                 }
             )

@@ -24,13 +24,6 @@ fun MaximizedRow(modifier: Modifier = Modifier, content: @Composable RowScope.()
     }
 }
 
-@Composable
-fun BackButton(backStack: NavBackStack<NavKey>) {
-    IconButton(onClick = { backStack.removeLastOrNull() }) {
-        Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "Back")
-    }
-}
-
 fun Double.displayAmount(): String {
     return if (abs(this) < 1) {
         // Up to 3 significant figures (no scientific notation)

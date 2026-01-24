@@ -29,6 +29,7 @@ import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -53,11 +54,7 @@ fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavB
 
     Scaffold(topBar = {
         TopAppBar({}, navigationIcon = {
-            IconButton({
-                backStack.pop()
-            }) {
-                Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "Save")
-            }
+            IconNavigation(backStack)
         }, actions = {
             if(isEditable) {
                 IconButton({

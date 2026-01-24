@@ -54,9 +54,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
             TopAppBar(
                 title = { Text(if (pass.isNew()) "Add Password" else "Edit Password") },
                 navigationIcon = {
-                    IconNavigation {
-                        backStack.removeLastOrNull()
-                    }
+                    IconNavigation(backStack)
                 }
             )
         },

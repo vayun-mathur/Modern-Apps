@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.R
+import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.util.pop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +41,7 @@ fun PrivateKeyScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<*>) 
 
     Scaffold(topBar = {
         TopAppBar(title = { Text("Private Key") }, navigationIcon = {
-            IconButton(onClick = { backStack.removeAt(backStack.lastIndex) }) {
-                Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "Back")
-            }
+            IconNavigation(backStack)
         })
     }) { paddingValues ->
         Column(

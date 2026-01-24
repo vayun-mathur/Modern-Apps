@@ -56,6 +56,10 @@ import androidx.core.net.toUri
 import com.google.i18n.phonenumbers.NumberParseException
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.vayunmathur.contacts.ui.getAvatarColor
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.ui.IconShare
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
@@ -95,11 +99,7 @@ fun ContactDetailsPage(
                 title = { /* No title in the reference image */ },
                 navigationIcon = if (showBackButton) {
                     @Composable {
-                        IconButton(onClick = onBack) {
-                            Icon(painterResource(R.drawable.outline_arrow_back_24),
-                                contentDescription = "Back"
-                            )
-                        }
+                        IconNavigation(onBack)
                     }
                 } else {{}},
                 actions = {
@@ -117,9 +117,7 @@ fun ContactDetailsPage(
                         )
                     }
                     IconButton(onClick = { onEdit(contact!!.id) }) {
-                        Icon(painterResource(R.drawable.outline_edit_24),
-                            contentDescription = "Edit"
-                        )
+                        IconEdit()
                     }
                     IconButton(onClick = {
                         scope.launch(Dispatchers.IO) {
@@ -135,19 +133,14 @@ fun ContactDetailsPage(
                             context.startActivity(Intent.createChooser(intent, "Share Contact"))
                         }
                     }) {
-                        Icon(painterResource(R.drawable.outline_share_24),
-                            contentDescription = "Share"
-                        )
+                        IconShare()
                     }
                     if(contact?.isProfile == false) {
                         IconButton(onClick = {
                             // Instead of deleting immediately, open the confirmation dialog via the onDelete callback
                             onDelete()
                         }) {
-                            Icon(
-                                painterResource(R.drawable.outline_delete_24),
-                                contentDescription = "Delete"
-                            )
+                            IconDelete()
                         }
                     }
                 },

@@ -60,6 +60,7 @@ import androidx.pdf.compose.PdfViewer
 import androidx.pdf.compose.PdfViewerState
 import androidx.pdf.view.Highlight
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.IconShare
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -218,7 +219,7 @@ fun PdfViewerScreen(pdfDocument: PdfDocument) {
                         intent.putExtra(Intent.EXTRA_STREAM, pdfDocument.uri)
                         context.startActivity(intent)
                     }) {
-                        Icon(painterResource(R.drawable.share_24px), null)
+                        IconShare()
                     }
                 } else {
                     if (searchResults.isNotEmpty()) {

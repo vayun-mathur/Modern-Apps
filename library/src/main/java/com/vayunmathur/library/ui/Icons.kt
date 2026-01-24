@@ -4,7 +4,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.R
+import com.vayunmathur.library.util.pop
 
 @Composable
 fun IconAdd() {
@@ -27,6 +30,11 @@ fun IconDelete() {
 }
 
 @Composable
+fun IconShare() {
+    Icon(painterResource(R.drawable.share_24px), "Delete")
+}
+
+@Composable
 fun IconClose() {
     Icon(painterResource(R.drawable.close_24px), "Close")
 }
@@ -45,6 +53,15 @@ fun IconVisible() {
 fun IconNavigation(navBack: () -> Unit) {
     IconButton({
         navBack()
+    }) {
+        Icon(painterResource(R.drawable.arrow_back_24px), "Navigation")
+    }
+}
+
+@Composable
+fun IconNavigation(backStack: NavBackStack<out NavKey>) {
+    IconButton({
+        backStack.pop()
     }) {
         Icon(painterResource(R.drawable.arrow_back_24px), "Navigation")
     }

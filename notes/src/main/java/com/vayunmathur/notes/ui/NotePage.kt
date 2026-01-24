@@ -48,7 +48,7 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
 
     Scaffold(topBar = {
         TopAppBar({ }, navigationIcon = {
-            IconNavigation { backStack.pop() }
+            IconNavigation(backStack)
         }, actions = {
             IconButton({
                 isEditing = !isEditing

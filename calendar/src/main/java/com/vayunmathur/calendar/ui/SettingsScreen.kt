@@ -43,6 +43,7 @@ import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.pop
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,11 +60,7 @@ fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
     Scaffold(
         topBar = {
             TopAppBar({Text("Settings")}, navigationIcon = {
-                IconButton({
-                    backStack.pop()
-                }) {
-                    Icon(painterResource(R.drawable.arrow_back_24px), null)
-                }
+                IconNavigation(backStack)
             }, actions = {
                 if(selectedCalendarId != null) {
                     IconButton(onClick = {

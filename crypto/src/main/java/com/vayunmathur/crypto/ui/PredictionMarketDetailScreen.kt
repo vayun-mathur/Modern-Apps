@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
-import com.vayunmathur.crypto.BackButton
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
 import com.vayunmathur.crypto.MaximizedRow
 import com.vayunmathur.crypto.NavigationBottomBar
@@ -40,6 +39,8 @@ import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.api.PredictionMarket
 import com.vayunmathur.crypto.token.TokenInfo
+import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.util.pop
 import kotlinx.serialization.Serializable
 import java.text.NumberFormat
 
@@ -57,7 +58,7 @@ fun PredictionMarketDetailScreen(viewModel: PortfolioViewModel, backStack: NavBa
         topBar = {
             TopAppBar(
                 title = {  },
-                navigationIcon = { BackButton(backStack) }
+                navigationIcon = { IconNavigation(backStack) }
             )
         },
         bottomBar = {

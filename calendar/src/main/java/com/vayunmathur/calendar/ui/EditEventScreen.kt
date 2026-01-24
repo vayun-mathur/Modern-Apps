@@ -47,6 +47,7 @@ import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.RRule
 import com.vayunmathur.calendar.RecurrenceParams
 import com.vayunmathur.calendar.Route
+import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.pop
@@ -193,11 +194,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
 
     Scaffold(topBar = {
         TopAppBar({}, navigationIcon = {
-            IconButton({
-                backStack.pop()
-            }) {
-                Icon(painterResource(R.drawable.arrow_back_24px), contentDescription = "Back")
-            }
+            IconNavigation(backStack)
         })
     }, floatingActionButton = {
         FloatingActionButton(onClick = {

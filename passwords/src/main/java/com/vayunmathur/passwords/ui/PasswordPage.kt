@@ -52,7 +52,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                     }
                 },
                 navigationIcon = {
-                    IconNavigation{ backStack.removeLastOrNull() }
+                    IconNavigation(backStack)
                 }
             )
         },

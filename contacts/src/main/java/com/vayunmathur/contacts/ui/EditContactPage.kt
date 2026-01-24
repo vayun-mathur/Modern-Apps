@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.scale
 import androidx.navigation3.runtime.NavBackStack
 import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
@@ -247,10 +248,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                 onValueChange = { noteContent = it },
                 label = { Text("Note") },
                 leadingIcon = {
-                    Icon(
-                        painterResource(R.drawable.outline_edit_24),
-                        contentDescription = "Note"
-                    )
+                    IconEdit()
                 },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3

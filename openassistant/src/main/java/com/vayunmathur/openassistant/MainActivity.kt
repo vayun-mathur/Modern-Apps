@@ -70,6 +70,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.openassistant.data.Conversation
@@ -308,23 +311,14 @@ fun ConversationScreen(
                             IconButton(onClick = {
                                 activeConversation = null
                             }) {
-                                Icon(
-                                    painterResource(R.drawable.baseline_add_24),
-                                    contentDescription = "New Conversation"
-                                )
+                                IconAdd()
                             }
                             IconButton(onClick = { deleteConversation(it) }) {
-                                Icon(
-                                    painterResource(R.drawable.baseline_delete_24),
-                                    contentDescription = "Delete Conversation"
-                                )
+                                IconDelete()
                             }
                         }
                         IconButton(onClick = { showApiKeyDialog = true }) {
-                            Icon(
-                                painterResource(R.drawable.baseline_settings_24),
-                                contentDescription = "Settings"
-                            )
+                            IconSettings()
                         }
                     }
                 )
