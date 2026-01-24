@@ -16,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -31,7 +30,6 @@ import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.R
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.util.pop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

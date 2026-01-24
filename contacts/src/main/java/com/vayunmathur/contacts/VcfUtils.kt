@@ -1,14 +1,13 @@
 package com.vayunmathur.contacts
 
-import android.content.Context
 import android.provider.ContactsContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDate
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.charset.Charset
-import kotlinx.datetime.LocalDate
 
 object VcfUtils {
     suspend fun exportContacts(contacts: List<Contact>, outputStream: OutputStream) {

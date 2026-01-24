@@ -9,7 +9,6 @@ import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.painterResource
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -23,7 +22,6 @@ import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.ui.GalleryPage
 import com.vayunmathur.photos.ui.MapPage
 import com.vayunmathur.photos.ui.PhotoPage
-import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {

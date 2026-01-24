@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.vayunmathur.crypto.api.JupiterAPI
 import com.vayunmathur.crypto.api.PendingOrder
 import com.vayunmathur.crypto.api.PredictionMarket
 import com.vayunmathur.crypto.api.SolanaAPI
@@ -15,7 +14,6 @@ import com.vayunmathur.crypto.token.JupiterLendRepository
 import com.vayunmathur.crypto.token.Token
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
-import com.vayunmathur.crypto.ui.PredictionMarketCard
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

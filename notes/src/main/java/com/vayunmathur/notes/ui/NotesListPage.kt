@@ -1,10 +1,7 @@
 package com.vayunmathur.notes.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.library.util.DatabaseViewModel

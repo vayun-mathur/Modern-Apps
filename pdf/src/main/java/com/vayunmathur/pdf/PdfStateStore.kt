@@ -3,9 +3,9 @@ package com.vayunmathur.pdf
 import android.content.Context
 import android.net.Uri
 import androidx.compose.ui.geometry.Offset
-import androidx.pdf.compose.PdfViewerState
 import androidx.core.content.edit
 import androidx.pdf.PdfPoint
+import androidx.pdf.compose.PdfViewerState
 
 object PdfStateStore {
     private const val PREFS_NAME = "pdf_viewer_state"

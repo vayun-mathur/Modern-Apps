@@ -22,13 +22,11 @@ import androidx.room.Upsert
 import androidx.room.migration.Migration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
-import kotlin.to
 
 class DaoInterface<T: DatabaseItem<T>>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
     val data: StateFlow<List<T>> = dao.getAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

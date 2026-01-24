@@ -1,6 +1,7 @@
 package com.vayunmathur.crypto.token
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +11,6 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import androidx.core.content.edit
 
 abstract class Repository<T : Any>(private val valueSerializer: KSerializer<T>) {
     protected val _data = MutableStateFlow<Map<String, T>>(emptyMap())

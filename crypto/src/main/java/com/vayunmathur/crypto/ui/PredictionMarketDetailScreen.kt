@@ -40,7 +40,6 @@ import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.api.PredictionMarket
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.util.pop
 import kotlinx.serialization.Serializable
 import java.text.NumberFormat
 

@@ -1,6 +1,5 @@
 package com.vayunmathur.notes.data.database
 
-import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.vayunmathur.notes.data.Note

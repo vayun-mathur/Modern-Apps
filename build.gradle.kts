@@ -35,7 +35,7 @@ subprojects {
             defaultConfig {
                 minSdk = 31
 
-                testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+                //testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             }
 
             buildTypes {
@@ -97,15 +97,15 @@ subprojects {
         "implementation"(libs.findLibrary("kotlinx-serialization-json").get())
     }
     dependencies {
-        "testImplementation"(libs.findLibrary("junit").get())
-        "androidTestImplementation"(libs.findLibrary("androidx.junit").get())
-        "androidTestImplementation"(libs.findLibrary("androidx.espresso.core").get())
-
-        // Handling the BOM
-        val composeBom = libs.findLibrary("androidx.compose.bom").get()
-        "androidTestImplementation"(platform(composeBom))
-
-        "androidTestImplementation"(libs.findLibrary("androidx.compose.ui.test.junit4").get())
+//        "testImplementation"(libs.findLibrary("junit").get())
+//        "androidTestImplementation"(libs.findLibrary("androidx.junit").get())
+//        "androidTestImplementation"(libs.findLibrary("androidx.espresso.core").get())
+//
+//        // Handling the BOM
+//        val composeBom = libs.findLibrary("androidx.compose.bom").get()
+//        "androidTestImplementation"(platform(composeBom))
+//
+//        "androidTestImplementation"(libs.findLibrary("androidx.compose.ui.test.junit4").get())
         "debugImplementation"(libs.findLibrary("androidx.compose.ui.tooling").get())
         "debugImplementation"(libs.findLibrary("androidx.compose.ui.test.manifest").get())
     }

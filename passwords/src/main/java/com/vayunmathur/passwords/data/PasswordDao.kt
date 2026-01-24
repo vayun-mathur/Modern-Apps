@@ -1,10 +1,10 @@
 package com.vayunmathur.passwords.data
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Query
 import com.vayunmathur.library.util.TrueDao
-import kotlinx.coroutines.flow.Flow
 import com.vayunmathur.passwords.Password
-import kotlin.reflect.KClass
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PasswordDao: TrueDao<Password> {
