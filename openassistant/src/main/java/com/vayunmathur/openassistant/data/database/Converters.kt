@@ -1,7 +1,7 @@
 package com.vayunmathur.openassistant.data.database
 
 import androidx.room.TypeConverter
-import com.vayunmathur.openassistant.ToolCall
+import com.vayunmathur.openassistant.api.ToolCall
 import kotlinx.serialization.json.Json
 
 object Converters {

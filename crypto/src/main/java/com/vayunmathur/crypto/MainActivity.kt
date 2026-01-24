@@ -89,7 +89,7 @@ fun Navigation(viewModel: PortfolioViewModel) {
 
     MainNavigation(backStack) {
         entry<LoginPage> {
-            LoginScreen(viewModel, backStack)
+            LoginScreen(viewModel)
         }
         entry<PortfolioPage> {
             PortfolioScreen(viewModel, backStack)
@@ -131,7 +131,7 @@ val MAIN_NAVBAR_PAGES = listOf(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NavigationBottomBar(pages: List<NavbarPage>, currentPage: NavKey, backStack: NavBackStack<NavKey>) {
-    FlexibleBottomAppBar() {
+    FlexibleBottomAppBar {
         pages.forEach { item ->
             NavigationBarItem(
                 selected = currentPage == item.route,

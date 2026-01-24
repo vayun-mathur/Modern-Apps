@@ -64,7 +64,7 @@ inline fun <reified T : DatabaseItem<T>, Route : NavKey, reified EditPage : Rout
 
     val state = rememberReorderableLazyListState(listState, onMove = { from, to ->
         // 2. ONLY update the local shadow list during the drag
-        val toReal = if(to.index > from.index) to.index else to.index-1;
+        val toReal = if(to.index > from.index) to.index else to.index-1
         val toItemPosition = localData.getOrNull(toReal)?.position ?: (localData[0].position - 50.0)
         val nextItemPosition = localData.getOrNull(toReal + 1)?.position ?: (toItemPosition + 50.0)
         val resultItemPosition = (toItemPosition+nextItemPosition)/2

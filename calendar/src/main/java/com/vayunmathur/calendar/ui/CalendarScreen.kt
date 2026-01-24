@@ -39,6 +39,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -140,7 +141,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
             var yOffset by remember { mutableStateOf(0.dp) }
 
             // Hour labels column - fixed on the left, shares vertical scroll state with grid
-            Column() {
+            Column {
                 Spacer(Modifier.height(yOffset))
                 Column(Modifier.verticalScroll(verticalState)) {
                     for (hour in 0..23) {
@@ -155,25 +156,25 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                 }
             }
             // remember drag total so it survives recomposition
-            val dragTotal = remember { mutableStateOf(0f) }
+            var dragTotal by remember { mutableFloatStateOf(0f) }
 
             Box(Modifier.fillMaxSize().pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onHorizontalDrag = { change, delta ->
-                        dragTotal.value += delta
+                        dragTotal += delta
                         change.consume()
                     },
                     onDragEnd = {
                         val threshold = 100f // pixels
-                        if (dragTotal.value <= -threshold) {
+                        if (dragTotal <= -threshold) {
                             dateViewing += DatePeriod(days = 7)
-                        } else if (dragTotal.value >= threshold) {
+                        } else if (dragTotal >= threshold) {
                             dateViewing -= DatePeriod(days = 7)
                         }
-                        dragTotal.value = 0f
+                        dragTotal = 0f
                     },
                     onDragCancel = {
-                        dragTotal.value = 0f
+                        dragTotal = 0f
                     }
                 )
             }
@@ -319,7 +320,6 @@ private fun HourlyGrid(
                     // overlay event segments positioned by their time within the day and column
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                         val columnWidth = this.maxWidth
-                        val hourHeight = hourRowHeight
 
                         positioned.forEach { ev ->
                             val instance = eventsForDay.find { it.id == ev.instanceID }!!
@@ -327,8 +327,8 @@ private fun HourlyGrid(
                             val startHours = ev.startMinutes.toFloat() / 60f
                             val lengthHours = (ev.endMinutes - ev.startMinutes).toFloat() / 60f
 
-                            val yOffset = hourHeight * startHours
-                            var heightDp = hourHeight * lengthHours
+                            val yOffset = hourRowHeight * startHours
+                            var heightDp = hourRowHeight * lengthHours
                             if (heightDp < minEventHeight) heightDp = minEventHeight
 
                             // compute horizontal position and size

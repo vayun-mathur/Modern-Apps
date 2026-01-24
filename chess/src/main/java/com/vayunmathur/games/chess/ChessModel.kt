@@ -494,7 +494,7 @@ data class Board(
             val bqr = pieces[0][0]
             if (bqr?.type == PieceType.ROOK && !bqr.hasMoved) castling += "q"
         }
-        sb.append(" ${if (castling.isEmpty()) "-" else castling}")
+        sb.append(" ${castling.ifEmpty { "-" }}")
 
         // En passant target square
         val enPassant = if (lastMove != null && lastMove.piece.type == PieceType.PAWN && abs(lastMove.start.row - lastMove.end.row) == 2) {

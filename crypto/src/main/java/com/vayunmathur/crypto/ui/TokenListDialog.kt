@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.token.JupiterLendRepository
 import com.vayunmathur.crypto.token.TokenInfo
+import com.vayunmathur.library.util.round
 
 @Composable
 fun TokenListDialog(alreadyExistingTokens: Set<TokenInfo>, viewModel: PortfolioViewModel, onDismiss: () -> Unit) {
@@ -32,7 +33,7 @@ fun TokenListDialog(alreadyExistingTokens: Set<TokenInfo>, viewModel: PortfolioV
                         if(tokenInfo.category == TokenInfo.Companion.Category.JUPITER_LEND) {
                             val apy = JupiterLendRepository[tokenInfo]?.apy ?: 0.0
                             TextButton(onClick, Modifier.fillMaxWidth()) {
-                                Text("${tokenInfo.name} - ${String.format("%.2f", apy * 100)}% APY")
+                                Text("${tokenInfo.name} - ${(apy*100).round(2)}% APY")
                             }
                         } else {
                             TextButton(onClick, Modifier.fillMaxWidth()) {

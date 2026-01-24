@@ -63,10 +63,6 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         return daoInterface as DaoInterface<E>
     }
 
-    inline fun <reified E : DatabaseItem<E>> getDao(): TrueDao<E> {
-        return getDaoInterface<E>().dao
-    }
-
     inline fun <reified E: DatabaseItem<E>> data(): StateFlow<List<E>> {
         return getDaoInterface<E>().data
     }
@@ -87,7 +83,6 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         initialId: Long,
         crossinline default: () -> E? = { null }
     ): MutableState<E> {
-        val scope = rememberCoroutineScope()
         val daoInterface = getDaoInterface<E>()
 
         // 1. Track the current ID. If it's 0, it will be updated after the first upsert.

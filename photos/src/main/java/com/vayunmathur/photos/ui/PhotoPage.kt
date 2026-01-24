@@ -45,11 +45,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -64,7 +62,7 @@ import kotlin.math.absoluteValue
 data class ZoomState(val scale: Float = 1f, val offset: Offset = Offset.Zero)
 
 @Composable
-fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<Photo>?) {
+fun PhotoPage(viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<Photo>?) {
     val photosAll by viewModel.data<Photo>().collectAsState(initial = emptyList())
     val photos = overridePhotosList ?: photosAll
     val context = LocalContext.current

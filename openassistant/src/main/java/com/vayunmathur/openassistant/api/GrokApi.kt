@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant
+package com.vayunmathur.openassistant.api
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO

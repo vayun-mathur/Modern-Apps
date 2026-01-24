@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
 
-@Entity(tableName = "conversations")
+@Entity
 data class Conversation(
     @PrimaryKey(autoGenerate = true)
     override val id: Long = 0,

@@ -1,5 +1,4 @@
-
-package com.vayunmathur.openassistant
+package com.vayunmathur.openassistant.api
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

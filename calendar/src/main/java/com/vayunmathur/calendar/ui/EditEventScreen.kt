@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,6 +73,8 @@ private const val KEY_END_DATE = "EditEvent.endDate"
 private const val KEY_START_TIME = "EditEvent.startTime"
 private const val KEY_END_TIME = "EditEvent.endTime"
 private const val KEY_RECURRENCE = "EditEvent.recurrence"
+private const val KEY_CALENDAR = "EditEvent.calendar"
+private const val KEY_TIMEZONE = "EditEvent.timezone"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +92,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     var description by remember { mutableStateOf(event?.description ?: "") }
     var location by remember { mutableStateOf(event?.location ?: "") }
     // default to the event's calendar if editing; otherwise prefer the first editable calendar
-    var selectedCalendar by remember { mutableStateOf(event?.calendarID ?: (calendars.firstOrNull { it.canModify }?.id ?: calendars.firstOrNull()?.id ?: -1L)) }
+    var selectedCalendar by remember { mutableLongStateOf(event?.calendarID ?: (calendars.firstOrNull { it.canModify }?.id ?: calendars.firstOrNull()?.id ?: -1L)) }
     // If calendars load/refresh after composition, ensure the default remains an editable calendar when creating a new event
     LaunchedEffect(calendars) {
         if (event == null) {
@@ -108,7 +111,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     var endTime by remember { mutableStateOf(event?.endDateTimeDisplay?.time ?: now) }
     var timezone by remember { mutableStateOf(event?.timezone ?: TimeZone.currentSystemDefault().id) }
     var rruleObj by remember { mutableStateOf(event?.rrule) }
-    val rruleString by remember { derivedStateOf {rruleObj?.toString(startDate) ?: ""} }
+    val rruleString by remember { derivedStateOf {rruleObj?.toString() ?: ""} }
 
     // Collect results from pickers
     ResultEffect<LocalDate>(KEY_START_DATE) { selected ->
@@ -130,11 +133,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
 
     ResultEffect<LocalDate>(KEY_END_DATE) { selected ->
         // ensure end date is not before start date
-        if (selected < startDate) {
-            endDate = startDate
-        } else {
-            endDate = selected
-        }
+        endDate = maxOf(startDate, selected)
     }
 
     ResultEffect<LocalTime>(KEY_START_TIME) { selected ->
@@ -156,16 +155,10 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
 
     ResultEffect<LocalTime>(KEY_END_TIME) { selected ->
         // ensure end time is not before start time when on same date
-        if (endDate == startDate) {
-            val before = selected.hour < startTime.hour || (selected.hour == startTime.hour && selected.minute < startTime.minute)
-            if (before) {
-                // clamp to startTime
-                endTime = startTime
-            } else {
-                endTime = selected
-            }
+        endTime = if (endDate == startDate) {
+            maxOf(selected, startTime)
         } else {
-            endTime = selected
+            selected
         }
     }
 
@@ -175,14 +168,12 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
     }
 
     // Result key for calendar picker
-    val KEY_CALENDAR = "EditEvent.calendar"
     // open dialog via navigation and handle result
     ResultEffect<Long>(KEY_CALENDAR) { calId ->
         selectedCalendar = calId
     }
 
     // Timezone selector (navigation dialog) - open via Nav route and handle result
-    val KEY_TIMEZONE = "EditEvent.timezone"
     ResultEffect<String>(KEY_TIMEZONE) { z -> timezone = z }
     if (!allDay) {
         Item(
@@ -287,7 +278,6 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             )
 
             // Timezone selector (navigation dialog) - open via Nav route and handle result
-            val KEY_TIMEZONE = "EditEvent.timezone"
             ResultEffect<String>(KEY_TIMEZONE) { z -> timezone = z }
             if (!allDay) {
                 Item(

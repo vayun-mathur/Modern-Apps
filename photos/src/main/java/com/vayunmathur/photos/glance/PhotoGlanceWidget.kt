@@ -47,7 +47,7 @@ class PhotoGlanceWidget : GlanceAppWidget() {
             }
             DynamicThemeGlance(context) {
                 bitmap?.let {
-                    Content(photo!!, it) { photo = photos.randomOrNull() }
+                    Content(it) { photo = photos.randomOrNull() }
                 }
             }
         }
@@ -55,7 +55,7 @@ class PhotoGlanceWidget : GlanceAppWidget() {
 }
 
 @Composable
-fun Content(photo: Photo, bitmap: Bitmap, newPhoto: () -> Unit) {
+fun Content(bitmap: Bitmap, newPhoto: () -> Unit) {
     Box(
         modifier = GlanceModifier.fillMaxSize(),
         contentAlignment = Alignment.Center

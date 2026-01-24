@@ -124,7 +124,7 @@ class ImportActivity : ComponentActivity() {
 fun ImportScreen(events: List<Event>, calendars: List<Calendar>, onImportClick: (Long) -> Unit) {
     var selectedCalendar by remember { mutableStateOf<Calendar?>(null) }
     var showDropdown by remember { mutableStateOf(false) }
-    val editable = calendars.filter { it.canModify }
+    val editable = calendars.filter(Calendar::canModify)
     val grouped = editable.groupBy { it.accountName.ifEmpty { "(Local)" } }
     Scaffold(
         floatingActionButton = {
@@ -194,7 +194,7 @@ fun EventCard(event: Event) {
                 // Format date range using the shared helper
                 Text(dateRangeString(event.startDateTimeDisplay.date, event.endDateTimeDisplay.date, event.startDateTimeDisplay.time, event.endDateTimeDisplay.time, event.allDay))
                 // RRULE text
-                event.rrule?.let { Text(it.toString(event.startDateTimeDisplay.date)) }
+                event.rrule?.let { Text(it.toString()) }
 
                 if (event.description.isNotBlank()) {
                     Text(event.description)
@@ -251,7 +251,6 @@ fun parseICSFile(iS: InputStream): List<Event> {
                 val (endMillisRaw, _, endTzRaw) = parseICSTime(current["DTEND_PROP"], current["DTEND"])
 
                 var endMillis = endMillisRaw
-                val allDay = startAllDay
                 if (endMillis == null) {
                     // try DURATION
                     val duration = current["DURATION"]
@@ -270,11 +269,12 @@ fun parseICSFile(iS: InputStream): List<Event> {
                 val rrule = current["RRULE"]?.let { RRule.parse(it, TimeZone.of(timezone)) }
 
                 // If event was all-day but end time is same-day start, adjust end to next day
-                if (allDay && startMillis != null && endMillis == startMillis) {
+                if (startAllDay && startMillis != null && endMillis == startMillis) {
                     endMillis = startMillis + Duration.ofDays(1).toMillis()
                 }
 
-                val evt = Event(id, -1, title, description, location, null, startMillis ?: 0L, endMillis ?: (startMillis ?: 0L), timezone, allDay, rrule)
+                val evt = Event(id, -1, title, description, location, null, startMillis ?: 0L, endMillis ?: (startMillis ?: 0L), timezone,
+                    startAllDay, rrule)
                 events.add(evt)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -289,12 +289,12 @@ fun parseICSFile(iS: InputStream): List<Event> {
         // Split property into name;params:value
         val colonIndex = line.indexOf(':')
         if (colonIndex <= 0) continue
-        val left = line.substring(0, colonIndex)
+        val left = line.take(colonIndex)
         val value = line.substring(colonIndex + 1)
 
         // Extract property name and keep full left for param-aware keys
         val semicolonIndex = left.indexOf(';')
-        val propName = if (semicolonIndex > 0) left.substring(0, semicolonIndex).uppercase(Locale.getDefault()) else left.uppercase(Locale.getDefault())
+        val propName = if (semicolonIndex > 0) left.take(semicolonIndex).uppercase(Locale.getDefault()) else left.uppercase(Locale.getDefault())
 
         // Store value; also keep property with params for DTSTART/DTEND
         when (propName) {
@@ -366,7 +366,7 @@ private fun extractTZID(left: String): String? {
     for (p in parts) {
         val idx = p.indexOf('=')
         if (idx > 0) {
-            val k = p.substring(0, idx).uppercase(Locale.getDefault())
+            val k = p.take(idx).uppercase(Locale.getDefault())
             if (k == "TZID") {
                 return p.substring(idx + 1)
             }

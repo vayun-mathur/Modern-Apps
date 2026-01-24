@@ -196,7 +196,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                             Column {
                                 Text(currentCode, style = MaterialTheme.typography.displayMedium)
                                 Spacer(Modifier.height(4.dp))
-                                Text("Refreshes in ${secondsRemaining} s", style = MaterialTheme.typography.bodySmall)
+                                Text("Refreshes in $secondsRemaining s", style = MaterialTheme.typography.bodySmall)
                             }
 
                             // Circular progress showing proportion of time remaining

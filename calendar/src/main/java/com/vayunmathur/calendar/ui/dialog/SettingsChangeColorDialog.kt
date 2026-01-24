@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.ui
+package com.vayunmathur.calendar.ui.dialog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,7 +38,7 @@ fun SettingsChangeColorDialog(viewModel: ContactViewModel, backStack: NavBackSta
         backStack.pop()
         return
     }
-    var tempColor by remember { mutableStateOf(cal.color) }
+    var tempColor by remember { mutableIntStateOf(cal.color) }
 
     // predefined swatches (ARGB ints)
     val swatches = listOf(

@@ -8,6 +8,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ConversationDao: TrueDao<Conversation> {
-    @Query("SELECT * FROM conversations ORDER BY createdAt DESC")
+    @Query("SELECT * FROM Conversation ORDER BY createdAt DESC")
     override fun getAll(): Flow<List<Conversation>>
 }

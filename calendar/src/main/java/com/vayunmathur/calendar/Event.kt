@@ -84,7 +84,7 @@ data class Event(
                     val duration = it.getStringOrNull(it.getColumnIndexOrThrow(CalendarContract.Events.DURATION))
 
 
-                    val durationMillis = duration?.let { try {Duration.parse(it).inWholeMilliseconds } catch(_: Exception) {0} }
+                    val durationMillis = duration?.let { duration -> try {Duration.parse(duration).inWholeMilliseconds } catch(_: Exception) {0} }
 
                     if(end == 0L && durationMillis != null) {
                         end = start + durationMillis

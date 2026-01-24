@@ -1,7 +1,6 @@
 package com.vayunmathur.passwords.ui
 
 import android.content.ContentResolver
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -98,7 +97,7 @@ fun SettingsPage(backStack: androidx.navigation3.runtime.NavBackStack<com.vayunm
             } catch (_: Exception) {}
 
             val cr = context.contentResolver
-            val result = importBitwardenCsvFromUri(cr, uri, context, viewModel)
+            val result = importBitwardenCsvFromUri(cr, uri, viewModel)
             message = "Imported ${result.inserted} rows, skipped ${result.skipped} rows"
         } catch (e: Exception) {
             message = "Import failed: ${e.message}"
@@ -111,7 +110,7 @@ fun SettingsPage(backStack: androidx.navigation3.runtime.NavBackStack<com.vayunm
 
 private data class ImportResult(val inserted: Int, val skipped: Int)
 
-private suspend fun importBitwardenCsvFromUri(contentResolver: ContentResolver, uri: Uri, context: Context, viewModel: DatabaseViewModel): ImportResult {
+private suspend fun importBitwardenCsvFromUri(contentResolver: ContentResolver, uri: Uri, viewModel: DatabaseViewModel): ImportResult {
     return kotlinx.coroutines.withContext(Dispatchers.IO) {
         val inputStream = contentResolver.openInputStream(uri) ?: throw Exception("Unable to open selected file")
         val csvReader = CsvReader(CsvReaderContext())
@@ -125,7 +124,7 @@ private suspend fun importBitwardenCsvFromUri(contentResolver: ContentResolver, 
         val loginPasswordIdx = header.indexOf("login_password").let { if (it >= 0) it else header.indexOf("password") }
         val loginUriIdx = header.indexOf("login_uri").let { if (it >= 0) it else header.indexOf("uri") }
         val loginTotpIdx = header.indexOf("login_totp").let { if (it >= 0) it else header.indexOf("totp") }
-        val notesIdx = header.indexOf("notes")
+        // val notesIdx = header.indexOf("notes")
 
         var inserted = 0
         var skipped = 0
@@ -140,12 +139,12 @@ private suspend fun importBitwardenCsvFromUri(contentResolver: ContentResolver, 
                 val uriField = if (loginUriIdx >= 0 && loginUriIdx < row.size) row[loginUriIdx] else ""
                 val totp = if (loginTotpIdx >= 0 && loginTotpIdx < row.size) row[loginTotpIdx] else null
 
-                val websites = uriField.split(';', '\n', '\r').mapNotNull { it.trim().takeIf { it.isNotEmpty() } }
+                val websites = uriField.split(';', '\n', '\r').mapNotNull { it.trim().takeIf(String::isNotEmpty) }
 
                 val pass = Password(name = name, userId = username, password = password, totpSecret = totp, websites = websites)
                 viewModel.upsert(pass)
                 inserted++
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 skipped++
             }
         }

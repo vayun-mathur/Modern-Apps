@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.ui
+package com.vayunmathur.calendar.ui.dialog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,7 +35,7 @@ import com.vayunmathur.library.util.pop
 @Composable
 fun SettingsAddCalendarDialog(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
     var newDisplayName by remember { mutableStateOf("") }
-    var newColor by remember { mutableStateOf(0xFF2196F3.toInt()) }
+    var newColor by remember { mutableIntStateOf(0xFF2196F3.toInt()) }
 
     val swatches = listOf(
         0xFFF44336.toInt(), // red

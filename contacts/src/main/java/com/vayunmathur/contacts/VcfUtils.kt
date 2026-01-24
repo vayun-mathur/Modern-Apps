@@ -30,7 +30,7 @@ object VcfUtils {
                     // FN
                     val fn = listOfNotNull(prefix.ifEmpty { null }, given.ifEmpty { null }, additional.ifEmpty { null }, family.ifEmpty { null }, suffix.ifEmpty { null })
                         .joinToString(" ")
-                    val fnValue = if (fn.isNotBlank()) fn else (details.names.firstOrNull()?.value ?: "")
+                    val fnValue = fn.ifBlank { (details.names.firstOrNull()?.value ?: "") }
                     writeFolded(writer, "FN:${escapeV(fnValue)}")
 
                     // Phones
@@ -149,7 +149,7 @@ object VcfUtils {
             // Parse property line: NAME[;PARAMS]:VALUE
             val colonIndex = line.indexOf(':')
             if (colonIndex == -1) continue
-            val nameAndParams = line.substring(0, colonIndex)
+            val nameAndParams = line.take(colonIndex)
             val valuePart = line.substring(colonIndex + 1)
 
             val segments = nameAndParams.split(';')
@@ -176,9 +176,8 @@ object VcfUtils {
                 }
                 "FN" -> {
                     if (currentContact.names.isEmpty()) {
-                        val display = value
-                        val first = display.split(" ").firstOrNull() ?: display
-                        val last = display.split(" ").drop(1).joinToString(" ")
+                        val first = value.split(" ").firstOrNull() ?: value
+                        val last = value.split(" ").drop(1).joinToString(" ")
                         currentContact.names.add(Name(0, "", first, "", last, ""))
                     }
                 }
@@ -209,7 +208,7 @@ object VcfUtils {
                 "BDAY" -> {
                     var dv = value
                     if (dv.matches(Regex("^\\d{8}"))) {
-                        dv = dv.substring(0,4) + "-" + dv.substring(4,6) + "-" + dv.substring(6,8)
+                        dv = dv.take(4) + "-" + dv.substring(4,6) + "-" + dv.substring(6,8)
                     }
                     try {
                         val date = LocalDate.parse(dv)
@@ -265,7 +264,7 @@ object VcfUtils {
                 val vals = p.split(',').map { it.trim() }.filter { it.isNotEmpty() }
                 out.getOrPut(k) { mutableListOf() }.addAll(vals)
             } else {
-                val k = p.substring(0, eq).uppercase()
+                val k = p.take(eq).uppercase()
                 val v = p.substring(eq + 1)
                 val vals = v.split(',').map { it.trim().trim('"') }.filter { it.isNotEmpty() }
                 out.getOrPut(k) { mutableListOf() }.addAll(vals)
@@ -289,7 +288,7 @@ object VcfUtils {
                 writer.write(part)
                 writer.write("\r\n")
             } else {
-                writer.write(" " + part)
+                writer.write(" $part")
                 writer.write("\r\n")
             }
             idx = end

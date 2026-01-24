@@ -1,4 +1,4 @@
-package com.vayunmathur.openassistant
+package com.vayunmathur.openassistant.api
 
 import com.vayunmathur.openassistant.data.Tool
 import kotlinx.serialization.SerialName

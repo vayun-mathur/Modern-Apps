@@ -1,5 +1,6 @@
 package com.vayunmathur.openassistant.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -30,6 +31,7 @@ class Tools {
                 json()
             }
         }
+        @SuppressLint("QueryPermissionsNeeded")
         @OptIn(ExperimentalTime::class)
         val ALL_TOOLS = listOf(
             ToolSimple("get_weather", "Get the current weather (full data) for a specific location", listOf(

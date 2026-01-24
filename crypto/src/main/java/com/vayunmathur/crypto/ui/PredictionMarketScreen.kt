@@ -66,7 +66,7 @@ fun PredictionMarketScreen(viewModel: PortfolioViewModel, backStack: NavBackStac
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(markets.filter { it.anyMarketOpen() }) { market ->
-                    PredictionMarketCard(market, backStack, selectedMarket, {selectedMarket = it})
+                    PredictionMarketCard(market, backStack, selectedMarket) { selectedMarket = it }
                 }
             }
         }
@@ -118,7 +118,7 @@ fun PredictionMarketCard(market: PredictionMarket.Event, backStack: NavBackStack
                     Text(marketItem.subtitle, fontSize = 14.sp)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("${(marketItem.chance * 100).toInt()}%", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        SingleChoiceSegmentedButtonRow() {
+                        SingleChoiceSegmentedButtonRow {
                             SegmentedButton(selectedMarket == Pair(marketItem, true), {
                                 setSelectedMarket(Pair(marketItem, true))
                             }, SegmentedButtonDefaults.itemShape(0, 2), contentPadding = PaddingValues(horizontal = 8.dp)) {

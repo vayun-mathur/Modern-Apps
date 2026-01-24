@@ -20,14 +20,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.PortfolioViewModel
 import org.sol4k.Base58
 import org.sol4k.Keypair
 
 @Composable
-fun LoginScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
+fun LoginScreen(viewModel: PortfolioViewModel) {
     var privateKey by remember { mutableStateOf("") }
     val privateKeyValid by remember {derivedStateOf{
         try {

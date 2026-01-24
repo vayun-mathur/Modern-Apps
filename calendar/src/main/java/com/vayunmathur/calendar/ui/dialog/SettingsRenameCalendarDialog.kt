@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.ui
+package com.vayunmathur.calendar.ui.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding

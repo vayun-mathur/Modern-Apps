@@ -28,10 +28,10 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ui.CalendarScreen
 import com.vayunmathur.calendar.ui.EditEventScreen
 import com.vayunmathur.calendar.ui.EventScreen
-import com.vayunmathur.calendar.ui.SettingsAddCalendarDialog
-import com.vayunmathur.calendar.ui.SettingsChangeColorDialog
-import com.vayunmathur.calendar.ui.SettingsDeleteCalendarDialog
-import com.vayunmathur.calendar.ui.SettingsRenameCalendarDialog
+import com.vayunmathur.calendar.ui.dialog.SettingsAddCalendarDialog
+import com.vayunmathur.calendar.ui.dialog.SettingsChangeColorDialog
+import com.vayunmathur.calendar.ui.dialog.SettingsDeleteCalendarDialog
+import com.vayunmathur.calendar.ui.dialog.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsScreen
 import com.vayunmathur.calendar.ui.dialog.CalendarPickerDialog
 import com.vayunmathur.calendar.ui.dialog.CalendarSetDateDialog

@@ -4,17 +4,14 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.TypeConverters
 import com.vayunmathur.library.util.DatabaseItem
-import com.vayunmathur.openassistant.GrokRequest
-import com.vayunmathur.openassistant.ImageUrl
-import com.vayunmathur.openassistant.ImageUrlContent
-import com.vayunmathur.openassistant.TextContent
-import com.vayunmathur.openassistant.ToolCall
-import com.vayunmathur.openassistant.data.database.Converters
+import com.vayunmathur.openassistant.api.GrokRequest
+import com.vayunmathur.openassistant.api.ImageUrl
+import com.vayunmathur.openassistant.api.ImageUrlContent
+import com.vayunmathur.openassistant.api.TextContent
+import com.vayunmathur.openassistant.api.ToolCall
 
 @Entity(
-    tableName = "messages",
     foreignKeys = [ForeignKey(
         entity = Conversation::class,
         parentColumns = ["id"],
@@ -23,7 +20,6 @@ import com.vayunmathur.openassistant.data.database.Converters
     )],
     indices = [Index(value = ["conversationId"])]
 )
-@TypeConverters(Converters::class)
 data class Message(
     @PrimaryKey(autoGenerate = true)
     override val id: Long = 0,

@@ -67,7 +67,7 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 textStyle = MaterialTheme.typography.headlineMedium.copy(color = LocalContentColor.current),
                 cursorBrush = SolidColor(LocalContentColor.current),
                 decorationBox = {innerTextField ->
-                    Box(){
+                    Box {
                         if(note.title.isEmpty()) Text(text = "Title", style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                         innerTextField()
                     }
@@ -82,7 +82,7 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = LocalContentColor.current),
                 cursorBrush = SolidColor(LocalContentColor.current),
                 decorationBox = { innerTextField ->
-                    Box() {
+                    Box {
                         if (note.content.isEmpty()) Text(
                             text = "Content",
                             style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)

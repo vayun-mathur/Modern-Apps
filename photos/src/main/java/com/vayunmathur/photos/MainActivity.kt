@@ -55,7 +55,7 @@ sealed interface Route: NavKey {
 fun Navigation(viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Gallery)
     MainNavigation(backStack) {
-        entry<Route.Gallery>() {
+        entry<Route.Gallery> {
             GalleryPage(backStack, viewModel)
         }
 
@@ -63,8 +63,8 @@ fun Navigation(viewModel: DatabaseViewModel) {
             MapPage(backStack, viewModel)
         }
 
-        entry<Route.PhotoPage>() {
-            PhotoPage(backStack, viewModel, it.id, it.overridePhotosList)
+        entry<Route.PhotoPage> {
+            PhotoPage(viewModel, it.id, it.overridePhotosList)
         }
     }
 }

@@ -31,6 +31,7 @@ import com.vayunmathur.crypto.api.JupiterAPI
 import com.vayunmathur.crypto.displayAmount
 import com.vayunmathur.crypto.token.JupiterLendRepository
 import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.library.util.round
 
 @Composable
 fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>, jlTokenMint: String) {
@@ -56,7 +57,7 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "$${String.format("%.2f", jlToken.totalValue)}",
+                text = "$${jlToken.totalValue.round(2)}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -66,7 +67,7 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
 
             var dialogOption by remember { mutableIntStateOf(0) }
 
-            SingleChoiceSegmentedButtonRow() {
+            SingleChoiceSegmentedButtonRow {
                 SegmentedButton(dialogOption == 1, {dialogOption = 1}, SegmentedButtonDefaults.itemShape(0, 2)) {
                     Text("Deposit")
                 }
@@ -83,7 +84,7 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
                     jlToken.tokenInfo,
                     false,
                     { Text("Deposit ${jlToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Deposit ${String.format("%.2f", outputAmount)} ${jlToken.tokenInfo.symbol}") },
+                    { outputAmount -> Text("Deposit ${outputAmount.round(2)} ${jlToken.tokenInfo.symbol}") },
                     { dialogOption = 0}
                 )
             }
@@ -100,7 +101,7 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
                     underlyingToken,
                     true,
                     { Text("Withdraw ${jlToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Withdraw ${String.format("%.2f", outputAmount)} ${jlToken.tokenInfo.symbol}") },
+                    { outputAmount -> Text("Withdraw ${outputAmount.round(2)} ${jlToken.tokenInfo.symbol}") },
                     { dialogOption = 0}
                 )
             }

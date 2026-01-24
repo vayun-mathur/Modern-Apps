@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,7 +67,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
     var fromTokenInfo by remember { mutableStateOf(TokenInfo.SOL) }
     var pendingOrder by remember { mutableStateOf<PendingOrder?>(null) }
     val progress = remember { Animatable(0f) }
-    var lastUpdateTime by remember { mutableStateOf(0L) }
+    var lastUpdateTime by remember { mutableLongStateOf(0L) }
     var showDialog by remember { mutableStateOf(false) }
 
     val fromToken = tokens.find { it.tokenInfo.mintAddress == fromTokenInfo.mintAddress }

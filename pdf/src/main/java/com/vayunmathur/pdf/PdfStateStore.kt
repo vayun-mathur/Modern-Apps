@@ -27,7 +27,6 @@ object PdfStateStore {
         val value = prefs.getString(key, null) ?: return null
         val parts = value.split(',')
         if (parts.size < 3) return null
-        val zoom = parts[0].toFloatOrNull() ?: 0f
         val page = parts[1].toIntOrNull() ?: 0
         val left = parts[2].toFloatOrNull() ?: 0f
         val top = parts[3].toFloatOrNull() ?: 0f

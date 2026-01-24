@@ -62,15 +62,15 @@ class PortfolioViewModel(private val application: Application) : AndroidViewMode
 
     init {
         viewModelScope.launch {
-            tokens.collect {
+            tokens.collect { allTokens ->
                 _normalTokens.value =
-                    it.filter { it.tokenInfo.category == TokenInfo.Companion.Category.NORMAL }.sortedByDescending { it.totalValue }
+                    allTokens.filter { it.tokenInfo.category == TokenInfo.Companion.Category.NORMAL }.sortedByDescending(Token::totalValue)
                 _stockTokens.value =
-                    it.filter { it.tokenInfo.category == TokenInfo.Companion.Category.XSTOCK }.sortedByDescending { it.totalValue }
+                    allTokens.filter { it.tokenInfo.category == TokenInfo.Companion.Category.XSTOCK }.sortedByDescending(Token::totalValue)
                 _lendTokens.value =
-                    it.filter { it.tokenInfo.category == TokenInfo.Companion.Category.JUPITER_LEND }.sortedByDescending { it.totalValue }
+                    allTokens.filter { it.tokenInfo.category == TokenInfo.Companion.Category.JUPITER_LEND }.sortedByDescending(Token::totalValue)
                 _predTokens.value =
-                    it.filter { it.tokenInfo.category == TokenInfo.Companion.Category.PRED_MARKET }.sortedByDescending { it.totalValue }
+                    allTokens.filter { it.tokenInfo.category == TokenInfo.Companion.Category.PRED_MARKET }.sortedByDescending(Token::totalValue)
             }
         }
         TokenPriceRepository.init(application)

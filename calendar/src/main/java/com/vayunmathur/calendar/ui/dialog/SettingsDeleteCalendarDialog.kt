@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.ui
+package com.vayunmathur.calendar.ui.dialog
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button

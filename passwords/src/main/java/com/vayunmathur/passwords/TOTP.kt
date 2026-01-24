@@ -2,6 +2,7 @@ package com.vayunmathur.passwords
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import kotlin.math.pow
 
 object TOTP {
     private fun base32Decode(data: String): ByteArray {
@@ -23,7 +24,8 @@ object TOTP {
         return output.toByteArray()
     }
 
-    private fun hotp(key: ByteArray, counter: Long, digits: Int = 6): String {
+    private fun hotp(key: ByteArray, counter: Long): String {
+        val digits = 6
         val counterBytes = ByteArray(8)
         var c = counter
         for (i in 7 downTo 0) {
@@ -39,7 +41,7 @@ object TOTP {
                 ((hash[offset + 1].toInt() and 0xff) shl 16) or
                 ((hash[offset + 2].toInt() and 0xff) shl 8) or
                 (hash[offset + 3].toInt() and 0xff)
-        val otp = binary % Math.pow(10.0, digits.toDouble()).toInt()
+        val otp = binary % 10.0.pow(digits.toDouble()).toInt()
         return otp.toString().padStart(digits, '0')
     }
 
@@ -47,6 +49,6 @@ object TOTP {
         val key = base32Decode(secret)
         val timeStep = 30L
         val counter = epochSecond / timeStep
-        return hotp(key, counter, 6)
+        return hotp(key, counter)
     }
 }

@@ -11,5 +11,5 @@ object Converters {
 
     @TypeConverter
     @JvmStatic
-    fun toWebsites(value: String?): List<String> = value?.takeIf { it.isNotEmpty() }?.split(DELIM)?.map { it } ?: emptyList()
+    fun toWebsites(value: String?): List<String> = value?.takeIf { it.isNotEmpty() }?.split(DELIM) ?: emptyList()
 }

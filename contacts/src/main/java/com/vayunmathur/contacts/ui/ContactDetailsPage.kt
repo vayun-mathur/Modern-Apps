@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts
+package com.vayunmathur.contacts.ui
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -55,7 +55,11 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.google.i18n.phonenumbers.NumberParseException
 import com.google.i18n.phonenumbers.PhoneNumberUtil
-import com.vayunmathur.contacts.ui.getAvatarColor
+import com.vayunmathur.contacts.CDKEvent
+import com.vayunmathur.contacts.Contact
+import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.R
+import com.vayunmathur.contacts.VcfUtils
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation

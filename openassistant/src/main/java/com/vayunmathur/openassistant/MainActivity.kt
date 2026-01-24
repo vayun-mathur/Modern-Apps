@@ -75,6 +75,8 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.openassistant.api.GrokApi
+import com.vayunmathur.openassistant.api.GrokRequest
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.Tools
@@ -85,6 +87,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
+import kotlin.collections.listOf
 import kotlin.random.Random
 
 

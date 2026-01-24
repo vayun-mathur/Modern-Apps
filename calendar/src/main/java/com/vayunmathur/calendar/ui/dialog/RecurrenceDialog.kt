@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,6 +47,8 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 
+private const val KEY_UNTIL = "RecurranceDialog.until"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDate: LocalDate, initial: RecurrenceParams?) {
@@ -54,12 +57,11 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
 
     var freq by remember { mutableStateOf(initial?.freq ?: "days") }
     var intervalStr by remember { mutableStateOf((initial?.interval ?: 1).toString()) }
-    var monthlyType by remember { mutableStateOf(initial?.monthlyType ?: 0) }
+    var monthlyType by remember { mutableIntStateOf(initial?.monthlyType ?: 0) }
     var daysOfWeek by remember { mutableStateOf(initial?.daysOfWeek ?: emptyList()) }
     var endCondition by remember { mutableStateOf(initial?.endCondition ?: RRule.EndCondition.Never) }
 
     // result key for the nested date picker used for UNTIL
-    val KEY_UNTIL = "$resultKey.until"
     // listen for date picker result
     ResultEffect<LocalDate>(KEY_UNTIL) { selected ->
         endCondition = RRule.EndCondition.Until(selected)

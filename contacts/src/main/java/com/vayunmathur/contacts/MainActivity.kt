@@ -29,8 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.contacts.ui.ContactDetailsPage
 import com.vayunmathur.contacts.ui.ContactList
 import com.vayunmathur.contacts.ui.ContactListPick
+import com.vayunmathur.contacts.ui.EditContactPage
 import com.vayunmathur.contacts.ui.dialog.EventDatePickerDialog
 import com.vayunmathur.contacts.ui.dialog.EventDeleteConfirmDialog
 import com.vayunmathur.library.ui.DynamicTheme

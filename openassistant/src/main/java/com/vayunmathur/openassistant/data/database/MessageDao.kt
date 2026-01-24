@@ -8,6 +8,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MessageDao: TrueDao<Message> {
-    @Query("SELECT * FROM messages ORDER BY timestamp ASC")
+    @Query("SELECT * FROM Message ORDER BY timestamp ASC")
     override fun getAll(): Flow<List<Message>>
 }

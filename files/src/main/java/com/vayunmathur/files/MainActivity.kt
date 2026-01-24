@@ -246,7 +246,7 @@ fun DirectoryItem(
         },
         supportingContent = {
             if (!file.isDirectory) {
-                Text("${byteSizeString(file.length())}")
+                Text(byteSizeString(file.length()))
             }
         },
         colors = ListItemDefaults.colors(
@@ -257,8 +257,8 @@ fun DirectoryItem(
 
 fun byteSizeString(bytes: Long): String {
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    var unitIdx = 0;
-    var bytesS = bytes.toDouble();
+    var unitIdx = 0
+    var bytesS = bytes.toDouble()
     while(bytesS >= 1024) {
         bytesS /= 1024
         unitIdx++
@@ -266,5 +266,3 @@ fun byteSizeString(bytes: Long): String {
     bytesS = (bytesS*100).roundToLong()/100.0
     return "$bytesS ${units[unitIdx]}"
 }
-
-fun Boolean.int(): Int = if(this) 1 else 0

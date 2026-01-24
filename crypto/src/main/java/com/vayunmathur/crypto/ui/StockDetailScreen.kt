@@ -31,6 +31,7 @@ import com.vayunmathur.crypto.api.JupiterAPI
 import com.vayunmathur.crypto.displayAmount
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.library.util.round
 
 @Composable
 fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>, stockTokenMint: String) {
@@ -55,7 +56,7 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "$${String.format("%.2f", stockToken.totalValue)}",
+                text = "$${stockToken.totalValue.round(2)}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -65,7 +66,7 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
 
             var dialogOption by remember { mutableIntStateOf(0) }
 
-            SingleChoiceSegmentedButtonRow() {
+            SingleChoiceSegmentedButtonRow {
                 SegmentedButton(dialogOption == 1, {dialogOption = 1}, SegmentedButtonDefaults.itemShape(0, 2)) {
                     Text("Deposit")
                 }
@@ -82,7 +83,7 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
                     stockToken.tokenInfo,
                     false,
                     { Text("Deposit ${stockToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Deposit ${String.format("%.2f", outputAmount)} ${stockToken.tokenInfo.symbol}") },
+                    { outputAmount -> Text("Deposit ${outputAmount.round(2)} ${stockToken.tokenInfo.symbol}") },
                     { dialogOption = 0}
                 )
             }
@@ -99,7 +100,7 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
                     usdcToken,
                     true,
                     { Text("Withdraw ${stockToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Withdraw ${String.format("%.2f", outputAmount)} ${stockToken.tokenInfo.symbol}") },
+                    { outputAmount -> Text("Withdraw ${outputAmount.round(2)} ${stockToken.tokenInfo.symbol}") },
                     { dialogOption = 0}
                 )
             }

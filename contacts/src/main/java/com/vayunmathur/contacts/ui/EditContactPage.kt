@@ -1,4 +1,4 @@
-package com.vayunmathur.contacts
+package com.vayunmathur.contacts.ui
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -59,6 +59,24 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.scale
 import androidx.navigation3.runtime.NavBackStack
 import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.vayunmathur.contacts.CDKEmail
+import com.vayunmathur.contacts.CDKEvent
+import com.vayunmathur.contacts.CDKNickname
+import com.vayunmathur.contacts.CDKPhone
+import com.vayunmathur.contacts.CDKStructuredPostal
+import com.vayunmathur.contacts.Contact
+import com.vayunmathur.contacts.ContactDetail
+import com.vayunmathur.contacts.ContactDetails
+import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.Event
+import com.vayunmathur.contacts.Name
+import com.vayunmathur.contacts.Nickname
+import com.vayunmathur.contacts.Note
+import com.vayunmathur.contacts.Organization
+import com.vayunmathur.contacts.PhoneNumber
+import com.vayunmathur.contacts.Photo
+import com.vayunmathur.contacts.R
+import com.vayunmathur.contacts.Route
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.pop
@@ -115,17 +133,37 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     Button(onClick = {
                         val birthdayID = contact?.birthday?.id
                         val dates2 = dates.filter { it.type != CDKEvent.TYPE_BIRTHDAY }.toMutableList()
-                        birthday?.let { birthday -> dates2 += Event(birthdayID ?: 0, birthday, CDKEvent.TYPE_BIRTHDAY) }
+                        birthday?.let { birthday -> dates2 += Event(
+                            birthdayID ?: 0,
+                            birthday,
+                            CDKEvent.TYPE_BIRTHDAY
+                        )
+                        }
                         val details = ContactDetails(
                             phoneNumbers,
                             emails,
                             addresses,
                             dates2,
                             listOfNotNull(photo),
-                            listOf(Name(contact?.name?.id ?: 0, namePrefix, firstName, middleName, lastName, nameSuffix)),
+                            listOf(
+                                Name(
+                                    contact?.name?.id ?: 0,
+                                    namePrefix,
+                                    firstName,
+                                    middleName,
+                                    lastName,
+                                    nameSuffix
+                                )
+                            ),
                             listOf(Organization(contact?.org?.id ?: 0, company)),
                             listOf(Note(contact?.note?.id ?: 0, noteContent)),
-                            listOf(Nickname(contact?.nickname?.id ?: 0, nickname, CDKNickname.TYPE_DEFAULT))
+                            listOf(
+                                Nickname(
+                                    contact?.nickname?.id ?: 0,
+                                    nickname,
+                                    CDKNickname.TYPE_DEFAULT
+                                )
+                            )
                         )
                         val newContact = contact?.copy(details = details) ?: Contact(
                             false,

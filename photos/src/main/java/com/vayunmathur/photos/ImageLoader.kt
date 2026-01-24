@@ -20,7 +20,7 @@ import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.photos.data.Photo
 
 object ImageLoader {
-    private lateinit var imageLoader: ImageLoader;
+    private lateinit var imageLoader: ImageLoader
 
     fun init(context: Context) {
         imageLoader = ImageLoader.Builder(context)

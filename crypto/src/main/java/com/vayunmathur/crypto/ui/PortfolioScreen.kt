@@ -65,6 +65,7 @@ import com.vayunmathur.crypto.token.Token
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.util.round
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +87,7 @@ fun PortfolioScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
     val tokens by viewModel.tokens.collectAsState()
 
     if (showTokenDialog) {
-        TokenListDialog(tokens.map{it.tokenInfo}.toSet(), viewModel = viewModel) { showTokenDialog = false}
+        TokenListDialog(tokens.map(Token::tokenInfo).toSet(), viewModel = viewModel) { showTokenDialog = false}
     }
 
     ModalNavigationDrawer(
@@ -163,7 +164,7 @@ fun TokenListScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "$${String.format("%.2f", totalValue)}",
+            text = "$${totalValue.round(2)}",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
         )
@@ -256,13 +257,13 @@ fun TokenCard(token: Token, onClick: () -> Unit = {}) {
                     TokenInfo.Companion.Category.NORMAL, TokenInfo.Companion.Category.XSTOCK -> {
                         val tpr = TokenPriceRepository[token.tokenInfo] ?: return@Column
                         Text(
-                            text = "$${String.format("%.2f", tpr.price)} ${if (tpr.change >= 0) "+" else ""}${String.format("%.2f", tpr.change)}%",
+                            text = "$${tpr.price.round(2)} ${if (tpr.change >= 0) "+" else ""}${tpr.change.round(2)}%",
                             color = if (tpr.change >= 0) Color.Green else Color.Red
                         )
                     }
                     TokenInfo.Companion.Category.JUPITER_LEND -> {
                         val apy = JupiterLendRepository[token.tokenInfo]?.apy ?: 0.0
-                        Text(text = "${String.format("%.2f", apy * 100)}% APY", color = Color.Green)
+                        Text(text = "${(apy * 100).round(2)}% APY", color = Color.Green)
                     }
 
                     TokenInfo.Companion.Category.PRED_MARKET -> {
@@ -271,7 +272,7 @@ fun TokenCard(token: Token, onClick: () -> Unit = {}) {
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = "$${String.format("%.2f", token.totalValue)}")
+                Text(text = "$${token.totalValue.round(2)}")
                 Text(text = "${token.amount.displayAmount()} ${token.tokenInfo.symbol}")
             }
         }
