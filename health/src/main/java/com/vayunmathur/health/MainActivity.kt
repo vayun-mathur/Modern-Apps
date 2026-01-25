@@ -17,38 +17,64 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.SleepSessionRecord
+import androidx.health.connect.client.records.*
+import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.health.ui.MainPage
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.rememberNavBackStack
+import kotlinx.serialization.Serializable
 
 val PERMISSIONS = setOf(
-    HealthPermission.getReadPermission(HeartRateRecord::class),
-    HealthPermission.getWritePermission(HeartRateRecord::class),
+    // Activity & Energy
     HealthPermission.getReadPermission(StepsRecord::class),
-    HealthPermission.getWritePermission(StepsRecord::class),
+    HealthPermission.getReadPermission(WheelchairPushesRecord::class),
+    HealthPermission.getReadPermission(DistanceRecord::class),
     HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
-    HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class),
+    HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
+    HealthPermission.getReadPermission(BasalMetabolicRateRecord::class),
+    HealthPermission.getReadPermission(FloorsClimbedRecord::class),
+    HealthPermission.getReadPermission(ElevationGainedRecord::class),
+
+    // Vitals & Clinical
+    HealthPermission.getReadPermission(HeartRateRecord::class),
+    HealthPermission.getReadPermission(RestingHeartRateRecord::class),
+    HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class),
+    HealthPermission.getReadPermission(RespiratoryRateRecord::class),
+    HealthPermission.getReadPermission(OxygenSaturationRecord::class),
+    HealthPermission.getReadPermission(BloodPressureRecord::class),
+    HealthPermission.getReadPermission(BloodGlucoseRecord::class),
+    HealthPermission.getReadPermission(Vo2MaxRecord::class),
+    HealthPermission.getReadPermission(SkinTemperatureRecord::class),
+
+    // Body Composition
+    HealthPermission.getReadPermission(WeightRecord::class),
+    HealthPermission.getReadPermission(HeightRecord::class),
+    HealthPermission.getReadPermission(BodyFatRecord::class),
+    HealthPermission.getReadPermission(LeanBodyMassRecord::class),
+    HealthPermission.getReadPermission(BoneMassRecord::class),
+    HealthPermission.getReadPermission(BodyWaterMassRecord::class),
+
+    // Lifestyle & Nutrition
     HealthPermission.getReadPermission(SleepSessionRecord::class),
-    HealthPermission.getWritePermission(SleepSessionRecord::class),
+    HealthPermission.getReadPermission(MindfulnessSessionRecord::class),
+    HealthPermission.getReadPermission(HydrationRecord::class),
+    HealthPermission.getReadPermission(NutritionRecord::class)
 )
+
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val healthConnectClient = HealthConnectClient.getOrCreate(this)
+        HealthAPI.init(healthConnectClient, this)
         setContent {
             DynamicTheme {
-                val context = LocalContext.current
-                val healthConnectClient = remember {
-                    HealthConnectClient.getOrCreate(context)
-                }
                 var hasPermissions by remember { mutableStateOf(false) }
 
                 val requestPermissions = rememberLauncherForActivityResult(
@@ -79,7 +105,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Serializable
+sealed interface Route: NavKey {
+    @Serializable
+    data object MainPage: Route
+}
+
 @Composable
 fun Navigation() {
-
+    val backStack = rememberNavBackStack(Route.MainPage)
+    MainNavigation(backStack) {
+        entry<Route.MainPage> {
+            MainPage()
+        }
+    }
 }
