@@ -1,10 +1,14 @@
 package com.vayunmathur.health
 
+import android.health.connect.HealthPermissions
+import android.os.Build
 import android.os.Bundle
+import android.os.ext.SdkExtensions
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresExtension
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
@@ -23,6 +27,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.health.ui.MainPage
+import com.vayunmathur.health.ui.MedicalRecordsPage
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -62,9 +67,21 @@ val PERMISSIONS = setOf(
     HealthPermission.getReadPermission(SleepSessionRecord::class),
     HealthPermission.getReadPermission(MindfulnessSessionRecord::class),
     HealthPermission.getReadPermission(HydrationRecord::class),
-    HealthPermission.getReadPermission(NutritionRecord::class)
-)
-
+    HealthPermission.getReadPermission(NutritionRecord::class),
+) + if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) >= 16) {setOf(
+    HealthPermissions.READ_MEDICAL_DATA_ALLERGIES_INTOLERANCES,
+    HealthPermissions.READ_MEDICAL_DATA_CONDITIONS,
+    HealthPermissions.READ_MEDICAL_DATA_LABORATORY_RESULTS,
+    HealthPermissions.READ_MEDICAL_DATA_MEDICATIONS,
+    HealthPermissions.READ_MEDICAL_DATA_PERSONAL_DETAILS,
+    HealthPermissions.READ_MEDICAL_DATA_PRACTITIONER_DETAILS,
+    HealthPermissions.READ_MEDICAL_DATA_PREGNANCY,
+    HealthPermissions.READ_MEDICAL_DATA_PROCEDURES,
+    HealthPermissions.READ_MEDICAL_DATA_SOCIAL_HISTORY,
+    HealthPermissions.READ_MEDICAL_DATA_VACCINES,
+    HealthPermissions.READ_MEDICAL_DATA_VISITS,
+    HealthPermissions.READ_MEDICAL_DATA_VITAL_SIGNS
+) } else {setOf()}
 
 
 class MainActivity : ComponentActivity() {
@@ -109,14 +126,20 @@ class MainActivity : ComponentActivity() {
 sealed interface Route: NavKey {
     @Serializable
     data object MainPage: Route
+
+    @Serializable
+    data object MedicalRecords: Route
 }
 
 @Composable
 fun Navigation() {
-    val backStack = rememberNavBackStack(Route.MainPage)
+    val backStack = rememberNavBackStack<Route>(Route.MainPage)
     MainNavigation(backStack) {
         entry<Route.MainPage> {
-            MainPage()
+            MainPage(backStack)
+        }
+        entry<Route.MedicalRecords> {
+            MedicalRecordsPage(backStack)
         }
     }
 }

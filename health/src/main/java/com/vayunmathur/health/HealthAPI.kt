@@ -5,12 +5,18 @@ import android.content.SharedPreferences
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.aggregate.AggregationResult
+import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.MedicalResource
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.request.ReadMedicalResourcesInitialRequest
+import androidx.health.connect.client.request.ReadMedicalResourcesPageRequest
+import androidx.health.connect.client.request.ReadMedicalResourcesRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.response.ReadMedicalResourcesResponse
 import androidx.health.connect.client.time.TimeRangeFilter
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DateTimePeriod
@@ -43,7 +49,6 @@ object HealthAPI {
 
     suspend inline fun <reified T: Record> lastRecord(): T? {
         val records = healthConnectClient.readRecords(ReadRecordsRequest(T::class, timeRangeThisWeek()))
-        println("${T::class.simpleName}" + records.records)
         return records.records.lastOrNull()
     }
 
@@ -61,5 +66,23 @@ object HealthAPI {
             (now.date - DatePeriod(days = 3)).atStartOfDayIn(TimeZone.currentSystemDefault()).toJavaInstant(),
             now.toInstant(TimeZone.currentSystemDefault()).toJavaInstant()
         )
+    }
+
+    @OptIn(ExperimentalPersonalHealthRecordApi::class)
+    suspend fun allMedicalRecords(type: Int): List<MedicalResource> {
+        val allRecords = mutableListOf<MedicalResource>()
+
+        var pageToken: String? = null
+        do {
+            val request =
+                if (pageToken == null) ReadMedicalResourcesInitialRequest(type, setOf())
+                else ReadMedicalResourcesPageRequest(pageToken)
+
+            val response = healthConnectClient.readMedicalResources(request)
+            allRecords += response.medicalResources
+            pageToken = response.nextPageToken
+        } while (pageToken != null)
+
+        return allRecords
     }
 }

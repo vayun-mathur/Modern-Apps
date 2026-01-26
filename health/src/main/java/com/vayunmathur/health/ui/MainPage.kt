@@ -1,6 +1,7 @@
 package com.vayunmathur.health.ui
 
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,9 +38,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.aggregate.AggregationResult
+import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.*
+import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.R
+import com.vayunmathur.health.Route
+import com.vayunmathur.health.fhir.Patient
+import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -48,8 +54,14 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.toKotlinDuration
 
+val JSON = kotlinx.serialization.json.Json {
+    prettyPrint = true
+    ignoreUnknownKeys = true
+}
+
+@OptIn(ExperimentalPersonalHealthRecordApi::class)
 @Composable
-fun MainPage() {
+fun MainPage(backStack: NavBackStack<Route>) {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     var aggregates: AggregationResult? by remember { mutableStateOf(null) }
 
@@ -127,20 +139,29 @@ fun MainPage() {
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
+            Text("Medical Records", style = MaterialTheme.typography.labelLarge)
+            Card(Modifier.invisibleClickable{
+                backStack.add(Route.MedicalRecords)
+            }) {
+                Row(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("Medical Records")
+                }
+            }
+
             // 1. Vitals & Clinical Metrics
-            Text("Vitals & Clinical", style = MaterialTheme.typography.labelLarge, color = Color.LightGray)
+            Text("Vitals & Clinical", style = MaterialTheme.typography.labelLarge)
             VitalsDashboard(br, spo2, rhr, hrv, skinTemp, vo2Max, bloodGlucose, bloodPressure)
 
             // 2. Nutrition Summary
-            Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge, color = Color.LightGray)
+            Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge)
             NutritionSummaryCard(aggregates)
 
             // 3. Body Composition
-            Text("Body Composition", style = MaterialTheme.typography.labelLarge, color = Color.LightGray)
+            Text("Body Composition", style = MaterialTheme.typography.labelLarge)
             BodyCompositionDashboard(height, weight, bodyFat, leanBodyMass, boneMass, bodyWaterMass)
 
             // 4. Activity & Energy
-            Text("Activity", style = MaterialTheme.typography.labelLarge, color = Color.LightGray)
+            Text("Activity", style = MaterialTheme.typography.labelLarge)
             EnergyBurned(aggregates?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories ?: 0.0)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -201,7 +222,7 @@ fun NutritionSummaryCard(res: AggregationResult?) {
 @Composable
 fun NutritionMacro(label: String, value: Double?, unit: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.LightGray)
+        Text(label, style = MaterialTheme.typography.labelSmall)
         Text("${value?.round(1) ?: "--"}$unit", style = MaterialTheme.typography.bodyMedium)
     }
 }
@@ -245,16 +266,16 @@ fun MetricSegmentCard(index: Int, total: Int, label: String, value: Any?, unit: 
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = label, style = MaterialTheme.typography.bodyMedium, color = Color.LightGray)
+            Text(text = label, style = MaterialTheme.typography.bodyMedium)
             Row(verticalAlignment = Alignment.Bottom) {
                 val displayValue = when (value) {
                     null -> "--"
                     is Double -> if (showSign) (if (value >= 0) "+" else "") + value.round(1) else value.round(1).toString()
                     else -> value.toString()
                 }
-                Text(text = displayValue, style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                Text(text = displayValue, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.width(4.dp))
-                Text(text = unit, style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
+                Text(text = unit, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -264,11 +285,11 @@ fun MetricSegmentCard(index: Int, total: Int, label: String, value: Any?, unit: 
 fun MiniMetricCard(label: String, value: String, unit: String) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = Color.LightGray)
+            Text(label, style = MaterialTheme.typography.labelMedium)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Text(value, style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.width(4.dp))
-                Text(unit, style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
+                Text(unit, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -358,15 +379,15 @@ fun GenericCard(name: String, titleIcon: ImageVector?, units: String, number: St
         Row(Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = name, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                    if (titleIcon != null) Icon(titleIcon, null, Modifier.padding(start = 4.dp).size(16.dp), Color.LightGray)
+                    Text(text = name, style = MaterialTheme.typography.titleMedium)
+                    if (titleIcon != null) Icon(titleIcon, null, Modifier.padding(start = 4.dp).size(16.dp))
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(text = number, style = MaterialTheme.typography.headlineLarge, color = Color.White, fontSize = 32.sp)
-                    Text(text = units, Modifier.padding(start = 4.dp, bottom = 4.dp), style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                    Text(text = number, style = MaterialTheme.typography.headlineLarge, fontSize = 32.sp)
+                    Text(text = units, Modifier.padding(start = 4.dp, bottom = 4.dp), style = MaterialTheme.typography.bodyLarge)
                 }
-                Text(text = dateString, style = MaterialTheme.typography.bodySmall, color = Color.LightGray)
+                Text(text = dateString, style = MaterialTheme.typography.bodySmall)
             }
             graphic()
         }

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -11,7 +12,7 @@ android {
 }
 
 dependencies {
-    implementation("androidx.health.connect:connect-client:1.2.0-alpha02")
+    implementation(libs.androidx.connect.client)
 
     // room
     implementation(libs.androidx.room.runtime)
