@@ -47,8 +47,9 @@ import org.schabi.newpipe.extractor.StreamingService
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
-data class ChannelInfo(val name: String, val subscribers: Long, val videos: Int, val avatar: String)
-data class VideoInfo(val name: String, val url: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String)
+interface ItemInfo
+data class ChannelInfo(val name: String, val url: String, val subscribers: Long, val videos: Int, val avatar: String): ItemInfo
+data class VideoInfo(val name: String, val url: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String): ItemInfo
 
 @Composable
 fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, url: String) {
@@ -78,6 +79,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ur
 
             channelInfo = ChannelInfo(
                 channelExtractor.name,
+                channelExtractor.url,
                 channelExtractor.subscriberCount,
                 videos.size,
                 channelExtractor.avatars.first().url
