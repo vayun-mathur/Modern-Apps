@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,12 +17,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,23 +35,28 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
+import com.vayunmathur.library.ui.invisibleClickable
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.data.Subscription
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.schabi.newpipe.extractor.Page
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.StreamingService
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
 data class ChannelInfo(val name: String, val subscribers: Long, val videos: Int, val avatar: String)
-data class VideoInfo(val name: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String)
+data class VideoInfo(val name: String, val url: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String)
 
 @Composable
-fun ChannelPage(backStack: NavBackStack<Route>, url: String) {
+fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, url: String) {
     println(url)
     var videos by remember { mutableStateOf<List<VideoInfo>>(listOf()) }
     var channelInfo by remember { mutableStateOf<ChannelInfo?>(null) }
 
+    val subscriptions by viewModel.data<Subscription>().collectAsState()
 
     LaunchedEffect(Unit) {
         val youtubeService: StreamingService = ServiceList.YouTube
@@ -58,9 +68,11 @@ fun ChannelPage(backStack: NavBackStack<Route>, url: String) {
             videos = feedExtractor.initialPage.items.map {
                 VideoInfo(
                     it.name,
+                    it.url,
                     it.viewCount,
                     it.uploadDate!!.instant.toKotlinInstant(),
-                    it.thumbnails.first().url
+                    it.thumbnails.first().url,
+                    channelExtractor.name
                 )
             }
 
@@ -77,16 +89,26 @@ fun ChannelPage(backStack: NavBackStack<Route>, url: String) {
         Column(Modifier.padding(paddingValues)) {
             channelInfo?.let {
                 ChannelHeader(it)
-
-                Button({
-
-                }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                    Text("Subscribe")
+                val existingSubscription = subscriptions.firstOrNull { it.url == url }
+                if(existingSubscription == null) {
+                    Button({
+                        viewModel.upsert(Subscription(name = it.name, url = url, avatarURL = it.avatar))
+                    }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                        Text("Subscribe")
+                    }
+                } else {
+                    OutlinedButton({
+                        viewModel.delete(existingSubscription)
+                    }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+                        Text("Unsubscribe")
+                    }
                 }
+                Spacer(Modifier.height(4.dp))
+                HorizontalDivider()
             }
             LazyColumn() {
-                items(videos) {
-                    VideoItem(it)
+                items(videos, {it.url}) {
+                    VideoItem(backStack, it, false)
                 }
             }
         }
@@ -94,8 +116,10 @@ fun ChannelPage(backStack: NavBackStack<Route>, url: String) {
 }
 
 @Composable
-fun VideoItem(videoInfo: VideoInfo) {
-    Row() {
+fun VideoItem(backStack: NavBackStack<Route>, videoInfo: VideoInfo, showAuthor: Boolean) {
+    Row(Modifier.invisibleClickable{
+        backStack.add(Route.VideoPage(videoInfo.url))
+    }) {
         Box(Modifier.weight(1f)) {
             Box(Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp).clip(RoundedCornerShape(12.dp))) {
                 AsyncImage(
@@ -111,7 +135,15 @@ fun VideoItem(videoInfo: VideoInfo) {
             }, Modifier, {
 
             }, {
-                Text("${countString(videoInfo.views)} views | ${uploadTimeAgo(videoInfo.uploadDate)}", style = MaterialTheme.typography.bodySmall)
+                Column() {
+                    if(showAuthor) {
+                        Text(videoInfo.author, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text(
+                        "${countString(videoInfo.views)} views | ${uploadTimeAgo(videoInfo.uploadDate)}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             })
         }
     }

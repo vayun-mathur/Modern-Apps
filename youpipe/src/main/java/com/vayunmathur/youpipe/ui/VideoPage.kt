@@ -70,13 +70,12 @@ data class AudioStream(val url: String, val bitrate: Int)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String)
 data class VideoData(val title: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String)
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
-data class RelatedVideo(val url: String, var thumbnailURL: String, val name: String, val author: String, val views: Long, val textUploadDate: String, val authorURL: String, val authorThumbnail: String)
 
 @Composable
 fun VideoPage(backStack: NavBackStack<Route>, url: String) {
 
     var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
-    var relatedVideos by remember { mutableStateOf<List<RelatedVideo>>(emptyList()) }
+    var relatedVideos by remember { mutableStateOf<List<VideoInfo>>(emptyList()) }
     var videoData by remember { mutableStateOf<VideoData?>(null) }
     var videoStreams by remember { mutableStateOf<List<VideoStream>>(listOf()) }
     var audioStreams by remember { mutableStateOf<List<AudioStream>>(listOf()) }
@@ -93,7 +92,7 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
             videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName, streamExtractor.uploaderUrl, streamExtractor.uploaderAvatars.first().url)
             val relatedVideosEx = streamExtractor.relatedItems ?: return@withContext
             relatedVideos = relatedVideosEx.items.filterIsInstance<StreamInfoItem>().map {
-                RelatedVideo(it.url, it.thumbnails.first().url, it.name, it.uploaderName, it.viewCount, it.textualUploadDate!!, it.uploaderUrl, it.uploaderAvatars.first().url)
+                VideoInfo(it.name, it.url, it.viewCount, it.uploadDate!!.instant.toKotlinInstant(), it.thumbnails.first().url, it.uploaderName)
             }
         }
         withContext(Dispatchers.IO) {
@@ -175,40 +174,10 @@ fun VideoDetails(backStack: NavBackStack<Route>, videoData: VideoData) {
 }
 
 @Composable
-fun RelatedVideosSection(backStack: NavBackStack<Route>, relatedVideos: List<RelatedVideo>) {
+fun RelatedVideosSection(backStack: NavBackStack<Route>, relatedVideos: List<VideoInfo>) {
     LazyColumn(contentPadding = PaddingValues(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(relatedVideos, { it.url }) {
-            RelatedVideoItem(backStack, it)
-        }
-    }
-}
-
-@Composable
-fun RelatedVideoItem(backStack: NavBackStack<Route>, r: RelatedVideo) {
-    Card(Modifier.clickable {
-        backStack.add(Route.VideoPage(r.url))
-    }) {
-        Column {
-            AsyncImage(
-                model = r.thumbnailURL,
-                contentDescription = null,
-                Modifier.fillMaxWidth()
-                    .aspectRatio(16f / 9f),
-                placeholder = ColorPainter(MaterialTheme.colorScheme.surfaceVariant)
-            )
-            ListItem({
-                Text(r.name, style = MaterialTheme.typography.titleMedium)
-            }, Modifier, {}, {
-                Text("${r.author} | ${countString(r.views)} views | ${r.textUploadDate}")
-            }, {
-                AsyncImage(
-                    model = r.authorThumbnail,
-                    contentDescription = null,
-                    Modifier.size(32.dp).clip(CircleShape).clickable{
-                        backStack.add(Route.ChannelPage(r.authorURL))
-                    }
-                )
-            }, colors = ListItemDefaults.colors(Color.Transparent))
+            VideoItem(backStack, it, true)
         }
     }
 }
