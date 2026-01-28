@@ -17,8 +17,15 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
-        maven("https://jitpack.io")
         mavenCentral()
+        maven("https://jitpack.io")
+    }
+}
+
+includeBuild("../NewPipeExtractor") {
+    dependencySubstitution {
+        // Substitute the Maven artifact with the local project
+        substitute(module("com.github.TeamNewPipe:NewPipeExtractor")).using(project(":extractor"))
     }
 }
 
@@ -35,3 +42,4 @@ include(":notes")
 include(":files")
 include(":photos")
 include(":health")
+include(":youpipe")

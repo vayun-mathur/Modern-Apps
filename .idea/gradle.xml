@@ -4,11 +4,27 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/../NewPipeExtractor" name="NewPipeExtractor">
+                <projects>
+                  <project path="$PROJECT_DIR$/../NewPipeExtractor" />
+                  <project path="$PROJECT_DIR$/../NewPipeExtractor/extractor" />
+                  <project path="$PROJECT_DIR$/../NewPipeExtractor/timeago-generator" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
         <option name="modules">
           <set>
+            <option value="$PROJECT_DIR$/../NewPipeExtractor" />
+            <option value="$PROJECT_DIR$/../NewPipeExtractor/extractor" />
+            <option value="$PROJECT_DIR$/../NewPipeExtractor/timeago-generator" />
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/calendar" />
             <option value="$PROJECT_DIR$/chess" />
@@ -22,6 +38,7 @@
             <option value="$PROJECT_DIR$/passwords" />
             <option value="$PROJECT_DIR$/pdf" />
             <option value="$PROJECT_DIR$/photos" />
+            <option value="$PROJECT_DIR$/youpipe" />
           </set>
         </option>
       </GradleProjectSettings>
