@@ -9,4 +9,6 @@ import kotlinx.coroutines.flow.Flow
 interface SubscriptionDao: TrueDao<Subscription> {
     @Query("SELECT * FROM Subscription")
     override fun getAll(): Flow<List<Subscription>>
+    @Query("DELETE FROM Subscription")
+    override suspend fun deleteAll()
 }

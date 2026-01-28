@@ -9,4 +9,6 @@ import kotlinx.coroutines.flow.Flow
 interface PhotoDao: TrueDao<Photo> {
     @Query("SELECT * FROM Photo ORDER BY position")
     override fun getAll(): Flow<List<Photo>>
+    @Query("DELETE FROM Photo")
+    override suspend fun deleteAll()
 }

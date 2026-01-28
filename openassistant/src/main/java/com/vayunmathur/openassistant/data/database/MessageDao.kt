@@ -10,4 +10,6 @@ import kotlinx.coroutines.flow.Flow
 interface MessageDao: TrueDao<Message> {
     @Query("SELECT * FROM Message ORDER BY timestamp ASC")
     override fun getAll(): Flow<List<Message>>
+    @Query("DELETE FROM Message")
+    override suspend fun deleteAll()
 }

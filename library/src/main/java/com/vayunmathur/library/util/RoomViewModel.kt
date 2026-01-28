@@ -16,8 +16,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Delete
+import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.Upsert
 import androidx.room.migration.Migration
 import kotlinx.coroutines.CoroutineScope
@@ -50,6 +52,12 @@ class DaoInterface<T: DatabaseItem<T>>(val dao: TrueDao<T>, val viewModelScope: 
             dao.upsertAll(t)
         }
     }
+
+    fun replaceAll(t: List<T>) {
+        viewModelScope.launch {
+            dao.replaceAll(t)
+        }
+    }
 }
 
 class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() {
@@ -76,6 +84,10 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
 
     inline fun <reified E: DatabaseItem<E>> upsertAll(items: List<E>) {
         getDaoInterface<E>().upsertAll(items)
+    }
+
+    inline fun <reified E: DatabaseItem<E>> replaceAll(items: List<E>) {
+        getDaoInterface<E>().replaceAll(items)
     }
 
     @Composable
@@ -149,8 +161,14 @@ interface TrueDao<T: DatabaseItem<T>> {
     suspend fun upsert(value: T): Long
     @Delete
     suspend fun delete(value: T): Int
+    suspend fun deleteAll()
     @Upsert
     suspend fun upsertAll(t: List<T>)
+    @Transaction
+    suspend fun replaceAll(t: List<T>) {
+        deleteAll()
+        upsertAll(t)
+    }
 }
 
 inline fun <reified T: RoomDatabase> Context.buildDatabase(migrations: List<Migration> = emptyList()): T {

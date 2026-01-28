@@ -10,4 +10,6 @@ import kotlinx.coroutines.flow.Flow
 interface NoteDao: TrueDao<Note> {
     @Query("SELECT * FROM Note ORDER BY position ASC")
     override fun getAll(): Flow<List<Note>>
+    @Query("DELETE FROM Note")
+    override suspend fun deleteAll()
 }

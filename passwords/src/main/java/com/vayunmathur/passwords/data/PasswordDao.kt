@@ -10,4 +10,6 @@ import kotlinx.coroutines.flow.Flow
 interface PasswordDao: TrueDao<Password> {
     @Query("SELECT * FROM passwords ORDER BY name")
     override fun getAll(): Flow<List<Password>>
+    @Query("DELETE FROM passwords")
+    override suspend fun deleteAll()
 }
