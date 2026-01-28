@@ -53,7 +53,6 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.LendDetailPage
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.NavigationBottomBar
 import com.vayunmathur.crypto.PortfolioPage
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.PrivateKeyPage
@@ -65,6 +64,7 @@ import com.vayunmathur.crypto.token.Token
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.launch
 
@@ -108,7 +108,7 @@ fun PortfolioScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
         }
     ) {
         Scaffold(bottomBar = {
-            NavigationBottomBar(MAIN_NAVBAR_PAGES, PortfolioPage, backStack)
+            BottomNavBar(backStack, MAIN_NAVBAR_PAGES, PortfolioPage)
         }, topBar = {
             TopAppBar(title = { }, navigationIcon = {
                 IconButton(onClick = { scope.launch { drawerState.open() } }) {

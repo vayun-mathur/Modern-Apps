@@ -30,11 +30,12 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
 import com.vayunmathur.crypto.MaximizedRow
-import com.vayunmathur.crypto.NavigationBottomBar
 import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.SendPage
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.library.util.BottomNavBar
 import org.sol4k.PublicKey
 import java.text.NumberFormat
 
@@ -68,7 +69,7 @@ fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
     }
 
     Scaffold(bottomBar = {
-        NavigationBottomBar(MAIN_NAVBAR_PAGES, SendPage, backStack)
+        BottomNavBar(backStack, MAIN_NAVBAR_PAGES, SendPage)
     }) { paddingValues ->
         Column(
             Modifier

@@ -4,19 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FlexibleBottomAppBar
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.ui.LendDetailScreen
 import com.vayunmathur.crypto.ui.LoginScreen
@@ -29,6 +21,7 @@ import com.vayunmathur.crypto.ui.SendScreen
 import com.vayunmathur.crypto.ui.StockDetailScreen
 import com.vayunmathur.crypto.ui.SwapScreen
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
@@ -118,31 +111,9 @@ fun Navigation(viewModel: PortfolioViewModel) {
     }
 }
 
-
-data class NavbarPage(val name: String, val icon: Int, val route: NavKey)
-
 val MAIN_NAVBAR_PAGES = listOf(
-    NavbarPage("Portfolio", R.drawable.account_balance_wallet_24px, PortfolioPage),
-    NavbarPage("Swap", R.drawable.swap_vert_24px, SwapPage),
-    NavbarPage("Send", R.drawable.send_24px, SendPage),
-    NavbarPage("Prediction", R.drawable.online_prediction_24px, PredictionMarketPage),
+    BottomBarItem("Portfolio", PortfolioPage, R.drawable.account_balance_wallet_24px),
+    BottomBarItem("Swap", SwapPage, R.drawable.swap_vert_24px),
+    BottomBarItem("Send", SendPage, R.drawable.send_24px),
+    BottomBarItem("Prediction", PredictionMarketPage, R.drawable.online_prediction_24px),
 )
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun NavigationBottomBar(pages: List<NavbarPage>, currentPage: NavKey, backStack: NavBackStack<NavKey>) {
-    FlexibleBottomAppBar {
-        pages.forEach { item ->
-            NavigationBarItem(
-                selected = currentPage == item.route,
-                onClick = {
-                    if (backStack.last() != item.route) {
-                        backStack.add(item.route)
-                    }
-                },
-                label = { Text(item.name) },
-                icon = { Icon(painterResource(item.icon), null) }
-            )
-        }
-    }
-}

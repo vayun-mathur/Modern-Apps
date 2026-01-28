@@ -27,6 +27,7 @@ import org.sol4k.Base58
 import org.sol4k.Keypair
 import org.sol4k.PublicKey
 import org.sol4k.VersionedTransaction
+import kotlin.io.encoding.Base64
 import kotlin.math.pow
 
 class PortfolioViewModel(private val application: Application) : AndroidViewModel(application) {
@@ -177,7 +178,7 @@ class PortfolioViewModel(private val application: Application) : AndroidViewMode
     fun signTransaction(transaction: String): String {
         val t = VersionedTransaction.from(transaction)
         t.sign(wallet)
-        return t.serialize().encodeBase64()
+        return Base64.encode(t.serialize())
     }
 
     fun sendToken(token: TokenInfo, recipient: PublicKey, amount: Double) {

@@ -22,14 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
-import com.vayunmathur.youpipe.BottomBar
+import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.Route
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
-import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import kotlin.time.toKotlinInstant
 
@@ -70,7 +69,7 @@ fun SearchPage(backStack: NavBackStack<Route>) {
         }
     }
 
-    Scaffold(bottomBar = { BottomBar(backStack, Route.SearchPage) }) { paddingValues ->
+    Scaffold(bottomBar = { BottomNavBar(backStack, MAIN_BOTTOM_BAR_ITEMS, Route.SearchPage) }) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
             TextField(
                 value = searchQuery,

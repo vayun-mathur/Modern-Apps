@@ -5,7 +5,13 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FlexibleBottomAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -16,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -117,4 +124,29 @@ fun ListDetailPage() = ListDetailSceneStrategy.detailPane()
 @Composable
 inline fun <reified T: NavKey> rememberNavBackStack(elements: List<T>): NavBackStack<T> {
     return rememberNavBackStack(*elements.toTypedArray())
+}
+
+data class BottomBarItem<Route: NavKey>(
+    val name: String,
+    val route: Route,
+    val icon: Int
+)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun <Route : NavKey> BottomNavBar(backStack: NavBackStack<Route>, pages: List<BottomBarItem<out Route>>, currentPage: Route) {
+    FlexibleBottomAppBar {
+        pages.forEach { page ->
+            NavigationBarItem(
+                selected = currentPage == page.route,
+                onClick = {
+                    if (backStack.last() != page.route) {
+                        backStack.add(page.route)
+                    }
+                },
+                label = { Text(page.name) },
+                icon = { Icon(painterResource(page.icon), null) }
+            )
+        }
+    }
 }

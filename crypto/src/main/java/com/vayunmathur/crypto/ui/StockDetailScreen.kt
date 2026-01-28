@@ -24,13 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.NavigationBottomBar
 import com.vayunmathur.crypto.PortfolioPage
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.api.JupiterAPI
 import com.vayunmathur.crypto.displayAmount
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 
 @Composable
@@ -40,7 +40,7 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
     val usdcToken = TokenInfo.USDC
 
     Scaffold(bottomBar = {
-        NavigationBottomBar(MAIN_NAVBAR_PAGES, PortfolioPage, backStack)
+        BottomNavBar(backStack, MAIN_NAVBAR_PAGES, PortfolioPage)
     }) { paddingValues ->
         Column(
             modifier = Modifier

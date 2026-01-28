@@ -24,13 +24,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.NavigationBottomBar
 import com.vayunmathur.crypto.PortfolioPage
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.api.JupiterAPI
 import com.vayunmathur.crypto.displayAmount
 import com.vayunmathur.crypto.token.JupiterLendRepository
 import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 
 @Composable
@@ -41,7 +41,7 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
     val underlyingToken = jlTokenData.underlyingToken
 
     Scaffold(bottomBar = {
-        NavigationBottomBar(MAIN_NAVBAR_PAGES, PortfolioPage, backStack)
+        BottomNavBar(backStack, MAIN_NAVBAR_PAGES, PortfolioPage)
     }) { paddingValues ->
         Column(
             modifier = Modifier

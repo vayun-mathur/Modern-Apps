@@ -19,15 +19,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
+import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.youpipe.BottomBar
+import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 
 @Composable
 fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val subscriptions by viewModel.data<Subscription>().collectAsState()
-    Scaffold(bottomBar = { BottomBar(backStack, Route.SubscriptionsPage) }) { paddingValues ->
+    Scaffold(bottomBar = { BottomNavBar(backStack, MAIN_BOTTOM_BAR_ITEMS, Route.SubscriptionsPage) }) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             item {
                 Text("Groups:", Modifier.padding(start = 4.dp), style = MaterialTheme.typography.titleMedium)

@@ -13,8 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.youpipe.BottomBar
+import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +47,7 @@ fun SubscriptionVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseVi
             }.flatten().sortedBy{it.uploadDate}
         }
     }
-    Scaffold(bottomBar = { BottomBar(backStack, Route.SubscriptionsPage) }) { paddingValues ->
+    Scaffold(bottomBar = { BottomNavBar(backStack, MAIN_BOTTOM_BAR_ITEMS, Route.SubscriptionsPage) }) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             items(videos) {
                 VideoItem(backStack, it, true)
