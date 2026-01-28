@@ -1,15 +1,7 @@
 package com.vayunmathur.youpipe.ui
 
-import android.os.Looper.prepare
-import androidx.annotation.OptIn
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,80 +15,55 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.text.parseAsHtml
-import androidx.core.util.rangeTo
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MergingMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.ui.PlayerView
-import androidx.media3.ui.compose.PlayerSurface
-import androidx.media3.ui.compose.material3.buttons.PlayPauseButton
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.periodUntil
-import kotlinx.datetime.toKotlinLocalDateTime
 import kotlinx.datetime.toLocalDateTime
-import okhttp3.OkHttpClient
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.stream.Description
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
-import java.time.temporal.ChronoUnit
 import kotlin.time.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
+data class VideoChapter(val time: Int, val title: String, val previewURL: String?)
 data class AudioStream(val url: String, val bitrate: Int)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String)
 data class VideoData(val title: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String)
@@ -111,6 +78,7 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
     var videoData by remember { mutableStateOf<VideoData?>(null) }
     var videoStreams by remember { mutableStateOf<List<VideoStream>>(listOf()) }
     var audioStreams by remember { mutableStateOf<List<AudioStream>>(listOf()) }
+    var segments by remember { mutableStateOf<List<VideoChapter>>(listOf()) }
 
     LaunchedEffect(Unit) {
         val youtubeService: StreamingService = ServiceList.YouTube
@@ -120,6 +88,7 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
             streamExtractor.videoOnlyStreams.map {
                 println("${it.width}, ${it.height}, ${it.content}, ${it.deliveryMethod}, ${it.bitrate}, ${it.fps}, ${it.quality}")
             }
+            segments = streamExtractor.streamSegments.map { VideoChapter(it.startTimeSeconds*1000, it.title, it.previewUrl) }
             videoStreams = streamExtractor.videoOnlyStreams.map { VideoStream(it.content, it.width, it.height, it.bitrate, it.fps, it.quality) }
             audioStreams = streamExtractor.audioStreams.map { AudioStream(it.content, it.bitrate) }
             videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName)
@@ -145,11 +114,46 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
     Scaffold() { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
-                VideoPlayer(videoStreams.first(), audioStreams.first(), videoStreams, audioStreams)
+                VideoPlayer(videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments)
                 VideoDetails(it)
             }
-            //RelatedVideosSection(backStack, relatedVideos)
-            CommentsSection(comments)
+
+            val pagerState = rememberPagerState(pageCount = { 2 })
+            val coroutineScope = rememberCoroutineScope()
+
+            Column {
+                // 2. The TabRow synchronized with the pager
+                SecondaryTabRow(selectedTabIndex = pagerState.currentPage) {
+                    Tab(
+                        selected = pagerState.currentPage == 0,
+                        onClick = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(0) }
+                        }
+                    ) {
+                        Text("Comments", modifier = Modifier.padding(16.dp))
+                    }
+                    Tab(
+                        selected = pagerState.currentPage == 1,
+                        onClick = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                        }
+                    ) {
+                        Text("Related Videos", modifier = Modifier.padding(16.dp))
+                    }
+                }
+
+                // 3. The Pager that enables swiping
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Top // Ensures content starts at top
+                ) { page ->
+                    when (page) {
+                        0 -> CommentsSection(comments)
+                        1 -> RelatedVideosSection(backStack, relatedVideos)
+                    }
+                }
+            }
         }
     }
 }
@@ -165,7 +169,7 @@ fun VideoDetails(videoData: VideoData) {
 
 @Composable
 fun RelatedVideosSection(backStack: NavBackStack<Route>, relatedVideos: List<RelatedVideo>) {
-    LazyColumn(contentPadding = PaddingValues(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyColumn(contentPadding = PaddingValues(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(relatedVideos, { it.url }) {
             RelatedVideoItem(backStack, it)
         }
@@ -174,7 +178,9 @@ fun RelatedVideosSection(backStack: NavBackStack<Route>, relatedVideos: List<Rel
 
 @Composable
 fun RelatedVideoItem(backStack: NavBackStack<Route>, r: RelatedVideo) {
-    Card {
+    Card(Modifier.clickable {
+        backStack.add(Route.VideoPage(r.url))
+    }) {
         Column {
             AsyncImage(
                 model = r.thumbnailURL,
@@ -185,9 +191,7 @@ fun RelatedVideoItem(backStack: NavBackStack<Route>, r: RelatedVideo) {
             )
             ListItem({
                 Text(r.name, style = MaterialTheme.typography.titleMedium)
-            }, Modifier.clickable {
-                backStack.add(Route.VideoPage(r.url))
-            }, {}, {
+            }, Modifier, {}, {
                 Text("${r.author} | ${countString(r.views)} views | ${r.textUploadDate}")
             }, colors = ListItemDefaults.colors(Color.Transparent))
         }
@@ -196,8 +200,8 @@ fun RelatedVideoItem(backStack: NavBackStack<Route>, r: RelatedVideo) {
 
 @Composable
 fun CommentsSection(comments: List<Comment>) {
-    Column() {
-        comments.forEach {
+    LazyColumn {
+        items(comments) {
             CommentItem(it)
         }
     }

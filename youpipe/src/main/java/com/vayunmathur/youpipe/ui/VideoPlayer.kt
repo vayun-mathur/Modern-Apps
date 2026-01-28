@@ -8,15 +8,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -26,6 +32,8 @@ import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.material3.buttons.PlayPauseButton
+import coil.compose.AsyncImage
+import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.youpipe.R
 import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
@@ -36,7 +44,8 @@ fun VideoPlayer(
     initialVideoStream: VideoStream,
     initialAudioStream: AudioStream,
     videoStreams: List<VideoStream>,
-    audioStreams: List<AudioStream>
+    audioStreams: List<AudioStream>,
+    segments: List<VideoChapter>
 ) {
     val context = LocalContext.current
 
@@ -50,9 +59,10 @@ fun VideoPlayer(
     var duration by remember { mutableLongStateOf(0L) }
     var isDragging by remember { mutableStateOf(false) }
 
-    // Independent states for Quality Dropdowns
+    // Independent states for Quality and Chapter Dropdowns
     var isVideoMenuExpanded by remember { mutableStateOf(false) }
     var isAudioMenuExpanded by remember { mutableStateOf(false) }
+    var isChapterMenuVisible by remember { mutableStateOf(false) }
 
     // Network setup
     val okHttpClient = remember { OkHttpClient() }
@@ -93,7 +103,7 @@ fun VideoPlayer(
 
     // Auto-hide controls effect
     LaunchedEffect(isControlsVisible, exoPlayer.isPlaying) {
-        if (isControlsVisible && exoPlayer.isPlaying && !isVideoMenuExpanded && !isAudioMenuExpanded) {
+        if (isControlsVisible && exoPlayer.isPlaying && !isVideoMenuExpanded && !isAudioMenuExpanded && !isChapterMenuVisible) {
             delay(3000)
             isControlsVisible = false
         }
@@ -148,13 +158,15 @@ fun VideoPlayer(
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.4f))
             ) {
-                // Top Right: Independent Quality Selectors
+                // Top Right: Quality and Chapter Selectors
                 Row(
                     modifier = Modifier
                         .padding(16.dp)
                         .align(Alignment.TopEnd),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+
                     // Video Quality Dropdown
                     Box {
                         Row(
@@ -260,6 +272,23 @@ fun VideoPlayer(
                             }
                         }
                     }
+
+                    // Chapter Menu Button
+                    if (segments.isNotEmpty()) {
+                        IconButton(
+                            onClick = { isChapterMenuVisible = true },
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .size(32.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_list_24),
+                                contentDescription = "Chapters",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Center Play/Pause
@@ -309,6 +338,94 @@ fun VideoPlayer(
                             inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                         )
                     )
+                }
+            }
+        }
+
+        // CHAPTER OVERLAY
+        AnimatedVisibility(
+            visible = isChapterMenuVisible,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.9f))
+                    .clickable(enabled = true, onClick = {}) // Block click through
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Chapter",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { isChapterMenuVisible = false }) {
+                            IconClose(tint = Color.White)
+                        }
+                    }
+
+                    // Chapter List
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(segments) { chapter ->
+                            val isCurrent = currentPosition >= chapter.time &&
+                                    (segments.getOrNull(segments.indexOf(chapter) + 1)?.time?.let { currentPosition < it } ?: true)
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        exoPlayer.seekTo(chapter.time.toLong())
+                                        isChapterMenuVisible = false
+                                    }
+                                    .background(if (isCurrent) Color.White.copy(alpha = 0.1f) else Color.Transparent)
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Thumbnail
+                                AsyncImage(
+                                    model = chapter.previewURL,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .width(120.dp)
+                                        .aspectRatio(16f / 9f)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.DarkGray),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = chapter.title,
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 2
+                                    )
+                                    Text(
+                                        text = formatTime(chapter.time.toLong()),
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

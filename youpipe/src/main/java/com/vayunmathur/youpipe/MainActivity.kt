@@ -39,7 +39,7 @@ sealed interface Route: NavKey {
 
 @Composable
 fun Navigation() {
-    val backStack = rememberNavBackStack<Route>(Route.VideoPage("https://www.youtube.com/watch?v=XcbAhYQ49_U"))
+    val backStack = rememberNavBackStack<Route>(Route.VideoPage("https://www.youtube.com/watch?v=Guoak9N5lAo"))
     MainNavigation(backStack) {
         entry<Route.MainPage> {
             MainPage(backStack)
