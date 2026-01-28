@@ -9,6 +9,7 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
+import com.vayunmathur.youpipe.ui.ChannelPage
 import com.vayunmathur.youpipe.ui.MainPage
 import com.vayunmathur.youpipe.ui.VideoPage
 import kotlinx.serialization.Serializable
@@ -35,17 +36,23 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class VideoPage(val uri: String) : Route
+
+    @Serializable
+    data class ChannelPage(val uri: String): Route
 }
 
 @Composable
 fun Navigation() {
-    val backStack = rememberNavBackStack<Route>(Route.VideoPage("https://www.youtube.com/watch?v=Guoak9N5lAo"))
+    val backStack = rememberNavBackStack<Route>(Route.ChannelPage("https://www.youtube.com/channel/UC9RM-iSvTu1uPJb8X5yp3EQ"))
     MainNavigation(backStack) {
         entry<Route.MainPage> {
             MainPage(backStack)
         }
         entry<Route.VideoPage> {
             VideoPage(backStack, it.uri)
+        }
+        entry<Route.ChannelPage> {
+            ChannelPage(backStack, it.uri)
         }
     }
 }

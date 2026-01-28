@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -37,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.res.painterResource
@@ -66,9 +68,9 @@ import kotlin.time.toKotlinInstant
 data class VideoChapter(val time: Int, val title: String, val previewURL: String?)
 data class AudioStream(val url: String, val bitrate: Int)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String)
-data class VideoData(val title: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String)
+data class VideoData(val title: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String)
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
-data class RelatedVideo(val url: String, var thumbnailURL: String, val name: String, val author: String, val views: Long, val textUploadDate: String)
+data class RelatedVideo(val url: String, var thumbnailURL: String, val name: String, val author: String, val views: Long, val textUploadDate: String, val authorURL: String, val authorThumbnail: String)
 
 @Composable
 fun VideoPage(backStack: NavBackStack<Route>, url: String) {
@@ -85,16 +87,13 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
         withContext(Dispatchers.IO) {
             val streamExtractor = youtubeService.getStreamExtractor(url)
             streamExtractor.fetchPage()
-            streamExtractor.videoOnlyStreams.map {
-                println("${it.width}, ${it.height}, ${it.content}, ${it.deliveryMethod}, ${it.bitrate}, ${it.fps}, ${it.quality}")
-            }
             segments = streamExtractor.streamSegments.map { VideoChapter(it.startTimeSeconds*1000, it.title, it.previewUrl) }
             videoStreams = streamExtractor.videoOnlyStreams.map { VideoStream(it.content, it.width, it.height, it.bitrate, it.fps, it.quality) }
             audioStreams = streamExtractor.audioStreams.map { AudioStream(it.content, it.bitrate) }
-            videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName)
+            videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName, streamExtractor.uploaderUrl, streamExtractor.uploaderAvatars.first().url)
             val relatedVideosEx = streamExtractor.relatedItems ?: return@withContext
             relatedVideos = relatedVideosEx.items.filterIsInstance<StreamInfoItem>().map {
-                RelatedVideo(it.url, it.thumbnails.first().url, it.name, it.uploaderName, it.viewCount, it.textualUploadDate!!)
+                RelatedVideo(it.url, it.thumbnails.first().url, it.name, it.uploaderName, it.viewCount, it.textualUploadDate!!, it.uploaderUrl, it.uploaderAvatars.first().url)
             }
         }
         withContext(Dispatchers.IO) {
@@ -115,7 +114,7 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
                 VideoPlayer(videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments)
-                VideoDetails(it)
+                VideoDetails(backStack, it)
             }
 
             val pagerState = rememberPagerState(pageCount = { 2 })
@@ -159,11 +158,19 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
 }
 
 @Composable
-fun VideoDetails(videoData: VideoData) {
+fun VideoDetails(backStack: NavBackStack<Route>, videoData: VideoData) {
     ListItem({
         Text(videoData.title, style = MaterialTheme.typography.titleMedium)
     }, Modifier, {}, {
         Text("${videoData.author} | ${countString(videoData.views)} views | ${uploadTimeAgo(videoData.uploadDate)}")
+    }, {
+        AsyncImage(
+            model = videoData.authorThumbnail,
+            contentDescription = null,
+            Modifier.size(32.dp).clip(CircleShape).clickable{
+                backStack.add(Route.ChannelPage(videoData.authorURL))
+            }
+        )
     })
 }
 
@@ -193,6 +200,14 @@ fun RelatedVideoItem(backStack: NavBackStack<Route>, r: RelatedVideo) {
                 Text(r.name, style = MaterialTheme.typography.titleMedium)
             }, Modifier, {}, {
                 Text("${r.author} | ${countString(r.views)} views | ${r.textUploadDate}")
+            }, {
+                AsyncImage(
+                    model = r.authorThumbnail,
+                    contentDescription = null,
+                    Modifier.size(32.dp).clip(CircleShape).clickable{
+                        backStack.add(Route.ChannelPage(r.authorURL))
+                    }
+                )
             }, colors = ListItemDefaults.colors(Color.Transparent))
         }
     }
