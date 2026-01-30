@@ -21,7 +21,7 @@ class LevelDataStore(context: Context) {
 
     val currentLevel: Flow<Int> = appContext.dataStore.data
         .map { preferences ->
-            204 //preferences[LEVEL_KEY] ?: 1
+            preferences[LEVEL_KEY] ?: 1
         }
 
     val foundWords: Flow<Set<String>> = appContext.dataStore.data.map { it[FOUND_WORDS_KEY] ?: emptySet() }
