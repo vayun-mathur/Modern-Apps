@@ -396,7 +396,7 @@ fun WordGameScreen(
                 val offset = lerp(letter.startOffset, letter.endOffset, progress)
 
                 SurfaceText(Modifier.offset { IntOffset(offset.x.toInt(), offset.y.toInt()) },
-                    RoundedCornerShape(4.dp),
+                    RoundedCornerShape(4.dp * scale),
                     colorScheme.primaryContainer, letter.char.toString(),
                     Modifier, FontWeight.Bold, fontSize, size)
             }
