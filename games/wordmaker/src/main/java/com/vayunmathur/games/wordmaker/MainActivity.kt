@@ -224,7 +224,7 @@ fun WordGameScreen(
     Scaffold(Modifier.fillMaxSize()) { innerPadding ->
         Box(
             modifier = Modifier
-                .padding(innerPadding)
+                .padding(innerPadding).padding(bottom = 32.dp)
                 .fillMaxSize()
                 .onGloballyPositioned {
                     rootOffset = it.localToRoot(Offset.Zero)
