@@ -112,7 +112,7 @@ fun VideoPage(backStack: NavBackStack<Route>, url: String) {
     Scaffold() { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
-                VideoPlayer(videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments)
+                VideoPlayer(videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments, it.title, it.author)
                 VideoDetails(backStack, it)
             }
 

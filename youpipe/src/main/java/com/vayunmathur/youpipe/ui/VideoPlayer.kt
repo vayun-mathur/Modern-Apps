@@ -1,5 +1,7 @@
 package com.vayunmathur.youpipe.ui
 
+import android.content.ComponentName
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -24,19 +26,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MergingMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.material3.buttons.PlayPauseButton
 import coil.compose.AsyncImage
+import com.google.common.util.concurrent.MoreExecutors
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.youpipe.R
 import kotlinx.coroutines.delay
-import okhttp3.OkHttpClient
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -45,41 +46,39 @@ fun VideoPlayer(
     initialAudioStream: AudioStream,
     videoStreams: List<VideoStream>,
     audioStreams: List<AudioStream>,
-    segments: List<VideoChapter>
+    segments: List<VideoChapter>,
+    videoTitle: String = "Video Title",
+    uploaderName: String = "Uploader"
 ) {
     val context = LocalContext.current
 
-    // State for current selected streams
+    var controller by remember { mutableStateOf<MediaController?>(null) }
     var currentVideoStream by remember { mutableStateOf(initialVideoStream) }
     var currentAudioStream by remember { mutableStateOf(initialAudioStream) }
-
-    // State for controls visibility and playback tracking
     var isControlsVisible by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isDragging by remember { mutableStateOf(false) }
 
-    // Independent states for Quality and Chapter Dropdowns
     var isVideoMenuExpanded by remember { mutableStateOf(false) }
     var isAudioMenuExpanded by remember { mutableStateOf(false) }
     var isChapterMenuVisible by remember { mutableStateOf(false) }
 
-    // Network setup
-    val okHttpClient = remember { OkHttpClient() }
-    val dataSourceFactory = remember {
-        OkHttpDataSource.Factory(okHttpClient)
-            .setUserAgent("Mozilla/5.0 (Android 14; Mobile; rv:128.0) Gecko/128.0 Firefox/128.0")
-    }
+    DisposableEffect(Unit) {
+        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
 
-    // Setup ExoPlayer
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
+        controllerFuture.addListener({
+            controller = controllerFuture.get()
+        }, MoreExecutors.directExecutor())
+
+        onDispose {
+            MediaController.releaseFuture(controllerFuture)
         }
     }
 
-    // Listener for position and duration updates
-    DisposableEffect(exoPlayer) {
+    DisposableEffect(controller) {
+        val player = controller ?: return@DisposableEffect onDispose {}
         val listener = object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) {
                 if (events.contains(Player.EVENT_TIMELINE_CHANGED) || events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)) {
@@ -87,50 +86,46 @@ fun VideoPlayer(
                 }
             }
         }
-        exoPlayer.addListener(listener)
-        onDispose { exoPlayer.removeListener(listener) }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
     }
 
-    // Polling effect for position updates
-    LaunchedEffect(exoPlayer, isDragging) {
+    LaunchedEffect(controller, isDragging) {
+        val player = controller ?: return@LaunchedEffect
         while (true) {
             if (!isDragging) {
-                currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+                currentPosition = player.currentPosition.coerceAtLeast(0L)
             }
             delay(500)
         }
     }
 
-    // Auto-hide controls effect
-    LaunchedEffect(isControlsVisible, exoPlayer.isPlaying) {
-        if (isControlsVisible && exoPlayer.isPlaying && !isVideoMenuExpanded && !isAudioMenuExpanded && !isChapterMenuVisible) {
-            delay(3000)
-            isControlsVisible = false
+    // 3. Updated LaunchedEffect to pass audio URI through Metadata Extras
+    LaunchedEffect(controller, currentVideoStream, currentAudioStream, videoTitle, uploaderName) {
+        val player = controller ?: return@LaunchedEffect
+        val lastPosition = player.currentPosition
+
+        // Pack the audio URI into the extras bundle
+        val extras = Bundle().apply {
+            putString("extra_audio_uri", currentAudioStream.url)
         }
-    }
 
-    // Handle Media Source switching (Maintains timestamp)
-    LaunchedEffect(currentVideoStream, currentAudioStream) {
-        val lastPosition = exoPlayer.currentPosition
+        val metadata = MediaMetadata.Builder()
+            .setTitle(videoTitle)
+            .setArtist(uploaderName)
+            .setExtras(extras) // Pass the extras bundle
+            .build()
 
-        val videoSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(currentVideoStream.url))
+        val mediaItem = MediaItem.Builder()
+            .setUri(currentVideoStream.url) // This becomes the Video source
+            .setMediaMetadata(metadata)
+            .build()
 
-        val audioSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(currentAudioStream.url))
-
-        val mergedSource = MergingMediaSource(videoSource, audioSource)
-
-        exoPlayer.setMediaSource(mergedSource)
-        exoPlayer.prepare()
+        player.setMediaItem(mediaItem)
+        player.prepare()
         if (lastPosition > 0L) {
-            exoPlayer.seekTo(lastPosition)
+            player.seekTo(lastPosition)
         }
-    }
-
-    // Lifecycle Management
-    DisposableEffect(Unit) {
-        onDispose { exoPlayer.release() }
     }
 
     Box(
@@ -142,243 +137,111 @@ fun VideoPlayer(
                 indication = null
             ) { isControlsVisible = !isControlsVisible }
     ) {
-        PlayerSurface(
-            player = exoPlayer,
-            modifier = Modifier.fillMaxSize(),
-        )
+        controller?.let { player ->
+            PlayerSurface(
+                player = player,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } ?: Box(modifier = Modifier.fillMaxSize().background(Color.Black))
 
-        // Overlay with Animations
-        AnimatedVisibility(
-            visible = isControlsVisible,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-            ) {
-                // Top Right: Quality and Chapter Selectors
+        AnimatedVisibility(visible = isControlsVisible, enter = fadeIn(), exit = fadeOut()) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) {
+
                 Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.TopEnd),
+                    modifier = Modifier.padding(16.dp).align(Alignment.TopEnd),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
-                    // Video Quality Dropdown
                     Box {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clickable { isVideoMenuExpanded = true }
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Surface(
+                            onClick = { isVideoMenuExpanded = true },
+                            color = Color.Black.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
                         ) {
-                            Text(
-                                text = currentVideoStream.quality,
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                            Icon(
-                                painter = painterResource(R.drawable.outline_arrow_drop_down_24),
-                                contentDescription = "Select Video Quality",
-                                tint = Color.White
-                            )
+                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = currentVideoStream.quality, color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                Icon(painter = painterResource(R.drawable.outline_arrow_drop_down_24), contentDescription = null, tint = Color.White)
+                            }
                         }
-
-                        DropdownMenu(
-                            expanded = isVideoMenuExpanded,
-                            onDismissRequest = { isVideoMenuExpanded = false },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            Text(
-                                "Video Quality",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        DropdownMenu(expanded = isVideoMenuExpanded, onDismissRequest = { isVideoMenuExpanded = false }) {
                             videoStreams.forEach { stream ->
                                 DropdownMenuItem(
                                     text = { Text("${stream.quality} (${stream.fps}fps)") },
-                                    onClick = {
-                                        currentVideoStream = stream
-                                        isVideoMenuExpanded = false
-                                    },
-                                    leadingIcon = {
-                                        if (currentVideoStream == stream) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.outline_thumb_up_24),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
+                                    onClick = { currentVideoStream = stream; isVideoMenuExpanded = false }
                                 )
                             }
                         }
                     }
 
-                    // Audio Quality Dropdown
                     Box {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clickable { isAudioMenuExpanded = true }
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Surface(
+                            onClick = { isAudioMenuExpanded = true },
+                            color = Color.Black.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
                         ) {
-                            Text(
-                                text = "${currentAudioStream.bitrate / 1000}kbps",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                            Icon(
-                                painter = painterResource(R.drawable.outline_arrow_drop_down_24),
-                                contentDescription = "Select Audio Quality",
-                                tint = Color.White
-                            )
+                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "${currentAudioStream.bitrate / 1000}kbps", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                Icon(painter = painterResource(R.drawable.outline_arrow_drop_down_24), contentDescription = null, tint = Color.White)
+                            }
                         }
-
-                        DropdownMenu(
-                            expanded = isAudioMenuExpanded,
-                            onDismissRequest = { isAudioMenuExpanded = false },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                        ) {
-                            Text(
-                                "Audio Quality",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                        DropdownMenu(expanded = isAudioMenuExpanded, onDismissRequest = { isAudioMenuExpanded = false }) {
                             audioStreams.forEach { stream ->
                                 DropdownMenuItem(
-                                    text = { Text("${stream.bitrate / 1000} kbps") },
-                                    onClick = {
-                                        currentAudioStream = stream
-                                        isAudioMenuExpanded = false
-                                    },
-                                    leadingIcon = {
-                                        if (currentAudioStream == stream) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.outline_thumb_up_24),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
+                                    text = { Text("${stream.bitrate / 1000}kbps") },
+                                    onClick = { currentAudioStream = stream; isAudioMenuExpanded = false }
                                 )
                             }
                         }
                     }
 
-                    // Chapter Menu Button
                     if (segments.isNotEmpty()) {
                         IconButton(
                             onClick = { isChapterMenuVisible = true },
-                            modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                                .size(32.dp)
+                            modifier = Modifier.background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).size(32.dp)
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.outline_list_24),
-                                contentDescription = "Chapters",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Icon(painter = painterResource(R.drawable.outline_list_24), contentDescription = "Chapters", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
 
-                // Center Play/Pause
-                PlayPauseButton(
-                    player = exoPlayer,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .align(Alignment.Center),
-                )
+                controller?.let { player ->
+                    PlayPauseButton(
+                        player = player,
+                        modifier = Modifier.size(64.dp).align(Alignment.Center),
+                    )
+                }
 
-                // Bottom Controls (Seekbar + Time)
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = formatTime(currentPosition),
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        Text(
-                            text = formatTime(duration),
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                Column(modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(text = formatTime(currentPosition), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        Text(text = formatTime(duration), color = Color.White, style = MaterialTheme.typography.labelSmall)
                     }
-
                     Slider(
                         value = if (duration > 0) currentPosition.toFloat() else 0f,
-                        onValueChange = {
-                            isDragging = true
-                            currentPosition = it.toLong()
-                        },
-                        onValueChangeFinished = {
-                            exoPlayer.seekTo(currentPosition)
-                            isDragging = false
-                        },
+                        onValueChange = { isDragging = true; currentPosition = it.toLong() },
+                        onValueChangeFinished = { controller?.seekTo(currentPosition); isDragging = false },
                         valueRange = 0f..(duration.toFloat().coerceAtLeast(1f)),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                        )
+                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
                     )
                 }
             }
         }
 
-        // CHAPTER OVERLAY
-        AnimatedVisibility(
-            visible = isChapterMenuVisible,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.9f))
-                    .clickable(enabled = true, onClick = {}) // Block click through
-            ) {
+        AnimatedVisibility(visible = isChapterMenuVisible, enter = fadeIn(), exit = fadeOut()) {
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f)).clickable(enabled = true, onClick = {})) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Header
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Chapter",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(text = "Chapter", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         IconButton(onClick = { isChapterMenuVisible = false }) {
                             IconClose(tint = Color.White)
                         }
                     }
 
-                    // Chapter List
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
+                    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
                         items(segments) { chapter ->
                             val isCurrent = currentPosition >= chapter.time &&
                                     (segments.getOrNull(segments.indexOf(chapter) + 1)?.time?.let { currentPosition < it } ?: true)
@@ -387,41 +250,23 @@ fun VideoPlayer(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        exoPlayer.seekTo(chapter.time.toLong())
+                                        controller?.seekTo(chapter.time.toLong())
                                         isChapterMenuVisible = false
                                     }
                                     .background(if (isCurrent) Color.White.copy(alpha = 0.1f) else Color.Transparent)
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Thumbnail
                                 AsyncImage(
                                     model = chapter.previewURL,
                                     contentDescription = null,
-                                    modifier = Modifier
-                                        .width(120.dp)
-                                        .aspectRatio(16f / 9f)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color.DarkGray),
+                                    modifier = Modifier.width(120.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(4.dp)).background(Color.DarkGray),
                                     contentScale = ContentScale.Crop
                                 )
-
                                 Spacer(modifier = Modifier.width(16.dp))
-
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = chapter.title,
-                                        color = Color.White,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 2
-                                    )
-                                    Text(
-                                        text = formatTime(chapter.time.toLong()),
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
+                                    Text(text = chapter.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 2)
+                                    Text(text = formatTime(chapter.time.toLong()), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                                 }
                             }
                         }
@@ -437,10 +282,6 @@ private fun formatTime(ms: Long): String {
     val seconds = totalSeconds % 60
     val minutes = (totalSeconds / 60) % 60
     val hours = totalSeconds / 3600
-
-    return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format("%02d:%02d", minutes, seconds)
-    }
+    return if (hours > 0) String.format("%d:%02d:%02d", hours, minutes, seconds)
+    else String.format("%02d:%02d", minutes, seconds)
 }
