@@ -1,5 +1,6 @@
 package com.vayunmathur.youpipe
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,10 +33,19 @@ class MainActivity : ComponentActivity() {
         NewPipe.init(MyDownloader())
         setContent {
             DynamicTheme {
-                Navigation(viewModel)
+                Navigation(getRoute(intent.data), viewModel)
             }
         }
     }
+}
+
+fun getRoute(uri: Uri?): Route {
+    if(uri != null) {
+        if("watch" in uri.pathSegments) {
+            return Route.VideoPage(uri.toString())
+        }
+    }
+    return Route.SubscriptionsPage
 }
 
 @Serializable
@@ -57,8 +67,8 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(viewModel: DatabaseViewModel) {
-    val backStack = rememberNavBackStack<Route>(Route.SearchPage)//Route.ChannelPage("https://www.youtube.com/channel/UC9RM-iSvTu1uPJb8X5yp3EQ"))
+fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
+    val backStack = rememberNavBackStack(initialRoute)
     MainNavigation(backStack) {
         entry<Route.SearchPage> {
             SearchPage(backStack)
