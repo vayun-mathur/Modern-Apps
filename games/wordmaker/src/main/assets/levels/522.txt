@@ -1,0 +1,6 @@
+ F TURF 
+ L      
+HUT    H
+  HURT U
+  R U  R
+ HURTFUL

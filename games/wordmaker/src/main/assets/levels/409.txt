@@ -1,0 +1,7 @@
+      A
+  P   D
+A A PAD
+P D E  
+E DEAD 
+  E  A 
+ ADDED 

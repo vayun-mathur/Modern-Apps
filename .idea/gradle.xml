@@ -31,6 +31,8 @@
             <option value="$PROJECT_DIR$/contacts" />
             <option value="$PROJECT_DIR$/crypto" />
             <option value="$PROJECT_DIR$/files" />
+            <option value="$PROJECT_DIR$/games" />
+            <option value="$PROJECT_DIR$/games/wordmaker" />
             <option value="$PROJECT_DIR$/health" />
             <option value="$PROJECT_DIR$/library" />
             <option value="$PROJECT_DIR$/notes" />

@@ -1,0 +1,5 @@
+  PORCH
+  R   O
+CHOP  P
+O      
+P CROP 

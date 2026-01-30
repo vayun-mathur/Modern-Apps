@@ -1,0 +1,6 @@
+    CON
+   L N 
+ CLONE 
+ O N   
+ONCE   
+ E     

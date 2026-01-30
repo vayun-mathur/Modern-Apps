@@ -1,0 +1,10 @@
+  PENS    
+  O  P    
+  K  O    
+OPEN K    
+   ONES   
+ N P  P P 
+ O E POSE 
+ S    K O 
+ E    EONS
+      N   

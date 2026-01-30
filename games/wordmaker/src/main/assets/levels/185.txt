@@ -1,0 +1,7 @@
+  I SEND
+DIN     
+  SIDE D
+  I E  I
+  DENS N
+  E  I E
+    ENDS

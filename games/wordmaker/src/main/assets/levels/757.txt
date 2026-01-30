@@ -1,0 +1,6 @@
+  Y    
+PREY   
+Y L L R
+REPLY E
+E   R L
+ PURELY

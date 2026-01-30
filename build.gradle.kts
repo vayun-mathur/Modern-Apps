@@ -26,7 +26,8 @@ subprojects {
                 compose = true
             }
 
-            namespace = "com.vayunmathur.$name"
+
+            namespace = "com.vayunmathur${path.replace(":", ".")}"
             compileSdk {
                 version = release(36)
             }

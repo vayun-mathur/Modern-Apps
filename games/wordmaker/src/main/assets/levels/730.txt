@@ -1,0 +1,7 @@
+ STAT   T
+  I     A
+  C  A  C
+CAST T  I
+A  ACTS T
+T  C I   
+STATIC   

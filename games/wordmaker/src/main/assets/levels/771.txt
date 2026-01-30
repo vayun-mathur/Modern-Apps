@@ -1,0 +1,12 @@
+      BORDER
+  B   O    O
+  ORDER    D
+  D   E  ODE
+BRED  R   O 
+O         E 
+R        ORE
+ERR      R  
+ O     ROB  
+ BOD B E    
+ E O ROD    
+  REDO      

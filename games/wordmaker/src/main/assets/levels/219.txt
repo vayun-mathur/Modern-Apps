@@ -1,0 +1,7 @@
+  LOCUS 
+    O O 
+  CONSUL
+  O   L 
+SON     
+U S     
+N       

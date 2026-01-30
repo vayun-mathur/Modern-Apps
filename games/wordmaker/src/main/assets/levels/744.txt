@@ -1,0 +1,9 @@
+         C  
+    C  GOAL 
+LOCAL  I L  
+O   O  LILAC
+G   GALL   O
+I       COAL
+C LOGIC O  A
+A       I   
+L       L   

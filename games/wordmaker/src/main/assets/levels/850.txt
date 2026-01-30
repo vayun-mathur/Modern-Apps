@@ -1,0 +1,10 @@
+    E    F   
+ F  A    E   
+ EAST F  A   
+ T  SEAS S   
+SAFE  S  T   
+A A SETS    A
+FATE   E FESS
+E S    A E  S
+S      TEAS E
+T        T  T

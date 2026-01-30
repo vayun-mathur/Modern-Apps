@@ -1,0 +1,6 @@
+R ROB  
+O O ORB
+B B R O
+E B EBB
+  E  R 
+ ORE O 

@@ -1,0 +1,9 @@
+ STAT    
+ T I     
+ I RATS  
+ARTS  T  
+R   STAIR
+T   T R  
+I   A    
+S   R    
+T  STRAIT

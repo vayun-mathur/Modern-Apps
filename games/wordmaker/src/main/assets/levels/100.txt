@@ -1,0 +1,7 @@
+FORM      
+ FIRM R   
+  O   IRON
+ INFORM  O
+F  R   FOR
+INFO   I  
+N  MINOR  

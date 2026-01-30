@@ -1,0 +1,4 @@
+    U
+NOT N
+U OUT
+T N O
