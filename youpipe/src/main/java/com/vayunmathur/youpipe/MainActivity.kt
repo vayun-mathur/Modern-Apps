@@ -15,11 +15,13 @@ import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
+import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.ui.ChannelPage
 import com.vayunmathur.youpipe.ui.SearchPage
 import com.vayunmathur.youpipe.ui.SubscriptionVideosPage
 import com.vayunmathur.youpipe.ui.SubscriptionsPage
 import com.vayunmathur.youpipe.ui.VideoPage
+import com.vayunmathur.youpipe.ui.setupHourlyTask
 import kotlinx.serialization.Serializable
 import org.schabi.newpipe.extractor.NewPipe
 
@@ -29,8 +31,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<SubscriptionDatabase>()
-        val viewModel = DatabaseViewModel(Subscription::class to db.subscriptionDao())
+        val viewModel = DatabaseViewModel(Subscription::class to db.subscriptionDao(), SubscriptionVideo::class to db.subscriptionVideoDao())
         NewPipe.init(MyDownloader())
+        setupHourlyTask(this)
         setContent {
             DynamicTheme {
                 Navigation(getRoute(intent.data), viewModel)

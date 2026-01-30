@@ -25,4 +25,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.datasource.okhttp)
+
+    val work_version = "2.9.0" // Use the latest version
+    implementation("androidx.work:work-runtime-ktx:$work_version")
 }

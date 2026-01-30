@@ -2,8 +2,12 @@ package com.vayunmathur.youpipe.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import com.vayunmathur.library.util.DefaultConverters
 
-@Database(entities = [Subscription::class], version = 1)
+@TypeConverters(DefaultConverters::class)
+@Database(entities = [Subscription::class, SubscriptionVideo::class], version = 1)
 abstract class SubscriptionDatabase : RoomDatabase() {
     abstract fun subscriptionDao(): SubscriptionDao
+    abstract fun subscriptionVideoDao(): SubscriptionVideoDao
 }

@@ -20,6 +20,7 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.TypeConverter
 import androidx.room.Upsert
 import androidx.room.migration.Migration
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
+import kotlin.time.Instant
 
 class DaoInterface<T: DatabaseItem<T>>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
     val data: StateFlow<List<T>> = dao.getAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -177,4 +179,11 @@ inline fun <reified T: RoomDatabase> Context.buildDatabase(migrations: List<Migr
         T::class.java,
         "passwords-db"
     ).addMigrations(*migrations.toTypedArray()).build()
+}
+
+class DefaultConverters {
+    @TypeConverter
+    fun fromInstant(value: Instant) = value.epochSeconds
+    @TypeConverter
+    fun toInstant(value: Long) = Instant.fromEpochSeconds(value)
 }
