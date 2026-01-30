@@ -68,5 +68,5 @@ fun MenuPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 Icon(painterResource(R.drawable.content_copy_24px), contentDescription = "Copy TOTP", Modifier.size(16.dp))
             }
         }
-    })
+    }, searchEnabled = true, searchString = {it.toString()})
 }
