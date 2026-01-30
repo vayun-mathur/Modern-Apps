@@ -49,11 +49,9 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        delay(1000)
+        delay(200)
         withContext(Dispatchers.IO) {
-            if (photos.isEmpty()) {
-                addAllPhotos(context, viewModel)
-            }
+            setAllPhotos(context, viewModel)
             println(photos.count { !it.exifSet })
             setExifData(photos, viewModel, context)
         }
@@ -65,7 +63,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 LocalDate(date.year, date.month, 1)
             }.toSortedMap(Comparator<LocalDate>(LocalDate::compareTo).reversed()).mapKeys {
                 MonthNames.ENGLISH_ABBREVIATED.names[it.key.month.ordinal] + " " + it.key.year
-            }
+            }.mapValues { it.value.sortedByDescending { it.date } }
         }
     }
     Scaffold(bottomBar = { NavigationBar(Route.Gallery, backStack) }) { paddingValues ->
@@ -97,7 +95,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 
 
 
-fun addAllPhotos(context: Context, viewModel: DatabaseViewModel) {
+fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
         MediaStore.Images.Media.DISPLAY_NAME,
@@ -129,10 +127,9 @@ fun addAllPhotos(context: Context, viewModel: DatabaseViewModel) {
             val height = cursor.getInt(heightColumn)
 
             photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null)
-
         }
     }
-    viewModel.upsertAll(photos.sortedByDescending { it.date })
+    viewModel.replaceAll(photos.sortedByDescending { it.date })
 }
 
 suspend fun CoroutineScope.setExifData(photos: List<Photo>, viewModel: DatabaseViewModel, context: Context) {
