@@ -51,6 +51,10 @@ fun SearchPage(backStack: NavBackStack<Route>) {
     val scope = rememberCoroutineScope()
 
     fun search() {
+        if(searchQuery.contains("/watch?v=")) {
+            backStack.add(Route.VideoPage(searchQuery))
+            return
+        }
         scope.launch {
             withContext(Dispatchers.IO) {
                 try {
