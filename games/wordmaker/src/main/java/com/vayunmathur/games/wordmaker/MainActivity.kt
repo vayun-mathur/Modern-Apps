@@ -497,7 +497,7 @@ fun CrosswordBoard(
             .transformable(state = state)
     ) {
         Column(
-            modifier = Modifier
+            modifier = Modifier.align(Alignment.Center)
                 .wrapContentSize(align = Alignment.TopStart, unbounded = true)
                 .graphicsLayer(
                     scaleX = scale,
