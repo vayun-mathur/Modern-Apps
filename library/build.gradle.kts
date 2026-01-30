@@ -14,10 +14,13 @@ dependencies {
     implementation(libs.androidx.glance.material3)
 
     //reorderable
-    implementation("sh.calvin.reorderable:reorderable:3.0.0")
+    implementation(libs.reorderable)
 
     // room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // work
+    implementation(libs.androidx.work.runtime.ktx)
 }
