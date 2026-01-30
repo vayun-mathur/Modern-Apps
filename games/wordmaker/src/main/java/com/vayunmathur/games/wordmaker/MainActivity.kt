@@ -160,7 +160,7 @@ fun WordGameScreen(
     var showBonusWordsDialog by remember(currentLevel) { mutableStateOf(false) }
     val density = LocalDensity.current
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
-    var wordWithDefinition by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var wordWithDefinition by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
 
     // Animation state
     val coroutineScope = rememberCoroutineScope()
@@ -258,7 +258,7 @@ fun WordGameScreen(
                             if (word != null && word in foundWords) {
                                 coroutineScope.launch {
                                     val definition = dictionary.getDefinition(word)
-                                    if (definition != null) {
+                                    if (definition.isNotEmpty()) {
                                         wordWithDefinition = Pair(word, definition)
                                     }
                                 }
@@ -405,11 +405,11 @@ fun WordGameScreen(
 }
 
 @Composable
-fun DefinitionDialog(word: String, definition: String, onDismiss: () -> Unit) {
+fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = word.replaceFirstChar { it.uppercase() }) },
-        text = { Text(text = definition) },
+        text = { Text(text = definition.joinToString("\n\n")) },
         confirmButton = {
             Button(onClick = onDismiss) {
                 Text("Close")
@@ -420,7 +420,7 @@ fun DefinitionDialog(word: String, definition: String, onDismiss: () -> Unit) {
 
 @Composable
 fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss: () -> Unit) {
-    var definitionDialog by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var definitionDialog by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Bonus Words") },
@@ -433,7 +433,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
                             .padding(vertical = 4.dp)
                             .fillMaxWidth()
                             .clickable {
-                                definitionDialog = Pair(word, dictionary.getDefinition(word)!!)
+                                definitionDialog = Pair(word, dictionary.getDefinition(word))
                             })
                 }
             }
