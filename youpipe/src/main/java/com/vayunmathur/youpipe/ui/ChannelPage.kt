@@ -1,5 +1,6 @@
 package com.vayunmathur.youpipe.ui
 
+import android.util.Base64
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,12 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
+import com.vayunmathur.youpipe.videoURLtoID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.Page
@@ -49,7 +52,7 @@ import kotlin.time.toKotlinInstant
 
 interface ItemInfo
 data class ChannelInfo(val name: String, val url: String, val subscribers: Long, val videos: Int, val avatar: String): ItemInfo
-data class VideoInfo(val name: String, val url: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String): ItemInfo
+data class VideoInfo(val name: String, val videoID: Long, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String): ItemInfo
 
 @Composable
 fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, url: String) {
@@ -69,7 +72,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ur
             videos = feedExtractor.initialPage.items.map {
                 VideoInfo(
                     it.name,
-                    it.url,
+                    videoURLtoID(it.url),
                     it.viewCount,
                     it.uploadDate!!.instant.toKotlinInstant(),
                     it.thumbnails.first().url,
@@ -109,7 +112,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ur
                 HorizontalDivider()
             }
             LazyColumn() {
-                items(videos, {it.url}) {
+                items(videos, {it.videoID}) {
                     VideoItem(backStack, it, false)
                 }
             }
@@ -120,7 +123,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ur
 @Composable
 fun VideoItem(backStack: NavBackStack<Route>, videoInfo: VideoInfo, showAuthor: Boolean) {
     Row(Modifier.invisibleClickable{
-        backStack.add(Route.VideoPage(videoInfo.url))
+        backStack.add(Route.VideoPage(videoInfo.videoID))
     }) {
         Box(Modifier.weight(1f)) {
             Box(Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp).clip(RoundedCornerShape(12.dp))) {

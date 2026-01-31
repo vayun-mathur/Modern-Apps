@@ -28,11 +28,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.videoURLtoID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,7 +54,7 @@ fun SearchPage(backStack: NavBackStack<Route>) {
 
     fun search() {
         if(searchQuery.contains("/watch?v=")) {
-            backStack.add(Route.VideoPage(searchQuery))
+            backStack.add(Route.VideoPage(videoURLtoID(searchQuery)))
             return
         }
         scope.launch {
@@ -65,9 +67,10 @@ fun SearchPage(backStack: NavBackStack<Route>) {
                             extractor.initialPage.items.mapNotNull {
                                 when(it) {
                                     is StreamInfoItem -> {
+                                        if(it.uploadDate == null) return@mapNotNull null
                                         VideoInfo(
                                             it.name,
-                                            it.url,
+                                            videoURLtoID(it.url),
                                             it.viewCount,
                                             it.uploadDate!!.instant.toKotlinInstant(),
                                             it.thumbnails.first().url,
@@ -90,6 +93,7 @@ fun SearchPage(backStack: NavBackStack<Route>) {
                         println(searchResults)
                     }
                 } catch (e: Exception) {
+                    e.printStackTrace()
                     // Handle search error
                 }
             }

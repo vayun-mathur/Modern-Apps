@@ -9,6 +9,7 @@ import com.vayunmathur.library.util.startRepeatedTask
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
+import com.vayunmathur.youpipe.videoURLtoID
 import kotlinx.coroutines.flow.first
 import org.schabi.newpipe.extractor.ServiceList
 import kotlin.time.Duration.Companion.minutes
@@ -42,7 +43,7 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
                         if (uploadInstant != null) {
                             SubscriptionVideo(
                                 item.name,
-                                item.url,
+                                videoURLtoID(item.url),
                                 item.viewCount,
                                 uploadInstant,
                                 item.thumbnails.firstOrNull()?.url ?: "",
@@ -51,7 +52,7 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
                         } else null
                     }
                 } catch (e: Exception) {
-                    emptyList<SubscriptionVideo>()
+                    emptyList()
                 }
             }.flatten().sortedByDescending { it.uploadDate }
 

@@ -97,8 +97,8 @@ class MainActivity : ComponentActivity() {
 
 fun getRoute(uri: Uri?): Route {
     if(uri != null) {
-        if("watch" in uri.pathSegments) {
-            return Route.VideoPage(uri.toString())
+        if("watch" in uri.pathSegments && "v" in uri.queryParameterNames) {
+            return Route.VideoPage(videoURLtoID(uri.toString()))
         }
     }
     return Route.SubscriptionsPage
@@ -110,7 +110,7 @@ sealed interface Route: NavKey {
     data object SearchPage : Route
 
     @Serializable
-    data class VideoPage(val uri: String) : Route
+    data class VideoPage(val videoID: Long) : Route
 
     @Serializable
     data class ChannelPage(val uri: String): Route
@@ -130,7 +130,7 @@ fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
             SearchPage(backStack)
         }
         entry<Route.VideoPage> {
-            VideoPage(backStack, it.uri)
+            VideoPage(backStack, it.videoID)
         }
         entry<Route.ChannelPage> {
             ChannelPage(backStack, viewModel, it.uri)

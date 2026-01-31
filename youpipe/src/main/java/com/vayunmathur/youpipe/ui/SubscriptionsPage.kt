@@ -76,6 +76,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                 }
                 viewModel.replaceAll(subs)
                 isLoading = false
+                setupHourlyTask(context)
             }
         }
     }

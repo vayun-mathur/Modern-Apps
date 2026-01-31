@@ -14,7 +14,7 @@ import kotlin.time.Instant
 @Entity
 data class SubscriptionVideo(
     val name: String,
-    val url: String,
+    val videoID: Long,
     val views: Long,
     val uploadDate: Instant,
     val thumbnailURL: String,
