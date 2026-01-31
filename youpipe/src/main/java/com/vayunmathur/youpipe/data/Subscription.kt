@@ -3,6 +3,7 @@ package com.vayunmathur.youpipe.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
+import com.vayunmathur.youpipe.ui.ChannelInfo
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -10,9 +11,14 @@ import kotlinx.serialization.Serializable
 data class Subscription(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
     val name: String,
-    val url: String,
+    val channelID: String,
     val avatarURL: String,
+    val uploadsPlaylistID: String,
     override val position: Double = 0.0
 ): DatabaseItem<Subscription>() {
     override fun withPosition(position: Double) = copy(position = position)
+
+    fun toChannelInfo(): ChannelInfo {
+        return ChannelInfo(name, channelID, 0, 0, avatarURL, uploadsPlaylistID)
+    }
 }

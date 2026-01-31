@@ -39,7 +39,7 @@ inline fun <reified T: ListenableWorker> startRepeatedTask(context: Context, nam
     // Run the immediate task first
     workManager.enqueueUniqueWork(
         "${name}_immediate",
-        ExistingWorkPolicy.KEEP,
+        ExistingWorkPolicy.REPLACE,
         immediateRequest
     )
 

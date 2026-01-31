@@ -35,6 +35,7 @@ import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.channelURLtoID
 import com.vayunmathur.youpipe.videoURLtoID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,10 +83,11 @@ fun SearchPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                                     is ChannelInfoItem -> {
                                         ChannelInfo(
                                             it.name,
-                                            it.url,
+                                            channelURLtoID(it.url),
                                             it.subscriberCount,
                                             0,
                                             it.thumbnails.first().url,
+                                            "",
                                         )
                                     }
                                     else -> null
@@ -166,7 +168,7 @@ fun ChannelItem(backStack: NavBackStack<Route>, channelInfo: ChannelInfo) {
     ListItem({
         Text(channelInfo.name, style = MaterialTheme.typography.titleMedium)
     }, Modifier.clickable {
-        backStack.add(Route.ChannelPage(channelInfo.url))
+        backStack.add(Route.ChannelPage(channelInfo.channelID))
     }, {
 
     }, {

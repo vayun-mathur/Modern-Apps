@@ -1,14 +1,10 @@
 package com.vayunmathur.youpipe.ui
 
-import android.util.Base64
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.invisibleClickable
@@ -46,52 +40,35 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
-import com.vayunmathur.youpipe.videoURLtoID
+import com.vayunmathur.youpipe.data.SubscriptionVideo
+import com.vayunmathur.youpipe.data.SubscriptionVideoDao
+import com.vayunmathur.youpipe.getChannelDataAndIds
+import com.vayunmathur.youpipe.getVideoDetails
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.schabi.newpipe.extractor.Page
-import org.schabi.newpipe.extractor.ServiceList
-import org.schabi.newpipe.extractor.StreamingService
 import kotlin.time.Instant
-import kotlin.time.toKotlinInstant
 
 interface ItemInfo
-data class ChannelInfo(val name: String, val url: String, val subscribers: Long, val videos: Int, val avatar: String): ItemInfo
+data class ChannelInfo(val name: String, val channelID: String, val subscribers: Long, val videos: Int, val avatar: String, val uploadsPlaylistID: String): ItemInfo {
+    fun toSubscription(): Subscription {
+        return Subscription(name = name, channelID = channelID, avatarURL = avatar, uploadsPlaylistID = uploadsPlaylistID)
+    }
+}
+
 data class VideoInfo(val name: String, val videoID: Long, val duration: Long, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String): ItemInfo
 
 @Composable
-fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, url: String) {
+fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, channelID: String) {
     var videos by remember { mutableStateOf<List<VideoInfo>>(listOf()) }
     var channelInfo by remember { mutableStateOf<ChannelInfo?>(null) }
 
     val subscriptions by viewModel.data<Subscription>().collectAsState()
 
     LaunchedEffect(Unit) {
-        val youtubeService: StreamingService = ServiceList.YouTube
         withContext(Dispatchers.IO) {
-            val channelExtractor = youtubeService.getChannelExtractor(url)
-            channelExtractor.fetchPage()
-            val feedExtractor = youtubeService.getFeedExtractor(url)!!
-            feedExtractor.fetchPage()
-            videos = feedExtractor.initialPage.items.map {
-                VideoInfo(
-                    it.name,
-                    videoURLtoID(it.url),
-                    it.duration,
-                    it.viewCount,
-                    it.uploadDate!!.instant.toKotlinInstant(),
-                    it.thumbnails.first().url,
-                    channelExtractor.name
-                )
-            }
-
-            channelInfo = ChannelInfo(
-                channelExtractor.name,
-                channelExtractor.url,
-                channelExtractor.subscriberCount,
-                videos.size,
-                channelExtractor.avatars.first().url
-            )
+            val (channel, videoIDS) = getChannelDataAndIds(listOf(channelID))
+            channelInfo = channel.first()
+            videos = getVideoDetails(videoIDS)
         }
     }
 
@@ -99,10 +76,10 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ur
         Column(Modifier.padding(paddingValues)) {
             channelInfo?.let {
                 ChannelHeader(it)
-                val existingSubscription = subscriptions.firstOrNull { it.url == url }
+                val existingSubscription = subscriptions.firstOrNull { it.channelID == channelID }
                 if(existingSubscription == null) {
                     Button({
-                        viewModel.upsert(Subscription(name = it.name, url = url, avatarURL = it.avatar))
+                        viewModel.upsert(Subscription(name = it.name, channelID = channelID, avatarURL = it.avatar, uploadsPlaylistID = it.uploadsPlaylistID))
                     }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
                         Text("Subscribe")
                     }
@@ -129,7 +106,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ur
 fun VideoItem(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, videoInfo: VideoInfo, showAuthor: Boolean) {
     val historyItem by viewModel.getNullable<HistoryVideo>(videoInfo.videoID)
     val timeWatched = historyItem?.progress ?: 0
-    val percentWatched = timeWatched.toDouble() / 1000.0 / videoInfo.duration.toDouble()
+    val percentWatched = timeWatched.toDouble() / videoInfo.duration.toDouble()
     Row(Modifier.invisibleClickable{
         backStack.add(Route.VideoPage(videoInfo.videoID))
     }) {

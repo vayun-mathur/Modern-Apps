@@ -40,15 +40,15 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.channelURLtoID
 import com.vayunmathur.youpipe.data.Subscription
+import com.vayunmathur.youpipe.getChannelInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.schabi.newpipe.extractor.ServiceList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,18 +62,13 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
 
     val filePickerActivityContract = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         it?.let {
-            val content = Json.parseToJsonElement(context.contentResolver.openInputStream(it)!!.bufferedReader().readText()).jsonObject["subscriptions"]!!.jsonArray.map {
+            val channelURLs = Json.parseToJsonElement(context.contentResolver.openInputStream(it)!!.bufferedReader().readText()).jsonObject["subscriptions"]!!.jsonArray.map {
                 it.jsonObject["url"]!!.jsonPrimitive.content
             }
             coroutineScope.launch(Dispatchers.IO) {
                 progress = 0f
                 isLoading = true
-                val subs = content.mapIndexed { idx, url ->
-                    val ex = ServiceList.YouTube.getChannelExtractor(url)
-                    ex.fetchPage()
-                    progress = (idx + 1).toFloat() / content.size
-                    Subscription(name = ex.name, url = url, avatarURL = ex.avatars.first().url)
-                }
+                val subs = getChannelInfo(channelURLs.map(::channelURLtoID)).map(ChannelInfo::toSubscription)
                 viewModel.replaceAll(subs)
                 isLoading = false
                 setupHourlyTask(context)
@@ -124,7 +119,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     ListItem({
                         Text(it.name)
                     }, Modifier.clickable {
-                        backStack.add(Route.ChannelPage(it.url))
+                        backStack.add(Route.ChannelPage(it.channelID))
                     }, {}, {}, {
                         AsyncImage(
                             model = it.avatarURL,

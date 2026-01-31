@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import com.vayunmathur.youpipe.ui.SubscriptionVideosPage
 import com.vayunmathur.youpipe.ui.SubscriptionsPage
 import com.vayunmathur.youpipe.ui.VideoPage
 import com.vayunmathur.youpipe.ui.setupHourlyTask
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import org.schabi.newpipe.extractor.NewPipe
 
@@ -74,9 +76,12 @@ class MainActivity : ComponentActivity() {
         val db = buildDatabase<SubscriptionDatabase>()
         val viewModel = DatabaseViewModel(Subscription::class to db.subscriptionDao(), SubscriptionVideo::class to db.subscriptionVideoDao(), HistoryVideo::class to db.historyVideoDao())
         NewPipe.init(MyDownloader())
-        setupHourlyTask(this)
         setContent {
             DynamicTheme {
+                LaunchedEffect(Unit) {
+                    delay(2000)
+                    setupHourlyTask(this@MainActivity)
+                }
                 Navigation(getRoute(intent.data), viewModel)
             }
         }
@@ -122,7 +127,7 @@ sealed interface Route: NavKey {
     data class VideoPage(val videoID: Long) : Route
 
     @Serializable
-    data class ChannelPage(val uri: String): Route
+    data class ChannelPage(val channelID: String): Route
 
     @Serializable
     data object SubscriptionsPage: Route
@@ -142,7 +147,7 @@ fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
             VideoPage(backStack, viewModel, it.videoID)
         }
         entry<Route.ChannelPage> {
-            ChannelPage(backStack, viewModel, it.uri)
+            ChannelPage(backStack, viewModel, it.channelID)
         }
         entry<Route.SubscriptionsPage> {
             SubscriptionsPage(backStack, viewModel)

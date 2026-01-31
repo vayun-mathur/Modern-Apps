@@ -1,6 +1,7 @@
 package com.vayunmathur.youpipe.ui
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -9,11 +10,10 @@ import com.vayunmathur.library.util.startRepeatedTask
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
-import com.vayunmathur.youpipe.videoURLtoID
+import com.vayunmathur.youpipe.getChannelVideos
+import com.vayunmathur.youpipe.getVideoDetails
 import kotlinx.coroutines.flow.first
-import org.schabi.newpipe.extractor.ServiceList
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.toKotlinInstant
 
 /**
  * FIXED: The constructor must match (Context, WorkerParameters) exactly.
@@ -22,6 +22,7 @@ import kotlin.time.toKotlinInstant
  */
 class SubscriptionFetchTask(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        Log.d("SubscriptionFetchTask", "Starting...")
         return try {
             val db = applicationContext.buildDatabase<SubscriptionDatabase>()
             val viewModel = DatabaseViewModel(
@@ -30,36 +31,29 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
             )
 
             val subscriptions = viewModel.getDaoInterface<Subscription>().dao.getAll().first()
+            Log.d("SubscriptionFetchTask", "Fetched ${subscriptions.size} subscriptions")
 
-            val videos = subscriptions.mapIndexed { idx, sub ->
-                try {
-                    val feedExtractor = ServiceList.YouTube.getFeedExtractor(sub.url)
-                    feedExtractor.fetchPage()
+            val videoIDs = getChannelVideos(subscriptions.map { it.toChannelInfo() })
+            Log.d("SubscriptionFetchTask", "Fetched ${videoIDs.size} video IDs")
 
-                    feedExtractor.initialPage.items.mapNotNull { item ->
-                        // Added safety check for uploadDate as it can be null in NewPipe extractor
-                        val uploadInstant = item.uploadDate?.instant?.toKotlinInstant()
-
-                        if (uploadInstant != null) {
-                            SubscriptionVideo(
-                                item.name,
-                                videoURLtoID(item.url),
-                                item.duration,
-                                item.viewCount,
-                                uploadInstant,
-                                item.thumbnails.firstOrNull()?.url ?: "",
-                                item.uploaderName
-                            )
-                        } else null
-                    }
-                } catch (e: Exception) {
-                    emptyList()
-                }
-            }.flatten().sortedByDescending { it.uploadDate }
+            val videos = getVideoDetails(videoIDs).map{
+                SubscriptionVideo(
+                    id = it.videoID,
+                    name = it.name,
+                    duration = it.duration,
+                    views = it.views,
+                    uploadDate = it.uploadDate,
+                    thumbnailURL = it.thumbnailURL,
+                    author = it.author,
+                )
+            }.sortedByDescending { it.uploadDate }
 
             viewModel.replaceAll(videos)
             Result.success()
         } catch (e: Exception) {
+            Log.d("SubscriptionFetchTask", "Error: ${e.message}")
+            Log.d("SubscriptionFetchTask", "Stack Trace: ${e.stackTraceToString()}")
+
             Result.retry()
         }
     }

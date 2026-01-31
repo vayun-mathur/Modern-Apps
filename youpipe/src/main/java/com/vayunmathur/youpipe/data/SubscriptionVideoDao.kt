@@ -13,14 +13,13 @@ import kotlin.time.Instant
 @Serializable
 @Entity
 data class SubscriptionVideo(
+    @PrimaryKey(autoGenerate = true) override val id: Long = 0, // video id
     val name: String,
-    val videoID: Long,
     val duration: Long,
     val views: Long,
     val uploadDate: Instant,
     val thumbnailURL: String,
     val author: String,
-    @PrimaryKey(autoGenerate = true) override val id: Long = 0,
     override val position: Double = 0.0
 ): DatabaseItem<SubscriptionVideo>() {
     override fun withPosition(position: Double) = copy(position = position)
