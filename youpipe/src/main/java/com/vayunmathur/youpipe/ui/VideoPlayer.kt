@@ -1,6 +1,8 @@
 package com.vayunmathur.youpipe.ui
 
+import android.app.PictureInPictureParams
 import android.content.ComponentName
+import android.os.Build
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -19,12 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toAndroidRectF
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.toRect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -37,6 +43,8 @@ import coil.compose.AsyncImage
 import com.google.common.util.concurrent.MoreExecutors
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.findActivity
+import com.vayunmathur.youpipe.rememberIsInPipMode
 import kotlinx.coroutines.delay
 
 @OptIn(UnstableApi::class)
@@ -73,6 +81,10 @@ fun VideoPlayer(
         }, MoreExecutors.directExecutor())
 
         onDispose {
+            controller?.let {
+                it.stop() // This is critical!
+                it.release()
+            }
             MediaController.releaseFuture(controllerFuture)
         }
     }
@@ -85,9 +97,19 @@ fun VideoPlayer(
                     duration = player.duration.coerceAtLeast(0L)
                 }
             }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                context.findActivity().setPictureInPictureParams(PictureInPictureParams.Builder().apply {
+                    setAutoEnterEnabled(isPlaying)
+                }.build())
+            }
         }
         player.addListener(listener)
-        onDispose { player.removeListener(listener) }
+        onDispose {
+            player.removeListener(listener)
+            context.findActivity().setPictureInPictureParams(PictureInPictureParams.Builder().apply {
+                setAutoEnterEnabled(false)
+            }.build())
+        }
     }
 
     LaunchedEffect(controller, isDragging) {
@@ -128,6 +150,8 @@ fun VideoPlayer(
         }
     }
 
+    val isPipMode = rememberIsInPipMode()
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,7 +168,7 @@ fun VideoPlayer(
             )
         } ?: Box(modifier = Modifier.fillMaxSize().background(Color.Black))
 
-        AnimatedVisibility(visible = isControlsVisible, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = isControlsVisible && !isPipMode, enter = fadeIn(), exit = fadeOut()) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) {
 
                 Row(
@@ -227,7 +251,7 @@ fun VideoPlayer(
             }
         }
 
-        AnimatedVisibility(visible = isChapterMenuVisible, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = isChapterMenuVisible && !isPipMode, enter = fadeIn(), exit = fadeOut()) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f)).clickable(enabled = true, onClick = {})) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(

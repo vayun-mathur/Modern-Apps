@@ -5,6 +5,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -117,5 +118,16 @@ class PlaybackService : MediaSessionService() {
         if (player?.playWhenReady == false || player?.mediaItemCount == 0) {
             stopSelf()
         }
+    }
+
+    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
+        // If the player is stopped or the activity has disconnected,
+        // we stop the service from being a foreground service.
+        if (session.player.playbackState == Player.STATE_IDLE ||
+            session.player.playbackState == Player.STATE_ENDED) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+        super.onUpdateNotification(session, startInForegroundRequired)
     }
 }
