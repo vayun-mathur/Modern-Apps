@@ -64,7 +64,7 @@ import com.vayunmathur.library.ui.IconAdd
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.SortedMap
+import okio.sink
 import kotlin.io.encoding.Base64
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,7 +79,7 @@ fun ContactList(
 
     val (profiles, mainContacts) = remember(contacts) { contacts.partition { it.isProfile } }
     val (favorites, otherContacts) = remember(mainContacts) { mainContacts.partition { it.isFavorite } }
-    val groupedContacts: SortedMap<Char, List<Contact>> = remember(otherContacts) {
+    val groupedContacts = remember(otherContacts) {
         otherContacts.groupBy { it.name.value.first().uppercaseChar() }
             .mapValues { (_, c) -> c.sortedBy { it.name.value } }
             .toSortedMap()
@@ -95,7 +95,7 @@ fun ContactList(
             uri?.let {
                 coroutineScope.launch {
                     try {
-                        context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                        context.contentResolver.openOutputStream(it)?.sink()?.use { outputStream ->
                             VcfUtils.exportContacts(contacts, outputStream)
                         }
                     } catch (e: Exception) {
@@ -180,7 +180,7 @@ fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -
 
     val (favorites, otherContacts) = mainContacts.partition { it.isFavorite }
 
-    val groupedContacts: SortedMap<Char, List<Contact>> = otherContacts
+    val groupedContacts = otherContacts
         .groupBy { it.name.value.first().uppercaseChar() }
         .toSortedMap()
 

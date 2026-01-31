@@ -61,8 +61,7 @@ import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
@@ -84,9 +83,9 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
 
     val event = events.find { it.id == eventId }
 
-    val znow = ZonedDateTime.now(ZoneId.systemDefault())
-    val today = LocalDate(znow.year, znow.monthValue, znow.dayOfMonth)
-    val now = LocalTime(znow.hour, znow.minute)
+    val znow = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val today = znow.date
+    val now = znow.time
 
     var title by remember { mutableStateOf(event?.title ?: "") }
     var description by remember { mutableStateOf(event?.description ?: "") }

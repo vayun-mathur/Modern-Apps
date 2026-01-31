@@ -39,6 +39,7 @@ sol4k = "0.7.0"
 kotlinxDatetime = "0.7.1"
 kotlinxSerializationJson = "1.10.0"
 libphonenumber = "9.0.22"
+okio = "3.16.4"
 
 # Testing & Tools
 junit = "4.13.2"
@@ -51,6 +52,7 @@ media3DatasourceOkhttp = "1.9.0"
 workRuntimeKtx = "2.11.1"
 
 [libraries]
+okio = {group = "com.squareup.okio", name = "okio", version.ref = "okio"}
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workRuntimeKtx" }
 kotlin-csv-jvm = { module = "com.jsoizo:kotlin-csv-jvm", version.ref = "kotlinCsvJvm" }

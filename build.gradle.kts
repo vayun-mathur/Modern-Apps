@@ -79,6 +79,7 @@ subprojects {
 
     dependencies {
         // AndroidX Core & Lifecycle
+        "implementation"(libs.findLibrary("okio").get())
         "implementation"(libs.findLibrary("kotlinx-datetime").get())
         "implementation"(libs.findLibrary("androidx-core-ktx").get())
         "implementation"(libs.findLibrary("androidx-lifecycle-runtime-ktx").get())

@@ -40,8 +40,8 @@ import com.vayunmathur.crypto.api.PredictionMarket
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.round
 import kotlinx.serialization.Serializable
-import java.text.NumberFormat
 
 @Serializable
 data class PredictionMarketDetailPage(val marketId: String): NavKey
@@ -168,7 +168,7 @@ fun PredictionMarketDetailScreen(viewModel: PortfolioViewModel, backStack: NavBa
                     Text(" — ${marketItem.subtitle}")
                 }
             },
-            { outputAmount -> Text("Buy ${if(isYes) "Yes" else "No"} -> Win ${NumberFormat.getCurrencyInstance().format(outputAmount)}") },
+            { outputAmount -> Text("Buy ${if(isYes) "Yes" else "No"} -> Win $${outputAmount.round(2)}") },
             { selectedMarket = null },
         )
     }

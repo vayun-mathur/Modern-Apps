@@ -15,11 +15,11 @@ import android.service.autofill.SaveRequest
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
+import androidx.core.net.toUri
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.passwords.data.PasswordDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import java.net.URI
 
 class PasswordAutofillService : AutofillService() {
 
@@ -141,7 +141,7 @@ class PasswordAutofillService : AutofillService() {
 
         // Check Web Domain match
         if (currentWeb != null) {
-            val host = try { URI(if(normalized.startsWith("http")) normalized else "https://$normalized").host } catch (_: Exception) { normalized }
+            val host = try { (if (normalized.startsWith("http")) normalized else "https://$normalized").toUri().host } catch (_: Exception) { normalized }
             if (currentWeb.contains(host ?: normalized)) return true
         }
         return false

@@ -1,7 +1,6 @@
 package com.vayunmathur.games.wordmaker
 
 import android.content.Context
-import java.io.IOException
 
 data class CrosswordData(
     val solutionWords: Set<String>,
@@ -76,7 +75,7 @@ data class CrosswordData(
                     gridStructure = grid,
                     letterPositions = positions
                 )
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 e.printStackTrace()
                 null
             }

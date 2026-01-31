@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import java.text.DecimalFormat
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.log10
+import kotlin.math.round
 
 @Composable
 fun MaximizedRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
@@ -20,20 +20,20 @@ fun MaximizedRow(modifier: Modifier = Modifier, content: @Composable RowScope.()
 }
 
 fun Double.displayAmount(): String {
-    return if (abs(this) < 1) {
-        // Up to 3 significant figures (no scientific notation)
-        val ax = abs(this)
-        if (ax == 0.0) return "0"
+    val absoluteValue = abs(this)
+    if (absoluteValue == 0.0) return "0"
 
-        // number of decimals needed so total sig figs = 3
-        val digitsBeforeDecimal = floor(log10(ax)).toInt()  // negative for < 1
-        val decimals = 3 - (digitsBeforeDecimal + 1)
+    return if (absoluteValue < 1.0) {
+        // Calculate the number of decimals needed for 3 significant figures
+        // log10(0.00123) is -3, so we need more precision for smaller numbers
+        val magnitude = floor(log10(absoluteValue)).toInt()
+        val decimals = (2 - magnitude).coerceAtLeast(0)
 
-        val df = DecimalFormat("#.${"#".repeat(decimals)}")
-        df.format(this)
+        // Use format string: "%.Nf" where N is the number of decimals
+        "%.${decimals}f".format(this)
     } else {
-        // Up to 2 decimals
-        val df = DecimalFormat("#.##")
-        df.format(this)
-    }
+        // Round to up to 2 decimal places
+        val rounded = round(this * 100) / 100.0
+        return rounded.toString()
+    }.trimEnd('0').trimEnd('.')
 }

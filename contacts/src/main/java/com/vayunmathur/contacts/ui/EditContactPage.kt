@@ -83,7 +83,7 @@ import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 import kotlinx.datetime.format.MonthNames
-import java.io.ByteArrayOutputStream
+import okio.Buffer
 import kotlin.io.encoding.Base64
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,9 +108,9 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
         if (uri != null) {
             val inputStream = context.contentResolver.openInputStream(uri)
             val bitmap = BitmapFactory.decodeStream(inputStream).scale(500, 500)
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
-            val value = Base64.encode(byteArrayOutputStream.toByteArray())
+            val baos = Buffer()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos.outputStream())
+            val value = Base64.encode(baos.readByteArray())
             photo = photo?.withValue(value) ?: Photo(0, value)
         }
     }

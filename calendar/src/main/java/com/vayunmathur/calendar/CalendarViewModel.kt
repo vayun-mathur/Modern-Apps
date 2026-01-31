@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import java.util.TimeZone
+import kotlinx.datetime.TimeZone
 
 
 class ContactViewModel(application: Application) : AndroidViewModel(application) {
@@ -167,7 +167,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
                 put(CalendarContract.Calendars.VISIBLE, if (visible) 1 else 0)
                 put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL, accessLevel)
                 put(CalendarContract.Calendars.SYNC_EVENTS, 1)
-                put(CalendarContract.Calendars.CALENDAR_TIME_ZONE, TimeZone.getDefault().id)
+                put(CalendarContract.Calendars.CALENDAR_TIME_ZONE, TimeZone.currentSystemDefault().id)
             }
 
             try {

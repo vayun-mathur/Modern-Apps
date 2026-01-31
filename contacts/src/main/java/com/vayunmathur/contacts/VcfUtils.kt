@@ -1,18 +1,20 @@
 package com.vayunmathur.contacts
 
 import android.provider.ContactsContract
+import com.vayunmathur.library.util.readLines
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import java.io.OutputStream
-import java.nio.charset.Charset
+import okio.Buffer
+import okio.BufferedSink
+import okio.Sink
+import okio.Source
+import okio.buffer
 
 object VcfUtils {
-    suspend fun exportContacts(contacts: List<Contact>, outputStream: OutputStream) {
+    suspend fun exportContacts(contacts: List<Contact>, outputStream: Sink) {
         withContext(Dispatchers.IO) {
-            outputStream.bufferedWriter().use { writer ->
+            outputStream.buffer().use { writer ->
                 for (contact in contacts) {
                     val details = contact.details
                     writeFolded(writer, "BEGIN:VCARD")
@@ -92,9 +94,9 @@ object VcfUtils {
     }
 
     // New: parse vCard stream into a list of Contact objects without saving them to the Contacts provider.
-    fun parseContacts(inputStream: InputStream): List<Contact> {
+    fun parseContacts(inputStream: Source): List<Contact> {
         val contactsToSave = mutableListOf<Contact>()
-        val reader = inputStream.bufferedReader()
+        val reader = inputStream.buffer()
 
         // Read and unfold folded lines (lines starting with space or tab continue previous)
         val rawLines = reader.readLines()
@@ -273,11 +275,11 @@ object VcfUtils {
         return out
     }
 
-    private fun writeFolded(writer: java.io.BufferedWriter, line: String) {
+    private fun writeFolded(writer: BufferedSink, line: String) {
         val maxLineLength = 75
         if (line.length <= maxLineLength) {
-            writer.write(line)
-            writer.write("\r\n")
+            writer.writeUtf8(line)
+            writer.writeUtf8("\r\n")
             return
         }
         var idx = 0
@@ -285,18 +287,18 @@ object VcfUtils {
             val end = kotlin.math.min(idx + maxLineLength, line.length)
             val part = line.substring(idx, end)
             if (idx == 0) {
-                writer.write(part)
-                writer.write("\r\n")
+                writer.writeUtf8(part)
+                writer.writeUtf8("\r\n")
             } else {
-                writer.write(" $part")
-                writer.write("\r\n")
+                writer.writeUtf8(" $part")
+                writer.writeUtf8("\r\n")
             }
             idx = end
         }
     }
 
     private fun decodeQuotedPrintable(input: String, charsetName: String): String {
-        val out = ByteArrayOutputStream()
+        val out = Buffer()
         var i = 0
         while (i < input.length) {
             val c = input[i]
@@ -306,7 +308,7 @@ object VcfUtils {
                     val hex = input.substring(i + 1, i + 3)
                     val byteVal = hex.toIntOrNull(16)
                     if (byteVal != null) {
-                        out.write(byteVal)
+                        out.writeByte(byteVal)
                         i += 3
                         continue
                     }
@@ -315,11 +317,11 @@ object VcfUtils {
                 i++
             } else {
                 // write literal byte using US-ASCII
-                out.write(c.code)
+                out.writeByte(c.code)
                 i++
             }
         }
-        return String(out.toByteArray(), Charset.forName(charsetName))
+        return out.readString(charset(charsetName))
     }
 
     private fun detectPhoneType(params: Map<String, List<String>>): Int {

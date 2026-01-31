@@ -71,7 +71,9 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 import kotlinx.datetime.format.MonthNames
-import java.io.File
+import okio.FileSystem
+import okio.Path.Companion.toOkioPath
+import okio.buffer
 import kotlin.io.encoding.Base64
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,11 +127,11 @@ fun ContactDetailsPage(
                     }
                     IconButton(onClick = {
                         scope.launch(Dispatchers.IO) {
-                            val vcfFile = File(context.cacheDir, "${contact!!.name.value.replace(' ', '_')}.vcf")
-                            vcfFile.outputStream().use { outputStream ->
+                            val vcfFile = context.cacheDir.toOkioPath().resolve("${contact!!.name.value.replace(' ', '_')}.vcf")
+                            FileSystem.SYSTEM.sink(vcfFile).buffer().use { outputStream ->
                                 VcfUtils.exportContacts(listOf(contact!!), outputStream)
                             }
-                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", vcfFile)
+                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", vcfFile.toFile())
                             val intent = Intent(Intent.ACTION_SEND)
                             intent.type = "text/x-vcard"
                             intent.putExtra(Intent.EXTRA_STREAM, uri)

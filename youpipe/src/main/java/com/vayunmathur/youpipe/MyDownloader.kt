@@ -1,55 +1,50 @@
-package com.vayunmathur.youpipe;
+package com.vayunmathur.youpipe
 
-import org.schabi.newpipe.extractor.downloader.Downloader;
-import org.schabi.newpipe.extractor.downloader.Request;
-import org.schabi.newpipe.extractor.downloader.Response;
+import okhttp3.Headers
+import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.schabi.newpipe.extractor.downloader.Downloader
+import org.schabi.newpipe.extractor.downloader.Request
+import org.schabi.newpipe.extractor.downloader.Response
+import kotlin.time.Duration.Companion.seconds
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
+class MyDownloader : Downloader() {
+    // Build the client with reasonable timeouts
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15.seconds)
+        .readTimeout(15.seconds)
+        .build()
 
-import okhttp3.Headers;
-import okhttp3.OkHttpClient;
-
-public class MyDownloader extends Downloader {
-    private final OkHttpClient client;
-
-    public MyDownloader() {
-        // Build the client with reasonable timeouts
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .build();
-    }
-
-    @Override
-    public Response execute(Request request) throws IOException {
-        String url = request.url();
-        String method = request.httpMethod();
-        byte[] body = request.dataToSend();
-        Headers.Builder headersBuilder = new Headers.Builder();
-        for (Map.Entry<String, List<String>> entry : request.headers().entrySet()) {
-            for (String value : entry.getValue()) {
-                headersBuilder.add(entry.getKey(), value);
+    override fun execute(request: Request): Response {
+        val url = request.url()
+        val method = request.httpMethod()
+        val body = request.dataToSend()
+        val headersBuilder = Headers.Builder()
+        for (entry in request.headers().entries) {
+            for (value in entry.value) {
+                headersBuilder.add(entry.key, value)
             }
         }
-        Headers headers = headersBuilder.build();
+        val headers = headersBuilder.build()
 
         // Construct the OkHttp Request
-        okhttp3.Request okHttpRequest = new okhttp3.Request.Builder()
-                .url(url)
-                .method(method, body != null ? okhttp3.RequestBody.create(body) : null)
-                .headers(headers)
-                .build();
+        val okHttpRequest = okhttp3.Request.Builder()
+            .url(url)
+            .method(method, body?.toRequestBody())
+            .headers(headers)
+            .build()
 
-        // Execute and wrap the OkHttp Response into a NewPipe Response
-        try (okhttp3.Response okHttpResponse = client.newCall(okHttpRequest).execute()) {
-            int responseCode = okHttpResponse.code();
-            String responseMessage = okHttpResponse.message();
-            String responseBody = okHttpResponse.body() != null ? okHttpResponse.body().string() : "";
-
-            return new Response(responseCode, responseMessage, okHttpResponse.headers().toMultimap(), responseBody, url);
+        client.newCall(okHttpRequest).execute().use { okHttpResponse ->
+            val responseCode = okHttpResponse.code
+            val responseMessage = okHttpResponse.message
+            val responseBody = okHttpResponse.body.string()
+            return Response(
+                responseCode,
+                responseMessage,
+                okHttpResponse.headers.toMultimap(),
+                responseBody,
+                url
+            )
         }
     }
 }

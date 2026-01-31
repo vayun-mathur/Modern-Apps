@@ -45,7 +45,6 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
 import com.vayunmathur.crypto.MaximizedRow
 import com.vayunmathur.crypto.PortfolioViewModel
-import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.R
 import com.vayunmathur.crypto.SwapPage
 import com.vayunmathur.crypto.api.JupiterAPI
@@ -53,10 +52,9 @@ import com.vayunmathur.crypto.api.PendingOrder
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.round
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import java.text.NumberFormat
-import java.util.Locale
 import kotlin.math.pow
 
 @Composable
@@ -165,10 +163,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                         )
                         val fromValue = (fromAmount.toDoubleOrNull()
                             ?: 0.0) * (TokenPriceRepository[fromTokenInfo]?.price ?: 0.0)
-                        Text(
-                            NumberFormat.getCurrencyInstance().format(fromValue),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Text("$${fromValue.round(2)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -199,7 +194,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                             otherSelectedToken = fromTokenInfo
                         )
                         Spacer(Modifier.weight(1f))
-                        Text(toAmount?.let { String.format(Locale.US, "%.6f", it)} ?: "—", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        Text(toAmount?.round(6)?.toString() ?: "—", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     }
                      Row {
                         Text(
@@ -209,7 +204,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                         Spacer(Modifier.weight(1f))
                         val toValue = if(toAmount != null) toAmount * (TokenPriceRepository[toTokenInfo]?.price ?: 0.0) else null
                         Text(
-                            toValue?.let { NumberFormat.getCurrencyInstance().format(it) } ?: "—",
+                            toValue?.let { "$${it.round(2)}" } ?: "—",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -235,7 +230,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        "1 ${fromTokenInfo.symbol} = ${String.format(Locale.US, "%.6f", rate)} ${toTokenInfo.symbol}",
+                        "1 ${fromTokenInfo.symbol} = ${rate.round(6)} ${toTokenInfo.symbol}",
                         modifier = Modifier.padding(start = 8.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )

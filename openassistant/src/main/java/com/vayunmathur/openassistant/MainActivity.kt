@@ -86,7 +86,8 @@ import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.io.ByteArrayOutputStream
+import okio.Buffer
+import okio.Sink
 import kotlin.collections.listOf
 import kotlin.random.Random
 
@@ -265,9 +266,9 @@ fun ConversationScreen(
             val imageBase64s = selectedImageUris.value.map { uri ->
                 val inputStream = context.contentResolver.openInputStream(uri)
                 val bitmap = BitmapFactory.decodeStream(inputStream)
-                val baos = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
-                Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT or Base64.NO_WRAP)
+                val baos = Buffer()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos.outputStream())
+                Base64.encodeToString(baos.readByteArray(), Base64.DEFAULT or Base64.NO_WRAP)
             }
 
             val userMessage = Message(

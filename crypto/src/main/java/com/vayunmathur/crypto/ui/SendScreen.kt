@@ -36,8 +36,8 @@ import com.vayunmathur.crypto.SendPage
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.round
 import org.sol4k.PublicKey
-import java.text.NumberFormat
 
 @Composable
 fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
@@ -121,10 +121,7 @@ fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                         )
                         val fromValue = (fromAmount.toDoubleOrNull()
                             ?: 0.0) * (TokenPriceRepository[fromTokenInfo]?.price ?: 0.0)
-                        Text(
-                            NumberFormat.getCurrencyInstance().format(fromValue),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        Text("$${fromValue.round(2)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

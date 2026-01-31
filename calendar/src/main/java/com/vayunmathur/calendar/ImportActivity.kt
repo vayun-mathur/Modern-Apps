@@ -41,22 +41,19 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.ui.dateRangeString
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconSave
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.UtcOffset
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.atTime
+import kotlinx.datetime.format.DateTimeComponents
+import kotlinx.datetime.format.char
 import kotlinx.datetime.toInstant
-import java.io.BufferedInputStream
-import java.io.InputStream
-import java.time.Duration
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
-import java.util.Locale
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 class ImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -208,7 +205,7 @@ fun EventCard(event: Event) {
 }
 
 // Simple ICS parser that returns a list of Event (uses the app's Event class)
-fun parseICSFile(iS: InputStream): List<Event> {
+fun parseICSFile(iS: InputS): List<Event> {
     val events = mutableListOf<Event>()
 
     // Read and unfold lines (lines that start with space or tab are continuations)
@@ -270,7 +267,7 @@ fun parseICSFile(iS: InputStream): List<Event> {
 
                 // If event was all-day but end time is same-day start, adjust end to next day
                 if (startAllDay && startMillis != null && endMillis == startMillis) {
-                    endMillis = startMillis + Duration.ofDays(1).toMillis()
+                    endMillis = startMillis + 1.days.inWholeMilliseconds
                 }
 
                 val evt = Event(id, -1, title, description, location, null, startMillis ?: 0L, endMillis ?: (startMillis ?: 0L), timezone,
@@ -294,7 +291,7 @@ fun parseICSFile(iS: InputStream): List<Event> {
 
         // Extract property name and keep full left for param-aware keys
         val semicolonIndex = left.indexOf(';')
-        val propName = if (semicolonIndex > 0) left.take(semicolonIndex).uppercase(Locale.getDefault()) else left.uppercase(Locale.getDefault())
+        val propName = if (semicolonIndex > 0) left.take(semicolonIndex).uppercase() else left.uppercase()
 
         // Store value; also keep property with params for DTSTART/DTEND
         when (propName) {
@@ -319,45 +316,53 @@ private fun parseICSTime(propLeft: String?, value: String?): Triple<Long?, Boole
     if (value == null) return Triple(null, false, null)
 
     val left = propLeft ?: ""
-    val up = left.uppercase(Locale.getDefault())
+    val up = left.uppercase()
 
     // all-day if VALUE=DATE or value is 8 chars
     val isAllDay = up.contains("VALUE=DATE") || value.length == 8 && value.all { it.isDigit() }
 
     return try {
         if (isAllDay) {
-            val dt = LocalDate.parse(value, DateTimeFormatter.ofPattern("yyyyMMdd"))
-            val start = dt.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            val dt = AllDayFormat.parse(value)
+            // atStartOfDayIn returns an Instant
+            val start = dt.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
             Triple(start, true, "UTC")
         } else {
-            // Check for UTC 'Z' suffix
-            if (value.endsWith("Z")) {
-                val fmt = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX")
-                val instant = Instant.from(fmt.parse(value))
-                Triple(instant.toEpochMilli(), false, "UTC")
+            // 1. Handle UTC 'Z' suffix or explicit offsets
+            if (value.endsWith("Z") || value.contains("+") || value.contains("-")) {
+                // DateTimeComponents.parse returns a result we convert to an Instant
+                val result = BasicIsoInstantFormat.parse(value)
+                val instant = result.toInstantUsingOffset()
+                Triple(instant.toEpochMilliseconds(), false, "UTC")
             } else {
-                // look for TZID in left params
+                // 2. Handle strings without offsets (floating time)
                 val tzid = extractTZID(left)
-                val patternCandidates = listOf("yyyyMMdd'T'HHmmss", "yyyyMMdd'T'HHmm")
+                val candidates = listOf(DateTimeFormat, DateTimeShortFormat)
                 var parsedInstant: Instant? = null
-                for (pat in patternCandidates) {
+
+                for (fmt in candidates) {
                     try {
-                        val fmt = DateTimeFormatter.ofPattern(pat)
                         val ldt = LocalDateTime.parse(value, fmt)
-                        val z = if (tzid != null) ZoneId.of(tzid) else ZoneOffset.UTC
-                        parsedInstant = ldt.atZone(z).toInstant()
+                        val zone = tzid?.let { TimeZone.of(it) } ?: TimeZone.UTC
+                        parsedInstant = ldt.toInstant(zone)
                         break
-                    } catch (_: DateTimeParseException) {
-                        // try next
+                    } catch (e: IllegalArgumentException) {
+                        // try next candidate
                     }
                 }
-                if (parsedInstant != null) Triple(parsedInstant.toEpochMilli(), false, tzid ?: "UTC") else Triple(null, false, tzid)
+
+                if (parsedInstant != null) {
+                    Triple(parsedInstant.toEpochMilliseconds(), false, tzid ?: "UTC")
+                } else {
+                    Triple(null, false, tzid)
+                }
             }
         }
     } catch (e: Exception) {
         e.printStackTrace()
         Triple(null, false, null)
     }
+
 }
 
 private fun extractTZID(left: String): String? {
@@ -366,7 +371,7 @@ private fun extractTZID(left: String): String? {
     for (p in parts) {
         val idx = p.indexOf('=')
         if (idx > 0) {
-            val k = p.take(idx).uppercase(Locale.getDefault())
+            val k = p.take(idx).uppercase()
             if (k == "TZID") {
                 return p.substring(idx + 1)
             }
@@ -379,8 +384,36 @@ private fun tryParseDurationMillis(duration: String, startMillis: Long): Long? {
     // very small support for ISO 8601 durations like P1D, PT1H30M, etc.
     try {
         val d = Duration.parse(duration)
-        return startMillis + d.toMillis()
+        return startMillis + d.inWholeMilliseconds
     } catch (_: Exception) {
         return null
     }
+}
+
+
+// This handles the full yyyyMMdd'T'HHmmssZ pattern
+val BasicIsoInstantFormat = DateTimeComponents.Format {
+    year(); monthNumber(); dayOfMonth()
+    char('T')
+    hour(); minute(); second()
+    // ISO_BASIC handles 'Z' or '+HHmm' (no colons)
+    offset(UtcOffset.Formats.ISO_BASIC)
+}
+
+// Format for all-day events: yyyyMMdd
+val AllDayFormat = LocalDate.Format {
+    year(); monthNumber(); dayOfMonth()
+}
+
+// Formats for local times without offset
+val DateTimeFormat = LocalDateTime.Format {
+    year(); monthNumber(); dayOfMonth()
+    char('T')
+    hour(); minute(); second()
+}
+
+val DateTimeShortFormat = LocalDateTime.Format {
+    year(); monthNumber(); dayOfMonth()
+    char('T')
+    hour(); minute()
 }

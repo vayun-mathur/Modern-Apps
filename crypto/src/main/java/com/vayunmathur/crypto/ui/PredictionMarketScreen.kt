@@ -41,7 +41,7 @@ import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.api.PredictionMarket
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.library.util.BottomNavBar
-import java.text.NumberFormat
+import com.vayunmathur.library.util.round
 
 @Composable
 fun PredictionMarketScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
@@ -96,7 +96,7 @@ fun PredictionMarketScreen(viewModel: PortfolioViewModel, backStack: NavBackStac
                     Text(" — ${marketItem.subtitle}")
                 }
             },
-            { outputAmount -> Text("Buy ${if(isYes) "Yes" else "No"} -> Win ${NumberFormat.getCurrencyInstance().format(outputAmount)}") },
+            { outputAmount -> Text("Buy ${if(isYes) "Yes" else "No"} -> Win $${outputAmount.round(2)}") },
             { selectedMarket = null },
         )
     }
@@ -137,7 +137,7 @@ fun PredictionMarketCard(market: PredictionMarket.Event, backStack: NavBackStack
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text("Show More >", style = MaterialTheme.typography.labelSmall)
-                Text("$${NumberFormat.getNumberInstance().format(market.volume)} vol",
+                Text("$${market.volume} vol",
                     style = MaterialTheme.typography.labelSmall
                 )
             }

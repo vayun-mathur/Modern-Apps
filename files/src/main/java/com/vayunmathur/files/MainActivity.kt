@@ -55,7 +55,9 @@ import androidx.core.content.FileProvider
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
-import java.io.File
+import okio.FileSystem
+import okio.Path
+import okio.Path.Companion.toOkioPath
 import kotlin.math.roundToLong
 
 class MainActivity : ComponentActivity() {
@@ -90,37 +92,49 @@ fun HomeDirectoryPage() {
             }
         }
     } else {
-        DirectoryPage(Environment.getExternalStorageDirectory())
+        DirectoryPage(Environment.getExternalStorageDirectory().toOkioPath())
     }
+}
+
+val fs = FileSystem.SYSTEM
+fun Path.listFiles(): List<Path> = fs.list(this).toList()
+val Path.isDirectory: Boolean
+    get() = fs.metadataOrNull(this)!!.isDirectory
+val Path.size: Long?
+    get() = fs.metadataOrNull(this)!!.size
+
+fun Path.deleteRecursively() {
+    if (isDirectory) {
+        listFiles().forEach { it.deleteRecursively() }
+    }
+    fs.delete(this)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DirectoryPage(rootFile: File) {
+fun DirectoryPage(rootFile: Path) {
     val context = LocalContext.current
     var currentDirectory by remember { mutableStateOf(rootFile) }
-    var selectedPaths by remember(currentDirectory) { mutableStateOf(setOf<String>()) }
-    var pathBeingRenamed by remember { mutableStateOf<String?>(null) }
+    var selectedPaths by remember(currentDirectory) { mutableStateOf(setOf<Path>()) }
+    var pathBeingRenamed by remember { mutableStateOf<Path?>(null) }
 
     // Data state
     var filesList by remember(currentDirectory) {
-        mutableStateOf(currentDirectory.listFiles()?.partition { it.isDirectory }
-            ?: Pair(emptyList<File>(), emptyList<File>()))
+        mutableStateOf(currentDirectory.listFiles().partition { it.isDirectory })
     }
 
     fun forceRefresh() {
-        filesList = currentDirectory.listFiles()?.partition { it.isDirectory }
-            ?: Pair(emptyList<File>(), emptyList<File>())
+        filesList = currentDirectory.listFiles().partition { it.isDirectory }
     }
     val (directories, files) = filesList
 
     val focusManager = LocalFocusManager.current
 
-    BackHandler(currentDirectory.absolutePath != Environment.getExternalStorageDirectory().absolutePath) {
+    BackHandler(currentDirectory != Environment.getExternalStorageDirectory()) {
         if (selectedPaths.isNotEmpty()) {
             selectedPaths = emptySet()
         } else {
-            currentDirectory = currentDirectory.parentFile ?: currentDirectory
+            currentDirectory = currentDirectory.parent ?: currentDirectory
         }
     }
 
@@ -144,7 +158,7 @@ fun DirectoryPage(rootFile: File) {
                     // Delete Button
                     if (selectedPaths.isNotEmpty()) {
                         IconButton(onClick = {
-                            selectedPaths.forEach { File(it).deleteRecursively() }
+                            selectedPaths.forEach { it.deleteRecursively() }
                             selectedPaths = emptySet()
                             forceRefresh()
                         }) {
@@ -158,36 +172,34 @@ fun DirectoryPage(rootFile: File) {
         LazyColumn(Modifier.padding(padding)) {
             val allItems = directories.sortedBy { it.name.lowercase() } + files.sortedBy { it.name.lowercase() }
 
-            items(allItems, key = { it.absolutePath }) { child ->
-                val isSelected = selectedPaths.contains(child.absolutePath)
-                val isEditing = pathBeingRenamed == child.absolutePath
+            items(allItems, key = { it }) { child ->
+                val isSelected = selectedPaths.contains(child)
+                val isEditing = pathBeingRenamed == child
 
                 DirectoryItem(
                     file = child,
                     isEditing = isEditing,
                     isSelected = isSelected,
                     onRename = { newName ->
-                        val newFile = File(child.parentFile, newName)
-                        if (child.renameTo(newFile)) {
-                            forceRefresh()
-                        }
+                        fs.atomicMove(child, child.parent!!.resolve(newName))
+                        forceRefresh()
                         pathBeingRenamed = null
                         selectedPaths = emptySet()
                     },
                     onToggleSelection = {
                         if(pathBeingRenamed != null) pathBeingRenamed = null
-                        selectedPaths = if (isSelected) selectedPaths - child.absolutePath
-                        else selectedPaths + child.absolutePath
+                        selectedPaths = if (isSelected) selectedPaths - child
+                        else selectedPaths + child
                     },
                     onClick = {
                         if (selectedPaths.isNotEmpty()) {
-                            selectedPaths = if (isSelected) selectedPaths - child.absolutePath
-                            else selectedPaths + child.absolutePath
+                            selectedPaths = if (isSelected) selectedPaths - child
+                            else selectedPaths + child
                         } else if (child.isDirectory) {
                             currentDirectory = child
                         } else {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", child)
+                                data = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", child.toFile())
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION or  Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                             }
                             context.startActivity(intent)
@@ -202,7 +214,7 @@ fun DirectoryPage(rootFile: File) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DirectoryItem(
-    file: File,
+    file: Path,
     isEditing: Boolean,
     isSelected: Boolean,
     onRename: (String) -> Unit,
@@ -246,7 +258,7 @@ fun DirectoryItem(
         },
         supportingContent = {
             if (!file.isDirectory) {
-                Text(byteSizeString(file.length()))
+                Text(byteSizeString(file.size!!))
             }
         },
         colors = ListItemDefaults.colors(

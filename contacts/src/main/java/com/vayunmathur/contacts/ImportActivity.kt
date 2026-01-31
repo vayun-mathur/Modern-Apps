@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconSave
+import okio.source
 
 class ImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +31,7 @@ class ImportActivity : ComponentActivity() {
 
         val uri = intent.data ?: return
 
-        val contacts = contentResolver.openInputStream(uri)?.use { stream ->
+        val contacts = contentResolver.openInputStream(uri)?.source()?.use { stream ->
             VcfUtils.parseContacts(stream)
         } ?: emptyList()
 
