@@ -44,6 +44,7 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
                             SubscriptionVideo(
                                 item.name,
                                 videoURLtoID(item.url),
+                                item.duration,
                                 item.viewCount,
                                 uploadInstant,
                                 item.thumbnails.firstOrNull()?.url ?: "",

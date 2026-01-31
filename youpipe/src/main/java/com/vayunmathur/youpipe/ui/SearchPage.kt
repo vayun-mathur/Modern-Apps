@@ -32,6 +32,7 @@ import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.videoURLtoID
@@ -44,7 +45,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import kotlin.time.toKotlinInstant
 
 @Composable
-fun SearchPage(backStack: NavBackStack<Route>) {
+fun SearchPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     // State Management
     var searchQuery by remember { mutableStateOf("") }
     var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -71,6 +72,7 @@ fun SearchPage(backStack: NavBackStack<Route>) {
                                         VideoInfo(
                                             it.name,
                                             videoURLtoID(it.url),
+                                            it.duration,
                                             it.viewCount,
                                             it.uploadDate!!.instant.toKotlinInstant(),
                                             it.thumbnails.first().url,
@@ -90,7 +92,6 @@ fun SearchPage(backStack: NavBackStack<Route>) {
                                 }
                             }
                         suggestions = emptyList() // Hide suggestions when searching
-                        println(searchResults)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -136,7 +137,7 @@ fun SearchPage(backStack: NavBackStack<Route>) {
                     // Show actual Search Results
                     items(searchResults) { item ->
                         if(item is VideoInfo)
-                            VideoItem(backStack, item, true)
+                            VideoItem(backStack, viewModel, item, true)
                         else if(item is ChannelInfo)
                             ChannelItem(backStack, item)
                     }

@@ -15,6 +15,7 @@ import kotlin.time.Instant
 data class SubscriptionVideo(
     val name: String,
     val videoID: Long,
+    val duration: Long,
     val views: Long,
     val uploadDate: Instant,
     val thumbnailURL: String,

@@ -84,6 +84,13 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         return derived
     }
 
+    @Composable
+    inline fun <reified E: DatabaseItem<E>> getNullable(id: Long): State<E?> {
+        val data by getDaoInterface<E>().data.collectAsState()
+        val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id }) } }
+        return derived
+    }
+
     inline fun <reified E: DatabaseItem<E>> upsertAll(items: List<E>) {
         getDaoInterface<E>().upsertAll(items)
     }

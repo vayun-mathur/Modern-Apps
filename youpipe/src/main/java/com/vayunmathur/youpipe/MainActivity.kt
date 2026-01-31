@@ -26,6 +26,7 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
+import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
@@ -71,7 +72,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<SubscriptionDatabase>()
-        val viewModel = DatabaseViewModel(Subscription::class to db.subscriptionDao(), SubscriptionVideo::class to db.subscriptionVideoDao())
+        val viewModel = DatabaseViewModel(Subscription::class to db.subscriptionDao(), SubscriptionVideo::class to db.subscriptionVideoDao(), HistoryVideo::class to db.historyVideoDao())
         NewPipe.init(MyDownloader())
         setupHourlyTask(this)
         setContent {
@@ -92,6 +93,14 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(this, PlaybackService::class.java)
             stopService(intent) // This forces the service to die immediately
         }
+    }
+
+    override fun onDestroy() {
+        // If the activity is destroyed (closing PiP window), stop the service.
+        // This is the most reliable "kill switch" for the audio.
+        val intent = Intent(this, PlaybackService::class.java)
+        stopService(intent)
+        super.onDestroy()
     }
 }
 
@@ -127,10 +136,10 @@ fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack(initialRoute)
     MainNavigation(backStack) {
         entry<Route.SearchPage> {
-            SearchPage(backStack)
+            SearchPage(backStack, viewModel)
         }
         entry<Route.VideoPage> {
-            VideoPage(backStack, it.videoID)
+            VideoPage(backStack, viewModel, it.videoID)
         }
         entry<Route.ChannelPage> {
             ChannelPage(backStack, viewModel, it.uri)

@@ -24,9 +24,9 @@ fun SubscriptionVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseVi
     Scaffold(bottomBar = { BottomNavBar(backStack, MAIN_BOTTOM_BAR_ITEMS, Route.SubscriptionsPage) }) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             items(videos.map {
-                VideoInfo(it.name, it.videoID, it.views, it.uploadDate, it.thumbnailURL, it.author)
+                VideoInfo(it.name, it.videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author)
             }) {
-                VideoItem(backStack, it, true)
+                VideoItem(backStack, viewModel, it, true)
             }
         }
     }

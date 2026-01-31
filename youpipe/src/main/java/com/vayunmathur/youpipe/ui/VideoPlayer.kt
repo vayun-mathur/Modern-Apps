@@ -2,7 +2,6 @@ package com.vayunmathur.youpipe.ui
 
 import android.app.PictureInPictureParams
 import android.content.ComponentName
-import android.os.Build
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -21,16 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toAndroidRectF
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.toRect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -42,7 +37,9 @@ import androidx.media3.ui.compose.material3.buttons.PlayPauseButton
 import coil.compose.AsyncImage
 import com.google.common.util.concurrent.MoreExecutors
 import com.vayunmathur.library.ui.IconClose
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.R
+import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.findActivity
 import com.vayunmathur.youpipe.rememberIsInPipMode
 import kotlinx.coroutines.delay
@@ -50,13 +47,13 @@ import kotlinx.coroutines.delay
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
+    viewModel: DatabaseViewModel,
+    videoInfo: VideoInfo,
     initialVideoStream: VideoStream,
     initialAudioStream: AudioStream,
     videoStreams: List<VideoStream>,
     audioStreams: List<AudioStream>,
     segments: List<VideoChapter>,
-    videoTitle: String = "Video Title",
-    uploaderName: String = "Uploader"
 ) {
     val context = LocalContext.current
 
@@ -115,17 +112,20 @@ fun VideoPlayer(
     LaunchedEffect(controller, isDragging) {
         val player = controller ?: return@LaunchedEffect
         while (true) {
-            if (!isDragging) {
+            if (!isDragging && player.isPlaying) {
                 currentPosition = player.currentPosition.coerceAtLeast(0L)
+                viewModel.upsert(HistoryVideo.fromVideoData(videoInfo, currentPosition))
             }
-            delay(500)
+            delay(300)
         }
     }
 
+    val historyVideo by viewModel.getNullable<HistoryVideo>(videoInfo.videoID)
+    val timeWatched = historyVideo?.progress ?: 0
+
     // 3. Updated LaunchedEffect to pass audio URI through Metadata Extras
-    LaunchedEffect(controller, currentVideoStream, currentAudioStream, videoTitle, uploaderName) {
+    LaunchedEffect(controller, currentVideoStream, currentAudioStream, videoInfo.name, videoInfo.author) {
         val player = controller ?: return@LaunchedEffect
-        val lastPosition = player.currentPosition
 
         // Pack the audio URI into the extras bundle
         val extras = Bundle().apply {
@@ -133,8 +133,8 @@ fun VideoPlayer(
         }
 
         val metadata = MediaMetadata.Builder()
-            .setTitle(videoTitle)
-            .setArtist(uploaderName)
+            .setTitle(videoInfo.name)
+            .setArtist(videoInfo.author)
             .setExtras(extras) // Pass the extras bundle
             .build()
 
@@ -143,11 +143,9 @@ fun VideoPlayer(
             .setMediaMetadata(metadata)
             .build()
 
-        player.setMediaItem(mediaItem)
+        player.setMediaItem(mediaItem, timeWatched)
         player.prepare()
-        if (lastPosition > 0L) {
-            player.seekTo(lastPosition)
-        }
+        currentPosition = timeWatched
     }
 
     val isPipMode = rememberIsInPipMode()

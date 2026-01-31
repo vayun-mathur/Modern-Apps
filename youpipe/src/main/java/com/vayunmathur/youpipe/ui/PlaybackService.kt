@@ -106,6 +106,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         mediaSession?.run {
+            player.stop() // Stop playback first
             player.release()
             release()
         }
@@ -115,9 +116,12 @@ class PlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
-        if (player?.playWhenReady == false || player?.mediaItemCount == 0) {
-            stopSelf()
+        // Stop the player and release everything
+        player?.let {
+            it.pause()
+            it.stop()
         }
+        stopSelf() // This will trigger onDestroy() in the service
     }
 
     override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
@@ -126,7 +130,7 @@ class PlaybackService : MediaSessionService() {
         if (session.player.playbackState == Player.STATE_IDLE ||
             session.player.playbackState == Player.STATE_ENDED) {
             stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            return
         }
         super.onUpdateNotification(session, startInForegroundRequired)
     }

@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
@@ -71,11 +72,11 @@ import kotlin.time.toKotlinInstant
 data class VideoChapter(val time: Int, val title: String, val previewURL: String?)
 data class AudioStream(val url: String, val bitrate: Int)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String)
-data class VideoData(val title: String, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String)
+data class VideoData(val title: String, val views: Long, val duration: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String)
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
 
 @Composable
-fun VideoPage(backStack: NavBackStack<Route>, videoID: Long) {
+fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, videoID: Long) {
     val url = videoIDtoURL(videoID)
 
     var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
@@ -93,10 +94,10 @@ fun VideoPage(backStack: NavBackStack<Route>, videoID: Long) {
             segments = streamExtractor.streamSegments.map { VideoChapter(it.startTimeSeconds*1000, it.title, it.previewUrl) }
             videoStreams = streamExtractor.videoOnlyStreams.map { VideoStream(it.content, it.width, it.height, it.bitrate, it.fps, it.quality) }
             audioStreams = streamExtractor.audioStreams.map { AudioStream(it.content, it.bitrate) }
-            videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName, streamExtractor.uploaderUrl, streamExtractor.uploaderAvatars.first().url)
+            videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.length, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName, streamExtractor.uploaderUrl, streamExtractor.uploaderAvatars.first().url)
             val relatedVideosEx = streamExtractor.relatedItems ?: return@withContext
             relatedVideos = relatedVideosEx.items.filterIsInstance<StreamInfoItem>().map {
-                VideoInfo(it.name, videoURLtoID(it.url), it.viewCount, it.uploadDate!!.instant.toKotlinInstant(), it.thumbnails.first().url, it.uploaderName)
+                VideoInfo(it.name, videoURLtoID(it.url), it.duration, it.viewCount, it.uploadDate!!.instant.toKotlinInstant(), it.thumbnails.first().url, it.uploaderName)
             }
         }
         withContext(Dispatchers.IO) {
@@ -116,7 +117,7 @@ fun VideoPage(backStack: NavBackStack<Route>, videoID: Long) {
     Scaffold() { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
-                VideoPlayer(videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments, it.title, it.author)
+                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments)
                 VideoDetails(backStack, it)
             }
 
@@ -152,7 +153,7 @@ fun VideoPage(backStack: NavBackStack<Route>, videoID: Long) {
                 ) { page ->
                     when (page) {
                         0 -> CommentsSection(comments)
-                        1 -> RelatedVideosSection(backStack, relatedVideos)
+                        1 -> RelatedVideosSection(backStack, viewModel, relatedVideos)
                     }
                 }
             }
@@ -178,10 +179,10 @@ fun VideoDetails(backStack: NavBackStack<Route>, videoData: VideoData) {
 }
 
 @Composable
-fun RelatedVideosSection(backStack: NavBackStack<Route>, relatedVideos: List<VideoInfo>) {
+fun RelatedVideosSection(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, relatedVideos: List<VideoInfo>) {
     LazyColumn(contentPadding = PaddingValues(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(relatedVideos, { it.videoID }) {
-            VideoItem(backStack, it, true)
+            VideoItem(backStack, viewModel, it, true)
         }
     }
 }

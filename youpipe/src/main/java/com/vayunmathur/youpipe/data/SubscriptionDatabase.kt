@@ -6,8 +6,9 @@ import androidx.room.TypeConverters
 import com.vayunmathur.library.util.DefaultConverters
 
 @TypeConverters(DefaultConverters::class)
-@Database(entities = [Subscription::class, SubscriptionVideo::class], version = 1)
+@Database(entities = [Subscription::class, SubscriptionVideo::class, HistoryVideo::class], version = 1)
 abstract class SubscriptionDatabase : RoomDatabase() {
     abstract fun subscriptionDao(): SubscriptionDao
     abstract fun subscriptionVideoDao(): SubscriptionVideoDao
+    abstract fun historyVideoDao(): HistoryVideoDao
 }
