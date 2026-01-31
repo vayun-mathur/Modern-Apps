@@ -70,7 +70,7 @@ import kotlin.time.Instant
 import kotlin.time.toKotlinInstant
 
 data class VideoChapter(val time: Int, val title: String, val previewURL: String?)
-data class AudioStream(val url: String, val bitrate: Int)
+data class AudioStream(val url: String, val bitrate: Int, val language: String)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String)
 data class VideoData(val title: String, val views: Long, val duration: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String)
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
@@ -93,7 +93,7 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
             streamExtractor.fetchPage()
             segments = streamExtractor.streamSegments.map { VideoChapter(it.startTimeSeconds*1000, it.title, it.previewUrl) }
             videoStreams = streamExtractor.videoOnlyStreams.map { VideoStream(it.content, it.width, it.height, it.bitrate, it.fps, it.quality) }
-            audioStreams = streamExtractor.audioStreams.map { AudioStream(it.content, it.bitrate) }
+            audioStreams = streamExtractor.audioStreams.map { AudioStream(it.content, it.bitrate, it.audioLocale?.language ?: "Default") }
             videoData = VideoData(streamExtractor.name, streamExtractor.viewCount, streamExtractor.length, streamExtractor.uploadDate!!.instant.toKotlinInstant(), streamExtractor.thumbnails.first().url, streamExtractor.uploaderName, streamExtractor.uploaderUrl, streamExtractor.uploaderAvatars.first().url)
             val relatedVideosEx = streamExtractor.relatedItems ?: return@withContext
             relatedVideos = relatedVideosEx.items.filterIsInstance<StreamInfoItem>().map {

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -57,15 +58,20 @@ fun VideoPlayer(
 ) {
     val context = LocalContext.current
 
+    var languages by remember { mutableStateOf(audioStreams.map { it.language }.distinct().sorted()) }
+    var language by remember { mutableStateOf(if("en" in languages) "en" else languages.first()) }
+    val audioStreamOptions = audioStreams.filter { it.language == language }
+
     var controller by remember { mutableStateOf<MediaController?>(null) }
     var currentVideoStream by remember { mutableStateOf(initialVideoStream) }
-    var currentAudioStream by remember { mutableStateOf(initialAudioStream) }
+    var currentAudioStream by remember { mutableStateOf(audioStreamOptions.first()) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isDragging by remember { mutableStateOf(false) }
 
     var isVideoMenuExpanded by remember { mutableStateOf(false) }
+    var isLanguageMenuExpanded by remember { mutableStateOf(false) }
     var isAudioMenuExpanded by remember { mutableStateOf(false) }
     var isChapterMenuVisible by remember { mutableStateOf(false) }
 
@@ -86,6 +92,8 @@ fun VideoPlayer(
         }
     }
 
+    var aspectRatio by remember { mutableStateOf(16f / 9f) }
+
     DisposableEffect(controller) {
         val player = controller ?: return@DisposableEffect onDispose {}
         val listener = object : Player.Listener {
@@ -98,6 +106,10 @@ fun VideoPlayer(
                 context.findActivity().setPictureInPictureParams(PictureInPictureParams.Builder().apply {
                     setAutoEnterEnabled(isPlaying)
                 }.build())
+            }
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                if(videoSize.width == 0 || videoSize.height == 0) return
+                aspectRatio = videoSize.width.toFloat() / videoSize.height.toFloat() * videoSize.pixelWidthHeightRatio
             }
         }
         player.addListener(listener)
@@ -159,10 +171,17 @@ fun VideoPlayer(
                 indication = null
             ) { isControlsVisible = !isControlsVisible }
     ) {
+        val playerModifier = if (aspectRatio > 16f/9f) {
+            // Video is wider than container -> match width, height will follow ratio
+            Modifier.fillMaxWidth().aspectRatio(aspectRatio)
+        } else {
+            // Video is taller than container -> match height, width will follow ratio
+            Modifier.fillMaxHeight().aspectRatio(aspectRatio)
+        }
         controller?.let { player ->
             PlayerSurface(
                 player = player,
-                modifier = Modifier.fillMaxSize(),
+                modifier = playerModifier.align(Alignment.Center),
             )
         } ?: Box(modifier = Modifier.fillMaxSize().background(Color.Black))
 
@@ -197,6 +216,27 @@ fun VideoPlayer(
 
                     Box {
                         Surface(
+                            onClick = { isLanguageMenuExpanded = true },
+                            color = Color.Black.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = language, color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                Icon(painter = painterResource(R.drawable.outline_arrow_drop_down_24), contentDescription = null, tint = Color.White)
+                            }
+                        }
+                        DropdownMenu(expanded = isLanguageMenuExpanded, onDismissRequest = { isLanguageMenuExpanded = false }) {
+                            languages.forEach { stream ->
+                                DropdownMenuItem(
+                                    text = { Text(stream) },
+                                    onClick = { language = stream; currentAudioStream = audioStreams.find { it.language == stream && it.bitrate == currentAudioStream.bitrate } ?: audioStreams.first { it.language == stream }; isAudioMenuExpanded = false }
+                                )
+                            }
+                        }
+                    }
+
+                    Box {
+                        Surface(
                             onClick = { isAudioMenuExpanded = true },
                             color = Color.Black.copy(alpha = 0.5f),
                             shape = RoundedCornerShape(4.dp)
@@ -207,7 +247,7 @@ fun VideoPlayer(
                             }
                         }
                         DropdownMenu(expanded = isAudioMenuExpanded, onDismissRequest = { isAudioMenuExpanded = false }) {
-                            audioStreams.forEach { stream ->
+                            audioStreamOptions.forEach { stream ->
                                 DropdownMenuItem(
                                     text = { Text("${stream.bitrate / 1000}kbps") },
                                     onClick = { currentAudioStream = stream; isAudioMenuExpanded = false }
