@@ -34,6 +34,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.media3.ui.compose.PlayerSurface
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.material3.buttons.PlayPauseButton
 import coil.compose.AsyncImage
 import com.google.common.util.concurrent.MoreExecutors
@@ -50,11 +51,11 @@ import kotlinx.coroutines.delay
 fun VideoPlayer(
     viewModel: DatabaseViewModel,
     videoInfo: VideoInfo,
-    initialVideoStream: VideoStream,
-    initialAudioStream: AudioStream,
     videoStreams: List<VideoStream>,
     audioStreams: List<AudioStream>,
     segments: List<VideoChapter>,
+    isFullscreen: Boolean,
+    onFullscreenChange: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -63,7 +64,7 @@ fun VideoPlayer(
     val audioStreamOptions = audioStreams.filter { it.language == language }
 
     var controller by remember { mutableStateOf<MediaController?>(null) }
-    var currentVideoStream by remember { mutableStateOf(initialVideoStream) }
+    var currentVideoStream by remember { mutableStateOf(videoStreams.first()) }
     var currentAudioStream by remember { mutableStateOf(audioStreamOptions.first()) }
     var isControlsVisible by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
@@ -162,10 +163,11 @@ fun VideoPlayer(
 
     val isPipMode = rememberIsInPipMode()
 
+    val modifier = if(isFullscreen) Modifier.fillMaxHeight() else Modifier.aspectRatio(16f / 9f)
+
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -182,6 +184,7 @@ fun VideoPlayer(
             PlayerSurface(
                 player = player,
                 modifier = playerModifier.align(Alignment.Center),
+                surfaceType = SURFACE_TYPE_TEXTURE_VIEW
             )
         } ?: Box(modifier = Modifier.fillMaxSize().background(Color.Black))
 
@@ -272,19 +275,40 @@ fun VideoPlayer(
                         modifier = Modifier.size(64.dp).align(Alignment.Center),
                     )
                 }
-
-                Column(modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(text = formatTime(currentPosition), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                        Text(text = formatTime(duration), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                Row(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom) {
+                    Column(Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = formatTime(currentPosition),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Text(
+                                text = formatTime(duration),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                        Slider(
+                            value = if (duration > 0) currentPosition.toFloat() else 0f,
+                            onValueChange = { isDragging = true; currentPosition = it.toLong() },
+                            onValueChangeFinished = {
+                                controller?.seekTo(currentPosition); isDragging = false
+                            },
+                            valueRange = 0f..(duration.toFloat().coerceAtLeast(1f)),
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
                     }
-                    Slider(
-                        value = if (duration > 0) currentPosition.toFloat() else 0f,
-                        onValueChange = { isDragging = true; currentPosition = it.toLong() },
-                        onValueChangeFinished = { controller?.seekTo(currentPosition); isDragging = false },
-                        valueRange = 0f..(duration.toFloat().coerceAtLeast(1f)),
-                        colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary)
-                    )
+                    Spacer(Modifier.padding(4.dp))
+                    IconButton({onFullscreenChange(!isFullscreen)}) {
+                        Icon(if(isFullscreen) painterResource(R.drawable.outline_fullscreen_exit_24) else painterResource(R.drawable.outline_fullscreen_24), null)
+                    }
                 }
             }
         }

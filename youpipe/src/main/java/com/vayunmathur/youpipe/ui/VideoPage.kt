@@ -1,11 +1,15 @@
 package com.vayunmathur.youpipe.ui
 
+import android.annotation.SuppressLint
+import android.app.Activity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,11 +43,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -74,6 +84,37 @@ data class AudioStream(val url: String, val bitrate: Int, val language: String)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String)
 data class VideoData(val title: String, val views: Long, val duration: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String, val authorURL: String, val authorThumbnail: String)
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
+
+@Composable
+fun RotatedComponent(
+    rotation: Float = 90f,
+    content: @Composable () -> Unit
+) {
+    Layout(
+        content = content,
+        modifier = Modifier.rotate(rotation)
+    ) { measurables, constraints ->
+        // 1. Swap the constraints: MaxWidth becomes MaxHeight and vice versa
+        val swappedConstraints = constraints.copy(
+            minWidth = constraints.minHeight,
+            maxWidth = constraints.maxHeight,
+            minHeight = constraints.minWidth,
+            maxHeight = constraints.maxWidth
+        )
+
+        // 2. Measure the child with the flipped constraints
+        val placeable = measurables.first().measure(swappedConstraints)
+
+        // 3. Set the parent size to the FLIPPED dimensions of the child
+        layout(placeable.height, placeable.width) {
+            // 4. Place the child centered
+            placeable.placeRelative(
+                x = (placeable.height - placeable.width) / 2,
+                y = (placeable.width - placeable.height) / 2
+            )
+        }
+    }
+}
 
 @Composable
 fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, videoID: Long) {
@@ -114,10 +155,57 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
         }
     }
 
+    var isFullscreen by remember { mutableStateOf(false) }
+
+    val view = LocalView.current
+    LaunchedEffect(isFullscreen) {
+        val window = (view.context as Activity).window
+        val controller = WindowCompat.getInsetsController(window, view)
+
+        if (isFullscreen) {
+            // Hide both status bar and navigation bar
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            // Make it so they only reappear with a swipe and don't resize the layout
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    if(isFullscreen) {
+        @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+        Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { paddingValues ->
+            Box(Modifier.fillMaxSize()) {
+                RotatedComponent() {
+                    videoData?.let {
+                        VideoPlayer(
+                            viewModel,
+                            VideoInfo(
+                                it.title,
+                                videoID,
+                                it.duration,
+                                it.views,
+                                it.uploadDate,
+                                it.thumbnailURL,
+                                it.author
+                            ),
+                            videoStreams,
+                            audioStreams,
+                            segments,
+                            true,
+                            { isFullscreen = it })
+                    }
+                }
+            }
+        }
+        return
+    }
+
+
     Scaffold() { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
-                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams.first(), audioStreams.first(), videoStreams, audioStreams, segments)
+                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams, audioStreams, segments, false, { isFullscreen = it })
                 VideoDetails(backStack, it)
             }
 
