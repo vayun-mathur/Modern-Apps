@@ -33,7 +33,7 @@ import com.vayunmathur.library.util.pop
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, waypointID: Long) {
-    val waypoint by viewModel.get<Waypoint>(waypointID)
+    val waypoint by viewModel.get<Waypoint>(waypointID) {Waypoint.NEW_WAYPOINT}
 
     var name by remember { mutableStateOf(waypoint.name) }
     var range by remember { mutableStateOf(waypoint.range.toString()) }
@@ -42,7 +42,7 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
     Scaffold(floatingActionButton = {
         FloatingActionButton({
             if(range.toDoubleOrNull() == null || name.isBlank()) return@FloatingActionButton
-            viewModel.upsert(waypoint.copy(name = name, range = range.toDouble(), coord = coord))
+            viewModel.upsert(waypoint.copy(name = name, range = range.toDouble(), coord = coord, position = 0.0))
             backStack.pop()
         }) {
             IconSave()
@@ -58,10 +58,8 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
             }
         }
     }) { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                MapView(backStack, viewModel, navEnabled = true, selectedWaypoint = SelectedWaypoint(waypoint, range.toDoubleOrNull() ?: 0.0, {coord = it}))
-            }
+        Column(Modifier.padding(paddingValues).fillMaxWidth()) {
+            MapView(backStack, viewModel, navEnabled = true, selectedWaypoint = SelectedWaypoint(waypoint, range.toDoubleOrNull() ?: 0.0, {coord = it}))
         }
     }
 }

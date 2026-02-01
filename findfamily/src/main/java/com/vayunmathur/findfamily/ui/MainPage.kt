@@ -101,6 +101,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 backStack.add(Route.AddPersonDialog)
             }, {Text("Person")}, { Icon(painterResource(R.drawable.outline_person_24), null) })
             FloatingActionButtonMenuItem({
+                backStack.add(Route.WaypointEditPage(0))
             }, {Text("Location")}, {Icon(painterResource(R.drawable.outline_pin_drop_24), null)})
         }
     }, bottomBar = {
@@ -111,7 +112,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 }
                 if (users.any { it.deleteAt != null }) {
                     item {
-                        Text("Temporary Links", Modifier.padding(start = 4.dp))
+                        Text("Temporary Links", Modifier.padding(start = 8.dp))
                     }
                 }
                 items(users.filter { it.deleteAt != null }) {
@@ -119,7 +120,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 }
                 item {
                     if (waypoints.isNotEmpty()) {
-                        Text("Saved Places", Modifier.padding(start = 4.dp))
+                        Text("Saved Places", Modifier.padding(start = 8.dp))
                     }
                 }
                 items(waypoints) {
@@ -128,10 +129,8 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             }
         }
     }) { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                MapView(backStack, viewModel, navEnabled = true)
-            }
+        Box(Modifier.padding(paddingValues).fillMaxWidth()) {
+            MapView(backStack, viewModel, navEnabled = true)
         }
     }
 }

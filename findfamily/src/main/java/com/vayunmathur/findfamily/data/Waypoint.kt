@@ -20,6 +20,10 @@ data class Waypoint(
     override val position: Double = 0.0
 ): DatabaseItem<Waypoint>() {
     override fun withPosition(position: Double) = copy(position = position)
+
+    companion object {
+        val NEW_WAYPOINT = Waypoint("", 100.0, Coord(0.0, 0.0), position = Double.POSITIVE_INFINITY)
+    }
 }
 
 @Dao

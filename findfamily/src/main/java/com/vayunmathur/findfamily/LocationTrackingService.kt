@@ -28,6 +28,7 @@ import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.data.havershine
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
@@ -48,10 +49,12 @@ class LocationTrackingService : Service() {
     private lateinit var locationManager: LocationManager
     private lateinit var viewModel: DatabaseViewModel
     private lateinit var users: StateFlow<List<User>>
+    private lateinit var waypoints: StateFlow<List<Waypoint>>
     private lateinit var bm: BatteryManager
 
     private val locationListener = LocationListener { location ->
         val users = users.value
+        val waypoints = waypoints.value
         val userIDs = users.map { it.id }
         val locationValue = LocationValue(
             Networking.userid,
@@ -88,10 +91,16 @@ class LocationTrackingService : Service() {
                 // update the user.locationName
                 users.forEach { user ->
                     val lastLocation = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
-                    val address = fetchAddress(lastLocation.coord.lat, lastLocation.coord.lon)?.let {
-                        it.featureName ?: it.thoroughfare
+                    val inWaypoint = waypoints.find { havershine(it.coord, lastLocation.coord) < it.range }
+                    if(inWaypoint != null) {
+                        viewModel.upsert(user.copy(locationName = inWaypoint.name))
+                    } else {
+                        val address =
+                            fetchAddress(lastLocation.coord.lat, lastLocation.coord.lon)?.let {
+                                it.featureName ?: it.thoroughfare
+                            }
+                        viewModel.upsert(user.copy(locationName = address ?: "Unknown Location"))
                     }
-                    viewModel.upsert(user.copy(locationName = address ?: "Unknown Location"))
                 }
             }
         }
@@ -122,6 +131,7 @@ class LocationTrackingService : Service() {
             LocationValue::class to db.locationValueDao()
         )
         users = viewModel.data<User>()
+        waypoints = viewModel.data<Waypoint>()
         CoroutineScope(Dispatchers.IO).launch {
             Networking.init(viewModel, DataStoreUtils.getInstance(this@LocationTrackingService))
         }
