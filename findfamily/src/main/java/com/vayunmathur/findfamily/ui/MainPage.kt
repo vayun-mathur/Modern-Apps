@@ -92,9 +92,35 @@ fun MainPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                     items(users.filter { it.deleteAt != null }) {
                         UserCard(backStack, it, userPositions[it.id], true)
                     }
+                    item {
+                        if (waypoints.isNotEmpty()) {
+                            Text("Saved Places")
+                        }
+                    }
+                    items(waypoints) {
+                        WaypointCard(backStack, it, users)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List<User>) {
+    val usersWithin = users.filter { it.locationName == waypoint.name }
+    val usersString = usersWithin.joinToString { it.name } + when(usersWithin.size) {
+        0 -> "nobody is currently here"
+        1 -> " is currently here"
+        else -> " are currently here"
+    }
+    Card(Modifier.clickable(onClick = {
+        backStack.add(Route.WaypointPage(waypoint.id))
+    })) {
+        ListItem(
+            headlineContent = { Text(waypoint.name, fontWeight = FontWeight.Bold) },
+            supportingContent = { Text(usersString) }
+        )
     }
 }
 

@@ -146,6 +146,11 @@ fun MapView(
                         100.0f
                     ))
                 }
+                viewModel.upsert(Waypoint(
+                    "The Movies",
+                    250.0,
+                    Coord(34.0, -118.0)
+                ))
             }
         }
     }
