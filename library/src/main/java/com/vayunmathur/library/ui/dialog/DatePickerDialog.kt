@@ -10,7 +10,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation3.runtime.NavBackStack
-import com.vayunmathur.calendar.Route
+import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.launch
@@ -22,18 +22,21 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerDialog(backStack: NavBackStack<Route>, resultKey: String, initialDate: LocalDate, minDate: LocalDate? = null) {
+fun <T: NavKey> DatePickerDialog(backStack: NavBackStack<T>, resultKey: String, initialDate: LocalDate, minDate: LocalDate? = null, maxDate: LocalDate? = null) {
     val registry = LocalNavResultRegistry.current
     val state = rememberDatePickerState(initialDate.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds(),
         selectableDates = object: SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                if(minDate == null) return true
-                return Instant.fromEpochMilliseconds(utcTimeMillis).toLocalDateTime(TimeZone.UTC).date >= minDate
+                val date = Instant.fromEpochMilliseconds(utcTimeMillis).toLocalDateTime(TimeZone.UTC).date
+                if(minDate != null && date < minDate) return false
+                if(maxDate != null && date > maxDate) return false
+                return true
             }
 
             override fun isSelectableYear(year: Int): Boolean {
-                if(minDate == null) return true
-                return year >= minDate.year
+                if(minDate != null && year < minDate.year) return false
+                if(maxDate != null && year > maxDate.year) return false
+                return true
             }
         })
     val scope = rememberCoroutineScope()
