@@ -13,6 +13,7 @@ import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.ui.MainPage
 import com.vayunmathur.findfamily.ui.UserPage
+import com.vayunmathur.findfamily.ui.WaypointEditPage
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.DialogPage
@@ -53,7 +54,7 @@ sealed interface Route: NavKey {
     data class UserPageHistoryDatePicker(val initialDate: LocalDate): Route
 
     @Serializable
-    data class WaypointPage(val id: Long): Route
+    data class WaypointEditPage(val id: Long): Route
 }
 
 @Composable
@@ -65,6 +66,9 @@ fun Navigation(platform: Platform, viewModel: DatabaseViewModel) {
         }
         entry<Route.UserPage> {
             UserPage(platform, backStack, viewModel, it.id)
+        }
+        entry<Route.WaypointEditPage> {
+            WaypointEditPage(backStack, viewModel, it.id)
         }
         entry<Route.UserPageHistoryDatePicker>(metadata = DialogPage()) {
             DatePickerDialog(backStack, "HistoryDatePicker", it.initialDate, maxDate = Clock.System.now().toLocalDateTime(

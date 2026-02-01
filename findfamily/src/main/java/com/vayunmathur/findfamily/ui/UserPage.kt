@@ -57,66 +57,61 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
-    val users by viewModel.data<User>().collectAsState()
-    val waypoints by viewModel.data<Waypoint>().collectAsState()
+    val selectedUser by viewModel.get<User>(userId)
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
         locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
     } }
 
-    val selectedUser by remember { derivedStateOf { users.find { it.id == userId } }}
-
     var isShowingPresent by remember { mutableStateOf(true) }
     var historicalPosition by remember { mutableStateOf<Position?>(null) }
 
     val requestPickContact1 = platform.requestPickContact { name, photo ->
-        viewModel.upsert(selectedUser!!.copy(name = name, photo = photo))
+        viewModel.upsert(selectedUser.copy(name = name, photo = photo))
     }
 
     Scaffold { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
 
             Box(Modifier.fillMaxWidth().weight(1f)) {
-                MapView(backStack, viewModel, navEnabled = true, selectedUser, isShowingPresent, historicalPosition)
+                MapView(backStack, viewModel, navEnabled = true, selectedUser = SelectedUser(selectedUser, isShowingPresent, historicalPosition))
 
                 HistoryBar(backStack, isShowingPresent, {isShowingPresent = it}, locationValues) {historicalPosition = it}
             }
 
             Surface(Modifier.heightIn(max = 400.dp)) {
                 Column {
-                    selectedUser?.let {
-                        UserCard(backStack, it, userPositions[it.id], true)
-                        Spacer(Modifier.height(4.dp))
-                        Column(
-                            Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            if (it.deleteAt == null) {
-                                Card {
-                                    Row(
-                                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text("Share your location")
-                                        Spacer(Modifier.weight(1f))
-                                        Checkbox(
-                                            it.sendingEnabled,
-                                            { send ->
-                                                viewModel.upsert(it.copy(sendingEnabled = send))
-                                            })
-                                    }
+                    UserCard(backStack, selectedUser, userPositions[selectedUser.id], true)
+                    Spacer(Modifier.height(4.dp))
+                    Column(
+                        Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (selectedUser.deleteAt == null) {
+                            Card {
+                                Row(
+                                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Share your location")
+                                    Spacer(Modifier.weight(1f))
+                                    Checkbox(
+                                        selectedUser.sendingEnabled,
+                                        { send ->
+                                            viewModel.upsert(selectedUser.copy(sendingEnabled = send))
+                                        })
                                 }
-                                Spacer(Modifier.height(4.dp))
-                                OutlinedButton({
-                                    requestPickContact1()
-                                }) {
-                                    Text("Change connected contact")
-                                }
-                            } else {
-                                val remainingTime = it.deleteAt - Clock.System.now()
-                                Text("Time remaining: ${remainingTime.inWholeHours} hours, ${remainingTime.inWholeMinutes % 60} minutes")
-                                Spacer(Modifier.height(4.dp))
                             }
+                            Spacer(Modifier.height(4.dp))
+                            OutlinedButton({
+                                requestPickContact1()
+                            }) {
+                                Text("Change connected contact")
+                            }
+                        } else {
+                            val remainingTime = selectedUser.deleteAt!! - Clock.System.now()
+                            Text("Time remaining: ${remainingTime.inWholeHours} hours, ${remainingTime.inWholeMinutes % 60} minutes")
+                            Spacer(Modifier.height(4.dp))
                         }
                     }
                 }

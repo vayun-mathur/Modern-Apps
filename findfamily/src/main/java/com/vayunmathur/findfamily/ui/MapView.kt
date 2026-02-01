@@ -29,7 +29,9 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -61,6 +63,7 @@ import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.util.ClickResult
+import org.maplibre.compose.util.VisibleRegion
 import org.maplibre.spatialk.geojson.Position
 import kotlin.math.abs
 import kotlin.math.cos
@@ -70,14 +73,18 @@ import kotlin.time.Duration.Companion.hours
 
 val camera = CameraState(CameraPosition())
 
+data class SelectedUser(val user: User, val isShowingPresent: Boolean, val historicalPosition: Position?)
+data class SelectedWaypoint(val waypoint: Waypoint, val range: Double, val onMoveWaypoint: (Coord) -> Unit)
+
+private fun Position.toCoord() = Coord(latitude, longitude)
+
 @Composable
 fun MapView(
     backStack: NavBackStack<Route>,
     viewModel: DatabaseViewModel,
     navEnabled: Boolean,
-    selectedUser: User? = null,
-    isShowingPresent: Boolean = true,
-    historicalPosition: Position? = null
+    selectedUser: SelectedUser? = null,
+    selectedWaypoint: SelectedWaypoint? = null,
 ) {
     val users by viewModel.data<User>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
@@ -163,8 +170,23 @@ fun MapView(
             initialized = true
         }
     }
+
+
+    var sizeInDp by remember { mutableStateOf(DpOffset(0.dp, 0.dp)) }
+    val density = LocalDensity.current
     
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
+        // Size is in Pixels
+        val sizePx = coordinates.size
+
+        // Convert Pixels to DP
+        sizeInDp = with(density) {
+            DpOffset(
+                x = sizePx.width.toDp()/2,
+                y = sizePx.height.toDp()/2
+            )
+        }
+    }) {
         MaplibreMap(
             Modifier,
             BaseStyle.Uri("https://tiles.openfreemap.org/styles/liberty"),
@@ -181,12 +203,15 @@ fun MapView(
         )
 
         if(initialized) {
-            key(camera.position) {
+            key(camera.position, sizeInDp) {
                 Canvas(Modifier.fillMaxSize()) {
                     for (waypoint in waypoints) {
-                        val radiusMeters = waypoint.range
-                        val coord = waypoint.coord
-
+                        val radiusMeters = if(selectedWaypoint?.waypoint == waypoint) selectedWaypoint.range else waypoint.range
+                        val coord = if(selectedWaypoint?.waypoint == waypoint) {
+                            val c = camera.projection!!.positionFromScreenLocation(sizeInDp).toCoord()
+                            selectedWaypoint.onMoveWaypoint(c)
+                            c
+                        } else waypoint.coord
                         val center = camera.projection!!.screenLocationFromPosition(coord.toPosition())
                         if(center !in size.toDpSize()) continue
                         val circumferenceAtLatitude =
@@ -205,25 +230,25 @@ fun MapView(
                     }
                 }
                 for (user in users) {
-                    if(selectedUser != null && user.id != selectedUser.id) continue
+                    if(selectedUser != null && user.id != selectedUser.user.id) continue
                     val position = userPositions[user.id]?.coord?.toPosition() ?: continue
                     val center =
                         camera.projection!!.screenLocationFromPosition(position) - DpOffset(35.dp, 35.dp)
 
                     Box(Modifier.offset(center.x, center.y)) {
-                        UserPicture(user, 70.dp, selectedUser != null && !isShowingPresent) {
+                        UserPicture(user, 70.dp, selectedUser != null && !selectedUser.isShowingPresent) {
                             if(navEnabled) {
                                 backStack.add(Route.UserPage(user.id))
                             }
                         }
                     }
                 }
-                if(selectedUser != null && !isShowingPresent && historicalPosition != null) {
+                if(selectedUser != null && !selectedUser.isShowingPresent && selectedUser.historicalPosition != null) {
                     val center =
-                        camera.projection!!.screenLocationFromPosition(historicalPosition) - DpOffset(35.dp, 35.dp)
+                        camera.projection!!.screenLocationFromPosition(selectedUser.historicalPosition) - DpOffset(35.dp, 35.dp)
 
                     Box(Modifier.offset(center.x, center.y)) {
-                        UserPicture(selectedUser, 70.dp)
+                        UserPicture(selectedUser.user, 70.dp)
                     }
                 }
             }

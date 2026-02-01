@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -46,6 +47,7 @@ import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.DatabaseViewModel
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -114,12 +116,17 @@ fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List
         1 -> " is currently here"
         else -> " are currently here"
     }
-    Card(Modifier.clickable(onClick = {
-        backStack.add(Route.WaypointPage(waypoint.id))
-    })) {
+    Card {
         ListItem(
             headlineContent = { Text(waypoint.name, fontWeight = FontWeight.Bold) },
-            supportingContent = { Text(usersString) }
+            supportingContent = { Text(usersString) },
+            trailingContent = {
+                IconButton({
+                    backStack.add(Route.WaypointEditPage(waypoint.id))
+                }) {
+                    IconEdit()
+                }
+            }
         )
     }
 }
