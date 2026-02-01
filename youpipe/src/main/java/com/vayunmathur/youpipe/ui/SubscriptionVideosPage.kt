@@ -25,7 +25,7 @@ fun SubscriptionVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseVi
         LazyColumn(Modifier.padding(paddingValues)) {
             items(videos.map {
                 VideoInfo(it.name, it.id, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author)
-            }) {
+            }.sortedByDescending { it.uploadDate }) {
                 VideoItem(backStack, viewModel, it, true)
             }
         }
