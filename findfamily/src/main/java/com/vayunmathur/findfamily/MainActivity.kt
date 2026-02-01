@@ -32,9 +32,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val db = buildDatabase<FFDatabase>()
         val viewModel = DatabaseViewModel(User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao())
+        val platform = Platform(this)
         setContent {
             DynamicTheme {
-                Navigation(viewModel)
+                Navigation(platform, viewModel)
             }
         }
     }
@@ -56,14 +57,14 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(viewModel: DatabaseViewModel) {
+fun Navigation(platform: Platform, viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.MainPage)
     MainNavigation(backStack) {
         entry<Route.MainPage> {
             MainPage(backStack, viewModel)
         }
         entry<Route.UserPage> {
-            UserPage(backStack, viewModel, it.id)
+            UserPage(platform, backStack, viewModel, it.id)
         }
         entry<Route.UserPageHistoryDatePicker>(metadata = DialogPage()) {
             DatePickerDialog(backStack, "HistoryDatePicker", it.initialDate, maxDate = Clock.System.now().toLocalDateTime(

@@ -4,17 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
@@ -29,7 +28,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
@@ -45,7 +44,6 @@ import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ResultEffect
-import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -54,13 +52,11 @@ import kotlinx.datetime.format
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import org.maplibre.spatialk.geojson.Position
-import kotlin.math.abs
-import kotlin.math.max
 import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
+fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
     val users by viewModel.data<User>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val locationValues by viewModel.data<LocationValue>().collectAsState()
@@ -68,10 +64,14 @@ fun UserPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userI
         locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
     } }
 
-    val selectedUser = users.find { it.id == userId }
+    val selectedUser by remember { derivedStateOf { users.find { it.id == userId } }}
 
     var isShowingPresent by remember { mutableStateOf(true) }
     var historicalPosition by remember { mutableStateOf<Position?>(null) }
+
+    val requestPickContact1 = platform.requestPickContact { name, photo ->
+        viewModel.upsert(selectedUser!!.copy(name = name, photo = photo))
+    }
 
     Scaffold { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
@@ -83,17 +83,41 @@ fun UserPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userI
             }
 
             Surface(Modifier.heightIn(max = 400.dp)) {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
-                    items(users.filter { it.deleteAt == null }) {
+                Column {
+                    selectedUser?.let {
                         UserCard(backStack, it, userPositions[it.id], true)
-                    }
-                    if (users.any { it.deleteAt != null }) {
-                        item {
-                            Text("Temporary Links")
+                        Spacer(Modifier.height(4.dp))
+                        Column(
+                            Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (it.deleteAt == null) {
+                                Card {
+                                    Row(
+                                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("Share your location")
+                                        Spacer(Modifier.weight(1f))
+                                        Checkbox(
+                                            it.sendingEnabled,
+                                            { send ->
+                                                viewModel.upsert(it.copy(sendingEnabled = send))
+                                            })
+                                    }
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                OutlinedButton({
+                                    requestPickContact1()
+                                }) {
+                                    Text("Change connected contact")
+                                }
+                            } else {
+                                val remainingTime = it.deleteAt - Clock.System.now()
+                                Text("Time remaining: ${remainingTime.inWholeHours} hours, ${remainingTime.inWholeMinutes % 60} minutes")
+                                Spacer(Modifier.height(4.dp))
+                            }
                         }
-                    }
-                    items(users.filter { it.deleteAt != null }) {
-                        UserCard(backStack, it, userPositions[it.id], true)
                     }
                 }
             }
