@@ -34,6 +34,10 @@ data class User(
     override val position: Double = 0.0
 ): DatabaseItem<User>() {
     override fun withPosition(position: Double) = copy(position = position)
+
+    companion object {
+        val EMPTY = User(" ", null, "Unnamed Location", true, RequestStatus.MUTUAL_CONNECTION, Clock.System.now(), null, null)
+    }
 }
 
 @Dao

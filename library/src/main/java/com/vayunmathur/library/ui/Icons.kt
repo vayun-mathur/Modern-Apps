@@ -57,6 +57,11 @@ fun IconSearch(tint: Color = LocalContentColor.current) {
 }
 
 @Composable
+fun IconCopy(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.outline_content_copy_24), "Search", tint = tint)
+}
+
+@Composable
 fun IconNavigation(navBack: () -> Unit) {
     IconButton({
         navBack()

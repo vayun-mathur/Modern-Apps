@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalSlider
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
@@ -42,8 +43,12 @@ import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.toPosition
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ResultEffect
+import com.vayunmathur.library.util.pop
+import com.vayunmathur.library.util.popThen
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -57,7 +62,7 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
-    val selectedUser by viewModel.get<User>(userId)
+    val selectedUser by viewModel.get<User>(userId) {User.EMPTY}
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
         locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
@@ -70,7 +75,14 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
         viewModel.upsert(selectedUser.copy(name = name, photo = photo))
     }
 
-    Scaffold { paddingValues ->
+    Scaffold(topBar = { TopAppBar({}, navigationIcon = { IconNavigation(backStack) }, actions = {
+        IconButton({
+            viewModel.delete(selectedUser)
+            backStack.pop()
+        }) {
+            IconDelete()
+        }
+    }) }) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
 
             Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -81,7 +93,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
 
             Surface(Modifier.heightIn(max = 400.dp)) {
                 Column {
-                    UserCard(backStack, selectedUser, userPositions[selectedUser.id], true)
+                    UserCard(backStack, platform, selectedUser, userPositions[selectedUser.id], true)
                     Spacer(Modifier.height(4.dp))
                     Column(
                         Modifier.fillMaxWidth(),

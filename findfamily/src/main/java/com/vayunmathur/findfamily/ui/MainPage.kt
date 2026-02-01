@@ -23,30 +23,43 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.findfamily.Platform
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.DatabaseViewModel
 import kotlinx.datetime.LocalDate
@@ -64,9 +77,9 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MainPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
+fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val users by viewModel.data<User>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val locationValues by viewModel.data<LocationValue>().collectAsState()
@@ -74,35 +87,50 @@ fun MainPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
         locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
     } }
 
-    Scaffold { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                MapView(backStack, viewModel, navEnabled = true)
+    Scaffold(floatingActionButton = {
+        var expanded by remember { mutableStateOf(false) }
+        FloatingActionButtonMenu(expanded, {
+            ToggleFloatingActionButton(expanded, {expanded = it}) {
+                if(!expanded)
+                    IconAdd()
+                else
+                    IconClose()
             }
-
-            Surface(Modifier.heightIn(max = 400.dp)) {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
-                    items(users.filter { it.deleteAt == null }) {
-                        UserCard(backStack, it, userPositions[it.id], true)
-                    }
-                    if (users.any { it.deleteAt != null }) {
-                        item {
-                            Text("Temporary Links")
-                        }
-                    }
-                    items(users.filter { it.deleteAt != null }) {
-                        UserCard(backStack, it, userPositions[it.id], true)
-                    }
+        }) {
+            FloatingActionButtonMenuItem({
+                backStack.add(Route.AddPersonDialog)
+            }, {Text("Person")}, { Icon(painterResource(R.drawable.outline_person_24), null) })
+            FloatingActionButtonMenuItem({
+            }, {Text("Location")}, {Icon(painterResource(R.drawable.outline_pin_drop_24), null)})
+        }
+    }, bottomBar = {
+        Surface(Modifier.heightIn(max = 400.dp)) {
+            LazyColumn(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
+                items(users.filter { it.deleteAt == null }) {
+                    UserCard(backStack, platform, it, userPositions[it.id], true)
+                }
+                if (users.any { it.deleteAt != null }) {
                     item {
-                        if (waypoints.isNotEmpty()) {
-                            Text("Saved Places")
-                        }
-                    }
-                    items(waypoints) {
-                        WaypointCard(backStack, it, users)
+                        Text("Temporary Links", Modifier.padding(start = 4.dp))
                     }
                 }
+                items(users.filter { it.deleteAt != null }) {
+                    UserCard(backStack, platform, it, userPositions[it.id], true)
+                }
+                item {
+                    if (waypoints.isNotEmpty()) {
+                        Text("Saved Places", Modifier.padding(start = 4.dp))
+                    }
+                }
+                items(waypoints) {
+                    WaypointCard(backStack, it, users)
+                }
+            }
+        }
+    }) { paddingValues ->
+        Column(Modifier.padding(paddingValues)) {
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                MapView(backStack, viewModel, navEnabled = true)
             }
         }
     }
@@ -133,7 +161,7 @@ fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List
 
 @OptIn(ExperimentalTime::class)
 @Composable
-fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
+fun UserCard(backStack: NavBackStack<Route>, platform: Platform, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
     val lastUpdatedTime = locationValue?.let { timestring(it.timestamp) } ?: "Never"
     val speed = locationValue?.speed?.times(10)?.roundToInt()?.div(10F) ?: 0.0
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
@@ -180,9 +208,7 @@ fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: Location
                     Text("Updated $lastUpdatedTime\nAt ${user.locationName}\n$sinceString")
                 else {
                     Button({
-                        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                        val clipData = android.content.ClipData.newPlainText("text", "https://findfamily.cc/view/${user.id}#key=${user.locationName}")
-                        clipboardManager.setPrimaryClip(clipData)
+                        platform.copy("https://findfamily.cc/view/${user.id}#key=${user.locationName}")
                     }) {
                         Text("Copy link")
                     }

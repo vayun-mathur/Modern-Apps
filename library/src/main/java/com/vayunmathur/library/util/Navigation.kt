@@ -31,8 +31,12 @@ import androidx.navigation3.runtime.serialization.NavBackStackSerializer
 import androidx.navigation3.runtime.serialization.NavKeySerializer
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // The Registry that holds the events
 class NavResultRegistry {
@@ -66,6 +70,13 @@ val LocalNavResultRegistry = staticCompositionLocalOf<NavResultRegistry> {
 
 fun <T: NavKey> NavBackStack<T>.pop() {
     removeAt(lastIndex)
+}
+
+fun <T: NavKey> NavBackStack<T>.popThen(action: () -> Unit) {
+    CoroutineScope(Dispatchers.Main).launch {
+        pop()
+        action()
+    }
 }
 
 fun <T: NavKey> NavBackStack<T>.setLast(value: T) {

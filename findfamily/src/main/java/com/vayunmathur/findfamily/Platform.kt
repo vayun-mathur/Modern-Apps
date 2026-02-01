@@ -38,4 +38,10 @@ class Platform(private val context: Context) {
             }
         }
     }
+
+    fun copy(content: String) {
+        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clipData = android.content.ClipData.newPlainText("text", content)
+        clipboardManager.setPrimaryClip(clipData)
+    }
 }

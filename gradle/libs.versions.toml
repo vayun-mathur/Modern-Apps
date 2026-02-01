@@ -31,6 +31,8 @@ glance = "1.1.1"
 navigation3 = "1.0.0"
 adaptiveNavigation3 = "1.3.0-alpha06"
 
+cryptographyCore = "0.5.0"
+
 # Networking & External
 ktor = "3.4.0"
 ksp = "2.3.4"
@@ -89,6 +91,11 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+
+cryptography-core = { module = "dev.whyoleg.cryptography:cryptography-core", version.ref = "cryptographyCore" }
+cryptography-provider-apple = { module = "dev.whyoleg.cryptography:cryptography-provider-apple", version.ref = "cryptographyCore" }
+cryptography-provider-jdk = { module = "dev.whyoleg.cryptography:cryptography-provider-jdk", version.ref = "cryptographyCore" }
+
 
 # Glance (App Widgets)
 androidx-glance = { module = "androidx.glance:glance", version.ref = "glance" }
