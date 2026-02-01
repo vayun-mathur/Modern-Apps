@@ -33,7 +33,7 @@ import kotlin.reflect.KClass
 import kotlin.time.Instant
 
 class DaoInterface<T: DatabaseItem<T>>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
-    val data: StateFlow<List<T>> = dao.getAll().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val data: StateFlow<List<T>> = dao.getAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun delete(t: T, andThen: (Int) -> Unit = {}) {
         viewModelScope.launch {
@@ -180,12 +180,17 @@ interface TrueDao<T: DatabaseItem<T>> {
     }
 }
 
+val databases: MutableMap<KClass<*>, RoomDatabase> = mutableMapOf()
+
 inline fun <reified T: RoomDatabase> Context.buildDatabase(migrations: List<Migration> = emptyList()): T {
-    return Room.databaseBuilder(
-        this,
-        T::class.java,
-        "passwords-db"
-    ).addMigrations(*migrations.toTypedArray()).build()
+    if(databases[T::class] == null) {
+        databases[T::class] = Room.databaseBuilder(
+            this,
+            T::class.java,
+            "passwords-db"
+        ).addMigrations(*migrations.toTypedArray()).build()
+    }
+    return databases[T::class]!! as T
 }
 
 class DefaultConverters {

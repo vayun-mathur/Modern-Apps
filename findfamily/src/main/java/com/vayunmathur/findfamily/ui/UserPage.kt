@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
@@ -76,12 +77,13 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     }
 
     Scaffold(topBar = { TopAppBar({}, navigationIcon = { IconNavigation(backStack) }, actions = {
-        IconButton({
-            viewModel.delete(selectedUser)
-            backStack.pop()
-        }) {
-            IconDelete()
-        }
+        if(userId != Networking.userid)
+            IconButton({
+                viewModel.delete(selectedUser)
+                backStack.pop()
+            }) {
+                IconDelete()
+            }
     }) }) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
 

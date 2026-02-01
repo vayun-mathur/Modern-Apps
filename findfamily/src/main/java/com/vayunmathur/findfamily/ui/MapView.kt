@@ -1,5 +1,6 @@
 package com.vayunmathur.findfamily.ui
 
+import android.net.Network
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
+import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.LocationValue
@@ -94,70 +96,22 @@ fun MapView(
     } }
 
     LaunchedEffect(Unit) {
-        delay(100)
+        delay(1000)
         if (users.isEmpty()) {
             withContext(Dispatchers.IO) {
                 viewModel.upsert(
                     User(
-                        "Vayun",
+                        "Me",
                         null,
                         "Unnamed Location",
                         true,
                         RequestStatus.MUTUAL_CONNECTION,
-                        Clock.System.now() - 1.days,
-                        null,
-                        null
-                    )
-                ) {
-                    viewModel.upsertAll(listOf(LocationValue(
-                        it,
-                        Coord(1.3, 103.8),
-                        0.0f,
-                        100f,
                         Clock.System.now(),
-                        100.0f
-                    ), LocationValue(
-                        it,
-                        Coord(1.4, 103.8),
-                        0.0f,
-                        100f,
-                        Clock.System.now() - 2.hours,
-                        100.0f
-                    ), LocationValue(
-                        it,
-                        Coord(1.5, 103.8),
-                        0.0f,
-                        100f,
-                        Clock.System.now() - 4.hours,
-                        100.0f
-                    )))
-                }
-                viewModel.upsert(
-                    User(
-                        "Bob",
                         null,
-                        "The Movies",
-                        true,
-                        RequestStatus.MUTUAL_CONNECTION,
-                        Clock.System.now() - 1.days,
                         null,
-                        null
+                        Networking.userid
                     )
-                ) {
-                    viewModel.upsert(LocationValue(
-                        it,
-                        Coord(34.0, -118.0),
-                        0.0f,
-                        100f,
-                        Clock.System.now(),
-                        100.0f
-                    ))
-                }
-                viewModel.upsert(Waypoint(
-                    "The Movies",
-                    250.0,
-                    Coord(34.0, -118.0)
-                ))
+                )
             }
         }
     }

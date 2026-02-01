@@ -1,11 +1,28 @@
 package com.vayunmathur.findfamily
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
 import com.vayunmathur.findfamily.data.FFDatabase
@@ -36,14 +53,49 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val db = buildDatabase<FFDatabase>()
         val viewModel = DatabaseViewModel(User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao())
-        val dataStoreUtils = DataStoreUtils(this)
         val platform = Platform(this)
         setContent {
-            LaunchedEffect(Unit) {
-                Networking.init(viewModel, dataStoreUtils)
-            }
             DynamicTheme {
-                Navigation(platform, viewModel)
+                val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                var hasPermissions by remember { mutableStateOf(permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) }
+                if (!hasPermissions) {
+                    NoPermissionsScreen(permissions) { hasPermissions = it }
+                } else {
+                    Main(platform, viewModel)
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun Main(platform: Platform, viewModel: DatabaseViewModel) {
+        LaunchedEffect(Unit) {
+            ensureSync(this@MainActivity)
+        }
+        Navigation(platform, viewModel)
+    }
+}
+
+@Composable
+fun NoPermissionsScreen(permissions: Array<String>, setHasPermissions: (Boolean) -> Unit) {
+    val permissionRequestor = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissionsResult ->
+        setHasPermissions(permissionsResult.values.all { it })
+    }
+    LaunchedEffect(Unit) {
+        permissionRequestor.launch(permissions)
+    }
+    Scaffold {
+        Box(
+            modifier = Modifier
+                .padding(it)
+                .fillMaxSize()
+        ) {
+            androidx.compose.material3.Button(
+                {
+                    permissionRequestor.launch(permissions)
+                }, Modifier.align(Alignment.Center)
+            ) {
+                Text(text = "Please grant location permissions")
             }
         }
     }

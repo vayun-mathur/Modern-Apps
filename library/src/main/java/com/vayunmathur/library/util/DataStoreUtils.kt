@@ -12,7 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class DataStoreUtils(context: Context) {
+class DataStoreUtils private constructor(context: Context) {
     private val dataStore = createDataStore(context)
 
     private var stateMap = mapOf<Preferences.Key<*>, Any>()
@@ -44,6 +44,21 @@ class DataStoreUtils(context: Context) {
         dataStore.edit {
             if(onlyIfAbsent && it.contains(longPreferencesKey(s))) return@edit
             it[longPreferencesKey(s)] = userid
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var instance: DataStoreUtils? = null
+
+        fun getInstance(context: Context): DataStoreUtils {
+            // First check (no locking for performance)
+            return instance ?: synchronized(this) {
+                // Second check (inside lock to ensure only one thread initializes)
+                instance ?: DataStoreUtils(context.applicationContext).also {
+                    instance = it
+                }
+            }
         }
     }
 }
