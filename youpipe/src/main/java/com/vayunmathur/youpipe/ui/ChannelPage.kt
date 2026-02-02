@@ -46,15 +46,18 @@ import com.vayunmathur.youpipe.getChannelDataAndIds
 import com.vayunmathur.youpipe.getVideoDetails
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
 interface ItemInfo
+@Serializable
 data class ChannelInfo(val name: String, val channelID: String, val subscribers: Long, val videos: Int, val avatar: String, val uploadsPlaylistID: String): ItemInfo {
     fun toSubscription(): Subscription {
         return Subscription(name = name, channelID = channelID, avatarURL = avatar, uploadsPlaylistID = uploadsPlaylistID)
     }
 }
 
+@Serializable
 data class VideoInfo(val name: String, val videoID: Long, val duration: Long, val views: Long, val uploadDate: Instant, val thumbnailURL: String, val author: String): ItemInfo
 
 @Composable
