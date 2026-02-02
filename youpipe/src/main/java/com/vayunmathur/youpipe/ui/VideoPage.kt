@@ -2,6 +2,7 @@ package com.vayunmathur.youpipe.ui
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -47,6 +49,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -60,6 +63,7 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
+import com.vayunmathur.youpipe.findActivity
 import com.vayunmathur.youpipe.videoIDtoURL
 import com.vayunmathur.youpipe.videoURLtoID
 import kotlinx.coroutines.Dispatchers
@@ -112,6 +116,21 @@ fun RotatedComponent(
                 x = (placeable.height - placeable.width) / 2,
                 y = (placeable.width - placeable.height) / 2
             )
+        }
+    }
+}
+
+@Composable
+fun LockScreenOrientation(orientation: Int) {
+    val context = LocalContext.current
+    DisposableEffect(orientation) {
+        val activity = context.findActivity() ?: return@DisposableEffect onDispose {}
+        val originalOrientation = activity.requestedOrientation
+        activity.requestedOrientation = orientation
+
+        onDispose {
+            // Restore original orientation when leaving the screen
+            activity.requestedOrientation = originalOrientation
         }
     }
 }
@@ -173,75 +192,51 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
     }
 
     if(isFullscreen) {
-        @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-        Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { paddingValues ->
-            Box(Modifier.fillMaxSize()) {
-                RotatedComponent() {
-                    videoData?.let {
-                        VideoPlayer(
-                            viewModel,
-                            VideoInfo(
-                                it.title,
-                                videoID,
-                                it.duration,
-                                it.views,
-                                it.uploadDate,
-                                it.thumbnailURL,
-                                it.author
-                            ),
-                            videoStreams,
-                            audioStreams,
-                            segments,
-                            true,
-                            { isFullscreen = it })
-                    }
-                }
-            }
-        }
-        return
+        LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     }
 
 
-    Scaffold() { paddingValues ->
+    Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
-                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams, audioStreams, segments, false, { isFullscreen = it })
+                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams, audioStreams, segments, isFullscreen, { isFullscreen = it })
                 VideoDetails(backStack, it)
             }
+            if(!isFullscreen) {
+                val pagerState = rememberPagerState(pageCount = { 2 })
+                val coroutineScope = rememberCoroutineScope()
 
-            val pagerState = rememberPagerState(pageCount = { 2 })
-            val coroutineScope = rememberCoroutineScope()
-
-            Column {
-                // 2. The TabRow synchronized with the pager
-                SecondaryTabRow(selectedTabIndex = pagerState.currentPage) {
-                    Tab(
-                        selected = pagerState.currentPage == 0,
-                        onClick = {
-                            coroutineScope.launch { pagerState.animateScrollToPage(0) }
+                Column {
+                    // 2. The TabRow synchronized with the pager
+                    SecondaryTabRow(selectedTabIndex = pagerState.currentPage) {
+                        Tab(
+                            selected = pagerState.currentPage == 0,
+                            onClick = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(0) }
+                            }
+                        ) {
+                            Text("Comments", modifier = Modifier.padding(16.dp))
                         }
-                    ) {
-                        Text("Comments", modifier = Modifier.padding(16.dp))
-                    }
-                    Tab(
-                        selected = pagerState.currentPage == 1,
-                        onClick = {
-                            coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                        Tab(
+                            selected = pagerState.currentPage == 1,
+                            onClick = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(1) }
+                            }
+                        ) {
+                            Text("Related Videos", modifier = Modifier.padding(16.dp))
                         }
-                    ) {
-                        Text("Related Videos", modifier = Modifier.padding(16.dp))
                     }
-                }
 
-                // 3. The Pager that enables swiping
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.Top // Ensures content starts at top
-                ) { page ->
-                    when (page) {
-                        0 -> CommentsSection(comments)
-                        1 -> RelatedVideosSection(backStack, viewModel, relatedVideos)
+                    // 3. The Pager that enables swiping
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.Top // Ensures content starts at top
+                    ) { page ->
+                        when (page) {
+                            0 -> CommentsSection(comments)
+                            1 -> RelatedVideosSection(backStack, viewModel, relatedVideos)
+                        }
                     }
                 }
             }
