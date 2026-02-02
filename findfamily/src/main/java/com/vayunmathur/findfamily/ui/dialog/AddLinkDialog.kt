@@ -118,10 +118,3 @@ fun DropdownField(value: String, setValue: (String) -> Unit, options: Collection
         }
     }
 }
-
-private fun String.decodeBase26(): Long {
-    var value = 0uL
-    for(i in this.indices)
-        value += (this[i].code - 65).toULong() * 26.0.pow(this.length - i - 1).toULong()
-    return value.toLong()
-}

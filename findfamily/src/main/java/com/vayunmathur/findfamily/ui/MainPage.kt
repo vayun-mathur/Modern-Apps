@@ -57,9 +57,11 @@ import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.ui.dialog.encodeBase26
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconCopy
@@ -103,7 +105,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             }
         }) {
             FloatingActionButtonMenuItem({
-                backStack.add(Route.AddPersonDialog)
+                backStack.add(Route.AddPersonDialog())
             }, {Text("Person")}, { Icon(painterResource(R.drawable.outline_person_24), null) })
             FloatingActionButtonMenuItem({
                 backStack.add(Route.WaypointEditPage(0))
@@ -115,8 +117,16 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     }, bottomBar = {
         Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
             LazyColumn(Modifier.padding(bottom = 24.dp).padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
-                items(users) {
+                items(users.filter { it.requestStatus == RequestStatus.MUTUAL_CONNECTION || it.requestStatus == RequestStatus.AWAITING_RESPONSE }) {
                     UserCard(backStack, platform, it, userPositions[it.id], true)
+                }
+                if (users.any { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
+                    item {
+                        Text("Location Sharing Requests", Modifier.padding(start = 8.dp))
+                    }
+                }
+                items(users.filter { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
+                    AwaitingRequestCard(backStack, platform, it.id)
                 }
                 if (temporaryLinks.isNotEmpty()) {
                     item {
@@ -140,6 +150,21 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
         Box(Modifier.padding(paddingValues).fillMaxWidth()) {
             MapView(backStack, viewModel, navEnabled = true)
         }
+    }
+}
+
+@Composable
+fun AwaitingRequestCard(backStack: NavBackStack<Route>, platform: Platform, id: Long) {
+    Card {
+        ListItem({
+            Text("Request from ${id.encodeBase26()}")
+        }, trailingContent = {
+            IconButton({
+                backStack.add(Route.AddPersonDialog(id))
+            }) {
+                IconAdd()
+            }
+        })
     }
 }
 

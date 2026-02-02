@@ -155,14 +155,6 @@ object Networking {
         return strings.map { decryptLocation(it) }
     }
 
-    suspend fun sendLocationRequest(requested: ULong): Boolean {
-        return makeRequest("/api/request_sharing/send", "{\"requester\": $userid, \"requested\": $requested}") ?: false
-    }
-
-    suspend fun retrieveRequestsOfMe(): List<String> {
-        return makeRequest("/api/request_sharing/retrieve", "{\"requester\": $userid}") ?: listOf()
-    }
-
     private suspend fun encryptLocation(location: LocationValue, recipientUserID: ULong, key: RSA.OAEP.PublicKey): LocationSharingData {
         val cipher = key.encryptor()
         val str = Json.encodeToString(location)

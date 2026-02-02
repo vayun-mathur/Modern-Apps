@@ -73,6 +73,7 @@ class LocationTrackingService : Service() {
         println(locationValue)
         CoroutineScope(Dispatchers.IO).launch {
             Networking.ensureUserExists()
+            println(users)
             users.forEach { user ->
                 Networking.publishLocation(locationValue, user)
             }
@@ -96,6 +97,7 @@ class LocationTrackingService : Service() {
                         RequestStatus.AWAITING_REQUEST,
                         Clock.System.now(),
                         null,
+                        it
                     )
                 })
 

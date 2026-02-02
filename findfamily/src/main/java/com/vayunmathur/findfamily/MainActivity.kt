@@ -118,7 +118,7 @@ sealed interface Route: NavKey {
     data class WaypointEditPage(val id: Long): Route
 
     @Serializable
-    data object AddPersonDialog: Route
+    data class AddPersonDialog(val id: Long? = null): Route
 
     @Serializable
     data object AddLinkDialog: Route
@@ -142,7 +142,7 @@ fun Navigation(platform: Platform, viewModel: DatabaseViewModel) {
                 TimeZone.currentSystemDefault()).date)
         }
         entry<Route.AddPersonDialog>(metadata = DialogPage()) {
-            AddPersonDialog(backStack, viewModel, platform)
+            AddPersonDialog(backStack, viewModel, platform, it.id)
         }
         entry<Route.AddLinkDialog>(metadata = DialogPage()) {
             AddLinkDialog(backStack, viewModel, platform)

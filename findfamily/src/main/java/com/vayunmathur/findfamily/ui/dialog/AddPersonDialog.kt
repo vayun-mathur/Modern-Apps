@@ -37,12 +37,11 @@ import kotlin.math.pow
 import kotlin.time.Clock
 
 @Composable
-fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, platform: Platform) {
+fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, platform: Platform, id: Long?) {
     val users by viewModel.data<User>().collectAsState()
     val usersByID = users.associateBy { it.id }
 
-    var userid: String by remember { mutableStateOf("") }
-    val decodedUserID = userid.decodeBase26()
+    var userid: String by remember { mutableStateOf(id?.encodeBase26() ?: "") }
     var contactName: String? by remember { mutableStateOf(null) }
     var contactPhoto by remember { mutableStateOf<String?>(null) }
     val requestPickContact2 = platform.requestPickContact { name, photo ->
@@ -75,6 +74,7 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
                 OutlinedTextField(
                     userid,
                     { userid = it },
+                    readOnly = id != null,
                     label = { Text("Contact's FindFamily ID") },
                     isError = userStatus == RequestStatus.MUTUAL_CONNECTION || userStatus == RequestStatus.AWAITING_RESPONSE,
                     supportingText =
@@ -123,7 +123,7 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
     }
 }
 
-private fun String.decodeBase26(): Long {
+fun String.decodeBase26(): Long {
     var value = 0uL
     for(i in this.indices)
         value += (this[i].code - 65).toULong() * 26.0.pow(this.length - i - 1).toULong()
