@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FlexibleBottomAppBar
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -48,7 +49,7 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
             IconSave()
         }
     }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp)) {
+        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
             Column(Modifier.padding(16.dp).padding(bottom = 12.dp)) {
                 OutlinedTextField(name, {name = it}, Modifier.fillMaxWidth(), isError = name.isBlank(), supportingText = if(name.isBlank()) { {Text("Name cannot be blank") } } else null)
                 Spacer(Modifier.heightIn(8.dp))

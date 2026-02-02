@@ -17,6 +17,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -84,46 +85,42 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             }) {
                 IconDelete()
             }
-    }) }) { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                MapView(backStack, viewModel, navEnabled = true, selectedUser = SelectedUser(selectedUser, isShowingPresent, historicalPosition))
-
-                HistoryBar(backStack, isShowingPresent, {isShowingPresent = it}, locationValues) {historicalPosition = it}
-            }
-
-            Surface(Modifier.heightIn(max = 400.dp)) {
-                Column {
-                    UserCard(backStack, platform, selectedUser, userPositions[selectedUser.id], true)
+    }) }, bottomBar = {
+        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+            Column {
+                UserCard(backStack, platform, selectedUser, userPositions[selectedUser.id], true)
+                Spacer(Modifier.height(4.dp))
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Card {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Share your location")
+                            Spacer(Modifier.weight(1f))
+                            Checkbox(
+                                selectedUser.sendingEnabled,
+                                { send ->
+                                    viewModel.upsert(selectedUser.copy(sendingEnabled = send))
+                                })
+                        }
+                    }
                     Spacer(Modifier.height(4.dp))
-                    Column(
-                        Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Card {
-                            Row(
-                                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Share your location")
-                                Spacer(Modifier.weight(1f))
-                                Checkbox(
-                                    selectedUser.sendingEnabled,
-                                    { send ->
-                                        viewModel.upsert(selectedUser.copy(sendingEnabled = send))
-                                    })
-                            }
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        OutlinedButton({
-                            requestPickContact1()
-                        }) {
-                            Text("Change connected contact")
-                        }
+                    OutlinedButton({
+                        requestPickContact1()
+                    }) {
+                        Text("Change connected contact")
                     }
                 }
             }
+        }
+    }) { paddingValues ->
+        Box(Modifier.padding(paddingValues).fillMaxWidth()) {
+            MapView(backStack, viewModel, navEnabled = true, selectedUser = SelectedUser(selectedUser, isShowingPresent, historicalPosition))
+            HistoryBar(backStack, isShowingPresent, {isShowingPresent = it}, locationValues) {historicalPosition = it}
         }
     }
 }

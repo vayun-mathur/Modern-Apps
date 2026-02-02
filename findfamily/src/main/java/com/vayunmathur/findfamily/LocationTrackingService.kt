@@ -60,6 +60,7 @@ class LocationTrackingService : Service() {
         val waypoints = waypoints.value
         val temporaryLinks = temporaryLinks.value
         val userIDs = users.map { it.id }
+        val now = Clock.System.now()
         val locationValue = LocationValue(
             Networking.userid,
             Coord(location.latitude, location.longitude),
@@ -74,8 +75,11 @@ class LocationTrackingService : Service() {
             users.forEach { user ->
                 Networking.publishLocation(locationValue, user)
             }
-            temporaryLinks.forEach { link ->
+            temporaryLinks.filter { now < it.deleteAt }.forEach { link ->
                 Networking.publishLocation(locationValue, link)
+            }
+            temporaryLinks.filter { now >= it.deleteAt }.forEach { link ->
+                viewModel.delete(link)
             }
             delay(3000)
             Networking.receiveLocations()?.let { locations ->
@@ -99,13 +103,15 @@ class LocationTrackingService : Service() {
                     val lastLocation = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
                     val inWaypoint = waypoints.find { havershine(it.coord, lastLocation.coord) < it.range }
                     if(inWaypoint != null) {
-                        viewModel.upsert(user.copy(locationName = inWaypoint.name))
+                        if(inWaypoint.name != user.locationName)
+                            viewModel.upsert(user.copy(locationName = inWaypoint.name, lastLocationChangeTime = lastLocation.timestamp))
                     } else {
                         val address =
                             fetchAddress(lastLocation.coord.lat, lastLocation.coord.lon)?.let {
                                 it.featureName ?: it.thoroughfare
-                            }
-                        viewModel.upsert(user.copy(locationName = address ?: "Unknown Location"))
+                            } ?: "Unknown Location"
+                        if(user.locationName != address)
+                            viewModel.upsert(user.copy(locationName = address, lastLocationChangeTime = lastLocation.timestamp))
                     }
                 }
             }

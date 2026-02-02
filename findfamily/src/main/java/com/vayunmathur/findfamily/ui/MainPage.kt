@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,8 @@ import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
+import com.vayunmathur.library.ui.IconCopy
+import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.DatabaseViewModel
 import kotlinx.datetime.LocalDate
@@ -110,8 +113,8 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             }, {Text("Link")}, {Icon(painterResource(R.drawable.outline_link_24), null)})
         }
     }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp)) {
-            LazyColumn(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
+        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+            LazyColumn(Modifier.padding(bottom = 24.dp).padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
                 items(users) {
                     UserCard(backStack, platform, it, userPositions[it.id], true)
                 }
@@ -121,7 +124,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                     }
                 }
                 items(temporaryLinks) {
-                    TemporaryLinkCard(platform, it)
+                    TemporaryLinkCard(platform, viewModel, it)
                 }
                 item {
                     if (waypoints.isNotEmpty()) {
@@ -141,18 +144,28 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
 }
 
 @Composable
-fun TemporaryLinkCard(platform: Platform, temporaryLink: TemporaryLink) {
-    ListItem({
-        Text(temporaryLink.name)
-    }, Modifier, {}, {
-        Text("Expires ${timestring(temporaryLink.deleteAt, true)}")
-    }, trailingContent = {
-        Button({
-            platform.copy("https://findfamily.cc/view/${temporaryLink.id}#key=${temporaryLink.key}")
-        }) {
-            Text("Copy link")
-        }
-    })
+fun TemporaryLinkCard(platform: Platform, viewModel: DatabaseViewModel, temporaryLink: TemporaryLink) {
+    Card {
+        ListItem({
+            Text(temporaryLink.name)
+        }, Modifier, {}, {
+            Text("Expires ${timestring(temporaryLink.deleteAt, true)}")
+        }, trailingContent = {
+            Row {
+                IconButton({
+                    platform.copy("https://findfamily.cc/view/${temporaryLink.id}#key=${temporaryLink.key}")
+                }) {
+                    IconCopy()
+                }
+                Spacer(Modifier.width(16.dp))
+                IconButton({
+                    viewModel.delete(temporaryLink)
+                }) {
+                    IconDelete()
+                }
+            }
+        })
+    }
 }
 
 @Composable
