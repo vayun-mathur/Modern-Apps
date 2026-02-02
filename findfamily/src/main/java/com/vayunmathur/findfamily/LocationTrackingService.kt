@@ -56,6 +56,7 @@ class LocationTrackingService : Service() {
     private lateinit var bm: BatteryManager
 
     private val locationListener = LocationListener { location ->
+        if(Networking.userid == 0L) return@LocationListener
         val users = users.value
         val waypoints = waypoints.value
         val temporaryLinks = temporaryLinks.value

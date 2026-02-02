@@ -40,7 +40,8 @@ object Networking {
     private var privatekey: RSA.OAEP.PrivateKey? = null
     private var network_is_down = false
 
-    var userid by Delegates.notNull<Long>()
+    var userid = 0L
+        private set
 
     private lateinit var viewModel : DatabaseViewModel
     private lateinit var dataStoreUtils: DataStoreUtils
