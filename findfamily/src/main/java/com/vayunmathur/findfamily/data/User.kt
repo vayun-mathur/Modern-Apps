@@ -27,7 +27,6 @@ data class User(
     val sendingEnabled: Boolean,
     val requestStatus: RequestStatus,
     val lastLocationChangeTime: Instant = Clock.System.now(),
-    val deleteAt: Instant?,
     val encryptionKey: String? = null,
 
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
@@ -36,7 +35,7 @@ data class User(
     override fun withPosition(position: Double) = copy(position = position)
 
     companion object {
-        val EMPTY = User(" ", null, "Unnamed Location", true, RequestStatus.MUTUAL_CONNECTION, Clock.System.now(), null, null)
+        val EMPTY = User(" ", null, "Unnamed Location", true, RequestStatus.MUTUAL_CONNECTION, Clock.System.now(), null)
     }
 }
 

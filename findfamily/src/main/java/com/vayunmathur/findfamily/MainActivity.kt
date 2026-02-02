@@ -27,11 +27,13 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.ui.MainPage
 import com.vayunmathur.findfamily.ui.UserPage
 import com.vayunmathur.findfamily.ui.WaypointEditPage
+import com.vayunmathur.findfamily.ui.dialog.AddLinkDialog
 import com.vayunmathur.findfamily.ui.dialog.AddPersonDialog
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DataStoreUtils
@@ -52,7 +54,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<FFDatabase>()
-        val viewModel = DatabaseViewModel(User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao())
+        val viewModel = DatabaseViewModel(User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao(), TemporaryLink::class to db.temporaryLinkDao())
         val platform = Platform(this)
         setContent {
             DynamicTheme {
@@ -117,6 +119,9 @@ sealed interface Route: NavKey {
 
     @Serializable
     data object AddPersonDialog: Route
+
+    @Serializable
+    data object AddLinkDialog: Route
 }
 
 @Composable
@@ -138,6 +143,9 @@ fun Navigation(platform: Platform, viewModel: DatabaseViewModel) {
         }
         entry<Route.AddPersonDialog>(metadata = DialogPage()) {
             AddPersonDialog(backStack, viewModel, platform)
+        }
+        entry<Route.AddLinkDialog>(metadata = DialogPage()) {
+            AddLinkDialog(backStack, viewModel, platform)
         }
     }
 }

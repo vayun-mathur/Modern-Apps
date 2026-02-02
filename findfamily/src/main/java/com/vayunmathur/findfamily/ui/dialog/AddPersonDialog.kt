@@ -104,7 +104,6 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
                             if (userStatus == RequestStatus.AWAITING_REQUEST) RequestStatus.MUTUAL_CONNECTION else RequestStatus.AWAITING_RESPONSE,
                             Clock.System.now(),
                             null,
-                            null,
                             userid.decodeBase26()
                         )
                         viewModel.upsert(userToAdd, {

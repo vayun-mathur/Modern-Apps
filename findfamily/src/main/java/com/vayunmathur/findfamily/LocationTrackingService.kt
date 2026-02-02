@@ -26,6 +26,7 @@ import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.RequestStatus
+import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.havershine
@@ -37,6 +38,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
@@ -50,11 +52,13 @@ class LocationTrackingService : Service() {
     private lateinit var viewModel: DatabaseViewModel
     private lateinit var users: StateFlow<List<User>>
     private lateinit var waypoints: StateFlow<List<Waypoint>>
+    private lateinit var temporaryLinks: StateFlow<List<TemporaryLink>>
     private lateinit var bm: BatteryManager
 
     private val locationListener = LocationListener { location ->
         val users = users.value
         val waypoints = waypoints.value
+        val temporaryLinks = temporaryLinks.value
         val userIDs = users.map { it.id }
         val locationValue = LocationValue(
             Networking.userid,
@@ -70,6 +74,9 @@ class LocationTrackingService : Service() {
             users.forEach { user ->
                 Networking.publishLocation(locationValue, user)
             }
+            temporaryLinks.forEach { link ->
+                Networking.publishLocation(locationValue, link)
+            }
             delay(3000)
             Networking.receiveLocations()?.let { locations ->
                 viewModel.upsertAll(locations)
@@ -84,7 +91,6 @@ class LocationTrackingService : Service() {
                         RequestStatus.AWAITING_REQUEST,
                         Clock.System.now(),
                         null,
-                        null
                     )
                 })
 
@@ -128,10 +134,12 @@ class LocationTrackingService : Service() {
         viewModel = DatabaseViewModel(
             User::class to db.userDao(),
             Waypoint::class to db.waypointDao(),
-            LocationValue::class to db.locationValueDao()
+            LocationValue::class to db.locationValueDao(),
+            TemporaryLink::class to db.temporaryLinkDao()
         )
         users = viewModel.data<User>()
         waypoints = viewModel.data<Waypoint>()
+        temporaryLinks = viewModel.data<TemporaryLink>()
         CoroutineScope(Dispatchers.IO).launch {
             Networking.init(viewModel, DataStoreUtils.getInstance(this@LocationTrackingService))
         }
@@ -139,18 +147,16 @@ class LocationTrackingService : Service() {
         bm = getSystemService(BATTERY_SERVICE) as BatteryManager
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
 
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                // Request GPS updates
-                locationManager.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER,
-                    30_000L, // 30 seconds
-                    0f,   // regardless of movement
-                    locationListener
-                )
-            } catch (unlikely: SecurityException) {
-                // Handle missing permissions
-            }
+        try {
+            // Request GPS updates
+            locationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER,
+                30_000L, // 30 seconds
+                0f,   // regardless of movement
+                locationListener
+            )
+        } catch (unlikely: SecurityException) {
+            // Handle missing permissions
         }
     }
 
@@ -237,15 +243,10 @@ class ServiceRestartWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
-        val intent = Intent(applicationContext, LocationTrackingService::class.java)
-
         try {
-            // Since WorkManager has its own background execution window,
-            // we can start the foreground service here.
-            applicationContext.startForegroundService(intent)
+            applicationContext.startForegroundService(Intent(applicationContext, LocationTrackingService::class.java))
             return Result.success()
-        } catch (e: Exception) {
-            // If the OS still blocks it (rare for location type), retry later
+        } catch (_: Exception) {
             return Result.retry()
         }
     }

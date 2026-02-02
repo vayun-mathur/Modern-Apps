@@ -56,6 +56,7 @@ import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.library.ui.IconAdd
@@ -81,6 +82,7 @@ import kotlin.time.Instant
 @Composable
 fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val users by viewModel.data<User>().collectAsState()
+    val temporaryLinks by viewModel.data<TemporaryLink>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
@@ -103,20 +105,23 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             FloatingActionButtonMenuItem({
                 backStack.add(Route.WaypointEditPage(0))
             }, {Text("Location")}, {Icon(painterResource(R.drawable.outline_pin_drop_24), null)})
+            FloatingActionButtonMenuItem({
+                backStack.add(Route.AddLinkDialog)
+            }, {Text("Link")}, {Icon(painterResource(R.drawable.outline_link_24), null)})
         }
     }, bottomBar = {
         Surface(Modifier.heightIn(max = 400.dp)) {
             LazyColumn(Modifier.padding(bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
-                items(users.filter { it.deleteAt == null }) {
+                items(users) {
                     UserCard(backStack, platform, it, userPositions[it.id], true)
                 }
-                if (users.any { it.deleteAt != null }) {
+                if (temporaryLinks.isNotEmpty()) {
                     item {
                         Text("Temporary Links", Modifier.padding(start = 8.dp))
                     }
                 }
-                items(users.filter { it.deleteAt != null }) {
-                    UserCard(backStack, platform, it, userPositions[it.id], true)
+                items(temporaryLinks) {
+                    TemporaryLinkCard(platform, it)
                 }
                 item {
                     if (waypoints.isNotEmpty()) {
@@ -133,6 +138,21 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             MapView(backStack, viewModel, navEnabled = true)
         }
     }
+}
+
+@Composable
+fun TemporaryLinkCard(platform: Platform, temporaryLink: TemporaryLink) {
+    ListItem({
+        Text(temporaryLink.name)
+    }, Modifier, {}, {
+        Text("Expires ${timestring(temporaryLink.deleteAt, true)}")
+    }, trailingContent = {
+        Button({
+            platform.copy("https://findfamily.cc/view/${temporaryLink.id}#key=${temporaryLink.key}")
+        }) {
+            Text("Copy link")
+        }
+    })
 }
 
 @Composable
@@ -161,7 +181,7 @@ fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List
 @OptIn(ExperimentalTime::class)
 @Composable
 fun UserCard(backStack: NavBackStack<Route>, platform: Platform, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
-    val lastUpdatedTime = locationValue?.let { timestring(it.timestamp) } ?: "Never"
+    val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false) } ?: "Never"
     val speed = locationValue?.speed?.times(10)?.roundToInt()?.div(10F) ?: 0.0
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
     val timeSinceEntry = Clock.System.now() - user.lastLocationChangeTime
@@ -192,27 +212,18 @@ fun UserCard(backStack: NavBackStack<Route>, platform: Platform, user: User, loc
     }) else Modifier) {
         ListItem(
             leadingContent = {
-                if(user.deleteAt == null)
-                    Column(Modifier.width(65.dp)) {
-                        UserPicture(user, 65.dp)
-                        Spacer(Modifier.height(4.dp))
-                        locationValue?.battery?.let {
-                            BatteryBar(it)
-                        }
+                Column(Modifier.width(65.dp)) {
+                    UserPicture(user, 65.dp)
+                    Spacer(Modifier.height(4.dp))
+                    locationValue?.battery?.let {
+                        BatteryBar(it)
                     }
+                }
             },
             headlineContent = { Text(user.name, fontWeight = FontWeight.Bold) },
             supportingContent = { if(showSupportingContent) {
-                if(user.deleteAt == null)
-                    Text("Updated $lastUpdatedTime\nAt ${user.locationName}\n$sinceString")
-                else {
-                    Button({
-                        platform.copy("https://findfamily.cc/view/${user.id}#key=${user.locationName}")
-                    }) {
-                        Text("Copy link")
-                    }
-                }
-            } }, trailingContent = { if(showSupportingContent && user.deleteAt == null){
+                Text("Updated $lastUpdatedTime\nAt ${user.locationName}\n$sinceString")
+            } }, trailingContent = { if(showSupportingContent){
                 Text("$speed m/s")
             } })
     }
@@ -234,16 +245,28 @@ fun BatteryBar(percent: Float, width: Dp = 30.dp, height: Dp = 15.dp) {
     }
 }
 
-fun timestring(timestamp: Instant): String {
-    val duration = Clock.System.now() - timestamp
-    return if(duration.inWholeSeconds < 60) {
-        "just now"
-    } else if(duration.inWholeMinutes < 60) {
-        "${duration.inWholeMinutes} minutes ago"
-    } else if(duration.inWholeHours < 24) {
-        "${duration.inWholeHours} hours ago"
+fun timestring(timestamp: Instant, future: Boolean): String {
+    val duration = (Clock.System.now() - timestamp).absoluteValue
+    if(!future) {
+        return if (duration.inWholeSeconds < 60) {
+            "just now"
+        } else if (duration.inWholeMinutes < 60) {
+            "${duration.inWholeMinutes} minutes ago"
+        } else if (duration.inWholeHours < 24) {
+            "${duration.inWholeHours} hours ago"
+        } else {
+            "${duration.inWholeDays} days ago"
+        }
     } else {
-        "${duration.inWholeDays} days ago"
+        return if (duration.inWholeSeconds < 60) {
+            "very soon"
+        } else if (duration.inWholeMinutes < 60) {
+            "in ${duration.inWholeMinutes} minutes"
+        } else if (duration.inWholeHours < 24) {
+            "in ${duration.inWholeHours} hours"
+        } else {
+            "in ${duration.inWholeDays} days"
+        }
     }
 }
 

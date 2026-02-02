@@ -101,31 +101,25 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                         Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (selectedUser.deleteAt == null) {
-                            Card {
-                                Row(
-                                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Share your location")
-                                    Spacer(Modifier.weight(1f))
-                                    Checkbox(
-                                        selectedUser.sendingEnabled,
-                                        { send ->
-                                            viewModel.upsert(selectedUser.copy(sendingEnabled = send))
-                                        })
-                                }
+                        Card {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Share your location")
+                                Spacer(Modifier.weight(1f))
+                                Checkbox(
+                                    selectedUser.sendingEnabled,
+                                    { send ->
+                                        viewModel.upsert(selectedUser.copy(sendingEnabled = send))
+                                    })
                             }
-                            Spacer(Modifier.height(4.dp))
-                            OutlinedButton({
-                                requestPickContact1()
-                            }) {
-                                Text("Change connected contact")
-                            }
-                        } else {
-                            val remainingTime = selectedUser.deleteAt!! - Clock.System.now()
-                            Text("Time remaining: ${remainingTime.inWholeHours} hours, ${remainingTime.inWholeMinutes % 60} minutes")
-                            Spacer(Modifier.height(4.dp))
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedButton({
+                            requestPickContact1()
+                        }) {
+                            Text("Change connected contact")
                         }
                     }
                 }

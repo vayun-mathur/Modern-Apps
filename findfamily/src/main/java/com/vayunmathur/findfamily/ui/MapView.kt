@@ -108,7 +108,6 @@ fun MapView(
                         RequestStatus.MUTUAL_CONNECTION,
                         Clock.System.now(),
                         null,
-                        null,
                         Networking.userid
                     )
                 )

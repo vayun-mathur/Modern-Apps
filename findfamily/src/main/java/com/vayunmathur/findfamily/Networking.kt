@@ -1,6 +1,7 @@
 package com.vayunmathur.findfamily
 
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -140,6 +141,11 @@ object Networking {
                 viewModel.upsert(user.copy(encryptionKey = keyString))
             }
         } ?: return false
+        return makeRequest("/api/location/publish", encryptLocation(location, user.id.toULong(), key)) ?: false
+    }
+
+    suspend fun publishLocation(location: LocationValue, user: TemporaryLink): Boolean {
+        val key = crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM, user.publicKey.decodeBase64Bytes())
         return makeRequest("/api/location/publish", encryptLocation(location, user.id.toULong(), key)) ?: false
     }
 
