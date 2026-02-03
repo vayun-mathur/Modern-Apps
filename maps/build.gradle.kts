@@ -1,0 +1,19 @@
+android {
+    defaultConfig {
+        applicationId = "com.vayunmathur.maps"
+        versionCode = 1
+        versionName = "1.0"
+    }
+}
+
+dependencies {
+    implementation(libs.maplibre.compose)
+    implementation(libs.maplibre.composeMaterial3)
+
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+
+    implementation("org.wololo:flatgeobuf:3.28.2")
+}
