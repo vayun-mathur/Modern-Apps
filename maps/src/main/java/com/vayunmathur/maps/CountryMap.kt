@@ -1,31 +1,20 @@
 package com.vayunmathur.maps
 
 import android.content.Context
-import com.google.flatbuffers.DoubleVector
-import com.google.flatbuffers.IntVector
 import com.vayunmathur.maps.ui.Feature1
-import com.vayunmathur.maps.ui.FeatureCollection1
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
-import okio.source
-import org.maplibre.spatialk.geojson.FeatureCollection
-import org.wololo.flatgeobuf.*
+import org.maplibre.spatialk.geojson.Position
 import org.wololo.flatgeobuf.generated.Header
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import org.wololo.flatgeobuf.generated.Feature as FgbFeature
-import org.maplibre.spatialk.geojson.Position
-import org.maplibre.spatialk.geojson.Polygon
-import org.maplibre.spatialk.geojson.MultiPolygon
 import org.maplibre.spatialk.geojson.Geometry as SKGeometry
-import org.maplibre.spatialk.geojson.Polygon as SKPolygon
 import org.maplibre.spatialk.geojson.MultiPolygon as SKMultiPolygon
+import org.maplibre.spatialk.geojson.Polygon as SKPolygon
+import org.wololo.flatgeobuf.generated.Feature as FgbFeature
 import org.wololo.flatgeobuf.generated.Geometry as FgbGeometry
 
 fun fgbToSpatialK(fgbGeom: FgbGeometry, actualType: Int): SKGeometry {

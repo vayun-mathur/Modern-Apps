@@ -31,12 +31,14 @@ import com.vayunmathur.library.util.readLines
 import com.vayunmathur.maps.CountryMap
 import com.vayunmathur.maps.OSM
 import com.vayunmathur.maps.Wikidata
+import com.vayunmathur.maps.data.OpeningHours
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -74,9 +76,9 @@ import org.maplibre.spatialk.geojson.Polygon
 import org.maplibre.spatialk.geojson.Position
 
 sealed interface SpecificFeature {
-    data class Admin0Label(val iso3166_1: String, val wikipedia: String) : SpecificFeature
-    data class Admin1Label(val iso3166_2: String, val wikipedia: String) : SpecificFeature
-    data class Restaurant(val name: String?, val phone: String?, val website: String?, val menu: String?): SpecificFeature
+    data class Admin0Label(val iso3166_1: String, val wikipedia: String, val name: String) : SpecificFeature
+    data class Admin1Label(val iso3166_2: String, val wikipedia: String, val name: String) : SpecificFeature
+    data class Restaurant(val name: String?, val phone: String?, val website: String?, val menu: String?, val openingHours: OpeningHours?): SpecificFeature
 }
 
 typealias Feature1 = Feature<Geometry, JsonObject?>
@@ -92,17 +94,17 @@ suspend fun parse(feature: Feature1): SpecificFeature? {
     return when(properties.string("kind")) {
         "country" -> {
             val wiki = Wikidata.get(properties.string("wikidata")!!)
-            SpecificFeature.Admin0Label(wiki.getProperty("P297")!!, wiki.getWikipedia()!!)
+            SpecificFeature.Admin0Label(wiki.getProperty("P297")!!, wiki.getWikipedia()!!, properties.string("name:en")!!)
         }
         "region" -> {
             val wiki = Wikidata.get(properties.string("wikidata")!!)
-            SpecificFeature.Admin1Label(wiki.getProperty("P300")!!, wiki.getWikipedia()!!)
+            SpecificFeature.Admin1Label(wiki.getProperty("P300")!!, wiki.getWikipedia()!!, properties.string("name:en")!!)
         }
-        "restaurant" -> {
+        "restaurant", "fast_food", "cafe" -> {
             val tags = OSM.getTags(osmID)
             println(properties)
             println(tags)
-            SpecificFeature.Restaurant(tags["name"], tags["phone"], tags["website"], tags["website:menu"])
+            SpecificFeature.Restaurant(tags["name"], tags["phone"], tags["website"], tags["website:menu"], tags["opening_hours"]?.let { OpeningHours.from(it) })
         }
         else -> null
     }
@@ -135,9 +137,9 @@ fun MapPage() {
     }, false))
 
     suspend fun hide() {
-        allowProgrammaticHide = true;
+        allowProgrammaticHide = true
         scaffoldState.bottomSheetState.hide()
-        allowProgrammaticHide = false;
+        allowProgrammaticHide = false
     }
 
     val coroutineScope = rememberCoroutineScope()
@@ -154,24 +156,19 @@ fun MapPage() {
         Box(Modifier.padding(horizontal = 16.dp).padding(bottom = 48.dp, top = 8.dp)) {
             when (val feature = selectedFeature) {
                 is SpecificFeature.Admin0Label -> {
-                    Text(feature.wikipedia)
+                    Column {
+                        Text(feature.name, style = MaterialTheme.typography.titleLarge)
+                        Text(feature.wikipedia, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
                 is SpecificFeature.Admin1Label -> {
-                    Text(feature.wikipedia)
+                    Column {
+                        Text(feature.name, style = MaterialTheme.typography.titleLarge)
+                        Text(feature.wikipedia, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
                 is SpecificFeature.Restaurant -> {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(feature.name ?: "", style = MaterialTheme.typography.titleLarge)
-                        feature.phone?.let {
-                            Text(it)
-                        }
-                        feature.website?.let {
-                            Text(it)
-                        }
-                        feature.menu?.let {
-                            Text(it)
-                        }
-                    }
+                    RestaurantBottomSheet(feature)
                 }
                 else -> Unit
             }
@@ -236,10 +233,8 @@ fun MyMapLayers(selectedFeature: SpecificFeature?) {
     val context = LocalContext.current
     when (selectedFeature) {
         is SpecificFeature.Admin0Label -> {
-            val feature = CountryMap.getAdmin0(context, selectedFeature.iso3166_1)!!
-
-            LaunchedEffect(feature) {
-                outlineSource.setData(GeoJsonData.Features(FeatureCollection(listOf(createInvertedMask(feature)))))
+            LaunchedEffect(selectedFeature) {
+                outlineSource.setData(GeoJsonData.Features(FeatureCollection(listOf(createInvertedMask(CountryMap.getAdmin0(context, selectedFeature.iso3166_1)!!)))))
             }
             FillLayer("global-mask", outlineSource,
                 //filter = const(true),
@@ -252,10 +247,8 @@ fun MyMapLayers(selectedFeature: SpecificFeature?) {
         }
 
         is SpecificFeature.Admin1Label -> {
-            val feature = CountryMap.getAdmin1(context, selectedFeature.iso3166_2)!!
-
-            LaunchedEffect(feature) {
-                outlineSource.setData(GeoJsonData.Features(FeatureCollection(listOf(createInvertedMask(feature)))))
+            LaunchedEffect(selectedFeature) {
+                outlineSource.setData(GeoJsonData.Features(FeatureCollection(listOf(createInvertedMask(CountryMap.getAdmin1(context, selectedFeature.iso3166_2)!!)))))
             }
             FillLayer("global-mask", outlineSource,
                 //filter = const(true),
