@@ -5,9 +5,12 @@ import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -21,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -45,11 +49,15 @@ fun goto(context: Context, uri: String) {
 }
 
 @Composable
-fun RestaurantBottomSheet(feature: SpecificFeature.Restaurant) {
+fun RestaurantBottomSheet(feature: SpecificFeature.Restaurant, requestDirections: () -> Unit) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(feature.name ?: "", style = MaterialTheme.typography.titleLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(feature.name ?: "", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Button({requestDirections()}) { Text("Directions") }
+        }
         feature.openingHours?.let {
+            Spacer(Modifier.height(8.dp))
             var showDetails by remember { mutableStateOf(false) }
 
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
