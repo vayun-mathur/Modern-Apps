@@ -11,6 +11,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.maplibre.spatialk.geojson.Position
+import kotlin.time.Duration
 
 object RouteService {
     private val client = HttpClient {
@@ -44,15 +45,16 @@ object RouteService {
             val response = client.post(ROUTES_URL) {
                 contentType(ContentType.Application.Json)
                 header("X-Goog-Api-Key", API_KEY)
-                header("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.navigationInstruction")
+                header("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.travelMode,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration,routes.legs.steps.navigationInstruction"
+                 + if(travelMode == TravelMode.TRANSIT) ",routes.legs.steps.transitDetails" else "")
                 setBody(request) // Now it knows exactly how to serialize this object
             }
 
             println(response.bodyAsText())
 
             val routeres = response.body<API.RouteResponse>().routes.firstOrNull() ?: return null
-            return Route(routeres.duration, routeres.distanceMeters, decodePolyline(routeres.polyline.encodedPolyline), routeres.legs.map { leg -> leg.steps.map {
-                Step(decodePolyline(it.polyline.encodedPolyline), it.navigationInstruction)
+            return Route(Duration.parse(routeres.duration), routeres.distanceMeters, decodePolyline(routeres.polyline.encodedPolyline), routeres.legs.map { leg -> leg.steps.map {
+                Step(it.distanceMeters, Duration.parse(it.staticDuration), decodePolyline(it.polyline.encodedPolyline), it.navigationInstruction, it.travelMode, it.transitDetails)
             }}.flatten())
         } catch (e: Exception) {
             e.printStackTrace()
@@ -135,7 +137,7 @@ object RouteService {
         @Serializable
         data class RouteRes(
             val duration: String,
-            val distanceMeters: Int,
+            val distanceMeters: Double,
             val polyline: Polyline,
             val legs: List<Leg>
         )
@@ -144,7 +146,21 @@ object RouteService {
         data class Leg(val steps: List<Step>)
 
         @Serializable
-        data class Step(val polyline: Polyline, val navigationInstruction: NavInstruction)
+        data class Step(val polyline: Polyline, val navigationInstruction: NavInstruction, val travelMode: TravelMode,
+                        val distanceMeters: Double,
+                        val staticDuration: String, val transitDetails: TransitDetails? = null)
+
+        @Serializable
+        data class TransitDetails(val headsign: String, val stopCount: Int, val transitLine: TransitLine, val stopDetails: StopDetails)
+
+        @Serializable
+        data class StopDetails(val arrivalTime: String, val departureTime: String, val arrivalStop: Stop, val departureStop: Stop)
+
+        @Serializable
+        data class Stop(val name: String)
+
+        @Serializable
+        data class TransitLine(val name: String, val nameShort: String? = null, val color: String)
 
         @Serializable
         data class NavInstruction(val maneuver: Maneuver = Maneuver.MANEUVER_UNSPECIFIED, val instructions: String = "")
@@ -201,19 +217,27 @@ object RouteService {
         }
     }
 
-
     @Serializable
     data class Polyline(val encodedPolyline: String)
 
     data class Route(
-        val duration: String,
-        val distanceMeters: Int,
+        override val duration: Duration,
+        override val distanceMeters: Double,
         val polyline: List<Position>,
         val step: List<Step>,
-    )
+    ): RouteType
 
     data class Step(
+        val distanceMeters: Double,
+        val staticDuration: Duration,
         val polyline: List<Position>,
-        val navInstruction: API.NavInstruction
+        val navInstruction: API.NavInstruction,
+        val travelMode: RouteService.TravelMode,
+        val transitDetails: API.TransitDetails? = null
     )
+
+    interface RouteType {
+        val duration: Duration
+        val distanceMeters: Double
+    }
 }

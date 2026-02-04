@@ -6,14 +6,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +34,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -53,28 +62,39 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColor
+import androidx.core.graphics.toColorInt
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.CountryMap
 import com.vayunmathur.maps.FrameworkLocationManager
 import com.vayunmathur.maps.OSM
 import com.vayunmathur.maps.RouteService
+import com.vayunmathur.maps.TransitRoute
 import com.vayunmathur.maps.Wikidata
 import com.vayunmathur.maps.data.OpeningHours
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.format.Padding
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import okio.source
+import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.expressions.ast.Expression
 import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.expressions.dsl.convertToColor
 import org.maplibre.compose.expressions.dsl.eq
 import org.maplibre.compose.expressions.dsl.feature
 import org.maplibre.compose.expressions.dsl.rem
 import org.maplibre.compose.expressions.value.ExpressionValue
 import org.maplibre.compose.expressions.value.IntValue
 import org.maplibre.compose.expressions.value.LineCap
+import org.maplibre.compose.expressions.value.StringValue
 import org.maplibre.compose.layers.FillLayer
 import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.map.GestureOptions
@@ -192,10 +212,11 @@ fun MapPage() {
         allowProgrammaticHide = false
     }
 
-    var route: Map<RouteService.TravelMode, RouteService.Route>? by remember { mutableStateOf(null) }
+    var route: Map<RouteService.TravelMode, RouteService.RouteType>? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedFeature) {
         if(selectedFeature is SpecificFeature.Route) {
             route = RouteService.TravelMode.entries.associateWith {
+                if(it == RouteService.TravelMode.TRANSIT) return@associateWith TransitRoute.computeRoute(selectedFeature as SpecificFeature.Route, userPosition)
                 RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, it)!!
             }
         }
@@ -212,7 +233,7 @@ fun MapPage() {
 
     var selectedRouteType by remember { mutableStateOf(RouteService.TravelMode.DRIVE) }
 
-    val camera = rememberCameraState()
+    val camera = rememberCameraState(CameraPosition(target = Position(-118.243683,34.052235), zoom = 8.0))
     BottomSheetScaffold({
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 48.dp, top = 8.dp)) {
             when (val feature = selectedFeature) {
@@ -248,21 +269,106 @@ fun MapPage() {
                                 }
                             }
                             val route = route!![selectedRouteType]!!
-                            val duration = Duration.parse(route.duration)
-                            ListItem({ Text(duration.toString()) }, supportingContent = {
+                            ListItem({ Text(route.duration.toString()) }, supportingContent = {
                                 Text("${(route.distanceMeters / 1000.0).round(2)} km")
                             })
                             Spacer(Modifier.height(8.dp))
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                route.step.forEachIndexed { idx, it ->
-                                    Card(shape = verticalShape(idx, route.step.size)) {
+                            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                if(route is TransitRoute) {
+                                    val TIME_FORMAT = LocalTime.Format {
+                                        amPmHour(Padding.NONE)
+                                        chars(":")
+                                        minute()
+                                        amPmMarker(" AM", " PM")
+                                    }
+                                    Card(shape = verticalShape(0, 2)) {
                                         ListItem({
-                                            Text(it.navInstruction.instructions)
-                                        }, leadingContent = {
-                                            it.navInstruction.maneuver.icon()?.let {
-                                                Icon(painterResource(it), null)
-                                            }
+                                            val origin = (selectedFeature as SpecificFeature.Route).from?.name ?: "Your location"
+                                            Text(origin)
+                                        }, trailingContent = {
+                                            Text(route.startTime().toLocalDateTime(TimeZone.currentSystemDefault()).time.format(TIME_FORMAT))
                                         })
+                                    }
+                                    route.steps.forEachIndexed { idx, it ->
+                                        Card() {
+                                            when(it) {
+                                                is TransitRoute.Step.WalkStep -> {
+                                                    ListItem({
+                                                        Text("Walk ${it.duration} (${(it.distanceMeters / 1000).round(1)} km)")
+                                                    })
+                                                }
+                                                is TransitRoute.Step.TransitStep -> {
+                                                    if(idx > 0 && route.steps[idx-1] is TransitRoute.Step.TransitStep) {
+                                                        val prev = route.steps[idx-1] as TransitRoute.Step.TransitStep
+                                                        if(prev.arrivalStation == it.departureStation) {
+                                                            ListItem({
+                                                                Text("Transfer")
+                                                            })
+                                                        }
+                                                    }
+                                                    Row(Modifier.height(IntrinsicSize.Min)) {
+                                                        Surface(Modifier.fillMaxHeight().width(10.dp), RoundedCornerShape(12.dp), color = Color(it.lineColor.toColorInt())) {}
+                                                        Column {
+                                                            ListItem({
+                                                                Text(it.departureStation)
+                                                            })
+                                                            ListItem({
+                                                                Surface(
+                                                                    Modifier,
+                                                                    RoundedCornerShape(12.dp),
+                                                                    Color(it.lineColor.toColorInt())
+                                                                ) {
+                                                                    Text(
+                                                                        it.lineName,
+                                                                        Modifier.padding(
+                                                                            horizontal = 12.dp,
+                                                                            vertical = 2.dp
+                                                                        )
+                                                                    )
+                                                                }
+                                                            }, supportingContent = {
+                                                                Text(it.lineDirection)
+                                                            }, trailingContent = {
+                                                                Text(
+                                                                    it.departureTime.toLocalDateTime(
+                                                                        TimeZone.currentSystemDefault()
+                                                                    ).time.format(TIME_FORMAT)
+                                                                )
+                                                            })
+                                                            ListItem({
+                                                                Text(it.arrivalStation)
+                                                            }, trailingContent = {
+                                                                Text(
+                                                                    it.arrivalTime.toLocalDateTime(
+                                                                        TimeZone.currentSystemDefault()
+                                                                    ).time.format(TIME_FORMAT)
+                                                                )
+                                                            })
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Card(shape = verticalShape(1, 2)) {
+                                        ListItem({
+                                            val origin = (selectedFeature as SpecificFeature.Route).to?.name ?: "Your location"
+                                            Text(origin)
+                                        }, trailingContent = {
+                                            Text(route.endTime().toLocalDateTime(TimeZone.currentSystemDefault()).time.format(TIME_FORMAT))
+                                        })
+                                    }
+                                } else if(route is RouteService.Route) {
+                                    route.step.forEachIndexed { idx, it ->
+                                        Card(shape = verticalShape(idx, route.step.size)) {
+                                            ListItem({
+                                                Text(it.navInstruction.instructions)
+                                            }, leadingContent = {
+                                                it.navInstruction.maneuver.icon()?.let {
+                                                    Icon(painterResource(it), null)
+                                                }
+                                            })
+                                        }
                                     }
                                 }
                             }
@@ -393,7 +499,7 @@ lateinit var routeSource: GeoJsonSource
 
 @Composable
 @MaplibreComposable
-fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.Route?) {
+fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.RouteType?) {
     val context = LocalContext.current
     when (selectedFeature) {
         is SpecificFeature.Admin0Label -> {
@@ -427,16 +533,38 @@ fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.Route?) {
         is SpecificFeature.Route -> {
             if(route != null) {
                 LaunchedEffect(route) {
-                    val features: List<Feature1> = listOf<Feature1>(
-                        //Feature1(LineString(route.polyline), JsonObject(emptyMap()))
-                    ) + route.step.mapIndexed { idx, it -> Feature1(LineString(it.polyline), JsonObject(mapOf("id" to JsonPrimitive(idx)))) }
-                    routeSource.setData(GeoJsonData.Features(FeatureCollection(features)))
+                    if(route is RouteService.Route) {
+                        val features: List<Feature1> = listOf<Feature1>(
+                            //Feature1(LineString(route.polyline), JsonObject(emptyMap()))
+                        ) + route.step.mapIndexed { idx, it ->
+                            Feature1(
+                                LineString(it.polyline),
+                                JsonObject(mapOf("color" to JsonPrimitive("#1710F1")))
+                            )
+                        }
+                        routeSource.setData(GeoJsonData.Features(FeatureCollection(features)))
+                    } else if(route is TransitRoute) {
+                        val features: List<Feature1> = route.steps.mapNotNull {
+                            when(it) {
+                                is TransitRoute.Step.WalkStep -> {
+                                    Feature1(
+                                        LineString(it.polyline),
+                                        JsonObject(mapOf("color" to JsonPrimitive("#1710F1")))
+                                    )
+                                }
+                                is TransitRoute.Step.TransitStep -> {
+                                    Feature1(
+                                        LineString(it.polyline),
+                                        JsonObject(mapOf("color" to JsonPrimitive(it.lineColor)))
+                                    )
+                                }
+                            }
+                        }
+                        routeSource.setData(GeoJsonData.Features(FeatureCollection(features)))
+                    }
                 }
                 LineLayer("route", routeSource,
-                    color = const(Color(0xFF1710F1)), width = const(8.dp), cap = const(LineCap.Round), filter = (feature["id"].cast<IntValue>() % const(2)) eq const(0)
-                )
-                LineLayer("route2", routeSource,
-                    color = const(Color(0xFF2AB7EF)), width = const(8.dp), cap = const(LineCap.Round), filter = (feature["id"].cast<IntValue>() % const(2)) eq const(1)
+                    color = feature["color"].cast<StringValue>().convertToColor(), width = const(8.dp), cap = const(LineCap.Round)
                 )
             }
         }
