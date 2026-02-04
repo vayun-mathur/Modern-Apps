@@ -1,13 +1,18 @@
 package com.vayunmathur.maps.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,22 +26,32 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.CountryMap
+import com.vayunmathur.maps.FrameworkLocationManager
 import com.vayunmathur.maps.OSM
-import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.RouteService
 import com.vayunmathur.maps.Wikidata
 import com.vayunmathur.maps.data.OpeningHours
@@ -119,6 +134,21 @@ fun MapPage() {
     var selectedFeature by remember { mutableStateOf<SpecificFeature?>(null) }
     val context = LocalContext.current
 
+    val locationManager = remember { FrameworkLocationManager(context) }
+
+    var userPosition by remember { mutableStateOf(Position(0.0, 0.0)) }
+    var userBearing by remember { mutableStateOf(0f) }
+    DisposableEffect(Unit) {
+        val listener = locationManager.startUpdates { position, bearing ->
+            userPosition = position
+            userBearing = bearing
+        }
+
+        onDispose {
+            locationManager.stopUpdates(listener)
+        }
+    }
+
     LaunchedEffect(Unit) {
         OSM.initialize(context)
         outlineSource = GeoJsonSource("selected-country-geojson", GeoJsonData.Features(
@@ -149,10 +179,10 @@ fun MapPage() {
         allowProgrammaticHide = false
     }
 
-    var route: Route? by remember { mutableStateOf(null) }
+    var route: RouteService.Route? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedFeature) {
         if(selectedFeature is SpecificFeature.Route) {
-            route = RouteService.computeRoute(selectedFeature as SpecificFeature.Route, Position(-118.2806312, 34.0213141))
+            route = RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, RouteService.TravelMode.DRIVE)
         }
     }
 
@@ -227,6 +257,50 @@ fun MapPage() {
                         MyMapLayers(selectedFeature, route)
                     }
 
+                    key(camera.position) {
+                        Canvas(Modifier.fillMaxSize()) {
+                            if (userPosition != Position(0.0, 0.0) && camera.projection != null) {
+                                val offset =
+                                    camera.projection!!.screenLocationFromPosition(userPosition)
+
+                                val centerOffset = Offset(offset.x.toPx(), offset.y.toPx())
+                                val arcRadius = 20.dp.toPx() // The distance from center to the arc's stroke
+                                val strokeWidth = 8.dp.toPx() // How thick the arc is
+
+                                drawCircle(
+                                    Color(0xFFFFFFFF),
+                                    center = centerOffset,
+                                    radius = 9.5.dp.toPx()
+                                )
+                                drawCircle(
+                                    Color(0xFF0E35F1),
+                                    center = centerOffset,
+                                    radius = 8.dp.toPx()
+                                )
+
+// Create a radial gradient that fades out
+                                val fadingBrush = Brush.radialGradient(
+                                    0f to Color(0xFF0E35F1),          // Opaque blue at the very center
+                                    0.8f to Color(0xFF0E35F1),        // Stay opaque until the arc's edge
+                                    1.0f to Color.Transparent,        // Fade to nothing
+                                    center = centerOffset,
+                                    radius = arcRadius + strokeWidth  // Gradient ends just past the stroke
+                                )
+
+
+                                drawArc(
+                                    brush = fadingBrush,
+                                    startAngle = userBearing - 90f - 30f,           // Start position (3 o'clock)
+                                    sweepAngle = 60f,         // Length of the arc
+                                    useCenter = false,         // Set to false for a curved line, true for a pie slice
+                                    topLeft = Offset(centerOffset.x - arcRadius, centerOffset.y - arcRadius),
+                                    size = Size(arcRadius * 2, arcRadius * 2),
+                                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                                )
+                            }
+                        }
+                    }
+
                     if(selectedFeature is SpecificFeature.Route) {
                         Column(Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth()) {
                             Card(shape = verticalShape(0, 2)) {
@@ -275,7 +349,7 @@ lateinit var routeSource: GeoJsonSource
 
 @Composable
 @MaplibreComposable
-fun MyMapLayers(selectedFeature: SpecificFeature?, route: Route?) {
+fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.Route?) {
     val context = LocalContext.current
     when (selectedFeature) {
         is SpecificFeature.Admin0Label -> {

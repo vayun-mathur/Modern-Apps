@@ -12,49 +12,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.maplibre.spatialk.geojson.Position
 
-// --- Request Models ---
-@Serializable
-data class RoutesRequest(
-    val origin: Waypoint,
-    val destination: Waypoint,
-    val travelMode: String = "DRIVE",
-    val routingPreference: String = "TRAFFIC_AWARE",
-    val computeAlternativeRoutes: Boolean = false,
-    val routeModifiers: RouteModifiers = RouteModifiers(),
-    val languageCode: String = "en-US",
-    val units: String = "METRIC"
-)
-
-@Serializable
-data class Waypoint(val location: Location)
-
-@Serializable
-data class Location(val latLng: LatLng)
-
-@Serializable
-data class LatLng(val latitude: Double, val longitude: Double)
-
-@Serializable
-data class RouteModifiers(
-    val avoidTolls: Boolean = false,
-    val avoidHighways: Boolean = false,
-    val avoidFerries: Boolean = false
-)
-
-// --- Response Models ---
-@Serializable
-data class RouteResponse(val routes: List<RouteRes> = emptyList())
-
-@Serializable
-data class RouteRes(
-    val duration: String,
-    val distanceMeters: Int,
-    val polyline: Polyline
-)
-
-@Serializable
-data class Polyline(val encodedPolyline: String)
-
 object RouteService {
     private val client = HttpClient {
         install(ContentNegotiation) {
@@ -70,14 +27,16 @@ object RouteService {
 
     suspend fun computeRoute(
         features: SpecificFeature.Route,
-        userPosition: Position
+        userPosition: Position,
+        travelMode: TravelMode
     ): Route? {
         val originPos = features.from?.position ?: userPosition
         val destPos = features.to?.position ?: userPosition
 
         val request = RoutesRequest(
             origin = Waypoint(Location(LatLng(originPos.latitude, originPos.longitude))),
-            destination = Waypoint(Location(LatLng(destPos.latitude, destPos.longitude)))
+            destination = Waypoint(Location(LatLng(destPos.latitude, destPos.longitude))),
+            travelMode = travelMode
         )
 
         return try {
@@ -129,10 +88,57 @@ object RouteService {
         }
         return poly
     }
-}
 
-data class Route(
-    val duration: String,
-    val distanceMeters: Int,
-    val polyline: List<Position>
-)
+    enum class TravelMode {
+        DRIVE, TRANSIT, WALK, BICYCLE
+    }
+
+    // --- Request Models ---
+    @Serializable
+    data class RoutesRequest(
+        val origin: Waypoint,
+        val destination: Waypoint,
+        val travelMode: TravelMode,
+        val routingPreference: String = "TRAFFIC_AWARE",
+        val computeAlternativeRoutes: Boolean = false,
+        val routeModifiers: RouteModifiers = RouteModifiers(),
+        val languageCode: String = "en-US",
+        val units: String = "METRIC"
+    )
+
+    @Serializable
+    data class Waypoint(val location: Location)
+
+    @Serializable
+    data class Location(val latLng: LatLng)
+
+    @Serializable
+    data class LatLng(val latitude: Double, val longitude: Double)
+
+    @Serializable
+    data class RouteModifiers(
+        val avoidTolls: Boolean = false,
+        val avoidHighways: Boolean = false,
+        val avoidFerries: Boolean = false
+    )
+
+    // --- Response Models ---
+    @Serializable
+    data class RouteResponse(val routes: List<RouteRes> = emptyList())
+
+    @Serializable
+    data class RouteRes(
+        val duration: String,
+        val distanceMeters: Int,
+        val polyline: Polyline
+    )
+
+    @Serializable
+    data class Polyline(val encodedPolyline: String)
+
+    data class Route(
+        val duration: String,
+        val distanceMeters: Int,
+        val polyline: List<Position>
+    )
+}
