@@ -101,7 +101,7 @@ suspend fun parse(feature: Feature1): SpecificFeature? {
             SpecificFeature.Admin1Label(wiki.getProperty("P300")!!, wiki.getWikipedia()!!, properties.string("name:en")!!)
         }
         "restaurant", "fast_food", "cafe" -> {
-            val tags = OSM.getTags(osmID)
+            val tags = OSM.getTags(osmID.toLong())
             println(properties)
             println(tags)
             SpecificFeature.Restaurant(tags["name"], tags["phone"], tags["website"], tags["website:menu"], tags["opening_hours"]?.let { OpeningHours.from(it) })
@@ -114,8 +114,10 @@ suspend fun parse(feature: Feature1): SpecificFeature? {
 @Composable
 fun MapPage() {
     var selectedFeature by remember { mutableStateOf<SpecificFeature?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
+        OSM.initialize(context)
         outlineSource = GeoJsonSource("selected-country-geojson", GeoJsonData.Features(FeatureCollection1(listOf(
             Feature1(Polygon(
                 coordinates = listOf(

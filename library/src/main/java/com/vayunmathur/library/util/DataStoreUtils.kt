@@ -1,6 +1,9 @@
 package com.vayunmathur.library.util
 
 import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -10,6 +13,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 class DataStoreUtils private constructor(context: Context) {
@@ -38,6 +43,11 @@ class DataStoreUtils private constructor(context: Context) {
 
     fun getLong(name: String): Long? {
         return stateMap[longPreferencesKey(name)] as Long?
+    }
+
+    @Composable
+    fun getLongState(name: String, default: Long = 0L): State<Long> {
+        return dataStore.data.mapNotNull { it[longPreferencesKey(name)] }.collectAsState(default)
     }
 
     suspend fun setLong(s: String, userid: Long, onlyIfAbsent: Boolean = false) {
