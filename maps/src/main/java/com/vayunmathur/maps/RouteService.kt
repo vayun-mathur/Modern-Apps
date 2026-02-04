@@ -33,22 +33,27 @@ object RouteService {
         val originPos = features.from?.position ?: userPosition
         val destPos = features.to?.position ?: userPosition
 
-        val request = RoutesRequest(
-            origin = Waypoint(Location(LatLng(originPos.latitude, originPos.longitude))),
-            destination = Waypoint(Location(LatLng(destPos.latitude, destPos.longitude))),
-            travelMode = travelMode
+        val request = API.RoutesRequest(
+            origin = API.Waypoint(API.Location(API.LatLng(originPos.latitude, originPos.longitude))),
+            destination = API.Waypoint(API.Location(API.LatLng(destPos.latitude, destPos.longitude))),
+            travelMode = travelMode,
+            routingPreference = if (travelMode == TravelMode.DRIVE) "TRAFFIC_AWARE" else null,
         )
 
         return try {
-            val response: RouteResponse = client.post(ROUTES_URL) {
+            val response = client.post(ROUTES_URL) {
                 contentType(ContentType.Application.Json)
                 header("X-Goog-Api-Key", API_KEY)
-                header("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline")
+                header("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.navigationInstruction")
                 setBody(request) // Now it knows exactly how to serialize this object
-            }.body()
+            }
 
-            val routeres = response.routes.firstOrNull() ?: return null
-            return Route(routeres.duration, routeres.distanceMeters, decodePolyline(routeres.polyline.encodedPolyline))
+            println(response.bodyAsText())
+
+            val routeres = response.body<API.RouteResponse>().routes.firstOrNull() ?: return null
+            return Route(routeres.duration, routeres.distanceMeters, decodePolyline(routeres.polyline.encodedPolyline), routeres.legs.map { leg -> leg.steps.map {
+                Step(decodePolyline(it.polyline.encodedPolyline), it.navigationInstruction)
+            }}.flatten())
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -93,45 +98,109 @@ object RouteService {
         DRIVE, TRANSIT, WALK, BICYCLE
     }
 
-    // --- Request Models ---
-    @Serializable
-    data class RoutesRequest(
-        val origin: Waypoint,
-        val destination: Waypoint,
-        val travelMode: TravelMode,
-        val routingPreference: String = "TRAFFIC_AWARE",
-        val computeAlternativeRoutes: Boolean = false,
-        val routeModifiers: RouteModifiers = RouteModifiers(),
-        val languageCode: String = "en-US",
-        val units: String = "METRIC"
-    )
+    object API {
+        // --- Request Models ---
+        @Serializable
+        data class RoutesRequest(
+            val origin: Waypoint,
+            val destination: Waypoint,
+            val travelMode: TravelMode,
+            val routingPreference: String?,
+            val computeAlternativeRoutes: Boolean = false,
+            val routeModifiers: RouteModifiers = RouteModifiers(),
+            val languageCode: String = "en-US",
+            val units: String = "METRIC"
+        )
 
-    @Serializable
-    data class Waypoint(val location: Location)
+        @Serializable
+        data class Waypoint(val location: Location)
 
-    @Serializable
-    data class Location(val latLng: LatLng)
+        @Serializable
+        data class Location(val latLng: LatLng)
 
-    @Serializable
-    data class LatLng(val latitude: Double, val longitude: Double)
+        @Serializable
+        data class LatLng(val latitude: Double, val longitude: Double)
 
-    @Serializable
-    data class RouteModifiers(
-        val avoidTolls: Boolean = false,
-        val avoidHighways: Boolean = false,
-        val avoidFerries: Boolean = false
-    )
+        @Serializable
+        data class RouteModifiers(
+            val avoidTolls: Boolean = false,
+            val avoidHighways: Boolean = false,
+            val avoidFerries: Boolean = false
+        )
 
-    // --- Response Models ---
-    @Serializable
-    data class RouteResponse(val routes: List<RouteRes> = emptyList())
+        // --- Response Models ---
+        @Serializable
+        data class RouteResponse(val routes: List<RouteRes> = emptyList())
 
-    @Serializable
-    data class RouteRes(
-        val duration: String,
-        val distanceMeters: Int,
-        val polyline: Polyline
-    )
+        @Serializable
+        data class RouteRes(
+            val duration: String,
+            val distanceMeters: Int,
+            val polyline: Polyline,
+            val legs: List<Leg>
+        )
+
+        @Serializable
+        data class Leg(val steps: List<Step>)
+
+        @Serializable
+        data class Step(val polyline: Polyline, val navigationInstruction: NavInstruction)
+
+        @Serializable
+        data class NavInstruction(val maneuver: Maneuver = Maneuver.MANEUVER_UNSPECIFIED, val instructions: String = "")
+
+        @Serializable
+        enum class Maneuver {
+            MANEUVER_UNSPECIFIED,
+            TURN_SLIGHT_LEFT,
+            TURN_SHARP_LEFT,
+            UTURN_LEFT,
+            TURN_LEFT,
+            TURN_SLIGHT_RIGHT,
+            TURN_SHARP_RIGHT,
+            UTURN_RIGHT,
+            TURN_RIGHT,
+            STRAIGHT,
+            RAMP_LEFT,
+            RAMP_RIGHT,
+            MERGE,
+            FORK_LEFT,
+            FORK_RIGHT,
+            FERRY,
+            FERRY_TRAIN,
+            ROUNDABOUT_LEFT,
+            ROUNDABOUT_RIGHT,
+            DEPART,
+            NAME_CHANGE;
+
+            fun icon(): Int? {
+                return when(this) {
+                    TURN_SLIGHT_LEFT -> R.drawable.direction_turn_slight_left
+                    TURN_SHARP_LEFT -> R.drawable.direction_turn_sharp_left
+                    UTURN_LEFT -> R.drawable.direction_uturn
+                    TURN_LEFT -> R.drawable.direction_turn_left
+                    TURN_SLIGHT_RIGHT -> R.drawable.direction_turn_slight_right
+                    TURN_SHARP_RIGHT -> R.drawable.direction_turn_sharp_right
+                    UTURN_RIGHT -> R.drawable.direction_uturn
+                    TURN_RIGHT -> R.drawable.direction_turn_right
+                    STRAIGHT -> R.drawable.direction_turn_straight
+                    RAMP_LEFT -> R.drawable.direction_off_ramp_left
+                    RAMP_RIGHT -> R.drawable.direction_off_ramp_right
+                    MERGE -> R.drawable.direction_merge_straight
+                    FORK_LEFT -> R.drawable.direction_fork_left
+                    FORK_RIGHT -> R.drawable.direction_fork_right
+                    FERRY -> null
+                    FERRY_TRAIN -> null
+                    ROUNDABOUT_LEFT -> R.drawable.direction_roundabout_left
+                    ROUNDABOUT_RIGHT -> R.drawable.direction_roundabout_right
+                    DEPART -> R.drawable.direction_depart
+                    NAME_CHANGE -> R.drawable.direction_new_name_straight
+                    MANEUVER_UNSPECIFIED -> null
+                }
+            }
+        }
+    }
+
 
     @Serializable
     data class Polyline(val encodedPolyline: String)
@@ -139,6 +208,12 @@ object RouteService {
     data class Route(
         val duration: String,
         val distanceMeters: Int,
-        val polyline: List<Position>
+        val polyline: List<Position>,
+        val step: List<Step>,
+    )
+
+    data class Step(
+        val polyline: List<Position>,
+        val navInstruction: API.NavInstruction
     )
 }

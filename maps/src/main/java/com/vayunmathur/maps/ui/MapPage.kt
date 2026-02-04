@@ -3,6 +3,7 @@ package com.vayunmathur.maps.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -16,12 +17,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
@@ -45,6 +50,7 @@ import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.readLines
@@ -57,10 +63,17 @@ import com.vayunmathur.maps.Wikidata
 import com.vayunmathur.maps.data.OpeningHours
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import okio.source
 import org.maplibre.compose.camera.rememberCameraState
+import org.maplibre.compose.expressions.ast.Expression
 import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.expressions.dsl.eq
+import org.maplibre.compose.expressions.dsl.feature
+import org.maplibre.compose.expressions.dsl.rem
+import org.maplibre.compose.expressions.value.ExpressionValue
+import org.maplibre.compose.expressions.value.IntValue
 import org.maplibre.compose.expressions.value.LineCap
 import org.maplibre.compose.layers.FillLayer
 import org.maplibre.compose.layers.LineLayer
@@ -179,10 +192,12 @@ fun MapPage() {
         allowProgrammaticHide = false
     }
 
-    var route: RouteService.Route? by remember { mutableStateOf(null) }
+    var route: Map<RouteService.TravelMode, RouteService.Route>? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedFeature) {
         if(selectedFeature is SpecificFeature.Route) {
-            route = RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, RouteService.TravelMode.DRIVE)
+            route = RouteService.TravelMode.entries.associateWith {
+                RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, it)!!
+            }
         }
     }
 
@@ -195,6 +210,7 @@ fun MapPage() {
         }
     }
 
+    var selectedRouteType by remember { mutableStateOf(RouteService.TravelMode.DRIVE) }
 
     val camera = rememberCameraState()
     BottomSheetScaffold({
@@ -219,17 +235,45 @@ fun MapPage() {
                 }
                 is SpecificFeature.Route -> {
                     if(route != null) {
-                        val duration = Duration.parse(route!!.duration)
-                        ListItem({Text(duration.toString())}, supportingContent = {
-                            Text("${(route!!.distanceMeters/1000.0).round(2)} km")
-                        })
+                        Column {
+                            PrimaryTabRow(route!!.entries.indexOfFirst { it.key == selectedRouteType }) {
+                                route!!.entries.forEach { it ->
+                                    Tab(
+                                        selectedRouteType == it.key,
+                                        { selectedRouteType = it.key }) {
+                                        Text(
+                                            it.key.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() })
+                                    }
+                                }
+                            }
+                            val route = route!![selectedRouteType]!!
+                            val duration = Duration.parse(route.duration)
+                            ListItem({ Text(duration.toString()) }, supportingContent = {
+                                Text("${(route.distanceMeters / 1000.0).round(2)} km")
+                            })
+                            Spacer(Modifier.height(8.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                route.step.forEachIndexed { idx, it ->
+                                    Card(shape = verticalShape(idx, route.step.size)) {
+                                        ListItem({
+                                            Text(it.navInstruction.instructions)
+                                        }, leadingContent = {
+                                            it.navInstruction.maneuver.icon()?.let {
+                                                Icon(painterResource(it), null)
+                                            }
+                                        })
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 else -> Unit
             }
         }
-    }, Modifier, scaffoldState, (56+(if(scaffoldState.bottomSheetState.isVisible) 40 else 0)).dp) { paddingValues ->
-        Box(Modifier.padding(paddingValues)) {
+    }, Modifier, scaffoldState, 170.dp) { paddingValues ->
+        Box(Modifier.padding(top = paddingValues.calculateTopPadding())) {
             Scaffold { paddingValues ->
                 val coroutineScope = rememberCoroutineScope()
                 val style = rememberStyleState()
@@ -254,7 +298,7 @@ fun MapPage() {
                             ClickResult.Pass
                         }
                     ) {
-                        MyMapLayers(selectedFeature, route)
+                        MyMapLayers(selectedFeature, route?.get(selectedRouteType))
                     }
 
                     key(camera.position) {
@@ -383,12 +427,17 @@ fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.Route?) {
         is SpecificFeature.Route -> {
             if(route != null) {
                 LaunchedEffect(route) {
-                    routeSource.setData(GeoJsonData.Features(FeatureCollection(listOf(Feature1(
-                        LineString(route.polyline), JsonObject(emptyMap())
-                    )))))
+                    val features: List<Feature1> = listOf<Feature1>(
+                        //Feature1(LineString(route.polyline), JsonObject(emptyMap()))
+                    ) + route.step.mapIndexed { idx, it -> Feature1(LineString(it.polyline), JsonObject(mapOf("id" to JsonPrimitive(idx)))) }
+                    routeSource.setData(GeoJsonData.Features(FeatureCollection(features)))
                 }
                 LineLayer("route", routeSource,
-                    color = const(Color.Blue), width = const(8.dp), cap = const(LineCap.Round))
+                    color = const(Color(0xFF1710F1)), width = const(8.dp), cap = const(LineCap.Round), filter = (feature["id"].cast<IntValue>() % const(2)) eq const(0)
+                )
+                LineLayer("route2", routeSource,
+                    color = const(Color(0xFF2AB7EF)), width = const(8.dp), cap = const(LineCap.Round), filter = (feature["id"].cast<IntValue>() % const(2)) eq const(1)
+                )
             }
         }
 
