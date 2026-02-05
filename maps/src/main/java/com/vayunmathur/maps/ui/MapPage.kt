@@ -83,9 +83,18 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import okio.source
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.rememberCameraState
@@ -395,7 +404,7 @@ fun MapPage(ds: DataStoreUtils, db: TagDatabase) {
                 Box(Modifier.padding(paddingValues).fillMaxSize()) {
 
                     MaplibreMap(Modifier,
-                        BaseStyle.Json(LocalContext.current.assets.open("style.json").source().readLines().joinToString("\n").replace("PLACEHOLDER_URL", ensurePmtilesReady(LocalContext.current))),
+                        BaseStyle.Json(patchStyleForHybrid(LocalContext.current.assets.open("style.json").source().readLines().joinToString("\n"), ensurePmtilesReady(LocalContext.current), "pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles")),
                         camera,
                         styleState = style,
                         options = MapOptions(RenderOptions(), GestureOptions.Standard, OrnamentOptions.AllDisabled),
@@ -580,4 +589,67 @@ fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.RouteType
 
         else -> Unit
     }
+}
+
+fun patchStyleForHybrid(jsonString: String, localUrl: String, remoteUrl: String): String {
+    val json = Json { ignoreUnknownKeys = true }
+    val root = json.parseToJsonElement(jsonString).jsonObject
+
+    // 1. Update/Add the two sources
+    val oldSources = root["sources"]?.jsonObject ?: buildJsonObject {}
+    val newSources = buildJsonObject {
+        // Keep any existing sources
+        //oldSources.forEach { (k, v) -> put(k, v) }
+
+        // Define our specific pmtiles sources
+        putJsonObject("protomaps") {
+            put("type", "vector")
+            put("url", localUrl)
+        }
+        putJsonObject("protomapsOnline") {
+            put("type", "vector")
+            put("url", remoteUrl)
+        }
+    }
+
+    // 2. Duplicate layers with zoom boundaries
+    val oldLayers = root["layers"]?.jsonArray ?: buildJsonArray {}
+    val newLayers = buildJsonArray {
+        oldLayers.forEach { layerElement ->
+            val layer = layerElement.jsonObject
+            val id = layer["id"]?.jsonPrimitive?.content ?: ""
+            val type = layer["type"]?.jsonPrimitive?.content ?: ""
+
+            if (type == "background") {
+                add(layer)
+            } else {
+                // Local Version: Zoom 0 to 7
+                add(buildJsonObject {
+                    layer.forEach { (k, v) -> put(k, v) }
+                    put("id", "${id}_local")
+                    put("source", "protomaps")
+                    put("maxzoom", 7)
+                })
+
+                // Online Version: Zoom 7 and up
+                add(buildJsonObject {
+                    layer.forEach { (k, v) -> put(k, v) }
+                    put("id", "${id}_online")
+                    put("source", "protomapsOnline")
+                    put("minzoom", 7)
+                })
+            }
+        }
+    }
+
+    // 3. Reconstruct final style object
+    val finalStyle = buildJsonObject {
+        root.forEach { (k, v) ->
+            if (k != "sources" && k != "layers") put(k, v)
+        }
+        put("sources", newSources)
+        put("layers", newLayers)
+    }
+
+    return finalStyle.toString()
 }
