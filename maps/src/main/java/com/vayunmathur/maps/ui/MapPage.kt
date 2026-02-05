@@ -76,6 +76,7 @@ import com.vayunmathur.maps.TransitRoute
 import com.vayunmathur.maps.Wikidata
 import com.vayunmathur.maps.data.OpeningHours
 import com.vayunmathur.maps.data.TagDatabase
+import com.vayunmathur.maps.ensurePmtilesReady
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -241,7 +242,7 @@ fun MapPage(ds: DataStoreUtils, db: TagDatabase) {
 
     var selectedRouteType by remember { mutableStateOf(RouteService.TravelMode.DRIVE) }
 
-    val camera = rememberCameraState(CameraPosition(target = Position(-118.243683,34.052235), zoom = 8.0))
+    val camera = rememberCameraState(CameraPosition(target = Position(-118.243683,34.052235), zoom = 5.0))
     BottomSheetScaffold({
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 48.dp, top = 8.dp)) {
             when (val feature = selectedFeature) {
@@ -393,8 +394,8 @@ fun MapPage(ds: DataStoreUtils, db: TagDatabase) {
                 val style = rememberStyleState()
                 Box(Modifier.padding(paddingValues).fillMaxSize()) {
 
-                    MaplibreMap(Modifier, //BaseStyle.Uri("https://api.protomaps.com/styles/v5/light/en.json?key=15a942f94a739448"),
-                        BaseStyle.Json(LocalContext.current.assets.open("style.json").source().readLines().joinToString("\n")),
+                    MaplibreMap(Modifier,
+                        BaseStyle.Json(LocalContext.current.assets.open("style.json").source().readLines().joinToString("\n").replace("PLACEHOLDER_URL", ensurePmtilesReady(LocalContext.current))),
                         camera,
                         styleState = style,
                         options = MapOptions(RenderOptions(), GestureOptions.Standard, OrnamentOptions.AllDisabled),

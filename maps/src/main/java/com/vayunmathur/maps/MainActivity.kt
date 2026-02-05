@@ -35,13 +35,30 @@ import com.vayunmathur.maps.ui.MapPage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import java.io.File
+
+fun ensurePmtilesReady(context: Context): String {
+    val fileName = "world_z0-6.pmtiles"
+    val outFile = File(context.filesDir, fileName)
+
+    if (!outFile.exists()) {
+        context.assets.open(fileName).use { input ->
+            outFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+    return "pmtiles://file://${outFile.absolutePath}"
+}
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val ds = DataStoreUtils.getInstance(this)
         val db = buildDatabase<TagDatabase>();
+        val localPath = ensurePmtilesReady(this)
         setContent {
             DynamicTheme {
                 val downloadedState by ds.getLongState("downloaded")
