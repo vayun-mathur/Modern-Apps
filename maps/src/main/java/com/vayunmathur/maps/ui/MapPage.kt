@@ -64,15 +64,18 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColor
 import androidx.core.graphics.toColorInt
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.CountryMap
 import com.vayunmathur.maps.FrameworkLocationManager
+import com.vayunmathur.maps.OSM2
 import com.vayunmathur.maps.OSM
 import com.vayunmathur.maps.RouteService
 import com.vayunmathur.maps.TransitRoute
 import com.vayunmathur.maps.Wikidata
 import com.vayunmathur.maps.data.OpeningHours
+import com.vayunmathur.maps.data.TagDatabase
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -163,7 +166,7 @@ suspend fun parse(feature: Feature1): SpecificFeature? {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPage() {
+fun MapPage(ds: DataStoreUtils, db: TagDatabase) {
     var selectedFeature by remember { mutableStateOf<SpecificFeature?>(null) }
     val context = LocalContext.current
 
@@ -184,6 +187,11 @@ fun MapPage() {
 
     LaunchedEffect(Unit) {
         OSM.initialize(context)
+        OSM2.init(context, ds,db)
+        println("SUBWAY SEARCH")
+        println(OSM2.search("Galero Grill").map{
+            OSM.getTags(it)
+        })
         outlineSource = GeoJsonSource("selected-country-geojson", GeoJsonData.Features(
             Feature1(Polygon(
                 coordinates = listOf(

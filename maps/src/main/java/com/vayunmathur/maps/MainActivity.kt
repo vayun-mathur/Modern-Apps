@@ -29,6 +29,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.maps.data.TagDatabase
 import com.vayunmathur.maps.ui.MapPage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -39,14 +41,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val ds = DataStoreUtils.getInstance(this)
+        val db = buildDatabase<TagDatabase>();
         setContent {
             DynamicTheme {
                 val downloadedState by ds.getLongState("downloaded")
                 val isDownloaded = downloadedState == 2L
                 if(isDownloaded) {
-                    MapPage()
+                    MapPage(ds, db)
                 } else {
-                    DownloadPage(ds)
+                    DownloadPage(ds, db)
                 }
             }
         }
@@ -54,38 +57,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DownloadPage(ds: DataStoreUtils) {
+fun DownloadPage(ds: DataStoreUtils, db: TagDatabase) {
     val context = LocalContext.current
     val downloaded by ds.getLongState("downloaded")
     Scaffold() { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxSize()) {
             if(downloaded == 0L) {
                 Button({
-                    val onDownloadComplete = object : BroadcastReceiver() {
-                        override fun onReceive(context: Context, intent: Intent) {
-                            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                            println(id)
-                            if (id != -1L) {
-                                // Success! Now you can initialize your MappedByteBuffer
-                                Toast.makeText(context, "OSM Data Ready", Toast.LENGTH_SHORT).show()
-                                runBlocking {
-                                    ds.setLong("downloaded", 2L) // done
-                                }
-                            }
-                        }
-                    }
-                    val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        context.registerReceiver(
-                            onDownloadComplete,
-                            filter,
-                            Context.RECEIVER_NOT_EXPORTED // This is the magic flag
-                        )
-                    } else {
-                        context.registerReceiver(onDownloadComplete, filter)
-                    }
-
-                    downloadOsmData(context, "https://api.vayunmathur.com/maps/amenities", ds)
+                    downloadOsmData(context, "https://api.vayunmathur.com/maps/amenities", "https://api.vayunmathur.com/maps/search", ds)
                 }, Modifier.align(Alignment.Center)) {
                     Text("Download")
                 }
@@ -93,15 +72,16 @@ fun DownloadPage(ds: DataStoreUtils) {
                 var progress by remember { mutableStateOf(0.0) }
                 LaunchedEffect(Unit) {
                     val downloadID = ds.getLong("downloadID")!!
+                    val downloadID2 = ds.getLong("downloadID2")!!
                     while(true) {
-                        progress = getProgress(context, downloadID)
-                        if(progress == 1.0) {
+                        progress = getProgress(context, downloadID) + getProgress(context, downloadID2)
+                        if(progress == 2.0) {
                             ds.setLong("downloaded", 2L)
                         }
                         delay(100)
                     }
                 }
-                Text("Downloading: ${progress*100}%", Modifier.align(Alignment.Center))
+                Text("Downloading: ${progress/2*100}%", Modifier.align(Alignment.Center))
             }
         }
     }
@@ -121,10 +101,10 @@ fun getProgress(context: Context, downloadId: Long): Double {
     return 0.0
 }
 
-fun downloadOsmData(context: Context, url: String, ds: DataStoreUtils) {
+fun downloadOsmData(context: Context, url1: String, url2: String, ds: DataStoreUtils) {
     val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
-    val request = DownloadManager.Request(url.toUri())
+    val request = DownloadManager.Request(url1.toUri())
         .setTitle("OSM Data Update")
         .setDescription("Downloading 2.5GB tag database...")
         .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
@@ -133,10 +113,22 @@ fun downloadOsmData(context: Context, url: String, ds: DataStoreUtils) {
         .setAllowedOverMetered(false) // Recommended for a 2.5GB file!
         .setRequiresCharging(false)
 
+
+    val request2 = DownloadManager.Request(url2.toUri())
+        .setTitle("OSM Data Update")
+        .setDescription("Downloading 2.5GB tag database...")
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        // Save to app-specific external storage (no permission needed)
+        .setDestinationInExternalFilesDir(context, null, "names_only.bin")
+        .setAllowedOverMetered(false) // Recommended for a 2.5GB file!
+        .setRequiresCharging(false)
+
     val downloadId = downloadManager.enqueue(request)
+    val downloadId2 = downloadManager.enqueue(request2)
 
     runBlocking {
         ds.setLong("downloaded", 1L)
         ds.setLong("downloadID", downloadId)
+        ds.setLong("downloadID2", downloadId2)
     }
 }

@@ -1,3 +1,7 @@
+plugins {
+    alias(libs.plugins.ksp)
+}
+
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.maps"
@@ -16,4 +20,9 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
 
     implementation("org.wololo:flatgeobuf:3.28.2")
+
+    // room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 }
