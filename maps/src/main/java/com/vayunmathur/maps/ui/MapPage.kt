@@ -368,7 +368,7 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
  * Maps GPS coordinates to your 45x22.5 grid.
  */
 fun calculateZoneId(lat: Double, lon: Double, zoom: Float): Int? {
-    if (zoom < 7f) return null
+    if (zoom < 6f) return null
 
     val lonIdx = ((lon + 180) / 45).toInt().coerceIn(0, 7)
     val latIdx = ((lat + 90) / 22.5).toInt().coerceIn(0, 7)
@@ -405,19 +405,19 @@ fun patchStyleForHybrid(
             if (type == "background") {
                 add(layer)
             } else {
-                // Zoom 0-7: Base Local
+                // Zoom 0-6: Base Local
                 add(buildJsonObject {
                     layer.forEach { (k, v) -> put(k, v) }
                     put("id", "${id}_base")
                     put("source", "protomaps_base")
-                    put("maxzoom", 7)
+                    put("maxzoom", 6)
                 })
-                // Zoom 7+: Hybrid (Switches between Local and Remote)
+                // Zoom 6+: Hybrid (Switches between Local and Remote)
                 add(buildJsonObject {
                     layer.forEach { (k, v) -> put(k, v) }
                     put("id", "${id}_hybrid")
                     put("source", "protomaps_hybrid")
-                    put("minzoom", 7)
+                    put("minzoom", 6)
                 })
             }
         }
