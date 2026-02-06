@@ -27,14 +27,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
+import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.maps.data.TagDatabase
+import com.vayunmathur.maps.ui.DownloadedMapsPage
 import com.vayunmathur.maps.ui.MapPage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import java.io.File
 
 fun ensurePmtilesReady(context: Context): String {
@@ -64,11 +69,33 @@ class MainActivity : ComponentActivity() {
                 val downloadedState by ds.getLongState("downloaded")
                 val isDownloaded = downloadedState == 2L
                 if(isDownloaded) {
-                    MapPage(ds, db)
+                    Navigation(ds, db)
                 } else {
                     DownloadPage(ds, db)
                 }
             }
+        }
+    }
+}
+
+@Serializable
+sealed interface Route: NavKey {
+    @Serializable
+    data object MapPage: Route
+    @Serializable
+    data object DownloadedMapsPage: Route
+}
+
+@Composable
+fun Navigation(ds: DataStoreUtils, db: TagDatabase) {
+    val backStack = rememberNavBackStack<Route>(Route.MapPage)
+    val context = LocalContext.current
+    MainNavigation(backStack) {
+        entry<Route.MapPage> {
+            MapPage(backStack, ds, db)
+        }
+        entry<Route.DownloadedMapsPage> {
+            DownloadedMapsPage(backStack)
         }
     }
 }

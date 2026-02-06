@@ -1,7 +1,7 @@
 package com.vayunmathur.maps
 
 import android.content.Context
-import com.vayunmathur.maps.ui.Feature1
+import com.vayunmathur.maps.data.Feature1
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject

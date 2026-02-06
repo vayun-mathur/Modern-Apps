@@ -16,7 +16,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +35,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.maps.R
+import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.timeFormat
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
@@ -53,7 +53,7 @@ fun RestaurantBottomSheet(feature: SpecificFeature.Restaurant, requestDirections
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(feature.name ?: "", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(feature.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             Button({requestDirections()}) { Text("Directions") }
         }
         feature.openingHours?.let {

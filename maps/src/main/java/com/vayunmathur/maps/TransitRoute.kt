@@ -1,6 +1,6 @@
 package com.vayunmathur.maps
 
-import com.vayunmathur.maps.ui.SpecificFeature
+import com.vayunmathur.maps.data.SpecificFeature
 import org.maplibre.spatialk.geojson.Position
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -44,7 +44,7 @@ data class TransitRoute(val steps: List<Step>, override val duration: Duration =
         } else if(steps.last() is Step.WalkStep) {
             val lastStep = steps.last() as Step.WalkStep
             val secondLastStep = steps[steps.size - 2] as Step.TransitStep
-            return secondLastStep.arrivalTime
+            return secondLastStep.arrivalTime + lastStep.duration
         } else {
             val lastStep = steps.last() as Step.TransitStep
             return lastStep.arrivalTime
@@ -53,7 +53,7 @@ data class TransitRoute(val steps: List<Step>, override val duration: Duration =
 
     companion object {
         suspend fun computeRoute(features: SpecificFeature.Route,
-                 userPosition: Position): TransitRoute {
+                                 userPosition: Position): TransitRoute {
             val res = RouteService.computeRoute(features, userPosition, RouteService.TravelMode.TRANSIT)!!
             val steps = res.step.map {
                 if(it.travelMode == RouteService.TravelMode.WALK) {

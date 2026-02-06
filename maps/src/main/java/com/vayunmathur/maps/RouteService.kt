@@ -1,6 +1,6 @@
 package com.vayunmathur.maps
 
-import com.vayunmathur.maps.ui.SpecificFeature
+import com.vayunmathur.maps.data.SpecificFeature
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
