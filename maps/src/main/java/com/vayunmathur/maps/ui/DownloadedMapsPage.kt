@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.ZoneDownloadManager
@@ -36,8 +37,10 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             LazyColumn() {
-                item {
-                    Text("Downloading Zones:", Modifier.padding(horizontal = 16.dp))
+                if(downloadingZones.isNotEmpty()) {
+                    item {
+                        Text("Downloading Zones:", Modifier.padding(horizontal = 16.dp))
+                    }
                 }
                 items(downloadingZones.entries.toList(), {it.key}) {
                     ListItem({
@@ -46,8 +49,10 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
                         Text("${(it.value * 100).toInt()}%")
                     })
                 }
-                item {
-                    Text("Downloaded Zones:", Modifier.padding(horizontal = 16.dp))
+                if(downloadedMaps.isNotEmpty()) {
+                    item {
+                        Text("Downloaded Zones:", Modifier.padding(horizontal = 16.dp))
+                    }
                 }
                 items(downloadedMaps, {it}) {
                     ListItem({
@@ -56,7 +61,7 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
                         IconButton({
                             zoneManager.deleteZone(it)
                         }) {
-                            Text("Delete")
+                            IconDelete()
                         }
                     })
                 }
