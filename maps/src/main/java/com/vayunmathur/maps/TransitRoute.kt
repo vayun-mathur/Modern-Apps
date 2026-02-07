@@ -53,8 +53,8 @@ data class TransitRoute(val steps: List<Step>, override val duration: Duration =
 
     companion object {
         suspend fun computeRoute(features: SpecificFeature.Route,
-                                 userPosition: Position): TransitRoute {
-            val res = RouteService.computeRoute(features, userPosition, RouteService.TravelMode.TRANSIT)!!
+                                 userPosition: Position): TransitRoute? {
+            val res = RouteService.computeRoute(features, userPosition, RouteService.TravelMode.TRANSIT) ?: return null
             val steps = res.step.map {
                 if(it.travelMode == RouteService.TravelMode.WALK) {
                     Step.WalkStep(it.staticDuration, it.distanceMeters, it.polyline)

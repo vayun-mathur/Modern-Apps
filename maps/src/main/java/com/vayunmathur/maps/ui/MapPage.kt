@@ -227,14 +227,14 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
     }
 
     // --- ROUTE COMPUTATION ---
-    var route: Map<RouteService.TravelMode, RouteService.RouteType>? by remember { mutableStateOf(null) }
+    var route: Map<RouteService.TravelMode, RouteService.RouteType?>? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedFeature) {
         if(selectedFeature is SpecificFeature.Route) {
             route = RouteService.TravelMode.entries.associateWith {
                 if(it == RouteService.TravelMode.TRANSIT) {
                     TransitRoute.computeRoute(selectedFeature as SpecificFeature.Route, userPosition)
                 } else {
-                    RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, it)!!
+                    RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, it)
                 }
             }
         }
