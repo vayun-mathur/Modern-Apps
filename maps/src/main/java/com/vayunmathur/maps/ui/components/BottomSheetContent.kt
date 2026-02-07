@@ -55,7 +55,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
         }
         is SpecificFeature.Restaurant -> {
             RestaurantBottomSheet(selectedFeature) {
-                setSelectedFeature(SpecificFeature.Route(null, selectedFeature))
+                setSelectedFeature(SpecificFeature.Route(listOf(null, selectedFeature)))
             }
         }
         is SpecificFeature.Route -> {
@@ -91,7 +91,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                 }
                                 Card(shape = verticalShape(0, 2)) {
                                     ListItem({
-                                        val origin = selectedFeature.from?.name ?: "Your location"
+                                        val origin = selectedFeature.waypoints.first()?.name ?: "Your location"
                                         Text(origin)
                                     }, trailingContent = {
                                         Text(
@@ -177,7 +177,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                 }
                                 Card(shape = verticalShape(1, 2)) {
                                     ListItem({
-                                        val origin = selectedFeature.to?.name ?: "Your location"
+                                        val origin = selectedFeature.waypoints.last()?.name ?: "Your location"
                                         Text(origin)
                                     }, trailingContent = {
                                         Text(

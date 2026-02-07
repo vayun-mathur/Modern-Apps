@@ -2,6 +2,7 @@ package com.vayunmathur.maps.ui
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,12 +20,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,6 +70,7 @@ import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
@@ -70,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColor
 import androidx.core.graphics.toColorInt
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.R
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.readLines
@@ -146,6 +155,8 @@ import org.maplibre.spatialk.geojson.Point
 import org.maplibre.spatialk.geojson.PointGeometry
 import org.maplibre.spatialk.geojson.Polygon
 import org.maplibre.spatialk.geojson.Position
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.File
 import kotlin.time.Duration
 
@@ -271,14 +282,13 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
     }, Modifier, scaffoldState, 170.dp) { paddingValues ->
         Scaffold(Modifier.padding(top = paddingValues.calculateTopPadding()), topBar = {
             TopAppBar({}, actions = {
-                Card {
+                Row {
                     IconButton({
                         backStack.add(Route.DownloadedMapsPage)
                     }) {
                         IconSettings()
                     }
-                }
-                                    }, colors = TopAppBarDefaults.topAppBarColors(Color.Transparent))
+                } }, colors = TopAppBarDefaults.topAppBarColors(Color.Transparent))
         }) { innerPadding ->
             Box(Modifier.padding(innerPadding).fillMaxSize()) {
                 MaplibreMap(Modifier,
@@ -315,19 +325,59 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
 
                 // ROUTE OVERLAY HEADERS
                 if(selectedFeature is SpecificFeature.Route) {
-                    Column(Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth()) {
-                        Card(shape = verticalShape(0, 2)) {
-                            ListItem({
-                                Text((selectedFeature as SpecificFeature.Route).from?.name ?: "Your location")
-                            }, colors = ListItemDefaults.colors(Color.Transparent))
-                        }
-                        Spacer(Modifier.height(2.dp))
-                        Card(shape = verticalShape(1, 2)) {
-                            ListItem({
-                                Text((selectedFeature as SpecificFeature.Route).to?.name ?: "Your location")
-                            }, colors = ListItemDefaults.colors(Color.Transparent))
+                    val routeFeature = selectedFeature as SpecificFeature.Route
+                    val listState = rememberLazyListState()
+                    val state = rememberReorderableLazyListState(listState, onMove = { from, to ->
+                        // swap their indices in the list
+                        val newList = routeFeature.waypoints.toMutableList()
+                        val temp = newList[from.index]
+                        newList[from.index] = newList[to.index]
+                        newList[to.index] = temp
+                        selectedFeature = routeFeature.copy(waypoints = newList)
+                    })
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth()
+                    ) {
+                        itemsIndexed(routeFeature.waypoints, key = { idx, it -> it?.position?.toString()?:"" }) { idx, item ->
+                            ReorderableItem(state, key = item?.position?.toString() ?: "") { isDragging ->
+
+                                val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+
+                                Card(shape = verticalShape(idx, routeFeature.waypoints.size), elevation = CardDefaults.cardElevation(elevation)) {
+                                    ListItem({
+                                        Text(
+                                            item?.name
+                                                ?: "Your location"
+                                        )
+                                    }, trailingContent = {
+                                        Icon(
+                                            painterResource(R.drawable.drag_handle_24px),
+                                            contentDescription = "Reorder",
+                                            modifier = Modifier.draggableHandle(),
+                                        )
+                                    }, colors = ListItemDefaults.colors(Color.Transparent))
+                                }
+                            }
                         }
                     }
+
+//                    Column(Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth()) {
+//                        Card(shape = verticalShape(0, 2)) {
+//                            ListItem({
+//                                Text(
+//                                    (selectedFeature as SpecificFeature.Route).from?.name
+//                                        ?: "Your location"
+//                                )
+//                            }, colors = ListItemDefaults.colors(Color.Transparent))
+//                        }
+//                        Spacer(Modifier.height(2.dp))
+//                        Card(shape = verticalShape(1, 2)) {
+//                            ListItem({
+//                                Text((selectedFeature as SpecificFeature.Route).to?.name ?: "Your location")
+//                            }, colors = ListItemDefaults.colors(Color.Transparent))
+//                        }
+//                    }
                 }
 
                 // DOWNLOAD DIALOG

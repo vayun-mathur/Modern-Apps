@@ -19,7 +19,7 @@ sealed interface SpecificFeature {
     data class Admin1Label(val iso3166_2: String, val wikipedia: String, val name: String) : SpecificFeature
     data class Restaurant(override val name: String, val phone: String?, val website: String?, val menu: String?, val openingHours: OpeningHours?,
                           override val position: Position): RoutableFeature
-    data class Route(val from: RoutableFeature?, val to: RoutableFeature?) : SpecificFeature
+    data class Route(val waypoints: List<RoutableFeature?>) : SpecificFeature
 }
 
 typealias Feature1 = Feature<Geometry, JsonObject?>

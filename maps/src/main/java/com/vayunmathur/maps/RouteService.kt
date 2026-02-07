@@ -31,8 +31,8 @@ object RouteService {
         userPosition: Position,
         travelMode: TravelMode
     ): Route? {
-        val originPos = features.from?.position ?: userPosition
-        val destPos = features.to?.position ?: userPosition
+        val originPos = features.waypoints.first()?.position ?: userPosition
+        val destPos = features.waypoints.last()?.position ?: userPosition
 
         val request = API.RoutesRequest(
             origin = API.Waypoint(API.Location(API.LatLng(originPos.latitude, originPos.longitude))),

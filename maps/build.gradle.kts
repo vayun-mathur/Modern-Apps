@@ -21,6 +21,9 @@ dependencies {
 
     implementation("org.wololo:flatgeobuf:3.28.2")
 
+    //reorderable
+    implementation(libs.reorderable)
+
     // room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
