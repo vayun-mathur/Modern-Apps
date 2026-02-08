@@ -66,7 +66,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
                 else
                     Text("Update subscription category", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(categoryName, {categoryName = it}, label = {Text("Category name")}, enabled = id == null)
+                OutlinedTextField(categoryName, {categoryName = it}, label = {Text("Category name")})
                 Spacer(Modifier.height(8.dp))
                 Text("Select subscriptions:")
                 LazyColumn(Modifier.weight(1f)) {
@@ -93,6 +93,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
                     {
                         coroutineScope.launch {
                             categoriesDao.replaceCategory(
+                                id,
                                 categoryName,
                                 selectedSubscriptions.map { it.id })
                             backStack.pop()

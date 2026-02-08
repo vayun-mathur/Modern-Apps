@@ -36,8 +36,8 @@ interface SubscriptionCategoryDao: TrueDao<SubscriptionCategory> {
     suspend fun deleteCategory(categoryName: String)
 
     @Transaction
-    suspend fun replaceCategory(categoryName: String, map: List<Long>) {
-        deleteCategory(categoryName)
+    suspend fun replaceCategory(originalCategoryName: String?, categoryName: String, map: List<Long>) {
+        if(originalCategoryName != null) deleteCategory(originalCategoryName)
         upsertAll(map.mapIndexed { index, id -> SubscriptionCategory(id, categoryName) })
     }
 }
