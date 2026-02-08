@@ -49,12 +49,18 @@ fun goto(context: Context, uri: String) {
 }
 
 @Composable
-fun RestaurantBottomSheet(feature: SpecificFeature.Restaurant, requestDirections: () -> Unit) {
+fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: SpecificFeature.Restaurant, requestDirections: () -> Unit) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(feature.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            Button({requestDirections()}) { Text("Directions") }
+            Button({requestDirections()}) {
+                if(inactiveNavigation == null) {
+                    Text("Directions")
+                } else {
+                    Text("Add Stop to Route")
+                }
+            }
         }
         feature.openingHours?.let {
             Spacer(Modifier.height(8.dp))

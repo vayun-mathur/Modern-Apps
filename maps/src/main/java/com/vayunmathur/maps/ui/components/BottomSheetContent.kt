@@ -39,7 +39,7 @@ import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toLocalDateTime
 
 @Composable
-fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (SpecificFeature?) -> Unit, route: Map<RouteService.TravelMode, RouteService.RouteType?>?, selectedRouteType: RouteService.TravelMode, setSelectedRouteType: (RouteService.TravelMode) -> Unit) {
+fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (SpecificFeature?) -> Unit, route: Map<RouteService.TravelMode, RouteService.RouteType?>?, selectedRouteType: RouteService.TravelMode, setSelectedRouteType: (RouteService.TravelMode) -> Unit, inactiveNavigation: SpecificFeature.Route?) {
     when (selectedFeature) {
         is SpecificFeature.Admin0Label -> {
             Column {
@@ -54,8 +54,12 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
             }
         }
         is SpecificFeature.Restaurant -> {
-            RestaurantBottomSheet(selectedFeature) {
-                setSelectedFeature(SpecificFeature.Route(listOf(null, selectedFeature)))
+            RestaurantBottomSheet(inactiveNavigation, selectedFeature) {
+                if(inactiveNavigation == null) {
+                    setSelectedFeature(SpecificFeature.Route(listOf(null, selectedFeature)))
+                } else {
+                    setSelectedFeature(SpecificFeature.Route(inactiveNavigation.waypoints + listOf(selectedFeature)))
+                }
             }
         }
         is SpecificFeature.Route -> {

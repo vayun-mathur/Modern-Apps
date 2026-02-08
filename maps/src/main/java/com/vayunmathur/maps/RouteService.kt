@@ -33,9 +33,11 @@ object RouteService {
     ): Route? {
         val originPos = features.waypoints.first()?.position ?: userPosition
         val destPos = features.waypoints.last()?.position ?: userPosition
+        val intermediates = features.waypoints.subList(1, features.waypoints.size - 1).map { it?.position ?: userPosition }
 
         val request = API.RoutesRequest(
             origin = API.Waypoint(API.Location(API.LatLng(originPos.latitude, originPos.longitude))),
+            intermediates = intermediates.map { API.Waypoint(API.Location(API.LatLng(it.latitude, it.longitude))) },
             destination = API.Waypoint(API.Location(API.LatLng(destPos.latitude, destPos.longitude))),
             travelMode = travelMode,
             routingPreference = if (travelMode == TravelMode.DRIVE) "TRAFFIC_AWARE" else null,
@@ -105,6 +107,7 @@ object RouteService {
         @Serializable
         data class RoutesRequest(
             val origin: Waypoint,
+            val intermediates: List<Waypoint>,
             val destination: Waypoint,
             val travelMode: TravelMode,
             val routingPreference: String?,

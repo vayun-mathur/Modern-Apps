@@ -237,6 +237,8 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
         println("SUBWAY SEARCH: ${OSM2.search("Galero Grill").map { OSM.getTags(it) }}")
     }
 
+    var inactiveNavigation: SpecificFeature.Route? by remember { mutableStateOf(null) }
+
     // --- ROUTE COMPUTATION ---
     var route: Map<RouteService.TravelMode, RouteService.RouteType?>? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedFeature) {
@@ -272,12 +274,16 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
         }
     }
 
+    BackHandler(selectedFeature == null && inactiveNavigation != null) {
+        inactiveNavigation = null
+    }
+
     var selectedRouteType by remember { mutableStateOf(RouteService.TravelMode.DRIVE) }
 
     // --- RENDER ---
     BottomSheetScaffold({
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 48.dp, top = 8.dp)) {
-            BottomSheetContent(selectedFeature, { selectedFeature = it }, route, selectedRouteType, { selectedRouteType = it })
+            BottomSheetContent(selectedFeature, { selectedFeature = it }, route, selectedRouteType, { selectedRouteType = it }, inactiveNavigation)
         }
     }, Modifier, scaffoldState, 170.dp) { paddingValues ->
         Scaffold(Modifier.padding(top = paddingValues.calculateTopPadding()), topBar = {
@@ -306,6 +312,7 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
                             println("LISTED FEATURES: $listedFeatures")
 
                             listedFeatures.firstOrNull()?.let {
+                                if(selectedFeature is SpecificFeature.Route) inactiveNavigation = selectedFeature as SpecificFeature.Route
                                 selectedFeature = it
                                 scaffoldState.bottomSheetState.expand()
                             }
@@ -324,8 +331,8 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
                 }
 
                 // ROUTE OVERLAY HEADERS
-                if(selectedFeature is SpecificFeature.Route) {
-                    val routeFeature = selectedFeature as SpecificFeature.Route
+                if(selectedFeature is SpecificFeature.Route || inactiveNavigation != null) {
+                    val routeFeature = if(selectedFeature is SpecificFeature.Route) selectedFeature as SpecificFeature.Route else inactiveNavigation!!
                     val listState = rememberLazyListState()
                     val state = rememberReorderableLazyListState(listState, onMove = { from, to ->
                         // swap their indices in the list
