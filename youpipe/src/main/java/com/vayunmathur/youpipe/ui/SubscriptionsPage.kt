@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
@@ -103,7 +104,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                         Text("Groups:")
                     }, trailingContent = {
                         IconButton({
-                            backStack.add(Route.CreateSubscriptionCategory)
+                            backStack.add(Route.CreateSubscriptionCategory(null))
                         }) {
                             IconAdd()
                         }
@@ -121,6 +122,12 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                         Text(it)
                     }, Modifier.clickable {
                         backStack.add(Route.SubscriptionVideosPage(it))
+                    }, trailingContent = {
+                        IconButton({
+                            backStack.add(Route.CreateSubscriptionCategory(it))
+                        }) {
+                            IconEdit()
+                        }
                     })
                 }
                 item {

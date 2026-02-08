@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Transaction
 import com.vayunmathur.library.util.DatabaseItem
 import com.vayunmathur.library.util.TrueDao
 import kotlinx.coroutines.flow.Flow
@@ -30,4 +31,13 @@ interface SubscriptionCategoryDao: TrueDao<SubscriptionCategory> {
 
     @Query("DELETE FROM SubscriptionCategory")
     override suspend fun deleteAll()
+
+    @Query("DELETE FROM SubscriptionCategory WHERE category = :categoryName")
+    suspend fun deleteCategory(categoryName: String)
+
+    @Transaction
+    suspend fun replaceCategory(categoryName: String, map: List<Long>) {
+        deleteCategory(categoryName)
+        upsertAll(map.mapIndexed { index, id -> SubscriptionCategory(id, categoryName) })
+    }
 }

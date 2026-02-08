@@ -1,8 +1,10 @@
 package com.vayunmathur.youpipe.ui.dialog
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,7 +29,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -39,21 +43,30 @@ import com.vayunmathur.library.util.pop
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory
+import com.vayunmathur.youpipe.data.SubscriptionCategoryDao
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
+fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: String?) {
+    val categoriesDao = viewModel.getDaoInterface<SubscriptionCategory>().dao as SubscriptionCategoryDao
     val subscriptions by viewModel.data<Subscription>().collectAsState()
     val categories by viewModel.data<SubscriptionCategory>().collectAsState()
     val categoryNames = categories.map { it.category }
-    var categoryName by remember { mutableStateOf("") }
-    var selectedSubscriptions by remember { mutableStateOf<List<Subscription>>(listOf()) }
+    var categoryName by remember { mutableStateOf(id?:"") }
+    val subscriptionsAlreadyInCategory = categories.filter { it.category == categoryName }.map { it.subscriptionID }.map { id -> subscriptions.first { it.id == id } }
+    var selectedSubscriptions by remember { mutableStateOf(subscriptionsAlreadyInCategory) }
+    val coroutineScope = rememberCoroutineScope()
     Dialog({backStack.pop()}) {
         Card() {
             Column(Modifier.padding(16.dp)) {
-                Text("Create subscription category", style = MaterialTheme.typography.titleLarge)
+                if(id == null)
+                    Text("Create subscription category", style = MaterialTheme.typography.titleLarge)
+                else
+                    Text("Update subscription category", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(categoryName, {categoryName = it}, label = {Text("Category name")})
+                OutlinedTextField(categoryName, {categoryName = it}, label = {Text("Category name")}, enabled = id == null)
                 Spacer(Modifier.height(8.dp))
                 Text("Select subscriptions:")
                 LazyColumn(Modifier.weight(1f)) {
@@ -76,20 +89,22 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
                         })
                     }
                 }
-                Row {
-                    Button(
-                        {
-                            viewModel.upsertAll(
-                                selectedSubscriptions.map {
-                                    SubscriptionCategory(it.id, categoryName)
-                                }
-                            )
+                Button(
+                    {
+                        coroutineScope.launch {
+                            categoriesDao.replaceCategory(
+                                categoryName,
+                                selectedSubscriptions.map { it.id })
                             backStack.pop()
-                        },
-                        enabled = categoryName.isNotBlank() && selectedSubscriptions.isNotEmpty() && categoryName !in categoryNames
-                    ) {
+                        }
+                    },
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    enabled = categoryName.isNotBlank() && selectedSubscriptions.isNotEmpty() && (id != null || categoryName !in categoryNames)
+                ) {
+                    if(id == null)
                         Text("Create")
-                    }
+                    else
+                        Text("Update")
                 }
             }
         }

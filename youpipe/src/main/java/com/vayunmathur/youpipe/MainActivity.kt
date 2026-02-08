@@ -145,7 +145,7 @@ sealed interface Route: NavKey {
     data class SubscriptionVideosPage(val category: String?): Route
 
     @Serializable
-    data object CreateSubscriptionCategory: Route
+    data class CreateSubscriptionCategory(val id: String?): Route
 }
 
 @Composable
@@ -168,7 +168,7 @@ fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
             SubscriptionVideosPage(backStack, viewModel, it.category)
         }
         entry<Route.CreateSubscriptionCategory>(metadata = DialogPage()) {
-            CreateSubscriptionCategory(backStack, viewModel)
+            CreateSubscriptionCategory(backStack, viewModel, it.id)
         }
     }
 }
