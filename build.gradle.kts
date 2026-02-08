@@ -16,6 +16,7 @@ subprojects {
         apply(plugin = "com.android.application")
         apply(plugin = "org.jetbrains.kotlin.plugin.compose")
         apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
+        apply(plugin = "com.google.devtools.ksp")
 
         configure<com.android.build.api.dsl.ApplicationExtension> {
             dependenciesInfo {
@@ -75,6 +76,14 @@ subprojects {
             }
         }
     }
+
+
+    pluginManager.withPlugin("com.google.devtools.ksp") {
+        extensions.configure<com.google.devtools.ksp.gradle.KspExtension> {
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
+    }
+
     val libs = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
 
     dependencies {

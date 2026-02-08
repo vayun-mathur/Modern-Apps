@@ -2,6 +2,7 @@ package com.vayunmathur.youpipe.data
 
 import androidx.room.Dao
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import com.vayunmathur.library.util.DatabaseItem
@@ -11,7 +12,9 @@ import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
 @Serializable
-@Entity
+@Entity(foreignKeys = [
+    ForeignKey(entity = Subscription::class, parentColumns = ["id"], childColumns = ["channelID"], onDelete = ForeignKey.CASCADE)
+])
 data class SubscriptionVideo(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0, // video id
     val name: String,
@@ -20,6 +23,7 @@ data class SubscriptionVideo(
     val uploadDate: Instant,
     val thumbnailURL: String,
     val author: String,
+    val channelID: Long,
     override val position: Double = 0.0
 ): DatabaseItem<SubscriptionVideo>() {
     override fun withPosition(position: Double) = copy(position = position)

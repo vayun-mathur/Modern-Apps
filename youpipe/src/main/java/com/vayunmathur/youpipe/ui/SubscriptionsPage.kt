@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
+import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
@@ -42,6 +43,7 @@ import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.channelURLtoID
 import com.vayunmathur.youpipe.data.Subscription
+import com.vayunmathur.youpipe.data.SubscriptionCategory
 import com.vayunmathur.youpipe.getChannelInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +56,8 @@ import kotlinx.serialization.json.jsonPrimitive
 @Composable
 fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val subscriptions by viewModel.data<Subscription>().collectAsState()
+    val subscriptionCategoryPairs by viewModel.data<SubscriptionCategory>().collectAsState()
+    val categories = subscriptionCategoryPairs.map { it.category }.distinct()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -95,25 +99,32 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
         if(!isLoading) {
             LazyColumn(Modifier.padding(paddingValues)) {
                 item {
-                    Text(
-                        "Groups:",
-                        Modifier.padding(start = 4.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    ListItem({
+                        Text("Groups:")
+                    }, trailingContent = {
+                        IconButton({
+                            backStack.add(Route.CreateSubscriptionCategory)
+                        }) {
+                            IconAdd()
+                        }
+                    })
                 }
                 item {
                     ListItem({
                         Text("All Subscriptions")
                     }, Modifier.clickable {
-                        backStack.add(Route.SubscriptionVideosPage)
+                        backStack.add(Route.SubscriptionVideosPage(null))
+                    })
+                }
+                items(categories) {
+                    ListItem({
+                        Text(it)
+                    }, Modifier.clickable {
+                        backStack.add(Route.SubscriptionVideosPage(it))
                     })
                 }
                 item {
-                    Text(
-                        "Channels:",
-                        Modifier.padding(start = 4.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    ListItem({ Text("Channels:") })
                 }
                 items(subscriptions) {
                     ListItem({

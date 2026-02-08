@@ -21,14 +21,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.PictureInPictureModeChangedInfo
 import androidx.core.util.Consumer
 import androidx.navigation3.runtime.NavKey
+import androidx.room.AutoMigration
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
+import com.vayunmathur.youpipe.data.SubscriptionCategory
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.ui.ChannelPage
@@ -37,6 +40,7 @@ import com.vayunmathur.youpipe.ui.SearchPage
 import com.vayunmathur.youpipe.ui.SubscriptionVideosPage
 import com.vayunmathur.youpipe.ui.SubscriptionsPage
 import com.vayunmathur.youpipe.ui.VideoPage
+import com.vayunmathur.youpipe.ui.dialog.CreateSubscriptionCategory
 import com.vayunmathur.youpipe.ui.setupHourlyTask
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
@@ -74,7 +78,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<SubscriptionDatabase>()
-        val viewModel = DatabaseViewModel(Subscription::class to db.subscriptionDao(), SubscriptionVideo::class to db.subscriptionVideoDao(), HistoryVideo::class to db.historyVideoDao())
+        val viewModel = DatabaseViewModel(
+            Subscription::class to db.subscriptionDao(),
+            SubscriptionVideo::class to db.subscriptionVideoDao(),
+            HistoryVideo::class to db.historyVideoDao(),
+            SubscriptionCategory::class to db.subscriptionCategoryDao()
+        )
         NewPipe.init(MyDownloader())
         setContent {
             DynamicTheme {
@@ -133,7 +142,10 @@ sealed interface Route: NavKey {
     data object SubscriptionsPage: Route
 
     @Serializable
-    data object SubscriptionVideosPage: Route
+    data class SubscriptionVideosPage(val category: String?): Route
+
+    @Serializable
+    data object CreateSubscriptionCategory: Route
 }
 
 @Composable
@@ -153,7 +165,10 @@ fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
             SubscriptionsPage(backStack, viewModel)
         }
         entry<Route.SubscriptionVideosPage> {
-            SubscriptionVideosPage(backStack, viewModel)
+            SubscriptionVideosPage(backStack, viewModel, it.category)
+        }
+        entry<Route.CreateSubscriptionCategory>(metadata = DialogPage()) {
+            CreateSubscriptionCategory(backStack, viewModel)
         }
     }
 }

@@ -45,6 +45,7 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
                     uploadDate = it.uploadDate,
                     thumbnailURL = it.thumbnailURL,
                     author = it.author,
+                    channelID = subscriptions.first { sub -> sub.name == it.author }.id
                 )
             }.sortedByDescending { it.uploadDate }
 
