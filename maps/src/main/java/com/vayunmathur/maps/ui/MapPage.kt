@@ -79,6 +79,7 @@ import androidx.core.graphics.toColor
 import androidx.core.graphics.toColorInt
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.R
+import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.readLines
@@ -242,12 +243,13 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
     // --- ROUTE COMPUTATION ---
     var route: Map<RouteService.TravelMode, RouteService.RouteType?>? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedFeature) {
-        if(selectedFeature is SpecificFeature.Route) {
+        val feat = selectedFeature
+        if(feat is SpecificFeature.Route) {
             route = RouteService.TravelMode.entries.associateWith {
                 if(it == RouteService.TravelMode.TRANSIT) {
-                    TransitRoute.computeRoute(selectedFeature as SpecificFeature.Route, userPosition)
+                    TransitRoute.computeRoute(feat, userPosition)
                 } else {
-                    RouteService.computeRoute(selectedFeature as SpecificFeature.Route, userPosition, it)
+                    RouteService.computeRoute(feat, userPosition, it)
                 }
             }
         }
@@ -358,11 +360,22 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
                                                 ?: "Your location"
                                         )
                                     }, trailingContent = {
-                                        Icon(
-                                            painterResource(R.drawable.drag_handle_24px),
-                                            contentDescription = "Reorder",
-                                            modifier = Modifier.draggableHandle(),
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if(idx > 0 && idx < routeFeature.waypoints.size - 1) {
+                                                IconButton({
+                                                    val newList = routeFeature.waypoints.toMutableList()
+                                                    newList.removeAt(idx)
+                                                    selectedFeature = routeFeature.copy(waypoints = newList)
+                                                }) {
+                                                    IconClose()
+                                                }
+                                            }
+                                            Icon(
+                                                painterResource(R.drawable.drag_handle_24px),
+                                                contentDescription = "Reorder",
+                                                modifier = Modifier.draggableHandle(),
+                                            )
+                                        }
                                     }, colors = ListItemDefaults.colors(Color.Transparent))
                                 }
                             }
