@@ -1,8 +1,10 @@
 package com.vayunmathur.youpipe.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import com.vayunmathur.library.util.DatabaseItem
@@ -23,6 +25,7 @@ data class SubscriptionVideo(
     val uploadDate: Instant,
     val thumbnailURL: String,
     val author: String,
+    @ColumnInfo(index = true)
     val channelID: Long,
     override val position: Double = 0.0
 ): DatabaseItem<SubscriptionVideo>() {

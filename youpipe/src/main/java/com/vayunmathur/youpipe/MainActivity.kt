@@ -35,6 +35,7 @@ import com.vayunmathur.youpipe.data.SubscriptionCategory
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.ui.ChannelPage
+import com.vayunmathur.youpipe.ui.HistoryPage
 import com.vayunmathur.youpipe.ui.PlaybackService
 import com.vayunmathur.youpipe.ui.SearchPage
 import com.vayunmathur.youpipe.ui.SubscriptionVideosPage
@@ -146,6 +147,9 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class CreateSubscriptionCategory(val id: String?): Route
+
+    @Serializable
+    data object History: Route
 }
 
 @Composable
@@ -170,10 +174,14 @@ fun Navigation(initialRoute: Route, viewModel: DatabaseViewModel) {
         entry<Route.CreateSubscriptionCategory>(metadata = DialogPage()) {
             CreateSubscriptionCategory(backStack, viewModel, it.id)
         }
+        entry<Route.History> {
+            HistoryPage(backStack, viewModel)
+        }
     }
 }
 
 val MAIN_BOTTOM_BAR_ITEMS = listOf(
     BottomBarItem("Search", Route.SearchPage, R.drawable.outline_search_24),
-    BottomBarItem("Subscriptions", Route.SubscriptionsPage, R.drawable.outline_subscriptions_24)
+    BottomBarItem("Subscriptions", Route.SubscriptionsPage, R.drawable.outline_subscriptions_24),
+    BottomBarItem("History", Route.History, R.drawable.baseline_history_24)
 )

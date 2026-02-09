@@ -1,5 +1,6 @@
 package com.vayunmathur.youpipe.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -16,6 +17,7 @@ import kotlinx.serialization.Serializable
     ForeignKey(entity = Subscription::class, parentColumns = ["id"], childColumns = ["subscriptionID"], onDelete = ForeignKey.CASCADE)
     ])
 data class SubscriptionCategory(
+    @ColumnInfo(index = true)
     val subscriptionID: Long,
     val category: String,
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
