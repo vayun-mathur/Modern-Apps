@@ -428,28 +428,33 @@ data class Contact(
         }
 
         private fun tryGetProfile(context: Context): Contact? {
-            val contentResolver = context.contentResolver
-            val uri = Profile.CONTENT_URI
-            val projection = arrayOf(
-                Profile._ID,
-                Profile.DISPLAY_NAME_PRIMARY,
-                Profile.STARRED,
-            )
-            val cursor = contentResolver.query(uri, projection, null, null, null)
+            try {
+                val contentResolver = context.contentResolver
+                val uri = Profile.CONTENT_URI
+                val projection = arrayOf(
+                    Profile._ID,
+                    Profile.DISPLAY_NAME_PRIMARY,
+                    Profile.STARRED,
+                )
+                val cursor = contentResolver.query(uri, projection, null, null, null)
 
-            cursor?.use {
-                while (it.moveToNext()) {
-                    val id = it.getLong(it.getColumnIndexOrThrow(Profile._ID))
-                    val displayName = it.getString(it.getColumnIndexOrThrow(Profile.DISPLAY_NAME_PRIMARY))
-                    val isFavorite = it.getInt(it.getColumnIndexOrThrow(Profile.STARRED)) == 1
+                cursor?.use {
+                    while (it.moveToNext()) {
+                        val id = it.getLong(it.getColumnIndexOrThrow(Profile._ID))
+                        val displayName =
+                            it.getString(it.getColumnIndexOrThrow(Profile.DISPLAY_NAME_PRIMARY))
+                        val isFavorite = it.getInt(it.getColumnIndexOrThrow(Profile.STARRED)) == 1
 
-                    var details = getDetails(context, id, true)
-                    details = processDetails(details, displayName) ?: continue
+                        var details = getDetails(context, id, true)
+                        details = processDetails(details, displayName) ?: continue
 
-                    return Contact(true, id, isFavorite, details)
+                        return Contact(true, id, isFavorite, details)
+                    }
                 }
+                return null
+            } catch (e: Exception) {
+                return null
             }
-            return null
         }
 
         fun getProfile(context: Context): Contact {
