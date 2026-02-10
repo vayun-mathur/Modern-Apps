@@ -1,50 +1,27 @@
 package com.vayunmathur.maps.ui
 
-import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CardElevation
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -61,57 +38,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColor
-import androidx.core.graphics.toColorInt
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.R
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.readLines
-import com.vayunmathur.library.util.round
-import com.vayunmathur.maps.CountryMap
 import com.vayunmathur.maps.FrameworkLocationManager
-import com.vayunmathur.maps.OSM2
-import com.vayunmathur.maps.OSM
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.RouteService
 import com.vayunmathur.maps.TransitRoute
-import com.vayunmathur.maps.Wikidata
 import com.vayunmathur.maps.ZoneDownloadManager
-import com.vayunmathur.maps.data.OpeningHours
+import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.data.TagDatabase
 import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.ensurePmtilesReady
 import com.vayunmathur.maps.ui.components.BottomSheetContent
 import com.vayunmathur.maps.ui.components.MyMapLayers
 import com.vayunmathur.maps.ui.components.UserIcon
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.Padding
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
@@ -121,49 +71,22 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okio.source
 import org.maplibre.compose.camera.CameraPosition
-import org.maplibre.compose.camera.CameraState
 import org.maplibre.compose.camera.rememberCameraState
-import org.maplibre.compose.expressions.ast.Expression
-import org.maplibre.compose.expressions.dsl.const
-import org.maplibre.compose.expressions.dsl.convertToColor
-import org.maplibre.compose.expressions.dsl.eq
-import org.maplibre.compose.expressions.dsl.feature
-import org.maplibre.compose.expressions.dsl.rem
-import org.maplibre.compose.expressions.value.ExpressionValue
-import org.maplibre.compose.expressions.value.IntValue
-import org.maplibre.compose.expressions.value.LineCap
-import org.maplibre.compose.expressions.value.StringValue
-import org.maplibre.compose.layers.FillLayer
-import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.map.RenderOptions
-import org.maplibre.compose.sources.GeoJsonData
-import org.maplibre.compose.sources.GeoJsonOptions
-import org.maplibre.compose.sources.GeoJsonSource
 import org.maplibre.compose.style.BaseStyle
-import org.maplibre.compose.style.rememberStyleState
 import org.maplibre.compose.util.ClickResult
-import org.maplibre.compose.util.MaplibreComposable
-import org.maplibre.spatialk.geojson.Feature
-import org.maplibre.spatialk.geojson.FeatureCollection
-import org.maplibre.spatialk.geojson.Geometry
-import org.maplibre.spatialk.geojson.LineString
-import org.maplibre.spatialk.geojson.MultiPolygon
-import org.maplibre.spatialk.geojson.Point
-import org.maplibre.spatialk.geojson.PointGeometry
-import org.maplibre.spatialk.geojson.Polygon
 import org.maplibre.spatialk.geojson.Position
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.File
-import kotlin.time.Duration
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase) {
+fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatabase) {
     var selectedFeature by remember { mutableStateOf<SpecificFeature?>(null) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -229,13 +152,6 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
             userBearing = bearing
         }
         onDispose { locationManager.stopUpdates(listener) }
-    }
-
-    LaunchedEffect(Unit) {
-        OSM.initialize(context)
-        OSM2.init(context, ds, db)
-        // Debug search example
-        println("SUBWAY SEARCH: ${OSM2.search("Galero Grill").map { OSM.getTags(it) }}")
     }
 
     var inactiveNavigation: SpecificFeature.Route? by remember { mutableStateOf(null) }
@@ -310,7 +226,7 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: TagDatabase)
                                 listOf("${it}_base", "${it}_hybrid")
                             }.toSet()) ?: emptyList()
                             println("FEATURES: $features")
-                            val listedFeatures = features.mapNotNull { parse(it) }
+                            val listedFeatures = features.mapNotNull { parse(it, db) }
                             println("LISTED FEATURES: $listedFeatures")
 
                             listedFeatures.firstOrNull()?.let {

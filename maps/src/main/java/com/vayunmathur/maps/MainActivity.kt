@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -19,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
@@ -33,7 +36,8 @@ import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
-import com.vayunmathur.maps.data.TagDatabase
+import com.vayunmathur.maps.data.AmenityDatabase
+import com.vayunmathur.maps.data.buildAmenityDatabase
 import com.vayunmathur.maps.ui.DownloadedMapsPage
 import com.vayunmathur.maps.ui.MapPage
 import kotlinx.coroutines.async
@@ -62,17 +66,37 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val ds = DataStoreUtils.getInstance(this)
-        val db = buildDatabase<TagDatabase>();
-        val localPath = ensurePmtilesReady(this)
+        ensurePmtilesReady(this)
         setContent {
             DynamicTheme {
-                val downloadedState by ds.getLongState("downloaded")
-                val isDownloaded = downloadedState == 2L
-                if(isDownloaded) {
+                val dbSetup by ds.booleanFlow("dbSetupComplete").collectAsState(false)
+                if(dbSetup) {
+                    val db = remember { buildAmenityDatabase(this@MainActivity) }
                     Navigation(ds, db)
                 } else {
-                    DownloadPage(ds, db)
+                    DatabaseSetup(ds)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DatabaseSetup(ds: DataStoreUtils) {
+    val context = LocalContext.current
+    val progress by ds.doubleFlow("downloadProgress").collectAsState(0.0)
+    LaunchedEffect(Unit) {
+        val id = downloadOsmData(context, "https://data.vayunmathur.com/amenities.db")
+        while(progress != 1.0) {
+            ds.setDouble("downloadProgress", getProgress(context, id))
+            delay(100)
+        }
+        ds.setBoolean("dbSetupComplete", true)
+    }
+    Scaffold() { paddingValues ->
+        Box(Modifier.padding(paddingValues).fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(Modifier.padding(16.dp)) {
+                Text((progress*100).toString())
             }
         }
     }
@@ -87,7 +111,7 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(ds: DataStoreUtils, db: TagDatabase) {
+fun Navigation(ds: DataStoreUtils, db: AmenityDatabase) {
     val backStack = rememberNavBackStack<Route>(Route.MapPage)
     val context = LocalContext.current
     MainNavigation(backStack) {
@@ -100,37 +124,6 @@ fun Navigation(ds: DataStoreUtils, db: TagDatabase) {
     }
 }
 
-@Composable
-fun DownloadPage(ds: DataStoreUtils, db: TagDatabase) {
-    val context = LocalContext.current
-    val downloaded by ds.getLongState("downloaded")
-    Scaffold() { paddingValues ->
-        Box(Modifier.padding(paddingValues).fillMaxSize()) {
-            if(downloaded == 0L) {
-                Button({
-                    downloadOsmData(context, "https://api.vayunmathur.com/maps/amenities", "https://api.vayunmathur.com/maps/search", ds)
-                }, Modifier.align(Alignment.Center)) {
-                    Text("Download")
-                }
-            } else {
-                var progress by remember { mutableStateOf(0.0) }
-                LaunchedEffect(Unit) {
-                    val downloadID = ds.getLong("downloadID")!!
-                    val downloadID2 = ds.getLong("downloadID2")!!
-                    while(true) {
-                        progress = getProgress(context, downloadID) + getProgress(context, downloadID2)
-                        if(progress == 2.0) {
-                            ds.setLong("downloaded", 2L)
-                        }
-                        delay(100)
-                    }
-                }
-                Text("Downloading: ${progress/2*100}%", Modifier.align(Alignment.Center))
-            }
-        }
-    }
-}
-
 fun getProgress(context: Context, downloadId: Long): Double {
     val q = DownloadManager.Query().setFilterById(downloadId)
     val cursor = (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).query(q)
@@ -138,41 +131,48 @@ fun getProgress(context: Context, downloadId: Long): Double {
         val bytesDownloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
         val bytesTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
         if (bytesTotal == 0L) return 0.0
-        println(bytesDownloaded)
-        println(bytesTotal)
         return ((bytesDownloaded).toDouble() / bytesTotal)
     }
     return 0.0
 }
 
-fun downloadOsmData(context: Context, url1: String, url2: String, ds: DataStoreUtils) {
+fun downloadOsmData(context: Context, url: String): Long {
     val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    val fileName = "amenities.db"
 
-    val request = DownloadManager.Request(url1.toUri())
-        .setTitle("OSM Data Update")
-        .setDescription("Downloading 2.5GB tag database...")
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        // Save to app-specific external storage (no permission needed)
-        .setDestinationInExternalFilesDir(context, null, "amenities_indexed.bin")
-        .setAllowedOverMetered(false) // Recommended for a 2.5GB file!
-        .setRequiresCharging(false)
+    // 1. Check if the download is already in progress or completed
+    val query = DownloadManager.Query()
+    val cursor = downloadManager.query(query)
 
+    if (cursor != null) {
+        while (cursor.moveToNext()) {
+            val title = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
 
-    val request2 = DownloadManager.Request(url2.toUri())
-        .setTitle("OSM Data Update")
-        .setDescription("Downloading 2.5GB tag database...")
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        // Save to app-specific external storage (no permission needed)
-        .setDestinationInExternalFilesDir(context, null, "names_only.bin")
-        .setAllowedOverMetered(false) // Recommended for a 2.5GB file!
-        .setRequiresCharging(false)
+            // Check by title or destination (Title is more reliable for filtering here)
+            if (title == "OSM Data Update") {
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID))
 
-    val downloadId = downloadManager.enqueue(request)
-    val downloadId2 = downloadManager.enqueue(request2)
-
-    runBlocking {
-        ds.setLong("downloaded", 1L)
-        ds.setLong("downloadID", downloadId)
-        ds.setLong("downloadID2", downloadId2)
+                // If it's running, pending, or successful, return the existing ID
+                if (status == DownloadManager.STATUS_RUNNING ||
+                    status == DownloadManager.STATUS_PENDING ||
+                    status == DownloadManager.STATUS_SUCCESSFUL) {
+                    cursor.close()
+                    return id
+                }
+            }
+        }
+        cursor.close()
     }
+
+    // 2. If no active/completed download found, start a new one
+    val request = DownloadManager.Request(url.toUri())
+        .setTitle("OSM Data Update")
+        .setDescription("Downloading 2.5GB tag database...")
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationInExternalFilesDir(context, null, fileName)
+        .setAllowedOverMetered(false)
+        .setRequiresCharging(false)
+
+    return downloadManager.enqueue(request)
 }

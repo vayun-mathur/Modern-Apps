@@ -1,6 +1,5 @@
 package com.vayunmathur.maps.data
 
-import com.vayunmathur.maps.OSM
 import com.vayunmathur.maps.Wikidata
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -26,9 +25,8 @@ typealias Feature1 = Feature<Geometry, JsonObject?>
 
 fun JsonObject.string(key: String): String? = this[key]?.jsonPrimitive?.content
 
-suspend fun parse(feature: Feature1): SpecificFeature? {
+suspend fun parse(feature: Feature1, db: AmenityDatabase): SpecificFeature? {
     val id = feature.id?.jsonPrimitive?.content?.toULong() ?: 0uL
-    val osmID = id and ((1uL shl 44) - 1uL)
     val geometry = feature.geometry
     val properties = feature.properties ?: return null
     return when(properties.string("kind")) {
@@ -41,7 +39,7 @@ suspend fun parse(feature: Feature1): SpecificFeature? {
             SpecificFeature.Admin1Label(wiki.getProperty("P300")!!, wiki.getWikipedia()!!, properties.string("name:en")!!)
         }
         "restaurant", "fast_food", "cafe", "bar" -> {
-            val tags = OSM.getTags(osmID.toLong())
+            val tags = db.tagDao().getTags(id.toLong()).associate { it.key to it.value }
             println(properties)
             println(tags)
             SpecificFeature.Restaurant(tags["name"] ?: "", tags["phone"], tags["website"], tags["website:menu"], tags["opening_hours"]?.let { OpeningHours.from(it) }, (geometry as Point).coordinates)

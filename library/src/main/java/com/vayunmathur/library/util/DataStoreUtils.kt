@@ -7,12 +7,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
@@ -46,6 +49,17 @@ class DataStoreUtils private constructor(context: Context) {
     }
 
     @Composable
+    fun booleanFlow(name: String): Flow<Boolean> {
+        return dataStore.data.mapNotNull { it[booleanPreferencesKey(name)] }
+    }
+
+    suspend fun setBoolean(name: String, value: Boolean) {
+        dataStore.edit {
+            it[booleanPreferencesKey(name)] = value
+        }
+    }
+
+    @Composable
     fun getLongState(name: String, default: Long = 0L): State<Long> {
         return dataStore.data.mapNotNull { it[longPreferencesKey(name)] }.collectAsState(default)
     }
@@ -54,6 +68,16 @@ class DataStoreUtils private constructor(context: Context) {
         dataStore.edit {
             if(onlyIfAbsent && it.contains(longPreferencesKey(s))) return@edit
             it[longPreferencesKey(s)] = userid
+        }
+    }
+
+    fun doubleFlow(string: String): Flow<Double> {
+        return dataStore.data.mapNotNull { it[doublePreferencesKey(string)] }
+    }
+
+    suspend fun setDouble(string: String, progress: Double) {
+        dataStore.edit {
+            it[doublePreferencesKey(string)] = progress
         }
     }
 
