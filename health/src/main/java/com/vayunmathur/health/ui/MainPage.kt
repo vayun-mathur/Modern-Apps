@@ -162,7 +162,7 @@ fun MainPage(backStack: NavBackStack<Route>) {
 
             // 4. Activity & Energy
             Text("Activity", style = MaterialTheme.typography.labelLarge)
-            EnergyBurned(aggregates?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories ?: 0.0)
+            EnergyBurned(backStack, aggregates?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories ?: 0.0)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
@@ -367,15 +367,18 @@ fun Mindfulness(min: Long) {
 }
 
 @Composable
-fun EnergyBurned(kcal: Double) {
-    GenericCard("Energy", null, "cal", kcal.round(0).toInt().toString(), "Today") {
+fun EnergyBurned(backStack: NavBackStack<Route>, kcal: Double) {
+    GenericCard("Energy", null, "cal", kcal.round(0).toInt().toString(), "Today", onClick = {
+        backStack.add(Route.BarChartDetails)
+    }) {
         ProgressBarGraphic(R.drawable.baseline_local_fire_department_24, kcal.toFloat(), 2500f, Color(0xFF00E676))
     }
 }
 
 @Composable
-fun GenericCard(name: String, titleIcon: ImageVector?, units: String, number: String, dateString: String, shape: Shape = CardDefaults.shape, graphic: @Composable (() -> Unit) = {}) {
-    Card(Modifier.fillMaxWidth(), shape = shape) {
+fun GenericCard(name: String, titleIcon: ImageVector?, units: String, number: String, dateString: String, shape: Shape = CardDefaults.shape, onClick: (() -> Unit)? = null, graphic: @Composable (() -> Unit) = {}) {
+    val modifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
+    Card(modifier.fillMaxWidth(), shape = shape) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
