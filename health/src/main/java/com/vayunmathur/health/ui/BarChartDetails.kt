@@ -38,37 +38,53 @@ import kotlinx.datetime.todayIn
 import kotlin.time.Clock
 
 /**
- * Configuration for different health metrics.
- * Biological markers (HRV, Breathing, etc) use Line Charts and Average-based aggregation.
+ * Configuration for health metrics.
  */
 enum class HealthMetricConfig(
     val title: String,
     val recordType: RecordType,
     val unit: String,
     val dailyGoal: Double,
+    val secondaryGoal: Double? = null,
     val isLineChart: Boolean = false,
-    val useDecimals: Boolean = false
+    val useDecimals: Boolean = false,
+    val isDualSeries: Boolean = false
 ) {
     ENERGY("Energy Burned", RecordType.CaloriesTotal, "cal", 2470.0),
     ACTIVE_CALORIES("Active Calories", RecordType.CaloriesActive, "cal", 500.0),
     BASAL_METABOLIC_RATE("Basal Metabolic Rate", RecordType.CaloriesBasal, "cal", 1800.0),
     STEPS("Steps", RecordType.Steps, "steps", 10000.0),
     WHEELCHAIR_PUSHES("Wheelchair Pushes", RecordType.Wheelchair, "pushes", 3000.0),
-    DISTANCE("Distance", RecordType.Distance, "km", 5.0, useDecimals = true),
-    ELEVATION("Elevation Gained", RecordType.Elevation, "m", 50.0, useDecimals = true),
-    FLOORS("Floors Climbed", RecordType.Floors, "floors", 10.0, useDecimals = true),
+    DISTANCE("Distance", RecordType.Distance, "km", 5.0, isLineChart = false, useDecimals = true),
+    ELEVATION("Elevation Gained", RecordType.Elevation, "m", 50.0, isLineChart = false, useDecimals = true),
+    FLOORS("Floors Climbed", RecordType.Floors, "floors", 10.0, isLineChart = false, useDecimals = true),
+    HYDRATION("Hydration", RecordType.Hydration, "L", 2.5, isLineChart = false, useDecimals = true),
 
-    // Biological Metrics (Line Charts + Averages)
+    // Biological & Medical (Line Charts)
+    BLOOD_PRESSURE("Blood Pressure", RecordType.BloodPressure, "mmHg", 120.0, secondaryGoal = 80.0, isLineChart = true, isDualSeries = true),
+    GLUCOSE("Blood Glucose", RecordType.BloodGlucose, "mg/dL", 100.0, isLineChart = true, useDecimals = true),
+    VO2_MAX("VO2 Max", RecordType.Vo2Max, "ml/kg/min", 45.0, isLineChart = true, useDecimals = true),
+    SKIN_TEMP("Skin Temp Variation", RecordType.SkinTemperature, "°C", 0.0, isLineChart = true, useDecimals = true),
     BREATHING_RATE("Breathing Rate", RecordType.RespiratoryRate, "brpm", 16.0, isLineChart = true, useDecimals = true),
     RESTING_HEART_RATE("Resting Heart Rate", RecordType.RestingHeartRate, "bpm", 60.0, isLineChart = true),
     OXYGEN_SATURATION("Oxygen Saturation", RecordType.OxygenSaturation, "%", 95.0, isLineChart = true, useDecimals = true),
-    HRV("Heart Rate Variability", RecordType.HeartRateVariabilityRmssd, "ms", 50.0, isLineChart = true, useDecimals = true)
+    HRV("Heart Rate Variability", RecordType.HeartRateVariabilityRmssd, "ms", 50.0, isLineChart = true, useDecimals = true),
+
+    // Physical Measurements
+    HEIGHT("Height", RecordType.Height, "cm", 175.0, isLineChart = true, useDecimals = true),
+    WEIGHT("Weight", RecordType.Weight, "kg", 75.0, isLineChart = true, useDecimals = true),
+    BODY_FAT("Body Fat", RecordType.BodyFat, "%", 20.0, isLineChart = true, useDecimals = true),
+    LEAN_BODY_MASS("Lean Body Mass", RecordType.LeanBodyMass, "kg", 60.0, isLineChart = true, useDecimals = true),
+    BONE_MASS("Bone Mass", RecordType.BoneMass, "kg", 3.0, isLineChart = true, useDecimals = true),
+    BODY_WATER_MASS("Body Water Mass", RecordType.BodyWaterMass, "kg", 45.0, isLineChart = true, useDecimals = true)
 }
 
 data class MetricDashboardData(
     val totalValue: Double = 0.0,
     val dailyAverage: Double = 0.0,
+    val secondaryAverage: Double? = null,
     val chartData: List<Pair<String, Double?>> = emptyList(),
+    val secondaryChartData: List<Pair<String, Double?>>? = null,
     val historyItems: List<HistoryItem> = emptyList(),
     val totalBarCount: Int = 0
 )
@@ -76,6 +92,7 @@ data class MetricDashboardData(
 data class HistoryItem(
     val label: String,
     val value: Double?,
+    val secondaryValue: Double? = null,
     val unit: String,
     val isGoalMet: Boolean,
     val useDecimals: Boolean
@@ -97,11 +114,7 @@ fun BarChartDetails(
 
     LaunchedEffect(selectedTab, anchorDate, config) {
         val (startTime, endTime, periodType) = when (selectedTab) {
-            0 -> Triple(
-                anchorDate.atStartOfDayIn(tz),
-                anchorDate.atTime(23, 59, 59).toInstant(tz),
-                HealthAPI.PeriodType.Hourly
-            )
+            0 -> Triple(anchorDate.atStartOfDayIn(tz), anchorDate.atTime(23, 59, 59).toInstant(tz), HealthAPI.PeriodType.Hourly)
             1 -> {
                 val start = anchorDate.minus(anchorDate.dayOfWeek.ordinal, DateTimeUnit.DAY)
                 Triple(start.atStartOfDayIn(tz), start.plus(7, DateTimeUnit.DAY).atStartOfDayIn(tz), HealthAPI.PeriodType.Daily)
@@ -118,22 +131,19 @@ fun BarChartDetails(
             }
         }
 
-        val rawValues: List<Double?> = if (config.isLineChart) {
+        // Both functions now return List<Pair<Double?, Double?>>
+        val rawPairs = if (config.isLineChart) {
             HealthAPI.getListOfAverages(config.recordType, startTime, endTime, periodType)
         } else {
             HealthAPI.getListOfSums(config.recordType, startTime, endTime, periodType)
         }
 
-        val mappedChart = rawValues.mapIndexed { index, value ->
-            val label = when (selectedTab) {
-                0 -> index.toString()
-                1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz).toLocalDateTime(tz).dayOfWeek.name.take(3)
-                else -> (index + 1).toString()
-            }
-            label to value
-        }
+        val mappedChart = rawPairs.mapIndexed { i, p -> i.toString() to p.first }
+        val mappedSecondaryChart = if (config.isDualSeries) {
+            rawPairs.mapIndexed { i, p -> i.toString() to p.second }
+        } else null
 
-        val history = rawValues.mapIndexed { index, value ->
+        val history = rawPairs.mapIndexed { index, pair ->
             val label = when (selectedTab) {
                 0 -> "Hour $index"
                 1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz).toLocalDateTime(tz).dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
@@ -142,28 +152,25 @@ fun BarChartDetails(
             }
             HistoryItem(
                 label = label,
-                value = value,
+                value = pair.first,
+                secondaryValue = if (config.isDualSeries) pair.second else null,
                 unit = config.unit,
-                isGoalMet = (value ?: 0.0) >= config.dailyGoal,
+                isGoalMet = (pair.first ?: 0.0) >= config.dailyGoal,
                 useDecimals = config.useDecimals
             )
-        }.filter { it.value != null }.reversed() // Remove "No data" cards by filtering nulls
+        }.filter { it.value != null }.reversed()
 
-        val nonNullValues = rawValues.filterNotNull()
-        val totalValue = nonNullValues.sum()
-        val dailyAvg = if (config.isLineChart) {
-            if (nonNullValues.isEmpty()) 0.0 else nonNullValues.average()
-        } else {
-            val divisor = rawValues.size.coerceAtLeast(1)
-            totalValue / divisor
-        }
+        val nonNullPrimary = rawPairs.mapNotNull { it.first }
+        val nonNullSecondary = if (config.isDualSeries) rawPairs.mapNotNull { it.second } else emptyList()
 
         dataState = MetricDashboardData(
-            totalValue = totalValue,
-            dailyAverage = dailyAvg,
+            totalValue = nonNullPrimary.sum(),
+            dailyAverage = if (nonNullPrimary.isEmpty()) 0.0 else nonNullPrimary.average(),
+            secondaryAverage = if (nonNullSecondary.isEmpty()) null else nonNullSecondary.average(),
             chartData = mappedChart,
+            secondaryChartData = mappedSecondaryChart,
             historyItems = history,
-            totalBarCount = rawValues.size
+            totalBarCount = rawPairs.size
         )
     }
 
@@ -231,10 +238,11 @@ fun BarChartDetails(
                     Spacer(Modifier.height(16.dp))
 
                     Row(verticalAlignment = Alignment.Bottom) {
-                        val avgString = if (config.useDecimals) {
-                            String.format("%.1f", dataState.dailyAverage)
+                        val formatVal = { v: Double -> if (config.useDecimals) String.format("%.1f", v) else String.format("%,d", v.toLong()) }
+                        val avgString = if (dataState.secondaryAverage != null && config.isDualSeries) {
+                            "${formatVal(dataState.dailyAverage)}/${formatVal(dataState.secondaryAverage!!)}"
                         } else {
-                            String.format("%,d", dataState.dailyAverage.toLong())
+                            formatVal(dataState.dailyAverage)
                         }
 
                         Text(
@@ -256,8 +264,11 @@ fun BarChartDetails(
                     if (config.isLineChart) {
                         GenericLineChart(
                             data = dataState.chartData,
+                            secondaryData = dataState.secondaryChartData,
                             goalValue = config.dailyGoal,
+                            secondaryGoal = config.secondaryGoal,
                             lineColor = MaterialTheme.colorScheme.primary,
+                            secondaryLineColor = MaterialTheme.colorScheme.tertiary,
                             goalColor = MaterialTheme.colorScheme.secondary
                         )
                     } else {
@@ -283,13 +294,17 @@ fun BarChartDetails(
 @Composable
 fun GenericLineChart(
     data: List<Pair<String, Double?>>,
+    secondaryData: List<Pair<String, Double?>>? = null,
     goalValue: Double,
+    secondaryGoal: Double? = null,
     lineColor: Color,
+    secondaryLineColor: Color,
     goalColor: Color
 ) {
     if (data.all { it.second == null }) return
 
-    val maxChartValue = (goalValue * 1.5f).coerceAtLeast(100.0)
+    val allValues = (data.mapNotNull { it.second } + (secondaryData?.mapNotNull { it.second } ?: emptyList()))
+    val maxChartValue = (allValues.maxOrNull() ?: goalValue).coerceAtLeast(goalValue * 1.2).coerceAtLeast(10.0)
     val labelColor = LocalContentColor.current.copy(alpha = 0.6f)
 
     Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
@@ -298,34 +313,34 @@ fun GenericLineChart(
             val height = size.height
             val spacing = width / (data.size - 1).coerceAtLeast(1)
 
-            // Goal line
-            val goalY = height - (goalValue.toFloat() / maxChartValue.toFloat() * height).coerceIn(0f, height)
-            drawLine(color = goalColor, start = Offset(0f, goalY), end = Offset(width, goalY), strokeWidth = 1.dp.toPx())
-
-            // Draw line segments
-            var lastValidPoint: Offset? = null
-
-            data.forEachIndexed { index, pair ->
-                val value = pair.second
-                val x = index * spacing
-
-                if (value != null) {
-                    val y = height - (value.toFloat() / maxChartValue.toFloat() * height).coerceIn(0f, height)
-                    val currentPoint = Offset(x, y)
-
-                    if (lastValidPoint != null) {
-                        drawLine(
-                            color = lineColor,
-                            start = lastValidPoint!!,
-                            end = currentPoint,
-                            strokeWidth = 3.dp.toPx()
-                        )
+            val drawSeries = { series: List<Pair<String, Double?>>, color: Color ->
+                var lastValidPoint: Offset? = null
+                series.forEachIndexed { index, pair ->
+                    val value = pair.second
+                    val x = index * spacing
+                    if (value != null) {
+                        val y = height - (value.toFloat() / maxChartValue.toFloat() * height).coerceIn(0f, height)
+                        val currentPoint = Offset(x, y)
+                        if (lastValidPoint != null) {
+                            drawLine(color = color, start = lastValidPoint!!, end = currentPoint, strokeWidth = 3.dp.toPx())
+                        }
+                        drawCircle(color = color, radius = 3.dp.toPx(), center = currentPoint)
+                        lastValidPoint = currentPoint
                     }
-
-                    drawCircle(color = lineColor, radius = 3.dp.toPx(), center = currentPoint)
-                    lastValidPoint = currentPoint
                 }
             }
+
+            // Goal lines
+            val drawGoal = { goal: Double, color: Color ->
+                val gy = height - (goal.toFloat() / maxChartValue.toFloat() * height).coerceIn(0f, height)
+                drawLine(color = color, start = Offset(0f, gy), end = Offset(width, gy), strokeWidth = 1.dp.toPx())
+            }
+
+            drawGoal(goalValue, goalColor)
+            secondaryGoal?.let { drawGoal(it, goalColor.copy(alpha = 0.5f)) }
+
+            drawSeries(data, lineColor)
+            secondaryData?.let { drawSeries(it, secondaryLineColor) }
         }
 
         Text(text = String.format("%,d", maxChartValue.toLong()), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
@@ -342,7 +357,8 @@ fun GenericBarChart(
     barColor: Color,
     goalColor: Color
 ) {
-    val maxChartValue = (goalValue * 2f).coerceAtLeast(100f)
+    val maxValueFound = data.maxOfOrNull { it.second } ?: 0L
+    val maxChartValue = (maxValueFound.toFloat() * 1.2f).coerceAtLeast(goalValue * 1.2f).coerceAtLeast(10f)
     val labelColor = LocalContentColor.current.copy(alpha = 0.6f)
 
     Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
@@ -396,11 +412,8 @@ fun HistoryCard(item: HistoryItem) {
                         Spacer(Modifier.width(8.dp))
                     }
 
-                    val valueString = if (item.useDecimals) {
-                        String.format("%.1f", item.value)
-                    } else {
-                        String.format("%,d", item.value.toLong())
-                    }
+                    val format = { v: Double -> if (item.useDecimals) String.format("%.1f", v) else String.format("%,d", v.toLong()) }
+                    val valueString = if (item.secondaryValue != null) "${format(item.value)}/${format(item.secondaryValue)}" else format(item.value)
 
                     Text(
                         text = "$valueString ${item.unit}",

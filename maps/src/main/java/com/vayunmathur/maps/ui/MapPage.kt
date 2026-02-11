@@ -60,6 +60,8 @@ import com.vayunmathur.maps.ensurePmtilesReady
 import com.vayunmathur.maps.ui.components.BottomSheetContent
 import com.vayunmathur.maps.ui.components.MyMapLayers
 import com.vayunmathur.maps.ui.components.UserIcon
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
@@ -194,6 +196,13 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
 
     BackHandler(selectedFeature == null && inactiveNavigation != null) {
         inactiveNavigation = null
+    }
+
+    LaunchedEffect(Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val res = db.amenityDao().searchNearby(34.0248435,-118.2867097, "Subway")
+            println("CLOSEST RESULTS: $res")
+        }
     }
 
     var selectedRouteType by remember { mutableStateOf(RouteService.TravelMode.DRIVE) }

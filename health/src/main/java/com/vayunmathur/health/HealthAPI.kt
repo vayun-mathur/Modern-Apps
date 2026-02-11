@@ -69,9 +69,9 @@ object HealthAPI {
         startTime: Instant,
         endTime: Instant,
         period: PeriodType
-    ): List<Double?> {
+    ): List<Pair<Double?, Double?>> {
         val tz = TimeZone.currentSystemDefault()
-        val avgs = mutableListOf<Double?>()
+        val avgs = mutableListOf<Pair<Double?, Double?>>()
 
         var currentStart = startTime
 
@@ -97,8 +97,9 @@ object HealthAPI {
             val currentEnd = if (nextStart > endTime) endTime else nextStart
 
             // Fetch sum from DAO
-            val avg = db.healthDao().avgInRangeGet(recordType, currentStart, currentEnd)
-            avgs.add(avg)
+            val avg1 = db.healthDao().avgInRangeGet1(recordType, currentStart, currentEnd)
+            val avg2 = db.healthDao().avgInRangeGet2(recordType, currentStart, currentEnd)
+            avgs.add(Pair(avg1, avg2))
 
             currentStart = nextStart
         }
@@ -111,9 +112,9 @@ object HealthAPI {
         startTime: Instant,
         endTime: Instant,
         period: PeriodType
-    ): List<Double> {
+    ): List<Pair<Double, Double>> {
         val tz = TimeZone.currentSystemDefault()
-        val sums = mutableListOf<Double>()
+        val sums = mutableListOf<Pair<Double, Double>>()
 
         var currentStart = startTime
 
@@ -139,8 +140,9 @@ object HealthAPI {
             val currentEnd = if (nextStart > endTime) endTime else nextStart
 
             // Fetch sum from DAO
-            val sum = db.healthDao().sumInRangeGet(recordType, currentStart, currentEnd)
-            sums.add(sum)
+            val sum1 = db.healthDao().sumInRangeGet1(recordType, currentStart, currentEnd)
+            val sum2 = db.healthDao().sumInRangeGet2(recordType, currentStart, currentEnd)
+            sums.add(Pair(sum1, sum2))
 
             currentStart = nextStart
         }

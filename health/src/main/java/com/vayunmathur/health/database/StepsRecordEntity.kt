@@ -46,9 +46,13 @@ interface HealthDao {
     @Query("SELECT COALESCE(SUM(value), 0.0) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
     fun sumInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double>
     @Query("SELECT COALESCE(SUM(value), 0.0) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
-    suspend fun sumInRangeGet(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double
+    suspend fun sumInRangeGet1(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double
+    @Query("SELECT COALESCE(SUM(secondaryValue), 0.0) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
+    suspend fun sumInRangeGet2(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double
     @Query("SELECT AVG(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
-    suspend fun avgInRangeGet(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double?
+    suspend fun avgInRangeGet1(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double?
+    @Query("SELECT AVG(secondaryValue) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
+    suspend fun avgInRangeGet2(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double?
     @Query("SELECT MIN(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
     fun minInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double?>
     @Query("SELECT MAX(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")

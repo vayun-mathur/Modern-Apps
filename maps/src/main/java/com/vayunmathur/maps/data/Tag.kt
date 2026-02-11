@@ -61,65 +61,36 @@ data class AmenitySearchResult(
 @Dao
 interface AmenityDao {
 
-    /**
-     * The High-Speed Search.
-     * 1. Joins with the FTS5 table for instant text matching.
-     * 2. Uses the 'knn' virtual table to utilize the R-Tree index.
-     * * @param searchQuery The text to match (e.g., "Starbucks")
-     * @param userLat Current user latitude
-     * @param userLng Current user longitude
-     * @param limit Maximum number of results to return
-     */
-    @SkipQueryVerification
     @Query("""
-        SELECT 
-            a.id, 
-            a.name, 
-            a.lat, 
-            a.lon, 
-            ST_Distance(a.geom, MakePoint(:userLng, :userLat, 4326), 1) AS distanceInMeters
-        FROM knn k
-        JOIN Amenities a ON k.fid = a.id
-        JOIN Amenities_fts f ON a.id = f.rowid
+    SELECT 
+        a.id, 
+        a.name, 
+        a.lat, 
+        a.lon, 
+        ST_Distance(a.geom, MakePoint(:userLng, :userLat, 4326), 1) AS distanceInMeters
+    FROM Amenities a
+    -- Filter 1: Full Text Search (Fast)
+    JOIN Amenities_fts f ON a.id = f.rowid
+    WHERE f.name MATCH :searchQuery
+      -- Filter 2: Spatial Index (Fastest way to prune 32M rows)
+      AND a.id IN (
+        SELECT rowid 
+        FROM SpatialIndex 
         WHERE f_table_name = 'Amenities' 
           AND f_geometry_column = 'geom'
-          AND ref_geometry = MakePoint(:userLng, :userLat, 4326)
-          AND max_items = 100
-          AND f.name MATCH :searchQuery
-        ORDER BY distanceInMeters ASC
-        LIMIT :limit
-    """)
-    suspend fun findNearestAmenities(
+          AND search_frame = BuildCircleMbr(:userLng, :userLat, :radiusInDegrees, 4326)
+      )
+    ORDER BY distanceInMeters ASC
+    LIMIT :limit
+""")
+    @SkipQueryVerification
+    suspend fun searchNearby(
+        userLat: Double,
+        userLng: Double,
         searchQuery: String,
-        userLat: Double,
-        userLng: Double,
-        limit: Int = 15
-    ): List<AmenitySearchResult>
-
-    /**
-     * Fallback search for when the user hasn't typed anything yet (Browsing mode).
-     * This skips FTS and purely uses the R-Tree KNN search.
-     */
-    @SkipQueryVerification
-    @Query("""
-        SELECT 
-            a.id, 
-            a.name, 
-            a.lat, 
-            a.lon, 
-            ST_Distance(a.geom, MakePoint(:userLng, :userLat, 4326), 1) AS distanceInMeters
-        FROM knn k
-        JOIN Amenities a ON k.fid = a.id
-        WHERE f_table_name = 'Amenities' 
-          AND f_geometry_column = 'geom'
-          AND ref_geometry = MakePoint(:userLng, :userLat, 4326)
-          AND max_items = :limit
-    """)
-    suspend fun getNearest(
-        userLat: Double,
-        userLng: Double,
-        limit: Int = 15
-    ): List<AmenitySearchResult>
+        radiusInDegrees: Double = 0.5,
+        limit: Int = 100
+    ): List<AmenityEntity>
 
     @Query("SELECT * FROM Amenities WHERE id = :id")
     suspend fun getById(id: Long): AmenityEntity?

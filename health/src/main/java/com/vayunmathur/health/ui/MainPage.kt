@@ -197,11 +197,11 @@ fun MainPage(backStack: NavBackStack<Route>) {
             Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge)
             // TODO: add this back
             //NutritionSummaryCard(aggregates)
-            Hydration(hydrationToday)
+            Hydration(backStack, hydrationToday)
 
             // 3. Body Composition
             Text("Body Composition", style = MaterialTheme.typography.labelLarge)
-            BodyCompositionDashboard(height, weight, bodyFat, leanBodyMass, boneMass, bodyWaterMass)
+            BodyCompositionDashboard(backStack, height, weight, bodyFat, leanBodyMass, boneMass, bodyWaterMass)
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -241,8 +241,12 @@ fun NutritionMacro(label: String, value: Double?, unit: String) {
 fun VitalsDashboard(backStack: NavBackStack<Route>, br: Double?, spo2: Double?, rhr: Long?, hrv: Double?, temp: Double?, vo2: Double?, bg: Double?, bp: Pair<Double, Double>?) {
     val items = 8
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        MetricSegmentCard(0, items, "Blood Pressure", bp?.let { "${it.first.toInt()}/${it.second.toInt()}" }, "mmHg")
-        MetricSegmentCard(1, items, "Blood Glucose", bg, "mg/dL")
+        MetricSegmentCard(0, items, "Blood Pressure", bp?.let { "${it.first.toInt()}/${it.second.toInt()}" }, "mmHg", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.BLOOD_PRESSURE))
+        })
+        MetricSegmentCard(1, items, "Blood Glucose", bg, "mg/dL", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.GLUCOSE))
+        })
         MetricSegmentCard(2, items, "Oxygen Saturation", spo2, "%", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.OXYGEN_SATURATION))
         })
@@ -255,21 +259,37 @@ fun VitalsDashboard(backStack: NavBackStack<Route>, br: Double?, spo2: Double?, 
         MetricSegmentCard(5, items, "HRV (RMSSD)", hrv, "ms", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.HRV))
         })
-        MetricSegmentCard(6, items, "VO2 Max", vo2, "mL/kg/min")
-        MetricSegmentCard(7, items, "Skin Temp Var", temp, "°C", showSign = true)
+        MetricSegmentCard(6, items, "VO2 Max", vo2, "mL/kg/min", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.VO2_MAX))
+        })
+        MetricSegmentCard(7, items, "Skin Temp Var", temp, "°C", showSign = true, onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.SKIN_TEMP))
+        })
     }
 }
 
 @Composable
-fun BodyCompositionDashboard(h: Double?, w: Double?, bf: Double?, lbm: Double?, bm: Double?, bw: Double?) {
+fun BodyCompositionDashboard(backStack: NavBackStack<Route>, h: Double?, w: Double?, bf: Double?, lbm: Double?, bm: Double?, bw: Double?) {
     val items = 6
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        MetricSegmentCard(0, items, "Height", h?.let { it * 100 }, "cm")
-        MetricSegmentCard(1, items, "Weight", w, "kg")
-        MetricSegmentCard(2, items, "Body Fat", bf, "%")
-        MetricSegmentCard(3, items, "Lean Body Mass", lbm, "kg")
-        MetricSegmentCard(4, items, "Bone Mass", bm, "kg")
-        MetricSegmentCard(5, items, "Body Water Mass", bw, "kg")
+        MetricSegmentCard(0, items, "Height", h?.let { it * 100 }, "cm", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.HEIGHT))
+        })
+        MetricSegmentCard(1, items, "Weight", w, "kg", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.WEIGHT))
+        })
+        MetricSegmentCard(2, items, "Body Fat", bf, "%", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.BODY_FAT))
+        })
+        MetricSegmentCard(3, items, "Lean Body Mass", lbm, "kg", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.LEAN_BODY_MASS))
+        })
+        MetricSegmentCard(4, items, "Bone Mass", bm, "kg", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.BONE_MASS))
+        })
+        MetricSegmentCard(5, items, "Body Water Mass", bw, "kg", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.BODY_WATER_MASS))
+        })
     }
 }
 
@@ -322,8 +342,10 @@ fun verticalSegmentedCardShape(index: Int, total: Int): Shape {
 }
 
 @Composable
-fun Hydration(ml: Double) {
-    GenericCard("Hydration", null, "mL", ml.toInt().toString(), "Today") {
+fun Hydration(backStack: NavBackStack<Route>, ml: Double) {
+    GenericCard("Hydration", null, "mL", ml.toInt().toString(), "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.HYDRATION))
+    }) {
         ProgressBarGraphic(R.drawable.baseline_local_fire_department_24, ml.toFloat(), 3000f, Color(0xFF2196F3))
     }
 }
