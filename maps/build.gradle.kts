@@ -29,4 +29,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.navigation3.runtime)
     ksp(libs.androidx.room.compiler)
+
+    implementation("com.github.anboralabs:spatia-room:1.0.1")
 }
