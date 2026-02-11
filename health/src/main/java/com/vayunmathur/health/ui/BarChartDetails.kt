@@ -18,7 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.aggregate.AggregateMetric
+import androidx.health.connect.client.aggregate.AggregationResult
+import androidx.health.connect.client.records.*
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.Route
@@ -31,11 +33,88 @@ import java.time.format.TextStyle
 import java.util.*
 import com.vayunmathur.health.R
 import java.time.Duration
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
-data class EnergyDashboardData(
-    val totalCalories: Long = 0,
+/**
+ * Configuration for different health metrics to make the UI reusable.
+ * Converted to an enum class for easier serialization/navigation.
+ */
+enum class HealthMetricConfig(
+    val title: String,
+    val metric: AggregateMetric<*>,
+    val unit: String,
+    val dailyGoal: Long,
+    val getValue: (AggregationResult) -> Long
+) {
+    ENERGY(
+        title = "Energy Burned",
+        metric = TotalCaloriesBurnedRecord.ENERGY_TOTAL,
+        unit = "cal",
+        dailyGoal = 2470,
+        getValue = { it[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toLong() ?: 0L }
+    ),
+
+    ACTIVE_CALORIES(
+        title = "Active Calories",
+        metric = ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
+        unit = "cal",
+        dailyGoal = 500,
+        getValue = { it[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories?.toLong() ?: 0L }
+    ),
+
+    BASAL_METABOLIC_RATE(
+        title = "Basal Metabolic Rate",
+        metric = BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL,
+        unit = "cal",
+        dailyGoal = 1800,
+        getValue = { it[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories?.toLong() ?: 0L }
+    ),
+
+    STEPS(
+        title = "Steps",
+        metric = StepsRecord.COUNT_TOTAL,
+        unit = "steps",
+        dailyGoal = 10000,
+        getValue = { it[StepsRecord.COUNT_TOTAL] ?: 0L }
+    ),
+
+    WHEELCHAIR_PUSHES(
+        title = "Wheelchair Pushes",
+        metric = WheelchairPushesRecord.COUNT_TOTAL,
+        unit = "pushes",
+        dailyGoal = 3000,
+        getValue = { it[WheelchairPushesRecord.COUNT_TOTAL] ?: 0L }
+    ),
+
+    DISTANCE(
+        title = "Distance",
+        metric = DistanceRecord.DISTANCE_TOTAL,
+        unit = "km",
+        dailyGoal = 5,
+        getValue = { it[DistanceRecord.DISTANCE_TOTAL]?.inKilometers?.toLong() ?: 0L }
+    ),
+
+    ELEVATION(
+        title = "Elevation Gained",
+        metric = ElevationGainedRecord.ELEVATION_GAINED_TOTAL,
+        unit = "m",
+        dailyGoal = 50,
+        getValue = { it[ElevationGainedRecord.ELEVATION_GAINED_TOTAL]?.inMeters?.toLong() ?: 0L }
+    ),
+
+    FLOORS(
+        title = "Floors Climbed",
+        metric = FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL,
+        unit = "floors",
+        dailyGoal = 10,
+        getValue = { it[FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL]?.toInt()?.toLong() ?: 0L }
+    )
+}
+
+data class MetricDashboardData(
+    val totalValue: Long = 0,
     val dailyAverage: Long = 0,
-    val goalValue: Long = 2470,
     val chartData: List<Pair<String, Long>> = emptyList(),
     val historyItems: List<HistoryItem> = emptyList(),
     val totalBarCount: Int = 0
@@ -44,74 +123,107 @@ data class EnergyDashboardData(
 data class HistoryItem(
     val label: String,
     val value: Long,
+    val unit: String,
     val isGoalMet: Boolean
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BarChartDetails(backStack: NavBackStack<Route>) {
+fun BarChartDetails(
+    backStack: NavBackStack<Route>,
+    config: HealthMetricConfig
+) {
     var selectedTab by remember { mutableStateOf(2) } // 0:Day, 1:Week, 2:Month, 3:Year
     val tabs = listOf("Day", "Week", "Month", "Year")
     var anchorDate by remember { mutableStateOf(LocalDate.now()) }
-    var dataState by remember { mutableStateOf(EnergyDashboardData()) }
+    var dataState by remember { mutableStateOf(MetricDashboardData()) }
     val scope = rememberCoroutineScope()
-    val colorScheme = MaterialTheme.colorScheme
 
-    LaunchedEffect(selectedTab, anchorDate) {
+    LaunchedEffect(selectedTab, anchorDate, config) {
         scope.launch {
             try {
-                val (filter, period, barCount) = when (selectedTab) {
-                    0 -> Triple(HealthAPI.timeRangeToday(anchorDate), Period.ofDays(1), 24)
-                    1 -> Triple(HealthAPI.timeRangeThisWeek(anchorDate), Period.ofDays(1), 7)
-                    2 -> Triple(HealthAPI.timeRangeThisMonth(anchorDate), Period.ofDays(1), anchorDate.lengthOfMonth())
-                    else -> Triple(HealthAPI.timeRangeThisYear(anchorDate), Period.ofMonths(1), 12)
+                val metrics = setOf(config.metric)
+                val filter = when (selectedTab) {
+                    0 -> HealthAPI.timeRangeToday(anchorDate)
+                    1 -> HealthAPI.timeRangeThisWeek(anchorDate)
+                    2 -> HealthAPI.timeRangeThisMonth(anchorDate)
+                    else -> HealthAPI.timeRangeThisYear(anchorDate)
                 }
 
-                val metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL)
-
-                // For Day view (selectedTab == 0), use Duration-based aggregation for hourly data
                 val mappedChart: List<Pair<String, Long>>
                 val history: List<HistoryItem>
+                val totalValue: Long
+                val barCount: Int
 
                 if (selectedTab == 0) {
+                    barCount = 24
                     val hourlyData = HealthAPI.aggregateByDuration(filter, Duration.ofHours(1), metrics)
+                    totalValue = hourlyData.sumOf { config.getValue(it.result) }
+
                     mappedChart = hourlyData.map { group ->
-                        val calories = group.result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toLong() ?: 0L
-                        val label = group.startTime.atZone(java.time.ZoneId.systemDefault()).hour.toString()
-                        label to calories
+                        val value = config.getValue(group.result)
+                        val label = group.startTime.atZone(ZoneId.systemDefault()).hour.toString()
+                        label to value
                     }
                     history = hourlyData.map { group ->
-                        val calories = group.result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toLong() ?: 0L
-                        val hour = group.startTime.atZone(java.time.ZoneId.systemDefault()).hour
-                        HistoryItem("Hour $hour", calories, calories >= 100) // Lower threshold for hourly goal check
-                    }.reversed()
+                        val value = config.getValue(group.result)
+                        val hour = group.startTime.atZone(ZoneId.systemDefault()).hour
+                        HistoryItem("Hour $hour", value, config.unit, false)
+                    }.filter { it.value > 0 }.reversed()
                 } else {
+                    val period = if (selectedTab == 3) Period.ofMonths(1) else Period.ofDays(1)
+                    barCount = when (selectedTab) {
+                        1 -> 7
+                        2 -> anchorDate.lengthOfMonth()
+                        else -> 12
+                    }
+
                     val grouped = HealthAPI.aggregateByPeriod(filter, period, metrics)
+                    totalValue = grouped.sumOf { config.getValue(it.result) }
+
                     mappedChart = grouped.map { group ->
-                        val calories = group.result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toLong() ?: 0L
+                        val totalMonthValue = config.getValue(group.result)
+
+                        val displayValue = if (selectedTab == 3) {
+                            val daysInMonth = ChronoUnit.DAYS.between(group.startTime, group.endTime).coerceAtLeast(1)
+                            totalMonthValue / daysInMonth
+                        } else totalMonthValue
+
                         val label = when (selectedTab) {
                             3 -> group.startTime.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
                             else -> group.startTime.dayOfMonth.toString()
                         }
-                        label to calories
+                        label to displayValue
                     }
+
                     history = grouped.map { group ->
-                        val calories = group.result[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toLong() ?: 0L
+                        val totalMonthValue = config.getValue(group.result)
+
+                        val displayValue = if (selectedTab == 3) {
+                            val daysInMonth = ChronoUnit.DAYS.between(group.startTime, group.endTime).coerceAtLeast(1)
+                            totalMonthValue / daysInMonth
+                        } else totalMonthValue
+
                         val label = when (selectedTab) {
                             1 -> group.startTime.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
                             2 -> group.startTime.format(DateTimeFormatter.ofPattern("MMM d"))
                             else -> group.startTime.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
                         }
-                        HistoryItem(label, calories, calories >= 2470)
-                    }.reversed()
+                        HistoryItem(label, displayValue, config.unit, displayValue >= config.dailyGoal)
+                    }.filter { it.value > 0 }.reversed()
                 }
 
-                val total = mappedChart.sumOf { it.second }
-                val avg = if (mappedChart.isNotEmpty()) total / mappedChart.size else 0
+                val daysInRange = when (selectedTab) {
+                    0 -> 1L
+                    1 -> 7L
+                    2 -> anchorDate.lengthOfMonth().toLong()
+                    else -> if (anchorDate.isLeapYear) 366L else 365L
+                }
+                val dailyAvg = totalValue / daysInRange
 
-                dataState = EnergyDashboardData(
-                    totalCalories = total,
-                    dailyAverage = avg,
+                dataState = MetricDashboardData(
+                    totalValue = totalValue,
+                    dailyAverage = dailyAvg,
                     chartData = mappedChart,
                     historyItems = history,
                     totalBarCount = barCount
@@ -125,22 +237,13 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Energy burned", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = { IconNavigation(backStack) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colorScheme.background,
-                    titleContentColor = colorScheme.onBackground
-                )
+                title = { Text(config.title) },
+                navigationIcon = { IconNavigation(backStack) }
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize().background(colorScheme.background)) {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = colorScheme.background,
-                contentColor = colorScheme.primary,
-                divider = {}
-            ) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            TabRow(selectedTabIndex = selectedTab, divider = {}) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -148,7 +251,6 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
                         text = {
                             Text(
                                 text = title,
-                                color = if (selectedTab == index) colorScheme.onBackground else colorScheme.onBackground.copy(alpha = 0.6f),
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
                             )
                         }
@@ -161,7 +263,7 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
                 contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
             ) {
                 item {
-                    val headerText = when (selectedTab) {
+                    val headerLabel = when (selectedTab) {
                         0 -> anchorDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
                         1 -> "Week of ${anchorDate.with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("MMM d"))}"
                         2 -> anchorDate.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
@@ -181,14 +283,12 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
                                 else -> anchorDate.minusYears(1)
                             }
                         }) {
-                            Icon(painterResource(R.drawable.baseline_arrow_back_24), contentDescription = "Prev", tint = colorScheme.onBackground)
+                            Icon(painterResource(R.drawable.baseline_arrow_back_24), contentDescription = "Prev")
                         }
 
                         Text(
-                            text = headerText,
-                            color = colorScheme.onBackground,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
+                            text = headerLabel,
+                            style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.widthIn(min = 140.dp),
                             textAlign = TextAlign.Center
                         )
@@ -201,7 +301,7 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
                                 else -> anchorDate.plusYears(1)
                             }
                         }) {
-                            Icon(painterResource(R.drawable.outline_arrow_forward_24), contentDescription = "Next", tint = colorScheme.onBackground)
+                            Icon(painterResource(R.drawable.outline_arrow_forward_24), contentDescription = "Next")
                         }
                     }
 
@@ -210,31 +310,31 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = String.format("%,d", dataState.dailyAverage),
-                            color = colorScheme.onBackground,
-                            fontSize = 42.sp,
+                            style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.Light
                         )
                         Text(
-                            text = " cal per day (avg)",
-                            color = colorScheme.onBackground.copy(alpha = 0.6f),
-                            fontSize = 16.sp,
-                            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                            text = " ${config.unit} per day (avg)",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 12.dp, start = 4.dp),
+                            color = LocalContentColor.current.copy(alpha = 0.6f)
                         )
                     }
                     Text(
-                        text = "Total burned: ${String.format("%,d", dataState.totalCalories)} calories",
-                        color = colorScheme.onBackground.copy(alpha = 0.6f),
-                        fontSize = 14.sp,
+                        text = "Total ${config.title.lowercase()}: ${String.format("%,d", dataState.totalValue)} ${config.unit}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = LocalContentColor.current.copy(alpha = 0.6f),
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
 
                 item {
                     Spacer(Modifier.height(32.dp))
-                    EnergyBarChart(
+                    val colorScheme = MaterialTheme.colorScheme
+                    GenericBarChart(
                         data = dataState.chartData,
                         totalBarCount = dataState.totalBarCount,
-                        goalValue = dataState.goalValue,
+                        goalValue = config.dailyGoal,
                         barColor = colorScheme.primary,
                         goalColor = colorScheme.secondary
                     )
@@ -246,8 +346,12 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("History", color = colorScheme.onBackground, fontWeight = FontWeight.Bold)
-                        Text(if (selectedTab == 0) "Calories" else "Daily average", color = colorScheme.onBackground.copy(alpha = 0.6f), fontSize = 14.sp)
+                        Text("History", fontWeight = FontWeight.Bold)
+                        Text(
+                            if (selectedTab == 0) config.unit.replaceFirstChar { it.uppercase() } else "Daily average",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LocalContentColor.current.copy(alpha = 0.6f)
+                        )
                     }
                     Spacer(Modifier.height(16.dp))
                 }
@@ -262,25 +366,24 @@ fun BarChartDetails(backStack: NavBackStack<Route>) {
 }
 
 @Composable
-fun EnergyBarChart(
+fun GenericBarChart(
     data: List<Pair<String, Long>>,
     totalBarCount: Int,
     goalValue: Long,
     barColor: Color,
     goalColor: Color
 ) {
-    val maxChartValue = 5000f
-    val labelColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+    val maxChartValue = (goalValue * 2f).coerceAtLeast(100f)
+    val labelColor = LocalContentColor.current.copy(alpha = 0.6f)
 
     Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
-
             val barWidth = 6.dp.toPx()
             val spacing = (width - (totalBarCount * barWidth)) / (totalBarCount + 1).coerceAtLeast(1)
 
-            val goalY = height - (goalValue / maxChartValue * height)
+            val goalY = height - (goalValue.toFloat() / maxChartValue * height).coerceIn(0f, height)
             drawLine(
                 color = goalColor,
                 start = Offset(0f, goalY),
@@ -289,7 +392,7 @@ fun EnergyBarChart(
             )
 
             data.forEachIndexed { index, pair ->
-                val barHeight = (pair.second / maxChartValue * height).coerceIn(4f, height)
+                val barHeight = (pair.second.toFloat() / maxChartValue * height).coerceIn(4f, height)
                 val x = spacing + index * (barWidth + spacing)
                 val y = height - barHeight
 
@@ -302,9 +405,24 @@ fun EnergyBarChart(
             }
         }
 
-        Text("5,000", color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
-        Text(goalValue.toString(), color = barColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
-        Text("0", color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.BottomEnd))
+        Text(
+            text = String.format("%,d", maxChartValue.toLong()),
+            color = labelColor,
+            fontSize = 10.sp,
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
+        Text(
+            text = String.format("%,d", goalValue),
+            color = barColor,
+            fontSize = 10.sp,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp)
+        )
+        Text(
+            text = "0",
+            color = labelColor,
+            fontSize = 10.sp,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
     }
 }
 
@@ -316,11 +434,11 @@ fun HistoryCard(item: HistoryItem) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(item.label, color = MaterialTheme.colorScheme.onBackground, fontSize = 16.sp)
+            Text(item.label)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (item.isGoalMet) {
                     Icon(
-                        painterResource(R.drawable.baseline_check_24),
+                        painter = painterResource(R.drawable.baseline_check_24),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
@@ -328,9 +446,7 @@ fun HistoryCard(item: HistoryItem) {
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(
-                    text = "${String.format("%,d", item.value)} cal",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 18.sp,
+                    text = "${String.format("%,d", item.value)} ${item.unit}",
                     fontWeight = FontWeight.Medium
                 )
             }

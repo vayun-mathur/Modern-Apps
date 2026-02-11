@@ -148,6 +148,43 @@ fun MainPage(backStack: NavBackStack<Route>) {
                 }
             }
 
+            // 4. Activity & Energy
+            Text("Activity", style = MaterialTheme.typography.labelLarge)
+            EnergyBurned(backStack, aggregates?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories ?: 0.0)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) {
+                    MiniMetricCard("Active", (aggregates?.get(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)?.inKilocalories ?: 0.0).round(0).toInt().toString(), "cal", onClick = {
+                        backStack.add(Route.BarChartDetails(HealthMetricConfig.ACTIVE_CALORIES))
+                    })
+                }
+                Box(Modifier.weight(1f)) {
+                    MiniMetricCard("Basal", (aggregates?.get(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL)?.inKilocalories ?: 0.0).round(0).toInt().toString(), "cal", onClick = {
+                        backStack.add(Route.BarChartDetails(HealthMetricConfig.BASAL_METABOLIC_RATE))
+                    })
+                }
+            }
+
+            // High priority Activity Metrics
+            Steps(backStack, aggregates?.get(StepsRecord.COUNT_TOTAL) ?: 0)
+
+            val pushes = aggregates?.get(WheelchairPushesRecord.COUNT_TOTAL) ?: 0
+            if (pushes > 0) {
+                WheelchairPushes(backStack, pushes)
+            }
+
+            // Mindfulness(aggregates?.get(MindfulnessSessionRecord.MINDFULNESS_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) { ElevationGained(backStack, aggregates?.get(ElevationGainedRecord.ELEVATION_GAINED_TOTAL)?.inMeters ?: 0.0) }
+                Box(Modifier.weight(1f)) { FloorsClimbed(backStack, aggregates?.get(FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL) ?: 0.0) }
+            }
+
+            Distance(backStack,aggregates?.get(DistanceRecord.DISTANCE_TOTAL)?.inKilometers ?: 0.0)
+            HeartRate(aggregates?.get(HeartRateRecord.BPM_MAX) ?: 0, aggregates?.get(HeartRateRecord.BPM_MIN) ?: 0)
+            Sleep(aggregates?.get(SleepSessionRecord.SLEEP_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
+
+
             // 1. Vitals & Clinical Metrics
             Text("Vitals & Clinical", style = MaterialTheme.typography.labelLarge)
             VitalsDashboard(br, spo2, rhr, hrv, skinTemp, vo2Max, bloodGlucose, bloodPressure)
@@ -155,43 +192,11 @@ fun MainPage(backStack: NavBackStack<Route>) {
             // 2. Nutrition Summary
             Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge)
             NutritionSummaryCard(aggregates)
+            Hydration(aggregates?.get(HydrationRecord.VOLUME_TOTAL)?.inMilliliters ?: 0.0)
 
             // 3. Body Composition
             Text("Body Composition", style = MaterialTheme.typography.labelLarge)
             BodyCompositionDashboard(height, weight, bodyFat, leanBodyMass, boneMass, bodyWaterMass)
-
-            // 4. Activity & Energy
-            Text("Activity", style = MaterialTheme.typography.labelLarge)
-            EnergyBurned(backStack, aggregates?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories ?: 0.0)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) {
-                    MiniMetricCard("Active", (aggregates?.get(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)?.inKilocalories ?: 0.0).round(0).toInt().toString(), "cal")
-                }
-                Box(Modifier.weight(1f)) {
-                    MiniMetricCard("Basal", (aggregates?.get(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL)?.inKilocalories ?: 0.0).round(0).toInt().toString(), "cal")
-                }
-            }
-
-            // High priority Activity Metrics
-            Steps(aggregates?.get(StepsRecord.COUNT_TOTAL) ?: 0)
-
-            val pushes = aggregates?.get(WheelchairPushesRecord.COUNT_TOTAL) ?: 0
-            if (pushes > 0) {
-                WheelchairPushes(pushes)
-            }
-
-            // Mindfulness(aggregates?.get(MindfulnessSessionRecord.MINDFULNESS_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) { ElevationGained(aggregates?.get(ElevationGainedRecord.ELEVATION_GAINED_TOTAL)?.inMeters ?: 0.0) }
-                Box(Modifier.weight(1f)) { FloorsClimbed(aggregates?.get(FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL) ?: 0.0) }
-            }
-
-            Distance(aggregates?.get(DistanceRecord.DISTANCE_TOTAL)?.inKilometers ?: 0.0)
-            HeartRate(aggregates?.get(HeartRateRecord.BPM_MAX) ?: 0, aggregates?.get(HeartRateRecord.BPM_MIN) ?: 0)
-            Sleep(aggregates?.get(SleepSessionRecord.SLEEP_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
-            Hydration(aggregates?.get(HydrationRecord.VOLUME_TOTAL)?.inMilliliters ?: 0.0)
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -282,8 +287,9 @@ fun MetricSegmentCard(index: Int, total: Int, label: String, value: Any?, unit: 
 }
 
 @Composable
-fun MiniMetricCard(label: String, value: String, unit: String) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun MiniMetricCard(label: String, value: String, unit: String, onClick: (() -> Unit)? = null) {
+    val modifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
+    Card(modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
             Row(verticalAlignment = Alignment.Bottom) {
@@ -311,22 +317,28 @@ fun Hydration(ml: Double) {
 }
 
 @Composable
-fun FloorsClimbed(floors: Double) {
-    GenericCard("Floors", null, "fl", floors.round(1).toString(), "Today") {
+fun FloorsClimbed(backStack: NavBackStack<Route>, floors: Double) {
+    GenericCard("Floors", null, "fl", floors.round(1).toString(), "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.FLOORS))
+    }) {
         ProgressBarGraphic(R.drawable.baseline_location_pin_24, floors.toFloat(), 10f, Color(0xFFFFA726))
     }
 }
 
 @Composable
-fun ElevationGained(meters: Double) {
-    GenericCard("Elevation", null, "m", meters.round(1).toString(), "Today") {
+fun ElevationGained(backStack: NavBackStack<Route>, meters: Double) {
+    GenericCard("Elevation", null, "m", meters.round(1).toString(), "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.ELEVATION))
+    }) {
         ProgressBarGraphic(R.drawable.baseline_location_pin_24, meters.toFloat(), 100f, Color(0xFF8D6E63))
     }
 }
 
 @Composable
-fun Distance(km: Double) {
-    GenericCard("Distance", null, "km", "${km.round(2)}", "Today") {
+fun Distance(backStack: NavBackStack<Route>, km: Double) {
+    GenericCard("Distance", null, "km", "${km.round(2)}", "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.DISTANCE))
+    }) {
         ProgressBarGraphic(R.drawable.baseline_location_pin_24, km.toFloat(), 5.0f, Color(0xFFFFEB3B))
     }
 }
@@ -346,15 +358,19 @@ fun Sleep(min: Long) {
 }
 
 @Composable
-fun Steps(count: Long) {
-    GenericCard("Steps", null, "steps", count.toString(), "Today") {
+fun Steps(backStack: NavBackStack<Route>, count: Long) {
+    GenericCard("Steps", null, "steps", count.toString(), "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.STEPS))
+    }) {
         ProgressBarGraphic(R.drawable.outline_directions_walk_24, count.toFloat(), 10000f, Color(0xFF03A9F4))
     }
 }
 
 @Composable
-fun WheelchairPushes(count: Long) {
-    GenericCard("Wheelchair Pushes", null, "pushes", count.toString(), "Today") {
+fun WheelchairPushes(backStack: NavBackStack<Route>, count: Long) {
+    GenericCard("Wheelchair Pushes", null, "pushes", count.toString(), "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.WHEELCHAIR_PUSHES))
+    }) {
         ProgressBarGraphic(R.drawable.outline_directions_walk_24, count.toFloat(), 5000f, Color(0xFF00BCD4))
     }
 }
@@ -369,7 +385,7 @@ fun Mindfulness(min: Long) {
 @Composable
 fun EnergyBurned(backStack: NavBackStack<Route>, kcal: Double) {
     GenericCard("Energy", null, "cal", kcal.round(0).toInt().toString(), "Today", onClick = {
-        backStack.add(Route.BarChartDetails)
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.ENERGY))
     }) {
         ProgressBarGraphic(R.drawable.baseline_local_fire_department_24, kcal.toFloat(), 2500f, Color(0xFF00E676))
     }

@@ -27,6 +27,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.health.ui.BarChartDetails
+import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.MainPage
 import com.vayunmathur.health.ui.MedicalRecordsPage
 import com.vayunmathur.library.ui.DynamicTheme
@@ -132,7 +133,7 @@ sealed interface Route: NavKey {
     data object MedicalRecords: Route
 
     @Serializable
-    data object BarChartDetails: Route
+    data class BarChartDetails(val healthMetric: HealthMetricConfig): Route
 }
 
 @Composable
@@ -146,7 +147,7 @@ fun Navigation() {
             MedicalRecordsPage(backStack)
         }
         entry<Route.BarChartDetails> {
-            BarChartDetails(backStack)
+            BarChartDetails(backStack, it.healthMetric)
         }
     }
 }
