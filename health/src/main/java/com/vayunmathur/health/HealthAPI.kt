@@ -2,103 +2,108 @@ package com.vayunmathur.health
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.aggregate.AggregateMetric
 import androidx.health.connect.client.aggregate.AggregationResult
 import androidx.health.connect.client.aggregate.AggregationResultGroupedByDuration
 import androidx.health.connect.client.aggregate.AggregationResultGroupedByPeriod
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
-import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.MedicalResource
-import androidx.health.connect.client.records.Record
-import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadMedicalResourcesInitialRequest
 import androidx.health.connect.client.request.ReadMedicalResourcesPageRequest
-import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
-import java.time.Duration
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.Period
-import java.time.temporal.ChronoUnit
-import java.time.temporal.TemporalAdjusters
+import com.vayunmathur.health.database.HealthDatabase
+import com.vayunmathur.health.database.Record
+import com.vayunmathur.health.database.RecordType
+import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atTime
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 object HealthAPI {
     lateinit var healthConnectClient: HealthConnectClient
+    lateinit var db: HealthDatabase
     lateinit var preferences: SharedPreferences
 
-    fun init(healthConnectClient: HealthConnectClient, context: Context) {
+    fun init(healthConnectClient: HealthConnectClient, context: Context, db: HealthDatabase) {
         this.healthConnectClient = healthConnectClient
+        this.db = db
         preferences = context.getSharedPreferences("sync", Context.MODE_PRIVATE)
     }
 
-    suspend fun aggregates(timeRangeFilter: TimeRangeFilter, vararg metrics: AggregateMetric<*>): AggregationResult {
-        return healthConnectClient.aggregate(
-            AggregateRequest(metrics.toSet(), timeRangeFilter)
-        )
+    @Composable
+    fun sumInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double> {
+        return remember { db.healthDao().sumInRange(recordType, startTime, endTime) }
     }
 
-    suspend inline fun <reified T : Record> lastRecord(): T? {
-        val records = healthConnectClient.readRecords(ReadRecordsRequest(T::class, TimeRangeFilter.before(
-            Instant.now().plus(1, ChronoUnit.DAYS)), ascendingOrder = false, pageSize = 1))
-        return records.records.lastOrNull()
+    @Composable
+    fun maxInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double> {
+        return remember { db.healthDao().maxInRange(recordType, startTime, endTime) }
     }
 
-    fun timeRangeToday(anchor: LocalDate = LocalDate.now()): TimeRangeFilter {
-        val startOfDay = anchor.atStartOfDay()
-        val endOfDay = anchor.atTime(LocalTime.MAX)
-        return TimeRangeFilter.between(startOfDay, endOfDay)
+    @Composable
+    fun minInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double> {
+        return remember { db.healthDao().minInRange(recordType, startTime, endTime) }
     }
 
-    fun timeRangeThisWeek(anchor: LocalDate = LocalDate.now()): TimeRangeFilter {
-        val startOfWeek = anchor.with(java.time.DayOfWeek.MONDAY).atStartOfDay()
-        val endOfWeek = startOfWeek.plusDays(6).toLocalDate().atTime(LocalTime.MAX)
-        return TimeRangeFilter.between(startOfWeek, endOfWeek)
+    suspend inline fun lastRecord(recordType: RecordType): Record? {
+        return db.healthDao().getLastRecord(recordType)
     }
 
-    fun timeRangeThisMonth(anchor: LocalDate = LocalDate.now()): TimeRangeFilter {
-        val startOfMonth = anchor.with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay()
-        val endOfMonth = anchor.with(TemporalAdjusters.lastDayOfMonth()).atTime(LocalTime.MAX)
-        return TimeRangeFilter.between(startOfMonth, endOfMonth)
+    enum class PeriodType {
+        Hourly, Daily, Weekly
     }
 
-    fun timeRangeThisYear(anchor: LocalDate = LocalDate.now()): TimeRangeFilter {
-        val startOfYear = anchor.with(TemporalAdjusters.firstDayOfYear()).atStartOfDay()
-        val endOfYear = anchor.with(TemporalAdjusters.lastDayOfYear()).atTime(LocalTime.MAX)
-        return TimeRangeFilter.between(startOfYear, endOfYear)
-    }
+    suspend fun getListOfSums(
+        recordType: RecordType,
+        startTime: Instant,
+        endTime: Instant,
+        period: PeriodType
+    ): List<Double> {
+        val tz = TimeZone.currentSystemDefault()
+        val sums = mutableListOf<Double>()
 
-    suspend fun aggregateByPeriod(
-        timeRangeFilter: TimeRangeFilter,
-        period: Period,
-        metrics: Set<AggregateMetric<*>>
-    ): List<AggregationResultGroupedByPeriod> {
-        return healthConnectClient.aggregateGroupByPeriod(
-            AggregateGroupByPeriodRequest(
-                metrics = metrics,
-                timeRangeFilter = timeRangeFilter,
-                timeRangeSlicer = period
-            )
-        )
-    }
+        var currentStart = startTime
 
-    suspend fun aggregateByDuration(
-        timeRangeFilter: TimeRangeFilter,
-        duration: Duration,
-        metrics: Set<AggregateMetric<*>>
-    ): List<AggregationResultGroupedByDuration> {
-        return healthConnectClient.aggregateGroupByDuration(
-            AggregateGroupByDurationRequest(
-                metrics = metrics,
-                timeRangeFilter = timeRangeFilter,
-                timeRangeSlicer = duration
-            )
-        )
+        while (currentStart < endTime) {
+            val nextStart = when (period) {
+                PeriodType.Hourly -> {
+                    currentStart.plus(1.hours)
+                }
+                PeriodType.Daily -> {
+                    // Shift to local time, add a day, shift back to Instant
+                    val localDateTime = currentStart.toLocalDateTime(tz)
+                    val nextLocalDate = localDateTime.date.plus(1, DateTimeUnit.DAY)
+                    nextLocalDate.atTime(localDateTime.hour, localDateTime.minute).toInstant(tz)
+                }
+                PeriodType.Weekly -> {
+                    val localDateTime = currentStart.toLocalDateTime(tz)
+                    val nextLocalDate = localDateTime.date.plus(1, DateTimeUnit.WEEK)
+                    nextLocalDate.atTime(localDateTime.hour, localDateTime.minute).toInstant(tz)
+                }
+            }
+
+            // Clamp the end range to the requested endTime
+            val currentEnd = if (nextStart > endTime) endTime else nextStart
+
+            // Fetch sum from DAO
+            val sum = db.healthDao().sumInRangeGet(recordType, currentStart, currentEnd)
+            sums.add(sum)
+
+            currentStart = nextStart
+        }
+
+        return sums
     }
 
     @OptIn(ExperimentalPersonalHealthRecordApi::class)

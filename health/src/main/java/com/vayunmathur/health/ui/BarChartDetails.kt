@@ -25,16 +25,19 @@ import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.Route
 import com.vayunmathur.library.ui.IconNavigation
-import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.Period
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.*
 import com.vayunmathur.health.R
-import java.time.Duration
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
+import com.vayunmathur.health.database.RecordType
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.atTime
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 
 /**
  * Configuration for different health metrics to make the UI reusable.
@@ -42,74 +45,18 @@ import java.time.temporal.ChronoUnit
  */
 enum class HealthMetricConfig(
     val title: String,
-    val metric: AggregateMetric<*>,
+    val recordType: RecordType,
     val unit: String,
-    val dailyGoal: Long,
-    val getValue: (AggregationResult) -> Long
+    val dailyGoal: Long
 ) {
-    ENERGY(
-        title = "Energy Burned",
-        metric = TotalCaloriesBurnedRecord.ENERGY_TOTAL,
-        unit = "cal",
-        dailyGoal = 2470,
-        getValue = { it[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories?.toLong() ?: 0L }
-    ),
-
-    ACTIVE_CALORIES(
-        title = "Active Calories",
-        metric = ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
-        unit = "cal",
-        dailyGoal = 500,
-        getValue = { it[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories?.toLong() ?: 0L }
-    ),
-
-    BASAL_METABOLIC_RATE(
-        title = "Basal Metabolic Rate",
-        metric = BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL,
-        unit = "cal",
-        dailyGoal = 1800,
-        getValue = { it[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories?.toLong() ?: 0L }
-    ),
-
-    STEPS(
-        title = "Steps",
-        metric = StepsRecord.COUNT_TOTAL,
-        unit = "steps",
-        dailyGoal = 10000,
-        getValue = { it[StepsRecord.COUNT_TOTAL] ?: 0L }
-    ),
-
-    WHEELCHAIR_PUSHES(
-        title = "Wheelchair Pushes",
-        metric = WheelchairPushesRecord.COUNT_TOTAL,
-        unit = "pushes",
-        dailyGoal = 3000,
-        getValue = { it[WheelchairPushesRecord.COUNT_TOTAL] ?: 0L }
-    ),
-
-    DISTANCE(
-        title = "Distance",
-        metric = DistanceRecord.DISTANCE_TOTAL,
-        unit = "km",
-        dailyGoal = 5,
-        getValue = { it[DistanceRecord.DISTANCE_TOTAL]?.inKilometers?.toLong() ?: 0L }
-    ),
-
-    ELEVATION(
-        title = "Elevation Gained",
-        metric = ElevationGainedRecord.ELEVATION_GAINED_TOTAL,
-        unit = "m",
-        dailyGoal = 50,
-        getValue = { it[ElevationGainedRecord.ELEVATION_GAINED_TOTAL]?.inMeters?.toLong() ?: 0L }
-    ),
-
-    FLOORS(
-        title = "Floors Climbed",
-        metric = FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL,
-        unit = "floors",
-        dailyGoal = 10,
-        getValue = { it[FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL]?.toInt()?.toLong() ?: 0L }
-    )
+    ENERGY("Energy Burned", RecordType.CaloriesTotal, "cal", 2470),
+    ACTIVE_CALORIES("Active Calories", RecordType.CaloriesActive, "cal", 500),
+    BASAL_METABOLIC_RATE("Basal Metabolic Rate", RecordType.CaloriesBasal, "cal", 1800),
+    STEPS("Steps", RecordType.Steps, "steps", 10000),
+    WHEELCHAIR_PUSHES("Wheelchair Pushes", RecordType.Wheelchair, "pushes", 3000),
+    DISTANCE("Distance", RecordType.Distance, "km", 5),
+    ELEVATION("Elevation Gained", RecordType.Elevation, "m", 50),
+    FLOORS("Floors Climbed", RecordType.Floors, "floors", 10)
 }
 
 data class MetricDashboardData(
@@ -133,105 +80,70 @@ fun BarChartDetails(
     backStack: NavBackStack<Route>,
     config: HealthMetricConfig
 ) {
-    var selectedTab by remember { mutableStateOf(2) } // 0:Day, 1:Week, 2:Month, 3:Year
+    var selectedTab by remember { mutableIntStateOf(2) }
     val tabs = listOf("Day", "Week", "Month", "Year")
-    var anchorDate by remember { mutableStateOf(LocalDate.now()) }
+
+    // Switch to kotlinx-datetime
+    var anchorDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
     var dataState by remember { mutableStateOf(MetricDashboardData()) }
-    val scope = rememberCoroutineScope()
+
+    val tz = TimeZone.currentSystemDefault()
 
     LaunchedEffect(selectedTab, anchorDate, config) {
-        scope.launch {
-            try {
-                val metrics = setOf(config.metric)
-                val filter = when (selectedTab) {
-                    0 -> HealthAPI.timeRangeToday(anchorDate)
-                    1 -> HealthAPI.timeRangeThisWeek(anchorDate)
-                    2 -> HealthAPI.timeRangeThisMonth(anchorDate)
-                    else -> HealthAPI.timeRangeThisYear(anchorDate)
-                }
-
-                val mappedChart: List<Pair<String, Long>>
-                val history: List<HistoryItem>
-                val totalValue: Long
-                val barCount: Int
-
-                if (selectedTab == 0) {
-                    barCount = 24
-                    val hourlyData = HealthAPI.aggregateByDuration(filter, Duration.ofHours(1), metrics)
-                    totalValue = hourlyData.sumOf { config.getValue(it.result) }
-
-                    mappedChart = hourlyData.map { group ->
-                        val value = config.getValue(group.result)
-                        val label = group.startTime.atZone(ZoneId.systemDefault()).hour.toString()
-                        label to value
-                    }
-                    history = hourlyData.map { group ->
-                        val value = config.getValue(group.result)
-                        val hour = group.startTime.atZone(ZoneId.systemDefault()).hour
-                        HistoryItem("Hour $hour", value, config.unit, false)
-                    }.filter { it.value > 0 }.reversed()
-                } else {
-                    val period = if (selectedTab == 3) Period.ofMonths(1) else Period.ofDays(1)
-                    barCount = when (selectedTab) {
-                        1 -> 7
-                        2 -> anchorDate.lengthOfMonth()
-                        else -> 12
-                    }
-
-                    val grouped = HealthAPI.aggregateByPeriod(filter, period, metrics)
-                    totalValue = grouped.sumOf { config.getValue(it.result) }
-
-                    mappedChart = grouped.map { group ->
-                        val totalMonthValue = config.getValue(group.result)
-
-                        val displayValue = if (selectedTab == 3) {
-                            val daysInMonth = ChronoUnit.DAYS.between(group.startTime, group.endTime).coerceAtLeast(1)
-                            totalMonthValue / daysInMonth
-                        } else totalMonthValue
-
-                        val label = when (selectedTab) {
-                            3 -> group.startTime.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
-                            else -> group.startTime.dayOfMonth.toString()
-                        }
-                        label to displayValue
-                    }
-
-                    history = grouped.map { group ->
-                        val totalMonthValue = config.getValue(group.result)
-
-                        val displayValue = if (selectedTab == 3) {
-                            val daysInMonth = ChronoUnit.DAYS.between(group.startTime, group.endTime).coerceAtLeast(1)
-                            totalMonthValue / daysInMonth
-                        } else totalMonthValue
-
-                        val label = when (selectedTab) {
-                            1 -> group.startTime.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.getDefault())
-                            2 -> group.startTime.format(DateTimeFormatter.ofPattern("MMM d"))
-                            else -> group.startTime.month.getDisplayName(TextStyle.FULL, Locale.getDefault())
-                        }
-                        HistoryItem(label, displayValue, config.unit, displayValue >= config.dailyGoal)
-                    }.filter { it.value > 0 }.reversed()
-                }
-
-                val daysInRange = when (selectedTab) {
-                    0 -> 1L
-                    1 -> 7L
-                    2 -> anchorDate.lengthOfMonth().toLong()
-                    else -> if (anchorDate.isLeapYear) 366L else 365L
-                }
-                val dailyAvg = totalValue / daysInRange
-
-                dataState = MetricDashboardData(
-                    totalValue = totalValue,
-                    dailyAverage = dailyAvg,
-                    chartData = mappedChart,
-                    historyItems = history,
-                    totalBarCount = barCount
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
+        val (startTime, endTime, periodType) = when (selectedTab) {
+            0 -> Triple(
+                anchorDate.atStartOfDayIn(tz),
+                anchorDate.atTime(23, 59, 59).toInstant(tz),
+                HealthAPI.PeriodType.Hourly
+            )
+            1 -> {
+                val start = anchorDate.minus(anchorDate.dayOfWeek.ordinal, DateTimeUnit.DAY)
+                Triple(start.atStartOfDayIn(tz), start.plus(7, DateTimeUnit.DAY).atStartOfDayIn(tz), HealthAPI.PeriodType.Daily)
+            }
+            2 -> {
+                val start = LocalDate(anchorDate.year, anchorDate.month, 1)
+                val end = start.plus(1, DateTimeUnit.MONTH)
+                Triple(start.atStartOfDayIn(tz), end.atStartOfDayIn(tz), HealthAPI.PeriodType.Daily)
+            }
+            else -> {
+                val start = LocalDate(anchorDate.year, 1, 1)
+                val end = start.plus(1, DateTimeUnit.YEAR)
+                Triple(start.atStartOfDayIn(tz), end.atStartOfDayIn(tz), HealthAPI.PeriodType.Weekly) // Or Monthly if you add it
             }
         }
+
+        val rawSums = HealthAPI.getListOfSums(config.recordType, startTime, endTime, periodType)
+
+        // Transform the raw sums into Chart and History data
+        val mappedChart = rawSums.mapIndexed { index, value ->
+            val label = when (selectedTab) {
+                0 -> index.toString()
+                1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz).toLocalDateTime(tz).dayOfWeek.name.take(3)
+                else -> (index + 1).toString()
+            }
+            label to value.toLong()
+        }
+
+        val history = rawSums.mapIndexed { index, value ->
+            val label = when (selectedTab) {
+                0 -> "Hour $index"
+                1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz).toLocalDateTime(tz).dayOfWeek.name.lowercase().capitalize()
+                2 -> "Day ${index + 1}"
+                else -> "Week ${index + 1}"
+            }
+            HistoryItem(label, value.toLong(), config.unit, value >= config.dailyGoal)
+        }.filter { it.value > 0 }.reversed()
+
+        val totalValue = rawSums.sum().toLong()
+        val daysInRange = rawSums.size.coerceAtLeast(1)
+
+        dataState = MetricDashboardData(
+            totalValue = totalValue,
+            dailyAverage = if (selectedTab == 0) totalValue else totalValue / daysInRange,
+            chartData = mappedChart,
+            historyItems = history,
+            totalBarCount = rawSums.size
+        )
     }
 
     Scaffold(
@@ -248,12 +160,7 @@ fun BarChartDetails(
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                        text = { Text(title, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
                     )
                 }
             }
@@ -263,10 +170,11 @@ fun BarChartDetails(
                 contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
             ) {
                 item {
+                    // Header Date Display
                     val headerLabel = when (selectedTab) {
-                        0 -> anchorDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
-                        1 -> "Week of ${anchorDate.with(java.time.DayOfWeek.MONDAY).format(DateTimeFormatter.ofPattern("MMM d"))}"
-                        2 -> anchorDate.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+                        0 -> "${anchorDate.month.name} ${anchorDate.dayOfMonth}, ${anchorDate.year}"
+                        1 -> "Week of ${anchorDate.minus(anchorDate.dayOfWeek.ordinal, DateTimeUnit.DAY)}"
+                        2 -> "${anchorDate.month.name} ${anchorDate.year}"
                         else -> anchorDate.year.toString()
                     }
 
@@ -276,32 +184,27 @@ fun BarChartDetails(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         IconButton(onClick = {
-                            anchorDate = when (selectedTab) {
-                                0 -> anchorDate.minusDays(1)
-                                1 -> anchorDate.minusWeeks(1)
-                                2 -> anchorDate.minusMonths(1)
-                                else -> anchorDate.minusYears(1)
+                            anchorDate = when(selectedTab) {
+                                0 -> anchorDate.minus(1, DateTimeUnit.DAY)
+                                1 -> anchorDate.minus(1, DateTimeUnit.WEEK)
+                                2 -> anchorDate.minus(1, DateTimeUnit.MONTH)
+                                else -> anchorDate.minus(1, DateTimeUnit.YEAR)
                             }
                         }) {
-                            Icon(painterResource(R.drawable.baseline_arrow_back_24), contentDescription = "Prev")
+                            Icon(painterResource(R.drawable.baseline_arrow_back_24), "Prev")
                         }
 
-                        Text(
-                            text = headerLabel,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.widthIn(min = 140.dp),
-                            textAlign = TextAlign.Center
-                        )
+                        Text(headerLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.widthIn(min = 140.dp), textAlign = TextAlign.Center)
 
                         IconButton(onClick = {
-                            anchorDate = when (selectedTab) {
-                                0 -> anchorDate.plusDays(1)
-                                1 -> anchorDate.plusWeeks(1)
-                                2 -> anchorDate.plusMonths(1)
-                                else -> anchorDate.plusYears(1)
+                            anchorDate = when(selectedTab) {
+                                0 -> anchorDate.plus(1, DateTimeUnit.DAY)
+                                1 -> anchorDate.plus(1, DateTimeUnit.WEEK)
+                                2 -> anchorDate.plus(1, DateTimeUnit.MONTH)
+                                else -> anchorDate.plus(1, DateTimeUnit.YEAR)
                             }
                         }) {
-                            Icon(painterResource(R.drawable.outline_arrow_forward_24), contentDescription = "Next")
+                            Icon(painterResource(R.drawable.outline_arrow_forward_24), "Next")
                         }
                     }
 
@@ -314,46 +217,23 @@ fun BarChartDetails(
                             fontWeight = FontWeight.Light
                         )
                         Text(
-                            text = " ${config.unit} per day (avg)",
+                            text = " ${config.unit}${if (selectedTab != 0) " per day (avg)" else ""}",
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(bottom = 12.dp, start = 4.dp),
                             color = LocalContentColor.current.copy(alpha = 0.6f)
                         )
                     }
-                    Text(
-                        text = "Total ${config.title.lowercase()}: ${String.format("%,d", dataState.totalValue)} ${config.unit}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = LocalContentColor.current.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
                 }
 
                 item {
                     Spacer(Modifier.height(32.dp))
-                    val colorScheme = MaterialTheme.colorScheme
                     GenericBarChart(
                         data = dataState.chartData,
                         totalBarCount = dataState.totalBarCount,
                         goalValue = config.dailyGoal,
-                        barColor = colorScheme.primary,
-                        goalColor = colorScheme.secondary
+                        barColor = MaterialTheme.colorScheme.primary,
+                        goalColor = MaterialTheme.colorScheme.secondary
                     )
-                }
-
-                item {
-                    Spacer(Modifier.height(32.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("History", fontWeight = FontWeight.Bold)
-                        Text(
-                            if (selectedTab == 0) config.unit.replaceFirstChar { it.uppercase() } else "Daily average",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = LocalContentColor.current.copy(alpha = 0.6f)
-                        )
-                    }
-                    Spacer(Modifier.height(16.dp))
                 }
 
                 items(dataState.historyItems) { item ->

@@ -26,51 +26,34 @@ import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.*
 import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.health.database.HealthDatabase
 import com.vayunmathur.health.ui.BarChartDetails
 import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.MainPage
 import com.vayunmathur.health.ui.MedicalRecordsPage
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
 
-val PERMISSIONS = setOf(
+val CLASSES = setOf(
     // Activity & Energy
-    HealthPermission.getReadPermission(StepsRecord::class),
-    HealthPermission.getReadPermission(WheelchairPushesRecord::class),
-    HealthPermission.getReadPermission(DistanceRecord::class),
-    HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
-    HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
-    HealthPermission.getReadPermission(BasalMetabolicRateRecord::class),
-    HealthPermission.getReadPermission(FloorsClimbedRecord::class),
-    HealthPermission.getReadPermission(ElevationGainedRecord::class),
+    StepsRecord::class, WheelchairPushesRecord::class, DistanceRecord::class, TotalCaloriesBurnedRecord::class,
+    ActiveCaloriesBurnedRecord::class, BasalMetabolicRateRecord::class, FloorsClimbedRecord::class, ElevationGainedRecord::class,
 
     // Vitals & Clinical
-    HealthPermission.getReadPermission(HeartRateRecord::class),
-    HealthPermission.getReadPermission(RestingHeartRateRecord::class),
-    HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class),
-    HealthPermission.getReadPermission(RespiratoryRateRecord::class),
-    HealthPermission.getReadPermission(OxygenSaturationRecord::class),
-    HealthPermission.getReadPermission(BloodPressureRecord::class),
-    HealthPermission.getReadPermission(BloodGlucoseRecord::class),
-    HealthPermission.getReadPermission(Vo2MaxRecord::class),
-    HealthPermission.getReadPermission(SkinTemperatureRecord::class),
+    HeartRateRecord::class, RestingHeartRateRecord::class, HeartRateVariabilityRmssdRecord::class, RespiratoryRateRecord::class,
+    OxygenSaturationRecord::class, BloodPressureRecord::class, BloodGlucoseRecord::class, Vo2MaxRecord::class, SkinTemperatureRecord::class,
 
     // Body Composition
-    HealthPermission.getReadPermission(WeightRecord::class),
-    HealthPermission.getReadPermission(HeightRecord::class),
-    HealthPermission.getReadPermission(BodyFatRecord::class),
-    HealthPermission.getReadPermission(LeanBodyMassRecord::class),
-    HealthPermission.getReadPermission(BoneMassRecord::class),
-    HealthPermission.getReadPermission(BodyWaterMassRecord::class),
+    WeightRecord::class, HeightRecord::class, BodyFatRecord::class, LeanBodyMassRecord::class, BoneMassRecord::class, BodyWaterMassRecord::class,
 
     // Lifestyle & Nutrition
-    HealthPermission.getReadPermission(SleepSessionRecord::class),
-    HealthPermission.getReadPermission(MindfulnessSessionRecord::class),
-    HealthPermission.getReadPermission(HydrationRecord::class),
-    HealthPermission.getReadPermission(NutritionRecord::class),
-) + if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) >= 16) {setOf(
+    MindfulnessSessionRecord::class, HydrationRecord::class, // TODO: readd these: NutritionRecord::class, SleepSessionRecord::class
+)
+
+val PERMISSIONS = CLASSES.map { HealthPermission.getReadPermission(it) }.toSet() + if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) >= 16) {setOf(
     HealthPermissions.READ_MEDICAL_DATA_ALLERGIES_INTOLERANCES,
     HealthPermissions.READ_MEDICAL_DATA_CONDITIONS,
     HealthPermissions.READ_MEDICAL_DATA_LABORATORY_RESULTS,
@@ -91,7 +74,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val healthConnectClient = HealthConnectClient.getOrCreate(this)
-        HealthAPI.init(healthConnectClient, this)
+        val db = buildDatabase<HealthDatabase>()
+        HealthAPI.init(healthConnectClient, this, db)
         setContent {
             DynamicTheme {
                 var hasPermissions by remember { mutableStateOf(false) }
@@ -108,7 +92,10 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (hasPermissions) {
-                    Navigation()
+                    LaunchedEffect(Unit) {
+                        HealthSyncWorker.enqueue(this@MainActivity)
+                    }
+                    Navigation(db)
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -137,7 +124,7 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation() {
+fun Navigation(db: HealthDatabase) {
     val backStack = rememberNavBackStack<Route>(Route.MainPage)
     MainNavigation(backStack) {
         entry<Route.MainPage> {

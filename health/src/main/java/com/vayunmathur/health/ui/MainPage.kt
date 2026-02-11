@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,14 +45,19 @@ import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
+import com.vayunmathur.health.database.RecordType
 import com.vayunmathur.health.fhir.Patient
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 import kotlin.time.toKotlinDuration
 
 val JSON = kotlinx.serialization.json.Json {
@@ -63,7 +69,6 @@ val JSON = kotlinx.serialization.json.Json {
 @Composable
 fun MainPage(backStack: NavBackStack<Route>) {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-    var aggregates: AggregationResult? by remember { mutableStateOf(null) }
 
     // Health Metrics States (Point-in-time)
     var br by remember { mutableStateOf<Double?>(null) }
@@ -82,50 +87,49 @@ fun MainPage(backStack: NavBackStack<Route>) {
     var boneMass by remember { mutableStateOf<Double?>(null) }
     var leanBodyMass by remember { mutableStateOf<Double?>(null) }
     var bodyWaterMass by remember { mutableStateOf<Double?>(null) }
+    
+    val dayStart = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.atStartOfDayIn(TimeZone.currentSystemDefault())
+    val dayEnd = dayStart.plus(24.hours)
+
+    val totalCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesTotal, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
+    val activeCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesActive, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
+    val basalCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesBasal, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
+    val stepsToday by HealthAPI.sumInRange(RecordType.Steps, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
+    val wheelchairPushesToday by HealthAPI.sumInRange(RecordType.Wheelchair, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
+    val mindfulnessToday by HealthAPI.sumInRange(RecordType.Mindfulness, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
+    val distanceToday by HealthAPI.sumInRange(RecordType.Distance, dayStart, dayEnd).collectAsState(0.0)
+    val floorsClimbedToday by HealthAPI.sumInRange(RecordType.Floors, dayStart, dayEnd).collectAsState(0.0)
+    val elevationGainedToday by HealthAPI.sumInRange(RecordType.Elevation, dayStart, dayEnd).collectAsState(0.0)
+    val hydrationToday by HealthAPI.sumInRange(RecordType.Hydration, dayStart, dayEnd).collectAsState(0.0) // Liters
+//    val caloriesConsumedToday by HealthAPI.sumInRange(RecordType.NutritionEnergy, dayStart, dayEnd).collectAsState(0.0)
+//    val proteinToday by HealthAPI.sumInRange(RecordType.Protein, dayStart, dayEnd).collectAsState(0.0) // Grams
+//    val carbsToday by HealthAPI.sumInRange(RecordType.Carbohydrates, dayStart, dayEnd).collectAsState(0.0)
+//    val fatToday by HealthAPI.sumInRange(RecordType.Fat, dayStart, dayEnd).collectAsState(0.0)
+
+    val heartRateMaxToday by HealthAPI.maxInRange(RecordType.HeartRate, dayStart, dayEnd).map{it.toLong()}.collectAsState(0L)
+    val heartRateMinToday by HealthAPI.minInRange(RecordType.HeartRate, dayStart, dayEnd).map{it.toLong()}.collectAsState(0L)
+
+//    val sleepDurationToday by HealthAPI.sumInRange(RecordType.Sleep, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
 
     LaunchedEffect(now.date) {
-        // 1. Fetch Aggregates (Cumulative time-series data)
-        aggregates = withContext(Dispatchers.IO) {
-            HealthAPI.aggregates(
-                HealthAPI.timeRangeToday(),
-                TotalCaloriesBurnedRecord.ENERGY_TOTAL,
-                ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL,
-                BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL,
-                StepsRecord.COUNT_TOTAL,
-                WheelchairPushesRecord.COUNT_TOTAL, // New
-                // MindfulnessSessionRecord.MINDFULNESS_DURATION_TOTAL, TODO: add back when supported
-                DistanceRecord.DISTANCE_TOTAL,
-                FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL,
-                ElevationGainedRecord.ELEVATION_GAINED_TOTAL,
-                HydrationRecord.VOLUME_TOTAL,
-                NutritionRecord.ENERGY_TOTAL,
-                NutritionRecord.PROTEIN_TOTAL,
-                NutritionRecord.TOTAL_CARBOHYDRATE_TOTAL,
-                NutritionRecord.TOTAL_FAT_TOTAL,
-                HeartRateRecord.BPM_MAX,
-                HeartRateRecord.BPM_MIN,
-                SleepSessionRecord.SLEEP_DURATION_TOTAL,
-            )
-        }
-
         // 2. Fetch Latest Records (Point-in-time metrics)
         withContext(Dispatchers.IO) {
-            spo2 = HealthAPI.lastRecord<OxygenSaturationRecord>()?.percentage?.value
-            br = HealthAPI.lastRecord<RespiratoryRateRecord>()?.rate
-            hrv = HealthAPI.lastRecord<HeartRateVariabilityRmssdRecord>()?.heartRateVariabilityMillis
-            rhr = HealthAPI.lastRecord<RestingHeartRateRecord>()?.beatsPerMinute
-            skinTemp = HealthAPI.lastRecord<SkinTemperatureRecord>()?.deltas?.lastOrNull()?.delta?.inCelsius
-            vo2Max = HealthAPI.lastRecord<Vo2MaxRecord>()?.vo2MillilitersPerMinuteKilogram
-            bloodGlucose = HealthAPI.lastRecord<BloodGlucoseRecord>()?.level?.inMilligramsPerDeciliter
-            bloodPressure = HealthAPI.lastRecord<BloodPressureRecord>()?.let {
-                it.systolic.inMillimetersOfMercury to it.diastolic.inMillimetersOfMercury
+            spo2 = HealthAPI.lastRecord(RecordType.OxygenSaturation)?.value
+            br = HealthAPI.lastRecord(RecordType.RespiratoryRate)?.value
+            hrv = HealthAPI.lastRecord(RecordType.HeartRateVariabilityRmssd)?.value
+            rhr = HealthAPI.lastRecord(RecordType.RestingHeartRate)?.value?.toLong()
+            skinTemp = HealthAPI.lastRecord(RecordType.SkinTemperature)?.value
+            vo2Max = HealthAPI.lastRecord(RecordType.Vo2Max)?.value
+            bloodGlucose = HealthAPI.lastRecord(RecordType.BloodGlucose)?.value
+            bloodPressure = HealthAPI.lastRecord(RecordType.BloodPressure)?.let {
+                it.value to it.secondaryValue
             }
-            height = HealthAPI.lastRecord<HeightRecord>()?.height?.inMeters
-            weight = HealthAPI.lastRecord<WeightRecord>()?.weight?.inKilograms
-            bodyFat = HealthAPI.lastRecord<BodyFatRecord>()?.percentage?.value
-            boneMass = HealthAPI.lastRecord<BoneMassRecord>()?.mass?.inKilograms
-            leanBodyMass = HealthAPI.lastRecord<LeanBodyMassRecord>()?.mass?.inKilograms
-            bodyWaterMass = HealthAPI.lastRecord<BodyWaterMassRecord>()?.mass?.inKilograms
+            height = HealthAPI.lastRecord(RecordType.Height)?.value
+            weight = HealthAPI.lastRecord(RecordType.Weight)?.value
+            bodyFat = HealthAPI.lastRecord(RecordType.BodyFat)?.value
+            boneMass = HealthAPI.lastRecord(RecordType.BoneMass)?.value
+            leanBodyMass = HealthAPI.lastRecord(RecordType.LeanBodyMass)?.value
+            bodyWaterMass = HealthAPI.lastRecord(RecordType.BodyWaterMass)?.value
         }
     }
 
@@ -150,39 +154,39 @@ fun MainPage(backStack: NavBackStack<Route>) {
 
             // 4. Activity & Energy
             Text("Activity", style = MaterialTheme.typography.labelLarge)
-            EnergyBurned(backStack, aggregates?.get(TotalCaloriesBurnedRecord.ENERGY_TOTAL)?.inKilocalories ?: 0.0)
+            EnergyBurned(backStack, totalCaloriesBurnedToday)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
-                    MiniMetricCard("Active", (aggregates?.get(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL)?.inKilocalories ?: 0.0).round(0).toInt().toString(), "cal", onClick = {
+                    MiniMetricCard("Active", activeCaloriesBurnedToday.toString(), "cal", onClick = {
                         backStack.add(Route.BarChartDetails(HealthMetricConfig.ACTIVE_CALORIES))
                     })
                 }
                 Box(Modifier.weight(1f)) {
-                    MiniMetricCard("Basal", (aggregates?.get(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL)?.inKilocalories ?: 0.0).round(0).toInt().toString(), "cal", onClick = {
+                    MiniMetricCard("Basal", basalCaloriesBurnedToday.toString(), "cal", onClick = {
                         backStack.add(Route.BarChartDetails(HealthMetricConfig.BASAL_METABOLIC_RATE))
                     })
                 }
             }
 
             // High priority Activity Metrics
-            Steps(backStack, aggregates?.get(StepsRecord.COUNT_TOTAL) ?: 0)
+            Steps(backStack, stepsToday)
 
-            val pushes = aggregates?.get(WheelchairPushesRecord.COUNT_TOTAL) ?: 0
-            if (pushes > 0) {
-                WheelchairPushes(backStack, pushes)
+            if (wheelchairPushesToday > 0) {
+                WheelchairPushes(backStack, wheelchairPushesToday)
             }
 
-            // Mindfulness(aggregates?.get(MindfulnessSessionRecord.MINDFULNESS_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
+            Mindfulness(mindfulnessToday)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) { ElevationGained(backStack, aggregates?.get(ElevationGainedRecord.ELEVATION_GAINED_TOTAL)?.inMeters ?: 0.0) }
-                Box(Modifier.weight(1f)) { FloorsClimbed(backStack, aggregates?.get(FloorsClimbedRecord.FLOORS_CLIMBED_TOTAL) ?: 0.0) }
+                Box(Modifier.weight(1f)) { ElevationGained(backStack, elevationGainedToday) }
+                Box(Modifier.weight(1f)) { FloorsClimbed(backStack, floorsClimbedToday) }
             }
 
-            Distance(backStack,aggregates?.get(DistanceRecord.DISTANCE_TOTAL)?.inKilometers ?: 0.0)
-            HeartRate(aggregates?.get(HeartRateRecord.BPM_MAX) ?: 0, aggregates?.get(HeartRateRecord.BPM_MIN) ?: 0)
-            Sleep(aggregates?.get(SleepSessionRecord.SLEEP_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
+            Distance(backStack,distanceToday)
+            HeartRate(heartRateMaxToday, heartRateMinToday)
+            // TODO: add this back
+            //Sleep(aggregates?.get(SleepSessionRecord.SLEEP_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
 
 
             // 1. Vitals & Clinical Metrics
@@ -191,8 +195,9 @@ fun MainPage(backStack: NavBackStack<Route>) {
 
             // 2. Nutrition Summary
             Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge)
-            NutritionSummaryCard(aggregates)
-            Hydration(aggregates?.get(HydrationRecord.VOLUME_TOTAL)?.inMilliliters ?: 0.0)
+            // TODO: add this back
+            //NutritionSummaryCard(aggregates)
+            Hydration(hydrationToday)
 
             // 3. Body Composition
             Text("Body Composition", style = MaterialTheme.typography.labelLarge)
@@ -383,8 +388,8 @@ fun Mindfulness(min: Long) {
 }
 
 @Composable
-fun EnergyBurned(backStack: NavBackStack<Route>, kcal: Double) {
-    GenericCard("Energy", null, "cal", kcal.round(0).toInt().toString(), "Today", onClick = {
+fun EnergyBurned(backStack: NavBackStack<Route>, kcal: Long) {
+    GenericCard("Energy", null, "cal", kcal.toString(), "Today", onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.ENERGY))
     }) {
         ProgressBarGraphic(R.drawable.baseline_local_fire_department_24, kcal.toFloat(), 2500f, Color(0xFF00E676))

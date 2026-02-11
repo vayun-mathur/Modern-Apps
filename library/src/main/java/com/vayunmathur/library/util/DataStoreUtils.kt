@@ -81,6 +81,17 @@ class DataStoreUtils private constructor(context: Context) {
         }
     }
 
+    fun getString(string: String): String? {
+        return stateMap[stringPreferencesKey(string)] as String?
+    }
+
+    suspend fun setString(string: String, value: String, onlyIfAbsent: Boolean = false) {
+        dataStore.edit {
+            if (onlyIfAbsent && it.contains(stringPreferencesKey(string))) return@edit
+            it[stringPreferencesKey(string)]
+        }
+    }
+
     companion object {
         @Volatile
         private var instance: DataStoreUtils? = null
