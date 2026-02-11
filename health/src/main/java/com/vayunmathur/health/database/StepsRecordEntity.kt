@@ -43,14 +43,18 @@ interface HealthDao {
     @Query("SELECT * FROM Record WHERE type = :type ORDER BY startTime DESC LIMIT 1")
     suspend fun getLastRecord(type: RecordType): Record?
 
-    @Query("SELECT SUM(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
+    @Query("SELECT COALESCE(SUM(value), 0.0) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
     fun sumInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double>
-    @Query("SELECT SUM(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
+    @Query("SELECT COALESCE(SUM(value), 0.0) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
     suspend fun sumInRangeGet(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double
+    @Query("SELECT AVG(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
+    suspend fun avgInRangeGet(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Double?
     @Query("SELECT MIN(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
-    fun minInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double>
+    fun minInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double?>
     @Query("SELECT MAX(value) FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
-    fun maxInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double>
+    fun maxInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<Double?>
+    @Query("SELECT * FROM Record WHERE type = :type AND startTime >= :startTime AND endTime <= :endTime")
+    fun getAllInRange(type: RecordType, startTime: kotlin.time.Instant, endTime: kotlin.time.Instant): Flow<List<Record>>
 }
 
 @Database(

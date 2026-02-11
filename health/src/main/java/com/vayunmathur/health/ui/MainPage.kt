@@ -88,7 +88,7 @@ fun MainPage(backStack: NavBackStack<Route>) {
     var leanBodyMass by remember { mutableStateOf<Double?>(null) }
     var bodyWaterMass by remember { mutableStateOf<Double?>(null) }
     
-    val dayStart = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.atStartOfDayIn(TimeZone.currentSystemDefault())
+    val dayStart = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.atStartOfDayIn(TimeZone.currentSystemDefault()).minus(24.hours)
     val dayEnd = dayStart.plus(24.hours)
 
     val totalCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesTotal, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
@@ -106,8 +106,8 @@ fun MainPage(backStack: NavBackStack<Route>) {
 //    val carbsToday by HealthAPI.sumInRange(RecordType.Carbohydrates, dayStart, dayEnd).collectAsState(0.0)
 //    val fatToday by HealthAPI.sumInRange(RecordType.Fat, dayStart, dayEnd).collectAsState(0.0)
 
-    val heartRateMaxToday by HealthAPI.maxInRange(RecordType.HeartRate, dayStart, dayEnd).map{it.toLong()}.collectAsState(0L)
-    val heartRateMinToday by HealthAPI.minInRange(RecordType.HeartRate, dayStart, dayEnd).map{it.toLong()}.collectAsState(0L)
+    val heartRateMaxToday by HealthAPI.maxInRange(RecordType.HeartRate, dayStart, dayEnd).map{it?.toLong() ?: 0L}.collectAsState(0L)
+    val heartRateMinToday by HealthAPI.minInRange(RecordType.HeartRate, dayStart, dayEnd).map{it?.toLong() ?: 0L}.collectAsState(0L)
 
 //    val sleepDurationToday by HealthAPI.sumInRange(RecordType.Sleep, dayStart, dayEnd).map { it.toLong() }.collectAsState(0L)
 
@@ -191,7 +191,7 @@ fun MainPage(backStack: NavBackStack<Route>) {
 
             // 1. Vitals & Clinical Metrics
             Text("Vitals & Clinical", style = MaterialTheme.typography.labelLarge)
-            VitalsDashboard(br, spo2, rhr, hrv, skinTemp, vo2Max, bloodGlucose, bloodPressure)
+            VitalsDashboard(backStack, br, spo2, rhr, hrv, skinTemp, vo2Max, bloodGlucose, bloodPressure)
 
             // 2. Nutrition Summary
             Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge)
@@ -238,15 +238,23 @@ fun NutritionMacro(label: String, value: Double?, unit: String) {
 }
 
 @Composable
-fun VitalsDashboard(br: Double?, spo2: Double?, rhr: Long?, hrv: Double?, temp: Double?, vo2: Double?, bg: Double?, bp: Pair<Double, Double>?) {
+fun VitalsDashboard(backStack: NavBackStack<Route>, br: Double?, spo2: Double?, rhr: Long?, hrv: Double?, temp: Double?, vo2: Double?, bg: Double?, bp: Pair<Double, Double>?) {
     val items = 8
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         MetricSegmentCard(0, items, "Blood Pressure", bp?.let { "${it.first.toInt()}/${it.second.toInt()}" }, "mmHg")
         MetricSegmentCard(1, items, "Blood Glucose", bg, "mg/dL")
-        MetricSegmentCard(2, items, "Oxygen Saturation", spo2, "%")
-        MetricSegmentCard(3, items, "Breathing Rate", br, "brpm")
-        MetricSegmentCard(4, items, "Resting Heart Rate", rhr?.toDouble(), "bpm")
-        MetricSegmentCard(5, items, "HRV (RMSSD)", hrv, "ms")
+        MetricSegmentCard(2, items, "Oxygen Saturation", spo2, "%", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.OXYGEN_SATURATION))
+        })
+        MetricSegmentCard(3, items, "Breathing Rate", br, "brpm", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.BREATHING_RATE))
+        })
+        MetricSegmentCard(4, items, "Resting Heart Rate", rhr?.toDouble(), "bpm", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.RESTING_HEART_RATE))
+        })
+        MetricSegmentCard(5, items, "HRV (RMSSD)", hrv, "ms", onClick = {
+            backStack.add(Route.BarChartDetails(HealthMetricConfig.HRV))
+        })
         MetricSegmentCard(6, items, "VO2 Max", vo2, "mL/kg/min")
         MetricSegmentCard(7, items, "Skin Temp Var", temp, "°C", showSign = true)
     }
@@ -266,10 +274,9 @@ fun BodyCompositionDashboard(h: Double?, w: Double?, bf: Double?, lbm: Double?, 
 }
 
 @Composable
-fun MetricSegmentCard(index: Int, total: Int, label: String, value: Any?, unit: String, showSign: Boolean = false) {
-    Card(
-        shape = verticalSegmentedCardShape(index, total),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+fun MetricSegmentCard(index: Int, total: Int, label: String, value: Any?, unit: String, showSign: Boolean = false, onClick: (() -> Unit)? = null) {
+    val modifier = if (onClick != null) Modifier.clickable { onClick() } else Modifier
+    Card(modifier, verticalSegmentedCardShape(index, total), CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),

@@ -47,12 +47,12 @@ object HealthAPI {
     }
 
     @Composable
-    fun maxInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double> {
+    fun maxInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double?> {
         return remember { db.healthDao().maxInRange(recordType, startTime, endTime) }
     }
 
     @Composable
-    fun minInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double> {
+    fun minInRange(recordType: RecordType, startTime: Instant, endTime: Instant): Flow<Double?> {
         return remember { db.healthDao().minInRange(recordType, startTime, endTime) }
     }
 
@@ -62,6 +62,48 @@ object HealthAPI {
 
     enum class PeriodType {
         Hourly, Daily, Weekly
+    }
+
+    suspend fun getListOfAverages(
+        recordType: RecordType,
+        startTime: Instant,
+        endTime: Instant,
+        period: PeriodType
+    ): List<Double?> {
+        val tz = TimeZone.currentSystemDefault()
+        val avgs = mutableListOf<Double?>()
+
+        var currentStart = startTime
+
+        while (currentStart < endTime) {
+            val nextStart = when (period) {
+                PeriodType.Hourly -> {
+                    currentStart.plus(1.hours)
+                }
+                PeriodType.Daily -> {
+                    // Shift to local time, add a day, shift back to Instant
+                    val localDateTime = currentStart.toLocalDateTime(tz)
+                    val nextLocalDate = localDateTime.date.plus(1, DateTimeUnit.DAY)
+                    nextLocalDate.atTime(localDateTime.hour, localDateTime.minute).toInstant(tz)
+                }
+                PeriodType.Weekly -> {
+                    val localDateTime = currentStart.toLocalDateTime(tz)
+                    val nextLocalDate = localDateTime.date.plus(1, DateTimeUnit.WEEK)
+                    nextLocalDate.atTime(localDateTime.hour, localDateTime.minute).toInstant(tz)
+                }
+            }
+
+            // Clamp the end range to the requested endTime
+            val currentEnd = if (nextStart > endTime) endTime else nextStart
+
+            // Fetch sum from DAO
+            val avg = db.healthDao().avgInRangeGet(recordType, currentStart, currentEnd)
+            avgs.add(avg)
+
+            currentStart = nextStart
+        }
+
+        return avgs
     }
 
     suspend fun getListOfSums(
