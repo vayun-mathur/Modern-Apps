@@ -2,8 +2,10 @@ package com.vayunmathur.maps.data
 
 import kotlinx.datetime.*
 import kotlinx.datetime.format.*
+import kotlinx.serialization.Serializable
 
-class OpeningHours private constructor(private val rawString: String) {
+@Serializable
+class OpeningHours(private val rawString: String) {
 
     private val rules: List<OpeningRule> = parse(rawString)
 
@@ -46,7 +48,7 @@ class OpeningHours private constructor(private val rawString: String) {
                     var curr = start
                     while (curr != end) {
                         days.add(curr)
-                        curr = DayOfWeek((curr.ordinal + 1) % 7)
+                        curr = DayOfWeek.entries[(curr.ordinal + 1) % 7]
                     }
                     days.add(end)
                 } else {
@@ -127,8 +129,10 @@ val timeFormat = LocalTime.Format {
     amPmMarker("AM", "PM")
 }
 
+@Serializable
 private data class OpeningRule(val days: Set<DayOfWeek>, val intervals: List<TimeInterval>)
 
+@Serializable
 private data class TimeInterval(val start: LocalTime, val end: LocalTime) {
     fun contains(time: LocalTime): Boolean {
         return if (end < start) {

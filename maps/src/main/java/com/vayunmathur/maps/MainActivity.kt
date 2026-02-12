@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DataStoreUtils
@@ -40,6 +41,7 @@ import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.buildAmenityDatabase
 import com.vayunmathur.maps.ui.DownloadedMapsPage
 import com.vayunmathur.maps.ui.MapPage
+import com.vayunmathur.maps.ui.SearchPage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -108,18 +110,23 @@ sealed interface Route: NavKey {
     data object MapPage: Route
     @Serializable
     data object DownloadedMapsPage: Route
+
+    @Serializable
+    data class SearchPage(val idx: Int?, val east: Double, val west: Double, val north: Double, val south: Double): Route
 }
 
 @Composable
-fun Navigation(ds: DataStoreUtils, db: AmenityDatabase) {
+fun Navigation(ds: DataStoreUtils, db: AmenityDatabase, viewModel: SelectedFeatureViewModel = viewModel()) {
     val backStack = rememberNavBackStack<Route>(Route.MapPage)
-    val context = LocalContext.current
     MainNavigation(backStack) {
         entry<Route.MapPage> {
-            MapPage(backStack, ds, db)
+            MapPage(backStack, viewModel, ds, db)
         }
         entry<Route.DownloadedMapsPage> {
             DownloadedMapsPage(backStack)
+        }
+        entry<Route.SearchPage> {
+            SearchPage(backStack, viewModel, db, it.idx, it.east, it.west, it.north, it.south)
         }
     }
 }

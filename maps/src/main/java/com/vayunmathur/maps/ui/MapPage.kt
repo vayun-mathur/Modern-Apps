@@ -3,6 +3,7 @@ package com.vayunmathur.maps.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,11 +31,16 @@ import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,13 +53,16 @@ import com.vayunmathur.library.R
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.maps.FrameworkLocationManager
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.RouteService
+import com.vayunmathur.maps.SelectedFeatureViewModel
 import com.vayunmathur.maps.TransitRoute
 import com.vayunmathur.maps.ZoneDownloadManager
 import com.vayunmathur.maps.data.AmenityDatabase
+import com.vayunmathur.maps.data.AmenityEntity
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.ensurePmtilesReady
@@ -62,6 +71,7 @@ import com.vayunmathur.maps.ui.components.MyMapLayers
 import com.vayunmathur.maps.ui.components.UserIcon
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
@@ -88,8 +98,8 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatabase) {
-    var selectedFeature by remember { mutableStateOf<SpecificFeature?>(null) }
+fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel, ds: DataStoreUtils, db: AmenityDatabase) {
+    val selectedFeature by viewModel.selectedFeature.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val zoneManager = remember { ZoneDownloadManager(context) }
@@ -144,37 +154,16 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
     }
 
     // --- LOCATION & OSM INITIALIZATION ---
-    val locationManager = remember { FrameworkLocationManager(context) }
-    var userPosition by remember { mutableStateOf(Position(0.0, 0.0)) }
-    var userBearing by remember { mutableStateOf(0f) }
+    val userPosition by viewModel.userPosition.collectAsState()
+    val userBearing by viewModel.userBearing.collectAsState()
 
-    DisposableEffect(Unit) {
-        val listener = locationManager.startUpdates { position, bearing ->
-            userPosition = position
-            userBearing = bearing
-        }
-        onDispose { locationManager.stopUpdates(listener) }
-    }
-
-    var inactiveNavigation: SpecificFeature.Route? by remember { mutableStateOf(null) }
+    val inactiveNavigation by viewModel.inactiveNavigation.collectAsState()
 
     // --- ROUTE COMPUTATION ---
-    var route: Map<RouteService.TravelMode, RouteService.RouteType?>? by remember { mutableStateOf(null) }
-    LaunchedEffect(selectedFeature) {
-        val feat = selectedFeature
-        if(feat is SpecificFeature.Route) {
-            route = RouteService.TravelMode.entries.associateWith {
-                if(it == RouteService.TravelMode.TRANSIT) {
-                    TransitRoute.computeRoute(feat, userPosition)
-                } else {
-                    RouteService.computeRoute(feat, userPosition, it)
-                }
-            }
-        }
-    }
+    val route by viewModel.routes.collectAsState(null)
 
     // --- UI & BOTTOM SHEET STATE ---
-    var allowProgrammaticHide by remember { mutableStateOf(false) }
+    var allowProgrammaticHide by retain { mutableStateOf(false) }
     val scaffoldState = rememberBottomSheetScaffoldState(
         rememberStandardBottomSheetState(SheetValue.Hidden, {
             it != SheetValue.Hidden || allowProgrammaticHide
@@ -189,28 +178,21 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
 
     BackHandler(selectedFeature != null) {
         coroutineScope.launch {
-            selectedFeature = null
+            viewModel.set(null)
             hide()
         }
     }
 
     BackHandler(selectedFeature == null && inactiveNavigation != null) {
-        inactiveNavigation = null
+        viewModel.setInactiveNavigation(null)
     }
 
-    LaunchedEffect(Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val res = db.amenityDao().searchNearby(34.0248435,-118.2867097, "Subway")
-            println("CLOSEST RESULTS: $res")
-        }
-    }
-
-    var selectedRouteType by remember { mutableStateOf(RouteService.TravelMode.DRIVE) }
+    var selectedRouteType by retain { mutableStateOf(RouteService.TravelMode.DRIVE) }
 
     // --- RENDER ---
     BottomSheetScaffold({
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 48.dp, top = 8.dp)) {
-            BottomSheetContent(selectedFeature, { selectedFeature = it }, route, selectedRouteType, { selectedRouteType = it }, inactiveNavigation)
+            BottomSheetContent(selectedFeature, { viewModel.set(it) }, route, selectedRouteType, { selectedRouteType = it }, inactiveNavigation)
         }
     }, Modifier, scaffoldState, 170.dp) { paddingValues ->
         Scaffold(Modifier.padding(top = paddingValues.calculateTopPadding()), topBar = {
@@ -239,8 +221,8 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
                             println("LISTED FEATURES: $listedFeatures")
 
                             listedFeatures.firstOrNull()?.let {
-                                if(selectedFeature is SpecificFeature.Route) inactiveNavigation = selectedFeature as SpecificFeature.Route
-                                selectedFeature = it
+                                if(selectedFeature is SpecificFeature.Route) viewModel.setInactiveNavigation(selectedFeature as SpecificFeature.Route)
+                                viewModel.set(it)
                                 scaffoldState.bottomSheetState.expand()
                             }
                         }
@@ -267,7 +249,7 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
                         val temp = newList[from.index]
                         newList[from.index] = newList[to.index]
                         newList[to.index] = temp
-                        selectedFeature = routeFeature.copy(waypoints = newList)
+                        viewModel.set(routeFeature.copy(waypoints = newList))
                     })
                     LazyColumn(
                         state = listState,
@@ -290,7 +272,7 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
                                                 IconButton({
                                                     val newList = routeFeature.waypoints.toMutableList()
                                                     newList.removeAt(idx)
-                                                    selectedFeature = routeFeature.copy(waypoints = newList)
+                                                    viewModel.set(routeFeature.copy(waypoints = newList))
                                                 }) {
                                                     IconClose()
                                                 }
@@ -301,28 +283,14 @@ fun MapPage(backStack: NavBackStack<Route>, ds: DataStoreUtils, db: AmenityDatab
                                                 modifier = Modifier.draggableHandle(),
                                             )
                                         }
-                                    }, colors = ListItemDefaults.colors(Color.Transparent))
+                                    }, colors = ListItemDefaults.colors(Color.Transparent), modifier = Modifier.clickable {
+                                        val bbox = camera.projection!!.queryVisibleBoundingBox()
+                                        backStack.add(Route.SearchPage(idx, bbox.east, bbox.west, bbox.north, bbox.south))
+                                    })
                                 }
                             }
                         }
                     }
-
-//                    Column(Modifier.align(Alignment.TopCenter).padding(16.dp).fillMaxWidth()) {
-//                        Card(shape = verticalShape(0, 2)) {
-//                            ListItem({
-//                                Text(
-//                                    (selectedFeature as SpecificFeature.Route).from?.name
-//                                        ?: "Your location"
-//                                )
-//                            }, colors = ListItemDefaults.colors(Color.Transparent))
-//                        }
-//                        Spacer(Modifier.height(2.dp))
-//                        Card(shape = verticalShape(1, 2)) {
-//                            ListItem({
-//                                Text((selectedFeature as SpecificFeature.Route).to?.name ?: "Your location")
-//                            }, colors = ListItemDefaults.colors(Color.Transparent))
-//                        }
-//                    }
                 }
 
                 // DOWNLOAD DIALOG
