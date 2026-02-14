@@ -135,7 +135,6 @@ object VcfUtils {
                         nicknames = builder.nicknames.toList()
                     )
                     val newContact = Contact(
-                        false,
                         id = 0L,
                         isFavorite = false,
                         details

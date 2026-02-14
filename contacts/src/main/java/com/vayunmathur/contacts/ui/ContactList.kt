@@ -77,8 +77,7 @@ fun ContactList(
 ) {
     val contacts by viewModel.contacts.collectAsState()
 
-    val (profiles, mainContacts) = remember(contacts) { contacts.partition { it.isProfile } }
-    val (favorites, otherContacts) = remember(mainContacts) { mainContacts.partition { it.isFavorite } }
+    val (favorites, otherContacts) = remember(contacts) { contacts.partition { it.isFavorite } }
     val groupedContacts = remember(otherContacts) {
         otherContacts.groupBy { it.name.value.first().uppercaseChar() }
             .mapValues { (_, c) -> c.sortedBy { it.name.value } }
@@ -138,16 +137,6 @@ fun ContactList(
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (profiles.isNotEmpty()) {
-                item { ProfilesHeader() }
-                items(profiles, key = { it.id }) { contact ->
-                    ContactItem(
-                        contact = contact,
-                        isSelected = selectedID == contact.id,
-                        onClick = { onContactClick(contact) },
-                    )
-                }
-            }
             if (favorites.isNotEmpty()) {
                 item { FavoritesHeader() }
                 items(favorites, key = { it.id }) { contact ->
@@ -176,9 +165,7 @@ fun ContactList(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -> Unit) {
-    val (profiles, mainContacts) = contacts.partition { it.isProfile }
-
-    val (favorites, otherContacts) = mainContacts.partition { it.isFavorite }
+    val (favorites, otherContacts) = contacts.partition { it.isFavorite }
 
     val groupedContacts = otherContacts
         .groupBy { it.name.value.first().uppercaseChar() }
@@ -190,13 +177,6 @@ fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -
             contentPadding = PaddingValues(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (profiles.isNotEmpty()) {
-                item { ProfilesHeader() }
-                items(profiles, key = { it.id }) { contact ->
-                    ContactItemPick(contact, mimeType, onClick)
-                }
-            }
-
             if (favorites.isNotEmpty()) {
                 item { FavoritesHeader() }
                 items(favorites, key = { it.id }) { contact ->
@@ -219,14 +199,9 @@ fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -
 fun ContactItemPick(contact: Contact, mimeType: String?, onClick: (Uri) -> Unit) {
     if(mimeType == null || mimeType == ContactsContract.Contacts.CONTENT_ITEM_TYPE || mimeType == ContactsContract.Contacts.CONTENT_TYPE) {
         ContactItem(contact, false, {
-            if(contact.isProfile)
-                onClick(Uri.withAppendedPath(
-                ContactsContract.Contacts.CONTENT_URI,
+            onClick(Uri.withAppendedPath(
+                ContactsContract.RawContacts.CONTENT_URI,
                 contact.id.toString()))
-            else
-                onClick(Uri.withAppendedPath(
-                    ContactsContract.RawContacts.CONTENT_URI,
-                    contact.id.toString()))
         })
     } else {
         val details = contact.details

@@ -141,13 +141,11 @@ fun ContactDetailsPage(
                     }) {
                         IconShare()
                     }
-                    if(contact?.isProfile == false) {
-                        IconButton(onClick = {
-                            // Instead of deleting immediately, open the confirmation dialog via the onDelete callback
-                            onDelete()
-                        }) {
-                            IconDelete()
-                        }
+                    IconButton(onClick = {
+                        // Instead of deleting immediately, open the confirmation dialog via the onDelete callback
+                        onDelete()
+                    }) {
+                        IconDelete()
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
