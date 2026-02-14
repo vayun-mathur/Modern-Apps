@@ -104,7 +104,7 @@ fun BarChartDetails(
     backStack: NavBackStack<Route>,
     config: HealthMetricConfig
 ) {
-    var selectedTab by remember { mutableIntStateOf(2) }
+    var selectedTab by remember { mutableIntStateOf(1) }
     val tabs = listOf("Day", "Week", "Month", "Year")
 
     var anchorDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
@@ -165,8 +165,8 @@ fun BarChartDetails(
 
         dataState = MetricDashboardData(
             totalValue = nonNullPrimary.sum(),
-            dailyAverage = if (nonNullPrimary.isEmpty()) 0.0 else nonNullPrimary.average(),
-            secondaryAverage = if (nonNullSecondary.isEmpty()) null else nonNullSecondary.average(),
+            dailyAverage = if (nonNullPrimary.isEmpty()) 0.0 else (if(selectedTab == 0) nonNullPrimary.sum() else nonNullPrimary.average()),
+            secondaryAverage = if (nonNullSecondary.isEmpty()) null else (if(selectedTab == 0) nonNullSecondary.sum() else nonNullSecondary.average()),
             chartData = mappedChart,
             secondaryChartData = mappedSecondaryChart,
             historyItems = history,
