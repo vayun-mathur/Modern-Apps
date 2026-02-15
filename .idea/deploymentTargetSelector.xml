@@ -2,9 +2,6 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="app">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="calendar">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
@@ -49,9 +46,6 @@
       <SelectionState runConfigName="youpipe">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="NewPlayer.test-app">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="games">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
@@ -62,6 +56,9 @@
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
       <SelectionState runConfigName="maps">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="games.unblockjam">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
