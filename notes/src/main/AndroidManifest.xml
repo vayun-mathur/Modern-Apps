@@ -29,10 +29,13 @@
             android:exported="true"
             android:theme="@android:style/Theme.NoDisplay"
             android:permission="com.vayunmathur.notes.permissions.ACCESS_NOTES">
-            <intent-filter>
-                <action android:name="com.vayunmathur.notes.ACTION_GET_NOTES" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".intents.InsertIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.notes.permissions.ACCESS_NOTES">
         </activity>
     </application>
 

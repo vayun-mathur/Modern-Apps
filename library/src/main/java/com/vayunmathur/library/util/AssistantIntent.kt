@@ -62,7 +62,6 @@ class IntentLauncher(activity: ComponentActivity) {
 
     @OptIn(InternalSerializationApi::class)
     suspend fun <Input : Any> launch(
-        action: String,
         packageName: String,
         className: String,
         kClass: KClass<Input>,
@@ -70,7 +69,7 @@ class IntentLauncher(activity: ComponentActivity) {
     ): String = suspendCancellableCoroutine { cont ->
         continuation = cont
 
-        val intent = Intent(action).apply {
+        val intent = Intent().apply {
             setClassName(packageName, className)
             putExtra("DATA", Json.encodeToString(kClass.serializer(), input))
         }

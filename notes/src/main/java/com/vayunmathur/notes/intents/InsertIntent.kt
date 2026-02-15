@@ -3,6 +3,7 @@ package com.vayunmathur.notes.intents
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import com.vayunmathur.library.intents.notes.InsertNoteData
 import com.vayunmathur.library.util.AssistantIntent
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.notes.data.Note
@@ -13,10 +14,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.serializer
 
 @OptIn(InternalSerializationApi::class)
-class GetIntent: AssistantIntent<Unit, List<Note>>(serializer<Unit>(), serializer<List<Note>>()) {
+class InsertIntent: AssistantIntent<InsertNoteData, Unit>(serializer<InsertNoteData>(), serializer<Unit>()) {
 
-    override suspend fun performCalculation(input: Unit): List<Note> {
+    override suspend fun performCalculation(input: InsertNoteData) {
         val db = buildDatabase<NoteDatabase>()
-        return db.noteDao().getAll().first()
+        db.noteDao().upsert(Note(title = input.title, content = input.content))
     }
 }

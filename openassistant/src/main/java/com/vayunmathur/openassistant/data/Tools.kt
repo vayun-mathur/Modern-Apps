@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.net.toUri
 import androidx.core.text.util.LocalePreferences
+import com.vayunmathur.library.intents.notes.InsertNoteData
 import com.vayunmathur.library.util.findActivity
 import com.vayunmathur.openassistant.MainActivity
 import com.vayunmathur.openassistant.intentLauncher
@@ -161,7 +162,14 @@ class Tools {
                 }
             },
             ToolSimple("get_notes", "Get a list of notes (and their content) on the user's phone", listOf()) { _, _ ->
-                ToolResult(intentLauncher.launch("com.vayunmathur.notes.ACTION_GET_NOTES", "com.vayunmathur.notes", "com.vayunmathur.notes.intents.GetIntent", Unit::class, Unit), "Retrieved notes")
+                ToolResult(intentLauncher.launch("com.vayunmathur.notes", "com.vayunmathur.notes.intents.GetIntent", Unit::class, Unit), "Retrieved notes")
+            },
+            ToolSimple("insert_note", "Add a note to the user's phone", listOf(
+                stringParam("title", "the title of the note"),
+                stringParam("content", "the content of the note")
+            )) { args, _ ->
+                val input = InsertNoteData(args["title"]!!.jsonPrimitive.content, args["content"]!!.jsonPrimitive.content)
+                ToolResult(intentLauncher.launch("com.vayunmathur.notes", "com.vayunmathur.notes.intents.InsertIntent", InsertNoteData::class, input), "Added notes")
             }
         )
 
