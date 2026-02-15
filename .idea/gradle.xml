@@ -27,12 +27,12 @@
             <option value="$PROJECT_DIR$/../NewPipeExtractor/timeago-generator" />
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/calendar" />
-            <option value="$PROJECT_DIR$/chess" />
             <option value="$PROJECT_DIR$/contacts" />
             <option value="$PROJECT_DIR$/crypto" />
             <option value="$PROJECT_DIR$/files" />
             <option value="$PROJECT_DIR$/findfamily" />
             <option value="$PROJECT_DIR$/games" />
+            <option value="$PROJECT_DIR$/games/chess" />
             <option value="$PROJECT_DIR$/games/unblockjam" />
             <option value="$PROJECT_DIR$/games/wordmaker" />
             <option value="$PROJECT_DIR$/health" />
