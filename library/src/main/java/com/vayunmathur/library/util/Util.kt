@@ -1,5 +1,8 @@
 package com.vayunmathur.library.util
 
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
 import okio.Source
 import okio.buffer
 import kotlin.math.pow
@@ -29,4 +32,13 @@ fun Source.readLines(): List<String> {
         }
     }
     return lines
+}
+
+inline fun <reified T: ComponentActivity> Context.findActivity(): T? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is T) return context
+        context = context.baseContext
+    }
+    return null
 }

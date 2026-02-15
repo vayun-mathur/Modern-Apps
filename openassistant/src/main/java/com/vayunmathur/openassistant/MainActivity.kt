@@ -9,6 +9,7 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.IntentLauncher
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
         val viewModel =
             DatabaseViewModel(Message::class to database.messageDao(), Conversation::class to database.conversationDao())
         val ds = DataStoreUtils.getInstance(this)
+        intentLauncher = IntentLauncher(this)
 
         setContent {
             DynamicTheme {
@@ -39,6 +41,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+lateinit var intentLauncher: IntentLauncher
 
 @Serializable
 sealed interface Route: NavKey {

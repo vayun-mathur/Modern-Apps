@@ -58,7 +58,8 @@ class GrokApi(private val apiKey: String) {
                     }
                 }
             }
-        } catch(_: Exception) {
+        } catch(e: Exception) {
+            e.printStackTrace()
             showToast("Unable to connect")
         }
     }

@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <permission
+        android:name="com.vayunmathur.notes.permissions.ACCESS_NOTES"
+        android:protectionLevel="signature" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -17,6 +21,17 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".intents.GetIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.notes.permissions.ACCESS_NOTES">
+            <intent-filter>
+                <action android:name="com.vayunmathur.notes.ACTION_GET_NOTES" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>

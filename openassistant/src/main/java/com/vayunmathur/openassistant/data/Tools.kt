@@ -6,6 +6,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.net.toUri
 import androidx.core.text.util.LocalePreferences
+import com.vayunmathur.library.util.findActivity
+import com.vayunmathur.openassistant.MainActivity
+import com.vayunmathur.openassistant.intentLauncher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -156,6 +159,9 @@ class Tools {
                         ToolResult(response, "Could not open dialer")
                     }
                 }
+            },
+            ToolSimple("get_notes", "Get a list of notes (and their content) on the user's phone", listOf()) { _, _ ->
+                ToolResult(intentLauncher.launch("com.vayunmathur.notes.ACTION_GET_NOTES", "com.vayunmathur.notes", "com.vayunmathur.notes.intents.GetIntent", Unit::class, Unit), "Retrieved notes")
             }
         )
 
