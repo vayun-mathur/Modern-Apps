@@ -88,8 +88,12 @@ class DataStoreUtils private constructor(context: Context) {
     suspend fun setString(string: String, value: String, onlyIfAbsent: Boolean = false) {
         dataStore.edit {
             if (onlyIfAbsent && it.contains(stringPreferencesKey(string))) return@edit
-            it[stringPreferencesKey(string)]
+            it[stringPreferencesKey(string)] = value
         }
+    }
+
+    fun stringFlow(key: String): Flow<String> {
+        return dataStore.data.mapNotNull { it[stringPreferencesKey(key)] }
     }
 
     companion object {

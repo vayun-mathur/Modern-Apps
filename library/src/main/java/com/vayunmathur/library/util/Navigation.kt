@@ -127,7 +127,7 @@ fun <T: NavKey> rememberNavBackStack(vararg elements: T): NavBackStack<T> {
 fun DialogPage() = DialogSceneStrategy.dialog()
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
-fun ListPage(detailPlaceholder: @Composable () -> Unit = {}) = ListDetailSceneStrategy.listPane(detailPlaceholder)
+fun ListPage(detailPlaceholder: @Composable () -> Unit = {}) = ListDetailSceneStrategy.listPane(Unit) {detailPlaceholder()}
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 fun ListDetailPage() = ListDetailSceneStrategy.detailPane()
