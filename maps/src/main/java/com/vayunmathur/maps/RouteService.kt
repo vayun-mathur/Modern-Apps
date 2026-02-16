@@ -18,13 +18,12 @@ object RouteService {
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
-                encodeDefaults = true // Important to include default values in JSON
+                encodeDefaults = true
             })
         }
     }
 
-    private const val API_KEY = "AIzaSyBJ2gUeEQ36jbBGLRJUjK1541StDfpBWHI"
-    private const val ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+    private const val ROUTES_URL = "https://api.vayunmathur.com/maps/route"
 
     suspend fun computeRoute(
         features: SpecificFeature.Route,
@@ -35,124 +34,83 @@ object RouteService {
         val destPos = features.waypoints.last()?.position ?: userPosition
         val intermediates = features.waypoints.subList(1, features.waypoints.size - 1).map { it?.position ?: userPosition }
 
-        val request = API.RoutesRequest(
-            origin = API.Waypoint(API.Location(API.LatLng(originPos.latitude, originPos.longitude))),
-            intermediates = intermediates.map { API.Waypoint(API.Location(API.LatLng(it.latitude, it.longitude))) },
-            destination = API.Waypoint(API.Location(API.LatLng(destPos.latitude, destPos.longitude))),
-            travelMode = travelMode,
-            routingPreference = if (travelMode == TravelMode.DRIVE) "TRAFFIC_AWARE" else null,
+        // Construct simplified request for our Deno server
+        val request = ServerRouteRequest(
+            origin = ServerLatLng(originPos.latitude, originPos.longitude),
+            destination = ServerLatLng(destPos.latitude, destPos.longitude),
+            intermediates = intermediates.map { ServerLatLng(it.latitude, it.longitude) },
+            travelMode = travelMode
         )
 
         return try {
             val response = client.post(ROUTES_URL) {
                 contentType(ContentType.Application.Json)
-                header("X-Goog-Api-Key", API_KEY)
-                header("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps.polyline.encodedPolyline,routes.legs.steps.travelMode,routes.legs.steps.distanceMeters,routes.legs.steps.staticDuration,routes.legs.steps.navigationInstruction"
-                 + if(travelMode == TravelMode.TRANSIT) ",routes.legs.steps.transitDetails" else "")
-                setBody(request) // Now it knows exactly how to serialize this object
+                setBody(request)
             }
 
-            println(response.bodyAsText())
+            // The server now returns the transformed structure directly.
+            // We deserialize into a helper DTO to handle 'Position' conversion.
+            val serverRoute = response.body<ServerRouteResponse>()
 
-            val routeres = response.body<API.RouteResponse>().routes.firstOrNull() ?: return null
-            return Route(Duration.parse(routeres.duration), routeres.distanceMeters, decodePolyline(routeres.polyline.encodedPolyline), routeres.legs.map { leg -> leg.steps.map {
-                Step(it.distanceMeters, Duration.parse(it.staticDuration), decodePolyline(it.polyline.encodedPolyline), it.navigationInstruction, it.travelMode, it.transitDetails)
-            }}.flatten())
+            return Route(
+                duration = Duration.parse(serverRoute.duration),
+                distanceMeters = serverRoute.distanceMeters,
+                polyline = serverRoute.polyline.map { Position(it.longitude, it.latitude) },
+                step = serverRoute.step.map { step ->
+                    Step(
+                        distanceMeters = step.distanceMeters,
+                        staticDuration = Duration.parse(step.staticDuration),
+                        polyline = step.polyline.map { Position(it.longitude, it.latitude) },
+                        navInstruction = step.navInstruction,
+                        travelMode = step.travelMode,
+                        transitDetails = step.transitDetails
+                    )
+                }
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    private fun decodePolyline(encoded: String): List<Position> {
-        val poly = mutableListOf<Position>()
-        var index = 0
-        val len = encoded.length
-        var lat = 0
-        var lng = 0
-
-        while (index < len) {
-            var b: Int
-            var shift = 0
-            var result = 0
-            do {
-                b = encoded[index++].code - 63
-                result = result or (b and 0x1f shl shift)
-                shift += 5
-            } while (b >= 0x20)
-            val dlat = if (result and 1 != 0) (result shr 1).inv() else result shr 1
-            lat += dlat
-
-            shift = 0
-            result = 0
-            do {
-                b = encoded[index++].code - 63
-                result = result or (b and 0x1f shl shift)
-                shift += 5
-            } while (b >= 0x20)
-            val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
-            lng += dlng
-
-            poly.add(Position(lng.toDouble() / 1E5, lat.toDouble() / 1E5))
-        }
-        return poly
-    }
-
     enum class TravelMode {
         DRIVE, TRANSIT, WALK, BICYCLE
     }
 
+    // --- DTOs for communication with Vayunmathur.com Server ---
+
+    @Serializable
+    data class ServerRouteRequest(
+        val origin: ServerLatLng,
+        val destination: ServerLatLng,
+        val intermediates: List<ServerLatLng>,
+        val travelMode: TravelMode
+    )
+
+    @Serializable
+    data class ServerLatLng(val latitude: Double, val longitude: Double)
+
+    @Serializable
+    data class ServerRouteResponse(
+        val duration: String,
+        val distanceMeters: Double,
+        val polyline: List<ServerLatLng>,
+        val step: List<ServerStep>
+    )
+
+    @Serializable
+    data class ServerStep(
+        val distanceMeters: Double,
+        val staticDuration: String,
+        val polyline: List<ServerLatLng>,
+        val navInstruction: API.NavInstruction,
+        val travelMode: TravelMode,
+        val transitDetails: API.TransitDetails? = null
+    )
+
+    // --- Existing Models reused for internal structure ---
+
     object API {
-        // --- Request Models ---
-        @Serializable
-        data class RoutesRequest(
-            val origin: Waypoint,
-            val intermediates: List<Waypoint>,
-            val destination: Waypoint,
-            val travelMode: TravelMode,
-            val routingPreference: String?,
-            val computeAlternativeRoutes: Boolean = false,
-            val routeModifiers: RouteModifiers = RouteModifiers(),
-            val languageCode: String = "en-US",
-            val units: String = "METRIC"
-        )
-
-        @Serializable
-        data class Waypoint(val location: Location)
-
-        @Serializable
-        data class Location(val latLng: LatLng)
-
-        @Serializable
-        data class LatLng(val latitude: Double, val longitude: Double)
-
-        @Serializable
-        data class RouteModifiers(
-            val avoidTolls: Boolean = false,
-            val avoidHighways: Boolean = false,
-            val avoidFerries: Boolean = false
-        )
-
-        // --- Response Models ---
-        @Serializable
-        data class RouteResponse(val routes: List<RouteRes> = emptyList())
-
-        @Serializable
-        data class RouteRes(
-            val duration: String,
-            val distanceMeters: Double,
-            val polyline: Polyline,
-            val legs: List<Leg>
-        )
-
-        @Serializable
-        data class Leg(val steps: List<Step>)
-
-        @Serializable
-        data class Step(val polyline: Polyline, val navigationInstruction: NavInstruction, val travelMode: TravelMode,
-                        val distanceMeters: Double,
-                        val staticDuration: String, val transitDetails: TransitDetails? = null)
-
         @Serializable
         data class TransitDetails(val headsign: String, val stopCount: Int, val transitLine: TransitLine, val stopDetails: StopDetails)
 
@@ -170,27 +128,10 @@ object RouteService {
 
         @Serializable
         enum class Maneuver {
-            MANEUVER_UNSPECIFIED,
-            TURN_SLIGHT_LEFT,
-            TURN_SHARP_LEFT,
-            UTURN_LEFT,
-            TURN_LEFT,
-            TURN_SLIGHT_RIGHT,
-            TURN_SHARP_RIGHT,
-            UTURN_RIGHT,
-            TURN_RIGHT,
-            STRAIGHT,
-            RAMP_LEFT,
-            RAMP_RIGHT,
-            MERGE,
-            FORK_LEFT,
-            FORK_RIGHT,
-            FERRY,
-            FERRY_TRAIN,
-            ROUNDABOUT_LEFT,
-            ROUNDABOUT_RIGHT,
-            DEPART,
-            NAME_CHANGE;
+            MANEUVER_UNSPECIFIED, TURN_SLIGHT_LEFT, TURN_SHARP_LEFT, UTURN_LEFT, TURN_LEFT,
+            TURN_SLIGHT_RIGHT, TURN_SHARP_RIGHT, UTURN_RIGHT, TURN_RIGHT, STRAIGHT,
+            RAMP_LEFT, RAMP_RIGHT, MERGE, FORK_LEFT, FORK_RIGHT, FERRY, FERRY_TRAIN,
+            ROUNDABOUT_LEFT, ROUNDABOUT_RIGHT, DEPART, NAME_CHANGE;
 
             fun icon(): Int? {
                 return when(this) {
@@ -220,9 +161,6 @@ object RouteService {
         }
     }
 
-    @Serializable
-    data class Polyline(val encodedPolyline: String)
-
     data class Route(
         override val duration: Duration,
         override val distanceMeters: Double,
@@ -235,7 +173,7 @@ object RouteService {
         val staticDuration: Duration,
         val polyline: List<Position>,
         val navInstruction: API.NavInstruction,
-        val travelMode: RouteService.TravelMode,
+        val travelMode: TravelMode,
         val transitDetails: API.TransitDetails? = null
     )
 
