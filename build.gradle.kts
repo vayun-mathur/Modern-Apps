@@ -7,8 +7,6 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
-var vcc = ""
-
 subprojects {
     if(name == "app") return@subprojects
 

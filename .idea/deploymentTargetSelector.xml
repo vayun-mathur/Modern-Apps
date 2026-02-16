@@ -25,9 +25,6 @@
       <SelectionState runConfigName="openassistant">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="chess">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="passwords">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
@@ -59,6 +56,9 @@
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
       <SelectionState runConfigName="games.unblockjam">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="games.chess">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
