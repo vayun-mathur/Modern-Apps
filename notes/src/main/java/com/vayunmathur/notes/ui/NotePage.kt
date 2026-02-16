@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -16,20 +17,25 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import androidx.room.util.TableInfo
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconVisible
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.pop
+import com.vayunmathur.notes.MarkdownAnnotatedString
 import com.vayunmathur.notes.Route
 import com.vayunmathur.notes.data.Note
 
@@ -66,17 +72,25 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 readOnly = !isEditing,
                 textStyle = MaterialTheme.typography.headlineMedium.copy(color = LocalContentColor.current),
                 cursorBrush = SolidColor(LocalContentColor.current),
-                decorationBox = {innerTextField ->
+                decorationBox = { innerTextField ->
                     Box {
-                        if(note.title.isEmpty()) Text(text = "Title", style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+                        if (note.title.isEmpty()) Text(
+                            text = "Title",
+                            style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        )
                         innerTextField()
                     }
                 }
             )
             Spacer(Modifier.height(8.dp))
+            var value by remember(note.id) { mutableStateOf(TextFieldValue(MarkdownAnnotatedString(note.content))) }
+            val noMarkers by remember { derivedStateOf { TextFieldValue(MarkdownAnnotatedString(note.content, false)) } }
             BasicTextField(
-                note.content,
-                { note = note.copy(content = it) },
+                if(isEditing) value else noMarkers,
+                {
+                    note = note.copy(content = it.text)
+                    value = it.copy(annotatedString = MarkdownAnnotatedString(it.text))
+                },
                 Modifier.fillMaxSize(),
                 readOnly = !isEditing,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = LocalContentColor.current),
