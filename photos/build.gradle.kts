@@ -16,10 +16,15 @@ dependencies {
     implementation(libs.maplibre.compose)
     implementation(libs.maplibre.composeMaterial3)
     implementation(libs.coil.compose)
+    implementation(libs.coil.video)
     implementation(libs.androidx.exifinterface)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.ui.compose)
+    implementation(libs.androidx.media3.ui.compose.material3)
     ksp(libs.androidx.room.compiler)
 
 

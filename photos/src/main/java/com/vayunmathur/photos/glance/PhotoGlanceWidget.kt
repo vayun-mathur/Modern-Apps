@@ -39,7 +39,7 @@ class PhotoGlanceWidget : GlanceAppWidget() {
 
         provideContent {
             val photos by viewModel.data<Photo>().collectAsState(listOf())
-            var photo by remember(photos) { mutableStateOf(photos.randomOrNull()) }
+            var photo by remember(photos) { mutableStateOf(photos.filter{it.videoData == null}.randomOrNull()) }
             val bitmap by produceState<Bitmap?>(initialValue = null, photo) {
                 value = withContext(Dispatchers.IO) {
                     photo?.let { getResizedBitmap(context, it.uri.toUri(), 600) }
