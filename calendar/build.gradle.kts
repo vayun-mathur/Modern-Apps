@@ -1,7 +1,7 @@
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.calendar"
-        versionCode = 22
+        versionCode = 23
         versionName = "v2.0.0"
     }
 }
