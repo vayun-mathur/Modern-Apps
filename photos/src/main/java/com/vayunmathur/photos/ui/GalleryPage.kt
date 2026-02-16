@@ -31,6 +31,7 @@ import com.vayunmathur.photos.ImageLoader
 import com.vayunmathur.photos.NavigationBar
 import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
+import com.vayunmathur.photos.data.VideoData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -96,6 +97,8 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 
 
 fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
+    val photos = mutableListOf<Photo>()
+
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
         MediaStore.Images.Media.DISPLAY_NAME,
@@ -108,8 +111,6 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
         projection,
         null, null, null
     )
-
-    val photos = mutableListOf<Photo>()
 
     query?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
@@ -126,9 +127,45 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
             val width = cursor.getInt(widthColumn)
             val height = cursor.getInt(heightColumn)
 
-            photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null)
+            photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null, null)
         }
     }
+
+    val projectionVideo = arrayOf(
+        MediaStore.Video.Media._ID,
+        MediaStore.Video.Media.DISPLAY_NAME,
+        MediaStore.Video.Media.INFERRED_DATE,
+        MediaStore.Video.Media.WIDTH,
+        MediaStore.Video.Media.HEIGHT,
+        MediaStore.Video.Media.DURATION
+    )
+    val queryVideo = context.contentResolver.query(
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        projectionVideo,
+        null, null, null
+    )
+
+    queryVideo?.use { cursor ->
+        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+        val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.INFERRED_DATE)
+        val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
+        val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
+        val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+
+        while (cursor.moveToNext()) {
+            val id = cursor.getLong(idColumn)
+            val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+            val name = cursor.getString(nameColumn)
+            val date = cursor.getLong(dateColumn)
+            val width = cursor.getInt(widthColumn)
+            val height = cursor.getInt(heightColumn)
+            val duration = cursor.getLong(durationColumn)
+
+            photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null, VideoData(duration))
+        }
+    }
+
     viewModel.replaceAll(photos.sortedByDescending { it.date })
 }
 
