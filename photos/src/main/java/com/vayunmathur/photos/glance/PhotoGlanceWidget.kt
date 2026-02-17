@@ -29,16 +29,16 @@ import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class PhotoGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
 
         val db = context.buildDatabase<PhotoDatabase>()
-        val viewModel = DatabaseViewModel(Photo::class to db.noteDao())
+        val photos = db.noteDao().getAll().first()
 
         provideContent {
-            val photos by viewModel.data<Photo>().collectAsState(listOf())
             var photo by remember(photos) { mutableStateOf(photos.filter{it.videoData == null}.randomOrNull()) }
             val bitmap by produceState<Bitmap?>(initialValue = null, photo) {
                 value = withContext(Dispatchers.IO) {

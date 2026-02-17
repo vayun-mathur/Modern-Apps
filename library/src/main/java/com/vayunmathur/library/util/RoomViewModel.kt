@@ -165,12 +165,10 @@ abstract class DatabaseItem<T: DatabaseItem<T>> {
 }
 
 interface TrueDao<T: DatabaseItem<T>> {
-    fun getAll(): Flow<List<T>>
     @Upsert
     suspend fun upsert(value: T): Long
     @Delete
     suspend fun delete(value: T): Int
-    suspend fun deleteAll()
     @Upsert
     suspend fun upsertAll(t: List<T>)
     @Transaction
@@ -178,6 +176,9 @@ interface TrueDao<T: DatabaseItem<T>> {
         deleteAll()
         upsertAll(t)
     }
+
+    fun getAll(): Flow<List<T>>
+    suspend fun deleteAll()
 }
 
 val databases: MutableMap<KClass<*>, RoomDatabase> = mutableMapOf()
