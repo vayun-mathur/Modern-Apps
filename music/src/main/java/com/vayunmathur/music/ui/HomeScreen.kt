@@ -2,10 +2,21 @@ package com.vayunmathur.music.ui
 
 import android.content.ContentUris
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Size
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.music.Route
 import com.vayunmathur.music.database.Music
@@ -13,14 +24,39 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.library.util.DatabaseViewModel
 
+fun getThumbnail(context: Context, uri: Uri): Bitmap? {
+    return try {
+        context.contentResolver.loadThumbnail(
+            uri,
+            Size(300, 300),
+            null
+        )
+    } catch (e: Exception) {
+        null // Fallback to a placeholder
+    }
+}
+
 @Composable
 fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
-    ListPage<Music, Route, Route.Song>(backStack, viewModel, "Music", {Text(it.title)}, {
+    val context = LocalContext.current
+    ListPage<Music, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.title) }, {
         Text(it.artist)
-    }, {Route.Song(it)}, {Route.Song(0)})
+    }, { Route.Song(it) }, leadingContent = { music ->
+        var bitmap: Bitmap? by remember { mutableStateOf(null) }
+        LaunchedEffect(Unit) {
+            bitmap = getThumbnail(context, music.uri.toUri())
+        }
+        AsyncImage(
+             bitmap,
+            contentDescription = "Album Art",
+            modifier = Modifier.size(40.dp)
+        )
+    })
 }
 
 suspend fun saveMediaToFile(context: Context, viewModel: DatabaseViewModel) {

@@ -2,7 +2,7 @@ package com.vayunmathur.notes.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.vayunmathur.library.util.DatabaseItem
+import com.vayunmathur.library.util.ReorderableDatabaseItem
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -12,6 +12,6 @@ data class Note(
     val title: String,
     val content: String,
     override val position: Double = 0.0
-): DatabaseItem<Note>() {
+): ReorderableDatabaseItem<Note>() {
     override fun withPosition(position: Double) = copy(position = position)
 }

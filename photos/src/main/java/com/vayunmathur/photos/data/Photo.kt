@@ -23,7 +23,4 @@ data class Photo(
     val long: Double?,
     @Embedded
     val videoData: VideoData?,
-    override val position: Double = 0.0
-) : DatabaseItem<Photo>() {
-    override fun withPosition(position: Double): Photo = copy(position = position)
-}
+) : DatabaseItem

@@ -16,13 +16,10 @@ data class Waypoint(
     val name: String,
     val range: Double,
     @Embedded val coord: Coord,
-    @PrimaryKey(autoGenerate = true) override val id: Long = 0,
-    override val position: Double = 0.0
-): DatabaseItem<Waypoint>() {
-    override fun withPosition(position: Double) = copy(position = position)
-
+    @PrimaryKey(autoGenerate = true) override val id: Long = 0
+): DatabaseItem {
     companion object {
-        val NEW_WAYPOINT = Waypoint("", 100.0, Coord(0.0, 0.0), position = Double.POSITIVE_INFINITY)
+        val NEW_WAYPOINT = Waypoint("", 100.0, Coord(0.0, 0.0))
     }
 }
 

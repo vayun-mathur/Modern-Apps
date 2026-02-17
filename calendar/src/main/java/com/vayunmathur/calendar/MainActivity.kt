@@ -35,7 +35,7 @@ import com.vayunmathur.calendar.ui.dialog.SettingsRenameCalendarDialog
 import com.vayunmathur.calendar.ui.SettingsScreen
 import com.vayunmathur.calendar.ui.dialog.CalendarPickerDialog
 import com.vayunmathur.calendar.ui.dialog.CalendarSetDateDialog
-import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
+import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.calendar.ui.dialog.RecurrenceDialog
 import com.vayunmathur.calendar.ui.dialog.TimePickerDialogContent
 import com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog

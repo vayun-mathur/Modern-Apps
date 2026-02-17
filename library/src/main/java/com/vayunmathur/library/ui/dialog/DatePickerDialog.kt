@@ -1,4 +1,4 @@
-package com.vayunmathur.calendar.ui.dialog
+package com.vayunmathur.library.ui.dialog
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker

@@ -9,8 +9,5 @@ data class Conversation(
     @PrimaryKey(autoGenerate = true)
     override val id: Long = 0,
     var title: String,
-    val createdAt: Long = System.currentTimeMillis(),
-    override val position: Double = 0.0
-): DatabaseItem<Conversation>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+    val createdAt: Long = System.currentTimeMillis()
+): DatabaseItem

@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.time.Instant
 
-class DaoInterface<T: DatabaseItem<T>>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
+class DaoInterface<T: DatabaseItem>(val dao: TrueDao<T>, val viewModelScope: CoroutineScope) {
     val data: StateFlow<List<T>> = dao.getAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun delete(t: T, andThen: (Int) -> Unit = {}) {
@@ -67,40 +67,40 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         it.first to DaoInterface(it.second, viewModelScope)
     }
 
-    inline fun <reified E : DatabaseItem<E>> getDaoInterface(): DaoInterface<E> {
+    inline fun <reified E : DatabaseItem> getDaoInterface(): DaoInterface<E> {
         val daoInterface = daoMap[E::class] ?: throw Exception("No DAO registered for ${E::class.simpleName}")
         @Suppress("UNCHECKED_CAST")
         return daoInterface as DaoInterface<E>
     }
 
-    inline fun <reified E: DatabaseItem<E>> data(): StateFlow<List<E>> {
+    inline fun <reified E: DatabaseItem> data(): StateFlow<List<E>> {
         return getDaoInterface<E>().data
     }
 
     @Composable
-    inline fun <reified E: DatabaseItem<E>> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
+    inline fun <reified E: DatabaseItem> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
         val data by getDaoInterface<E>().data.collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id } ?: default())!! } }
         return derived
     }
 
     @Composable
-    inline fun <reified E: DatabaseItem<E>> getNullable(id: Long): State<E?> {
+    inline fun <reified E: DatabaseItem> getNullable(id: Long): State<E?> {
         val data by getDaoInterface<E>().data.collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id }) } }
         return derived
     }
 
-    inline fun <reified E: DatabaseItem<E>> upsertAll(items: List<E>) {
+    inline fun <reified E: DatabaseItem> upsertAll(items: List<E>) {
         getDaoInterface<E>().upsertAll(items)
     }
 
-    inline fun <reified E: DatabaseItem<E>> replaceAll(items: List<E>) {
+    inline fun <reified E: DatabaseItem> replaceAll(items: List<E>) {
         getDaoInterface<E>().replaceAll(items)
     }
 
     @Composable
-    inline fun <reified E : DatabaseItem<E>> getEditable(
+    inline fun <reified E : DatabaseItem> getEditable(
         initialId: Long,
         crossinline default: () -> E? = { null }
     ): MutableState<E> {
@@ -147,24 +147,25 @@ class DatabaseViewModel(vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() 
         }
     }
 
-    inline fun <reified E: DatabaseItem<E>> upsert(t: E, noinline andThen: (Long) -> Unit = {}) {
+    inline fun <reified E: DatabaseItem> upsert(t: E, noinline andThen: (Long) -> Unit = {}) {
         getDaoInterface<E>().upsert(t, andThen)
     }
 
-    inline fun <reified E: DatabaseItem<E>> delete(t: E, noinline andThen: (Int) -> Unit = {}) {
+    inline fun <reified E: DatabaseItem> delete(t: E, noinline andThen: (Int) -> Unit = {}) {
         getDaoInterface<E>().delete(t, andThen)
     }
 }
 
-abstract class DatabaseItem<T: DatabaseItem<T>> {
-    abstract val id: Long
-    abstract val position: Double
+interface DatabaseItem {
+    val id: Long
+}
 
-    fun isNew() = id == 0L
+abstract class ReorderableDatabaseItem<T: ReorderableDatabaseItem<T>>: DatabaseItem() {
+    abstract val position: Double
     abstract fun withPosition(position: Double): T
 }
 
-interface TrueDao<T: DatabaseItem<T>> {
+interface TrueDao<T: DatabaseItem> {
     @Upsert
     suspend fun upsert(value: T): Long
     @Delete

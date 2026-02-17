@@ -26,11 +26,8 @@ data class SubscriptionVideo(
     val thumbnailURL: String,
     val author: String,
     @ColumnInfo(index = true)
-    val channelID: Long,
-    override val position: Double = 0.0
-): DatabaseItem<SubscriptionVideo>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+    val channelID: Long
+): DatabaseItem
 
 @Dao
 interface SubscriptionVideoDao: TrueDao<SubscriptionVideo> {

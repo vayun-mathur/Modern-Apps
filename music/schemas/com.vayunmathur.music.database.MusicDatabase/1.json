@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "6855f5a0bc76365bc23ef4ecb0e10a7e",
+    "identityHash": "c397a49142bcb3aec663ded501250197",
     "entities": [
       {
         "tableName": "Music",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `uri` TEXT NOT NULL, `position` REAL NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `uri` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -37,12 +37,6 @@
             "columnName": "uri",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "position",
-            "columnName": "position",
-            "affinity": "REAL",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -55,7 +49,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6855f5a0bc76365bc23ef4ecb0e10a7e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c397a49142bcb3aec663ded501250197')"
     ]
   }
 }

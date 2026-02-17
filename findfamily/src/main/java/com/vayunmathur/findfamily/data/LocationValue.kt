@@ -20,11 +20,8 @@ data class LocationValue(
     val acc: Float,
     val timestamp: Instant,
     val battery: Float,
-    @PrimaryKey(autoGenerate = true) override val id: Long = 0,
-    override val position: Double = 0.0
-): DatabaseItem<LocationValue>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+    @PrimaryKey(autoGenerate = true) override val id: Long = 0
+): DatabaseItem
 
 @Dao
 interface LocationValueDao: TrueDao<LocationValue> {

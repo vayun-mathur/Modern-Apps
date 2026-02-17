@@ -19,11 +19,8 @@ data class HistoryVideo(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0, // video id
     val progress: Long, // milliseconds
     @Embedded val videoItem: VideoInfo,
-    val timestamp: Instant,
-    override val position: Double = 0.0
-): DatabaseItem<HistoryVideo>() {
-    override fun withPosition(position: Double) = copy(position = position)
-
+    val timestamp: Instant
+): DatabaseItem {
     companion object {
         fun fromVideoData(videoInfo: VideoInfo, progress: Long) = HistoryVideo(videoInfo.videoID, progress, videoInfo, Clock.System.now())
     }

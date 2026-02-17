@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.navigation3.runtime.NavKey
-import com.vayunmathur.calendar.ui.dialog.DatePickerDialog
+import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.TemporaryLink

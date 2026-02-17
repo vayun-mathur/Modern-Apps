@@ -12,8 +12,5 @@ data class Music(
     val title: String,
     val artist: String,
     val album: String,
-    val uri: String,
-    override val position: Double = 0.0
-): DatabaseItem<Music>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+    val uri: String
+): DatabaseItem

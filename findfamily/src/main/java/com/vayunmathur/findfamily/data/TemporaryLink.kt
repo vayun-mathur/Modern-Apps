@@ -21,10 +21,7 @@ data class TemporaryLink(
     val deleteAt: Instant,
 
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
-    override val position: Double = 0.0
-): DatabaseItem<TemporaryLink>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+): DatabaseItem
 
 @Dao
 interface TemporaryLinkDao: TrueDao<TemporaryLink> {

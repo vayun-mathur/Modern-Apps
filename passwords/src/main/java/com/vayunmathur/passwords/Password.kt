@@ -13,8 +13,5 @@ data class Password(
     val userId: String = "",
     val password: String = "",
     val totpSecret: String? = null,
-    val websites: List<String> = emptyList(),
-    override val position: Double = 0.0
-): DatabaseItem<Password>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+    val websites: List<String> = emptyList()
+): DatabaseItem

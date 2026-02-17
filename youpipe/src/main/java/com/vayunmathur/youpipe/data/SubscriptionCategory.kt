@@ -20,11 +20,8 @@ data class SubscriptionCategory(
     @ColumnInfo(index = true)
     val subscriptionID: Long,
     val category: String,
-    @PrimaryKey(autoGenerate = true) override val id: Long = 0,
-    override val position: Double = 0.0
-): DatabaseItem<SubscriptionCategory>() {
-    override fun withPosition(position: Double) = copy(position = position)
-}
+    @PrimaryKey(autoGenerate = true) override val id: Long = 0
+): DatabaseItem
 
 @Dao
 interface SubscriptionCategoryDao: TrueDao<SubscriptionCategory> {

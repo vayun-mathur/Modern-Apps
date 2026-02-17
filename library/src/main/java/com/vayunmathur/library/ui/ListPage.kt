@@ -40,12 +40,90 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.library.R
 import com.vayunmathur.library.util.DatabaseItem
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.ReorderableDatabaseItem
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-inline fun <reified T : DatabaseItem<T>, Route : NavKey, reified EditPage : Route> ListPage(
+inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> ListPage(
+    backStack: NavBackStack<Route>,
+    viewModel: DatabaseViewModel,
+    title: String,
+    crossinline headlineContent: @Composable (T) -> Unit,
+    crossinline supportingContent: @Composable (T) -> Unit,
+    crossinline viewPage: (id: Long) -> Route,
+    noinline editPage: (() -> Route)? = null,
+    settingsPage: Route? = null,
+    crossinline otherActions: @Composable () -> Unit = {},
+    crossinline leadingContent: @Composable (T) -> Unit = {},
+    crossinline trailingContent: @Composable (T) -> Unit = {},
+    searchEnabled: Boolean = false,
+    crossinline searchString: (T) -> String = {it.toString()},
+) {
+    val dbDataUnfiltered by viewModel.data<T>().collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    val dbData by remember { derivedStateOf { dbDataUnfiltered.filter { searchQuery.isBlank() || searchString(it).contains(searchQuery, true) } } }
+
+    val hapticFeedback = LocalHapticFeedback.current
+
+    // 1. Initialize the reorderable state
+    val listState = rememberLazyListState()
+    var localData by remember { mutableStateOf(dbData) }
+
+    // Keep localData in sync with DB updates, but NOT while dragging
+    LaunchedEffect(dbData) {
+        localData = dbData
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text(title) }, actions = {
+                otherActions()
+                settingsPage?.let { settingsPage ->
+                    IconButton(onClick = { backStack.add(settingsPage) }) {
+                        IconSettings()
+                    }
+                }
+            })
+        },
+        floatingActionButton = {
+            if (editPage != null && backStack.last() !is EditPage) {
+                FloatingActionButton(onClick = { backStack.add(editPage()) }) {
+                    IconAdd()
+                }
+            }
+        },
+        contentWindowInsets = WindowInsets(0)
+    ) { paddingValues ->
+        // 2. Apply reorderable modifier to the LazyColumn
+        Column(Modifier.padding(paddingValues)) {
+            if(searchEnabled) {
+                OutlinedTextField(searchQuery, { searchQuery = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true, leadingIcon = {
+                    IconSearch()
+                })
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(localData, key = { it.id }) { item ->
+                    ListItem({ headlineContent(item) }, Modifier.clickable {
+                        backStack.add(viewPage(item.id))
+                    }, {}, { supportingContent(item) }, {leadingContent(item)}, {
+                        Row {
+                            trailingContent(item)
+                        }
+                    }, ListItemDefaults.colors())
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+inline fun <reified T : ReorderableDatabaseItem<T>, Route : NavKey, reified EditPage : Route> ListPageR(
     backStack: NavBackStack<Route>,
     viewModel: DatabaseViewModel,
     title: String,
@@ -55,7 +133,7 @@ inline fun <reified T : DatabaseItem<T>, Route : NavKey, reified EditPage : Rout
     crossinline editPage: () -> Route,
     settingsPage: Route? = null,
     crossinline otherActions: @Composable () -> Unit = {},
-    isReorderable: Boolean = false,
+    crossinline leadingContent: @Composable (T) -> Unit = {},
     crossinline trailingContent: @Composable (T) -> Unit = {},
     searchEnabled: Boolean = false,
     crossinline searchString: (T) -> String = {it.toString()},
@@ -139,30 +217,28 @@ inline fun <reified T : DatabaseItem<T>, Route : NavKey, reified EditPage : Rout
                         Surface(Modifier.animateItem(), shadowElevation = elevation) {
                             ListItem({ headlineContent(item) }, Modifier.clickable {
                                 backStack.add(viewPage(item.id))
-                            }, {}, { supportingContent(item) }, {}, {
+                            }, {}, { supportingContent(item) }, {leadingContent(item)}, {
                                 Row {
                                     trailingContent(item)
-                                    if (isReorderable) {
-                                        IconButton(
-                                            modifier = Modifier.draggableHandle(
-                                                onDragStarted = {
-                                                    hapticFeedback.performHapticFeedback(
-                                                        HapticFeedbackType.GestureThresholdActivate
-                                                    )
-                                                },
-                                                onDragStopped = {
-                                                    hapticFeedback.performHapticFeedback(
-                                                        HapticFeedbackType.GestureEnd
-                                                    )
-                                                },
-                                            ),
-                                            onClick = {},
-                                        ) {
-                                            Icon(
-                                                painterResource(R.drawable.drag_handle_24px),
-                                                contentDescription = "Reorder"
-                                            )
-                                        }
+                                    IconButton(
+                                        modifier = Modifier.draggableHandle(
+                                            onDragStarted = {
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.GestureThresholdActivate
+                                                )
+                                            },
+                                            onDragStopped = {
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.GestureEnd
+                                                )
+                                            },
+                                        ),
+                                        onClick = {},
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.drag_handle_24px),
+                                            contentDescription = "Reorder"
+                                        )
                                     }
                                 }
                             }, ListItemDefaults.colors(), elevation, elevation)
