@@ -52,7 +52,7 @@ private fun extractRings(fgbGeom: FgbGeometry): List<List<Position>> {
         for (i in 0 until ends.length()) {
             // ends.get(i) is the number of vertices, but xy is [x, y]
             // so we multiply the vertex index by 2 to get the buffer index
-            val end = (ends.get(i) * 2).toInt()
+            val end = (ends.get(i) * 2)
             val posList = mutableListOf<Position>()
             for (j in start until end step 2) {
                 posList.add(Position(xy.get(j), xy.get(j + 1)))
@@ -83,7 +83,7 @@ object CountryMap {
             // FlatGeobuf index size depends on the number of features and the branching factor
             if (header.indexNodeSize() > 0) {
                 val featureCount = header.featuresCount()
-                val nodeSize = header.indexNodeSize().toInt()
+                val nodeSize = header.indexNodeSize()
 
                 // Calculate tree size manually
                 var nodes = featureCount
@@ -143,7 +143,7 @@ object CountryMap {
             // FlatGeobuf index size depends on the number of features and the branching factor
             if (header.indexNodeSize() > 0) {
                 val featureCount = header.featuresCount()
-                val nodeSize = header.indexNodeSize().toInt()
+                val nodeSize = header.indexNodeSize()
 
                 // Calculate tree size manually
                 var nodes = featureCount
@@ -171,7 +171,7 @@ object CountryMap {
 
                 if (properties["iso_3166_2"]?.jsonPrimitive?.content.equals(iso3166_2, ignoreCase = true)) {
                     // Found it! Convert only this ONE feature to wololo GeoJSON
-                    val skGeometry = fgbToSpatialK(fgbFeature.geometry(), fgbFeature.geometry().type().toInt())
+                    val skGeometry = fgbToSpatialK(fgbFeature.geometry(), fgbFeature.geometry().type())
                     return Feature1(skGeometry, properties)
                 }
 

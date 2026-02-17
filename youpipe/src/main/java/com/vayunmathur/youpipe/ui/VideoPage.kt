@@ -80,41 +80,10 @@ data class VideoData(val title: String, val views: Long, val duration: Long, val
 data class Comment(val text: String, val author: String, val likes: Int, val dislikes: Int)
 
 @Composable
-fun RotatedComponent(
-    rotation: Float = 90f,
-    content: @Composable () -> Unit
-) {
-    Layout(
-        content = content,
-        modifier = Modifier.rotate(rotation)
-    ) { measurables, constraints ->
-        // 1. Swap the constraints: MaxWidth becomes MaxHeight and vice versa
-        val swappedConstraints = constraints.copy(
-            minWidth = constraints.minHeight,
-            maxWidth = constraints.maxHeight,
-            minHeight = constraints.minWidth,
-            maxHeight = constraints.maxWidth
-        )
-
-        // 2. Measure the child with the flipped constraints
-        val placeable = measurables.first().measure(swappedConstraints)
-
-        // 3. Set the parent size to the FLIPPED dimensions of the child
-        layout(placeable.height, placeable.width) {
-            // 4. Place the child centered
-            placeable.placeRelative(
-                x = (placeable.height - placeable.width) / 2,
-                y = (placeable.width - placeable.height) / 2
-            )
-        }
-    }
-}
-
-@Composable
 fun LockScreenOrientation(orientation: Int) {
     val context = LocalContext.current
     DisposableEffect(orientation) {
-        val activity = context.findActivity() ?: return@DisposableEffect onDispose {}
+        val activity = context.findActivity()
         val originalOrientation = activity.requestedOrientation
         activity.requestedOrientation = orientation
 

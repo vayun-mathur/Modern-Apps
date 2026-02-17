@@ -12,6 +12,6 @@ data class Note(
     val title: String,
     val content: String,
     override val position: Double = 0.0
-): ReorderableDatabaseItem<Note>() {
+): ReorderableDatabaseItem<Note> {
     override fun withPosition(position: Double) = copy(position = position)
 }

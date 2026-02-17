@@ -16,6 +16,7 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
 import androidx.core.net.toUri
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.passwords.data.PasswordDatabase
 import kotlinx.coroutines.flow.first
@@ -23,7 +24,10 @@ import kotlinx.coroutines.runBlocking
 
 class PasswordAutofillService : AutofillService() {
 
-    private val db by lazy { applicationContext.buildDatabase<PasswordDatabase>() }
+    private val viewModel by lazy {
+        val db = applicationContext.buildDatabase<PasswordDatabase>()
+        DatabaseViewModel(db, Password::class to db.passwordDao())
+    }
 
     override fun onFillRequest(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
         val parser = StructureParser(request.fillContexts)
@@ -43,7 +47,7 @@ class PasswordAutofillService : AutofillService() {
         runBlocking {
             try {
                 // 3. Fetch and Filter Passwords
-                val allPasswords = db.passwordDao().getAll().first()
+                val allPasswords = viewModel.getAll<Password>()
 
                 val matches = allPasswords.filter { pass ->
                     pass.websites.any { site -> matchesContext(site, targetPackage, targetWebDomain) }
@@ -98,13 +102,12 @@ class PasswordAutofillService : AutofillService() {
 
         if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
             runBlocking {
-                val dao = db.passwordDao()
-                val existing = dao.getAll().first().firstOrNull { it.userId == username }
+                val existing = viewModel.getAll<Password>().firstOrNull { it.userId == username }
 
                 if (existing != null) {
-                    dao.upsert(existing.copy(password = password))
+                    viewModel.upsert(existing.copy(password = password))
                 } else {
-                    dao.upsert(
+                    viewModel.upsert(
                         Password(
                             name = "New Login",
                             userId = username,

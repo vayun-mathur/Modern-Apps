@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "3df2a06f39a597270fb8c2f9e01fe93f",
+    "identityHash": "151a91f97311262c9641653e38012bda",
     "entities": [
       {
         "tableName": "Subscription",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `channelID` TEXT NOT NULL, `avatarURL` TEXT NOT NULL, `uploadsPlaylistID` TEXT NOT NULL, `position` REAL NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `channelID` TEXT NOT NULL, `avatarURL` TEXT NOT NULL, `uploadsPlaylistID` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -37,12 +37,6 @@
             "columnName": "uploadsPlaylistID",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "position",
-            "columnName": "position",
-            "affinity": "REAL",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -54,7 +48,7 @@
       },
       {
         "tableName": "SubscriptionVideo",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `duration` INTEGER NOT NULL, `views` INTEGER NOT NULL, `uploadDate` INTEGER NOT NULL, `thumbnailURL` TEXT NOT NULL, `author` TEXT NOT NULL, `channelID` INTEGER NOT NULL, `position` REAL NOT NULL, FOREIGN KEY(`channelID`) REFERENCES `Subscription`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `duration` INTEGER NOT NULL, `views` INTEGER NOT NULL, `uploadDate` INTEGER NOT NULL, `thumbnailURL` TEXT NOT NULL, `author` TEXT NOT NULL, `channelID` INTEGER NOT NULL, FOREIGN KEY(`channelID`) REFERENCES `Subscription`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -103,12 +97,6 @@
             "columnName": "channelID",
             "affinity": "INTEGER",
             "notNull": true
-          },
-          {
-            "fieldPath": "position",
-            "columnName": "position",
-            "affinity": "REAL",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -144,7 +132,7 @@
       },
       {
         "tableName": "HistoryVideo",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `progress` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `position` REAL NOT NULL, `name` TEXT NOT NULL, `videoID` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `views` INTEGER NOT NULL, `uploadDate` INTEGER NOT NULL, `thumbnailURL` TEXT NOT NULL, `author` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `progress` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `name` TEXT NOT NULL, `videoID` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `views` INTEGER NOT NULL, `uploadDate` INTEGER NOT NULL, `thumbnailURL` TEXT NOT NULL, `author` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -162,12 +150,6 @@
             "fieldPath": "timestamp",
             "columnName": "timestamp",
             "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "position",
-            "columnName": "position",
-            "affinity": "REAL",
             "notNull": true
           },
           {
@@ -222,7 +204,7 @@
       },
       {
         "tableName": "SubscriptionCategory",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subscriptionID` INTEGER NOT NULL, `category` TEXT NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `position` REAL NOT NULL, FOREIGN KEY(`subscriptionID`) REFERENCES `Subscription`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subscriptionID` INTEGER NOT NULL, `category` TEXT NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, FOREIGN KEY(`subscriptionID`) REFERENCES `Subscription`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "subscriptionID",
@@ -240,12 +222,6 @@
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "position",
-            "columnName": "position",
-            "affinity": "REAL",
             "notNull": true
           }
         ],
@@ -283,7 +259,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3df2a06f39a597270fb8c2f9e01fe93f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '151a91f97311262c9641653e38012bda')"
     ]
   }
 }

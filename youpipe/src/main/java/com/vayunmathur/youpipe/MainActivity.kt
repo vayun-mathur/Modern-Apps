@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<SubscriptionDatabase>()
-        val viewModel = DatabaseViewModel(
+        val viewModel = DatabaseViewModel(db,
             Subscription::class to db.subscriptionDao(),
             SubscriptionVideo::class to db.subscriptionVideoDao(),
             HistoryVideo::class to db.historyVideoDao(),

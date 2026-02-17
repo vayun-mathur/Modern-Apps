@@ -28,9 +28,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val database = buildDatabase<MessageDatabase>()
-        val viewModel =
-            DatabaseViewModel(Message::class to database.messageDao(), Conversation::class to database.conversationDao())
+        val db = buildDatabase<MessageDatabase>()
+        val viewModel = DatabaseViewModel(db, Message::class to db.messageDao(), Conversation::class to db.conversationDao())
         val ds = DataStoreUtils.getInstance(this)
         intentLauncher = IntentLauncher(this)
 

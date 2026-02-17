@@ -41,6 +41,7 @@ import io.ktor.util.encodeBase64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.io.encoding.Base64
 import kotlin.math.pow
 import kotlin.random.Random
 import kotlin.random.nextULong
@@ -75,8 +76,8 @@ fun AddLinkDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
 
                             val newLink = TemporaryLink(
                                 name,
-                                keypair.privateKey.encodeToByteArray(RSA.PrivateKey.Format.PEM).encodeBase64(),
-                                keypair.publicKey.encodeToByteArray(RSA.PublicKey.Format.PEM).encodeBase64(),
+                                Base64.encode(keypair.privateKey.encodeToByteArray(RSA.PrivateKey.Format.PEM)),
+                                Base64.encode(keypair.publicKey.encodeToByteArray(RSA.PublicKey.Format.PEM)),
                                 Clock.System.now() + options[expiryTime]!!
                             )
                             viewModel.upsert(newLink)

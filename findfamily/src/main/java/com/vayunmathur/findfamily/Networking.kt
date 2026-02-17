@@ -24,6 +24,7 @@ import io.ktor.util.decodeBase64Bytes
 import io.ktor.util.encodeBase64
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.io.encoding.Base64
 import kotlin.properties.Delegates
 import kotlin.random.Random
 
@@ -110,7 +111,8 @@ object Networking {
         data class Register(val userid: ULong, val key: String)
         return makeRequest("/api/register", Register(
             userid.toULong(),
-            publickey!!.encodeToByteArray(RSA.PublicKey.Format.PEM).encodeBase64())
+            Base64.encode(publickey!!.encodeToByteArray(RSA.PublicKey.Format.PEM))
+        )
         ) ?: false
     }
 
@@ -129,16 +131,20 @@ object Networking {
             if(response.status != HttpStatusCode.OK) {
                 return@checkNetworkDown null
             }
-            return@checkNetworkDown crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM, response.bodyAsText().decodeBase64Bytes())
+            return@checkNetworkDown crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM,
+                Base64.decode(response.bodyAsText())
+            )
         }
     }
 
     suspend fun publishLocation(location: LocationValue, user: User): Boolean {
         val key = if(user.encryptionKey != null) {
-            crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM, user.encryptionKey.decodeBase64Bytes())
+            crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM,
+                Base64.decode(user.encryptionKey)
+            )
         } else {
             getKey(user.id.toULong())?.also {
-                val keyString = it.encodeToByteArray(RSA.PublicKey.Format.PEM).encodeBase64()
+                val keyString = Base64.encode(it.encodeToByteArray(RSA.PublicKey.Format.PEM))
                 viewModel.upsert(user.copy(encryptionKey = keyString))
             }
         } ?: return false
@@ -146,7 +152,9 @@ object Networking {
     }
 
     suspend fun publishLocation(location: LocationValue, user: TemporaryLink): Boolean {
-        val key = crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM, user.publicKey.decodeBase64Bytes())
+        val key = crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM,
+            Base64.decode(user.publicKey)
+        )
         return makeRequest("/api/location/publish", encryptLocation(location, user.id.toULong(), key)) ?: false
     }
 
@@ -158,13 +166,13 @@ object Networking {
     private suspend fun encryptLocation(location: LocationValue, recipientUserID: ULong, key: RSA.OAEP.PublicKey): LocationSharingData {
         val cipher = key.encryptor()
         val str = Json.encodeToString(location)
-        val encryptedData = cipher.encrypt(str.encodeToByteArray()).encodeBase64()
+        val encryptedData = Base64.encode(cipher.encrypt(str.encodeToByteArray()))
         return LocationSharingData(recipientUserID, encryptedData)
     }
 
     private suspend fun decryptLocation(encryptedLocation: String): LocationValue {
         val cipher = privatekey!!.decryptor()
-        val decryptedData = cipher.decrypt(encryptedLocation.decodeBase64Bytes()).decodeToString()
+        val decryptedData = cipher.decrypt(Base64.decode(encryptedLocation)).decodeToString()
         return Json.decodeFromString(decryptedData)
     }
 

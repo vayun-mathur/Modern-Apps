@@ -158,7 +158,7 @@ fun MapView(
         if(initialized) {
             key(camera.position, sizeInDp) {
                 Canvas(Modifier.fillMaxSize()) {
-                    val allWaypoints = if(selectedWaypoint?.waypoint?.position == Double.POSITIVE_INFINITY) (waypoints + selectedWaypoint.waypoint) else waypoints
+                    val allWaypoints = if(selectedWaypoint?.waypoint?.id == 0L) (waypoints + selectedWaypoint.waypoint) else waypoints
                     for (waypoint in allWaypoints) {
                         val radiusMeters = if(selectedWaypoint?.waypoint == waypoint) selectedWaypoint.range else waypoint.range
                         val coord = if(selectedWaypoint?.waypoint == waypoint) {

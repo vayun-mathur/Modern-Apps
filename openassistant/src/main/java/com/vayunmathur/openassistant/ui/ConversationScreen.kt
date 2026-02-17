@@ -115,7 +115,7 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         ds.setBoolean("isThinking", true)
         delay(500)
         val db = applicationContext.buildDatabase<MessageDatabase>()
-        val viewModel = DatabaseViewModel(Message::class to db.messageDao(), Conversation::class to db.conversationDao())
+        val viewModel = DatabaseViewModel(db,Message::class to db.messageDao(), Conversation::class to db.conversationDao())
         send(viewModel, ds, conversationID, userMessage, uris)
         ds.setBoolean("isThinking", false)
         return Result.success()

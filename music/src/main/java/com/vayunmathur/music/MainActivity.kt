@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<MusicDatabase>()
-        val viewModel = DatabaseViewModel(Music::class to db.musicDao())
+        val viewModel = DatabaseViewModel(db,Music::class to db.musicDao())
         setContent {
             DynamicTheme {
                 LaunchedEffect(Unit) {

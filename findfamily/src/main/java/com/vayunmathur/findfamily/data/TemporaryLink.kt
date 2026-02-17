@@ -22,12 +22,3 @@ data class TemporaryLink(
 
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
 ): DatabaseItem
-
-@Dao
-interface TemporaryLinkDao: TrueDao<TemporaryLink> {
-    @Query("SELECT * FROM TemporaryLink")
-    override fun getAll(): Flow<List<TemporaryLink>>
-
-    @Query("DELETE FROM TemporaryLink")
-    override suspend fun deleteAll()
-}

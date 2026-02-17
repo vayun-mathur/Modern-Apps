@@ -61,7 +61,7 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
     searchEnabled: Boolean = false,
     crossinline searchString: (T) -> String = {it.toString()},
 ) {
-    val dbDataUnfiltered by viewModel.data<T>().collectAsState()
+    val dbDataUnfiltered by viewModel.data<T>().collectAsState(listOf())
     var searchQuery by remember { mutableStateOf("") }
     val dbData by remember { derivedStateOf { dbDataUnfiltered.filter { searchQuery.isBlank() || searchString(it).contains(searchQuery, true) } } }
 
@@ -138,7 +138,7 @@ inline fun <reified T : ReorderableDatabaseItem<T>, Route : NavKey, reified Edit
     searchEnabled: Boolean = false,
     crossinline searchString: (T) -> String = {it.toString()},
 ) {
-    val dbDataUnfiltered by viewModel.data<T>().collectAsState()
+    val dbDataUnfiltered by viewModel.data<T>().collectAsState(listOf())
     var searchQuery by remember { mutableStateOf("") }
     val dbData by remember { derivedStateOf { dbDataUnfiltered.filter { searchQuery.isBlank() || searchString(it).contains(searchQuery, true) } } }
 

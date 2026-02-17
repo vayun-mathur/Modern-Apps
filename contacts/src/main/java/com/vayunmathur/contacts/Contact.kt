@@ -340,7 +340,7 @@ data class Contact(
             if(details.names.isEmpty())
                 details = details.copy(names = listOf(Name(0, "", "", "", "", "")))
 
-            if((details.names.first().firstName.isEmpty() && details.names.first().lastName.isEmpty()) && displayName != null) {
+            if((details.names.first().firstName.isEmpty() && details.names.first().lastName.isEmpty())) {
                 val firstName = displayName.split(" ").first()
                 val lastName = displayName.split(" ").last()
                 if(firstName.isEmpty() && lastName.isEmpty()) return null

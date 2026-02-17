@@ -43,7 +43,7 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
     Scaffold(floatingActionButton = {
         FloatingActionButton({
             if(range.toDoubleOrNull() == null || name.isBlank()) return@FloatingActionButton
-            viewModel.upsert(waypoint.copy(name = name, range = range.toDouble(), coord = coord, position = 0.0))
+            viewModel.upsert(waypoint.copy(name = name, range = range.toDouble(), coord = coord))
             backStack.pop()
         }) {
             IconSave()

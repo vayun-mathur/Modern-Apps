@@ -4,9 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import com.vayunmathur.library.util.AssistantIntent
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.notes.data.Note
-import com.vayunmathur.notes.data.database.NoteDatabase
+import com.vayunmathur.notes.data.NoteDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.json.JsonObject
@@ -17,6 +18,7 @@ class GetIntent: AssistantIntent<Unit, List<Note>>(serializer<Unit>(), serialize
 
     override suspend fun performCalculation(input: Unit): List<Note> {
         val db = buildDatabase<NoteDatabase>()
-        return db.noteDao().getAll().first()
+        val viewModel = DatabaseViewModel(db, Note::class to db.noteDao())
+        return viewModel.getAll()
     }
 }

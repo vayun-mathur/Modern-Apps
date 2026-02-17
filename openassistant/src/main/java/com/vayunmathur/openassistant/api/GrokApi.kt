@@ -13,6 +13,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.readLine
 import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -50,7 +51,7 @@ class GrokApi(private val apiKey: String) {
 
             val channel = response.bodyAsChannel()
             while (!channel.isClosedForRead) {
-                val line = channel.readUTF8Line()
+                val line = channel.readLine()
                 if (line?.startsWith("data: ") == true) {
                     val jsonString = line.substring(6)
                     if (jsonString != "[DONE]") {

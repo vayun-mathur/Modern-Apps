@@ -22,12 +22,3 @@ data class LocationValue(
     val battery: Float,
     @PrimaryKey(autoGenerate = true) override val id: Long = 0
 ): DatabaseItem
-
-@Dao
-interface LocationValueDao: TrueDao<LocationValue> {
-    @Query("SELECT * FROM locationvalue")
-    override fun getAll(): Flow<List<LocationValue>>
-
-    @Query("DELETE FROM locationvalue")
-    override suspend fun deleteAll()
-}

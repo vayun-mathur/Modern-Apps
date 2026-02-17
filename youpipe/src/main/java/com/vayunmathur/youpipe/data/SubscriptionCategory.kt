@@ -25,12 +25,6 @@ data class SubscriptionCategory(
 
 @Dao
 interface SubscriptionCategoryDao: TrueDao<SubscriptionCategory> {
-    @Query("SELECT * FROM SubscriptionCategory")
-    override fun getAll(): Flow<List<SubscriptionCategory>>
-
-    @Query("DELETE FROM SubscriptionCategory")
-    override suspend fun deleteAll()
-
     @Query("DELETE FROM SubscriptionCategory WHERE category = :categoryName")
     suspend fun deleteCategory(categoryName: String)
 

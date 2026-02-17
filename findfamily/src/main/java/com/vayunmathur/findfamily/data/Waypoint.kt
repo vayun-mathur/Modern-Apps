@@ -22,12 +22,3 @@ data class Waypoint(
         val NEW_WAYPOINT = Waypoint("", 100.0, Coord(0.0, 0.0))
     }
 }
-
-@Dao
-interface WaypointDao: TrueDao<Waypoint> {
-    @Query("SELECT * FROM waypoint")
-    override fun getAll(): Flow<List<Waypoint>>
-
-    @Query("DELETE FROM waypoint")
-    override suspend fun deleteAll()
-}

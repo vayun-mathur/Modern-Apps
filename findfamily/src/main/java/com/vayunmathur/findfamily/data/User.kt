@@ -35,12 +35,3 @@ data class User(
         val EMPTY = User(" ", null, "Unnamed Location", true, RequestStatus.MUTUAL_CONNECTION, Clock.System.now(), null)
     }
 }
-
-@Dao
-interface UserDao: TrueDao<User> {
-    @Query("SELECT * FROM user")
-    override fun getAll(): Flow<List<User>>
-
-    @Query("DELETE FROM user")
-    override suspend fun deleteAll()
-}

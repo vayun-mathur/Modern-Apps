@@ -50,6 +50,8 @@ import kotlinx.datetime.atTime
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toInstant
+import java.io.BufferedInputStream
+import java.io.InputStream
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
@@ -205,7 +207,7 @@ fun EventCard(event: Event) {
 }
 
 // Simple ICS parser that returns a list of Event (uses the app's Event class)
-fun parseICSFile(iS: InputS): List<Event> {
+fun parseICSFile(iS: InputStream): List<Event> {
     val events = mutableListOf<Event>()
 
     // Read and unfold lines (lines that start with space or tab are continuations)
@@ -393,7 +395,7 @@ private fun tryParseDurationMillis(duration: String, startMillis: Long): Long? {
 
 // This handles the full yyyyMMdd'T'HHmmssZ pattern
 val BasicIsoInstantFormat = DateTimeComponents.Format {
-    year(); monthNumber(); dayOfMonth()
+    year(); monthNumber(); day()
     char('T')
     hour(); minute(); second()
     // ISO_BASIC handles 'Z' or '+HHmm' (no colons)
@@ -402,18 +404,18 @@ val BasicIsoInstantFormat = DateTimeComponents.Format {
 
 // Format for all-day events: yyyyMMdd
 val AllDayFormat = LocalDate.Format {
-    year(); monthNumber(); dayOfMonth()
+    year(); monthNumber(); day()
 }
 
 // Formats for local times without offset
 val DateTimeFormat = LocalDateTime.Format {
-    year(); monthNumber(); dayOfMonth()
+    year(); monthNumber(); day()
     char('T')
     hour(); minute(); second()
 }
 
 val DateTimeShortFormat = LocalDateTime.Format {
-    year(); monthNumber(); dayOfMonth()
+    year(); monthNumber(); day()
     char('T')
     hour(); minute()
 }

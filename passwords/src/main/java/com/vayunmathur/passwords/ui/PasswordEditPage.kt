@@ -39,6 +39,7 @@ import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.isNew
 import com.vayunmathur.library.util.setLast
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route

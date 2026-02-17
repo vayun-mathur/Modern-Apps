@@ -199,7 +199,7 @@ fun BarChartDetails(
             ) {
                 item {
                     val headerLabel = when (selectedTab) {
-                        0 -> "${anchorDate.month.name} ${anchorDate.dayOfMonth}, ${anchorDate.year}"
+                        0 -> "${anchorDate.month.name} ${anchorDate.day}, ${anchorDate.year}"
                         1 -> "Week of ${anchorDate.minus(anchorDate.dayOfWeek.ordinal, DateTimeUnit.DAY)}"
                         2 -> "${anchorDate.month.name} ${anchorDate.year}"
                         else -> anchorDate.year.toString()
@@ -322,7 +322,7 @@ fun GenericLineChart(
                         val y = height - (value.toFloat() / maxChartValue.toFloat() * height).coerceIn(0f, height)
                         val currentPoint = Offset(x, y)
                         if (lastValidPoint != null) {
-                            drawLine(color = color, start = lastValidPoint!!, end = currentPoint, strokeWidth = 3.dp.toPx())
+                            drawLine(color = color, start = lastValidPoint, end = currentPoint, strokeWidth = 3.dp.toPx())
                         }
                         drawCircle(color = color, radius = 3.dp.toPx(), center = currentPoint)
                         lastValidPoint = currentPoint

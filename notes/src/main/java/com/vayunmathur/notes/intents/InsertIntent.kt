@@ -7,7 +7,7 @@ import com.vayunmathur.library.intents.notes.InsertNoteData
 import com.vayunmathur.library.util.AssistantIntent
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.notes.data.Note
-import com.vayunmathur.notes.data.database.NoteDatabase
+import com.vayunmathur.notes.data.NoteDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.json.JsonObject

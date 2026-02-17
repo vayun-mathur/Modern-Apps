@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<PhotoDatabase>()
-        val viewModel = DatabaseViewModel(Photo::class to db.noteDao())
+        val viewModel = DatabaseViewModel(db, Photo::class to db.photoDao())
         ImageLoader.init(this)
         setContent {
             DynamicTheme {

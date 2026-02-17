@@ -1,16 +1,10 @@
 package com.vayunmathur.youpipe.data
 
-import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.Query
 import com.vayunmathur.library.util.DatabaseItem
-import com.vayunmathur.library.util.TrueDao
-import com.vayunmathur.youpipe.ui.VideoData
 import com.vayunmathur.youpipe.ui.VideoInfo
-import com.vayunmathur.youpipe.videoURLtoID
-import kotlinx.coroutines.flow.Flow
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -24,12 +18,4 @@ data class HistoryVideo(
     companion object {
         fun fromVideoData(videoInfo: VideoInfo, progress: Long) = HistoryVideo(videoInfo.videoID, progress, videoInfo, Clock.System.now())
     }
-}
-
-@Dao
-interface HistoryVideoDao: TrueDao<HistoryVideo> {
-    @Query("SELECT * FROM HistoryVideo")
-    override fun getAll(): Flow<List<HistoryVideo>>
-    @Query("DELETE FROM HistoryVideo")
-    override suspend fun deleteAll()
 }

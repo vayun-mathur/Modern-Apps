@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d8797eb490c4ac6ab35c015b82d611c9",
+    "identityHash": "59f63f3c4bb06096d148596664d488c0",
     "entities": [
       {
         "tableName": "Photo",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `uri` TEXT NOT NULL, `date` INTEGER NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `exifSet` INTEGER NOT NULL, `lat` REAL, `long` REAL, `position` REAL NOT NULL, `duration` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `uri` TEXT NOT NULL, `date` INTEGER NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `exifSet` INTEGER NOT NULL, `lat` REAL, `long` REAL, `duration` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -61,12 +61,6 @@
             "affinity": "REAL"
           },
           {
-            "fieldPath": "position",
-            "columnName": "position",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
             "fieldPath": "videoData.duration",
             "columnName": "duration",
             "affinity": "INTEGER"
@@ -82,7 +76,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd8797eb490c4ac6ab35c015b82d611c9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '59f63f3c4bb06096d148596664d488c0')"
     ]
   }
 }

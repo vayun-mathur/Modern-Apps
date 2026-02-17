@@ -36,7 +36,8 @@ class PhotoGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
 
         val db = context.buildDatabase<PhotoDatabase>()
-        val photos = db.noteDao().getAll().first()
+        val viewModel = DatabaseViewModel(db, Photo::class to db.photoDao())
+        val photos = viewModel.getAll<Photo>()
 
         provideContent {
             var photo by remember(photos) { mutableStateOf(photos.filter{it.videoData == null}.randomOrNull()) }

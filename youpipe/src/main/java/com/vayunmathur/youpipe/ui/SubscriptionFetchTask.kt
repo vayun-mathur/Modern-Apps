@@ -25,12 +25,13 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
         Log.d("SubscriptionFetchTask", "Starting...")
         return try {
             val db = applicationContext.buildDatabase<SubscriptionDatabase>()
-            val viewModel = DatabaseViewModel(
+            val viewModel = DatabaseViewModel(db,
                 Subscription::class to db.subscriptionDao(),
                 SubscriptionVideo::class to db.subscriptionVideoDao()
             )
 
-            val subscriptions = viewModel.getDaoInterface<Subscription>().dao.getAll().first()
+
+            val subscriptions = viewModel.getAll<Subscription>()
             Log.d("SubscriptionFetchTask", "Fetched ${subscriptions.size} subscriptions")
 
             val videoIDs = getChannelVideos(subscriptions.map { it.toChannelInfo() })

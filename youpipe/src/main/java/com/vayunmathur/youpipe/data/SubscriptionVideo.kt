@@ -1,15 +1,10 @@
 package com.vayunmathur.youpipe.data
 
 import androidx.room.ColumnInfo
-import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.Query
 import com.vayunmathur.library.util.DatabaseItem
-import com.vayunmathur.library.util.TrueDao
-import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
@@ -28,11 +23,3 @@ data class SubscriptionVideo(
     @ColumnInfo(index = true)
     val channelID: Long
 ): DatabaseItem
-
-@Dao
-interface SubscriptionVideoDao: TrueDao<SubscriptionVideo> {
-    @Query("SELECT * FROM SubscriptionVideo ORDER BY position")
-    override fun getAll(): Flow<List<SubscriptionVideo>>
-    @Query("DELETE FROM SubscriptionVideo")
-    override suspend fun deleteAll()
-}
