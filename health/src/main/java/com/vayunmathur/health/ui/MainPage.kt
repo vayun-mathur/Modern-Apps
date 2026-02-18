@@ -1,6 +1,5 @@
 package com.vayunmathur.health.ui
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,13 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.aggregate.AggregationResult
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
-import androidx.health.connect.client.records.*
+import androidx.health.connect.client.records.NutritionRecord
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.database.RecordType
-import com.vayunmathur.health.fhir.Patient
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.Dispatchers
@@ -57,8 +55,6 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
-import kotlin.time.Instant
-import kotlin.time.toKotlinDuration
 
 val JSON = kotlinx.serialization.json.Json {
     prettyPrint = true

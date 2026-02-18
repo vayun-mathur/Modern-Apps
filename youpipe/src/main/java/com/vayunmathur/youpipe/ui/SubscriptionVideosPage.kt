@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -17,7 +16,6 @@ import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory
 import com.vayunmathur.youpipe.data.SubscriptionVideo
-import com.vayunmathur.youpipe.videoURLtoID
 
 @Composable
 fun SubscriptionVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, category: String?) {

@@ -3,16 +3,14 @@ package com.vayunmathur.music
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.vayunmathur.music.database.Music
-import androidx.core.net.toUri
 
 class PlaybackManager private constructor(context: Context) {
 

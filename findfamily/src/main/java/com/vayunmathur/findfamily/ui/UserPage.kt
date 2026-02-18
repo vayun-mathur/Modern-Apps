@@ -43,14 +43,12 @@ import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.pop
-import com.vayunmathur.library.util.popThen
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -64,7 +62,7 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
-    val selectedUser by viewModel.get<User>(userId) {User.EMPTY}
+    val selectedUser by viewModel.get<User>(userId)
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
         locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }

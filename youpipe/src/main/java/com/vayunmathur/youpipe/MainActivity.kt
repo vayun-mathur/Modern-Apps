@@ -5,7 +5,6 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.PictureInPictureModeChangedInfo
 import androidx.core.util.Consumer
 import androidx.navigation3.runtime.NavKey
-import androidx.room.AutoMigration
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.DatabaseViewModel

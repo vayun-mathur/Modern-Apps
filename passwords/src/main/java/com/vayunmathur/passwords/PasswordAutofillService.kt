@@ -19,7 +19,6 @@ import androidx.core.net.toUri
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.passwords.data.PasswordDatabase
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 class PasswordAutofillService : AutofillService() {

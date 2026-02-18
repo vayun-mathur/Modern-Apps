@@ -12,7 +12,6 @@ import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.getChannelVideos
 import com.vayunmathur.youpipe.getVideoDetails
-import kotlinx.coroutines.flow.first
 import kotlin.time.Duration.Companion.minutes
 
 /**

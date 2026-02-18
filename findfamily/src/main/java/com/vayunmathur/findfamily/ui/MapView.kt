@@ -1,6 +1,5 @@
 package com.vayunmathur.findfamily.ui
 
-import android.net.Network
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +31,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -51,27 +49,22 @@ import com.vayunmathur.findfamily.data.radians
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.library.util.reset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraState
-import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.util.ClickResult
-import org.maplibre.compose.util.VisibleRegion
 import org.maplibre.spatialk.geojson.Position
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
 
 val camera = CameraState(CameraPosition())
 

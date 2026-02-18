@@ -10,16 +10,12 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.location.Address
 import android.location.Geocoder
-import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.BatteryManager
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.vayunmathur.findfamily.data.Coord
@@ -38,7 +34,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale

@@ -11,33 +11,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Delete
 import androidx.room.InvalidationTracker
-import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.RoomRawQuery
-import androidx.room.Transaction
 import androidx.room.TypeConverter
 import androidx.room.Upsert
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import kotlin.reflect.KClass
 import kotlin.time.Instant
 
@@ -76,14 +70,14 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
 
     @Composable
     inline fun <reified E: DatabaseItem> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
-        val data by data<E>().collectAsState(listOf())
+        val data by data<E>().collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id } ?: default())!! } }
         return derived
     }
 
     @Composable
     inline fun <reified E: DatabaseItem> getNullable(id: Long): State<E?> {
-        val data by data<E>().collectAsState(listOf())
+        val data by data<E>().collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id }) } }
         return derived
     }
@@ -149,27 +143,26 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
 
     @Suppress("UNCHECKED_CAST")
     inline fun <reified E : DatabaseItem> data(): StateFlow<List<E>> {
-        return dataStateCache.getOrPut(E::class) {
-            val tableName = E::class.simpleName!!
+        return runBlocking {
+            dataStateCache.getOrPut(E::class) {
+                val tableName = E::class.simpleName!!
 
-            callbackFlow<List<E>> {
-                // 1. Create an observer for the specific table name
-                val observer = object : InvalidationTracker.Observer(tableName) {
-                    override fun onInvalidated(tables: Set<String>) {
-                        // When the table changes, re-fetch the data
-                        launch { send(getAll<E>()) }
+                callbackFlow<List<E>> {
+                    // 1. Create an observer for the specific table name
+                    val observer = object : InvalidationTracker.Observer(tableName) {
+                        override fun onInvalidated(tables: Set<String>) {
+                            // When the table changes, re-fetch the data
+                            launch { send(getAll<E>()) }
+                        }
                     }
-                }
 
-                database.invalidationTracker.addObserver(observer)
+                    database.invalidationTracker.addObserver(observer)
 
-                // 2. Perform the initial fetch
-                send(getAll<E>())
-
-                // 3. Clean up the observer when the UI stops listening
-                awaitClose { database.invalidationTracker.removeObserver(observer) }
-            }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-        } as StateFlow<List<E>>
+                    // 3. Clean up the observer when the UI stops listening
+                    awaitClose { database.invalidationTracker.removeObserver(observer) }
+                }.stateIn(viewModelScope, SharingStarted.Eagerly, getAll())
+            } as StateFlow<List<E>>
+        }
     }
 
     suspend inline fun <reified E : DatabaseItem> getAll(): List<E> {

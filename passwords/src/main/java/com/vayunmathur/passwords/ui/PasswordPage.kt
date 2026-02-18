@@ -63,8 +63,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseViewModel) {
-    val password by viewModel.get<Password>(id){Password()}
-    if(password == Password()) return
+    val password by viewModel.get<Password>(id)
     val context = LocalContext.current
     var showPassword by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }

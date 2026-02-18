@@ -19,9 +19,16 @@ import org.maplibre.compose.expressions.value.LineCap
 import org.maplibre.compose.expressions.value.StringValue
 import org.maplibre.compose.layers.FillLayer
 import org.maplibre.compose.layers.LineLayer
-import org.maplibre.compose.sources.*
+import org.maplibre.compose.sources.GeoJsonData
+import org.maplibre.compose.sources.GeoJsonOptions
+import org.maplibre.compose.sources.GeoJsonSource
 import org.maplibre.compose.util.MaplibreComposable
-import org.maplibre.spatialk.geojson.*
+import org.maplibre.spatialk.geojson.Feature
+import org.maplibre.spatialk.geojson.FeatureCollection
+import org.maplibre.spatialk.geojson.LineString
+import org.maplibre.spatialk.geojson.MultiPolygon
+import org.maplibre.spatialk.geojson.Polygon
+import org.maplibre.spatialk.geojson.Position
 
 private lateinit var outlineSource: GeoJsonSource
 private lateinit var routeSource: GeoJsonSource

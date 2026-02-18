@@ -31,7 +31,6 @@ import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
 import com.vayunmathur.crypto.MaximizedRow
 import com.vayunmathur.crypto.PortfolioViewModel
-import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.SendPage
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository

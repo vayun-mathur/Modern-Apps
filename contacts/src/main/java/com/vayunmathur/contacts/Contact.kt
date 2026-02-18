@@ -2,7 +2,6 @@ package com.vayunmathur.contacts
 
 import android.content.ContentProviderOperation
 import android.content.ContentUris
-import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri

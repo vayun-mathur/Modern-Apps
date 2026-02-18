@@ -1,7 +1,5 @@
 package com.vayunmathur.findfamily.ui.dialog
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,23 +25,14 @@ import androidx.navigation3.runtime.NavBackStack
 import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
-import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TemporaryLink
-import com.vayunmathur.findfamily.data.User
-import com.vayunmathur.library.ui.IconCopy
-import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.pop
 import dev.whyoleg.cryptography.algorithms.RSA
-import io.ktor.util.encodeBase64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.io.encoding.Base64
-import kotlin.math.pow
-import kotlin.random.Random
-import kotlin.random.nextULong
-import kotlin.text.encodeToByteArray
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours

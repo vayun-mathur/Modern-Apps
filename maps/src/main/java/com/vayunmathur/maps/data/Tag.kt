@@ -5,7 +5,6 @@ import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
-import androidx.room.Fts4
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.PrimaryKey
@@ -14,11 +13,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.SkipQueryVerification
 import androidx.sqlite.db.SupportSQLiteDatabase
-import androidx.sqlite.db.SupportSQLiteOpenHelper
-import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
-import co.anbora.labs.spatia.builder.SpatiaRoom
 import java.io.File
-import kotlin.math.*
 
 @Entity
 data class AmenityTag(

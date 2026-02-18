@@ -40,8 +40,6 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
-import com.vayunmathur.youpipe.data.SubscriptionVideo
-import com.vayunmathur.youpipe.data.SubscriptionVideoDao
 import com.vayunmathur.youpipe.getChannelDataAndIds
 import com.vayunmathur.youpipe.getVideoDetails
 import kotlinx.coroutines.Dispatchers

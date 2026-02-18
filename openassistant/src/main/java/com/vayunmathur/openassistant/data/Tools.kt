@@ -7,8 +7,6 @@ import android.content.pm.PackageManager
 import androidx.core.net.toUri
 import androidx.core.text.util.LocalePreferences
 import com.vayunmathur.library.intents.notes.InsertNoteData
-import com.vayunmathur.library.util.findActivity
-import com.vayunmathur.openassistant.MainActivity
 import com.vayunmathur.openassistant.intentLauncher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO

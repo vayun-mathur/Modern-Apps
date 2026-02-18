@@ -24,7 +24,6 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
-import coil.size.Precision
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.photos.data.Photo
 

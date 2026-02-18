@@ -1,22 +1,13 @@
 package com.vayunmathur.music
 
-import android.content.ComponentName
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
 import androidx.navigation3.runtime.NavKey
-import com.google.common.util.concurrent.MoreExecutors
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.MainNavigation

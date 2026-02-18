@@ -17,17 +17,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavBackStack
+import coil.compose.AsyncImage
+import com.vayunmathur.library.ui.ListPage
+import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.Route
 import com.vayunmathur.music.database.Music
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.vayunmathur.library.ui.ListPage
-import com.vayunmathur.library.util.DatabaseViewModel
 
 fun getThumbnail(context: Context, uri: Uri): Bitmap? {
     return try {

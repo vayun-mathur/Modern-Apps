@@ -14,7 +14,6 @@ import com.vayunmathur.crypto.token.JupiterLendRepository
 import com.vayunmathur.crypto.token.Token
 import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
-import io.ktor.util.encodeBase64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
