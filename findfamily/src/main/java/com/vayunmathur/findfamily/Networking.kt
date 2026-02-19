@@ -1,6 +1,7 @@
 package com.vayunmathur.findfamily
 
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.LocationValueCompatible
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.library.util.DataStoreUtils
@@ -114,16 +115,16 @@ object Networking {
     }
 
     suspend fun ensureUserExists() {
-        if(getKey(userid.toULong()) == null) {
+        if(getKey(userid) == null) {
             register()
         }
     }
 
-    private suspend fun getKey(userid: ULong): RSA.OAEP.PublicKey? {
+    private suspend fun getKey(userid: Long): RSA.OAEP.PublicKey? {
         return checkNetworkDown {
             val response = client.post("${getUrl()}/api/getkey") {
                 contentType(ContentType.Application.Json)
-                setBody("{\"userid\": $userid}")
+                setBody("{\"userid\": ${userid.toULong()}}")
             }
             if(response.status != HttpStatusCode.OK) {
                 return@checkNetworkDown null
@@ -140,19 +141,19 @@ object Networking {
                 Base64.decode(user.encryptionKey)
             )
         } else {
-            getKey(user.id.toULong())?.also {
+            getKey(user.id)?.also {
                 val keyString = Base64.encode(it.encodeToByteArray(RSA.PublicKey.Format.PEM))
                 viewModel.upsert(user.copy(encryptionKey = keyString))
             }
         } ?: return false
-        return makeRequest("/api/location/publish", encryptLocation(location, user.id.toULong(), key)) ?: false
+        return makeRequest("/api/location/publish", encryptLocation(location, user.id, key)) ?: false
     }
 
     suspend fun publishLocation(location: LocationValue, user: TemporaryLink): Boolean {
         val key = crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM,
             Base64.decode(user.publicKey)
         )
-        return makeRequest("/api/location/publish", encryptLocation(location, user.id.toULong(), key)) ?: false
+        return makeRequest("/api/location/publish", encryptLocation(location, user.id, key)) ?: false
     }
 
     suspend fun receiveLocations(): List<LocationValue>? {
@@ -160,17 +161,17 @@ object Networking {
         return strings.map { decryptLocation(it) }
     }
 
-    private suspend fun encryptLocation(location: LocationValue, recipientUserID: ULong, key: RSA.OAEP.PublicKey): LocationSharingData {
+    private suspend fun encryptLocation(location: LocationValue, recipientUserID: Long, key: RSA.OAEP.PublicKey): LocationSharingData {
         val cipher = key.encryptor()
-        val str = Json.encodeToString(location)
+        val str = Json.encodeToString(location.toCompatible())
         val encryptedData = Base64.encode(cipher.encrypt(str.encodeToByteArray()))
-        return LocationSharingData(recipientUserID, encryptedData)
+        return LocationSharingData(recipientUserID.toULong(), encryptedData)
     }
 
     private suspend fun decryptLocation(encryptedLocation: String): LocationValue {
         val cipher = privatekey!!.decryptor()
         val decryptedData = cipher.decrypt(Base64.decode(encryptedLocation)).decodeToString()
-        return Json.decodeFromString(decryptedData)
+        return Json.decodeFromString<LocationValueCompatible>(decryptedData).toLocationValue()
     }
 
     suspend fun generateKeyPair(): RSA.OAEP.KeyPair {
