@@ -70,8 +70,9 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
-      # 3. COMMIT, TAG & PUSH
-      # Commits the "stamped" build files so the tag contains the hardcoded versions
+      # 3. COMMIT, TAG & PUSH (TAG ONLY)
+      # Creates a commit with the stamped files but DOES NOT push it to main.
+      # The commit only lives under the Tag name.
       - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
@@ -81,9 +82,10 @@ jobs:
           TAG_NAME="v${{ steps.version_info.outputs.version_name }}"
           git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
           
-          # Tag the specific commit with the updated build files
+          # Tag the specific local commit
           git tag -f "$TAG_NAME"
-          git push origin main
+          
+          # Push ONLY the tag to the remote repository
           git push origin "$TAG_NAME" --force
 
       # 4. DETECTION
