@@ -28,6 +28,15 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Clean settings.gradle.kts
+        run: |
+          if [ -f "settings.gradle.kts" ]; then
+            echo "Removing local includeBuild from settings.gradle.kts for CI..."
+            # Deletes the block from the includeBuild line until the closing brace
+            # This handles the multiline dependencySubstitution block specifically
+            sed -i '/includeBuild("\.\.\/NewPipeExtractor")/,/^}/d' settings.gradle.kts
+          fi
+
       - name: Decode Keystore
         run: echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > ${{ env.ks_filename }}
 
