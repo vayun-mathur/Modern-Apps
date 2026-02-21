@@ -63,13 +63,10 @@ jobs:
           echo "Using Version Code: $VERSION_CODE"
           
           # 2. INJECT variables into the defaultConfig block of MODULES only
-          # -mindepth 2 ensures we skip the root build.gradle.kts
           find . -mindepth 2 -name "build.gradle.kts" | while read file; do
             echo "Processing module file: $file..."
-            # Remove any existing assignments
             sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
             sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
-            # Inject right after defaultConfig {
             sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
           done
 
@@ -89,13 +86,16 @@ jobs:
           git tag -f "$TAG_NAME"
           git push origin "$TAG_NAME" --force
 
-      # 4. DETECTION (Excluding :youpipe)
+      # 4. DETECTION (Handling Nested Modules)
       - name: Detect App Modules
         run: |
-          # Detect modules, then filter out 'youpipe' and the root directory '.'
-          MODULES=$(grep -rl "versionCode" . --include="build.gradle.kts" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$|youpipe" | sort -u | tr '\n' ' ')
-          echo "Detected modules: $MODULES"
-          echo "modules=$MODULES" >> $GITHUB_ENV
+          # Finds directories relative to root (e.g. 'app' or 'games/chess')
+          # 1. Find all build.gradle.kts with versionCode
+          # 2. Exclude root and youpipe
+          # 3. Strip leading './' and trailing '/build.gradle.kts'
+          MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | grep -vE "^\./build.gradle.kts$|youpipe" | sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
+          echo "Detected module directories: $MODULE_DIRS"
+          echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
 
       - name: Download Bundletool
         run: |
@@ -106,20 +106,28 @@ jobs:
       - name: Build and Sign
         run: |
           mkdir -p distribution_apks
-          for module in ${{ env.modules }}; do
-            echo "Building: $module"
-            ./gradlew :$module:bundleRelease
+          for dir in ${{ env.module_dirs }}; do
+            # Convert directory path to Gradle colon path (e.g. games/chess -> :games:chess)
+            gradle_path=$(echo $dir | sed 's|/|:|g')
+            # Extract the leaf name (e.g. games/chess -> chess)
+            module_name=$(basename $dir)
+          
+            echo "--------------------------------------------"
+            echo "Building: $gradle_path (Dir: $dir, Name: $module_name)"
+            echo "--------------------------------------------"
+          
+            ./gradlew :$gradle_path:bundleRelease
           
             java -jar ".github/lib/bundletool.jar" build-apks \
-              --bundle=$module/build/outputs/bundle/release/$module-release.aab \
-              --output=$module/build/outputs/bundle/release/$module.apks \
+              --bundle=$dir/build/outputs/bundle/release/$module_name-release.aab \
+              --output=$dir/build/outputs/bundle/release/$module_name.apks \
               --mode=universal \
               --ks="${{ env.ks_filename }}" \
               --ks-pass=pass:${{ env.ks_store_pass }} \
               --ks-key-alias=${{ env.ks_alias }} \
               --key-pass=pass:${{ env.ks_alias_pass }}
           
-            unzip -p $module/build/outputs/bundle/release/$module.apks universal.apk > distribution_apks/$module-release.apk
+            unzip -p $dir/build/outputs/bundle/release/$module_name.apks universal.apk > distribution_apks/$module_name-release.apk
           done
 
       # 6. CREATE RELEASE
