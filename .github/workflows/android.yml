@@ -114,7 +114,10 @@ jobs:
             echo "Building: $gradle_path"
             echo "--------------------------------------------"
           
-            ./gradlew :$gradle_path:bundleRelease
+            # Explicitly passing optimization flags to the build command
+            ./gradlew :$gradle_path:bundleRelease \
+              -Pandroid.enableResourceOptimizations=true \
+              -Pandroid.enableR8.fullMode=true
           
             java -jar ".github/lib/bundletool.jar" build-apks \
               --bundle=$dir/build/outputs/bundle/release/$module_name-release.aab \
