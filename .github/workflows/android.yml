@@ -55,7 +55,6 @@ jobs:
           # 2. INJECT variables into the defaultConfig block
           # This finds the line containing 'defaultConfig {' and appends the hardcoded 
           # version assignments immediately after it. 
-          # It also handles overwriting versionCode/versionName lines if they existed.
           find . -name "build.gradle.kts" | while read file; do
             echo "Processing $file..."
           
@@ -64,7 +63,6 @@ jobs:
             sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
           
             # Now, inject the new hardcoded values right after 'defaultConfig {'
-            # \a matches the line after the pattern
             sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
           done
 
@@ -73,6 +71,7 @@ jobs:
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       # 3. COMMIT, TAG & PUSH
+      # Commits the "stamped" build files so the tag contains the hardcoded versions
       - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
@@ -82,8 +81,9 @@ jobs:
           TAG_NAME="v${{ steps.version_info.outputs.version_name }}"
           git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
           
+          # Tag the specific commit with the updated build files
           git tag -f "$TAG_NAME"
-          git push origin HEAD
+          git push origin main
           git push origin "$TAG_NAME" --force
 
       # 4. DETECTION
@@ -126,7 +126,7 @@ jobs:
           tag_name: "v${{ steps.version_info.outputs.version_name }}"
           name: "Release ${{ steps.version_info.outputs.version_name }}"
           body: |
-            Automated release from version.txt.
+            Automated manual release.
             Version Name: ${{ steps.version_info.outputs.version_name }}
             Version Code: ${{ steps.version_info.outputs.version_code }}
           files: distribution_apks/*.apk
