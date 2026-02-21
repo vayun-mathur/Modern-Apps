@@ -59,6 +59,9 @@ subprojects {
             buildTypes {
                 release {
                     signingConfig = signingConfigs.getByName("debug")
+                    proguardFiles(
+                        getDefaultProguardFile("proguard-android-optimize.txt")
+                    )
                 }
                 getByName("debug") {
                     applicationIdSuffix = ".debug"

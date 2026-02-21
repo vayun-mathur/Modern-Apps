@@ -28,14 +28,18 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Clean settings.gradle.kts
+      - name: Clean Project Files
         run: |
+          # 1. Clean settings.gradle.kts
           if [ -f "settings.gradle.kts" ]; then
-            echo "Removing local includeBuild from settings.gradle.kts for CI..."
-            # More robust sed to delete the multiline block starting with includeBuild and ending at the next top-level '}'
+            echo "Removing local includeBuild from settings.gradle.kts..."
             sed -i '/includeBuild.*NewPipeExtractor/,/^}/d' settings.gradle.kts
-            echo "Resulting settings.gradle.kts:"
-            cat settings.gradle.kts
+          fi
+
+          # 2. Clean root build.gradle.kts
+          if [ -f "build.gradle.kts" ]; then
+            echo "Removing debug signingConfig from root build.gradle.kts..."
+            sed -i '/signingConfig = signingConfigs.getByName("debug")/d' build.gradle.kts
           fi
 
       - name: Decode Keystore
@@ -55,14 +59,13 @@ jobs:
             exit 1
           fi
 
-          # Read values and strictly strip ALL whitespace and carriage returns
           VERSION_CODE=$(sed -n '1p' "$VERSION_FILE" | tr -d '\r' | xargs)
           VERSION_NAME=$(sed -n '2p' "$VERSION_FILE" | tr -d '\r' | xargs)
 
           echo "Using Version Name: $VERSION_NAME"
           echo "Using Version Code: $VERSION_CODE"
           
-          # 2. INJECT variables into the defaultConfig block of MODULES only
+          # Inject variables into module files
           find . -mindepth 2 -name "build.gradle.kts" | while read file; do
             echo "Processing module file: $file..."
             sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
@@ -73,7 +76,7 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
-      # 3. COMMIT, TAG & PUSH (TAG ONLY)
+      # 2. COMMIT, TAG & PUSH (TAG ONLY)
       - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
@@ -86,15 +89,12 @@ jobs:
           git tag -f "$TAG_NAME"
           git push origin "$TAG_NAME" --force
 
-      # 4. DETECTION (Handling Nested Modules)
+      # 3. DETECTION (Restricted to Calendar only)
       - name: Detect App Modules
         run: |
-          # Finds directories relative to root (e.g. 'app' or 'games/chess')
-          # 1. Find all build.gradle.kts with versionCode
-          # 2. Exclude root and youpipe
-          # 3. Strip leading './' and trailing '/build.gradle.kts'
-          MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | grep -vE "^\./build.gradle.kts$|youpipe" | sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
-          echo "Detected module directories: $MODULE_DIRS"
+          # Explicitly set to only build the calendar module as requested
+          MODULE_DIRS="calendar"
+          echo "Targeting module: $MODULE_DIRS"
           echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
 
       - name: Download Bundletool
@@ -102,18 +102,16 @@ jobs:
           mkdir -p .github/lib
           curl -L https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar -o .github/lib/bundletool.jar
 
-      # 5. BUILD & SIGN
+      # 4. BUILD & SIGN
       - name: Build and Sign
         run: |
           mkdir -p distribution_apks
           for dir in ${{ env.module_dirs }}; do
-            # Convert directory path to Gradle colon path (e.g. games/chess -> :games:chess)
             gradle_path=$(echo $dir | sed 's|/|:|g')
-            # Extract the leaf name (e.g. games/chess -> chess)
             module_name=$(basename $dir)
           
             echo "--------------------------------------------"
-            echo "Building: $gradle_path (Dir: $dir, Name: $module_name)"
+            echo "Building: $gradle_path"
             echo "--------------------------------------------"
           
             ./gradlew :$gradle_path:bundleRelease
@@ -130,14 +128,14 @@ jobs:
             unzip -p $dir/build/outputs/bundle/release/$module_name.apks universal.apk > distribution_apks/$module_name-release.apk
           done
 
-      # 6. CREATE RELEASE
+      # 5. CREATE RELEASE
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ steps.version_info.outputs.version_name }}"
           name: "Release ${{ steps.version_info.outputs.version_name }}"
           body: |
-            Automated manual release.
+            Automated manual release for Calendar.
             Version Name: ${{ steps.version_info.outputs.version_name }}
             Version Code: ${{ steps.version_info.outputs.version_code }}
           files: distribution_apks/*.apk
