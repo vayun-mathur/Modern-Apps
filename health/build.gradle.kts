@@ -6,8 +6,6 @@ plugins {
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.health"
-        versionCode = 22
-        versionName = "v2.0.0"
     }
 }
 

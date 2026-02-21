@@ -7,6 +7,21 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
+fun readVersionInfo(): Pair<Int, String> {
+    val versionFile = File(projectDir, "version.txt")
+
+    return if (versionFile.exists()) {
+        val lines = versionFile.readLines()
+        if (lines.size >= 2) {
+            val code = lines[0].trim().toIntOrNull() ?: 1
+            val name = lines[1].trim()
+            code to name
+        } else throw IllegalStateException("Invalid version.txt format")
+    } else throw IllegalStateException("version.txt not found")
+}
+
+val (appVersionCode, appVersionName) = readVersionInfo()
+
 subprojects {
     if(name == "app") return@subprojects
 
@@ -35,6 +50,8 @@ subprojects {
 
             defaultConfig {
                 minSdk = 31
+                versionCode = appVersionCode
+                versionName = appVersionName
 
                 //testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             }

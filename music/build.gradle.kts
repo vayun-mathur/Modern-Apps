@@ -1,8 +1,6 @@
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.music"
-        versionCode = 1
-        versionName = "1.0"
     }
 }
 

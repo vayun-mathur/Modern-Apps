@@ -5,8 +5,6 @@ plugins {
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.notes"
-        versionCode = 22
-        versionName = "v2.0.0"
     }
 }
 

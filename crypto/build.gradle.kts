@@ -1,8 +1,6 @@
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.crypto"
-        versionCode = 23
-        versionName = "v2.0.0"
     }
 }
 

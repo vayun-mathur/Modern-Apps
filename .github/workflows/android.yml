@@ -2,11 +2,6 @@ name: "🚀 Auto-Increment & Release"
 
 on:
   workflow_dispatch:
-    inputs:
-      version_name:
-        description: 'New Version Name (e.g. v2.0)'
-        required: true
-        default: 'v1.0'
 
 env:
   ks_filename: release_keystore.jks
@@ -39,43 +34,63 @@ jobs:
       - name: Change Gradle Wrapper Permissions
         run: chmod +x ./gradlew
 
-      # 1. BUMP VERSION NAME & CODE
-      - name: Bump Version Name and Code
+      # 1. READ version.txt AND INJECT into build.gradle.kts
+      - name: Read and Inject Version
+        id: version_info
         run: |
-          NEW_NAME="${{ github.event.inputs.version_name }}"
-          echo "Updating to Version Name: $NEW_NAME"
+          VERSION_FILE="version.txt"
           
-          # Find all build.gradle files
-          find . -name "build.gradle*" | while read file; do
-            # Update versionName
-            sed -i "s/versionName\([[:space:]]*=[[:space:]]*\|[[:space:]]*\)\"[^\"]*\"/versionName\1\"$NEW_NAME\"/g" "$file"
+          if [ ! -f "$VERSION_FILE" ]; then
+            echo "Error: $VERSION_FILE not found! Please create it with version code on line 1 and name on line 2."
+            exit 1
+          fi
+
+          # Read values exactly as they are in the file
+          VERSION_CODE=$(sed -n '1p' "$VERSION_FILE" | tr -d '\r' | xargs)
+          VERSION_NAME=$(sed -n '2p' "$VERSION_FILE" | tr -d '\r' | xargs)
+
+          echo "Using Version Name: $VERSION_NAME"
+          echo "Using Version Code: $VERSION_CODE"
           
-            # Find current versionCode, increment it, and replace it
-            CURRENT_CODE=$(grep -E "versionCode\s*(=?)\s*[0-9]+" "$file" | sed 's/[^0-9]*//g' | head -1)
-            if [ ! -z "$CURRENT_CODE" ]; then
-              NEXT_CODE=$((CURRENT_CODE + 1))
-              echo "Bumping $file: Code $CURRENT_CODE -> $NEXT_CODE"
-              sed -i "s/versionCode\([[:space:]]*=[[:space:]]*\|[[:space:]]*\)$CURRENT_CODE/versionCode\1$NEXT_CODE/g" "$file"
-            fi
+          # 2. INJECT variables into the defaultConfig block
+          # This finds the line containing 'defaultConfig {' and appends the hardcoded 
+          # version assignments immediately after it. 
+          # It also handles overwriting versionCode/versionName lines if they existed.
+          find . -name "build.gradle.kts" | while read file; do
+            echo "Processing $file..."
+          
+            # First, remove any existing versionCode or versionName lines to avoid duplicates
+            sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
+            sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
+          
+            # Now, inject the new hardcoded values right after 'defaultConfig {'
+            # \a matches the line after the pattern
+            sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
           done
 
-      # 2. COMMIT CHANGES
-      - name: Commit & Push Changes
+          # Export for later steps
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      # 3. COMMIT, TAG & PUSH
+      - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "chore: bump version to ${{ github.event.inputs.version_name }}" || echo "No changes to commit"
-          git push
+          
+          TAG_NAME="v${{ steps.version_info.outputs.version_name }}"
+          git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
+          
+          git tag -f "$TAG_NAME"
+          git push origin HEAD
+          git push origin "$TAG_NAME" --force
 
-      # 3. IMPROVED DETECTION: Search for modules with 'versionCode'
+      # 4. DETECTION
       - name: Detect App Modules
         run: |
-          # Finds directories containing build.gradle files that have a 'versionCode' entry
-          # 1. Search for 'versionCode' in build.gradle files
-          # 2. Extract the directory name (the module name)
-          # 3. Filter out '.' (root) and duplicates
-          MODULES=$(grep -rl "versionCode" . --include="build.gradle*" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$" | sort -u | tr '\n' ' ')
+          # Detect modules by searching for the versionCode we just injected
+          MODULES=$(grep -rl "versionCode" . --include="build.gradle.kts" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$" | sort -u | tr '\n' ' ')
           echo "Detected modules: $MODULES"
           echo "modules=$MODULES" >> $GITHUB_ENV
 
@@ -84,15 +99,12 @@ jobs:
           mkdir -p .github/lib
           curl -L https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar -o .github/lib/bundletool.jar
 
-      # 4. BUILD & SIGN
+      # 5. BUILD & SIGN
       - name: Build and Sign
         run: |
           mkdir -p distribution_apks
           for module in ${{ env.modules }}; do
-            echo "--------------------------------------------"
             echo "Building: $module"
-            echo "--------------------------------------------"
-          
             ./gradlew :$module:bundleRelease
           
             java -jar ".github/lib/bundletool.jar" build-apks \
@@ -107,13 +119,16 @@ jobs:
             unzip -p $module/build/outputs/bundle/release/$module.apks universal.apk > distribution_apks/$module-release.apk
           done
 
-      # 5. CREATE RELEASE & TAG
+      # 6. CREATE RELEASE
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version_name }}
-          name: "Release ${{ github.event.inputs.version_name }}"
-          body: "Automated release for version ${{ github.event.inputs.version_name }}. VersionCode has been auto-incremented."
+          tag_name: "v${{ steps.version_info.outputs.version_name }}"
+          name: "Release ${{ steps.version_info.outputs.version_name }}"
+          body: |
+            Automated release from version.txt.
+            Version Name: ${{ steps.version_info.outputs.version_name }}
+            Version Code: ${{ steps.version_info.outputs.version_code }}
           files: distribution_apks/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

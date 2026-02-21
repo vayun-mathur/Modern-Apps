@@ -1,8 +1,6 @@
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.findfamily"
-        versionCode = 1
-        versionName = "1.0"
     }
 }
 

@@ -1,8 +1,6 @@
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.games.wordmaker"
-        versionCode = 5
-        versionName = "1.4"
     }
 }
 

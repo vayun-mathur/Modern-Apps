@@ -5,8 +5,6 @@ plugins {
 android {
     defaultConfig {
         applicationId = "com.vayunmathur.maps"
-        versionCode = 1
-        versionName = "1.0"
     }
 }
 
