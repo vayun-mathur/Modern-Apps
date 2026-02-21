@@ -30,13 +30,11 @@ jobs:
 
       - name: Clean Project Files
         run: |
-          # 1. Clean settings.gradle.kts
           if [ -f "settings.gradle.kts" ]; then
             echo "Removing local includeBuild from settings.gradle.kts..."
             sed -i '/includeBuild.*NewPipeExtractor/,/^}/d' settings.gradle.kts
           fi
 
-          # 2. Clean root build.gradle.kts
           if [ -f "build.gradle.kts" ]; then
             echo "Removing debug signingConfig from root build.gradle.kts..."
             sed -i '/signingConfig = signingConfigs.getByName("debug")/d' build.gradle.kts
@@ -48,12 +46,10 @@ jobs:
       - name: Change Gradle Wrapper Permissions
         run: chmod +x ./gradlew
 
-      # 1. READ version.txt AND INJECT into build.gradle.kts
       - name: Read and Inject Version
         id: version_info
         run: |
           VERSION_FILE="version.txt"
-          
           if [ ! -f "$VERSION_FILE" ]; then
             echo "Error: $VERSION_FILE not found!"
             exit 1
@@ -65,9 +61,7 @@ jobs:
           echo "Using Version Name: $VERSION_NAME"
           echo "Using Version Code: $VERSION_CODE"
           
-          # Inject variables into module files
           find . -mindepth 2 -name "build.gradle.kts" | while read file; do
-            echo "Processing module file: $file..."
             sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
             sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
             sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
@@ -76,36 +70,28 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
-      # 2. COMMIT, TAG & PUSH (TAG ONLY)
       - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          
           TAG_NAME="${{ steps.version_info.outputs.version_name }}"
           git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
-          
           git tag -f "$TAG_NAME"
           git push origin "$TAG_NAME" --force
 
-      # 3. DETECTION (Restricted to Calendar only)
       - name: Detect App Modules
         run: |
-          # Explicitly set to only build the calendar module as requested
           MODULE_DIRS="calendar"
-          echo "Targeting module: $MODULE_DIRS"
           echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
 
-      - name: Download Bundletool
-        run: |
-          mkdir -p .github/lib
-          curl -L https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar -o .github/lib/bundletool.jar
-
-      # 4. BUILD & SIGN
-      - name: Build and Sign
+      - name: Build and Manual Sign
         run: |
           mkdir -p distribution_apks
+          # Find the apksigner path (usually in build-tools)
+          APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -r | head -n 1)
+          echo "Using apksigner at: $APKSIGNER"
+
           for dir in ${{ env.module_dirs }}; do
             gradle_path=$(echo $dir | sed 's|/|:|g')
             module_name=$(basename $dir)
@@ -114,24 +100,31 @@ jobs:
             echo "Building: $gradle_path"
             echo "--------------------------------------------"
           
-            # Explicitly passing optimization flags to the build command
-            ./gradlew :$gradle_path:bundleRelease \
+            ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
               -Pandroid.enableR8.fullMode=true
           
-            java -jar ".github/lib/bundletool.jar" build-apks \
-              --bundle=$dir/build/outputs/bundle/release/$module_name-release.aab \
-              --output=$dir/build/outputs/bundle/release/$module_name.apks \
-              --mode=universal \
-              --ks="${{ env.ks_filename }}" \
-              --ks-pass=pass:${{ env.ks_store_pass }} \
-              --ks-key-alias=${{ env.ks_alias }} \
-              --key-pass=pass:${{ env.ks_alias_pass }}
-          
-            unzip -p $dir/build/outputs/bundle/release/$module_name.apks universal.apk > distribution_apks/$module_name-release.apk
+            # Find the generated unsigned or release APK
+            UNSIGNED_APK=$(find $dir/build/outputs/apk/release -name "*.apk" | head -n 1)
+            SIGNED_APK="distribution_apks/${module_name}-release.apk"
+
+            if [ -z "$UNSIGNED_APK" ]; then
+              echo "Error: No APK found for $module_name"
+              exit 1
+            fi
+
+            echo "Signing $UNSIGNED_APK..."
+            $APKSIGNER sign --ks ${{ env.ks_filename }} \
+              --ks-pass pass:${{ env.ks_store_pass }} \
+              --ks-key-alias ${{ env.ks_alias }} \
+              --key-pass pass:${{ env.ks_alias_pass }} \
+              --out $SIGNED_APK \
+              $UNSIGNED_APK
+
+            echo "Verifying $SIGNED_APK..."
+            $APKSIGNER verify $SIGNED_APK
           done
 
-      # 5. CREATE RELEASE
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
