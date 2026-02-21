@@ -88,9 +88,13 @@ jobs:
       - name: Build and Manual Sign
         run: |
           mkdir -p distribution_apks
-          # Find the apksigner path (usually in build-tools)
-          APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools -name apksigner | sort -r | head -n 1)
-          echo "Using apksigner at: $APKSIGNER"
+          
+          # Find build tools paths
+          BUILD_TOOLS_DIR=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | sort -r | head -n 1)
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
+          
+          echo "Using tools from: $BUILD_TOOLS_DIR"
 
           for dir in ${{ env.module_dirs }}; do
             gradle_path=$(echo $dir | sed 's|/|:|g')
@@ -104,25 +108,29 @@ jobs:
               -Pandroid.enableResourceOptimizations=true \
               -Pandroid.enableR8.fullMode=true
           
-            # Find the generated unsigned or release APK
-            UNSIGNED_APK=$(find $dir/build/outputs/apk/release -name "*.apk" | head -n 1)
+            # Find the generated APK
+            RAW_APK=$(find $dir/build/outputs/apk/release -name "*.apk" | head -n 1)
+            ALIGNED_APK="${dir}/build/outputs/apk/release/${module_name}-aligned.apk"
             SIGNED_APK="distribution_apks/${module_name}-release.apk"
 
-            if [ -z "$UNSIGNED_APK" ]; then
+            if [ -z "$RAW_APK" ]; then
               echo "Error: No APK found for $module_name"
               exit 1
             fi
 
-            echo "Signing $UNSIGNED_APK..."
+            echo "Aligning $RAW_APK..."
+            $ZIPALIGN -v 4 "$RAW_APK" "$ALIGNED_APK"
+
+            echo "Signing $ALIGNED_APK..."
             $APKSIGNER sign --ks ${{ env.ks_filename }} \
               --ks-pass pass:${{ env.ks_store_pass }} \
               --ks-key-alias ${{ env.ks_alias }} \
               --key-pass pass:${{ env.ks_alias_pass }} \
-              --out $SIGNED_APK \
-              $UNSIGNED_APK
+              --out "$SIGNED_APK" \
+              "$ALIGNED_APK"
 
             echo "Verifying $SIGNED_APK..."
-            $APKSIGNER verify $SIGNED_APK
+            $APKSIGNER verify --verbose "$SIGNED_APK"
           done
 
       - name: Create GitHub Release
