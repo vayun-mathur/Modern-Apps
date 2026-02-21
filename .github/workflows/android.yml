@@ -32,9 +32,11 @@ jobs:
         run: |
           if [ -f "settings.gradle.kts" ]; then
             echo "Removing local includeBuild from settings.gradle.kts for CI..."
-            # Deletes the block from the includeBuild line until the closing brace
-            # This handles the multiline dependencySubstitution block specifically
-            sed -i '/includeBuild("\.\.\/NewPipeExtractor")/,/^}/d' settings.gradle.kts
+            # More robust sed to delete the multiline block starting with includeBuild and ending at the next top-level '}'
+            # This uses a range pattern that handles varying whitespace
+            sed -i '/includeBuild.*NewPipeExtractor/,/^}/d' settings.gradle.kts
+            echo "Resulting settings.gradle.kts:"
+            cat settings.gradle.kts
           fi
 
       - name: Decode Keystore
@@ -50,11 +52,12 @@ jobs:
           VERSION_FILE="version.txt"
           
           if [ ! -f "$VERSION_FILE" ]; then
-            echo "Error: $VERSION_FILE not found! Please create it with version code on line 1 and name on line 2."
+            echo "Error: $VERSION_FILE not found!"
             exit 1
           fi
 
-          # Read values exactly as they are in the file
+          # Read values and strictly strip ALL whitespace and carriage returns
+          # This prevents the "vv" prefix issue caused by hidden characters
           VERSION_CODE=$(sed -n '1p' "$VERSION_FILE" | tr -d '\r' | xargs)
           VERSION_NAME=$(sed -n '2p' "$VERSION_FILE" | tr -d '\r' | xargs)
 
@@ -64,16 +67,13 @@ jobs:
           # 2. INJECT variables into the defaultConfig block
           find . -name "build.gradle.kts" | while read file; do
             echo "Processing $file..."
-          
-            # First, remove any existing versionCode or versionName lines to avoid duplicates
+            # Remove any existing assignments
             sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
             sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
-          
-            # Now, inject the new hardcoded values right after 'defaultConfig {'
+            # Inject right after defaultConfig {
             sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
           done
 
-          # Export for later steps
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
@@ -87,16 +87,12 @@ jobs:
           TAG_NAME="${{ steps.version_info.outputs.version_name }}"
           git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
           
-          # Tag the specific local commit
           git tag -f "$TAG_NAME"
-          
-          # Push ONLY the tag to the remote repository
           git push origin "$TAG_NAME" --force
 
       # 4. DETECTION (Excluding :youpipe)
       - name: Detect App Modules
         run: |
-          # Detect modules, then filter out 'youpipe' using grep -v
           MODULES=$(grep -rl "versionCode" . --include="build.gradle.kts" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$|youpipe" | sort -u | tr '\n' ' ')
           echo "Detected modules: $MODULES"
           echo "modules=$MODULES" >> $GITHUB_ENV
