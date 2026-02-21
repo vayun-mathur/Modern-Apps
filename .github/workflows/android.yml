@@ -53,8 +53,6 @@ jobs:
           echo "Using Version Code: $VERSION_CODE"
           
           # 2. INJECT variables into the defaultConfig block
-          # This finds the line containing 'defaultConfig {' and appends the hardcoded 
-          # version assignments immediately after it. 
           find . -name "build.gradle.kts" | while read file; do
             echo "Processing $file..."
           
@@ -71,15 +69,13 @@ jobs:
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       # 3. COMMIT, TAG & PUSH (TAG ONLY)
-      # Creates a commit with the stamped files but DOES NOT push it to main.
-      # The commit only lives under the Tag name.
       - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           
-          TAG_NAME="v${{ steps.version_info.outputs.version_name }}"
+          TAG_NAME="${{ steps.version_info.outputs.version_name }}"
           git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
           
           # Tag the specific local commit
@@ -88,11 +84,11 @@ jobs:
           # Push ONLY the tag to the remote repository
           git push origin "$TAG_NAME" --force
 
-      # 4. DETECTION
+      # 4. DETECTION (Excluding :youpipe)
       - name: Detect App Modules
         run: |
-          # Detect modules by searching for the versionCode we just injected
-          MODULES=$(grep -rl "versionCode" . --include="build.gradle.kts" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$" | sort -u | tr '\n' ' ')
+          # Detect modules, then filter out 'youpipe' using grep -v
+          MODULES=$(grep -rl "versionCode" . --include="build.gradle.kts" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$|youpipe" | sort -u | tr '\n' ' ')
           echo "Detected modules: $MODULES"
           echo "modules=$MODULES" >> $GITHUB_ENV
 
@@ -125,7 +121,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v${{ steps.version_info.outputs.version_name }}"
+          tag_name: "${{ steps.version_info.outputs.version_name }}"
           name: "Release ${{ steps.version_info.outputs.version_name }}"
           body: |
             Automated manual release.
