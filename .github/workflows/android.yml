@@ -33,7 +33,6 @@ jobs:
           if [ -f "settings.gradle.kts" ]; then
             echo "Removing local includeBuild from settings.gradle.kts for CI..."
             # More robust sed to delete the multiline block starting with includeBuild and ending at the next top-level '}'
-            # This uses a range pattern that handles varying whitespace
             sed -i '/includeBuild.*NewPipeExtractor/,/^}/d' settings.gradle.kts
             echo "Resulting settings.gradle.kts:"
             cat settings.gradle.kts
@@ -57,16 +56,16 @@ jobs:
           fi
 
           # Read values and strictly strip ALL whitespace and carriage returns
-          # This prevents the "vv" prefix issue caused by hidden characters
           VERSION_CODE=$(sed -n '1p' "$VERSION_FILE" | tr -d '\r' | xargs)
           VERSION_NAME=$(sed -n '2p' "$VERSION_FILE" | tr -d '\r' | xargs)
 
           echo "Using Version Name: $VERSION_NAME"
           echo "Using Version Code: $VERSION_CODE"
           
-          # 2. INJECT variables into the defaultConfig block
-          find . -name "build.gradle.kts" | while read file; do
-            echo "Processing $file..."
+          # 2. INJECT variables into the defaultConfig block of MODULES only
+          # -mindepth 2 ensures we skip the root build.gradle.kts
+          find . -mindepth 2 -name "build.gradle.kts" | while read file; do
+            echo "Processing module file: $file..."
             # Remove any existing assignments
             sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
             sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
@@ -93,6 +92,7 @@ jobs:
       # 4. DETECTION (Excluding :youpipe)
       - name: Detect App Modules
         run: |
+          # Detect modules, then filter out 'youpipe' and the root directory '.'
           MODULES=$(grep -rl "versionCode" . --include="build.gradle.kts" | awk -F/ '{print $(NF-1)}' | grep -vE "^\.$|youpipe" | sort -u | tr '\n' ' ')
           echo "Detected modules: $MODULES"
           echo "modules=$MODULES" >> $GITHUB_ENV
