@@ -82,13 +82,22 @@ jobs:
 
       - name: Detect App Modules
         run: |
-          MODULE_DIRS="calendar"
+          # 1. Find all build.gradle.kts containing 'versionCode'
+          # 2. Exclude the root build file
+          # 3. Exclude 'youpipe' only (chess is now included)
+          # 4. Strip './' and '/build.gradle.kts' to get relative directory paths
+          MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
+            grep -vE "^\./build.gradle.kts$|youpipe" | \
+            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
+          
+          echo "Detected modules for build: $MODULE_DIRS"
           echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
 
       - name: Build and Sign
         run: |
           mkdir -p distribution_apks
           for dir in ${{ env.module_dirs }}; do
+            # Convert dir path to Gradle path (e.g. games/chess -> :games:chess)
             gradle_path=$(echo $dir | sed 's|/|:|g')
             module_name=$(basename $dir)
           
@@ -96,8 +105,6 @@ jobs:
             echo "Building and Signing: $gradle_path"
             echo "--------------------------------------------"
           
-            # Pass keystore properties directly to Gradle
-            # This allows Gradle to handle alignment and signing (v3) internally
             ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
               -Pandroid.enableR8.fullMode=true \
@@ -106,8 +113,8 @@ jobs:
               -PRELEASE_KEY_ALIAS="${{ env.ks_alias }}" \
               -PRELEASE_KEY_PASSWORD="${{ env.ks_alias_pass }}"
           
-            # Copy the final signed APK to the distribution folder
-            cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "No APK found in release folder"
+            # Copy all generated APKs (handles flavored builds if they exist)
+            cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "No APK found for $module_name"
           done
 
       - name: Create GitHub Release
@@ -116,7 +123,7 @@ jobs:
           tag_name: "${{ steps.version_info.outputs.version_name }}"
           name: "Release ${{ steps.version_info.outputs.version_name }}"
           body: |
-            Automated manual release for Calendar.
+            Automated multi-module release.
             Version Name: ${{ steps.version_info.outputs.version_name }}
             Version Code: ${{ steps.version_info.outputs.version_code }}
           files: distribution_apks/*.apk
