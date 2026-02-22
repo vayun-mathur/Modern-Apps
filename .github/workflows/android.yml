@@ -118,19 +118,25 @@ jobs:
               exit 1
             fi
 
+            # Aligning is mandatory for V2/V3 schemes
             echo "Aligning $RAW_APK..."
-            $ZIPALIGN -v 4 "$RAW_APK" "$ALIGNED_APK"
+            $ZIPALIGN -f -v 4 "$RAW_APK" "$ALIGNED_APK"
 
             echo "Signing $ALIGNED_APK..."
+            # Using specific flags to ensure maximum compatibility and avoid unexpected V4/SourceStamp headers
             $APKSIGNER sign --ks ${{ env.ks_filename }} \
               --ks-pass pass:${{ env.ks_store_pass }} \
               --ks-key-alias ${{ env.ks_alias }} \
               --key-pass pass:${{ env.ks_alias_pass }} \
+              --v1-signing-enabled true \
+              --v2-signing-enabled true \
+              --v3-signing-enabled true \
+              --v4-signing-enabled false \
               --out "$SIGNED_APK" \
               "$ALIGNED_APK"
 
             echo "Verifying $SIGNED_APK..."
-            $APKSIGNER verify --verbose "$SIGNED_APK"
+            $APKSIGNER verify --verbose --print-certs "$SIGNED_APK"
           done
 
       - name: Create GitHub Release
