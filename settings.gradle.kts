@@ -22,12 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-includeBuild("../NewPipeExtractor") {
-    dependencySubstitution {
-        // Substitute the Maven artifact with the local project
-        substitute(module("com.github.TeamNewPipe:NewPipeExtractor")).using(project(":extractor"))
-    }
-}
 
 rootProject.name = "apps"
 include(":library")

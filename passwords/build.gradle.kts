@@ -1,5 +1,7 @@
 android {
     defaultConfig {
+        versionCode = 20260221
+        versionName = "v2.0.0"
         minSdk = 35
         applicationId = "com.vayunmathur.passwords"
     }
