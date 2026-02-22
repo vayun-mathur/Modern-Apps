@@ -101,7 +101,6 @@ jobs:
             ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
               -Pandroid.enableR8.fullMode=true \
-              -Pcom.android.tools.build.editor.skipDependencyMetadata=true \
               -PRELEASE_STORE_FILE="${{ github.workspace }}/${{ env.ks_filename }}" \
               -PRELEASE_STORE_PASSWORD="${{ env.ks_store_pass }}" \
               -PRELEASE_KEY_ALIAS="${{ env.ks_alias }}" \

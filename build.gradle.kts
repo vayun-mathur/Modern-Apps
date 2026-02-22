@@ -57,13 +57,22 @@ subprojects {
             }
 
             signingConfigs {
-                create("release") {
-                    storeFile = file(project.findProperty("RELEASE_STORE_FILE") as String? ?: "debug.keystore")
-                    storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String?
-                    keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String?
-                    keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String?
-                    enableV3Signing = true
-                    enableV4Signing = false
+                // We only create/configure this if the properties are actually present
+                val isSigningConfigAvailable = project.hasProperty("RELEASE_STORE_FILE")
+
+                if (isSigningConfigAvailable) {
+                    create("release") {
+                        storeFile = file(project.property("RELEASE_STORE_FILE") as String)
+                        storePassword = project.property("RELEASE_STORE_PASSWORD") as String
+                        keyAlias = project.property("RELEASE_KEY_ALIAS") as String
+                        keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+
+                        // Ensure consistency for F-Droid's integrity checks
+                        enableV1Signing = true
+                        enableV2Signing = true
+                        enableV3Signing = true
+                        enableV4Signing = false
+                    }
                 }
             }
 
@@ -71,7 +80,10 @@ subprojects {
                 release {
                     isMinifyEnabled = true
                     isShrinkResources = true
-                    signingConfig = signingConfigs.getByName("release")
+                    // Only apply the config if we actually created it above
+                    if (signingConfigs.findByName("release") != null) {
+                        signingConfig = signingConfigs.getByName("release")
+                    }
                     proguardFiles(
                         getDefaultProguardFile("proguard-android-optimize.txt")
                     )
