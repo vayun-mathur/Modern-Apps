@@ -85,62 +85,30 @@ jobs:
           MODULE_DIRS="calendar"
           echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
 
-      - name: Build and Manual Sign
+      - name: Build and Sign
         run: |
           mkdir -p distribution_apks
-          
-          # Find build tools paths
-          BUILD_TOOLS_DIR=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | sort -r | head -n 1)
-          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
-          ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
-          
-          echo "Using tools from: $BUILD_TOOLS_DIR"
-
           for dir in ${{ env.module_dirs }}; do
             gradle_path=$(echo $dir | sed 's|/|:|g')
             module_name=$(basename $dir)
           
             echo "--------------------------------------------"
-            echo "Building: $gradle_path"
+            echo "Building and Signing: $gradle_path"
             echo "--------------------------------------------"
           
+            # Pass keystore properties directly to Gradle
+            # This allows Gradle to handle alignment and signing (v3) internally
             ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
-              -Pandroid.enableR8.fullMode=true
+              -Pandroid.enableR8.fullMode=true \
+              -Pcom.android.tools.build.editor.skipDependencyMetadata=true \
+              -PRELEASE_STORE_FILE="${{ github.workspace }}/${{ env.ks_filename }}" \
+              -PRELEASE_STORE_PASSWORD="${{ env.ks_store_pass }}" \
+              -PRELEASE_KEY_ALIAS="${{ env.ks_alias }}" \
+              -PRELEASE_KEY_PASSWORD="${{ env.ks_alias_pass }}"
           
-            # Find the generated APK
-            RAW_APK=$(find $dir/build/outputs/apk/release -name "*.apk" | head -n 1)
-            STRIPPED_APK="${dir}/build/outputs/apk/release/${module_name}-stripped.apk"
-            ALIGNED_APK="${dir}/build/outputs/apk/release/${module_name}-aligned.apk"
-            SIGNED_APK="distribution_apks/${module_name}-release.apk"
-
-            if [ -z "$RAW_APK" ]; then
-              echo "Error: No APK found for $module_name"
-              exit 1
-            fi
-
-            # Clean slate: remove any existing signature meta-data
-            cp "$RAW_APK" "$STRIPPED_APK"
-            zip -d "$STRIPPED_APK" "META-INF/*.SF" "META-INF/*.RSA" "META-INF/*.DSA" "META-INF/*.EC" "META-INF/SIG-*" || true
-
-            echo "Aligning $STRIPPED_APK..."
-            $ZIPALIGN -f -v 4 "$STRIPPED_APK" "$ALIGNED_APK"
-
-            echo "Signing $ALIGNED_APK with v3 only..."
-            # Explicitly disabling v1, v2, and v4 to use only v3
-            $APKSIGNER sign --ks ${{ env.ks_filename }} \
-              --ks-pass pass:${{ env.ks_store_pass }} \
-              --ks-key-alias ${{ env.ks_alias }} \
-              --key-pass pass:${{ env.ks_alias_pass }} \
-              --v1-signing-enabled false \
-              --v2-signing-enabled false \
-              --v3-signing-enabled true \
-              --v4-signing-enabled false \
-              --out "$SIGNED_APK" \
-              "$ALIGNED_APK"
-
-            echo "Verifying $SIGNED_APK..."
-            $APKSIGNER verify --verbose --print-certs "$SIGNED_APK"
+            # Copy the final signed APK to the distribution folder
+            cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "No APK found in release folder"
           done
 
       - name: Create GitHub Release

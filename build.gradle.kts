@@ -56,11 +56,22 @@ subprojects {
                 //testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             }
 
+            signingConfigs {
+                create("release") {
+                    storeFile = file(project.findProperty("RELEASE_STORE_FILE") as String? ?: "debug.keystore")
+                    storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String?
+                    keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String?
+                    keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String?
+                    enableV3Signing = true
+                    enableV4Signing = false
+                }
+            }
+
             buildTypes {
                 release {
                     isMinifyEnabled = true
                     isShrinkResources = true
-                    signingConfig = signingConfigs.getByName("debug")
+                    signingConfig = signingConfigs.getByName("release")
                     proguardFiles(
                         getDefaultProguardFile("proguard-android-optimize.txt")
                     )
