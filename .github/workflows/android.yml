@@ -104,9 +104,12 @@ jobs:
             echo "Building: $gradle_path"
             echo "--------------------------------------------"
           
+            # Added -Pcom.android.tools.build.editor.skipDependencyMetadata=true
+            # This prevents the 'Dependency Metadata' block that causes F-Droid verification failures.
             ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
-              -Pandroid.enableR8.fullMode=true
+              -Pandroid.enableR8.fullMode=true \
+              -Pcom.android.tools.build.editor.skipDependencyMetadata=true
           
             # Find the generated APK
             RAW_APK=$(find $dir/build/outputs/apk/release -name "*.apk" | head -n 1)
@@ -123,7 +126,8 @@ jobs:
             $ZIPALIGN -f -v 4 "$RAW_APK" "$ALIGNED_APK"
 
             echo "Signing $ALIGNED_APK..."
-            # Using specific flags to ensure maximum compatibility and avoid unexpected V4/SourceStamp headers
+            # Using specific flags to ensure maximum compatibility.
+            # V4 is disabled because it creates a separate .idsig file which F-Droid doesn't use.
             $APKSIGNER sign --ks ${{ env.ks_filename }} \
               --ks-pass pass:${{ env.ks_store_pass }} \
               --ks-key-alias ${{ env.ks_alias }} \
