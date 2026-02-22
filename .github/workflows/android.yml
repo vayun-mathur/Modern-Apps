@@ -70,6 +70,53 @@ jobs:
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
+      - name: Detect App Modules
+        run: |
+          # Detect modules, excluding root and youpipe
+          MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
+            grep -vE "^\./build.gradle.kts$|youpipe" | \
+            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
+          
+          echo "Detected modules: $MODULE_DIRS"
+          echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
+
+      - name: Prepare F-Droid Metadata
+        run: |
+          for dir in ${{ env.module_dirs }}; do
+            # Convert dir path to hyphenated module name for file matching
+            # e.g. games/chess -> games-chess
+            module_key=$(echo $dir | sed 's|/|-|g')
+            target_path="$dir/src/main/play/listings/en-US"
+          
+            echo "Preparing metadata for $module_key in $target_path"
+            mkdir -p "$target_path/graphics/icons"
+            mkdir -p "$target_path/graphics/phone-screenshots"
+          
+            # Copy Play Store icon
+            icon_source="$dir/src/main/ic_launcher-playstore.png"
+            if [ -f "$icon_source" ]; then
+              cp "$icon_source" "$target_path/graphics/icons/icon.png"
+            fi
+          
+            # Copy Phone Screenshots from metadata_data/photos/{module_key}.png
+            screenshot_source="metadata_data/photos/${module_key}.png"
+            if [ -f "$screenshot_source" ]; then
+              cp "$screenshot_source" "$target_path/graphics/phone-screenshots/1.png"
+            fi
+          
+            # Use a single source file named {module_key}.md (using hyphens)
+            metadata_src="metadata_data/${module_key}.md"
+          
+            if [ -f "$metadata_src" ]; then
+              # Extract first line for short description
+              head -n 1 "$metadata_src" > "$target_path/short-description.txt"
+              # Full description is the whole file (including first line)
+              cp "$metadata_src" "$target_path/full-description.txt"
+            else
+              echo "Warning: Metadata source $metadata_src not found."
+            fi
+          done
+
       - name: Commit, Tag & Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
@@ -77,27 +124,14 @@ jobs:
           git add .
           TAG_NAME="${{ steps.version_info.outputs.version_name }}"
           git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
+          
           git tag -f "$TAG_NAME"
           git push origin "$TAG_NAME" --force
-
-      - name: Detect App Modules
-        run: |
-          # 1. Find all build.gradle.kts containing 'versionCode'
-          # 2. Exclude the root build file
-          # 3. Exclude 'youpipe' only (chess is now included)
-          # 4. Strip './' and '/build.gradle.kts' to get relative directory paths
-          MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
-            grep -vE "^\./build.gradle.kts$|youpipe" | \
-            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
-          
-          echo "Detected modules for build: $MODULE_DIRS"
-          echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
 
       - name: Build and Sign
         run: |
           mkdir -p distribution_apks
           for dir in ${{ env.module_dirs }}; do
-            # Convert dir path to Gradle path (e.g. games/chess -> :games:chess)
             gradle_path=$(echo $dir | sed 's|/|:|g')
             module_name=$(basename $dir)
           
@@ -113,7 +147,6 @@ jobs:
               -PRELEASE_KEY_ALIAS="${{ env.ks_alias }}" \
               -PRELEASE_KEY_PASSWORD="${{ env.ks_alias_pass }}"
           
-            # Copy all generated APKs (handles flavored builds if they exist)
             cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "No APK found for $module_name"
           done
 
