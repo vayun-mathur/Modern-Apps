@@ -108,8 +108,7 @@ jobs:
             # This prevents the 'Dependency Metadata' block that causes F-Droid verification failures.
             ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
-              -Pandroid.enableR8.fullMode=true \
-              -Pcom.android.tools.build.editor.skipDependencyMetadata=true
+              -Pandroid.enableR8.fullMode=true
           
             # Find the generated APK
             RAW_APK=$(find $dir/build/outputs/apk/release -name "*.apk" | head -n 1)

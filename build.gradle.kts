@@ -70,6 +70,11 @@ subprojects {
                     versionNameSuffix = "-DEBUG" // Helpful to see in App Info
                 }
             }
+            dependenciesInfo {
+                includeInApk = false
+                includeInBundle = false
+            }
+
         }
 
         dependencies {
