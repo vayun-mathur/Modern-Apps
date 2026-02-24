@@ -37,6 +37,9 @@ class PlaybackManager private constructor(context: Context) {
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeatMode = _repeatMode.asStateFlow()
 
+    private val _currentMediaItem = MutableStateFlow<MediaItem?>(null)
+    val currentMediaItem = _currentMediaItem.asStateFlow()
+
     init {
         val appContext = context.applicationContext
         val sessionToken = SessionToken(appContext, ComponentName(appContext, PlaybackService::class.java))
@@ -47,6 +50,9 @@ class PlaybackManager private constructor(context: Context) {
                 addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) {
                         _isPlaying.value = playing
+                    }
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        _currentMediaItem.value = mediaItem
                     }
 
 //                    override fun onPlaybackStateChanged(state: Int) {
@@ -80,23 +86,26 @@ class PlaybackManager private constructor(context: Context) {
         }
     }
 
-    fun playSong(song: Music) {
+    fun playSong(songs: List<Music>, startWithIndex: Int) {
         val player = controller ?: return
-        if (player.currentMediaItem?.mediaId == song.id.toString()) return
+        if (player.currentMediaItem?.mediaId == songs[startWithIndex].id.toString()) return
 
-        val mediaItem = MediaItem.Builder()
-            .setMediaId(song.id.toString())
-            .setUri(song.uri.toUri())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(song.title)
-                    .setArtist(song.artist)
-                    .build()
-            )
-            .build()
+        val mediaItems = songs.map { song ->
+            MediaItem.Builder()
+                .setMediaId(song.id.toString())
+                .setUri(song.uri.toUri())
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(song.title)
+                        .setArtist(song.artist)
+                        .setArtworkUri(song.uri.toUri())
+                        .build()
+                )
+                .build()
+        }
 
         player.stop()
-        player.setMediaItem(mediaItem)
+        player.setMediaItems(mediaItems, startWithIndex, 0L)
         player.prepare()
         player.play()
     }

@@ -30,10 +30,11 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, songID: Long) {
-    val song by viewModel.get<Music>(songID)
+fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
+    val currentlyPlaying by playbackManager.currentMediaItem.collectAsState()
+    val song = currentlyPlaying ?: return;
 
     // Playback States
     val isPlaying by playbackManager.isPlaying.collectAsState()
@@ -41,10 +42,6 @@ fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, son
     val duration by playbackManager.duration.collectAsState()
     val shuffleMode by playbackManager.shuffleMode.collectAsState()
     val repeatMode by playbackManager.repeatMode.collectAsState()
-
-    LaunchedEffect(Unit) {
-        playbackManager.playSong(song)
-    }
 
     Scaffold(
         containerColor = Color(0xFF0A0A0A),
@@ -77,12 +74,7 @@ fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, son
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(12.dp)
             ) {
-                AsyncImage(
-                    model = song.uri,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                AlbumArt(song.mediaMetadata.artworkUri!!, Modifier.fillMaxSize())
             }
 
             // Song Info
@@ -93,7 +85,7 @@ fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, son
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        song.title,
+                        song.mediaMetadata.title.toString(),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -101,7 +93,7 @@ fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, son
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        song.artist,
+                        song.mediaMetadata.artist.toString(),
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.Gray
                     )

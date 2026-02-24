@@ -45,7 +45,7 @@ sealed interface Route: NavKey {
     @Serializable
     data object Home: Route
     @Serializable
-    data class Song(val songID: Long): Route
+    data object Song: Route
 }
 
 @Composable
@@ -56,7 +56,7 @@ fun Navigation(viewModel: DatabaseViewModel) {
             HomeScreen(backStack, viewModel)
         }
         entry<Route.Song> {
-            SongScreen(backStack, viewModel, it.songID)
+            SongScreen(backStack, viewModel)
         }
     }
 }

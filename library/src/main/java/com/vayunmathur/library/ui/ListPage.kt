@@ -29,6 +29,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -41,6 +42,7 @@ import com.vayunmathur.library.R
 import com.vayunmathur.library.util.DatabaseItem
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ReorderableDatabaseItem
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -52,7 +54,7 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
     title: String,
     crossinline headlineContent: @Composable (T) -> Unit,
     crossinline supportingContent: @Composable (T) -> Unit,
-    crossinline viewPage: (id: Long) -> Route,
+    crossinline viewPage: suspend (id: Long) -> Route,
     noinline editPage: (() -> Route)? = null,
     settingsPage: Route? = null,
     crossinline otherActions: @Composable () -> Unit = {},
@@ -60,6 +62,7 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
     crossinline trailingContent: @Composable (T) -> Unit = {},
     searchEnabled: Boolean = false,
     crossinline searchString: (T) -> String = {it.toString()},
+    noinline bottomBar: @Composable () -> Unit = {},
 ) {
     val dbDataUnfiltered by viewModel.data<T>().collectAsState(listOf())
     var searchQuery by remember { mutableStateOf("") }
@@ -76,6 +79,8 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
         localData = dbData
     }
 
+    val coroutineScope = rememberCoroutineScope()
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(title) }, actions = {
@@ -87,6 +92,7 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
                 }
             })
         },
+        bottomBar = bottomBar,
         floatingActionButton = {
             if (editPage != null && backStack.last() !is EditPage) {
                 FloatingActionButton(onClick = { backStack.add(editPage()) }) {
@@ -109,7 +115,9 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
             ) {
                 items(localData, key = { it.id }) { item ->
                     ListItem({ headlineContent(item) }, Modifier.clickable {
-                        backStack.add(viewPage(item.id))
+                        coroutineScope.launch {
+                            backStack.add(viewPage(item.id))
+                        }
                     }, {}, { supportingContent(item) }, {leadingContent(item)}, {
                         Row {
                             trailingContent(item)

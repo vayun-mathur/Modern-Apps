@@ -58,9 +58,8 @@ class DataStoreUtils private constructor(context: Context) {
         }
     }
 
-    @Composable
-    fun getLongState(name: String, default: Long = 0L): State<Long> {
-        return dataStore.data.mapNotNull { it[longPreferencesKey(name)] }.collectAsState(default)
+    fun longFlow(s: String): Flow<Long> {
+        return dataStore.data.mapNotNull { it[longPreferencesKey(s)] }
     }
 
     suspend fun setLong(s: String, userid: Long, onlyIfAbsent: Boolean = false) {
