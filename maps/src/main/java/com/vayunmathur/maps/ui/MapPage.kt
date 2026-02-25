@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -41,7 +43,10 @@ import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -73,6 +78,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okio.source
 import org.maplibre.compose.camera.CameraPosition
+import org.maplibre.compose.camera.CameraState
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
@@ -228,6 +234,19 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
 
                 // USER ICON
                 key(camera.position) {
+                    if(camera.projection != null) {
+                        selectedFeature?.let { it as? SpecificFeature.RoutableFeature }?.let {
+                            Icon(
+                                painterResource(com.vayunmathur.maps.R.drawable.location_on_24px),
+                                null,
+                                Modifier.size(48.dp).graphicsLayer {
+                                    val offset =
+                                        camera.projection!!.screenLocationFromPosition(it.position)
+                                    translationX = offset.x.toPx() - 24.dp.toPx()
+                                    translationY = offset.y.toPx() - 48.dp.toPx()
+                                }, tint = Color.Black)
+                        }
+                    }
                     Canvas(Modifier.fillMaxSize()) {
                         UserIcon(userPosition, userBearing, camera)
                     }
