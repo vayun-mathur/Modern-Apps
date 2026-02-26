@@ -14,6 +14,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import androidx.media3.session.legacy.VolumeProviderCompat
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -38,6 +39,7 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         val player = ExoPlayer.Builder(this)
+            .setDeviceVolumeControlEnabled(true)
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
