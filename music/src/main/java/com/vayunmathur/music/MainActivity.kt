@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val db = buildDatabase<MusicDatabase>()
-        val viewModel = DatabaseViewModel(db,Music::class to db.musicDao(), Album::class to db.albumDao(), Artist::class to db.artistDao())
+        val viewModel = DatabaseViewModel(db,Music::class to db.musicDao(), Album::class to db.albumDao(), Artist::class to db.artistDao(), matchingDao = db.matchingDao())
         val pm = PlaybackManager.getInstance(this)
         setContent {
             DynamicTheme {

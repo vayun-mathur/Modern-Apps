@@ -14,8 +14,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.Dao
 import androidx.room.Delete
+import androidx.room.Entity
 import androidx.room.InvalidationTracker
+import androidx.room.PrimaryKey
+import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -33,6 +37,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.reflect.KClass
 import kotlin.time.Instant
 
@@ -58,10 +64,35 @@ class DaoInterface<T: DatabaseItem>(val dao: TrueDao<T>, val viewModelScope: Cor
     }
 }
 
-class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>, TrueDao<*>>) : ViewModel() {
+class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>, TrueDao<*>>, val matchingDao: MatchingDao? = null) : ViewModel() {
     val daoMap = daos.associate {
         it.first to DaoInterface(it.second, viewModelScope)
     }
+
+    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> addPairs(pairs: List<Pair<A, B>>) {
+        val classAIndex = daoMap.keys.indexOf(A::class)
+        val classBIndex = daoMap.keys.indexOf(B::class)
+        val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+        val pairs = if(classAIndex < classBIndex) pairs else pairs.map { it.second to it.first }
+        viewModelScope.launch {
+            matchingDao!!.upsert(pairs.map { (a, b) -> ManyManyMatching(a.id, b.id, type) })
+        }
+    }
+
+    fun clearMatchings() {
+        viewModelScope.launch {
+            matchingDao!!.clear()
+        }
+    }
+
+    suspend inline fun <reified A: DatabaseItem, reified B: DatabaseItem> getMatches(a: Long): List<Long> {
+        val classAIndex = daoMap.keys.indexOf(A::class)
+        val classBIndex = daoMap.keys.indexOf(B::class)
+        val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+        val ids = if(classAIndex < classBIndex) matchingDao!!.getFromLeft(a, type) else matchingDao!!.getFromRight(a, type)
+        return ids
+    }
+
 
     inline fun <reified E : DatabaseItem> getDaoInterface(): DaoInterface<E> {
         val daoInterface = daoMap[E::class] ?: throw Exception("No DAO registered for ${E::class.simpleName}")
@@ -184,11 +215,36 @@ interface DatabaseItem {
     val id: Long
 }
 
+@Entity
+data class ManyManyMatching(
+    val leftID: Long,
+    val rightID: Long,
+    val type: Int,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0
+)
+
 fun DatabaseItem.isNew() = id == 0L
 
 interface ReorderableDatabaseItem<T: ReorderableDatabaseItem<T>>: DatabaseItem {
     val position: Double
     fun withPosition(position: Double): T
+}
+
+@Dao
+interface MatchingDao {
+    @Upsert
+    suspend fun upsert(value: ManyManyMatching): Long
+    @Upsert
+    suspend fun upsert(value: List<ManyManyMatching>)
+    @Delete
+    suspend fun delete(value: ManyManyMatching): Int
+
+    @Query("SELECT rightID FROM ManyManyMatching WHERE leftID = :leftID AND type = :type")
+    suspend fun getFromLeft(leftID: Long, type: Int): List<Long>
+    @Query("SELECT leftID FROM ManyManyMatching WHERE rightID = :rightID AND type = :type")
+    suspend fun getFromRight(rightID: Long, type: Int): List<Long>
+    @Query("DELETE FROM ManyManyMatching")
+    suspend fun clear()
 }
 
 interface TrueDao<T: DatabaseItem> {

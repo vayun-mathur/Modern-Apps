@@ -14,12 +14,14 @@ import kotlinx.serialization.Serializable
 data class Album(
     @PrimaryKey(autoGenerate = true) override val id: Long,
     val name: String,
-    val artistIDs: List<Long>,
     val uri: String
 ): DatabaseItem {
     @Composable
     fun artistString(viewModel: DatabaseViewModel): String {
         return remember {
+            val artistIDs = runBlocking {
+                viewModel.getMatches<Album, Artist>(id)
+            }
             if(artistIDs.size > 2) {
                 return@remember "Various Artists"
             }

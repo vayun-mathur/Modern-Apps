@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "07f01ed30d3460e7237e1db52fe4dba6",
+    "identityHash": "a16a6f1144258d3f1f0599f7334ee666",
     "entities": [
       {
         "tableName": "Music",
@@ -60,7 +60,7 @@
       },
       {
         "tableName": "Album",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `artistIDs` TEXT NOT NULL, `uri` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `uri` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -71,12 +71,6 @@
           {
             "fieldPath": "name",
             "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "artistIDs",
-            "columnName": "artistIDs",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -123,11 +117,47 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "ManyManyMatching",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`leftID` INTEGER NOT NULL, `rightID` INTEGER NOT NULL, `type` INTEGER NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "leftID",
+            "columnName": "leftID",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rightID",
+            "columnName": "rightID",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '07f01ed30d3460e7237e1db52fe4dba6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a16a6f1144258d3f1f0599f7334ee666')"
     ]
   }
 }

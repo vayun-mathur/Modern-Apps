@@ -36,11 +36,21 @@ fun getThumbnail(context: Context, uri: Uri): Bitmap? {
 
 suspend fun saveMediaToFile(context: Context, viewModel: DatabaseViewModel) {
     val musics = getMedia(context)
-    val albums = getAlbums(context, musics)
+    val albums = getAlbums(context)
     val artists = getArtists(context)
     viewModel.replaceAll(musics)
     viewModel.replaceAll(albums)
     viewModel.replaceAll(artists)
+    viewModel.clearMatchings()
+    viewModel.addPairs(albumArtistPairs(musics, artists, albums))
+}
+
+fun albumArtistPairs(music: List<Music>, artists: List<Artist>, albums: List<Album>): List<Pair<Album, Artist>> {
+    val albumArtistPairs = mutableListOf<Pair<Album, Artist>>()
+    for(music in music) {
+        albumArtistPairs += Pair(albums.first { it.id == music.albumId }, artists.first { it.id == music.artistId })
+    }
+    return albumArtistPairs.distinct()
 }
 
 suspend fun getMedia(context: Context): List<Music> = withContext(Dispatchers.IO) {
@@ -93,7 +103,7 @@ suspend fun getMedia(context: Context): List<Music> = withContext(Dispatchers.IO
 }
 
 
-suspend fun getAlbums(context: Context, musics: List<Music>): List<Album> = withContext(Dispatchers.IO) {
+suspend fun getAlbums(context: Context): List<Album> = withContext(Dispatchers.IO) {
     val musicList = mutableListOf<Album>()
     val projection = arrayOf(
         MediaStore.Audio.Albums._ID,
@@ -125,10 +135,7 @@ suspend fun getAlbums(context: Context, musics: List<Music>): List<Album> = with
                 id
             ).toString()
 
-            val inThisAlbum = musics.filter { it.albumId == id }
-            val artists = inThisAlbum.map { it.artistId }.distinct()
-
-            musicList.add(Album(id, title, artists, contentUri))
+            musicList.add(Album(id, title, contentUri))
         }
     }
     return@withContext musicList
