@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.AlbumArt
 import com.vayunmathur.music.PlaybackManager
 import com.vayunmathur.music.Route
+import com.vayunmathur.music.database.Album
 import com.vayunmathur.music.database.Artist
 import com.vayunmathur.music.database.Music
 
@@ -58,6 +60,11 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
     val artistsMusic = remember(allMusic, artistId) {
         allMusic.filter { it.artistId == artistId }
     }
+    val albumIds by viewModel.getMatchesState<Artist, Album>(artistId)
+    val allAlbums by viewModel.data<Album>().collectAsState()
+    val albums by remember { derivedStateOf {
+        albumIds.map { id -> allAlbums.find { it.id == id }!! }
+    } }
 
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
@@ -145,20 +152,25 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
 
             // Track List Header
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Songs",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                Text("Albums", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
+
+            // Track Items
+            itemsIndexed(albums) { idx, album ->
+                ListItem({
+                    Text(album.name)
+                }, Modifier.clickable{
+                    backStack.add(Route.AlbumDetail(album.id))
+                }, {}, {
+                    Text("3:02")
+                }, leadingContent = {
+                    AlbumArt(album.uri.toUri(), Modifier.size(48.dp))
+                })
+            }
+
+            // Track List Header
+            item {
+                Text("Songs", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             }
 
             // Track Items

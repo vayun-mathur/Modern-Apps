@@ -30,9 +30,12 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -91,6 +94,20 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
         val ids = if(classAIndex < classBIndex) matchingDao!!.getFromLeft(a, type) else matchingDao!!.getFromRight(a, type)
         return ids
+    }
+
+    val matchesStateFlow = matchingDao?.flow()?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @Composable
+    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> getMatchesState(a: Long): State<List<Long>> {
+        val classAIndex = daoMap.keys.indexOf(A::class)
+        val classBIndex = daoMap.keys.indexOf(B::class)
+        val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+
+        val matches by matchesStateFlow!!.collectAsState()
+        return remember { derivedStateOf {
+            if(classAIndex < classBIndex) matches.filter { it.leftID == a && it.type == type }.map { it.rightID } else matches.filter { it.rightID == a && it.type == type }.map { it.leftID }
+        } }
     }
 
 
@@ -245,6 +262,8 @@ interface MatchingDao {
     suspend fun getFromRight(rightID: Long, type: Int): List<Long>
     @Query("DELETE FROM ManyManyMatching")
     suspend fun clear()
+    @Query("SELECT * FROM ManyManyMatching")
+    fun flow(): Flow<List<ManyManyMatching>>
 }
 
 interface TrueDao<T: DatabaseItem> {
