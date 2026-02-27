@@ -89,7 +89,6 @@ class PlaybackManager private constructor(context: Context) {
 
     fun playSong(songs: List<Music>, startWithIndex: Int) {
         val player = controller ?: return
-        if (player.currentMediaItem?.mediaId == songs[startWithIndex].id.toString()) return
 
         val mediaItems = songs.map { song ->
             MediaItem.Builder()
@@ -115,28 +114,8 @@ class PlaybackManager private constructor(context: Context) {
         if(!shuffleMode.value) {
             toggleShuffle()
         }
-        val player = controller ?: return
-        var startWithIndex = Random.nextInt(songs.size)
-        if (player.currentMediaItem?.mediaId == songs[startWithIndex].id.toString()) startWithIndex++
-
-        val mediaItems = songs.map { song ->
-            MediaItem.Builder()
-                .setMediaId(song.id.toString())
-                .setUri(song.uri.toUri())
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(song.title)
-                        .setArtist(song.artist)
-                        .setArtworkUri(song.uri.toUri())
-                        .build()
-                )
-                .build()
-        }
-
-        player.stop()
-        player.setMediaItems(mediaItems, startWithIndex, 0L)
-        player.prepare()
-        player.play()
+        val startWithIndex = Random.nextInt(songs.size)
+        playSong(songs, startWithIndex)
     }
 
     fun togglePlayPause() = controller?.let { if (it.isPlaying) it.pause() else it.play() }

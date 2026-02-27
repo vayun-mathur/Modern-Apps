@@ -46,11 +46,8 @@ fun ArtistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     }) { paddingValues ->
         Box(Modifier.padding(paddingValues)) {
             ListPage<Artist, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.name) }, {
-            }, { toPlay ->
-                val allSongs = viewModel.getAll<Music>()
-                val toPlayIndex = allSongs.indexOfFirst { it.id == toPlay }
-                playbackManager.playSong(allSongs, toPlayIndex)
-                Route.Song
+            }, {
+                Route.ArtistDetail(it)
             }, leadingContent = { music ->
                 AlbumArt(music.uri.toUri(), Modifier.size(40.dp))
             }, searchEnabled = true, bottomBar = {
