@@ -3,6 +3,8 @@ package com.vayunmathur.music
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Rect
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Size
@@ -13,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -21,6 +24,7 @@ import com.vayunmathur.music.database.Artist
 import com.vayunmathur.music.database.Music
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.core.graphics.createBitmap
 
 fun getThumbnail(context: Context, uri: Uri): Bitmap? {
     return try {
@@ -190,4 +194,48 @@ fun AlbumArt(artUri: Uri, modifier: Modifier) {
         contentDescription = "Album Art",
         modifier = modifier
     )
+}
+@Composable
+fun AlbumArt(artUris: List<Uri>, modifier: Modifier) {
+    val context = LocalContext.current
+    var bitmap: Bitmap? by remember { mutableStateOf(null) }
+
+    // Re-run whenever the list of URIs changes
+    LaunchedEffect(artUris) {
+        bitmap = if (artUris.size > 1) {
+            createCollageBitmap(context, artUris.take(4))
+        } else {
+            // Fallback for single image
+            artUris.firstOrNull()?.let { getThumbnail(context, it) }
+        }
+    }
+
+    AsyncImage(
+        model = bitmap,
+        contentDescription = "Album Art Grid",
+        modifier = modifier
+    )
+}
+
+/**
+ * Creates a 2x2 grid bitmap from a list of Uris
+ */
+suspend fun createCollageBitmap(context: Context, uris: List<Uri>): Bitmap {
+    val size = 512 // Define a standard size for the output square
+    val halfSize = size / 2
+    val result = createBitmap(size, size)
+    val canvas = Canvas(result)
+
+    uris.forEachIndexed { index, uri ->
+        val thumb = getThumbnail(context, uri) ?: return@forEachIndexed
+
+        // Calculate grid position
+        val left = (index % 2) * halfSize
+        val top = (index / 2) * halfSize
+
+        val rect = Rect(left, top, left + halfSize, top + halfSize)
+        canvas.drawBitmap(thumb, null, rect, null)
+    }
+
+    return result
 }

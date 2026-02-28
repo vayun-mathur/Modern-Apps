@@ -67,17 +67,10 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AsyncImage(
-                        model = album.uri,
-                        contentDescription = album.name,
-                        modifier = Modifier
-                            .size(260.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.DarkGray),
-                        contentScale = ContentScale.Crop,
-                        // Use a placeholder if loading fails
-                        error = painterResource(id = android.R.drawable.ic_menu_gallery)
-                    )
+                    AlbumArt(album.uri.toUri(), Modifier
+                        .size(260.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.DarkGray))
 
                     Spacer(modifier = Modifier.height(24.dp))
 

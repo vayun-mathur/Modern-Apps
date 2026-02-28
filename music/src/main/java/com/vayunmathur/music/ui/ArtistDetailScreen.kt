@@ -51,6 +51,7 @@ import com.vayunmathur.music.Route
 import com.vayunmathur.music.database.Album
 import com.vayunmathur.music.database.Artist
 import com.vayunmathur.music.database.Music
+import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,17 +91,14 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AsyncImage(
-                        model = artist.uri,
-                        contentDescription = artist.name,
-                        modifier = Modifier
-                            .size(260.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.DarkGray),
-                        contentScale = ContentScale.Crop,
-                        // Use a placeholder if loading fails
-                        error = painterResource(id = android.R.drawable.ic_menu_gallery)
-                    )
+                    val albums = remember { runBlocking { viewModel.getMatches<Artist, Album>(artist.id) } }
+                    val allAlbums by viewModel.data<Album>().collectAsState()
+                    val albumsUris = allAlbums.filter { it.id in albums }.map { it.uri.toUri() }
+
+                    AlbumArt(albumsUris, Modifier
+                        .size(260.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color.DarkGray))
 
                     Spacer(modifier = Modifier.height(24.dp))
 

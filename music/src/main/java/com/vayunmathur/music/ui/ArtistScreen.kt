@@ -1,16 +1,22 @@
 package com.vayunmathur.music.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -28,6 +34,7 @@ import com.vayunmathur.music.database.Album
 import com.vayunmathur.music.database.Artist
 import com.vayunmathur.music.database.Music
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
 
 @Composable
@@ -48,8 +55,11 @@ fun ArtistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             ListPage<Artist, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.name) }, {
             }, {
                 Route.ArtistDetail(it)
-            }, leadingContent = { music ->
-                AlbumArt(music.uri.toUri(), Modifier.size(40.dp))
+            }, leadingContent = { artist ->
+                val albums = remember { runBlocking { viewModel.getMatches<Artist, Album>(artist.id) } }
+                val allAlbums by viewModel.data<Album>().collectAsState()
+                val albumsUris = allAlbums.filter { it.id in albums }.map { it.uri.toUri() }
+                AlbumArt(albumsUris, Modifier.size(40.dp))
             }, searchEnabled = true, bottomBar = {
                 PlayingBottomBar(playbackManager, backStack)
             }, fab = {
