@@ -65,11 +65,9 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
     noinline bottomBar: @Composable () -> Unit = {},
     noinline fab: (@Composable () -> Unit)? = null
 ) {
-    val dbDataUnfiltered by viewModel.data<T>().collectAsState(listOf())
+    val dbDataUnfiltered by viewModel.data<T>().collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     val dbData by remember { derivedStateOf { dbDataUnfiltered.filter { searchQuery.isBlank() || searchString(it).contains(searchQuery, true) } } }
-
-    val hapticFeedback = LocalHapticFeedback.current
 
     // 1. Initialize the reorderable state
     val listState = rememberLazyListState()
