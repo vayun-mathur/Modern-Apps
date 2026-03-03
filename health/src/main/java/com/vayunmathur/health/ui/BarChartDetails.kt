@@ -1,5 +1,6 @@
 package com.vayunmathur.health.ui
 
+import android.util.Range
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -107,6 +108,7 @@ enum class HealthMetricConfig(
     RESTING_HEART_RATE("Resting Heart Rate", RecordType.RestingHeartRate, "bpm", 60.0, isLineChart = true),
     OXYGEN_SATURATION("Oxygen Saturation", RecordType.OxygenSaturation, "%", 95.0, isLineChart = true, useDecimals = true),
     HRV("Heart Rate Variability", RecordType.HeartRateVariabilityRmssd, "ms", 50.0, isLineChart = true, useDecimals = true),
+    HEART_RATE("Heart Rate", RecordType.HeartRate, "bpm", 100.0, isLineChart = true),
 
     // Physical Measurements
     HEIGHT("Height", RecordType.Height, "cm", 175.0, isLineChart = true, useDecimals = true),
@@ -123,6 +125,7 @@ data class MetricDashboardData(
     val secondaryAverage: Double? = null,
     val chartData: List<Pair<String, Double?>> = emptyList(),
     val secondaryChartData: List<Pair<String, Double?>>? = null,
+    val primaryRange: ClosedFloatingPointRange<Double>? = null,
     val historyItems: List<HistoryItem> = emptyList(),
     val totalBarCount: Int = 0
 )
@@ -142,7 +145,7 @@ fun BarChartDetails(
     backStack: NavBackStack<Route>,
     config: HealthMetricConfig
 ) {
-    var selectedTab by remember { mutableIntStateOf(1) }
+    var selectedTab by remember { mutableIntStateOf(if(config == HealthMetricConfig.HEART_RATE) 0 else 1) }
     val tabs = listOf("Day", "Week", "Month", "Year")
 
     var anchorDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
@@ -175,20 +178,12 @@ fun BarChartDetails(
 
         // Both functions now return List<Pair<Double?, Double?>>
         val rawPairs = if (config.isLineChart) {
-            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType).mapIndexed { idx, it ->
-                Tuple3(
-                    idx.toLong(),
-                    it.first,
-                    it.second
-                )
-            }
+            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType)
         } else {
             HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType)
         }
         val rawPairsHistory = if (config.isLineChart) {
-            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType2).mapIndexed { idx, it ->
-                Tuple3(idx, it.first, it.second)
-            }
+            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType2)
         } else {
             HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType2)
         }
@@ -198,20 +193,19 @@ fun BarChartDetails(
             rawPairs.mapIndexed { i, p -> i.toString() to p.third }
         } else null
 
-        val history = if(selectedTab != 0) rawPairsHistory.mapIndexedNotNull { index, triple ->
+        val history = if(selectedTab != 0) rawPairsHistory.mapIndexed { index, triple ->
             val label = when (selectedTab) {
                 0 -> ""
                 1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz).toLocalDateTime(tz).dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
                 2 -> "Day ${index + 1}"
                 else -> "Month ${index + 1}"
             }
-            if(triple.second == null) return@mapIndexedNotNull null
             HistoryItem(
                 label = label,
-                value = triple.second!!,
+                value = triple.second,
                 secondaryValue = if (config.isDualSeries) triple.third else null,
                 unit = config.unit,
-                isGoalMet = (triple.second ?: 0.0) >= config.dailyGoal,
+                isGoalMet = triple.second >= config.dailyGoal,
                 useDecimals = config.useDecimals
             )
         }.reversed() else listOf()
@@ -226,7 +220,8 @@ fun BarChartDetails(
             chartData = mappedChart,
             secondaryChartData = mappedSecondaryChart,
             historyItems = history,
-            totalBarCount = rawPairs.size
+            totalBarCount = rawPairs.size,
+            primaryRange = mappedChart.minOfOrNull { it.second }?.rangeTo(mappedChart.maxOf { it.second })
         )
     }
 
@@ -239,13 +234,20 @@ fun BarChartDetails(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            SecondaryTabRow(selectedTabIndex = selectedTab, divider = {}) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(title, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
-                    )
+            if(config != HealthMetricConfig.HEART_RATE) {
+                SecondaryTabRow(selectedTabIndex = selectedTab, divider = {}) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Text(
+                                    title,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
@@ -302,7 +304,9 @@ fun BarChartDetails(
 
                     Row(verticalAlignment = Alignment.Bottom) {
                         val formatVal = { v: Double -> if (config.useDecimals) String.format("%.1f", v) else String.format("%,d", v.toLong()) }
-                        val avgString = if (dataState.secondaryAverage != null && config.isDualSeries) {
+                        val avgString = if(config == HealthMetricConfig.HEART_RATE) {
+                            "${formatVal(dataState.primaryRange?.start ?: 0.0)} - ${formatVal(dataState.primaryRange?.endInclusive ?: 0.0)}"
+                        } else if (dataState.secondaryAverage != null && config.isDualSeries) {
                             "${formatVal(dataState.dailyAverage)}/${formatVal(dataState.secondaryAverage!!)}"
                         } else {
                             formatVal(dataState.dailyAverage)

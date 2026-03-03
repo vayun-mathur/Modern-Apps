@@ -103,6 +103,42 @@ interface HealthDao {
         endTime: Long
     ): List<HourlySum>
 
+    @Query("""
+    SELECT 
+        date(startTime / 1000, 'unixepoch', 'localtime') as day, 
+        AVG(value) as totalValue,
+        AVG(secondaryValue) as totalValue2 
+    FROM Record 
+    WHERE type = :type 
+      AND startTime >= :startTime 
+      AND endTime <= :endTime
+    GROUP BY day
+    ORDER BY day ASC
+""")
+    suspend fun getDailyAvgs(
+        type: RecordType,
+        startTime: kotlin.time.Instant,
+        endTime: kotlin.time.Instant
+    ): List<DailySum>
+
+    @Query("""
+    SELECT 
+        strftime('%Y-%m-%d %H:00', startTime / 1000, 'unixepoch', 'localtime') AS hourBlock, 
+        AVG(value) AS totalValue,
+        AVG(secondaryValue) AS totalValue2
+    FROM Record 
+    WHERE type = :type 
+      AND startTime >= :startTime 
+      AND endTime <= :endTime
+    GROUP BY hourBlock
+    ORDER BY hourBlock ASC
+""")
+    suspend fun getHourlyAvgs(
+        type: RecordType,
+        startTime: Long,
+        endTime: Long
+    ): List<HourlySum>
+
     // Helper data class to catch the results
     data class DailySum(
         val day: String, // Format: YYYY-MM-DD

@@ -180,7 +180,7 @@ fun MainPage(backStack: NavBackStack<Route>) {
             }
 
             Distance(backStack,distanceToday)
-            HeartRate(heartRateMaxToday, heartRateMinToday)
+            HeartRate(backStack, heartRateMaxToday, heartRateMinToday)
             // TODO: add this back
             //Sleep(aggregates?.get(SleepSessionRecord.SLEEP_DURATION_TOTAL)?.toKotlinDuration()?.inWholeMinutes ?: 0)
 
@@ -374,8 +374,10 @@ fun Distance(backStack: NavBackStack<Route>, km: Double) {
 }
 
 @Composable
-fun HeartRate(max: Long, min: Long) {
-    GenericCard("Heart rate", null, "bpm", if(max > 0) "$min-$max" else "--", "Today") {
+fun HeartRate(backStack: NavBackStack<Route>, max: Long, min: Long) {
+    GenericCard("Heart rate", null, "bpm", if(max > 0) "$min-$max" else "--", "Today", onClick = {
+        backStack.add(Route.BarChartDetails(HealthMetricConfig.HEART_RATE))
+    }) {
         ProgressBarGraphic(R.drawable.baseline_favorite_24, max.toFloat(), 200f, Color(0xFFF44336))
     }
 }
