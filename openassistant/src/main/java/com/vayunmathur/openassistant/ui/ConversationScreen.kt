@@ -82,6 +82,7 @@ import com.vayunmathur.openassistant.api.GrokRequest
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.Tools
+import com.vayunmathur.openassistant.data.database.MessageDao
 import com.vayunmathur.openassistant.data.database.MessageDatabase
 import com.vayunmathur.openassistant.data.toGrokMessage
 import dev.jeziellago.compose.markdowntext.MarkdownText
@@ -105,25 +106,25 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         delay(500)
         val db = applicationContext.buildDatabase<MessageDatabase>()
         val viewModel = DatabaseViewModel(db,Message::class to db.messageDao(), Conversation::class to db.conversationDao())
-        send(viewModel, ds, conversationID, userMessage, uris)
+        send(viewModel, db.messageDao(), ds, conversationID, userMessage, uris)
         ds.setBoolean("isThinking", false)
         return Result.success()
     }
 
-    suspend fun requestResponse(viewModel: DatabaseViewModel, conversationID: Long, apiKey: String, userMessage: Message? = null) {
+    suspend fun requestResponse(viewModel: DatabaseViewModel, messageDao: MessageDao, conversationID: Long, apiKey: String, userMessage: Message? = null) {
         val grokApi = GrokApi(apiKey)
 
-        val messages = viewModel.data<Message>().value.filter { it.conversationId == conversationID }
+        val messages = viewModel.getAll<Message>().filter { it.conversationId == conversationID }.sortedBy { it.timestamp }
 
         val request = GrokRequest(
             messages = (messages + userMessage).filterNotNull().map(Message::toGrokMessage),
-            model = "grok-4-fast-reasoning",
+            model = "grok-4-1-fast-reasoning",
             stream = true,
             temperature = 0.7,
             tools = Tools.API_TOOLS
         )
         if (userMessage != null)
-            viewModel.upsert(userMessage)
+            messageDao.upsert(userMessage)
 
         var assistantMessage = Message(
             id = Random.nextLong(),
@@ -133,7 +134,7 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
             images = emptyList(),
             toolCalls = listOf()
         )
-        viewModel.upsert(assistantMessage)
+        messageDao.upsert(assistantMessage)
 
         var fullResponse = ""
         var usedTools = false
@@ -158,16 +159,17 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
                             images = emptyList(),
                             toolCallId = it.id,
                         )
-                        viewModel.upsert(message)
+                        messageDao.upsert(message)
                     }
                     assistantMessage =
                         assistantMessage.copy(toolCalls = assistantMessage.toolCalls + it)
-                    viewModel.upsert(assistantMessage)
+                    messageDao.upsert(assistantMessage)
                 }
                 delta.content?.let {
+                    println("NEW CONTENT: $it")
                     fullResponse += it
                     assistantMessage = assistantMessage.copy(textContent = fullResponse)
-                    viewModel.upsert(assistantMessage)
+                    messageDao.upsert(assistantMessage)
                 }
             }
         } catch (e: GrokApi.GrokException) {
@@ -189,11 +191,11 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
 
         if (usedTools) {
             delay(1000)
-            requestResponse(viewModel, conversationID, apiKey)
+            requestResponse(viewModel, messageDao, conversationID, apiKey)
         }
     }
 
-    suspend fun send(viewModel: DatabaseViewModel, ds: DataStoreUtils, conversationID: Long, userInput: String, selectedImageUris: List<Uri>) {
+    suspend fun send(viewModel: DatabaseViewModel, messageDao: MessageDao, ds: DataStoreUtils, conversationID: Long, userInput: String, selectedImageUris: List<Uri>) {
         val imageBase64s = selectedImageUris.map { uri ->
             val inputStream = applicationContext.contentResolver.openInputStream(uri)
             val bitmap = BitmapFactory.decodeStream(inputStream)
@@ -208,7 +210,7 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
             textContent = userInput,
             images = imageBase64s
         )
-        requestResponse(viewModel, conversationID, ds.getString("api_key")!!, userMessage)
+        requestResponse(viewModel, messageDao, conversationID, ds.getString("api_key")!!, userMessage)
     }
 }
 
@@ -232,7 +234,7 @@ fun ConversationScreen(
 
     val visibleMessages by remember(messages, conversation) {
         derivedStateOf {
-            messages.filter { it.textContent.isNotBlank() && it.conversationId == conversationID }
+            messages.filter { it.textContent.isNotBlank() && it.conversationId == conversationID }.sortedBy { it.timestamp }
         }
     }
 
@@ -267,6 +269,10 @@ fun ConversationScreen(
     }
 
     fun send() {
+        if(ds.getString("api_key") == null) {
+            showApiKeyDialog = true
+            return
+        }
         if (userInput.isNotBlank()) {
             if (conversationID == 0L) {
                 createNewConversation() { id ->
