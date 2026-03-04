@@ -10,6 +10,7 @@ body:
       description: Which app is experiencing the issue?
       options:
         - calendar
+        - clock
         - contacts
         - crypto
         - files

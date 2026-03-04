@@ -27,6 +27,7 @@
             <option value="$PROJECT_DIR$/../NewPipeExtractor/timeago-generator" />
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/calendar" />
+            <option value="$PROJECT_DIR$/clock" />
             <option value="$PROJECT_DIR$/contacts" />
             <option value="$PROJECT_DIR$/crypto" />
             <option value="$PROJECT_DIR$/files" />

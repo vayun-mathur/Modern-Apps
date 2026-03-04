@@ -10,6 +10,7 @@ body:
       description: Which app is this feature for?
       options:
         - calendar
+        - clock
         - contacts
         - crypto
         - files
