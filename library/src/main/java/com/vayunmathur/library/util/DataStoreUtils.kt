@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -92,6 +93,28 @@ class DataStoreUtils private constructor(context: Context) {
 
     fun stringFlow(key: String): Flow<String> {
         return dataStore.data.mapNotNull { it[stringPreferencesKey(key)] }
+    }
+
+    fun stringSetFlow(key: String): Flow<Set<String>> {
+        return dataStore.data.mapNotNull { it[stringSetPreferencesKey(key)] }
+    }
+
+    fun addStringToSet(string: String, id: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            dataStore.edit {
+                val set = it[stringSetPreferencesKey(string)] ?: setOf()
+                it[stringSetPreferencesKey(string)] = set + id
+            }
+        }
+    }
+
+    fun removeStringFromSet(string: String, id: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            dataStore.edit {
+                val set = it[stringSetPreferencesKey(string)] ?: setOf()
+                it[stringSetPreferencesKey(string)] = set - id
+            }
+        }
     }
 
     companion object {
