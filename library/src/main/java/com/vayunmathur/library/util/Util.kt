@@ -3,10 +3,15 @@ package com.vayunmathur.library.util
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import okio.Source
 import okio.buffer
 import kotlin.math.pow
 import kotlin.math.round
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 fun <T> tryOrDefault(default: T, block: () -> T): T {
     return try {
@@ -45,3 +50,11 @@ inline fun <reified T: ComponentActivity> Context.findActivity(): T? {
 
 data class Tuple3<A, B, C>(val first: A, val second: B, val third: C)
 data class Tuple4<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+@Composable
+fun nowState() = produceState(Clock.System.now()) {
+    while (true) {
+        value = Clock.System.now()
+        delay(100)
+    }
+}

@@ -33,6 +33,7 @@ import com.vayunmathur.clock.Route
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.util.nowState
 import kotlinx.coroutines.delay
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -50,12 +51,7 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClockPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
-    val now by produceState(Clock.System.now()) {
-        while (true) {
-            value = Clock.System.now()
-            delay(100)
-        }
-    }
+    val now by nowState()
     val time = now.toLocalDateTime(TimeZone.currentSystemDefault())
     val timeZones by ds.stringSetFlow("time_zones").collectAsState(setOf())
     Scaffold(topBar = {
