@@ -95,7 +95,7 @@ data class TokenAccount(
 
 @Serializable
 data class PriceData(
-    val usdPrice: Double,
+    val usdPrice: Double? = null,
     val blockId: Long = 0,
     val decimals: Int,
     val priceChange24h: Double = 0.0

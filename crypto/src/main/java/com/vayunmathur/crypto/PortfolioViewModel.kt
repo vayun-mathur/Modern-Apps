@@ -76,7 +76,7 @@ class PortfolioViewModel(private val application: Application) : AndroidViewMode
         TokenPriceRepository.init(application)
         JupiterLendRepository.init(application)
 
-        updatePredictionMarkers()
+        //updatePredictionMarkers()
 
         val cachedTokens = sharedPreferences.getString("cached_tokens", null)
         if (cachedTokens != null) {

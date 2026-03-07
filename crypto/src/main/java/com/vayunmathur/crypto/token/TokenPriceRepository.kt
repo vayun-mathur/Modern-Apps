@@ -13,6 +13,7 @@ object TokenPriceRepository : Repository<TokenPriceRepository.PriceData>(PriceDa
         val prices = mutableMapOf(TokenInfo.SOL.mintAddress to PriceData(130.15, -2.56))
         val prices2 = JupiterAPI.getPrices(TokenInfo.TOKEN_LIST.map { it.mintAddress })
         prices2.forEach { (mint, price) ->
+            if(price.usdPrice == null) return@forEach
             prices[mint] = PriceData(price.usdPrice, price.priceChange24h)
         }
         return prices

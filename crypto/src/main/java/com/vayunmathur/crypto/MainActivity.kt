@@ -115,5 +115,5 @@ val MAIN_NAVBAR_PAGES = listOf(
     BottomBarItem("Portfolio", PortfolioPage, R.drawable.account_balance_wallet_24px),
     BottomBarItem("Swap", SwapPage, R.drawable.swap_vert_24px),
     BottomBarItem("Send", SendPage, R.drawable.send_24px),
-    BottomBarItem("Prediction", PredictionMarketPage, R.drawable.online_prediction_24px),
+    //BottomBarItem("Prediction", PredictionMarketPage, R.drawable.online_prediction_24px),
 )
