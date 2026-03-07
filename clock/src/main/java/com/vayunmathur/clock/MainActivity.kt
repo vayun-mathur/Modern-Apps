@@ -1,6 +1,16 @@
 package com.vayunmathur.clock
 
+import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -34,6 +44,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val alarmManager = getSystemService(AlarmManager::class.java)
+        if (!alarmManager.canScheduleExactAlarms()) {
+            // Redirect user to system settings to allow exact alarms
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                data = Uri.fromParts("package", packageName, null)
+            }
+            startActivity(intent)
+        }
+        createTimerNotificationChannels(this)
         val ds = DataStoreUtils.getInstance(this)
         val db = buildDatabase<ClockDatabase>()
         val viewModel = DatabaseViewModel(db, Timer::class to db.timerDao(), Alarm::class to db.alarmDao())
@@ -101,4 +121,24 @@ fun Navigation(ds: DataStoreUtils, viewModel: DatabaseViewModel) {
             TimePickerDialogContent(backStack, "alarm_set_time_${it.id}", it.time)
         }
     }
+}
+
+fun createTimerNotificationChannels(context: Context) {
+    val nm = context.getSystemService(NotificationManager::class.java)
+
+    nm.createNotificationChannels(listOf(
+        // 1. Quiet channel for ongoing countdowns
+        NotificationChannel("active_timers_channel", "Active Timers", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Ongoing countdowns"
+            setShowBadge(false)
+        },
+        // 2. Loud channel for the "Time's Up" alert
+        NotificationChannel("finished_timers_channel", "Timer Alarms", NotificationManager.IMPORTANCE_HIGH).apply {
+            description = "Alerts when timers finish"
+            enableVibration(true)
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
+        }
+    ))
 }
