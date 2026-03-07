@@ -74,7 +74,7 @@ jobs:
         run: |
           # Detect modules, excluding root and youpipe
           MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
-            grep -vE "^\./build.gradle.kts$|youpipe" | \
+            grep -vE "^\./build.gradle.kts$" | \
             sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
           
           echo "Detected modules: $MODULE_DIRS"

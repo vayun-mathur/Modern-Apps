@@ -71,7 +71,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
             coroutineScope.launch(Dispatchers.IO) {
                 progress = 0f
                 isLoading = true
-                val subs = getChannelInfo(channelURLs.map(::channelURLtoID)).map(ChannelInfo::toSubscription)
+                val subs = channelURLs.map(::channelURLtoID).map { getChannelInfo(it) }.map(ChannelInfo::toSubscription)
                 viewModel.replaceAll(subs)
                 isLoading = false
                 setupHourlyTask(context)

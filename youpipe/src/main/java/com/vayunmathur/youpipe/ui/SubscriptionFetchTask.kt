@@ -11,7 +11,6 @@ import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.getChannelVideos
-import com.vayunmathur.youpipe.getVideoDetails
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -33,10 +32,10 @@ class SubscriptionFetchTask(context: Context, params: WorkerParameters) : Corout
             val subscriptions = viewModel.getAll<Subscription>()
             Log.d("SubscriptionFetchTask", "Fetched ${subscriptions.size} subscriptions")
 
-            val videoIDs = getChannelVideos(subscriptions.map { it.toChannelInfo() })
+            val videoIDs = (subscriptions.map { getChannelVideos(it.channelID).toList() }).flatten()
             Log.d("SubscriptionFetchTask", "Fetched ${videoIDs.size} video IDs")
 
-            val videos = getVideoDetails(videoIDs).map{
+            val videos = videoIDs.map {
                 SubscriptionVideo(
                     id = it.videoID,
                     name = it.name,

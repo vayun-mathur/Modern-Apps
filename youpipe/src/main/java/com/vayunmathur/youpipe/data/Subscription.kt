@@ -12,10 +12,5 @@ data class Subscription(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
     val name: String,
     val channelID: String,
-    val avatarURL: String,
-    val uploadsPlaylistID: String
-): DatabaseItem {
-    fun toChannelInfo(): ChannelInfo {
-        return ChannelInfo(name, channelID, 0, 0, avatarURL, uploadsPlaylistID)
-    }
-}
+    val avatarURL: String
+): DatabaseItem

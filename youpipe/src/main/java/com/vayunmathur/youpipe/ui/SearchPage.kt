@@ -84,7 +84,6 @@ fun SearchPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                                             it.subscriberCount,
                                             0,
                                             it.thumbnails.first().url,
-                                            "",
                                         )
                                     }
                                     else -> null

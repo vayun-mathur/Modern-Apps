@@ -11,7 +11,7 @@ android {
 dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.navigation3.runtime)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:local-SNAPSHOT")
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.0")
     implementation(libs.okhttp)
 
     implementation(libs.androidx.room.runtime)

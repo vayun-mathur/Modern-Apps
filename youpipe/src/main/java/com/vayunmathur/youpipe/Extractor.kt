@@ -15,8 +15,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
+import org.schabi.newpipe.extractor.InfoItem
+import org.schabi.newpipe.extractor.InfoItemExtractor
+import org.schabi.newpipe.extractor.ListExtractor
+import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.nio.ByteBuffer
 import kotlin.io.encoding.Base64
+import kotlin.time.toKotlinInstant
 
 fun videoURLtoID(url: String): Long {
     return ByteBuffer.wrap(Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT).decode(url.toUri().getQueryParameter("v")!!)).long
@@ -46,45 +52,39 @@ fun channelURLtoID(url: String): String {
     return url.toUri().lastPathSegment!!
 }
 
-private val client = HttpClient {
-    install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true })
+fun getChannelVideos(channelId: String): Sequence<VideoInfo> = sequence {
+    val ex = ServiceList.YouTube.getChannelTabExtractorFromId(channelId, "videos")
+    ex.fetchPage()
+    var page = ex.initialPage
+    while(true) {
+        page.items.filterIsInstance<StreamInfoItem>().forEach {
+            yield(
+            VideoInfo(
+                it.name,
+                videoURLtoID(it.url),
+                it.duration,
+                it.viewCount,
+                it.uploadDate!!.instant.toKotlinInstant(),
+                it.thumbnails.first().url,
+                it.uploaderName
+            ))
+        }
+        if(page.hasNextPage()) {
+            page = ex.getPage(page.nextPage!!)
+        } else {
+            break
+        }
     }
 }
 
-suspend fun getChannelVideos(channelInfo: List<ChannelInfo>): List<String> = coroutineScope {
-    channelInfo.map { channelInfo ->
-        async(Dispatchers.IO) {
-            val xmlString =
-                client.get("https://www.youtube.com/feeds/videos.xml?channel_id=${channelInfo.channelID}")
-                    .bodyAsText()
-
-            val ids = xmlString.split('\n').filter {
-                it.contains("<yt:videoId>")
-            }.map { it.substringBefore("</yt:videoId>").substringAfter("<yt:videoId>") }
-            ids
-        }
-    }.awaitAll().flatten()
-}
-
-suspend fun getChannelInfo(channelId: List<String>): List<ChannelInfo> {
-    return client.get("https://api.vayunmathur.com/youpipe/channels") {
-        parameter("ids", channelId.joinToString(","))
-    }.body<List<ChannelInfo>>()
-}
-
-suspend fun getChannelDataAndIds(channelId: List<String>): Pair<List<ChannelInfo>, List<String>> {
-
-    // --- STEP 1: Fetch Channel Metadata ---
-    val channelInfo = getChannelInfo(channelId)
-
-    val channelIDs= getChannelVideos(channelInfo)
-
-    return Pair(channelInfo, channelIDs)
-}
-
-suspend fun getVideoDetails(videoIds: List<String>): List<VideoInfo> {
-    return client.get("https://api.vayunmathur.com/youpipe/videos") {
-        parameter("ids", videoIds.joinToString(","))
-    }.body<List<VideoInfo>>()
+suspend fun getChannelInfo(channelId: String): ChannelInfo = coroutineScope {
+    val ex = ServiceList.YouTube.getChannelExtractor(channelIDtoURL(channelId))
+    ex.fetchPage()
+    ChannelInfo(
+        ex.name,
+        channelId,
+        ex.subscriberCount,
+        0,
+        ex.avatars.first().url,
+    )
 }

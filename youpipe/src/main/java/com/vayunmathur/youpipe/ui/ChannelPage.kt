@@ -40,8 +40,8 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
-import com.vayunmathur.youpipe.getChannelDataAndIds
-import com.vayunmathur.youpipe.getVideoDetails
+import com.vayunmathur.youpipe.getChannelInfo
+import com.vayunmathur.youpipe.getChannelVideos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -49,9 +49,9 @@ import kotlin.time.Instant
 
 interface ItemInfo
 @Serializable
-data class ChannelInfo(val name: String, val channelID: String, val subscribers: Long, val videos: Int, val avatar: String, val uploadsPlaylistID: String): ItemInfo {
+data class ChannelInfo(val name: String, val channelID: String, val subscribers: Long, val videos: Int, val avatar: String): ItemInfo {
     fun toSubscription(): Subscription {
-        return Subscription(name = name, channelID = channelID, avatarURL = avatar, uploadsPlaylistID = uploadsPlaylistID)
+        return Subscription(name = name, channelID = channelID, avatarURL = avatar)
     }
 }
 
@@ -67,9 +67,10 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val (channel, videoIDS) = getChannelDataAndIds(listOf(channelID))
-            channelInfo = channel.first()
-            videos = getVideoDetails(videoIDS)
+            channelInfo = getChannelInfo(channelID)
+            getChannelVideos(channelID).forEach {
+                videos += it
+            }
         }
     }
 
@@ -80,7 +81,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
                 val existingSubscription = subscriptions.firstOrNull { it.channelID == channelID }
                 if(existingSubscription == null) {
                     Button({
-                        viewModel.upsert(Subscription(name = it.name, channelID = channelID, avatarURL = it.avatar, uploadsPlaylistID = it.uploadsPlaylistID))
+                        viewModel.upsert(Subscription(name = it.name, channelID = channelID, avatarURL = it.avatar))
                     }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
                         Text("Subscribe")
                     }

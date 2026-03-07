@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "151a91f97311262c9641653e38012bda",
+    "identityHash": "65cab29ac1008303ffcb7863f8109b79",
     "entities": [
       {
         "tableName": "Subscription",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `channelID` TEXT NOT NULL, `avatarURL` TEXT NOT NULL, `uploadsPlaylistID` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `channelID` TEXT NOT NULL, `avatarURL` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -29,12 +29,6 @@
           {
             "fieldPath": "avatarURL",
             "columnName": "avatarURL",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "uploadsPlaylistID",
-            "columnName": "uploadsPlaylistID",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -259,7 +253,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '151a91f97311262c9641653e38012bda')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '65cab29ac1008303ffcb7863f8109b79')"
     ]
   }
 }
