@@ -18,8 +18,16 @@
             android:theme="@style/Theme.General">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
+                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_CALENDAR" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="time/epoch" />
+                <data android:host="com.android.calendar" />
+                <data android:scheme="content"/>
             </intent-filter>
         </activity>
         <!-- Glance widget receiver -->
