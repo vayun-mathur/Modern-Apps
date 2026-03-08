@@ -15,6 +15,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation3.runtime.NavKey
 import com.github.doyaaaaaken.kotlincsv.client.CsvFileReader
 import com.github.doyaaaaaken.kotlincsv.client.CsvReader
@@ -36,6 +37,11 @@ import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -57,12 +63,16 @@ class MainActivity : ComponentActivity() {
             }
             startActivity(intent)
         }
-        readTimezones(this)
         createTimerNotificationChannels(this)
         val ds = DataStoreUtils.getInstance(this)
         val db = buildDatabase<ClockDatabase>()
         val viewModel = DatabaseViewModel(db, Timer::class to db.timerDao(), Alarm::class to db.alarmDao())
         setContent {
+            LaunchedEffect(Unit) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    readTimezones(this@MainActivity)
+                }
+            }
             DynamicTheme {
                 Navigation(ds, viewModel)
             }
@@ -71,14 +81,15 @@ class MainActivity : ComponentActivity() {
 }
 
 fun readTimezones(context: Context) {
-    citiesToTimezones = context.assets.open("cities.csv").bufferedReader().readLines().drop(1).map {
-        it.split(",")
-    }.filter{
-        val pop = it[14].toDoubleOrNull()
-        pop != null && pop > 100000
-    }.associate {
-        it[1].replace("\"", "") to it[15]
-    }
+    citiesToTimezones =
+        context.assets.open("cities.csv").bufferedReader().readLines().drop(1).map {
+            it.split(",")
+        }.filter {
+            val pop = it[14].toDoubleOrNull()
+            pop != null && pop > 100000
+        }.associate {
+            it[1].replace("\"", "") to it[15]
+        }
 }
 
 @Serializable
