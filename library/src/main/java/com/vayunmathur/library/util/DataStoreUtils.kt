@@ -48,7 +48,6 @@ class DataStoreUtils private constructor(context: Context) {
         return stateMap[longPreferencesKey(name)] as Long?
     }
 
-    @Composable
     fun booleanFlow(name: String): Flow<Boolean> {
         return dataStore.data.mapNotNull { it[booleanPreferencesKey(name)] }
     }

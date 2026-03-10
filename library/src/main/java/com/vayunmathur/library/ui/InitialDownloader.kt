@@ -1,34 +1,31 @@
 package com.vayunmathur.library.ui
 
-import android.app.DownloadManager
-import android.content.Context
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import android.content.Intent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
+import com.vayunmathur.library.services.DownloadService
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.round
-import kotlinx.coroutines.delay
-
 
 @Composable
-fun InitialDownloadChecker(ds: DataStoreUtils, filesToDownload: List<Triple<String, String, String>>, mainPage: @Composable () -> Unit) {
+fun InitialDownloadChecker(
+    ds: DataStoreUtils,
+    filesToDownload: List<Triple<String, String, String>>,
+    mainPage: @Composable () -> Unit
+) {
     val dbSetup by ds.booleanFlow("dbSetupComplete").collectAsState(false)
-    if(dbSetup) {
+    if (dbSetup) {
         mainPage()
     } else {
         InitialDownloadScreen(ds, filesToDownload)
@@ -36,112 +33,126 @@ fun InitialDownloadChecker(ds: DataStoreUtils, filesToDownload: List<Triple<Stri
 }
 
 @Composable
-fun InitialDownloadScreen(ds: DataStoreUtils, filesToDownload: List<Triple<String, String, String>>) {
+fun InitialDownloadScreen(
+    ds: DataStoreUtils,
+    filesToDownload: List<Triple<String, String, String>>
+) {
     val context = LocalContext.current
-    val progress by ds.doubleFlow("downloadProgress").collectAsState(0.0)
 
+    // Launch the Foreground Service immediately when this screen is first composed
     LaunchedEffect(Unit) {
-        // Enqueue all downloads and collect their DownloadManager IDs
-        val downloadIds = filesToDownload.map { (url, fileName, desc) ->
-            downloadFile(context, url, fileName, desc)
+        val intent = Intent(context, DownloadService::class.java).apply {
+            putExtra("urls", filesToDownload.map { it.first }.toTypedArray())
+            putExtra("fileNames", filesToDownload.map { it.second }.toTypedArray())
         }
-
-        // Poll DownloadManager until aggregate progress is 1.0 (100%)
-        while (true) {
-            val currentProgress = getAggregateProgress(context, downloadIds)
-            ds.setDouble("downloadProgress", currentProgress)
-
-            if (currentProgress >= 1.0) break
-            delay(500) // Check twice a second
-        }
-
-        ds.setBoolean("dbSetupComplete", true)
+        context.startForegroundService(intent)
     }
 
     Scaffold { paddingValues ->
-        Box(
-            Modifier.padding(paddingValues).fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Column(
+            Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .padding(24.dp)
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator(progress = { progress.toFloat() })
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Downloading Initial Data: ${(progress * 100).round(2)}%")
-            }
-        }
-    }
-}
+            Text(
+                "Initializing System",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "Downloading required AI models and assets via high-speed service.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
 
-private fun getAggregateProgress(context: Context, downloadIds: List<Long>): Double {
-    if (downloadIds.isEmpty()) return 1.0
+            Spacer(Modifier.height(32.dp))
 
-    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-    val query = DownloadManager.Query().setFilterById(*downloadIds.toLongArray())
-    val cursor = downloadManager.query(query) ?: return 0.0
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(filesToDownload) { (url, fileName, desc) ->
+                    // Each item observes its own specific progress and speed from DataStore
+                    val progress by ds.doubleFlow("progress_$fileName").collectAsState(0.0)
+                    val speedMbps by ds.doubleFlow("speed_$fileName").collectAsState(0.0)
+                    val isDone by ds.booleanFlow("done_$fileName").collectAsState(false)
 
-    var totalBytes = 0L
-    var downloadedBytes = 0L
-    var allCompleted = true
-
-    while (cursor.moveToNext()) {
-        val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-        val bytesDownloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-        val bytesTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-
-        if (status != DownloadManager.STATUS_SUCCESSFUL) {
-            allCompleted = false
-        }
-
-        if (bytesTotal > 0) {
-            totalBytes += bytesTotal
-            downloadedBytes += bytesDownloaded
-        }
-    }
-    cursor.close()
-
-    // If totalBytes is still 0 (e.g., pending connection), report 0%
-    if (totalBytes == 0L) return if (allCompleted) 1.0 else 0.0
-
-    // Ensure we return exactly 1.0 if completed, otherwise a precise ratio
-    return if (allCompleted) 1.0 else (downloadedBytes.toDouble() / totalBytes)
-}
-
-private fun downloadFile(context: Context, url: String, fileName: String, description: String): Long {
-    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-
-    // 1. Check if the specific file is already downloading or completed
-    val query = DownloadManager.Query()
-    val cursor = downloadManager.query(query)
-
-    if (cursor != null) {
-        while (cursor.moveToNext()) {
-            val title = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
-            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-
-            // Check by the specific fileName so we don't mix up the routing binaries
-            if (title == fileName) {
-                val id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID))
-
-                // If it's running, pending, or successful, return the existing ID
-                if (status == DownloadManager.STATUS_RUNNING ||
-                    status == DownloadManager.STATUS_PENDING ||
-                    status == DownloadManager.STATUS_SUCCESSFUL) {
-                    cursor.close()
-                    return id
+                    FileProgressItem(
+                        fileName = fileName,
+                        progress = progress,
+                        speedMbps = speedMbps,
+                        isDone = isDone
+                    )
                 }
             }
         }
-        cursor.close()
     }
+}
 
-    // 2. If no active/completed download found for this file, start a new one
-    val request = DownloadManager.Request(url.toUri())
-        .setTitle(fileName)
-        .setDescription(description)
-        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        .setDestinationInExternalFilesDir(context, null, fileName)
-        .setAllowedOverMetered(false) // Wait for WiFi for these massive files
-        .setRequiresCharging(false)
+@Composable
+fun FileProgressItem(
+    fileName: String,
+    progress: Double,
+    speedMbps: Double,
+    isDone: Boolean
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.toFloat(),
+        label = "smooth_progress"
+    )
 
-    return downloadManager.enqueue(request)
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                fileName,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1.0f),
+                maxLines = 1
+            )
+
+            if (!isDone && progress > 0) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.extraSmall
+                ) {
+                    Text(
+                        text = "${speedMbps.round(1)} Mbps",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = if (isDone) "Completed" else "Downloading...",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+
+            Text(
+                text = "${(progress * 100).round(1)}%",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier = Modifier.fillMaxWidth().height(6.dp),
+            strokeCap = StrokeCap.Round,
+            color = if (isDone) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+        )
+    }
 }
