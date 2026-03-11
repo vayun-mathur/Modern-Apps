@@ -60,6 +60,7 @@ class DownloadService : Service() {
                 var lastTime = System.currentTimeMillis()
 
                 try {
+                    if(ds.getBoolean("done_$fileName", false)) return@forEachIndexed
                     downloadFileWithResume(url, destFile) { downloaded, total ->
                         val currentTime = System.currentTimeMillis()
                         val timeDiff = (currentTime - lastTime) / 1000.0

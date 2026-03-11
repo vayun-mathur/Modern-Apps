@@ -42,6 +42,8 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
         RouteService.TravelMode.entries.associateWith {
             if(it == RouteService.TravelMode.TRANSIT) {
                 TransitRoute.computeRoute(routeFeature, userPosition.value)
+            } else if(it == RouteService.TravelMode.WALK) {
+                OfflineRouter.getRoute(application.applicationContext, routeFeature, userPosition.value)
             } else {
                 RouteService.computeRoute(routeFeature, userPosition.value, it)
             }

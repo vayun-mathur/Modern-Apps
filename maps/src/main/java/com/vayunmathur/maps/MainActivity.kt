@@ -38,6 +38,7 @@ import com.vayunmathur.maps.ui.DownloadedMapsPage
 import com.vayunmathur.maps.ui.MapPage
 import com.vayunmathur.maps.ui.SearchPage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import java.io.File
 
@@ -62,6 +63,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val ds = DataStoreUtils.getInstance(this)
         ensurePmtilesReady(this)
+        println(OfflineRouter.checkFiles(this))
+//        runBlocking {
+//            File(getExternalFilesDir(null)!!, "edge_index.bin").delete()
+//            ds.setBoolean("dbSetupComplete", false)
+//            ds.setBoolean("done_edge_index.bin", false)
+//        }
+//        finish()
         setContent {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(

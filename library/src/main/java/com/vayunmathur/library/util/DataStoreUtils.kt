@@ -116,6 +116,10 @@ class DataStoreUtils private constructor(context: Context) {
         }
     }
 
+    fun getBoolean(string: String, bool: Boolean): Boolean {
+        return stateMap[booleanPreferencesKey(string)] as Boolean? ?: bool
+    }
+
     companion object {
         @Volatile
         private var instance: DataStoreUtils? = null
