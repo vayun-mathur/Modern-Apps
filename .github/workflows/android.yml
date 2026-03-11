@@ -73,12 +73,15 @@ jobs:
       - name: Detect App Modules
         run: |
           # Detect modules, excluding root and youpipe
-          MODULE_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
+          RAW_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
             grep -vE "^\./build.gradle.kts$" | \
-            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u | tr '\n' ' ')
+            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
           
-          echo "Detected modules: $MODULE_DIRS"
-          echo "module_dirs=$MODULE_DIRS" >> $GITHUB_ENV
+          # Reverse the order: tr converts spaces to lines, tac reverses lines
+          REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
+          
+          echo "Detected modules (reversed): $REVERSED_DIRS"
+          echo "module_dirs=$REVERSED_DIRS" >> $GITHUB_ENV
 
       - name: Prepare F-Droid Metadata
         run: |
