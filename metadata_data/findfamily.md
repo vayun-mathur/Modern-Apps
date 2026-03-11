@@ -1,4 +1,4 @@
-Find Family is a simple, end-to-end encrypted location sharing app for family and friends.
+An end-to-end encrypted location sharing app for family and friends.
 
 Features:
 - End-to-end encryption

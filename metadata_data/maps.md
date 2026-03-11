@@ -1,3 +1,4 @@
-A modern, fast, open-source, and offline map app using OpenStreetMaps
+A modern, fast, open-source, and offline map app using OpenStreetMap
 
-Routing is currently done through proxy through vayunmathur.com with the Google Maps API, but offline routing is in progress
+Walking and Biking is done offline, but Driving and Public Transit routing is done using the Google Maps API
+All other features are completely offline
