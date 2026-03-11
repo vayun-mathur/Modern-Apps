@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.unblockjam.ui.theme.UnblockJamTheme
@@ -63,19 +65,23 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
-    var levelIndex by remember { mutableStateOf(0) }
+    var levelIndex by remember { mutableIntStateOf(0) }
     var currentLevelData by remember { mutableStateOf(LevelData.LEVELS[levelIndex]) }
     val history = remember { mutableStateListOf<LevelData>() }
-    var moves by remember { mutableStateOf(0) }
     var isLevelWon by remember { mutableStateOf(false) }
     var levelStats by remember { mutableStateOf(completedLevelsRepository.getLevelStats()) }
 
     fun changeLevel(newLevelIndex: Int) {
-        levelIndex = newLevelIndex.coerceIn(0, LevelData.LEVELS.size - 1)
+        levelIndex = newLevelIndex.coerceIn(0, LevelData.LEVELS.lastIndex)
         currentLevelData = LevelData.LEVELS[levelIndex]
         history.clear()
-        moves = 0
         isLevelWon = false
+    }
+
+    fun getCurrentMoves(): Int {
+        val winningMoveIncrement =
+            if (isLevelWon && currentLevelData.lastMovedBlockIndex != 0) 1 else 0
+        return history.size + winningMoveIncrement
     }
 
     LaunchedEffect(Unit) {
@@ -92,7 +98,7 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
 
     LaunchedEffect(isLevelWon) {
         if (isLevelWon) {
-            completedLevelsRepository.updateBestScore(levelIndex, moves)
+            completedLevelsRepository.updateBestScore(levelIndex, getCurrentMoves())
             levelStats = completedLevelsRepository.getLevelStats() // Refresh stats
             delay(1000)
             changeLevel(levelIndex + 1)
@@ -124,7 +130,7 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
                         isCompleted = currentLevelStats != null
                     )
                     MovesInfoBox(
-                        moves = moves,
+                        moves = getCurrentMoves(),
                         bestScore = currentLevelStats?.bestScore,
                         optimalMoves = currentLevelData.optimalMoves
                     )
@@ -132,17 +138,24 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
                 GameBoard(
                     levelData = currentLevelData,
                     onLevelChanged = { newLevelData ->
+                        if (history.isNotEmpty()) {
+                            // If block is moved back to its previous position
+                            if (history.last().blocks == newLevelData.blocks) {
+                                currentLevelData = history.removeAt(history.lastIndex)
+                                return@GameBoard
+                            }
+                        }
+
                         if (!isLevelWon) {
-                            history.add(currentLevelData)
+                            // Only add to history if a different block is moved
+                            if (newLevelData.lastMovedBlockIndex != currentLevelData.lastMovedBlockIndex) {
+                                history.add(currentLevelData)
+                            }
                             currentLevelData = newLevelData
-                            moves++
                         }
                     },
                     onLevelWon = {
-                        if (!isLevelWon) {
-                            moves++
-                            isLevelWon = true
-                        }
+                        isLevelWon = true
                     },
                     isLevelWon = isLevelWon
                 )
@@ -153,8 +166,7 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
                     Button(
                         onClick = {
                             if (history.isNotEmpty()) {
-                                currentLevelData = history.removeAt(history.size - 1)
-                                moves--
+                                currentLevelData = history.removeAt(history.lastIndex)
                             }
                         },
                         enabled = history.isNotEmpty() && !isLevelWon
@@ -164,7 +176,6 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
                     Button(onClick = {
                         history.clear()
                         currentLevelData = LevelData.LEVELS[levelIndex]
-                        moves = 0
                         isLevelWon = false
                     },
                         enabled = history.isNotEmpty() && !isLevelWon) {
@@ -305,7 +316,7 @@ fun GameBoard(
                 Box(
                     modifier = Modifier
                         .size(blockWidth, blockHeight)
-                        .offset(currentOffsetX, offsetY)
+                        .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
                         .padding(4.dp)
                         .background(color, shape = RoundedCornerShape(4.dp))
                         .pointerInput(block, levelData, isLevelWon) {
@@ -421,7 +432,7 @@ fun GameBoard(
                                     ) {
                                         val newBlocks = levelData.blocks.toMutableList()
                                         newBlocks[index] = newBlock
-                                        onLevelChanged(levelData.copy(blocks = newBlocks))
+                                        onLevelChanged(levelData.copy(blocks = newBlocks, lastMovedBlockIndex = index))
                                     } else {
                                         offsetX = cellWidth * block.position.x
                                         offsetY = cellHeight * block.position.y
