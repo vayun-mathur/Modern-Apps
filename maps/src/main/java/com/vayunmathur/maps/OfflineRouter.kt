@@ -3,11 +3,19 @@ package com.vayunmathur.maps
 import android.content.Context
 import android.util.Log
 import com.vayunmathur.maps.data.SpecificFeature
+import io.github.kevincianfarini.alchemist.scalar.meters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.spatialk.geojson.Position
 import java.io.File
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 object OfflineRouter {
     init {
@@ -72,13 +80,40 @@ object OfflineRouter {
             positions.add(Position(rawCoords[i], rawCoords[i + 1]))
         }
 
+        val distance = positions.zipWithNext().sumOf {
+            haversine(it.first, it.second)
+        }
+
+        val time = (distance.meters / (4500.meters/1.hours))
+
         RouteService.Route(
-            duration = 5.minutes, // You could calculate this in C++ and return as part of the array
-            distanceMeters = 100.0,
+            duration = time.inWholeSeconds.seconds, // You could calculate this in C++ and return as part of the array
+            distanceMeters = distance,
             polyline = positions,
             step = listOf(RouteService.Step(
-                100.0, 5.minutes, positions, RouteService.API.NavInstruction(), RouteService.TravelMode.WALK)
+                distance, time.inWholeSeconds.seconds, positions, RouteService.API.NavInstruction(), RouteService.TravelMode.WALK)
             )
         )
+    }
+
+    fun haversine(pos1: Position, pos2: Position): Double {
+        val r = 6371_000.0
+
+        val lat1 = Math.toRadians(pos1.latitude)
+        val lon1 = Math.toRadians(pos1.longitude)
+        val lat2 = Math.toRadians(pos2.latitude)
+        val lon2 = Math.toRadians(pos2.longitude)
+
+        val dLat = lat2 - lat1
+        val dLon = lon2 - lon1
+
+        // The Haversine formula
+        val a = sin(dLat / 2).pow(2.0) +
+                cos(lat1) * cos(lat2) *
+                sin(dLon / 2).pow(2.0)
+
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return r * c
     }
 }
