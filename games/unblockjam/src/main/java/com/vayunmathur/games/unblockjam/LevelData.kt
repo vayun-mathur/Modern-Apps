@@ -52,7 +52,8 @@ data class LevelData(
     val dimension: Dimension,
     val exit: Coord,
     val blocks: List<Block>,
-    val optimalMoves: Int
+    val optimalMoves: Int,
+    val lastMovedBlockIndex: Int? = null
 ) {
     companion object {
 

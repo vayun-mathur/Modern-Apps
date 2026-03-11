@@ -134,8 +134,21 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
                 GameBoard(
                     levelData = currentLevelData,
                     onLevelChanged = { newLevelData ->
+                        if (history.isNotEmpty()) {
+                            val lastState = history[history.size - 1]
+
+                            // If block is moved back to its previous position
+                            if (lastState.blocks == newLevelData.blocks) {
+                                currentLevelData = history.removeAt(history.size - 1)
+                                return@GameBoard
+                            }
+                        }
+
                         if (!isLevelWon) {
-                            history.add(currentLevelData)
+                            // Only add to history if a different block is moved
+                            if (newLevelData.lastMovedBlockIndex != currentLevelData.lastMovedBlockIndex) {
+                                history.add(currentLevelData)
+                            }
                             currentLevelData = newLevelData
                         }
                     },
@@ -417,7 +430,7 @@ fun GameBoard(
                                     ) {
                                         val newBlocks = levelData.blocks.toMutableList()
                                         newBlocks[index] = newBlock
-                                        onLevelChanged(levelData.copy(blocks = newBlocks))
+                                        onLevelChanged(levelData.copy(blocks = newBlocks, lastMovedBlockIndex = index))
                                     } else {
                                         offsetX = cellWidth * block.position.x
                                         offsetY = cellHeight * block.position.y
