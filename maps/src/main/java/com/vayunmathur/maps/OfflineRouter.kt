@@ -3,6 +3,7 @@ package com.vayunmathur.maps
 import android.content.Context
 import android.util.Log
 import com.vayunmathur.maps.data.SpecificFeature
+import io.github.kevincianfarini.alchemist.scalar.kilometers
 import io.github.kevincianfarini.alchemist.scalar.meters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,23 +57,23 @@ object OfflineRouter {
     }
 
     private external fun init(basePath: String): Boolean
-    private external fun findShortestRouteNative(sLat: Double, sLon: Double, eLat: Double, eLon: Double): DoubleArray
+    private external fun findShortestRouteNative(sLat: Double, sLon: Double, eLat: Double, eLon: Double, mode: Int): DoubleArray
 
     private var isInitialized = false
 
-    suspend fun getRoute(context: Context, route: SpecificFeature.Route, userPosition: Position): RouteService.Route = withContext(Dispatchers.Default) {
+    suspend fun getRoute(context: Context, route: SpecificFeature.Route, userPosition: Position, type: RouteService.TravelMode): RouteService.Route = withContext(Dispatchers.Default) {
         val start = route.waypoints.first()?.position ?: userPosition
         val end = route.waypoints.last()?.position ?: userPosition
-        return@withContext getRoute(context, start, end)
+        return@withContext getRoute(context, start, end, type)
     }
 
-    suspend fun getRoute(context: Context, start: Position, end: Position): RouteService.Route = withContext(Dispatchers.Default) {
+    suspend fun getRoute(context: Context, start: Position, end: Position, type: RouteService.TravelMode): RouteService.Route = withContext(Dispatchers.Default) {
         if (!isInitialized) {
             isInitialized = init(context.getExternalFilesDir(null)!!.absolutePath)
         }
 
         // Get raw doubles: [lat0, lon0, lat1, lon1...]
-        val rawCoords = findShortestRouteNative(start.latitude, start.longitude, end.latitude, end.longitude)
+        val rawCoords = findShortestRouteNative(start.latitude, start.longitude, end.latitude, end.longitude, type.ordinal)
 
         // Chunk the array by 2 to create Position objects
         val positions = mutableListOf<Position>()
@@ -84,7 +85,8 @@ object OfflineRouter {
             haversine(it.first, it.second)
         }
 
-        val time = (distance.meters / (4500.meters/1.hours))
+        val time =
+            if(type == RouteService.TravelMode.WALK) distance.meters / (4.5.kilometers/1.hours) else if(type == RouteService.TravelMode.BICYCLE) distance.meters / (16.kilometers/1.hours) else 0.hours
 
         RouteService.Route(
             duration = time.inWholeSeconds.seconds, // You could calculate this in C++ and return as part of the array

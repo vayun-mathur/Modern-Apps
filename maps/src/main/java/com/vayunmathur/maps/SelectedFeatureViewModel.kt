@@ -40,12 +40,21 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     val routes = selectedFeature.map {
         val routeFeature = selectedFeature.value as? SpecificFeature.Route ?: return@map null
         RouteService.TravelMode.entries.associateWith {
-            if(it == RouteService.TravelMode.TRANSIT) {
-                TransitRoute.computeRoute(routeFeature, userPosition.value)
-            } else if(it == RouteService.TravelMode.WALK) {
-                OfflineRouter.getRoute(application.applicationContext, routeFeature, userPosition.value)
-            } else {
-                RouteService.computeRoute(routeFeature, userPosition.value, it)
+            when (it) {
+                RouteService.TravelMode.TRANSIT -> {
+                    TransitRoute.computeRoute(routeFeature, userPosition.value)
+                }
+                RouteService.TravelMode.BICYCLE, RouteService.TravelMode.WALK -> {
+                    OfflineRouter.getRoute(
+                        application.applicationContext,
+                        routeFeature,
+                        userPosition.value,
+                        it
+                    )
+                }
+                else -> {
+                    RouteService.computeRoute(routeFeature, userPosition.value, it)
+                }
             }
         }
     }
