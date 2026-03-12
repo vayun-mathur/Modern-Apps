@@ -85,6 +85,11 @@ fun IconCheck(tint: Color = LocalContentColor.current) {
 }
 
 @Composable
+fun IconStar(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.baseline_star_24), "Check", tint = tint)
+}
+
+@Composable
 fun IconPlay(tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.outline_play_arrow_24), "Play", tint = tint)
 }

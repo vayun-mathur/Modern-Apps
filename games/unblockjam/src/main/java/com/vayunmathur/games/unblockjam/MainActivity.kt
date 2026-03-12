@@ -7,24 +7,33 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,8 +51,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import com.vayunmathur.games.unblockjam.ui.theme.UnblockJamTheme
+import com.vayunmathur.library.ui.IconCheck
+import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.ui.IconStar
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
+import java.io.Serial
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -57,43 +75,79 @@ class MainActivity : ComponentActivity() {
         completedLevelsRepository = CompletedLevelsRepository(this)
         setContent {
             UnblockJamTheme {
-                GameScreen(completedLevelsRepository)
+                Navigation(completedLevelsRepository)
             }
         }
     }
 }
 
+@Serializable
+sealed interface Route: NavKey {
+    @Serializable
+    data object LevelSelector: Route
+    @Serializable
+    data class Game(val levelIndex: Int): Route
+}
+
 @Composable
-fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
-    var levelIndex by remember { mutableIntStateOf(0) }
+fun Navigation(completedLevelsRepository: CompletedLevelsRepository) {
+    val backStack = rememberNavBackStack<Route>(Route.LevelSelector)
+    MainNavigation(backStack) {
+        entry<Route.LevelSelector> {
+            LevelScreen(backStack, completedLevelsRepository)
+        }
+        entry<Route.Game> {
+            GameScreen(backStack, completedLevelsRepository, it.levelIndex)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository) {
+    val levelStats = completedLevelsRepository.getLevelStats()
+    Scaffold(topBar = {
+        TopAppBar({Text("Level Selector")})
+    }) { paddingValues ->
+        LazyVerticalGrid(GridCells.Adaptive(80.dp), Modifier.padding(paddingValues),
+            verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(LevelData.LEVELS) { index, levelData ->
+                Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
+                    backStack.add(Route.Game(index))
+                }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
+                    Box(Modifier.fillMaxSize().padding(8.dp)) {
+                        Text("${index + 1}", Modifier.align(Alignment.Center))
+                        if(levelStats[index.toString()] != null) {
+                            if (levelStats[index.toString()]!!.bestScore == levelData.optimalMoves) {
+                                Box(Modifier.align(Alignment.TopEnd)) {
+                                    IconStar()
+                                }
+                            }
+                            Box(Modifier.align(Alignment.BottomEnd)) {IconCheck()}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository, levelIndex: Int) {
     var currentLevelData by remember { mutableStateOf(LevelData.LEVELS[levelIndex]) }
     val history = remember { mutableStateListOf<LevelData>() }
     var isLevelWon by remember { mutableStateOf(false) }
     var levelStats by remember { mutableStateOf(completedLevelsRepository.getLevelStats()) }
 
     fun changeLevel(newLevelIndex: Int) {
-        levelIndex = newLevelIndex.coerceIn(0, LevelData.LEVELS.lastIndex)
-        currentLevelData = LevelData.LEVELS[levelIndex]
-        history.clear()
-        isLevelWon = false
+        backStack[backStack.lastIndex] = Route.Game(newLevelIndex)
     }
 
     fun getCurrentMoves(): Int {
         val winningMoveIncrement =
             if (isLevelWon && currentLevelData.lastMovedBlockIndex != 0) 1 else 0
         return history.size + winningMoveIncrement
-    }
-
-    LaunchedEffect(Unit) {
-        while(levelIndex.toString() in levelStats) {
-            levelIndex++
-            if(levelIndex == LevelData.LEVELS.size) {
-                levelIndex = 0
-                currentLevelData = LevelData.LEVELS[0]
-                break
-            }
-            currentLevelData = LevelData.LEVELS[levelIndex]
-        }
     }
 
     LaunchedEffect(isLevelWon) {
@@ -105,7 +159,7 @@ fun GameScreen(completedLevelsRepository: CompletedLevelsRepository) {
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(topBar = {TopAppBar({}, navigationIcon = {IconNavigation(backStack)})}) { innerPadding ->
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
