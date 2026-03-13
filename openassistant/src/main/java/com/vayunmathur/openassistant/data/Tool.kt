@@ -11,19 +11,6 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
 @Serializable
-data class Tool(
-    val type: String,
-    val function: FunctionSpec
-)
-
-@Serializable
-data class FunctionSpec(
-    val name: String,
-    val description: String? = null,
-    val parameters: JsonObject
-)
-
-@Serializable
 data class ToolResult(val llmResponse: String, val userResponse: String)
 
 @Serializable
@@ -41,31 +28,6 @@ data class ToolSimple(
         val description: String,
         val required: Boolean,
     )
-
-    fun toTool(): Tool {
-        return Tool(
-            type = "function",
-            function = FunctionSpec(
-                name = name,
-                description = description,
-                parameters = buildJsonObject {
-                    putJsonObject("properties") {
-                        params.forEach {
-                            putJsonObject(it.name) {
-                                put("type", it.type)
-                                put("description", it.description)
-                            }
-                        }
-                    }
-                    putJsonArray("required") {
-                        params.filter { it.required }.forEach {
-                            add(it.name)
-                        }
-                    }
-                }
-            )
-        )
-    }
 
     fun systemDescription(): String {
         return Json.encodeToString(this)

@@ -40,57 +40,52 @@ data class Message(
 
 fun List<Message>.toStreamedText(): String {
     val builder = StringBuilder()
-    builder.append("<bos>")
 
-    // Define the system instruction for tool use
+    // Llama 3.1 start token
+    builder.append("<|begin_of_text|>")
+
+    // 1. Updated System Prompt to match your specific instructions
     val toolSystemPrompt = """
-        You have access to the following functions:
-        ${Tools.ALL_TOOLS.joinToString("\n") { it.systemDescription() }}
-        If you decide to invoke any of the function(s),
-        you MUST put it in the format of
-        {"name": function name, "parameters": {dictionary of argument name and its value}}
-        Even if there are no parameters, it must be an empty object
-        You must include nothing else in your response, including any formatting or markdown.
-        You also may only call one function at a time
+        You are an expert in composing functions. You are given a question and a set of possible functions. 
+        Based on the question, you will need to make one or more function/tool calls to achieve the purpose. 
+        If none of the functions can be used, point it out. If the given question lacks the parameters required by the function,also point it out. You should only return the function call in tools call sections.
+        If you decide to invoke any of the function(s), you MUST put it in the format of [{name: "get_weather", parameters: {latitude: 40.7128, longitude: -74.0060}}]
+        You SHOULD NOT include any other text in the response.
+        Here is a description of the functions in JSON format that you can invoke.
+        [
+            ${Tools.ALL_TOOLS.joinToString(",\n") { it.systemDescription() }}
+        ]
+        DO NOT call functions unless ABSOLUTELY NECESSARY. You should usually just respond in natural language to the user.
     """.trimIndent()
 
-    // 1. Explicit System Turn
-    builder.append("<start_of_turn>system\n")
+    builder.append("<|start_header_id|>system<|end_header_id|>\n\n")
     builder.append(toolSystemPrompt)
-    builder.append("<end_of_turn>\n")
+    builder.append("<|eot_id|>")
 
     this.forEach { message ->
-        if(message.role == "tool") {
-            builder.append("<start_of_turn>user\n")
-        } else {
-            builder.append("<start_of_turn>${message.role}\n")
-        }
+        val role = message.role
+        builder.append("<|start_header_id|>$role<|end_header_id|>\n\n")
 
-        // Handle Images
-        message.images.forEach { _ ->
-            builder.append("<image_soft_token>")
-        }
-
-        // Handle Tool Calls
+        // Handle Tool Calls (Formatting as [name(args)])
         if (message.toolCalls.isNotEmpty()) {
-            message.toolCalls.forEach { call ->
-                // Outputting the JSON format we told the model to use
-                builder.append(Json.encodeToString(call))
-                builder.append("\n")
+            val calls = message.toolCalls.joinToString(", ") { call ->
+                val params = call.parameters.entries.joinToString(", ") { "${it.key}=${it.value}" }
+                "${call.name}($params)"
             }
-        } else {
+            builder.append("[$calls]")
+        }
+        // Handle Tool Outputs or Text Content
+        else {
             builder.append(message.textContent.trim())
         }
 
-        builder.append("<end_of_turn>\n")
+        builder.append("<|eot_id|>")
     }
 
     // Preparation for the model's next response
-    if (this.lastOrNull()?.role != "model") {
-        builder.append("<start_of_turn>model\n")
+    if (this.lastOrNull()?.role != "assistant") {
+        builder.append("<|start_header_id|>assistant<|end_header_id|>\n\n")
     }
-
-    println(builder.toString())
 
     return builder.toString()
 }

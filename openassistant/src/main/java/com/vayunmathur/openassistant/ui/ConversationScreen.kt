@@ -90,6 +90,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import okio.Buffer
@@ -134,26 +135,39 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         var fullResponse = ""
         var usedTools = false
 
-        llamaAPI.model!!.generateStream(messagesForModel.toStreamedText()).collect {
+        llamaAPI.run(messagesForModel.toStreamedText()).collect {
             println("NEW CONTENT: $it")
             fullResponse += it
-            if(!fullResponse.startsWith("{")) {
+            if(!fullResponse.startsWith("[")) {
                 assistantMessage = assistantMessage.copy(textContent = fullResponse)
                 messageDao.upsert(assistantMessage)
             }
         }
-        if(fullResponse.startsWith("{")) {
+        println("FULL RESPONSE: $fullResponse")
+        if(fullResponse.startsWith("[")) {
             usedTools = true
-            val toolCall = Json.decodeFromString<ToolCall>(fullResponse)
-            val tool = Tools.ALL_TOOLS.find { it.name == toolCall.name }
-            if (tool != null) {
-                assistantMessage = assistantMessage.copy(toolCalls = assistantMessage.toolCalls + toolCall)
-                messageDao.upsert(assistantMessage)
-                val action = tool.action
-                val result = action(toolCall.parameters, applicationContext)
-                messageDao.upsert(
-                    Message(Random.nextLong(), conversationID, "tool", result.llmResponse, result.userResponse, emptyList())
-                )
+
+            val toolCalls = parseToolCall(fullResponse.take(fullResponse.lastIndexOf(']')+1))
+            println(toolCalls)
+            for(toolCall in toolCalls) {
+                val tool = Tools.ALL_TOOLS.find { it.name == toolCall.name }
+                if (tool != null) {
+                    assistantMessage =
+                        assistantMessage.copy(toolCalls = assistantMessage.toolCalls + toolCall)
+                    messageDao.upsert(assistantMessage)
+                    val action = tool.action
+                    val result = action(toolCall.parameters, applicationContext)
+                    messageDao.upsert(
+                        Message(
+                            Random.nextLong(),
+                            conversationID,
+                            "tool",
+                            result.llmResponse,
+                            result.userResponse,
+                            emptyList()
+                        )
+                    )
+                }
             }
         }
 
@@ -180,6 +194,31 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         )
         requestResponse(viewModel, messageDao, conversationID, userMessage)
     }
+}
+
+fun parseToolCall(input: String): List<ToolCall> {
+    return Json{
+        isLenient = true
+    }.decodeFromString(input);
+    // Regex to find: func_name(key=value, key=value)
+//    val functionRegex = Regex("""(\w+)\(([^)]+)\)""")
+//    // Regex to find: key=value
+//    val paramRegex = Regex("""(\w+)=([^,]+)""")
+//
+//    return functionRegex.findAll(input).map { match ->
+//        val name = match.groupValues[1]
+//        val paramsString = match.groupValues[2]
+//
+//        val parameters = paramRegex.findAll(paramsString).associate { paramMatch ->
+//            val key = paramMatch.groupValues[1].trim()
+//            val value = paramMatch.groupValues[2].trim()
+//
+//            // Convert the string value to the appropriate JsonElement
+//            key to Json.parseToJsonElement(value)
+//        }
+//
+//        ToolCall(name, parameters)
+//    }.toList()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -313,7 +352,7 @@ fun ConversationScreen(
                         userInput,
                         { userInput = it },
                         Modifier.fillMaxWidth(),
-                        label = { Text("Ask Grok...") },
+                        label = { Text("Prompt...") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(onSend = { send() }),

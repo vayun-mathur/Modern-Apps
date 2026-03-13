@@ -23,21 +23,38 @@ import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.database.MessageDatabase
 import com.vayunmathur.openassistant.ui.ConversationListScreen
 import com.vayunmathur.openassistant.ui.ConversationScreen
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import org.codeshipping.llamakotlin.LlamaModel
+import org.pytorch.executorch.extension.llm.LlmCallback
+import org.pytorch.executorch.extension.llm.LlmModule
 import java.io.File
 
 
 class LLamaAPI(context: Context) {
-    var model: LlamaModel?
+
+    val llmModule = LlmModule(File(context.getExternalFilesDir(null)!!, "model.pte").absolutePath, File(context.getExternalFilesDir(null)!!, "model.bin").absolutePath, 0.8f)
 
     init {
-        runBlocking {
-            model = LlamaModel.load(File(context.getExternalFilesDir(null), "model.gguf").absolutePath) {
-                gpuLayers = 1
+        llmModule.load()
+    }
+
+    fun run(content: String) = callbackFlow {
+        llmModule.generate(content, 2048, object : LlmCallback {
+            override fun onResult(result: String) {
+                trySend(result)
             }
-        }
+            override fun onStats(stats: String) {
+                println(stats)
+                close()
+            }
+        }, false)
+        awaitClose { }
     }
 
     companion object {
@@ -65,10 +82,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
-                    Triple("https://huggingface.co/unsloth/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_K_M.gguf", "model.gguf", "Model Weights")
+                    Triple("https://huggingface.co/executorch-community/Llama-3.2-1B-Instruct-QLORA_INT4_EO8-ET/resolve/main/Llama-3.2-1B-Instruct-QLORA_INT4_EO8.pte", "model.pte", "Model"),
+                    Triple("https://huggingface.co/executorch-community/Llama-3.2-1B-Instruct-QLORA_INT4_EO8-ET/resolve/main/tokenizer.model", "model.bin", "Weights")
                 )) {
                     LaunchedEffect(Unit) {
-                        LLamaAPI.getInstance(this@MainActivity)
+                        val api = LLamaAPI.getInstance(this@MainActivity)
+//                        println(api.generateText(File(getExternalFilesDir(null)!!, "model.gguf").absolutePath, "The most important issues facing the world are"))
                     }
                     Navigation(viewModel, ds)
                 }

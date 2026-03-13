@@ -21,8 +21,7 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.work.runtime.ktx)
     ksp(libs.androidx.room.compiler)
-
-    implementation("org.codeshipping:llama-kotlin-android:0.1.3")
+    implementation("org.pytorch:executorch-android:1.1.0")
 
     // markdown
     implementation(libs.compose.markdown)
