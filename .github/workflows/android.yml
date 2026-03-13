@@ -1,4 +1,4 @@
-name: "🚀 Auto-Increment & Release"
+name: "🚀 Publish Next Release"
 
 on:
   workflow_dispatch:
@@ -20,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          lfs: true
 
       - name: Set Up JDK 17
         uses: actions/setup-java@v4
