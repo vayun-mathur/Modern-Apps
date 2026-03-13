@@ -23,13 +23,8 @@ import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.database.MessageDatabase
 import com.vayunmathur.openassistant.ui.ConversationListScreen
 import com.vayunmathur.openassistant.ui.ConversationScreen
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.pytorch.executorch.extension.llm.LlmCallback
 import org.pytorch.executorch.extension.llm.LlmModule
@@ -82,8 +77,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
-                    Triple("https://huggingface.co/executorch-community/Llama-3.2-1B-Instruct-QLORA_INT4_EO8-ET/resolve/main/Llama-3.2-1B-Instruct-QLORA_INT4_EO8.pte", "model.pte", "Model"),
-                    Triple("https://huggingface.co/executorch-community/Llama-3.2-1B-Instruct-QLORA_INT4_EO8-ET/resolve/main/tokenizer.model", "model.bin", "Weights")
+                    Triple("https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/main/qwen-3-1.7B/quantized/qwen3_1_7b_8da4w.pte", "model.pte", "Model"),
+                    Triple("https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/main/tokenizer.json", "model.bin", "Weights")
                 )) {
                     LaunchedEffect(Unit) {
                         val api = LLamaAPI.getInstance(this@MainActivity)

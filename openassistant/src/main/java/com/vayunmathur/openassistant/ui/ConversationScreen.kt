@@ -133,13 +133,19 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         messageDao.upsert(assistantMessage)
 
         var fullResponse = ""
+        var thinkContent = ""
         var usedTools = false
 
+        println(messagesForModel)
         llamaAPI.run(messagesForModel.toStreamedText()).collect {
             println("NEW CONTENT: $it")
             fullResponse += it
+            if(fullResponse.endsWith("</think>\n\n")) {
+                thinkContent = fullResponse
+                fullResponse = ""
+            }
             if(!fullResponse.startsWith("[")) {
-                assistantMessage = assistantMessage.copy(textContent = fullResponse)
+                assistantMessage = assistantMessage.copy(textContent = thinkContent + fullResponse)
                 messageDao.upsert(assistantMessage)
             }
         }
@@ -147,27 +153,51 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         if(fullResponse.startsWith("[")) {
             usedTools = true
 
-            val toolCalls = parseToolCall(fullResponse.take(fullResponse.lastIndexOf(']')+1))
-            println(toolCalls)
-            for(toolCall in toolCalls) {
-                val tool = Tools.ALL_TOOLS.find { it.name == toolCall.name }
-                if (tool != null) {
-                    assistantMessage =
-                        assistantMessage.copy(toolCalls = assistantMessage.toolCalls + toolCall)
-                    messageDao.upsert(assistantMessage)
-                    val action = tool.action
-                    val result = action(toolCall.parameters, applicationContext)
-                    messageDao.upsert(
-                        Message(
-                            Random.nextLong(),
-                            conversationID,
-                            "tool",
-                            result.llmResponse,
-                            result.userResponse,
-                            emptyList()
+            try {
+                val toolCalls = parseToolCall(fullResponse.take(fullResponse.lastIndexOf(']') + 1))
+                println(toolCalls)
+                for (toolCall in toolCalls) {
+                    val tool = Tools.ALL_TOOLS.find { it.name == toolCall.name }
+                    if (tool != null) {
+                        assistantMessage =
+                            assistantMessage.copy(toolCalls = assistantMessage.toolCalls + toolCall)
+                        messageDao.upsert(assistantMessage)
+                        val action = tool.action
+                        val result = action(toolCall.parameters, applicationContext)
+                        messageDao.upsert(
+                            Message(
+                                0,
+                                conversationID,
+                                "tool",
+                                result.llmResponse,
+                                result.userResponse,
+                                emptyList()
+                            )
                         )
-                    )
+                    } else {
+                        messageDao.upsert(
+                            Message(
+                                0,
+                                conversationID,
+                                "tool",
+                                "Incorrect function name",
+                                null,
+                                emptyList()
+                            )
+                        )
+                    }
                 }
+            } catch(e: Exception) {
+                messageDao.upsert(
+                    Message(
+                        0,
+                        conversationID,
+                        "tool",
+                        "Invalid formatting for tool call: ${e.message}",
+                        null,
+                        emptyList()
+                    )
+                )
             }
         }
 
