@@ -17,7 +17,7 @@ data class ToolResult(val llmResponse: String, val userResponse: String)
 data class ToolSimple(
     val name: String,
     val description: String,
-    val params: List<Parameter>,
+    val parameters: List<Parameter>,
     @Transient
     val action: ToolFunctionType = { _, _ -> ToolResult("", "") },
 ) {
@@ -30,7 +30,19 @@ data class ToolSimple(
     )
 
     fun systemDescription(): String {
-        return Json.encodeToString(this)
+        return Json.encodeToString(buildJsonObject {
+            put("name", name)
+            put("description", description)
+            put("parameters", buildJsonObject {
+                for(parameter in parameters) {
+                    put(parameter.name, buildJsonObject {
+                        put("type", parameter.type)
+                        put("description", parameter.description)
+                        put("required", parameter.required)
+                    })
+                }
+            })
+        })
     }
 }
 

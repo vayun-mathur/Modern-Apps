@@ -132,30 +132,18 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
         )
         messageDao.upsert(assistantMessage)
 
-        var fullResponse = ""
-        var thinkContent = ""
         var usedTools = false
 
         println(messagesForModel)
-        llamaAPI.run(messagesForModel.toStreamedText()).collect {
-            println("NEW CONTENT: $it")
-            fullResponse += it
-            if(fullResponse.endsWith("</think>\n\n")) {
-                thinkContent = fullResponse
-                fullResponse = ""
-            }
-            if(!fullResponse.startsWith("[")) {
-                assistantMessage = assistantMessage.copy(textContent = thinkContent + fullResponse)
-                messageDao.upsert(assistantMessage)
-            }
+        llamaAPI.getResponse(messagesForModel.toStreamedText(), assistantMessage).collect {
+            assistantMessage = it
+            messageDao.upsert(it)
         }
-        println("FULL RESPONSE: $fullResponse")
-        if(fullResponse.startsWith("[")) {
+        if(assistantMessage.toolCalls.isNotEmpty()) {
             usedTools = true
 
             try {
-                val toolCalls = parseToolCall(fullResponse.take(fullResponse.lastIndexOf(']') + 1))
-                println(toolCalls)
+                val toolCalls = assistantMessage.toolCalls
                 for (toolCall in toolCalls) {
                     val tool = Tools.ALL_TOOLS.find { it.name == toolCall.name }
                     if (tool != null) {
@@ -163,7 +151,7 @@ class ConversationWorker(appContext: Context, workerParams: WorkerParameters): C
                             assistantMessage.copy(toolCalls = assistantMessage.toolCalls + toolCall)
                         messageDao.upsert(assistantMessage)
                         val action = tool.action
-                        val result = action(toolCall.parameters, applicationContext)
+                        val result = action(toolCall.arguments, applicationContext)
                         messageDao.upsert(
                             Message(
                                 0,

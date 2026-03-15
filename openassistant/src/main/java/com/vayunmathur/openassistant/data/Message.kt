@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonElement
 @Serializable
 data class ToolCall(
     val name: String,
-    val parameters: Map<String, JsonElement>
+    val arguments: Map<String, JsonElement>
 )
 
 
@@ -38,51 +38,92 @@ data class Message(
     val timestamp: Long = System.currentTimeMillis()
 ): DatabaseItem
 
-fun List<Message>.toStreamedText(): String {
+fun List<Message>.toStreamedText(tools: List<ToolSimple> = Tools.ALL_TOOLS): String {
     val builder = StringBuilder()
 
-    // Qwen uses ChatML format
-    // Note: Qwen typically doesn't use a "begin_of_text" string like Llama's 128000 token
+    // 1. System Prompt & Tool Header
+    builder.append("<|im_start|>system\n")
 
-    // 1. System Prompt
     val toolSystemPrompt = """
         You are an expert in composing functions. You are given a question and a set of possible functions. 
         Based on the question, you will need to make one or more function/tool calls to achieve the purpose. 
         If none of the function can be used, point it out. If the given question lacks the parameters required by the function,
         also point it out. You should only return the function call in tools call sections.
 
-        If you decide to invoke any of the function(s), you MUST put it in the format of [{"name": "function_name", "parameters": {"key": "value"}}] an array of json objects, each representing one function call\n
-        You SHOULD NOT include any other text in the response.
+        If you decide to invoke any of the function(s), you MUST put it in the format:
+        <tool_call>
+        {"name": "function_name", "arguments": {"key": "value"}}
+        </tool_call>
 
         Here is a list of functions in JSON format that you can invoke.
-        ${Tools.ALL_TOOLS.joinToString("\n") { it.systemDescription() }}
+        ${tools.joinToString("\n") { it.systemDescription() }}
     """.trimIndent()
 
-    builder.append("<|im_start|>system\n")
     builder.append(toolSystemPrompt)
+
+    // Qwen 3 XML Tool Schema Section
+    if (tools.isNotEmpty()) {
+        builder.append("\n\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\n")
+        builder.append("You are provided with function signatures within <tools></tools> XML tags:\n<tools>")
+        tools.forEach { tool ->
+            builder.append("\n").append(tool.systemDescription())
+        }
+        builder.append("\n</tools>\n\n")
+        builder.append("For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n")
+        builder.append("<tool_call>\n{\"name\": <function-name>, \"arguments\": <args-json-object>}\n</tool_call>")
+    }
     builder.append("<|im_end|>\n")
 
-    this.forEach { message ->
-        val role = message.role // e.g., "user" or "assistant"
-        builder.append("<|im_start|>$role\n")
+    // 2. Message History
+    this.forEachIndexed { index, message ->
+        if (index == 0 && message.role == "system") return@forEachIndexed
 
-        if (message.toolCalls.isNotEmpty()) {
-            // Qwen 2.5/3 performs better with pure JSON objects for tool calls
-            val calls = message.toolCalls.joinToString("\n") { call ->
-                // Constructing a simple JSON string manually or via a serializer
-                """{"name": "${call.name}", "parameters": ${call.parameters}}"""
+        when (message.role) {
+            "tool" -> {
+                val prevRole = this.getOrNull(index - 1)?.role
+                if (index == 0 || prevRole != "tool") {
+                    builder.append("<|im_start|>user")
+                }
+                builder.append("\n<tool_response>\n").append(message.textContent.trim()).append("\n</tool_response>")
+
+                val nextRole = this.getOrNull(index + 1)?.role
+                if (nextRole != "tool") {
+                    builder.append("<|im_end|>\n")
+                }
             }
-            builder.append(calls)
-        } else {
-            builder.append(message.textContent.trim())
-        }
+            "assistant" -> {
+                builder.append("<|im_start|>assistant\n")
 
-        builder.append("<|im_end|>\n")
+//                if (message.reasoningContent != null) {
+//                    builder.append("<think>\n").append(message.reasoningContent.trim()).append("\n</think>\n\n")
+//                }
+
+                if (message.textContent.isNotEmpty()) {
+                    builder.append(message.textContent.trim())
+                }
+
+                // Strictly following the <tool_call> format
+                if (message.toolCalls.isNotEmpty()) {
+                    message.toolCalls.forEach { call ->
+                        builder.append("\n<tool_call>\n")
+                        builder.append("""{"name": "${call.name}", "arguments": ${call.arguments}}""")
+                        builder.append("\n</tool_call>")
+                    }
+                }
+                builder.append("<|im_end|>\n")
+            }
+            else -> {
+                builder.append("<|im_start|>${message.role}\n")
+                builder.append(message.textContent.trim())
+                builder.append("<|im_end|>\n")
+            }
+        }
     }
 
-    // Trigger the assistant's turn
+    // 3. Trigger Assistant Turn
     if (this.lastOrNull()?.role != "assistant") {
         builder.append("<|im_start|>assistant\n")
+        builder.append("<think>\n\n</think>\n\n")
     }
 
     return builder.toString()

@@ -20,12 +20,16 @@ import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
+import com.vayunmathur.openassistant.data.ToolCall
 import com.vayunmathur.openassistant.data.database.MessageDatabase
 import com.vayunmathur.openassistant.ui.ConversationListScreen
 import com.vayunmathur.openassistant.ui.ConversationScreen
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.pytorch.executorch.extension.llm.LlmCallback
 import org.pytorch.executorch.extension.llm.LlmModule
 import java.io.File
@@ -40,7 +44,7 @@ class LLamaAPI(context: Context) {
     }
 
     fun run(content: String) = callbackFlow {
-        llmModule.generate(content, 2048, object : LlmCallback {
+        llmModule.generate(content, 32768, object : LlmCallback {
             override fun onResult(result: String) {
                 trySend(result)
             }
@@ -50,6 +54,35 @@ class LLamaAPI(context: Context) {
             }
         }, false)
         awaitClose { }
+    }
+
+    val toolCallRegex = Regex("""<tool_call>\s*(.*?)\s*</tool_call>""", RegexOption.DOT_MATCHES_ALL)
+
+    fun getResponse(content: String, initialAssistantMessage: Message): Flow<Message> {
+        var updatedMessage = initialAssistantMessage
+        var fullResponse = ""
+        return run(content).map { chunk ->
+            fullResponse += chunk
+            println(fullResponse)
+
+            // Extract all current tool calls from the accumulating response
+            val matches = toolCallRegex.findAll(fullResponse)
+            println(matches)
+            val toolCalls = matches.mapNotNull { match ->
+                val jsonString = match.groupValues[1]
+                runCatching {
+                    Json.decodeFromString<ToolCall>(jsonString)
+                }.getOrNull()
+            }.toList()
+            println(toolCalls)
+
+            // Update message with parsed tool calls and clean text
+            updatedMessage = updatedMessage.copy(
+                textContent = fullResponse,
+                toolCalls = toolCalls // Assuming your Message class has this field
+            )
+            updatedMessage
+        }
     }
 
     companion object {
@@ -81,8 +114,7 @@ class MainActivity : ComponentActivity() {
                     Triple("https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/main/tokenizer.json", "model.bin", "Weights")
                 )) {
                     LaunchedEffect(Unit) {
-                        val api = LLamaAPI.getInstance(this@MainActivity)
-//                        println(api.generateText(File(getExternalFilesDir(null)!!, "model.gguf").absolutePath, "The most important issues facing the world are"))
+                        LLamaAPI.getInstance(this@MainActivity)
                     }
                     Navigation(viewModel, ds)
                 }
