@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -109,8 +110,13 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
     Scaffold(topBar = {
         TopAppBar({Text("Level Selector")})
     }) { paddingValues ->
-        LazyVerticalGrid(GridCells.Adaptive(80.dp), Modifier.padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyVerticalGrid(
+            GridCells.Adaptive(80.dp),
+            Modifier.padding(paddingValues),
+            contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 0.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             itemsIndexed(LevelData.LEVELS) { index, levelData ->
                 Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
                     backStack.add(Route.Game(index))
