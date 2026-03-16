@@ -98,3 +98,8 @@ fun IconPlay(tint: Color = LocalContentColor.current) {
 fun IconPause(tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.outline_pause_24), "Pause", tint = tint)
 }
+
+@Composable
+fun IconStop(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.baseline_stop_24), "Add", tint = tint)
+}
