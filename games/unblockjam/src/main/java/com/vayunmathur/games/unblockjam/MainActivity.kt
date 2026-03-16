@@ -182,7 +182,8 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     PuzzleInfoBox(
                         levelIndex = levelIndex,
                         onLevelChange = ::changeLevel,
-                        isCompleted = currentLevelStats != null
+                        isCompleted = currentLevelStats != null,
+                        maxLevelIndex = LevelData.LEVELS.lastIndex
                     )
                     MovesInfoBox(
                         moves = getCurrentMoves(),
@@ -243,14 +244,17 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
 }
 
 @Composable
-fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Boolean) {
+fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Boolean, maxLevelIndex: Int) {
     InfoBox(title = "Puzzle") {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            IconButton(onClick = { onLevelChange(levelIndex - 1) }) {
+            IconButton(
+                onClick = { onLevelChange(levelIndex - 1) },
+                enabled = levelIndex > 0
+            ) {
                 Icon(
                     painterResource(R.drawable.arrow_back_24px),
                     contentDescription = "Previous Level",
@@ -263,7 +267,10 @@ fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Bo
                     fontWeight = FontWeight.Bold
                 )
             }
-            IconButton(onClick = { onLevelChange(levelIndex + 1) }) {
+            IconButton(
+                onClick = { onLevelChange(levelIndex + 1) },
+                enabled = levelIndex < maxLevelIndex
+            ) {
                 Icon(
                     painterResource(R.drawable.arrow_forward_24px),
                     contentDescription = "Next Level",
