@@ -21,7 +21,8 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.work.runtime.ktx)
     ksp(libs.androidx.room.compiler)
-    implementation("org.pytorch:executorch-android:1.1.0")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+
 
     // markdown
     implementation(libs.compose.markdown)
