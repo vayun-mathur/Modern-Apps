@@ -22,9 +22,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.clock.AlarmScheduler
 import com.vayunmathur.clock.MAIN_PAGES
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.data.Alarm
@@ -42,8 +45,12 @@ import kotlinx.datetime.format.char
 @Composable
 fun AlarmPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val alarms by viewModel.data<Alarm>().collectAsState()
+    val context = LocalContext.current
+    val alarmScheduler = remember { AlarmScheduler.get(context) }
     ResultEffect<LocalTime>("alarm_time") {
-        viewModel.upsert(Alarm(it, "", true, 0))
+        val newAlarm = Alarm(it, "", true, 0)
+        val id = viewModel.upsert(newAlarm)
+        alarmScheduler.schedule(newAlarm.copy(id = id))
     }
     Scaffold(topBar = {
         TopAppBar({Text("Alarm")})
@@ -58,7 +65,7 @@ fun AlarmPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     }) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             items(alarms) { alarm ->
-                AlarmCard(backStack, alarm, viewModel)
+                AlarmCard(backStack, alarm, viewModel, alarmScheduler)
             }
         }
     }
@@ -70,9 +77,14 @@ fun AlarmCard(
     backStack: NavBackStack<Route>,
     alarm: Alarm,
     viewModel: DatabaseViewModel,
+    alarmScheduler: AlarmScheduler
 ) {
     ResultEffect<LocalTime>("alarm_set_time_${alarm.id}") {
-        viewModel.upsert(alarm.copy(time = it))
+        val newAlarm = alarm.copy(time = it)
+        if(newAlarm.enabled) {
+            alarmScheduler.schedule(newAlarm)
+        }
+        viewModel.upsert(newAlarm)
     }
     Card {
         Column(Modifier.padding(16.dp)) {
@@ -89,6 +101,12 @@ fun AlarmCard(
                 )
                 Row {
                     Switch(checked = alarm.enabled, onCheckedChange = {
+                        val newAlarm = alarm.copy(enabled = it)
+                        if(newAlarm.enabled) {
+                            alarmScheduler.schedule(newAlarm)
+                        } else {
+                            alarmScheduler.cancel(newAlarm)
+                        }
                         viewModel.upsertAsync(alarm.copy(enabled = it))
                     })
                     IconButton({
@@ -104,7 +122,11 @@ fun AlarmCard(
                         checked = alarm.days and (1 shl idx) != 0,
                         onCheckedChange = {
                             val newDays = if (alarm.days and (1 shl idx) != 0) alarm.days and (1 shl idx).inv() else alarm.days or (1 shl idx)
-                            viewModel.upsertAsync(alarm.copy(days = newDays))
+                            val newAlarm = alarm.copy(days = newDays)
+                            if(newAlarm.enabled) {
+                                alarmScheduler.schedule(newAlarm)
+                            }
+                            viewModel.upsertAsync(newAlarm)
                         }
                     ) {
                         Text(day.toString())
