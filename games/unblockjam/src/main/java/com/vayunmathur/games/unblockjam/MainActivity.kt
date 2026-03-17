@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -107,10 +109,15 @@ fun Navigation(completedLevelsRepository: CompletedLevelsRepository) {
 fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository) {
     val levelStats = completedLevelsRepository.getLevelStats()
     Scaffold(topBar = {
-        TopAppBar({Text("Level Selector")})
+        TopAppBar({Text(stringResource(R.string.level_selector))})
     }) { paddingValues ->
-        LazyVerticalGrid(GridCells.Adaptive(80.dp), Modifier.padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyVerticalGrid(
+            GridCells.Adaptive(80.dp),
+            Modifier.padding(paddingValues),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             itemsIndexed(LevelData.LEVELS) { index, levelData ->
                 Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
                     backStack.add(Route.Game(index))
@@ -141,7 +148,8 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
     var levelStats by remember { mutableStateOf(completedLevelsRepository.getLevelStats()) }
 
     fun changeLevel(newLevelIndex: Int) {
-        backStack[backStack.lastIndex] = Route.Game(newLevelIndex)
+        val boundedIndex = newLevelIndex.coerceIn(0, LevelData.LEVELS.lastIndex)
+        backStack[backStack.lastIndex] = Route.Game(boundedIndex)
     }
 
     fun getCurrentMoves(): Int {
@@ -181,7 +189,8 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     PuzzleInfoBox(
                         levelIndex = levelIndex,
                         onLevelChange = ::changeLevel,
-                        isCompleted = currentLevelStats != null
+                        isCompleted = currentLevelStats != null,
+                        maxLevelIndex = LevelData.LEVELS.lastIndex
                     )
                     MovesInfoBox(
                         moves = getCurrentMoves(),
@@ -225,7 +234,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                         },
                         enabled = history.isNotEmpty() && !isLevelWon
                     ) {
-                        Text("Undo")
+                        Text(stringResource(R.string.undo))
                     }
                     Button(onClick = {
                         history.clear()
@@ -233,7 +242,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                         isLevelWon = false
                     },
                         enabled = history.isNotEmpty() && !isLevelWon) {
-                        Text("Restart")
+                        Text(stringResource(R.string.restart))
                     }
                 }
             }
@@ -242,17 +251,20 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
 }
 
 @Composable
-fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Boolean) {
-    InfoBox(title = "Puzzle") {
+fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Boolean, maxLevelIndex: Int) {
+    InfoBox(title = stringResource(R.string.level)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            IconButton(onClick = { onLevelChange(levelIndex - 1) }) {
+            IconButton(
+                onClick = { onLevelChange(levelIndex - 1) },
+                enabled = levelIndex > 0
+            ) {
                 Icon(
                     painterResource(R.drawable.arrow_back_24px),
-                    contentDescription = "Previous Level",
+                    contentDescription = stringResource(R.string.previous_level),
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -262,16 +274,19 @@ fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Bo
                     fontWeight = FontWeight.Bold
                 )
             }
-            IconButton(onClick = { onLevelChange(levelIndex + 1) }) {
+            IconButton(
+                onClick = { onLevelChange(levelIndex + 1) },
+                enabled = levelIndex < maxLevelIndex
+            ) {
                 Icon(
                     painterResource(R.drawable.arrow_forward_24px),
-                    contentDescription = "Next Level",
+                    contentDescription = stringResource(R.string.next_level),
                 )
             }
         }
         if (isCompleted) {
             Text(
-                text = "Completed",
+                text = stringResource(R.string.completed),
                 color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
@@ -282,7 +297,7 @@ fun PuzzleInfoBox(levelIndex: Int, onLevelChange: (Int) -> Unit, isCompleted: Bo
 
 @Composable
 fun MovesInfoBox(moves: Int, bestScore: Int?, optimalMoves: Int) {
-    InfoBox(title = "Moves") {
+    InfoBox(title = stringResource(R.string.moves)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "$moves",
@@ -302,7 +317,7 @@ fun MovesInfoBox(moves: Int, bestScore: Int?, optimalMoves: Int) {
 fun InfoBox(title: String, content: @Composable () -> Unit) {
     Surface(
         modifier = Modifier.size(width = 150.dp, height = 120.dp),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Column(
             modifier = Modifier.padding(8.dp),
@@ -338,7 +353,7 @@ fun GameBoard(
         Box(
             modifier = Modifier
                 .size(boardSize)
-                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
         ) {
 
 
@@ -372,7 +387,7 @@ fun GameBoard(
                         .size(blockWidth, blockHeight)
                         .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
                         .padding(4.dp)
-                        .background(color, shape = RoundedCornerShape(4.dp))
+                        .background(color, shape = RoundedCornerShape(8.dp))
                         .pointerInput(block, levelData, isLevelWon) {
                             if (isLevelWon) return@pointerInput
 

@@ -44,7 +44,7 @@ data class Block(
     },
     "w": 4,
     "h": 4,
-    "c": "1,2,0;0,2,2;"
+    "c": 2
   }
  */
 
@@ -84,7 +84,7 @@ data class LevelData(
                     blockDim
                 )
             }
-            val optimalMoves = json["c"]!!.jsonPrimitive.content.split(";").filter { it.isNotEmpty() }.size
+            val optimalMoves = json["c"]!!.jsonPrimitive.int
             return LevelData(dimension, exit, blocks, optimalMoves)
         }
 

@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Unblock Jam</string>
+    <string name="level">Puzzle</string>
+    <string name="level_selector">Puzzle Select</string>
+    <string name="undo">Undo</string>
+    <string name="restart">Restart</string>
+    <string name="previous_level">Previous Puzzle</string>
+    <string name="next_level">Next Puzzle</string>
+    <string name="completed">Completed</string>
+    <string name="moves">Moves</string>
 </resources>
