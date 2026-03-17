@@ -78,8 +78,6 @@ jobs:
             sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
           
           REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
-          
-          echo "Detected modules (reversed): $REVERSED_DIRS"
           echo "module_dirs=$REVERSED_DIRS" >> $GITHUB_ENV
 
       - name: Prepare F-Droid Metadata
@@ -113,12 +111,10 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Add all changes (Metadata + build.gradle.kts version injections)
           git add .
-          
           VERSION_NAME="${{ steps.version_info.outputs.version_name }}"
           
-          # Create local commit and tag
+          # This commit exists ONLY in the runner's workspace
           git commit -m "chore: prepare release $VERSION_NAME" || echo "No changes to commit"
           git tag "$VERSION_NAME"
 
@@ -139,12 +135,11 @@ jobs:
             cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "Warning: No APK for $dir"
           done
 
-      - name: Push Changes and Tag to Remote
+      - name: Push Tag Only
         if: success()
         run: |
           VERSION_NAME="${{ steps.version_info.outputs.version_name }}"
-          # Only push if the build was successful
-          git push origin HEAD
+          # CRITICAL: We push ONLY the tag. The HEAD commit remains local-only.
           git push origin "$VERSION_NAME"
 
       - name: Create GitHub Release
@@ -156,9 +151,8 @@ jobs:
           draft: true
           body: |
             Automated multi-module release.
-            
-            **Version Name:** ${{ steps.version_info.outputs.version_name }}
-            **Version Code:** ${{ steps.version_info.outputs.version_code }}
+            Version Name: ${{ steps.version_info.outputs.version_name }}
+            Version Code: ${{ steps.version_info.outputs.version_code }}
           files: distribution_apks/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

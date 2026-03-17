@@ -64,11 +64,13 @@ class MainActivity : ComponentActivity() {
         val ds = DataStoreUtils.getInstance(this)
         ensurePmtilesReady(this)
         println(OfflineRouter.checkFiles(this))
-//        runBlocking {
+        runBlocking {
 //            File(getExternalFilesDir(null)!!, "edge_index.bin").delete()
+//            File(getExternalFilesDir(null)!!, "edges.bin").delete()
 //            ds.setBoolean("dbSetupComplete", false)
 //            ds.setBoolean("done_edge_index.bin", false)
-//        }
+//            ds.setBoolean("done_edges.bin", false)
+        }
 //        finish()
         setContent {
             DynamicTheme {

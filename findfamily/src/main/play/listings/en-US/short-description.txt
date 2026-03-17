@@ -1,1 +1,0 @@
-An end-to-end encrypted location sharing app for family and friends.
