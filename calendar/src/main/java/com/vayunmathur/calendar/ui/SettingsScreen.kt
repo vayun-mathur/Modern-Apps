@@ -79,7 +79,7 @@ fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
             }
         }
     ) { paddingValues ->
-        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = paddingValues.plus(PaddingValues(8.dp))) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = paddingValues + PaddingValues(8.dp)) {
             grouped.forEach { (account, cals) ->
                 item {
                     Text(text = account.ifEmpty { "(No account)" }, modifier = Modifier.padding(vertical = 8.dp))

@@ -121,7 +121,6 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
     val addresses = remember { mutableStateListOf(*details?.addresses?.toTypedArray()?:emptyArray()) }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(),
         topBar = {
             TopAppBar(
                 title = { Text(if (contact == null) "Add contact" else "Edit contact") },
@@ -183,8 +182,8 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

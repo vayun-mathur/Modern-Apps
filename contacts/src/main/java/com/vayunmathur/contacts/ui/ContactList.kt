@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -123,7 +124,6 @@ fun ContactList(
                 }
             })
         },
-        contentWindowInsets = WindowInsets(),
         floatingActionButton = {
             if(backStack.last() !is Route.EditContact) {
                 FloatingActionButton(onClick = { onAddContactClick() }) {
@@ -133,8 +133,8 @@ fun ContactList(
         }
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = paddingValues + PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (favorites.isNotEmpty()) {

@@ -120,7 +120,7 @@ fun PackScreen(backStack: NavBackStack<Route>) {
     }) { paddingValues ->
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = paddingValues.plus(PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)),
+            contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             itemsIndexed(LevelData.PACKS) { index, pack ->
@@ -148,7 +148,7 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
         LazyVerticalGrid(
             GridCells.Adaptive(80.dp),
             Modifier.fillMaxSize(),
-            contentPadding = paddingValues.plus(PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)),
+            contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
