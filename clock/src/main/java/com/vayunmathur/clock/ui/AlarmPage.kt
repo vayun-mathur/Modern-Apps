@@ -63,7 +63,7 @@ fun AlarmPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             IconAdd()
         }
     }) { paddingValues ->
-        LazyColumn(Modifier.padding(paddingValues)) {
+        LazyColumn(contentPadding = paddingValues) {
             items(alarms) { alarm ->
                 AlarmCard(backStack, alarm, viewModel, alarmScheduler)
             }

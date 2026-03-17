@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,14 +75,12 @@ fun TimerPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             IconAdd()
         }
     }) { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-            LazyColumn(
-                contentPadding = PaddingValues(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(timers, key = { it.id }) { timer ->
-                    TimerCard(timer, now, viewModel)
-                }
+        LazyColumn(
+            contentPadding = paddingValues + PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(timers, key = { it.id }) { timer ->
+                TimerCard(timer, now, viewModel)
             }
         }
     }

@@ -64,7 +64,7 @@ fun ClockPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
             backStack.add(Route.SelectTimeZonesDialog)
         }) { IconAdd() }
     }) { paddingValues ->
-        LazyColumn(Modifier.padding(paddingValues).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        LazyColumn(Modifier.fillMaxWidth(), contentPadding = paddingValues, verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             item {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(time.time.format(LocalTime.Format {
