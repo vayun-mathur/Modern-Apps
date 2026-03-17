@@ -34,16 +34,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,11 +73,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation3.runtime.NavBackStack
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
+import com.vayunmathur.library.ui.IconMenu
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.setLast
+import com.vayunmathur.library.util.reset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -136,175 +146,274 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
         }
     }
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(activeConversation?.title ?: "New Conversation", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
-        bottomBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                if (selectedImageUris.isNotEmpty() || isRecording) {
-                    Row(
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        verticalAlignment = Alignment.Bottom
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val customNavSuiteType = with(adaptiveInfo) {
+        if (windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)) {
+            NavigationSuiteType.WideNavigationRailExpanded
+        } else {
+            NavigationSuiteType.None
+        }
+    }
+    val allConversations by viewModel.data<Conversation>().collectAsState(initial = emptyList())
+
+    val coroutineScope = rememberCoroutineScope()
+
+    NavigationSuiteScaffold(layoutType = customNavSuiteType, navigationSuiteItems = {
+        allConversations.forEach {
+            item(it.id == conversationId, {
+                backStack.reset(Route.ConversationPage(it.id))
+            }, {}, label = {Text(it.title)})
+        }
+    }) {
+        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+        ModalNavigationDrawer({
+            ModalDrawerSheet {
+                allConversations.forEach {
+                    NavigationDrawerItem(
+                        { Text(it.title) },
+                        selected = it.id == conversationId,
+                        onClick = {
+                            backStack.reset(Route.ConversationPage(it.id))
+                        })
+                }
+            }
+        }, drawerState = drawerState) {
+            Scaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(
+                                activeConversation?.title ?: "New Conversation",
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        actions = {
+                            IconButton({backStack.reset(Route.ConversationPage(0))}) {
+                                IconAdd()
+                            }
+                        },
+                        navigationIcon = {
+                            if(customNavSuiteType == NavigationSuiteType.None) {
+                                IconButton({ coroutineScope.launch {
+                                    drawerState.open()
+                                }}) {
+                                    IconMenu()
+                                }
+                            }
+                        }
+                    )
+                },
+                bottomBar = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        if (selectedImageUris.isNotEmpty()) {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.weight(1f, fill = false)
+                        if (selectedImageUris.isNotEmpty() || isRecording) {
+                            Row(
+                                modifier = Modifier.padding(bottom = 8.dp),
+                                verticalAlignment = Alignment.Bottom
                             ) {
-                                items(selectedImageUris) { uri ->
-                                    Box(modifier = Modifier.size(80.dp)) {
-                                        AsyncImage(
-                                            model = uri,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        IconButton(
-                                            onClick = {
-                                                val index = selectedImageUris.indexOf(uri)
-                                                if (index != -1) {
-                                                    selectedImageUris.removeAt(index)
-                                                    if (index < selectedImageFiles.size) selectedImageFiles.removeAt(index)
+                                if (selectedImageUris.isNotEmpty()) {
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    ) {
+                                        items(selectedImageUris) { uri ->
+                                            Box(modifier = Modifier.size(80.dp)) {
+                                                AsyncImage(
+                                                    model = uri,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                                IconButton(
+                                                    onClick = {
+                                                        val index = selectedImageUris.indexOf(uri)
+                                                        if (index != -1) {
+                                                            selectedImageUris.removeAt(index)
+                                                            if (index < selectedImageFiles.size) selectedImageFiles.removeAt(
+                                                                index
+                                                            )
+                                                        }
+                                                    }
+                                                ) {
+                                                    IconClose()
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                                if (isRecording) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Row(
+                                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            IconClose()
+                                            Text(
+                                                "Recording...",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    audioRecorder?.stop()
+                                                    audioRecorder = null
+                                                    isRecording = false
+                                                    recordedAudioFile = null
+                                                }
+                                            ) {
+                                                IconClose()
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                        if (isRecording) {
-                            Spacer(Modifier.width(8.dp))
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                                shape = RoundedCornerShape(12.dp)
+
+                        Surface(
+                            tonalElevation = 3.dp,
+                            shape = RoundedCornerShape(28.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Recording...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                                    IconButton(
-                                        onClick = {
+                                IconButton(onClick = { imagePickerLauncher.launch("image/*") }) { IconAdd() }
+                                IconButton(
+                                    onClick = {
+                                        if (ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            val file = File(
+                                                context.cacheDir,
+                                                "recording_${
+                                                    Clock.System.now().toEpochMilliseconds()
+                                                }.wav"
+                                            )
+                                            recordedAudioFile = file
+                                            try {
+                                                val recorder = WavRecorder(context, file, scope)
+                                                recorder.start()
+                                                audioRecorder = recorder
+                                                isRecording = true
+                                            } catch (e: Exception) {
+                                            }
+                                        } else recordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                ) {
+                                    Icon(
+                                        painterResource(android.R.drawable.ic_btn_speak_now),
+                                        contentDescription = "Voice"
+                                    )
+                                }
+
+                                TextField(
+                                    value = inputText,
+                                    onValueChange = { inputText = it },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("Message...") },
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent
+                                    )
+                                )
+
+                                val canSend =
+                                    (inputText.isNotBlank() || selectedImageFiles.isNotEmpty() || recordedAudioFile != null)
+                                IconButton(
+                                    enabled = canSend,
+                                    onClick = {
+                                        if (isRecording) {
                                             audioRecorder?.stop()
                                             audioRecorder = null
                                             isRecording = false
+                                        }
+
+                                        scope.launch {
+                                            var currentId = conversationId
+                                            if (currentId == 0L) {
+                                                val newConv = Conversation(title = "New Conversation")
+                                                currentId =
+                                                    viewModel.getDaoInterface<Conversation>().dao.upsert(
+                                                        newConv
+                                                    )
+                                                backStack.reset(Route.ConversationPage(currentId))
+                                            }
+
+                                            // 1. Save User Message to Database
+                                            val userMsg = Message(
+                                                conversationId = currentId,
+                                                text = inputText,
+                                                role = "user",
+                                                imagePaths = selectedImageFiles.map { it.absolutePath },
+                                                hasAudio = recordedAudioFile != null,
+                                                timestamp = Clock.System.now().toEpochMilliseconds()
+                                            )
+                                            viewModel.getDaoInterface<Message>().dao.upsert(userMsg)
+
+                                            // 2. Start Service with the message payload
+                                            val intent =
+                                                Intent(context, InferenceService::class.java).apply {
+                                                    putExtra("conversation_id", currentId)
+                                                    putExtra("user_text", inputText)
+                                                    putExtra(
+                                                        "image_paths",
+                                                        selectedImageFiles.map { it.absolutePath }
+                                                            .toTypedArray()
+                                                    )
+                                                    putExtra(
+                                                        "audio_path",
+                                                        recordedAudioFile?.absolutePath
+                                                    )
+                                                }
+                                            context.startService(intent)
+
+                                            // 3. Clear UI State
+                                            inputText = ""
+                                            selectedImageFiles.clear()
+                                            selectedImageUris.clear()
                                             recordedAudioFile = null
                                         }
-                                    ) {
-                                        IconClose()
                                     }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Surface(
-                    tonalElevation = 3.dp,
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        IconButton(onClick = { imagePickerLauncher.launch("image/*") }) { IconAdd() }
-                        IconButton(
-                            onClick = {
-                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                                    val file = File(context.cacheDir, "recording_${Clock.System.now().toEpochMilliseconds()}.wav")
-                                    recordedAudioFile = file
-                                    try {
-                                        val recorder = WavRecorder(context, file, scope)
-                                        recorder.start()
-                                        audioRecorder = recorder
-                                        isRecording = true
-                                    } catch (e: Exception) { }
-                                } else recordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-                            }
-                        ) {
-                            Icon(painterResource(android.R.drawable.ic_btn_speak_now), contentDescription = "Voice")
-                        }
-
-                        TextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Message...") },
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                disabledContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            )
-                        )
-
-                        val canSend = (inputText.isNotBlank() || selectedImageFiles.isNotEmpty() || recordedAudioFile != null)
-                        IconButton(
-                            enabled = canSend,
-                            onClick = {
-                                if (isRecording) {
-                                    audioRecorder?.stop()
-                                    audioRecorder = null
-                                    isRecording = false
-                                }
-
-                                scope.launch {
-                                    var currentId = conversationId
-                                    if (currentId == 0L) {
-                                        val newConv = Conversation(title = "New Conversation")
-                                        currentId = viewModel.getDaoInterface<Conversation>().dao.upsert(newConv)
-                                        backStack.setLast(Route.ConversationPage(currentId))
-                                    }
-
-                                    // 1. Save User Message to Database
-                                    val userMsg = Message(
-                                        conversationId = currentId,
-                                        text = inputText,
-                                        role = "user",
-                                        imagePaths = selectedImageFiles.map { it.absolutePath },
-                                        hasAudio = recordedAudioFile != null,
-                                        timestamp = Clock.System.now().toEpochMilliseconds()
+                                ) {
+                                    Icon(
+                                        painterResource(android.R.drawable.ic_menu_send),
+                                        contentDescription = "Send",
+                                        tint = if (canSend) MaterialTheme.colorScheme.primary else Color.Gray
                                     )
-                                    viewModel.getDaoInterface<Message>().dao.upsert(userMsg)
-
-                                    // 2. Start Service with the message payload
-                                    val intent = Intent(context, InferenceService::class.java).apply {
-                                        putExtra("conversation_id", currentId)
-                                        putExtra("user_text", inputText)
-                                        putExtra("image_paths", selectedImageFiles.map { it.absolutePath }.toTypedArray())
-                                        putExtra("audio_path", recordedAudioFile?.absolutePath)
-                                    }
-                                    context.startService(intent)
-
-                                    // 3. Clear UI State
-                                    inputText = ""
-                                    selectedImageFiles.clear()
-                                    selectedImageUris.clear()
-                                    recordedAudioFile = null
                                 }
                             }
-                        ) {
-                            Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Send", tint = if (canSend) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
                     }
                 }
-            }
-        }
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(filteredMessages, key = { it.id }) { msg -> ChatBubble(msg) }
+            ) { padding ->
+                Box(modifier = Modifier.padding(padding).fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(filteredMessages, key = { it.id }) { msg -> ChatBubble(msg) }
+                    }
+                }
             }
         }
     }

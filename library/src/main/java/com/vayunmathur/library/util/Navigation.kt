@@ -100,7 +100,6 @@ fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider:  Entry
         }
     }
 }
-
 @Composable
 fun <T: NavKey> rememberNavBackStack(vararg elements: T): NavBackStack<T> {
     return rememberSerializable(

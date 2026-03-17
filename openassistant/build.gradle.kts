@@ -20,9 +20,10 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
     ksp(libs.androidx.room.compiler)
     implementation(libs.coil.compose)
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation(libs.litertlm.android)
 
 
     // markdown
