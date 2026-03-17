@@ -19,10 +19,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -86,17 +89,22 @@ class MainActivity : ComponentActivity() {
 @Serializable
 sealed interface Route: NavKey {
     @Serializable
-    data object LevelSelector: Route
+    data object PackSelector: Route
+    @Serializable
+    data class LevelSelector(val packIndex: Int): Route
     @Serializable
     data class Game(val levelIndex: Int): Route
 }
 
 @Composable
 fun Navigation(completedLevelsRepository: CompletedLevelsRepository) {
-    val backStack = rememberNavBackStack<Route>(Route.LevelSelector)
+    val backStack = rememberNavBackStack<Route>(Route.PackSelector)
     MainNavigation(backStack) {
+        entry<Route.PackSelector> {
+            PackScreen(backStack)
+        }
         entry<Route.LevelSelector> {
-            LevelScreen(backStack, completedLevelsRepository)
+            LevelScreen(backStack, completedLevelsRepository, it.packIndex)
         }
         entry<Route.Game> {
             GameScreen(backStack, completedLevelsRepository, it.levelIndex)
@@ -106,19 +114,45 @@ fun Navigation(completedLevelsRepository: CompletedLevelsRepository) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository) {
+fun PackScreen(backStack: NavBackStack<Route>) {
+    Scaffold(topBar = {
+        TopAppBar({Text(stringResource(R.string.pack_selector))})
+    }) { paddingValues ->
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = paddingValues.plus(PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            itemsIndexed(LevelData.PACKS) { index, pack ->
+                Card(Modifier.clickable{
+                    backStack.add(Route.LevelSelector(index))
+                }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
+                    Box(Modifier.fillMaxWidth().padding(8.dp)) {
+                        Text(pack.first, Modifier.align(Alignment.Center), style = MaterialTheme.typography.displayMedium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository, packIndex: Int) {
+    val packStartIndex = LevelData.PACKS.subList(0, packIndex).sumOf { it.second }
+    val packEndIndex = packStartIndex + LevelData.PACKS[packIndex].second
     val levelStats = completedLevelsRepository.getLevelStats()
     Scaffold(topBar = {
         TopAppBar({Text(stringResource(R.string.level_selector))})
     }) { paddingValues ->
         LazyVerticalGrid(
             GridCells.Adaptive(80.dp),
-            Modifier.padding(paddingValues),
-            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
+            Modifier.fillMaxSize(),
+            contentPadding = paddingValues.plus(PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            itemsIndexed(LevelData.LEVELS) { index, levelData ->
+            itemsIndexed(LevelData.LEVELS.subList(packStartIndex, packEndIndex)) { index, levelData ->
                 Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
                     backStack.add(Route.Game(index))
                 }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {

@@ -1,5 +1,6 @@
 package com.vayunmathur.library.util
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -86,10 +87,10 @@ fun <T: NavKey> NavBackStack<T>.reset(vararg keys: T) {
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider:  EntryProviderScope<T>.() -> Unit) {
+fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider: EntryProviderScope<T>.() -> Unit) {
     val sceneStrategy: ListDetailSceneStrategy<T> = rememberListDetailSceneStrategy()
     val resultRegistry = remember { NavResultRegistry() }
-    Scaffold { paddingValues ->
+    Scaffold(contentWindowInsets = WindowInsets()) { paddingValues ->
         CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
             NavDisplay(
                 modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues).imePadding(),

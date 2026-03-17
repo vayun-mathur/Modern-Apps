@@ -94,5 +94,8 @@ data class LevelData(
                 fromJson(it.jsonObject)
             }
         }
+
+        // to be 250, 1000, 1000, 1000, everything else
+        val PACKS = listOf("Original Pack" to 250, "Extended Pack 1" to 0, "Extended Pack 2" to 0, "Extended Pack 3" to 0, "Infinite Pack" to 0)
     }
 }

@@ -2,6 +2,7 @@
     <string name="app_name">Unblock Jam</string>
     <string name="level">Puzzle</string>
     <string name="level_selector">Puzzle Select</string>
+    <string name="pack_selector">Pack Select</string>
     <string name="undo">Undo</string>
     <string name="restart">Restart</string>
     <string name="previous_level">Previous Puzzle</string>
