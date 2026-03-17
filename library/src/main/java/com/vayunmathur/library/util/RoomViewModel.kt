@@ -306,6 +306,14 @@ class DefaultConverters {
     fun toList(value: String?): List<Long>? {
         return value?.let { Json.decodeFromString<List<Long>>(it) }
     }
+    @TypeConverter
+    fun fromListS(value: List<String>): String {
+        return Json.encodeToString(value)
+    }
+    @TypeConverter
+    fun toListS(value: String): List<String> {
+        return Json.decodeFromString<List<String>>(value)
+    }
 
     @TypeConverter
     fun fromDuration(value: Duration) = value.inWholeMilliseconds

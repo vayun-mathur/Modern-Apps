@@ -9,20 +9,50 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.net.Uri
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,104 +64,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
+import androidx.navigation3.runtime.NavBackStack
 import coil.compose.AsyncImage
-import com.google.ai.edge.litertlm.*
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
-import com.vayunmathur.library.ui.IconStop
+import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.setLast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.time.LocalDateTime
-import java.util.*
-import java.util.regex.Pattern
-
-/**
- * Data class for Chat Messages supporting multiple images and audio
- */
-data class ChatMessage(
-    val text: String,
-    val isUser: Boolean,
-    val imageUris: List<Uri> = emptyList(),
-    val hasAudio: Boolean = false
-)
-
-/**
- * ToolSet implementation
- */
-class AssistantToolSet(private val context: Context) : ToolSet {
-    @Tool(description = "Get the current date and time in the local timezone")
-    fun getLocalCurrentDateTime(): String {
-        val now = LocalDateTime.now()
-        val tz = TimeZone.getDefault().id
-        return "$tz: $now"
-    }
-
-    @SuppressLint("QueryPermissionsNeeded")
-    @Tool(description = "Get a list of installed apps on the device")
-    fun getListOfApps(): String {
-        val pm = context.packageManager
-        val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        return apps.map { it.loadLabel(pm).toString() }.toString()
-    }
-
-    @Tool(description = "Open an app given its package id")
-    fun openApp(@ToolParam(description = "package id") packageId: String): String {
-        val intent = context.packageManager.getLaunchIntentForPackage(packageId)
-        return if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-            "Success: Opened $packageId"
-        } else "Error: App not found"
-    }
-
-    @Tool(description = "Send a message")
-    fun sendMessage(recipient: String, message: String): String {
-        return try {
-            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                data = "smsto:$recipient".toUri()
-                putExtra("sms_body", message)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-            "Opened messaging app."
-        } catch (e: Exception) { "Error: ${e.message}" }
-    }
-
-    @Tool(description = "Make a phone call")
-    fun makePhoneCall(recipient: String): String {
-        return try {
-            val intent = Intent(Intent.ACTION_DIAL).apply {
-                data = "tel:$recipient".toUri()
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-            "Opened dialer."
-        } catch (e: Exception) { "Error: ${e.message}" }
-    }
-
-    @Tool(description = "Get weather")
-    fun getWeather(latitude: Double, longitude: Double): String = "Weather: 22°C, Sunny."
-}
+import java.util.UUID
+import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LiteRTChatUi(modelFile: File) {
+fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel: DatabaseViewModel) {
+    val activeConversation by viewModel.getNullable<Conversation>(conversationId)
+    val allMessages by viewModel.data<Message>().collectAsState(initial = emptyList())
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    var engine by remember { mutableStateOf<Engine?>(null) }
-    var conversation by remember { mutableStateOf<Conversation?>(null) }
-    val messages = remember { mutableStateListOf<ChatMessage>() }
     var inputText by remember { mutableStateOf("") }
-    var isInitializing by remember { mutableStateOf(true) }
-    var globalError by remember { mutableStateOf<String?>(null) }
+
+    val filteredMessages = remember(allMessages, conversationId) {
+        allMessages.filter { it.conversationId == conversationId }.sortedBy { it.timestamp }
+    }
 
     // State for multiple images
     val selectedImageUris = remember { mutableStateListOf<Uri>() }
@@ -141,34 +103,29 @@ fun LiteRTChatUi(modelFile: File) {
     var audioRecorder by remember { mutableStateOf<WavRecorder?>(null) }
     var recordedAudioFile by remember { mutableStateOf<File?>(null) }
 
-    var activeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    val isGenerating by remember { derivedStateOf { activeJob?.isActive == true } }
-
-    val assistantTools = remember { AssistantToolSet(context) }
-
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+    LaunchedEffect(filteredMessages.size) {
+        if (filteredMessages.isNotEmpty()) {
+            listState.animateScrollToItem(filteredMessages.size - 1)
+        }
     }
 
     val recordAudioPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-            val file = File(context.cacheDir, "recording_${System.currentTimeMillis()}.wav")
+            val file = File(context.cacheDir, "recording_${Clock.System.now().toEpochMilliseconds()}.wav")
             recordedAudioFile = file
             try {
                 val recorder = WavRecorder(context, file, scope)
                 recorder.start()
                 audioRecorder = recorder
                 isRecording = true
-                globalError = null
             } catch (e: Exception) {
-                globalError = "Mic error: ${e.localizedMessage}"
+                Toast.makeText(context, "Mic error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
         } else {
             Toast.makeText(context, "Microphone permission denied", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Support multiple picks
     val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
         uris.forEach { uri ->
             selectedImageUris.add(uri)
@@ -179,43 +136,13 @@ fun LiteRTChatUi(modelFile: File) {
         }
     }
 
-    LaunchedEffect(modelFile) {
-        withContext(Dispatchers.IO) {
-            try {
-                val config = EngineConfig(
-                    modelPath = modelFile.absolutePath,
-                    backend = Backend.GPU(),
-                    visionBackend = Backend.GPU(),
-                    audioBackend = Backend.CPU(),
-                    cacheDir = context.cacheDir.absolutePath
-                )
-                val newEngine = Engine(config)
-                newEngine.initialize()
-                engine = newEngine
-
-                val systemPrompt = """
-                    You are a helpful Android assistant. Use tool calls:
-                    <start_function_call>tool_name(arg1="val1")<end_function_call>
-                    Interpret tool results conversationally.
-                """.trimIndent()
-
-                conversation = newEngine.createConversation(ConversationConfig(
-                    systemInstruction = Contents.of(systemPrompt),
-                    tools = listOf(tool(assistantTools)),
-                    automaticToolCalling = false
-                ) )
-                isInitializing = false
-            } catch (e: Exception) {
-                isInitializing = false
-                globalError = "Init error: ${e.localizedMessage}"
-            }
-        }
-    }
-
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Open Assistant", fontWeight = FontWeight.Bold) }
+                title = { Text(activeConversation?.title ?: "New Conversation", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         bottomBar = {
@@ -238,7 +165,7 @@ fun LiteRTChatUi(modelFile: File) {
                                     Box(modifier = Modifier.size(80.dp)) {
                                         AsyncImage(
                                             model = uri,
-                                            contentDescription = "Selected image",
+                                            contentDescription = null,
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .clip(RoundedCornerShape(12.dp))
@@ -290,24 +217,20 @@ fun LiteRTChatUi(modelFile: File) {
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        IconButton(onClick = { imagePickerLauncher.launch("image/*") }, enabled = !isGenerating) { IconAdd() }
+                        IconButton(onClick = { imagePickerLauncher.launch("image/*") }) { IconAdd() }
                         IconButton(
                             onClick = {
                                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                                    val file = File(context.cacheDir, "recording_${System.currentTimeMillis()}.wav")
+                                    val file = File(context.cacheDir, "recording_${Clock.System.now().toEpochMilliseconds()}.wav")
                                     recordedAudioFile = file
                                     try {
                                         val recorder = WavRecorder(context, file, scope)
                                         recorder.start()
                                         audioRecorder = recorder
                                         isRecording = true
-                                        globalError = null
-                                    } catch (e: Exception) {
-                                        globalError = "Failed to start mic: ${e.localizedMessage}"
-                                    }
+                                    } catch (e: Exception) { }
                                 } else recordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-                            },
-                            enabled = !isGenerating
+                            }
                         ) {
                             Icon(painterResource(android.R.drawable.ic_btn_speak_now), contentDescription = "Voice")
                         }
@@ -316,7 +239,6 @@ fun LiteRTChatUi(modelFile: File) {
                             value = inputText,
                             onValueChange = { inputText = it },
                             modifier = Modifier.weight(1f),
-                            enabled = !isGenerating && !isRecording,
                             placeholder = { Text("Message...") },
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
@@ -327,31 +249,53 @@ fun LiteRTChatUi(modelFile: File) {
                             )
                         )
 
-                        if (isGenerating) {
-                            IconButton(onClick = { activeJob?.cancel(); activeJob = null }) { IconStop(MaterialTheme.colorScheme.error) }
-                        } else {
-                            val canSend = (inputText.isNotBlank() || selectedImageFiles.isNotEmpty() || recordedAudioFile != null)
-                            IconButton(
-                                enabled = canSend,
-                                onClick = {
-                                    if (isRecording) {
-                                        audioRecorder?.stop()
-                                        audioRecorder = null
-                                        isRecording = false
-                                    }
-                                    sendMessageManual(
-                                        scope, conversation, assistantTools, messages,
-                                        inputText, selectedImageFiles.toList(), selectedImageUris.toList(), recordedAudioFile,
-                                        onComplete = {
-                                            inputText = ""; selectedImageFiles.clear(); selectedImageUris.clear(); recordedAudioFile = null
-                                        },
-                                        onJobFinished = { activeJob = null },
-                                        onJobStarted = { activeJob = it }
-                                    )
+                        val canSend = (inputText.isNotBlank() || selectedImageFiles.isNotEmpty() || recordedAudioFile != null)
+                        IconButton(
+                            enabled = canSend,
+                            onClick = {
+                                if (isRecording) {
+                                    audioRecorder?.stop()
+                                    audioRecorder = null
+                                    isRecording = false
                                 }
-                            ) {
-                                Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Send", tint = if (canSend) MaterialTheme.colorScheme.primary else Color.Gray)
+
+                                scope.launch {
+                                    var currentId = conversationId
+                                    if (currentId == 0L) {
+                                        val newConv = Conversation(title = "New Conversation")
+                                        currentId = viewModel.getDaoInterface<Conversation>().dao.upsert(newConv)
+                                        backStack.setLast(Route.ConversationPage(currentId))
+                                    }
+
+                                    // 1. Save User Message to Database
+                                    val userMsg = Message(
+                                        conversationId = currentId,
+                                        text = inputText,
+                                        role = "user",
+                                        imagePaths = selectedImageFiles.map { it.absolutePath },
+                                        hasAudio = recordedAudioFile != null,
+                                        timestamp = Clock.System.now().toEpochMilliseconds()
+                                    )
+                                    viewModel.getDaoInterface<Message>().dao.upsert(userMsg)
+
+                                    // 2. Start Service with the message payload
+                                    val intent = Intent(context, InferenceService::class.java).apply {
+                                        putExtra("conversation_id", currentId)
+                                        putExtra("user_text", inputText)
+                                        putExtra("image_paths", selectedImageFiles.map { it.absolutePath }.toTypedArray())
+                                        putExtra("audio_path", recordedAudioFile?.absolutePath)
+                                    }
+                                    context.startService(intent)
+
+                                    // 3. Clear UI State
+                                    inputText = ""
+                                    selectedImageFiles.clear()
+                                    selectedImageUris.clear()
+                                    recordedAudioFile = null
+                                }
                             }
+                        ) {
+                            Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Send", tint = if (canSend) MaterialTheme.colorScheme.primary else Color.Gray)
                         }
                     }
                 }
@@ -359,25 +303,78 @@ fun LiteRTChatUi(modelFile: File) {
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (isInitializing) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-
             LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (globalError != null) {
-                    item {
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                            Text(globalError!!, modifier = Modifier.padding(8.dp), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                items(filteredMessages, key = { it.id }) { msg -> ChatBubble(msg) }
+            }
+        }
+    }
+}
+
+@Composable
+fun ChatBubble(message: Message) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (message.role == "user") Alignment.End else Alignment.Start
+    ) {
+        if (message.role == "user") {
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp),
+                modifier = Modifier.widthIn(max = 300.dp)
+            ) {
+                Column(modifier = Modifier.padding(if (message.imagePaths.isNotEmpty() || message.hasAudio) 4.dp else 12.dp)) {
+                    message.imagePaths.forEach { path ->
+                        AsyncImage(
+                            model = path,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 240.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    if (message.hasAudio) {
+                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(painterResource(android.R.drawable.ic_btn_speak_now), null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Voice Message", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
                         }
                     }
+
+                    if (message.text.isNotBlank()) {
+                        Text(
+                            text = message.text,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
-                items(messages) { msg -> ChatBubble(msg) }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                if (message.text.isNotBlank()) {
+                    Text(
+                        text = message.text,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Custom WavRecorder using AudioRecord to produce 16kHz PCM WAV files
- * needed for LiteRT-LM miniaudio decoder stability.
+ * Helper to record audio and write to a WAV file
  */
 class WavRecorder(val context: Context, val outputFile: File, val scope: CoroutineScope) {
     private var audioRecord: AudioRecord? = null
@@ -390,13 +387,13 @@ class WavRecorder(val context: Context, val outputFile: File, val scope: Corouti
     @SuppressLint("MissingPermission")
     fun start() {
         audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, bufferSize)
-        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) throw Exception("AudioRecord init failed")
+        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) return
 
         isRecording = true
         audioRecord?.startRecording()
 
         scope.launch(Dispatchers.IO) {
-            val tempRaw = File(context.cacheDir, "temp_${System.currentTimeMillis()}.raw")
+            val tempRaw = File(context.cacheDir, "temp_${Clock.System.now().toEpochMilliseconds()}.raw")
             FileOutputStream(tempRaw).use { fos ->
                 val buffer = ByteArray(bufferSize)
                 while (isRecording) {
@@ -435,8 +432,8 @@ class WavRecorder(val context: Context, val outputFile: File, val scope: Corouti
             header[7] = ((totalDataLen shr 24) and 0xff).toByte()
             header[8] = 'W'.toByte(); header[9] = 'A'.toByte(); header[10] = 'V'.toByte(); header[11] = 'E'.toByte()
             header[12] = 'f'.toByte(); header[13] = 'm'.toByte(); header[14] = 't'.toByte(); header[15] = ' '.toByte()
-            header[16] = 16; header[17] = 0; header[18] = 0; header[19] = 0 // fmt chunk size
-            header[20] = 1; header[21] = 0 // PCM = 1
+            header[16] = 16; header[17] = 0; header[18] = 0; header[19] = 0
+            header[20] = 1; header[21] = 0 // PCM
             header[22] = 1; header[23] = 0 // Mono
             header[24] = (sampleRate and 0xff).toByte()
             header[25] = ((sampleRate shr 8) and 0xff).toByte()
@@ -459,209 +456,8 @@ class WavRecorder(val context: Context, val outputFile: File, val scope: Corouti
     }
 }
 
-@Composable
-fun ChatBubble(message: ChatMessage) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (message.isUser) Alignment.End else Alignment.Start
-    ) {
-        if (message.isUser) {
-            // User message remains in a primary colored bubble
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp),
-                modifier = Modifier.widthIn(max = 300.dp)
-            ) {
-                Column(modifier = Modifier.padding(if (message.imageUris.isNotEmpty() || message.hasAudio) 4.dp else 12.dp)) {
-                    if (message.imageUris.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            message.imageUris.forEach { uri ->
-                                AsyncImage(
-                                    model = uri,
-                                    contentDescription = "User attached image",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 240.dp)
-                                        .clip(RoundedCornerShape(16.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                    }
-
-                    if (message.hasAudio) {
-                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(painterResource(android.R.drawable.ic_btn_speak_now), null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Voice Message", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
-                        }
-                    }
-
-                    if (message.text.isNotBlank()) {
-                        Text(
-                            text = message.text,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(
-                                horizontal = if (message.imageUris.isNotEmpty() || message.hasAudio) 8.dp else 0.dp,
-                                vertical = if (message.imageUris.isNotEmpty() || message.hasAudio) 8.dp else 0.dp
-                            )
-                        )
-                    }
-                }
-            }
-        } else {
-            // AI output is plain text without a bubble surface
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 320.dp)
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                // In case AI ever sends images/audio (currently handled for consistency)
-                if (message.imageUris.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        message.imageUris.forEach { uri ->
-                            AsyncImage(
-                                model = uri,
-                                contentDescription = "AI attached image",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 240.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                }
-
-                if (message.text.isNotBlank()) {
-                    Text(
-                        text = message.text,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontSize = 16.sp,
-                        lineHeight = 22.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun sendMessageManual(
-    scope: kotlinx.coroutines.CoroutineScope,
-    conversation: Conversation?,
-    assistantTools: AssistantToolSet,
-    messages: MutableList<ChatMessage>,
-    text: String,
-    imageFiles: List<File>,
-    imageUris: List<Uri>,
-    audioFile: File?,
-    onComplete: () -> Unit,
-    onJobFinished: () -> Unit,
-    onJobStarted: (kotlinx.coroutines.Job) -> Unit
-) {
-    messages.add(ChatMessage(
-        text = text,
-        isUser = true,
-        imageUris = imageUris,
-        hasAudio = audioFile != null
-    ))
-
-    val aiMessageIndex = messages.size
-    messages.add(ChatMessage("", false))
-
-    val job = scope.launch {
-        val initialParts = mutableListOf<Content>()
-        imageFiles.forEach { initialParts.add(Content.ImageFile(it.absolutePath)) }
-        audioFile?.let { initialParts.add(Content.AudioFile(it.absolutePath)) }
-        if (text.isNotBlank()) initialParts.add(Content.Text(text))
-
-        var nextInput: Any = Contents.of(initialParts)
-        var isLooping = true
-
-        while (isLooping) {
-            var fullResponseText = ""
-            var displayedText = ""
-            var tagBuffer = ""
-            var insideTag = false
-            var insideFunctionBlock = false
-
-            val stream = if (nextInput is Contents) conversation?.sendMessageAsync(nextInput)
-            else conversation?.sendMessageAsync(nextInput as Message)
-
-            if (stream == null) break
-
-            stream.catch { e ->
-                messages[aiMessageIndex] = ChatMessage("Error: ${e.message}", false)
-                isLooping = false
-            }.collect { chunk ->
-                val chunkText = chunk.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
-                fullResponseText += chunkText
-
-                for (char in chunkText) {
-                    if (char == '<') { insideTag = true; tagBuffer = "<" }
-                    else if (insideTag) {
-                        tagBuffer += char
-                        if (char == '>') {
-                            insideTag = false
-                            if (tagBuffer.contains("start_function_call")) insideFunctionBlock = true
-                            else if (tagBuffer.contains("end_function_call")) insideFunctionBlock = false
-                            tagBuffer = ""
-                        }
-                    } else if (!insideFunctionBlock) {
-                        displayedText += char
-                    }
-                }
-                if (displayedText.isNotBlank()) messages[aiMessageIndex] = ChatMessage(displayedText, false)
-            }
-
-            val toolRegex = Pattern.compile("<start_function_call>(.*?)<end_function_call>", Pattern.DOTALL)
-            val matcher = toolRegex.matcher(fullResponseText)
-
-            if (matcher.find()) {
-                val callBody = matcher.group(1)?.trim() ?: ""
-                val toolResult = processManualCallBody(callBody, assistantTools)
-                withContext(Dispatchers.Main) { messages[aiMessageIndex] = ChatMessage("Thinking...", false) }
-                nextInput = Message.tool(Contents.of(listOf(Content.ToolResponse("manual_action", toolResult))))
-            } else {
-                isLooping = false
-            }
-        }
-        onJobFinished()
-    }
-    onJobStarted(job)
-    onComplete()
-}
-
-private fun processManualCallBody(body: String, tools: AssistantToolSet): String {
-    return try {
-        val name = body.substringBefore("(").trim()
-        val argsString = body.substringAfter("(").substringBeforeLast(")")
-        val argsMap = mutableMapOf<String, String>()
-        if (argsString.isNotBlank()) {
-            argsString.split(",").forEach { pair ->
-                val parts = pair.split("=")
-                if (parts.size == 2) {
-                    argsMap[parts[0].trim()] = parts[1].trim().removeSurrounding("\"").removeSurrounding("'")
-                }
-            }
-        }
-        when (name) {
-            "get_local_current_date_time" -> tools.getLocalCurrentDateTime()
-            "get_list_of_apps" -> tools.getListOfApps()
-            "open_app" -> tools.openApp(argsMap["packageId"] ?: "")
-            "send_message" -> tools.sendMessage(argsMap["recipient"] ?: "", argsMap["message"] ?: "")
-            "make_phone_call" -> tools.makePhoneCall(argsMap["recipient"] ?: "")
-            "get_weather" -> tools.getWeather(argsMap["latitude"]?.toDoubleOrNull() ?: 0.0, argsMap["longitude"]?.toDoubleOrNull() ?: 0.0)
-            else -> "Error: Unknown tool $name"
-        }
-    } catch (e: Exception) { "Error: ${e.message}" }
-}
-
 private fun copyUriToFile(context: Context, uri: Uri): File {
-    val tempFile = File(context.cacheDir, "temp_image_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg")
+    val tempFile = File(context.cacheDir, "img_${Clock.System.now().toEpochMilliseconds()}_${UUID.randomUUID()}.jpg")
     context.contentResolver.openInputStream(uri)?.use { input ->
         FileOutputStream(tempFile).use { output -> input.copyTo(output) }
     }
