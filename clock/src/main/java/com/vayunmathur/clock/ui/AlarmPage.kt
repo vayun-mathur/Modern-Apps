@@ -79,9 +79,10 @@ fun AlarmCard(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     alarm.time.format(LocalTime.Format {
-                        hour(Padding.NONE)
+                        amPmHour(Padding.NONE)
                         char(':')
                         minute()
+                        amPmMarker(" AM", " PM")
                     }),
                     Modifier.clickable{ backStack.add(Route.AlarmSetTimeDialog(alarm.id, alarm.time))},
                     style = MaterialTheme.typography.displayMedium
