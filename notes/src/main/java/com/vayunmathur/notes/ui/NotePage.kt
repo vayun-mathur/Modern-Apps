@@ -2,11 +2,14 @@ package com.vayunmathur.notes.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -59,48 +62,69 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
             }
         })
     }) { paddingValues ->
-        Column(Modifier.padding(paddingValues).padding(horizontal = 16.dp)) {
-            BasicTextField(
-                note.title,
-                { note = note.copy(title = it) },
-                Modifier.fillMaxWidth(),
-                singleLine = true,
-                readOnly = !isEditing,
-                textStyle = MaterialTheme.typography.headlineMedium.copy(color = LocalContentColor.current),
-                cursorBrush = SolidColor(LocalContentColor.current),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (note.title.isEmpty()) Text(
-                            text = "Title",
-                            style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyColumn(contentPadding = paddingValues + PaddingValues(horizontal = 16.dp) + PaddingValues(bottom = 16.dp)) {
+            item {
+                BasicTextField(
+                    note.title,
+                    { note = note.copy(title = it) },
+                    Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    readOnly = !isEditing,
+                    textStyle = MaterialTheme.typography.headlineMedium.copy(color = LocalContentColor.current),
+                    cursorBrush = SolidColor(LocalContentColor.current),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (note.title.isEmpty()) Text(
+                                text = "Title",
+                                style = MaterialTheme.typography.headlineMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            )
+                            innerTextField()
+                        }
+                    }
+                )
+            }
+            item {
+                Spacer(Modifier.height(8.dp))
+            }
+            item {
+                var value by remember(note.id) {
+                    mutableStateOf(
+                        TextFieldValue(
+                            MarkdownAnnotatedString(note.content)
                         )
-                        innerTextField()
+                    )
+                }
+                val noMarkers by remember {
+                    derivedStateOf {
+                        TextFieldValue(
+                            MarkdownAnnotatedString(
+                                note.content,
+                                false
+                            )
+                        )
                     }
                 }
-            )
-            Spacer(Modifier.height(8.dp))
-            var value by remember(note.id) { mutableStateOf(TextFieldValue(MarkdownAnnotatedString(note.content))) }
-            val noMarkers by remember { derivedStateOf { TextFieldValue(MarkdownAnnotatedString(note.content, false)) } }
-            BasicTextField(
-                if(isEditing) value else noMarkers,
-                {
-                    note = note.copy(content = it.text)
-                    value = it.copy(annotatedString = MarkdownAnnotatedString(it.text))
-                },
-                Modifier.fillMaxSize(),
-                readOnly = !isEditing,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = LocalContentColor.current),
-                cursorBrush = SolidColor(LocalContentColor.current),
-                decorationBox = { innerTextField ->
-                    Box {
-                        if (note.content.isEmpty()) Text(
-                            text = "Content",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        )
-                        innerTextField()
+                BasicTextField(
+                    if (isEditing) value else noMarkers,
+                    {
+                        note = note.copy(content = it.text)
+                        value = it.copy(annotatedString = MarkdownAnnotatedString(it.text))
+                    },
+                    Modifier.fillMaxSize(),
+                    readOnly = !isEditing,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = LocalContentColor.current),
+                    cursorBrush = SolidColor(LocalContentColor.current),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (note.content.isEmpty()) Text(
+                                text = "Content",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            )
+                            innerTextField()
+                        }
                     }
-                }
-            )
+                )
+            }
         }
     }
 }
