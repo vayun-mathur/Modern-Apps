@@ -108,6 +108,20 @@ jobs:
             fi
           done
 
+      - name: Local Git Commit and Tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all changes (Metadata + build.gradle.kts version injections)
+          git add .
+          
+          VERSION_NAME="${{ steps.version_info.outputs.version_name }}"
+          
+          # Create local commit and tag
+          git commit -m "chore: prepare release $VERSION_NAME" || echo "No changes to commit"
+          git tag "$VERSION_NAME"
+
       - name: Build and Sign APKs
         run: |
           mkdir -p distribution_apks
@@ -125,20 +139,16 @@ jobs:
             cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "Warning: No APK for $dir"
           done
 
-      - name: Commit and Push Version Changes
+      - name: Push Changes and Tag to Remote
+        if: success()
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # CRITICAL FIX: Add only source files, specifically ignore the APK distribution folder
-          git add .
-          git reset distribution_apks/
-          
           VERSION_NAME="${{ steps.version_info.outputs.version_name }}"
-          git commit -m "chore: prepare release $VERSION_NAME" || echo "No changes to commit"
+          # Only push if the build was successful
           git push origin HEAD
+          git push origin "$VERSION_NAME"
 
-      - name: Create GitHub Release and Tag
+      - name: Create GitHub Release
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ steps.version_info.outputs.version_name }}"
@@ -146,8 +156,13 @@ jobs:
           draft: true
           body: |
             Automated multi-module release.
-            Version Name: ${{ steps.version_info.outputs.version_name }}
-            Version Code: ${{ steps.version_info.outputs.version_code }}
+            
+            **Version Name:** ${{ steps.version_info.outputs.version_name }}
+            **Version Code:** ${{ steps.version_info.outputs.version_code }}
           files: distribution_apks/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup Keystore
+        if: always()
+        run: rm -f ${{ env.ks_filename }}
