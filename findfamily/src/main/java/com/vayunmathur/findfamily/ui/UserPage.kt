@@ -62,7 +62,7 @@ import kotlin.time.Clock
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
-    val selectedUser by viewModel.get<User>(userId)
+    val selectedUser by viewModel.getState<User>(userId)
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
         locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }

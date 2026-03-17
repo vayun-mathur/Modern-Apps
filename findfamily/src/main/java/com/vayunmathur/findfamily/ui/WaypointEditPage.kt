@@ -31,7 +31,7 @@ import com.vayunmathur.library.util.pop
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, waypointID: Long) {
-    val waypoint by viewModel.get<Waypoint>(waypointID) {Waypoint.NEW_WAYPOINT}
+    val waypoint by viewModel.getState<Waypoint>(waypointID) {Waypoint.NEW_WAYPOINT}
 
     var name by remember { mutableStateOf(waypoint.name) }
     var range by remember { mutableStateOf(waypoint.range.toString()) }

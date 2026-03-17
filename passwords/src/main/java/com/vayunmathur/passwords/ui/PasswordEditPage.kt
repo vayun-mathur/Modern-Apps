@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseViewModel) {
-    val pass by viewModel.get<Password>(id) { Password() }
+    val pass by viewModel.getState<Password>(id) { Password() }
     var name by remember { mutableStateOf(pass.name) }
     var userId by remember { mutableStateOf(pass.userId) }
     var password by remember { mutableStateOf(pass.password) }

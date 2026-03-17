@@ -57,7 +57,7 @@ import kotlinx.coroutines.runBlocking
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, artistId: Long) {
-    val artist by viewModel.get<Artist>(artistId)
+    val artist by viewModel.getState<Artist>(artistId)
     val allMusic by viewModel.data<Music>().collectAsState()
     val artistsMusic = remember(allMusic, artistId) {
         allMusic.filter { it.artistId == artistId }

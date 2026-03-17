@@ -38,7 +38,7 @@ import com.vayunmathur.music.PlaybackManager
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, albumId: Long) {
-    val album by viewModel.get<Album>(albumId)
+    val album by viewModel.getState<Album>(albumId)
     val allMusic by viewModel.data<Music>().collectAsState()
     val musicInAlbum = remember(allMusic, albumId) {
         allMusic.filter { it.albumId == albumId }

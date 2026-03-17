@@ -95,7 +95,7 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
     }
 
     @Composable
-    inline fun <reified E: DatabaseItem> get(id: Long, crossinline default: () -> E? = {null}): State<E> {
+    inline fun <reified E: DatabaseItem> getState(id: Long, crossinline default: () -> E? = {null}): State<E> {
         val data by data<E>().collectAsState()
         val derived = remember { derivedStateOf { (data.firstOrNull { it.id == id } ?: default())!! } }
         return derived
