@@ -73,12 +73,10 @@ jobs:
 
       - name: Detect App Modules
         run: |
-          # Detect modules, excluding root and youpipe
           RAW_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
             grep -vE "^\./build.gradle.kts$" | \
             sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
           
-          # Reverse the order: tr converts spaces to lines, tac reverses lines
           REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
           
           echo "Detected modules (reversed): $REVERSED_DIRS"
@@ -87,61 +85,34 @@ jobs:
       - name: Prepare F-Droid Metadata
         run: |
           for dir in ${{ env.module_dirs }}; do
-            # Convert dir path to hyphenated module name for file matching
-            # e.g. games/chess -> games-chess
             module_key=$(echo $dir | sed 's|/|-|g')
             target_path="$dir/src/main/play/listings/en-US"
           
-            echo "Preparing metadata for $module_key in $target_path"
             mkdir -p "$target_path/graphics/icons"
             mkdir -p "$target_path/graphics/phone-screenshots"
           
-            # Copy Play Store icon
             icon_source="$dir/src/main/ic_launcher-playstore.png"
             if [ -f "$icon_source" ]; then
               cp "$icon_source" "$target_path/graphics/icons/icon.png"
             fi
           
-            # Copy Phone Screenshots from metadata_data/photos/{module_key}.png
             screenshot_source="metadata_data/photos/${module_key}.png"
             if [ -f "$screenshot_source" ]; then
               cp "$screenshot_source" "$target_path/graphics/phone-screenshots/1.png"
             fi
           
-            # Use a single source file named {module_key}.md (using hyphens)
             metadata_src="metadata_data/${module_key}.md"
-          
             if [ -f "$metadata_src" ]; then
-              # Extract first line for short description
               head -n 1 "$metadata_src" > "$target_path/short-description.txt"
-              # Full description is the whole file (including first line)
               cp "$metadata_src" "$target_path/full-description.txt"
-            else
-              echo "Warning: Metadata source $metadata_src not found."
             fi
           done
 
-      - name: Commit, Tag & Push Changes
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          TAG_NAME="${{ steps.version_info.outputs.version_name }}"
-          git commit -m "chore: prepare release $TAG_NAME (${{ steps.version_info.outputs.version_code }})" || echo "No changes to commit"
-          
-          git tag -f "$TAG_NAME"
-          git push origin "$TAG_NAME" --force
-
-      - name: Build and Sign
+      - name: Build and Sign APKs
         run: |
           mkdir -p distribution_apks
           for dir in ${{ env.module_dirs }}; do
             gradle_path=$(echo $dir | sed 's|/|:|g')
-            module_name=$(basename $dir)
-          
-            echo "--------------------------------------------"
-            echo "Building and Signing: $gradle_path"
-            echo "--------------------------------------------"
           
             ./gradlew :$gradle_path:assembleRelease \
               -Pandroid.enableResourceOptimizations=true \
@@ -151,14 +122,25 @@ jobs:
               -PRELEASE_KEY_ALIAS="${{ env.ks_alias }}" \
               -PRELEASE_KEY_PASSWORD="${{ env.ks_alias_pass }}"
           
-            cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "No APK found for $module_name"
+            cp $dir/build/outputs/apk/release/*.apk distribution_apks/ || echo "Warning: No APK for $dir"
           done
 
-      - name: Create GitHub Release
+      - name: Commit and Push Version Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          VERSION_NAME="${{ steps.version_info.outputs.version_name }}"
+          git commit -m "chore: prepare release $VERSION_NAME" || echo "No changes to commit"
+          # We push the commit to main, but we don't push the tag manually yet.
+          git push origin HEAD
+
+      - name: Create GitHub Release and Tag
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "${{ steps.version_info.outputs.version_name }}"
           name: "Release ${{ steps.version_info.outputs.version_name }}"
+          draft: true
           body: |
             Automated multi-module release.
             Version Name: ${{ steps.version_info.outputs.version_name }}
