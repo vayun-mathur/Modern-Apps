@@ -191,8 +191,10 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
                         actions = {
-                            IconButton({backStack.reset(Route.ConversationPage(0))}) {
-                                IconAdd()
+                            if(conversationId != 0L) {
+                                IconButton({ backStack.reset(Route.ConversationPage(0)) }) {
+                                    IconAdd()
+                                }
                             }
                         },
                         navigationIcon = {
