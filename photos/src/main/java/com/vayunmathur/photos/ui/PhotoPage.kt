@@ -112,6 +112,7 @@ fun PhotoPage(viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<P
                     context = context,
                     pagerState = pagerState,
                     pageIndex = pageIndex,
+                    isSettled = pagerState.settledPage == pageIndex,
                     isMetadataVisible = isMetadataVisible,
                     currentZoom = zoomState,
                     onZoomUpdate = { newState -> zoomStates[photo.id] = newState },
@@ -128,6 +129,7 @@ fun PhotoDetailView(
     context: Context,
     pagerState: PagerState,
     pageIndex: Int,
+    isSettled: Boolean,
     isMetadataVisible: Boolean,
     currentZoom: ZoomState,
     onZoomUpdate: (ZoomState) -> Unit,
@@ -256,6 +258,7 @@ fun PhotoDetailView(
                     },
                 uri = photo.uri.toUri(),
                 isMetadataVisible = isMetadataVisible,
+                isSettledPage = isSettled
             )
         }
 
@@ -297,7 +300,8 @@ fun PhotoDetailView(
 fun VideoPlayer(
     modifier: Modifier,
     uri: Uri,
-    isMetadataVisible: Boolean
+    isMetadataVisible: Boolean,
+    isSettledPage: Boolean,
 ) {
     val context = LocalContext.current
 
@@ -308,12 +312,19 @@ fun VideoPlayer(
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(uri))
             prepare()
-            playWhenReady = true
+            playWhenReady = isSettledPage
             repeatMode = Player.REPEAT_MODE_ONE
         }
     }
 
-    var isPlaying by remember { mutableStateOf(true) }
+    var isPlaying by remember { mutableStateOf(isSettledPage) }
+    LaunchedEffect(isSettledPage) {
+        if(isSettledPage) {
+            exoPlayer.play()
+        } else {
+            exoPlayer.pause()
+        }
+    }
 
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
