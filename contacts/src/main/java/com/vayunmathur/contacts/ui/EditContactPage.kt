@@ -166,6 +166,8 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         )
                         val newContact = contact?.copy(details = details) ?: Contact(
                             0,
+                            null,
+                            null,
                             false,
                             details = details
                         )

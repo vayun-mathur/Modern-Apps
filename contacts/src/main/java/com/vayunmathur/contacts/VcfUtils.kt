@@ -136,6 +136,8 @@ object VcfUtils {
                     )
                     val newContact = Contact(
                         id = 0L,
+                        null,
+                        null,
                         isFavorite = false,
                         details
                     )

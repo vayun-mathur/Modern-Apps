@@ -370,7 +370,9 @@ fun ContactItem(
                 }
             },
 
-            trailingContent = null,
+            trailingContent = {
+                Text(contact.accountName ?: "On-Device")
+            },
 
             colors = ListItemDefaults.colors(
                 containerColor = if (isSelected) {

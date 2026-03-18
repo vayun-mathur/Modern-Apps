@@ -186,6 +186,8 @@ data class Nickname(override val id: Long, val nickname: String, override val ty
 @Serializable
 data class Contact(
     val id: Long,
+    val accountType: String?,
+    val accountName: String?,
     val isFavorite: Boolean,
     val details: ContactDetails
 ) {
@@ -211,8 +213,8 @@ data class Contact(
         val ops = ArrayList<ContentProviderOperation>()
         if (id == 0L) {
             ops += ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
                 .build()
 
             ops += details.all().map { createInsertOperation(it) }
@@ -365,7 +367,8 @@ data class Contact(
                 ContactsContract.RawContacts._ID,
                 ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY,
                 ContactsContract.RawContacts.STARRED,
-                ContactsContract.RawContacts.ACCOUNT_NAME
+                ContactsContract.RawContacts.ACCOUNT_NAME,
+                ContactsContract.RawContacts.ACCOUNT_TYPE,
             )
             val cursor = contentResolver.query(uri, projection, if(contactId == null) null else "${ContactsContract.Contacts._ID} = ?", listOfNotNull(contactId?.toString()).toTypedArray(), null)
 
@@ -376,14 +379,13 @@ data class Contact(
                     val id = it.getLong(it.getColumnIndexOrThrow(ContactsContract.RawContacts._ID))
                     val displayName = it.getString(it.getColumnIndexOrThrow(ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY))
                     val isFavorite = it.getInt(it.getColumnIndexOrThrow(ContactsContract.RawContacts.STARRED)) == 1
-                    val account = it.getStringOrNull(it.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_NAME))
-                    if(account != null) continue
-                    println("ACCOUNT $account")
+                    val accountName = it.getStringOrNull(it.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_NAME))
+                    val accountType = it.getStringOrNull(it.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_TYPE))
 
                     var details = getDetails(context, id, false)
                     details = processDetails(details, displayName) ?: continue
 
-                    contacts += Contact(id, isFavorite, details)
+                    contacts += Contact(id, accountType, accountName, isFavorite, details)
                 }
             }
             return contacts
