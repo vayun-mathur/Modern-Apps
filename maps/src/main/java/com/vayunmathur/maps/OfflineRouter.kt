@@ -72,8 +72,9 @@ object OfflineRouter {
             isInitialized = init(context.getExternalFilesDir(null)!!.absolutePath)
         }
 
-        // Get raw doubles: [lat0, lon0, lat1, lon1...]
-        val rawCoords = findShortestRouteNative(start.latitude, start.longitude, end.latitude, end.longitude, type.ordinal)
+        // Get raw doubles: [total_time (s), lat0, lon0, lat1, lon1...]
+        val rawData = findShortestRouteNative(start.latitude, start.longitude, end.latitude, end.longitude, type.ordinal)
+        val (time, rawCoords) = rawData.first() to rawData.drop(1)
 
         // Chunk the array by 2 to create Position objects
         val positions = mutableListOf<Position>()
@@ -85,15 +86,12 @@ object OfflineRouter {
             haversine(it.first, it.second)
         }
 
-        val time =
-            if(type == RouteService.TravelMode.WALK) distance.meters / (4.5.kilometers/1.hours) else if(type == RouteService.TravelMode.BICYCLE) distance.meters / (16.kilometers/1.hours) else 0.hours
-
         RouteService.Route(
-            duration = time.inWholeSeconds.seconds, // You could calculate this in C++ and return as part of the array
+            duration = time.seconds,
             distanceMeters = distance,
             polyline = positions,
             step = listOf(RouteService.Step(
-                distance, time.inWholeSeconds.seconds, positions, RouteService.API.NavInstruction(), RouteService.TravelMode.WALK)
+                distance, time.seconds, positions, RouteService.API.NavInstruction(), RouteService.TravelMode.WALK)
             )
         )
     }

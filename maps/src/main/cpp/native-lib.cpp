@@ -30,6 +30,21 @@ Edge* g_edges = nullptr;
 SpatialNode* g_spatial = nullptr;
 size_t g_node_count = 0;
 
+// Constants for speeds (m/s)
+const double WALK_SPEED_M_S = 4.5 / 3.6;    // ~1.25 m/s
+const double BICYCLE_SPEED_M_S = 16.0 / 3.6; // ~4.44 m/s
+
+// --- GEOMETRY HELPERS ---
+
+uint32_t haversine_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t lon2_e7) {
+    double lat1 = (lat1_e7 / 1e7) * (M_PI / 180.0);
+    double lon1 = (lon1_e7 / 1e7) * (M_PI / 180.0);
+    double lat2 = (lat2_e7 / 1e7) * (M_PI / 180.0);
+    double lon2 = (lon2_e7 / 1e7) * (M_PI / 180.0);
+    double a = sin((lat2 - lat1) / 2) * sin((lat2 - lat1) / 2) + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) * sin((lon2 - lon1) / 2);
+    return (uint32_t)(2 * atan2(sqrt(a), sqrt(1 - a)) * 6371000.0 * 1000.0);
+}
+
 // --- ROUTING LOGIC HELPERS ---
 
 bool is_accessible(uint8_t road_type, int mode) {
@@ -41,15 +56,38 @@ bool is_accessible(uint8_t road_type, int mode) {
     return true;
 }
 
-double get_weight_modifier(uint8_t road_type, int mode) {
+/**
+ * Calculates time in 10ms units to traverse an edge.
+ * One unit = 10 milliseconds.
+ */
+uint32_t get_edge_time_10ms(uint32_t dist_mm, uint8_t road_type, int mode) {
+    double base_speed = (mode == BICYCLE) ? BICYCLE_SPEED_M_S : WALK_SPEED_M_S;
+
+    // Weight modifiers for preference
+    double modifier = 1.0;
     if (mode == WALK) {
-        if (road_type == 12 || road_type == 10) return 0.8; // Favor footways
-        if (road_type == 15) return 1.5; // Penalty for steps
+        if (road_type == 12 || road_type == 10) modifier = 0.8; // Favor footways
+        if (road_type == 15) modifier = 1.5; // Penalty for steps
     } else if (mode == BICYCLE) {
-        if (road_type == 13) return 0.7; // Favor cycleways
-        if (road_type == 7 || road_type == 8) return 1.1; // Slight penalty for residential
+        if (road_type == 13) modifier = 0.7; // Favor cycleways
+        if (road_type == 7 || road_type == 8) modifier = 1.1; // Penalty for residential
     }
-    return 1.0;
+
+    // Time (s) = dist_mm / 1000 / speed
+    // Time (10ms units) = (dist_mm / 1000 / speed) * 100 = dist_mm / (10 * speed)
+    return (uint32_t)((double)dist_mm / (10.0 * base_speed * modifier));
+}
+
+/**
+ * Heuristic: Minimum time in 10ms units to reach target (assuming max speed)
+ */
+uint32_t heuristic_time_10ms(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2, int mode) {
+    uint32_t dist_mm = haversine_mm(lat1, lon1, lat2, lon2);
+    double max_speed = (mode == BICYCLE) ? BICYCLE_SPEED_M_S : WALK_SPEED_M_S;
+
+    // Use fastest possible speed across all types (lowest modifier) to ensure admissibility
+    double heuristic_speed = (mode == BICYCLE) ? (max_speed / 0.7) : (max_speed / 0.8);
+    return (uint32_t)((double)dist_mm / (10.0 * heuristic_speed));
 }
 
 uint64_t latlng_to_spatial(double lat, double lon) {
@@ -63,15 +101,6 @@ uint64_t latlng_to_spatial(double lat, double lon) {
         res |= ((uint64_t)((iy >> i) & 1) << (2 * i + 1));
     }
     return res;
-}
-
-uint32_t haversine_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t lon2_e7) {
-    double lat1 = (lat1_e7 / 1e7) * (M_PI / 180.0);
-    double lon1 = (lon1_e7 / 1e7) * (M_PI / 180.0);
-    double lat2 = (lat2_e7 / 1e7) * (M_PI / 180.0);
-    double lon2 = (lon2_e7 / 1e7) * (M_PI / 180.0);
-    double a = sin((lat2 - lat1) / 2) * sin((lat2 - lat1) / 2) + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) * sin((lon2 - lon1) / 2);
-    return (uint32_t)(2 * atan2(sqrt(a), sqrt(1 - a)) * 6371000.0 * 1000.0);
 }
 
 struct Projection { int32_t lat_e7, lon_e7; uint32_t dist_mm; };
@@ -88,7 +117,7 @@ Projection get_projection(int32_t px, int32_t py, int32_t x1, int32_t y1, int32_
 struct SnappedEdge {
     uint32_t nodeA, nodeB;
     int32_t proj_lat, proj_lon;
-    uint32_t distToA, distToB;
+    uint32_t timeToA_10ms, timeToB_10ms;
 };
 
 SnappedEdge find_nearest_edge(double lat, double lon, int mode) {
@@ -98,6 +127,7 @@ SnappedEdge find_nearest_edge(double lat, double lon, int mode) {
     intptr_t center = std::distance(g_spatial, it);
     uint32_t bestA = 0, bestB = 0, minDist = 0xFFFFFFFF;
     int32_t finalLat = pLat, finalLon = pLon;
+    uint8_t bestType = 0;
 
     for (intptr_t i = std::max((intptr_t)0, center - 500); i <= std::min((intptr_t)g_node_count - 1, center + 500); ++i) {
         uint32_t u = g_spatial[i].local_id;
@@ -107,11 +137,17 @@ SnappedEdge find_nearest_edge(double lat, double lon, int mode) {
             uint32_t v = e.target;
             Projection p = get_projection(pLat, pLon, g_nodes[u].lat_e7, g_nodes[u].lon_e7, g_nodes[v].lat_e7, g_nodes[v].lon_e7);
             if (p.dist_mm < minDist) {
-                minDist = p.dist_mm; bestA = u; bestB = v; finalLat = p.lat_e7; finalLon = p.lon_e7;
+                minDist = p.dist_mm; bestA = u; bestB = v; finalLat = p.lat_e7; finalLon = p.lon_e7; bestType = e.type;
             }
         }
     }
-    return {bestA, bestB, finalLat, finalLon, haversine_mm(finalLat, finalLon, g_nodes[bestA].lat_e7, g_nodes[bestA].lon_e7), haversine_mm(finalLat, finalLon, g_nodes[bestB].lat_e7, g_nodes[bestB].lon_e7)};
+
+    uint32_t distA = haversine_mm(finalLat, finalLon, g_nodes[bestA].lat_e7, g_nodes[bestA].lon_e7);
+    uint32_t distB = haversine_mm(finalLat, finalLon, g_nodes[bestB].lat_e7, g_nodes[bestB].lon_e7);
+
+    return {bestA, bestB, finalLat, finalLon,
+            get_edge_time_10ms(distA, bestType, mode),
+            get_edge_time_10ms(distB, bestType, mode)};
 }
 
 // --- JNI ---
@@ -141,23 +177,22 @@ static RoutingScratchpad g_scratchpad(20);
 extern "C" JNIEXPORT jdoubleArray JNICALL
 Java_com_vayunmathur_maps_OfflineRouter_findShortestRouteNative(JNIEnv* env, jobject thiz,
                                                                 jdouble sLat, jdouble sLon, jdouble eLat, jdouble eLon, jint mode) {
-    LOGD("Starting route search: (%f, %f) -> (%f, %f), mode: %d", sLat, sLon, eLat, eLon, mode);
+    LOGD("Starting time-based route search (10ms units): (%f, %f) -> (%f, %f), mode: %d", sLat, sLon, eLat, eLon, mode);
 
-    // 1. Reset the scratchpad (increments generation ID, O(1) clear)
     g_scratchpad.reset();
 
     SnappedEdge start = find_nearest_edge(sLat, sLon, mode);
     SnappedEdge end = find_nearest_edge(eLat, eLon, mode);
 
-    using NodeDist = std::pair<uint32_t, uint32_t>;
-    std::priority_queue<NodeDist, std::vector<NodeDist>, std::greater<NodeDist>> pq;
+    // Score is total time in 10ms units
+    using NodeScore = std::pair<uint32_t, uint32_t>;
+    std::priority_queue<NodeScore, std::vector<NodeScore>, std::greater<NodeScore>> pq;
 
-    // 2. Access metadata using the overloaded operator[]
-    g_scratchpad[start.nodeA].g_score = start.distToA;
-    g_scratchpad[start.nodeB].g_score = start.distToB;
+    g_scratchpad[start.nodeA].g_score = start.timeToA_10ms;
+    g_scratchpad[start.nodeB].g_score = start.timeToB_10ms;
 
-    uint32_t hA = haversine_mm(g_nodes[start.nodeA].lat_e7, g_nodes[start.nodeA].lon_e7, end.proj_lat, end.proj_lon);
-    uint32_t hB = haversine_mm(g_nodes[start.nodeB].lat_e7, g_nodes[start.nodeB].lon_e7, end.proj_lat, end.proj_lon);
+    uint32_t hA = heuristic_time_10ms(g_nodes[start.nodeA].lat_e7, g_nodes[start.nodeA].lon_e7, end.proj_lat, end.proj_lon, mode);
+    uint32_t hB = heuristic_time_10ms(g_nodes[start.nodeB].lat_e7, g_nodes[start.nodeB].lon_e7, end.proj_lat, end.proj_lon, mode);
 
     pq.push({g_scratchpad[start.nodeA].g_score + hA, start.nodeA});
     pq.push({g_scratchpad[start.nodeB].g_score + hB, start.nodeB});
@@ -166,20 +201,16 @@ Java_com_vayunmathur_maps_OfflineRouter_findShortestRouteNative(JNIEnv* env, job
     int iterations = 0;
 
     while (!pq.empty()) {
-        NodeDist current = pq.top();
+        NodeScore current = pq.top();
         uint32_t u = current.second;
         uint32_t f_score = current.first;
         pq.pop();
 
         iterations++;
 
-        if (iterations % 500 == 0) {
-            LOGD("Iteration %d: current_f=%u, node=%u", iterations, f_score, u);
-        }
-
         if (u == end.nodeA || u == end.nodeB) {
             found_end_node = u;
-            LOGD("Target found! Iterations: %d, final_g: %u", iterations, g_scratchpad[u].g_score);
+            LOGD("Target found! Time: %u (10ms units), Iterations: %d", g_scratchpad[u].g_score, iterations);
             break;
         }
 
@@ -189,45 +220,55 @@ Java_com_vayunmathur_maps_OfflineRouter_findShortestRouteNative(JNIEnv* env, job
             Edge& e = g_edges[i];
             if (!is_accessible(e.type, mode)) continue;
 
-            uint32_t mod_dist = (uint32_t)(e.dist_mm * get_weight_modifier(e.type, mode));
+            uint32_t travel_time = get_edge_time_10ms(e.dist_mm, e.type, mode);
 
-            // Check if current path to target is better than previously recorded
-            if (g_scratchpad[u].g_score + mod_dist < g_scratchpad[e.target].g_score) {
-                g_scratchpad[e.target].g_score = g_scratchpad[u].g_score + mod_dist;
+            if (g_scratchpad[u].g_score + travel_time < g_scratchpad[e.target].g_score) {
+                g_scratchpad[e.target].g_score = g_scratchpad[u].g_score + travel_time;
                 g_scratchpad[e.target].parent_id = u;
 
-                uint32_t h = haversine_mm(g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7, end.proj_lat, end.proj_lon);
+                uint32_t h = heuristic_time_10ms(g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7, end.proj_lat, end.proj_lon, mode);
                 pq.push({g_scratchpad[e.target].g_score + h, e.target});
             }
         }
 
         if (iterations > 1000000) {
-            LOGE("Critical: A* search timed out at 1M iterations.");
+            LOGE("Critical: Search timed out at 1M iterations.");
             break;
         }
     }
 
-    std::vector<double> path;
-    path.push_back(start.proj_lon / 1e7);
-    path.push_back(start.proj_lat / 1e7);
+    std::vector<double> results;
+
+    // 1. First element: Total time in seconds
+    uint32_t total_time_10ms = 0;
+    if (found_end_node != 0xFFFFFFFF) {
+        uint32_t final_leg_time = (found_end_node == end.nodeA) ? end.timeToA_10ms : end.timeToB_10ms;
+        total_time_10ms = g_scratchpad[found_end_node].g_score + final_leg_time;
+    }
+    // Convert 10ms units to seconds: units * 0.01
+    results.push_back((double)total_time_10ms / 100.0);
+
+    // 2. Coordinates: Start point
+    results.push_back(start.proj_lon / 1e7);
+    results.push_back(start.proj_lat / 1e7);
 
     if (found_end_node != 0xFFFFFFFF) {
         std::vector<uint32_t> nodes;
-        // 3. Reconstruct path using parent_id stored in scratchpad
         for (uint32_t c = found_end_node; c != 0xFFFFFFFF; c = g_scratchpad[c].parent_id) {
             nodes.push_back(c);
         }
         std::reverse(nodes.begin(), nodes.end());
         for (uint32_t id : nodes) {
-            path.push_back(g_nodes[id].lon_e7 / 1e7);
-            path.push_back(g_nodes[id].lat_e7 / 1e7);
+            results.push_back(g_nodes[id].lon_e7 / 1e7);
+            results.push_back(g_nodes[id].lat_e7 / 1e7);
         }
     }
 
-    path.push_back(end.proj_lon / 1e7);
-    path.push_back(end.proj_lat / 1e7);
+    // 3. Coordinates: End point
+    results.push_back(end.proj_lon / 1e7);
+    results.push_back(end.proj_lat / 1e7);
 
-    jdoubleArray result = env->NewDoubleArray(path.size());
-    env->SetDoubleArrayRegion(result, 0, path.size(), path.data());
-    return result;
+    jdoubleArray resultArr = env->NewDoubleArray(results.size());
+    env->SetDoubleArrayRegion(resultArr, 0, results.size(), results.data());
+    return resultArr;
 }
