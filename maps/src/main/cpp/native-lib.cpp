@@ -9,8 +9,11 @@
 #include <algorithm>
 #include <android/log.h>
 
-#define TAG "OfflineRouterNative"
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
+#include "scratchpad.h"
+
+#define LOG_TAG "OfflineRouterNative"
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 // Must match Kotlin RouteService.TravelMode ordinal
 enum TravelMode { WALK = 2, BICYCLE = 3 };
@@ -133,64 +136,94 @@ Java_com_vayunmathur_maps_OfflineRouter_init(JNIEnv* env, jobject thiz, jstring 
     return g_nodes && g_edge_index && g_edges && g_spatial;
 }
 
+static RoutingScratchpad g_scratchpad(20);
+
 extern "C" JNIEXPORT jdoubleArray JNICALL
 Java_com_vayunmathur_maps_OfflineRouter_findShortestRouteNative(JNIEnv* env, jobject thiz,
                                                                 jdouble sLat, jdouble sLon, jdouble eLat, jdouble eLon, jint mode) {
+    LOGD("Starting route search: (%f, %f) -> (%f, %f), mode: %d", sLat, sLon, eLat, eLon, mode);
+
+    // 1. Reset the scratchpad (increments generation ID, O(1) clear)
+    g_scratchpad.reset();
+
     SnappedEdge start = find_nearest_edge(sLat, sLon, mode);
     SnappedEdge end = find_nearest_edge(eLat, eLon, mode);
 
-    std::vector<uint32_t> g_score(g_node_count, 0xFFFFFFFF);
-    std::vector<uint32_t> parent(g_node_count, 0xFFFFFFFF);
     using NodeDist = std::pair<uint32_t, uint32_t>;
     std::priority_queue<NodeDist, std::vector<NodeDist>, std::greater<NodeDist>> pq;
 
-    g_score[start.nodeA] = start.distToA;
-    g_score[start.nodeB] = start.distToB;
+    // 2. Access metadata using the overloaded operator[]
+    g_scratchpad[start.nodeA].g_score = start.distToA;
+    g_scratchpad[start.nodeB].g_score = start.distToB;
 
     uint32_t hA = haversine_mm(g_nodes[start.nodeA].lat_e7, g_nodes[start.nodeA].lon_e7, end.proj_lat, end.proj_lon);
     uint32_t hB = haversine_mm(g_nodes[start.nodeB].lat_e7, g_nodes[start.nodeB].lon_e7, end.proj_lat, end.proj_lon);
 
-    pq.push({g_score[start.nodeA] + hA, start.nodeA});
-    pq.push({g_score[start.nodeB] + hB, start.nodeB});
+    pq.push({g_scratchpad[start.nodeA].g_score + hA, start.nodeA});
+    pq.push({g_scratchpad[start.nodeB].g_score + hB, start.nodeB});
 
     uint32_t found_end_node = 0xFFFFFFFF;
+    int iterations = 0;
 
     while (!pq.empty()) {
-        uint32_t u = pq.top().second; pq.pop();
-        if (u == end.nodeA || u == end.nodeB) { found_end_node = u; break; }
+        NodeDist current = pq.top();
+        uint32_t u = current.second;
+        uint32_t f_score = current.first;
+        pq.pop();
+
+        iterations++;
+
+        if (iterations % 500 == 0) {
+            LOGD("Iteration %d: current_f=%u, node=%u", iterations, f_score, u);
+        }
+
+        if (u == end.nodeA || u == end.nodeB) {
+            found_end_node = u;
+            LOGD("Target found! Iterations: %d, final_g: %u", iterations, g_scratchpad[u].g_score);
+            break;
+        }
 
         if (u + 1 >= g_node_count) continue;
+
         for (uint64_t i = g_edge_index[u]; i < g_edge_index[u + 1]; ++i) {
             Edge& e = g_edges[i];
             if (!is_accessible(e.type, mode)) continue;
 
             uint32_t mod_dist = (uint32_t)(e.dist_mm * get_weight_modifier(e.type, mode));
-            if (g_score[u] + mod_dist < g_score[e.target]) {
-                g_score[e.target] = g_score[u] + mod_dist;
-                parent[e.target] = u;
+
+            // Check if current path to target is better than previously recorded
+            if (g_scratchpad[u].g_score + mod_dist < g_scratchpad[e.target].g_score) {
+                g_scratchpad[e.target].g_score = g_scratchpad[u].g_score + mod_dist;
+                g_scratchpad[e.target].parent_id = u;
+
                 uint32_t h = haversine_mm(g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7, end.proj_lat, end.proj_lon);
-                pq.push({g_score[e.target] + h, e.target});
+                pq.push({g_scratchpad[e.target].g_score + h, e.target});
             }
+        }
+
+        if (iterations > 1000000) {
+            LOGE("Critical: A* search timed out at 1M iterations.");
+            break;
         }
     }
 
     std::vector<double> path;
-    // 1. Output Start Snapped Point (LON, LAT)
     path.push_back(start.proj_lon / 1e7);
     path.push_back(start.proj_lat / 1e7);
 
     if (found_end_node != 0xFFFFFFFF) {
         std::vector<uint32_t> nodes;
-        for (uint32_t c = found_end_node; c != 0xFFFFFFFF; c = parent[c]) nodes.push_back(c);
+        // 3. Reconstruct path using parent_id stored in scratchpad
+        for (uint32_t c = found_end_node; c != 0xFFFFFFFF; c = g_scratchpad[c].parent_id) {
+            nodes.push_back(c);
+        }
         std::reverse(nodes.begin(), nodes.end());
         for (uint32_t id : nodes) {
-            // 2. Output Intermediate Nodes (LON, LAT)
             path.push_back(g_nodes[id].lon_e7 / 1e7);
             path.push_back(g_nodes[id].lat_e7 / 1e7);
         }
     }
 
-    // 3. Output End Snapped Point (LON, LAT)
     path.push_back(end.proj_lon / 1e7);
     path.push_back(end.proj_lat / 1e7);
 

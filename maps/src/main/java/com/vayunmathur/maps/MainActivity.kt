@@ -40,6 +40,7 @@ import com.vayunmathur.maps.ui.SearchPage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import org.maplibre.android.log.Logger
 import java.io.File
 
 fun ensurePmtilesReady(context: Context): String {
@@ -64,6 +65,7 @@ class MainActivity : ComponentActivity() {
         val ds = DataStoreUtils.getInstance(this)
         ensurePmtilesReady(this)
         println(OfflineRouter.checkFiles(this))
+        Logger.setVerbosity(Logger.INFO)
         runBlocking {
 //            File(getExternalFilesDir(null)!!, "edge_index.bin").delete()
 //            File(getExternalFilesDir(null)!!, "edges.bin").delete()
