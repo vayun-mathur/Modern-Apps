@@ -27,7 +27,10 @@ val (appVersionCode, appVersionName) = readVersionInfo()
 subprojects {
     if(name == "app") return@subprojects
 
+    // Apply the common conventions plugin to all subprojects
+
     if(name != "library") {
+        //apply(plugin = "common-conventions-app")
         apply(plugin = "com.android.application")
         apply(plugin = "org.jetbrains.kotlin.plugin.compose")
         apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
@@ -54,12 +57,9 @@ subprojects {
                 minSdk = 31
                 versionCode = appVersionCode
                 versionName = appVersionName
-
-                //testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             }
 
             signingConfigs {
-                // We only create/configure this if the properties are actually present
                 val isSigningConfigAvailable = project.hasProperty("RELEASE_STORE_FILE")
 
                 if (isSigningConfigAvailable) {
@@ -69,7 +69,6 @@ subprojects {
                         keyAlias = project.property("RELEASE_KEY_ALIAS") as String
                         keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
 
-                        // Ensure consistency for F-Droid's integrity checks
                         enableV1Signing = true
                         enableV2Signing = true
                         enableV3Signing = true
@@ -82,7 +81,6 @@ subprojects {
                 release {
                     isMinifyEnabled = true
                     isShrinkResources = true
-                    // Only apply the config if we actually created it above
                     if (signingConfigs.findByName("release") != null) {
                         signingConfig = signingConfigs.getByName("release")
                     }
@@ -90,22 +88,14 @@ subprojects {
                         getDefaultProguardFile("proguard-android-optimize.txt"), proguardFile.absolutePath,
                     )
                 }
-//                getByName("debug") {
-//                    applicationIdSuffix = ".debug"
-//                    versionNameSuffix = "-DEBUG" // Helpful to see in App Info
-//                }
             }
-            dependenciesInfo {
-                includeInApk = false
-                includeInBundle = false
-            }
-
         }
 
         dependencies {
             "implementation"(project(":library"))
         }
     } else {
+        //apply(plugin = "common-conventions-library")
         apply(plugin = "com.android.library")
         apply(plugin = "org.jetbrains.kotlin.plugin.compose")
         apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
@@ -127,34 +117,9 @@ subprojects {
         }
     }
 
-
     pluginManager.withPlugin("com.google.devtools.ksp") {
         extensions.configure<com.google.devtools.ksp.gradle.KspExtension> {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
-    }
-
-    val libs = rootProject.extensions.getByType<VersionCatalogsExtension>().named("libs")
-
-    dependencies {
-        // AndroidX Core & Lifecycle
-        "implementation"(libs.findLibrary("okio").get())
-        "implementation"(libs.findLibrary("kotlinx-datetime").get())
-        "implementation"(libs.findLibrary("androidx-core-ktx").get())
-        "implementation"(libs.findLibrary("androidx-lifecycle-runtime-ktx").get())
-        "implementation"(libs.findLibrary("androidx-lifecycle-viewmodel-compose").get())
-        "implementation"(libs.findLibrary("androidx-lifecycle-viewmodel-ktx").get())
-        "implementation"(libs.findLibrary("androidx-activity-compose").get())
-
-        // Compose UI (BOM Managed)
-        val composeBom = libs.findLibrary("androidx-compose-bom").get()
-        "implementation"(platform(composeBom))
-
-        "implementation"(libs.findLibrary("androidx-compose-ui").get())
-        "implementation"(libs.findLibrary("androidx-compose-ui-graphics").get())
-        "implementation"(libs.findLibrary("androidx-compose-material3").get())
-
-        // Kotlin Serialization
-        "implementation"(libs.findLibrary("kotlinx-serialization-json").get())
     }
 }

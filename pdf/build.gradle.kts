@@ -1,7 +1,9 @@
+plugins {
+    id("common-conventions-app")
+}
+
 android {
     defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
         minSdk = 35
         applicationId = "com.vayunmathur.pdf"
     }

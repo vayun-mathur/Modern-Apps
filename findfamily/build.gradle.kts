@@ -1,13 +1,12 @@
-android {
-    defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
-        applicationId = "com.vayunmathur.findfamily"
-    }
+plugins {
+    id("common-conventions-app")
+    alias(libs.plugins.ksp)
 }
 
-plugins {
-    alias(libs.plugins.ksp)
+android {
+    defaultConfig {
+        applicationId = "com.vayunmathur.findfamily"
+    }
 }
 
 dependencies {

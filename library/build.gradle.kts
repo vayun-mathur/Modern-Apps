@@ -1,4 +1,5 @@
 plugins {
+    id("common-conventions-library")
     alias(libs.plugins.ksp)
 }
 
