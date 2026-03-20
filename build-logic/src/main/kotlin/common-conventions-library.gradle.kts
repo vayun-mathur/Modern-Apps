@@ -1,9 +1,23 @@
-// build-logic/src/main/kotlin/common-conventions.gradle.kts
 plugins {
     id("com.android.library")
 }
 
 val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
+
+configure<com.android.build.api.dsl.LibraryExtension> {
+    buildFeatures {
+        compose = true
+    }
+
+    namespace = "com.vayunmathur.$name"
+    compileSdk {
+        version = release(36)
+    }
+
+    defaultConfig {
+        minSdk = 31
+    }
+}
 
 dependencies {
     // AndroidX Core & Lifecycle
