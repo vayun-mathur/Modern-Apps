@@ -84,11 +84,11 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { backStack.add(Route.PasswordEditPage(id)) }) {
+            FloatingActionButton({ backStack.add(Route.PasswordEditPage(id)) }) {
                 IconEdit()
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             Modifier
@@ -201,7 +201,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                             // Circular progress showing proportion of time remaining
                             Box(contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator({ progress }, Modifier.size(56.dp))
-                                IconButton(onClick = {
+                                IconButton({
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("totp", currentCode))
                                     scope.launch { snackbarHostState.showSnackbar("TOTP copied") }

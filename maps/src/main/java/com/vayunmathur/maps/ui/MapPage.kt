@@ -15,7 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +28,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -275,6 +278,9 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                             item?.name
                                                 ?: "Your location"
                                         )
+                                    }, Modifier.clickable {
+                                        val bbox = camera.projection!!.queryVisibleBoundingBox()
+                                        backStack.add(Route.SearchPage(idx, bbox.east, bbox.west, bbox.north, bbox.south))
                                     }, trailingContent = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             if(idx > 0 && idx < routeFeature.waypoints.size - 1) {
@@ -288,14 +294,10 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                             }
                                             Icon(
                                                 painterResource(R.drawable.drag_handle_24px),
-                                                contentDescription = "Reorder",
-                                                modifier = Modifier.draggableHandle(),
+                                                "Reorder", Modifier.draggableHandle(),
                                             )
                                         }
-                                    }, colors = ListItemDefaults.colors(Color.Transparent), modifier = Modifier.clickable {
-                                        val bbox = camera.projection!!.queryVisibleBoundingBox()
-                                        backStack.add(Route.SearchPage(idx, bbox.east, bbox.west, bbox.north, bbox.south))
-                                    })
+                                    }, colors = ListItemDefaults.colors(Color.Transparent))
                                 }
                             }
                         }
@@ -318,15 +320,12 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
 
                 // DOWNLOAD DIALOG
                 if (showDownloadDialog && activeZone != null) {
-                    androidx.compose.material3.AlertDialog(
-                        onDismissRequest = {
+                    AlertDialog(
+                        {
                             showDownloadDialog = false
                             dismissedZone = activeZone
-                        },
-                        title = { Text("Download Offline Map?") },
-                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB)?") },
-                        confirmButton = {
-                            androidx.compose.material3.Button(onClick = {
+                        }, {
+                            Button({
                                 zoneManager.startDownload(activeZone)
                                 showDownloadDialog = false
                                 // We don't need to set dismissedZone here because getZoneStatus
@@ -334,9 +333,10 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                             }) {
                                 Text("Download")
                             }
-                        },
+                        }, title = { Text("Download Offline Map?") },
+                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB)?") },
                         dismissButton = {
-                            androidx.compose.material3.TextButton(onClick = {
+                            TextButton({
                                 showDownloadDialog = false
                                 dismissedZone = activeZone
                             }) {

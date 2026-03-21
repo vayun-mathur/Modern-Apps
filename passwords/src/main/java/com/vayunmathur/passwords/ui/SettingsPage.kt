@@ -50,15 +50,16 @@ fun SettingsPage(backStack: com.vayunmathur.library.util.NavBackStack<com.vayunm
         pickedUri = uri
     }
 
-    Scaffold(topBar = {
-        TopAppBar(title = { Text("Settings") }, navigationIcon = {
+    Scaffold(Modifier, {
+        TopAppBar({ Text("Settings") }, navigationIcon = {
             IconNavigation(backStack)
         })
     }) { paddingValues ->
         Column(Modifier
             .padding(paddingValues)
             .fillMaxSize()
-            .padding(16.dp), verticalArrangement = Arrangement.Top) {
+            .padding(16.dp), Arrangement.Top
+        ) {
 
             Text("Importing a CSV will bring plaintext credentials into this app. Please delete the export after importing.")
             Spacer(Modifier.height(16.dp))
@@ -73,7 +74,7 @@ fun SettingsPage(backStack: com.vayunmathur.library.util.NavBackStack<com.vayunm
             Spacer(Modifier.height(16.dp))
 
             if (importing) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Row(Modifier.fillMaxWidth(), Arrangement.Center) {
                     CircularProgressIndicator()
                 }
             }

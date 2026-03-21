@@ -144,14 +144,11 @@ fun <Route : NavKey> BottomNavBar(backStack: NavBackStack<Route>, pages: List<Bo
     FlexibleBottomAppBar {
         pages.forEach { page ->
             NavigationBarItem(
-                selected = currentPage == page.route,
-                onClick = {
+                currentPage == page.route, {
                     if (backStack.last() != page.route) {
                         backStack.add(page.route)
                     }
-                },
-                label = { Text(page.name) },
-                icon = { Icon(painterResource(page.icon), null) }
+                }, { Icon(painterResource(page.icon), null) }, label = { Text(page.name) }
             )
         }
     }
