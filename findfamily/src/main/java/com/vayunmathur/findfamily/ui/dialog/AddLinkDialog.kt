@@ -26,7 +26,6 @@ import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import dev.whyoleg.cryptography.algorithms.RSA
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

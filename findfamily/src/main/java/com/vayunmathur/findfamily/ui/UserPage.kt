@@ -50,7 +50,6 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone

@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Route
-import com.vayunmathur.library.util.pop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -31,7 +31,6 @@ import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory

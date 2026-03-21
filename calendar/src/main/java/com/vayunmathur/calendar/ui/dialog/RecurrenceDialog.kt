@@ -41,7 +41,6 @@ import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.ui.dateFormat
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate

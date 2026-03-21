@@ -79,7 +79,6 @@ import com.vayunmathur.contacts.Route
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 import kotlinx.datetime.format.MonthNames

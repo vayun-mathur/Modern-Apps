@@ -49,7 +49,6 @@ import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone

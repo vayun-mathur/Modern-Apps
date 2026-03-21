@@ -26,7 +26,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.util.LocalNavResultRegistry
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

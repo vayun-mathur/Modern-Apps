@@ -28,7 +28,6 @@ import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.library.ui.IconCopy
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

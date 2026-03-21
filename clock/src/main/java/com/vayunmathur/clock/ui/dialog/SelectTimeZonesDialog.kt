@@ -31,7 +31,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.citiesToTimezones
 import com.vayunmathur.library.util.DataStoreUtils
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

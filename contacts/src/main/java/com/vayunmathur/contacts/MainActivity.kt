@@ -40,7 +40,6 @@ import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
@@ -123,7 +122,7 @@ fun Navigation(viewModel: ContactViewModel) {
                 backStack = backStack,
                 onContactClick = { contact ->
                     if(backStack.last() is Route.ContactDetail || backStack.last() is Route.EditContact) {
-                        backStack[backStack.lastIndex] = Route.ContactDetail(contact.id)
+                        backStack.setLast(Route.ContactDetail(contact.id))
                     } else {
                         backStack.add(Route.ContactDetail(contact.id))
                     }

@@ -50,7 +50,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route

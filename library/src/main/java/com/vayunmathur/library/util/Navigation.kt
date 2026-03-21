@@ -17,6 +17,7 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -53,33 +54,52 @@ inline fun <reified T> ResultEffect(key: String, crossinline onResult: suspend (
 }
 
 interface NavKey
-class NavBackStack<T: NavKey>(initial: List<T>): ArrayList<T>(initial)
+class NavBackStack<T: NavKey>(initial: Array<out T>) {
+    private val backend = mutableStateListOf(*initial)
+    val backStack: List<T> = backend
+
+    fun pop() {
+        backend.removeAt(backend.lastIndex)
+    }
+
+    fun set(index: Int, value: T) {
+        backend[index] = value
+    }
+
+    fun add(value: T) {
+        backend.add(value)
+    }
+
+    fun clear() {
+        backend.clear()
+    }
+
+    fun setLast(value: T) {
+        set(backend.lastIndex, value)
+    }
+
+    fun last(): T {
+        return backend.last()
+    }
+
+    fun reset(vararg keys: T) {
+        // set values
+        clear()
+        while(backend.size > keys.size) {
+            pop()
+        }
+        keys.forEachIndexed { idx, key ->
+            if(backend.size <= idx) {
+                add(key)
+            } else
+                set(idx, key)
+        }
+    }
+}
 
 // Make it available everywhere via CompositionLocal
 val LocalNavResultRegistry = staticCompositionLocalOf<NavResultRegistry> {
     error("No NavResultRegistry provided")
-}
-
-fun <T: NavKey> NavBackStack<T>.pop() {
-    removeAt(lastIndex)
-}
-
-fun <T: NavKey> NavBackStack<T>.setLast(value: T) {
-    set(lastIndex, value)
-}
-
-fun <T: NavKey> NavBackStack<T>.reset(vararg keys: T) {
-    // set values
-    clear()
-    while(size > keys.size) {
-        pop()
-    }
-    keys.forEachIndexed { idx, key ->
-        if(size <= idx) {
-            add(key)
-        } else
-            set(idx, key)
-    }
 }
 
 class EntryProviderScope<T: NavKey>(val obj: T) {
@@ -104,7 +124,7 @@ fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider: EntryP
             NavDisplay(
                 modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues).imePadding(),
                 sceneStrategy = DialogSceneStrategy<T>().then(sceneStrategy),
-                backStack = backStack, entryProvider = {
+                backStack = backStack.backStack, entryProvider = {
                     EntryProviderScope(it).apply {
                         entryProvider()
                     }.result!!
@@ -114,9 +134,7 @@ fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider: EntryP
 }
 @Composable
 fun <T: NavKey> rememberNavBackStack(vararg elements: T): NavBackStack<T> {
-    return remember {
-        NavBackStack(elements.toList())
-    }
+    return remember { NavBackStack(elements) }
 }
 
 fun DialogPage() = DialogSceneStrategy.dialog()

@@ -80,7 +80,6 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconMenu
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.reset
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -466,8 +465,7 @@ fun ChatBubble(message: Message) {
         } else {
             Column(
                 modifier = Modifier
-                    .widthIn(max = 320.dp)
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 4.dp).padding(end = 100.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 if (message.text.isNotBlank()) {

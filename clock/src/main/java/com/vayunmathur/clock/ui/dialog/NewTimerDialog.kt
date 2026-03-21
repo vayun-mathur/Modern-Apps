@@ -21,7 +21,6 @@ import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.clock.ui.sendTimerNotification
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds

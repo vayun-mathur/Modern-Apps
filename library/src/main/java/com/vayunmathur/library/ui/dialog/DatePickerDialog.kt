@@ -12,7 +12,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.LocalNavResultRegistry
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone

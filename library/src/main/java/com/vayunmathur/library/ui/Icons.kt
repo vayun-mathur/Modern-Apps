@@ -9,7 +9,6 @@ import androidx.compose.ui.res.painterResource
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.R
-import com.vayunmathur.library.util.pop
 
 @Composable
 fun IconAdd(tint: Color = LocalContentColor.current) {
