@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.calendar.ui.CalendarScreen
 import com.vayunmathur.calendar.ui.EditEventScreen
 import com.vayunmathur.calendar.ui.EventScreen

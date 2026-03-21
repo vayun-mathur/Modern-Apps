@@ -9,11 +9,8 @@ android {
     }
 }
 dependencies {
-    implementation(libs.androidx.navigation3.runtime)
-    implementation(libs.kotlin.csv.jvm)
-
+    // room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.work.runtime.ktx)
     ksp(libs.androidx.room.compiler)
 }

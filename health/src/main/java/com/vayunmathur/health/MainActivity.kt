@@ -48,7 +48,7 @@ import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.WheelchairPushesRecord
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.health.database.HealthDatabase
 import com.vayunmathur.health.ui.BarChartDetails
 import com.vayunmathur.health.ui.HealthMetricConfig

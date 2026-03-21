@@ -11,7 +11,6 @@ android {
 
 dependencies {
     implementation(libs.coil.compose)
-    implementation(libs.androidx.navigation3.runtime)
     implementation(libs.newpipeextractor)
     implementation(libs.okhttp)
 

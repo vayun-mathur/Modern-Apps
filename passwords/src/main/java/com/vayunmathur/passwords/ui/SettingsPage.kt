@@ -37,7 +37,7 @@ import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsPage(backStack: androidx.navigation3.runtime.NavBackStack<com.vayunmathur.passwords.Route>, viewModel: DatabaseViewModel) {
+fun SettingsPage(backStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.passwords.Route>, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
     var importing by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }

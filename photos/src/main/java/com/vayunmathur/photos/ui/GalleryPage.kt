@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.photos.ImageLoader
 import com.vayunmathur.photos.NavigationBar

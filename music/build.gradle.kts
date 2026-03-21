@@ -11,8 +11,6 @@ android {
 
 dependencies {
 
-    implementation(libs.androidx.navigation3.runtime)
-
     implementation(libs.jaudiotagger)
 
     // room

@@ -86,7 +86,7 @@ fun ContactDetailsPage(
     onDelete: () -> Unit,
     showBackButton: Boolean = true
 ) {
-    val contact by viewModel.getContactFlow(contactId).filterNotNull().collectAsState(initial = viewModel.getContact(contactId))
+    val contact by remember { viewModel.getContactFlow(contactId).filterNotNull() }.collectAsState(initial = viewModel.getContact(contactId))
     val details = contact?.details
 
     if (contact == null) {

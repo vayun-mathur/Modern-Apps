@@ -15,9 +15,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // nav3
-    implementation(libs.androidx.navigation3.runtime)
-
     // adaptive navigation
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
 

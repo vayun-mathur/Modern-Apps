@@ -10,8 +10,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.navigation3.runtime)
-
     implementation(libs.maplibre.compose)
     implementation(libs.maplibre.composeMaterial3)
     implementation(libs.coil.compose)

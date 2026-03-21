@@ -9,7 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.ui.LendDetailScreen
 import com.vayunmathur.crypto.ui.LoginScreen
 import com.vayunmathur.crypto.ui.PortfolioScreen

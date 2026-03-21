@@ -9,6 +9,5 @@ android {
 }
 
 dependencies {
-    implementation(libs.kotlin.csv.jvm)
     implementation(libs.androidx.datastore.preferences)
 }

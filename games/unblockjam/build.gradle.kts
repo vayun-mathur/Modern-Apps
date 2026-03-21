@@ -7,7 +7,3 @@ android {
         applicationId = "com.vayunmathur.games.unblockjam"
     }
 }
-
-dependencies {
-    implementation(libs.androidx.navigation3.runtime)
-}

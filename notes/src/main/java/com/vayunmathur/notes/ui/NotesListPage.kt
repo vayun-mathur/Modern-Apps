@@ -2,7 +2,7 @@ package com.vayunmathur.notes.ui
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.ListPageR
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.notes.Route
