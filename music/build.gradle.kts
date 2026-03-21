@@ -5,6 +5,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260321
+        versionName = "v2.2.1"
         applicationId = "com.vayunmathur.music"
     }
 }
