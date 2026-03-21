@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -84,7 +87,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 IconDelete()
             }
     }) }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+        Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
             Column {
                 UserCard(backStack, platform, selectedUser, userPositions[selectedUser.id], true)
                 Spacer(Modifier.height(4.dp))

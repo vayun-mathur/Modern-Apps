@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,9 +17,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -111,8 +114,8 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             }, {Text("Link")}, {Icon(painterResource(R.drawable.outline_link_24), null)})
         }
     }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
-            LazyColumn(Modifier.padding(bottom = 24.dp).padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
+        Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
+            LazyColumn(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
                 items(users.filter { it.requestStatus == RequestStatus.MUTUAL_CONNECTION || it.requestStatus == RequestStatus.AWAITING_RESPONSE }) {
                     UserCard(backStack, platform, it, userPositions[it.id], true)
                 }

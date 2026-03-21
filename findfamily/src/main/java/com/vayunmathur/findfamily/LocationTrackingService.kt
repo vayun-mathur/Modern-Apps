@@ -155,7 +155,7 @@ class LocationTrackingService : Service() {
             // Request GPS updates
             locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER,
-                30_000L, // 30 seconds
+                10_000L, // 30 seconds
                 0f,   // regardless of movement
                 locationListener
             )

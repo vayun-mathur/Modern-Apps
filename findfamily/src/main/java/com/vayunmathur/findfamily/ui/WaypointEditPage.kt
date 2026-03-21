@@ -2,10 +2,13 @@ package com.vayunmathur.findfamily.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
@@ -46,8 +49,8 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
             IconSave()
         }
     }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
-            Column(Modifier.padding(16.dp).padding(bottom = 12.dp)) {
+        Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.padding(16.dp)) {
                 OutlinedTextField(name, {name = it}, Modifier.fillMaxWidth(), isError = name.isBlank(), supportingText = if(name.isBlank()) { {Text("Name cannot be blank") } } else null)
                 Spacer(Modifier.heightIn(8.dp))
                 OutlinedTextField(range, {range = it}, Modifier.fillMaxWidth(), suffix = {Text("meters")}, keyboardOptions = KeyboardOptions(
