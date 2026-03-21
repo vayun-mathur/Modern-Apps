@@ -2,7 +2,7 @@ package com.vayunmathur.games.wordmaker
 
 import android.content.Context
 
-class Dictionary() {
+class Dictionary {
     data class Word(val word: String, val position: String, val definition: String)
     private val words = mutableListOf<Word>()
     private val definitions: MutableMap<String, List<String>> = mutableMapOf()

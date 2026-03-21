@@ -34,9 +34,9 @@ class DownloadService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "AiChat:HighPerf")
-        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AiChat:DownloadWakeLock")
     }
 
@@ -99,7 +99,7 @@ class DownloadService : Service() {
         return START_NOT_STICKY
     }
 
-    private suspend fun downloadFileWithResume(url: String, file: File, onProgress: (Long, Long) -> Unit) {
+    private suspend fun downloadFileWithResume(url: String, file: File, onProgress: (Long, Long) -> Unit) = withContext(Dispatchers.Default) {
         val existingSize = if (file.exists()) file.length() else 0L
 
         val request = Request.Builder()

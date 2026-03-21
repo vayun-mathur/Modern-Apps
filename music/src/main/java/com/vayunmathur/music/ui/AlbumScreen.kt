@@ -3,8 +3,6 @@ package com.vayunmathur.music.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.util.NavBackStack
@@ -25,9 +22,6 @@ import com.vayunmathur.music.PlaybackManager
 import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
 import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Music
-import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 @Composable
 fun AlbumScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {

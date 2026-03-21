@@ -15,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -220,7 +219,7 @@ fun AlbumArt(artUris: List<Uri>, modifier: Modifier) {
 /**
  * Creates a 2x2 grid bitmap from a list of Uris
  */
-suspend fun createCollageBitmap(context: Context, uris: List<Uri>): Bitmap {
+fun createCollageBitmap(context: Context, uris: List<Uri>): Bitmap {
     val size = 512 // Define a standard size for the output square
     val halfSize = size / 2
     val result = createBitmap(size, size)

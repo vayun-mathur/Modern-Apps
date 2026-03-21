@@ -3,7 +3,6 @@ package com.vayunmathur.youpipe.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
-import com.vayunmathur.youpipe.ui.ChannelInfo
 import kotlinx.serialization.Serializable
 
 @Serializable

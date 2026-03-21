@@ -12,7 +12,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 object Wikidata {
     suspend fun get(wikidata: String): Wikidata {
-        val client = HttpClient() {
+        val client = HttpClient {
             install(ContentNegotiation) {
                 json(Json{
                     ignoreUnknownKeys = true

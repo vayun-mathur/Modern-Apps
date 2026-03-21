@@ -115,7 +115,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                     })
                                 }
                                 route.steps.forEachIndexed { idx, it ->
-                                    Card() {
+                                    Card {
                                         when (it) {
                                             is TransitRoute.Step.WalkStep -> {
                                                 ListItem({

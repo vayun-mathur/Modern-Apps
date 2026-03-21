@@ -453,8 +453,8 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
 }
 
 @Composable
-fun SurfaceText(surfaceModifier: Modifier, surfaceShape: Shape, surfaceColor: Color, text: String, textModifier: Modifier, fontWeight: FontWeight? = null, fontSize: TextUnit = TextUnit.Unspecified, surfaceSize: Dp?) {
-    val modifier2 = if(surfaceSize != null) surfaceModifier.size(surfaceSize) else surfaceModifier
+fun SurfaceText(modifier: Modifier, surfaceShape: Shape, surfaceColor: Color, text: String, textModifier: Modifier, fontWeight: FontWeight? = null, fontSize: TextUnit = TextUnit.Unspecified, surfaceSize: Dp?) {
+    val modifier2 = if(surfaceSize != null) modifier.size(surfaceSize) else modifier
     Surface(modifier2, surfaceShape, surfaceColor) {
         Box(if(surfaceSize == null) Modifier else Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(text, textModifier, fontWeight = fontWeight, fontSize = fontSize)

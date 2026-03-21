@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Networking
-import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.library.util.DatabaseViewModel

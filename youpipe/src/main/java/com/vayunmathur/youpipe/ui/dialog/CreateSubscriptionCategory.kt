@@ -50,7 +50,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
     var selectedSubscriptions by remember { mutableStateOf(subscriptionsAlreadyInCategory) }
     val coroutineScope = rememberCoroutineScope()
     Dialog({backStack.pop()}) {
-        Card() {
+        Card {
             Column(Modifier.padding(16.dp)) {
                 if(id == null)
                     Text("Create subscription category", style = MaterialTheme.typography.titleLarge)

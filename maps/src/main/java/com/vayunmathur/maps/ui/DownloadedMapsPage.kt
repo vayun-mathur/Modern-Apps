@@ -36,7 +36,7 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
         })
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
-            LazyColumn() {
+            LazyColumn {
                 if(downloadingZones.isNotEmpty()) {
                     item {
                         Text("Downloading Zones:", Modifier.padding(horizontal = 16.dp))

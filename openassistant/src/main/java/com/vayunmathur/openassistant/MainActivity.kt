@@ -47,7 +47,7 @@ sealed interface Route: NavKey {
 fun Navigation(viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.ConversationPage(0))
     MainNavigation(backStack) {
-        entry<Route.ConversationPage>() {
+        entry<Route.ConversationPage> {
             LiteRTChatUi(backStack, it.id, viewModel)
         }
     }

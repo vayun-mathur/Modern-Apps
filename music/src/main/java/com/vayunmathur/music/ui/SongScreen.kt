@@ -29,7 +29,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.AlbumArt
 import com.vayunmathur.music.PlaybackManager
 import com.vayunmathur.music.R
@@ -305,9 +304,9 @@ fun getLyricsFromContentUri(context: Context, contentUri: Uri): String? {
                 }
             }
         }
-        val f = org.jaudiotagger.audio.AudioFileIO.read(tempFile)
+        val f = AudioFileIO.read(tempFile)
         val tag = f.tag
-        return tag.getFirst(org.jaudiotagger.tag.FieldKey.LYRICS)
+        return tag.getFirst(FieldKey.LYRICS)
     } catch (e: Exception) {
         e.printStackTrace()
         return null

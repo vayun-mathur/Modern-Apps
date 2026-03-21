@@ -29,7 +29,7 @@ import kotlin.random.Random
 object Networking {
     private const val URL = "https://findfamily.cc"
 
-    private val client = HttpClient() {
+    private val client = HttpClient {
         install(ContentNegotiation) {
             json()
         }
@@ -58,9 +58,9 @@ object Networking {
         userid = dataStoreUtils.getLong("userid")!!
     }
 
-    private suspend fun <T> checkNetworkDown(try_connect: suspend ()->T?): T? {
+    private suspend fun <T> checkNetworkDown(makeRequest: suspend ()->T?): T? {
         try {
-            val x = try_connect()
+            val x = makeRequest()
             network_is_down = false
             return x
         } catch(_: ConnectTimeoutException) {

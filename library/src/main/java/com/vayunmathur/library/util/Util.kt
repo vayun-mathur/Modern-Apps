@@ -11,7 +11,6 @@ import okio.buffer
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 fun <T> tryOrDefault(default: T, block: () -> T): T {
     return try {

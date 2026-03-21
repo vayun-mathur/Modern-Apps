@@ -3,8 +3,6 @@ package com.vayunmathur.maps
 import android.content.Context
 import android.util.Log
 import com.vayunmathur.maps.data.SpecificFeature
-import io.github.kevincianfarini.alchemist.scalar.kilometers
-import io.github.kevincianfarini.alchemist.scalar.meters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.spatialk.geojson.Position
@@ -14,8 +12,6 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 object OfflineRouter {
@@ -43,7 +39,7 @@ object OfflineRouter {
                 val count = if (name == "edge_index.bin") (size / structSize) - 1 else size / structSize
 
                 Log.d(TAG, "File: $name")
-                Log.d(TAG, "  Size: ${size} bytes")
+                Log.d(TAG, "  Size: $size bytes")
                 Log.d(TAG, "  Implied Count: $count items")
 
                 // Integrity check: file size should be a multiple of the struct size

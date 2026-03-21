@@ -74,7 +74,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
         }
     }
 
-    Scaffold() { paddingValues ->
+    Scaffold { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             channelInfo?.let { channelInfo ->
                 ChannelHeader(channelInfo)
@@ -95,7 +95,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
                 Spacer(Modifier.height(4.dp))
                 HorizontalDivider()
             }
-            LazyColumn() {
+            LazyColumn {
                 items(videos, {it.videoID}) {
                     VideoItem(backStack, viewModel, it, false)
                 }
@@ -133,7 +133,7 @@ fun VideoItem(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
             }, Modifier, {
 
             }, {
-                Column() {
+                Column {
                     if(showAuthor) {
                         Text(videoInfo.author, style = MaterialTheme.typography.bodySmall)
                     }
