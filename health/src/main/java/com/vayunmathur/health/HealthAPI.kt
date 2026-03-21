@@ -81,7 +81,7 @@ object HealthAPI {
                         val firstDayOfWeek = date.plus((date.dayOfWeek.ordinal+1)%7, DateTimeUnit.DAY)
                         firstDayOfWeek.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }
@@ -92,7 +92,7 @@ object HealthAPI {
                         val firstDayOfMonth = date.minus(date.day-1, DateTimeUnit.DAY)
                         firstDayOfMonth.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }
@@ -135,7 +135,7 @@ object HealthAPI {
                         val firstDayOfWeek = date.plus((date.dayOfWeek.ordinal+1)%7, DateTimeUnit.DAY)
                         firstDayOfWeek.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }
@@ -146,7 +146,7 @@ object HealthAPI {
                         val firstDayOfMonth = date.minus(date.day-1, DateTimeUnit.DAY)
                         firstDayOfMonth.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }

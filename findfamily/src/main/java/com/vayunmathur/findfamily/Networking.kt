@@ -27,7 +27,7 @@ import kotlin.io.encoding.Base64
 import kotlin.random.Random
 
 object Networking {
-    private val URL = "https://findfamily.cc"
+    private const val URL = "https://findfamily.cc"
 
     private val client = HttpClient() {
         install(ContentNegotiation) {

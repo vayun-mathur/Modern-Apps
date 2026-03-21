@@ -30,6 +30,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.util.pop
+import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.SelectedFeatureViewModel
 import com.vayunmathur.maps.data.AmenityDatabase
@@ -122,7 +123,7 @@ fun SearchPage(
                         ListItem(
                             headlineContent = { Text(amenity.name.ifBlank { "Unnamed Amenity" }) },
                             supportingContent = {
-                                Text("Coordinates: ${String.format("%.4f", amenity.lat)}, ${String.format("%.4f", amenity.lon)}")
+                                Text("Coordinates: ${amenity.lat.round(4)}, ${amenity.lon.round(4)}")
                             },
                             modifier = Modifier.clickable {
                                 scope.launch {

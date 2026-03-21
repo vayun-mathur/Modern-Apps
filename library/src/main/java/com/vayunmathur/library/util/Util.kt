@@ -58,3 +58,7 @@ fun nowState() = produceState(Clock.System.now()) {
         delay(100)
     }
 }
+
+fun String.firstLetterUppercase(): String {
+    return replaceFirstChar { it.uppercase() }
+}

@@ -85,7 +85,7 @@ fun MapView(
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
-        locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
+        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
 
     LaunchedEffect(Unit) {

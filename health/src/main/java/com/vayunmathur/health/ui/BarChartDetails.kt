@@ -60,6 +60,7 @@ import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.Tuple3
 import com.vayunmathur.library.util.Tuple4
+import com.vayunmathur.library.util.round
 import com.vayunmathur.library.util.toStringCommas
 import com.vayunmathur.library.util.toStringDigits
 import kotlinx.datetime.DateTimeUnit
@@ -303,7 +304,7 @@ fun BarChartDetails(
                     Spacer(Modifier.height(16.dp))
 
                     Row(verticalAlignment = Alignment.Bottom) {
-                        val formatVal = { v: Double -> if (config.useDecimals) String.format("%.1f", v) else String.format("%,d", v.toLong()) }
+                        val formatVal = { v: Double -> if (config.useDecimals) v.round(1).toString() else v.toLong().toStringCommas() }
                         val avgString = if(config == HealthMetricConfig.HEART_RATE) {
                             "${formatVal(dataState.primaryRange?.start ?: 0.0)} - ${formatVal(dataState.primaryRange?.endInclusive ?: 0.0)}"
                         } else if (dataState.secondaryAverage != null && config.isDualSeries) {
@@ -423,8 +424,8 @@ fun GenericLineChart(
             secondaryData?.let { drawSeries(it, secondaryLineColor) }
         }
 
-        Text(text = String.format("%,d", maxChartValue.toLong()), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
-        Text(text = String.format("%,d", goalValue.toLong()), color = lineColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
+        Text(text = maxChartValue.toLong().toStringCommas(), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
+        Text(text = goalValue.toLong().toStringCommas(), color = lineColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
         Text(text = "0", color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.BottomEnd))
     }
 }
@@ -465,8 +466,8 @@ fun GenericBarChart(
             }
         }
 
-        Text(text = String.format("%,d", maxChartValue.toLong()), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
-        Text(text = String.format("%,d", goalValue), color = barColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
+        Text(text = maxChartValue.toLong().toStringCommas(), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
+        Text(text = goalValue.toStringCommas(), color = barColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
         Text(text = "0", color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.BottomEnd))
     }
 }

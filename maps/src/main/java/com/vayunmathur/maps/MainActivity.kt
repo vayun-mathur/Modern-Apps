@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
                     Triple("https://data.vayunmathur.com/edge_index.bin", "edge_index.bin", "Downloading Edge Index...")
                 )) {
                     val db = remember { buildAmenityDatabase(this@MainActivity) }
-                    Navigation(ds, db)
+                    Navigation(db)
                 }
             }
         }
@@ -103,7 +103,7 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(ds: DataStoreUtils, db: AmenityDatabase, viewModel: SelectedFeatureViewModel = viewModel()) {
+fun Navigation(db: AmenityDatabase, viewModel: SelectedFeatureViewModel = viewModel()) {
     val backStack = rememberNavBackStack<Route>(Route.MapPage)
     MainNavigation(backStack) {
         entry<Route.MapPage> {

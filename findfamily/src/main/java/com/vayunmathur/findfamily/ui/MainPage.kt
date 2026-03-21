@@ -90,7 +90,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
-        locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
+        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
 
     Scaffold(floatingActionButton = {

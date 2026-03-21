@@ -63,9 +63,9 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
     var isLoading by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
 
-    val filePickerActivityContract = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
-        it?.let {
-            val channelURLs = Json.parseToJsonElement(context.contentResolver.openInputStream(it)!!.bufferedReader().readText()).jsonObject["subscriptions"]!!.jsonArray.map {
+    val filePickerActivityContract = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if(uri != null) {
+            val channelURLs = Json.parseToJsonElement(context.contentResolver.openInputStream(uri)!!.bufferedReader().readText()).jsonObject["subscriptions"]!!.jsonArray.map {
                 it.jsonObject["url"]!!.jsonPrimitive.content
             }
             coroutineScope.launch(Dispatchers.IO) {

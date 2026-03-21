@@ -68,7 +68,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     val selectedUser by viewModel.getState<User>(userId)
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
-        locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
+        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
 
     var isShowingPresent by remember { mutableStateOf(true) }

@@ -14,10 +14,11 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
-class AlarmScheduler(private val context: Context) {
-    private val alarmManager = context.getSystemService(AlarmManager::class.java)
+class AlarmScheduler {
 
-    fun schedule(alarm: Alarm) {
+    fun schedule(context: Context, alarm: Alarm) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", alarm.id)
         }
@@ -39,7 +40,8 @@ class AlarmScheduler(private val context: Context) {
         )
     }
 
-    fun cancel(alarm: Alarm) {
+    fun cancel(context: Context, alarm: Alarm) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -52,9 +54,9 @@ class AlarmScheduler(private val context: Context) {
 
     companion object {
         private var INSTANCE: AlarmScheduler? = null
-        fun get(context: Context): AlarmScheduler {
+        fun get(): AlarmScheduler {
             return INSTANCE ?: synchronized(this) {
-                AlarmScheduler(context).also { INSTANCE = it }
+                AlarmScheduler().also { INSTANCE = it }
             }
         }
     }

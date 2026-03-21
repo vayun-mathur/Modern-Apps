@@ -42,7 +42,7 @@ fun SettingsPage(backStack: com.vayunmathur.library.util.NavBackStack<com.vayunm
     var importing by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    // Side-effect to handle selected URI: we observe the last picked Uri via a remembered state holder
+    // Side effect to handle selected URI: we observe the last picked Uri via a remembered state holder
     var pickedUri by remember { mutableStateOf<Uri?>(null) }
 
     // Recreate a launcher that sets pickedUri so we can process in LaunchedEffect
