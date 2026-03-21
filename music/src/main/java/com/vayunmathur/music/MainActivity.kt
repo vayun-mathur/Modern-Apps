@@ -71,7 +71,7 @@ fun Navigation(viewModel: DatabaseViewModel) {
             HomeScreen(backStack, viewModel)
         }
         entry<Route.Song> {
-            SongScreen(backStack, viewModel)
+            SongScreen(backStack)
         }
         entry<Route.Albums> {
             AlbumScreen(backStack, viewModel)

@@ -67,6 +67,7 @@ import com.vayunmathur.maps.ensurePmtilesReady
 import com.vayunmathur.maps.ui.components.BottomSheetContent
 import com.vayunmathur.maps.ui.components.MyMapLayers
 import com.vayunmathur.maps.ui.components.UserIcon
+import com.vayunmathur.maps.ui.components.verticalShape
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
@@ -94,7 +95,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel, ds: DataStoreUtils, db: AmenityDatabase) {
+fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel, db: AmenityDatabase) {
     val selectedFeature by viewModel.selectedFeature.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()

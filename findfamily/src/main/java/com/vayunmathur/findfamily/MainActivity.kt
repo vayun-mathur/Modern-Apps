@@ -220,7 +220,7 @@ fun Navigation(platform: Platform, viewModel: DatabaseViewModel) {
             AddPersonDialog(backStack, viewModel, platform, it.id)
         }
         entry<Route.AddLinkDialog>(metadata = DialogPage()) {
-            AddLinkDialog(backStack, viewModel, platform)
+            AddLinkDialog(backStack, viewModel)
         }
     }
 }

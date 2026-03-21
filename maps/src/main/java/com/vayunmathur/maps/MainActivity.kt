@@ -107,7 +107,7 @@ fun Navigation(ds: DataStoreUtils, db: AmenityDatabase, viewModel: SelectedFeatu
     val backStack = rememberNavBackStack<Route>(Route.MapPage)
     MainNavigation(backStack) {
         entry<Route.MapPage> {
-            MapPage(backStack, viewModel, ds, db)
+            MapPage(backStack, viewModel, db)
         }
         entry<Route.DownloadedMapsPage> {
             DownloadedMapsPage(backStack)

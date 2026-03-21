@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 @Composable
-fun AddLinkDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, platform: Platform) {
+fun AddLinkDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     var name by remember { mutableStateOf("") }
 
     val options = mapOf(

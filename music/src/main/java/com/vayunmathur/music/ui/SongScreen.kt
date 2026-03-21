@@ -44,7 +44,7 @@ data class LyricLine(val timestamp: Long, val text: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
+fun SongScreen(backStack: NavBackStack<Route>) {
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
     val currentlyPlaying by playbackManager.currentMediaItem.collectAsState()

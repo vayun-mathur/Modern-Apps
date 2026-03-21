@@ -27,7 +27,7 @@ import kotlin.io.encoding.Base64
 import kotlin.random.Random
 
 object Networking {
-    private fun getUrl() = "https://findfamily.cc"
+    private val URL = "https://findfamily.cc"
 
     private val client = HttpClient() {
         install(ContentNegotiation) {
@@ -81,20 +81,9 @@ object Networking {
         return null
     }
 
-    suspend fun problem(arg: String) {
-        @Serializable
-        data class Problem(val problem: String)
-        checkNetworkDown {
-            client.post("${getUrl()}/api/problem") {
-                contentType(ContentType.Application.Json)
-                setBody(Problem(arg))
-            }
-        }
-    }
-
     private suspend inline fun <reified T, reified I> makeRequest(path: String, body: I): T? {
         return checkNetworkDown {
-            val response = client.post("${getUrl()}$path") {
+            val response = client.post("$URL$path") {
                 contentType(ContentType.Application.Json)
                 setBody(body)
             }
@@ -122,7 +111,7 @@ object Networking {
 
     private suspend fun getKey(userid: Long): RSA.OAEP.PublicKey? {
         return checkNetworkDown {
-            val response = client.post("${getUrl()}/api/getkey") {
+            val response = client.post("$URL/api/getkey") {
                 contentType(ContentType.Application.Json)
                 setBody("{\"userid\": ${userid.toULong()}}")
             }

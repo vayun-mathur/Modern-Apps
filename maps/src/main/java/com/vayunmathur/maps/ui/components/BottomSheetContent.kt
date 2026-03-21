@@ -30,8 +30,6 @@ import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.RouteService
 import com.vayunmathur.maps.TransitRoute
 import com.vayunmathur.maps.data.SpecificFeature
-import com.vayunmathur.maps.ui.RestaurantBottomSheet
-import com.vayunmathur.maps.ui.verticalShape
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format

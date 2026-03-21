@@ -89,7 +89,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     }) }, bottomBar = {
         Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
             Column {
-                UserCard(backStack, platform, selectedUser, userPositions[selectedUser.id], true)
+                UserCard(backStack, selectedUser, userPositions[selectedUser.id], true)
                 Spacer(Modifier.height(4.dp))
                 Column(
                     Modifier.fillMaxWidth(),

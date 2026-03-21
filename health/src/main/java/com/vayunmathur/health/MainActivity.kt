@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         HealthSyncWorker.enqueue(this@MainActivity)
                     }
-                    Navigation(db)
+                    Navigation()
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -147,7 +147,7 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(db: HealthDatabase) {
+fun Navigation() {
     val backStack = rememberNavBackStack<Route>(Route.MainPage)
     MainNavigation(backStack) {
         entry<Route.MainPage> {

@@ -117,7 +117,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
         Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
             LazyColumn(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
                 items(users.filter { it.requestStatus == RequestStatus.MUTUAL_CONNECTION || it.requestStatus == RequestStatus.AWAITING_RESPONSE }) {
-                    UserCard(backStack, platform, it, userPositions[it.id], true)
+                    UserCard(backStack, it, userPositions[it.id], true)
                 }
                 if (users.any { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
                     item {
@@ -125,7 +125,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                     }
                 }
                 items(users.filter { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
-                    AwaitingRequestCard(backStack, platform, it.id)
+                    AwaitingRequestCard(backStack, it.id)
                 }
                 if (temporaryLinks.isNotEmpty()) {
                     item {
@@ -153,7 +153,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
 }
 
 @Composable
-fun AwaitingRequestCard(backStack: NavBackStack<Route>, platform: Platform, id: Long) {
+fun AwaitingRequestCard(backStack: NavBackStack<Route>, id: Long) {
     Card {
         ListItem({
             Text("Request from ${id.encodeBase26()}")
@@ -217,7 +217,7 @@ fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List
 
 @OptIn(ExperimentalTime::class)
 @Composable
-fun UserCard(backStack: NavBackStack<Route>, platform: Platform, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
+fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
     val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false) } ?: "Never"
     val speed = locationValue?.speed?.times(10)?.roundToInt()?.div(10F) ?: 0.0
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
