@@ -40,7 +40,6 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.isNew
-import com.vayunmathur.library.util.setLast
 import com.vayunmathur.passwords.Password
 import com.vayunmathur.passwords.Route
 import kotlinx.coroutines.launch
@@ -101,7 +100,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
                     }
                 } else {
                     viewModel.upsertAsync(newPass)
-                    backStack.removeLastOrNull()
+                    backStack.pop()
                 }
             }) {
                 IconSave()

@@ -182,7 +182,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
 
     fun changeLevel(newLevelIndex: Int) {
         val boundedIndex = newLevelIndex.coerceIn(0, LevelData.LEVELS.lastIndex)
-        backStack[backStack.lastIndex] = Route.Game(boundedIndex)
+        backStack.setLast(Route.Game(boundedIndex))
     }
 
     fun getCurrentMoves(): Int {

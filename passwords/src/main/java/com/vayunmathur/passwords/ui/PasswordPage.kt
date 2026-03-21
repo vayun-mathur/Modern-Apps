@@ -74,7 +74,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             TopAppBar(
                 title = { Text(password.name.ifBlank { "Password" }) },
                 actions = {
-                    IconButton(onClick = { viewModel.delete(password); backStack.removeLastOrNull() }) {
+                    IconButton(onClick = { viewModel.delete(password); backStack.pop() }) {
                         IconDelete()
                     }
                 },

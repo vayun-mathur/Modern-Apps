@@ -49,7 +49,6 @@ import com.vayunmathur.findfamily.data.radians
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.reset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
