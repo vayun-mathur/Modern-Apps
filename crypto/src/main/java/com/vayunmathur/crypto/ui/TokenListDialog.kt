@@ -28,7 +28,7 @@ fun TokenListDialog(alreadyExistingTokens: Set<TokenInfo>, viewModel: PortfolioV
                         Text(category.displayName, style = MaterialTheme.typography.titleMedium)
                     }
 
-                    items(TokenInfo.BY_TYPE(category) - alreadyExistingTokens) { tokenInfo ->
+                    items(TokenInfo.byType(category) - alreadyExistingTokens) { tokenInfo ->
                         val onClick = { viewModel.createTokenAccount(tokenInfo); onDismiss() }
                         if(tokenInfo.category == TokenInfo.Companion.Category.JUPITER_LEND) {
                             val apy = JupiterLendRepository[tokenInfo]?.apy ?: 0.0

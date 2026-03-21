@@ -70,10 +70,10 @@ fun SearchPage(
                             searchQuery = query
                             scope.launch {
                                 // Trigger search if query length is sufficient
-                                if (query.length >= 2) {
+                                results = if (query.length >= 2) {
                                     // Using the bounding box provided (North, South, East, West)
                                     // and the FTS4 wildcard search pattern
-                                    results = db.amenityDao().getInBBox(
+                                    db.amenityDao().getInBBox(
                                         query = "*$query*",
                                         latMin = south,
                                         latMax = north,
@@ -81,7 +81,7 @@ fun SearchPage(
                                         lonMax = east
                                     )
                                 } else {
-                                    results = emptyList()
+                                    emptyList()
                                 }
                             }
                         },

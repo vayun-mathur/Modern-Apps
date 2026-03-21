@@ -295,7 +295,7 @@ private fun formatTime(ms: Long): String {
 fun getLyricsFromContentUri(context: Context, contentUri: Uri): String? {
     var tempFile: File? = null
     try {
-        tempFile = File.createTempFile("temp_music", ".m4a", context.getCacheDir())
+        tempFile = File.createTempFile("temp_music", ".m4a", context.cacheDir)
         context.contentResolver.openInputStream(contentUri).use { inputStream ->
             FileOutputStream(tempFile).use { outputStream ->
                 val buffer = ByteArray(8192)

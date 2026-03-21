@@ -139,7 +139,12 @@ fun MapView(
             camera,
             0f..20f,
             options = MapOptions(
-                gestureOptions = GestureOptions(false, true, false, true),
+                gestureOptions = GestureOptions(
+                    isRotateEnabled = false,
+                    isScrollEnabled = true,
+                    isTiltEnabled = false,
+                    isZoomEnabled = true
+                ),
                 ornamentOptions = OrnamentOptions.AllDisabled
             ),
             onMapClick = { _, offset ->
@@ -168,7 +173,7 @@ fun MapView(
                             Position(coord.lon + radiusInDegrees, coord.lat)
                         )
                         val radiusPx = abs((center.x - edgePoint.x).toPx())
-                        Circle(
+                        drawCircleWithBorder(
                             center.toOffset(this),
                             Color(0x80Add8e6),
                             Color(0xffAdd8e6),
@@ -203,7 +208,7 @@ fun MapView(
     }
 }
 
-fun DrawScope.Circle(position: Offset, color: Color, borderColor: Color, radius: Float) {
+fun DrawScope.drawCircleWithBorder(position: Offset, color: Color, borderColor: Color, radius: Float) {
     drawCircle(color, radius, position)
     drawCircle(borderColor, radius, position, style = Stroke(width = radius/20))
 }

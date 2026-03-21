@@ -64,7 +64,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 LocalDate(date.year, date.month, 1)
             }.toSortedMap(Comparator<LocalDate>(LocalDate::compareTo).reversed()).mapKeys {
                 MonthNames.ENGLISH_ABBREVIATED.names[it.key.month.ordinal] + " " + it.key.year
-            }.mapValues { it.value.sortedByDescending { it.date } }
+            }.mapValues { pair -> pair.value.sortedByDescending { it.date } }
         }
     }
     Scaffold(bottomBar = { NavigationBar(Route.Gallery, backStack) }) { paddingValues ->

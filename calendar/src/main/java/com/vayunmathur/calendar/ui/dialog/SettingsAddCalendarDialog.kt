@@ -48,7 +48,7 @@ fun SettingsAddCalendarDialog(viewModel: ContactViewModel, backStack: NavBackSta
         0xFFFFC107.toInt(), // amber
         0xFFFF9800.toInt(), // orange
         0xFF795548.toInt(), // brown
-        0xFF607D8B.toInt()  // blue grey
+        0xFF607D8B.toInt()  // blue gray
     )
 
     AlertDialog(

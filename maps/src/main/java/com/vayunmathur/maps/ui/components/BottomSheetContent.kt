@@ -100,7 +100,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             if (route is TransitRoute) {
-                                val TIME_FORMAT = LocalTime.Format {
+                                val timeFormat = LocalTime.Format {
                                     amPmHour(Padding.NONE)
                                     chars(":")
                                     minute()
@@ -111,12 +111,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                         val origin = selectedFeature.waypoints.first()?.name ?: "Your location"
                                         Text(origin)
                                     }, trailingContent = {
-                                        Text(
-                                            route.startTime()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault()).time.format(
-                                                TIME_FORMAT
-                                            )
-                                        )
+                                        Text(route.startTime().toLocalDateTime(TimeZone.currentSystemDefault()).time.format(timeFormat))
                                     })
                                 }
                                 route.steps.forEachIndexed { idx, it ->
@@ -174,7 +169,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                                             Text(
                                                                 it.departureTime.toLocalDateTime(
                                                                     TimeZone.currentSystemDefault()
-                                                                ).time.format(TIME_FORMAT)
+                                                                ).time.format(timeFormat)
                                                             )
                                                         })
                                                         ListItem({
@@ -183,7 +178,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                                             Text(
                                                                 it.arrivalTime.toLocalDateTime(
                                                                     TimeZone.currentSystemDefault()
-                                                                ).time.format(TIME_FORMAT)
+                                                                ).time.format(timeFormat)
                                                             )
                                                         })
                                                     }
@@ -200,7 +195,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                         Text(
                                             route.endTime()
                                                 .toLocalDateTime(TimeZone.currentSystemDefault()).time.format(
-                                                TIME_FORMAT
+                                                timeFormat
                                             )
                                         )
                                     })

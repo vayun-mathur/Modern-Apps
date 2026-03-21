@@ -15,9 +15,11 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class LevelDataStore(context: Context) {
 
     private val appContext = context.applicationContext
-    private val LEVEL_KEY = intPreferencesKey("current_level")
-    private val FOUND_WORDS_KEY = stringSetPreferencesKey("found_words")
-    private val BONUS_WORDS_KEY = stringSetPreferencesKey("bonus_words")
+    companion object {
+        private val LEVEL_KEY = intPreferencesKey("current_level")
+        private val FOUND_WORDS_KEY = stringSetPreferencesKey("found_words")
+        private val BONUS_WORDS_KEY = stringSetPreferencesKey("bonus_words")
+    }
 
     val currentLevel: Flow<Int> = appContext.dataStore.data
         .map { preferences ->

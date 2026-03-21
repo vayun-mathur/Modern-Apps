@@ -83,7 +83,7 @@ class AlarmScheduler(private val context: Context) {
         repeat(7) {
             val dayOfWeek = candidate.dayOfWeek // kotlinx.datetime.DayOfWeek
 
-            // Map kotlinx DayOfWeek (Mon=1..Sun=7) to your bitmask (Sun=0..Sat=6)
+            // Map kotlinx DayOfWeek (Mon=1...Sun=7) to your bitmask (Sun=0...Sat=6)
             val bit = if (dayOfWeek == DayOfWeek.SUNDAY) 0 else dayOfWeek.isoDayNumber
 
             if ((alarm.days and (1 shl bit)) != 0) {

@@ -60,7 +60,9 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
         }
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues).fillMaxWidth()) {
-            MapView(backStack, viewModel, navEnabled = true, selectedWaypoint = SelectedWaypoint(waypoint, range.toDoubleOrNull() ?: 0.0, {coord = it}))
+            MapView(backStack, viewModel, navEnabled = true, selectedWaypoint = SelectedWaypoint(waypoint, range.toDoubleOrNull() ?: 0.0) {
+                coord = it
+            })
         }
     }
 }

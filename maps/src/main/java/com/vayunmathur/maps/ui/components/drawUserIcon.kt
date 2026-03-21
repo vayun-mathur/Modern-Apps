@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import org.maplibre.compose.camera.CameraState
 import org.maplibre.spatialk.geojson.Position
 
-fun DrawScope.UserIcon(userPosition: Position, userBearing: Float, camera: CameraState) {
+fun DrawScope.drawUserIcon(userPosition: Position, userBearing: Float, camera: CameraState) {
     if (userPosition != Position(0.0, 0.0) && camera.projection != null) {
         val offset =
             camera.projection!!.screenLocationFromPosition(userPosition)

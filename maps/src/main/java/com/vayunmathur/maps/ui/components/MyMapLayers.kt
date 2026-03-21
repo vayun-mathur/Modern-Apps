@@ -109,7 +109,7 @@ fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.RouteType
                         }
                         routeSource.setData(GeoJsonData.Features(FeatureCollection(features)))
                     } else if(route is TransitRoute) {
-                        val features: List<Feature1> = route.steps.mapNotNull {
+                        val features: List<Feature1> = route.steps.map {
                             when(it) {
                                 is TransitRoute.Step.WalkStep -> {
                                     Feature1(

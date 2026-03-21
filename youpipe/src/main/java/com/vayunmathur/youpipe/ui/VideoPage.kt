@@ -225,7 +225,9 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
     Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
             videoData?.let {
-                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams, audioStreams, segments, isFullscreen, { isFullscreen = it })
+                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams, audioStreams, segments, isFullscreen) {
+                    isFullscreen = it
+                }
                 VideoDetails(backStack, it)
             }
             if(!isFullscreen) {

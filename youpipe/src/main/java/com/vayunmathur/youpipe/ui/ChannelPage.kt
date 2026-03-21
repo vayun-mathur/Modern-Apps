@@ -76,12 +76,12 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
 
     Scaffold() { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
-            channelInfo?.let {
-                ChannelHeader(it)
+            channelInfo?.let { channelInfo ->
+                ChannelHeader(channelInfo)
                 val existingSubscription = subscriptions.firstOrNull { it.channelID == channelID }
                 if(existingSubscription == null) {
                     Button({
-                        viewModel.upsertAsync(Subscription(name = it.name, channelID = channelID, avatarURL = it.avatar))
+                        viewModel.upsertAsync(Subscription(name = channelInfo.name, channelID = channelID, avatarURL = channelInfo.avatar))
                     }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
                         Text("Subscribe")
                     }

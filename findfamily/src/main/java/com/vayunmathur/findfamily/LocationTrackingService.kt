@@ -234,7 +234,7 @@ suspend fun Context.fetchAddress(lat: Double, lng: Double): Address? =
             }
         }
 
-        // Safety: If the calling scope is cancelled, stop the continuation
+        // Safety: If the calling scope is canceled, stop the continuation
         continuation.invokeOnCancellation {
             // Geocoder doesn't support manual cancellation,
             // but this prevents memory leaks in the listener.

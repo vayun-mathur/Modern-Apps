@@ -13,6 +13,8 @@ dependencies {
     // healthconnect
     implementation(libs.androidx.connect.client)
 
+    implementation(libs.androidx.work.runtime.ktx)
+
     // room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

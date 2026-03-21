@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.sp
  * @param mdtext The raw markdown text.
  * @param showMarkers If false, the formatting symbols (#, *, etc.) are hidden and occupy no space.
  */
-fun MarkdownAnnotatedString(mdtext: String, showMarkers: Boolean = true): AnnotatedString {
+fun parseMarkdown(mdtext: String, showMarkers: Boolean = true): AnnotatedString {
     return buildAnnotatedString {
         append(mdtext)
 

@@ -1,13 +1,11 @@
 package com.vayunmathur.notes.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.BasicTextField
@@ -35,7 +33,7 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconVisible
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.pop
-import com.vayunmathur.notes.MarkdownAnnotatedString
+import com.vayunmathur.notes.parseMarkdown
 import com.vayunmathur.notes.Route
 import com.vayunmathur.notes.data.Note
 
@@ -90,14 +88,14 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 var value by remember(note.id) {
                     mutableStateOf(
                         TextFieldValue(
-                            MarkdownAnnotatedString(note.content)
+                            parseMarkdown(note.content)
                         )
                     )
                 }
                 val noMarkers by remember {
                     derivedStateOf {
                         TextFieldValue(
-                            MarkdownAnnotatedString(
+                            parseMarkdown(
                                 note.content,
                                 false
                             )
@@ -108,7 +106,7 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                     if (isEditing) value else noMarkers,
                     {
                         note = note.copy(content = it.text)
-                        value = it.copy(annotatedString = MarkdownAnnotatedString(it.text))
+                        value = it.copy(annotatedString = parseMarkdown(it.text))
                     },
                     Modifier.fillMaxSize(),
                     readOnly = !isEditing,

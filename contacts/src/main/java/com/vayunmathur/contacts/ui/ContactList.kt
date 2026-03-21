@@ -316,7 +316,7 @@ fun ContactItem(
     }
 
     Column {
-        val hasDropdown = dropdownList != null && dropdownList.isNotEmpty()
+        val hasDropdown = !dropdownList.isNullOrEmpty()
         ListItem(
             modifier = modifier
                 .clip(RoundedCornerShape(16.dp, 16.dp, if(hasDropdown) 0.dp else 16.dp, if(hasDropdown) 0.dp else 16.dp)),

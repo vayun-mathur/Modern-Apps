@@ -144,9 +144,9 @@ private data class OpeningRule(val days: Set<DayOfWeek>, val intervals: List<Tim
 private data class TimeInterval(val start: LocalTime, val end: LocalTime) {
     fun contains(time: LocalTime): Boolean {
         return if (end < start) {
-            time >= start || time < end
+            time !in end..<start
         } else {
-            time >= start && time < end
+            time in start..<end
         }
     }
 }

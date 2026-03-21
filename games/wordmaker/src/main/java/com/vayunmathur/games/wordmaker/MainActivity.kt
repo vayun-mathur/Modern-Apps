@@ -545,8 +545,8 @@ fun LetterChooser(
     val letterCenters = remember(letters) {
         mutableStateListOf(
             *List(
-                letters.size,
-                { Offset.Zero }).toTypedArray()
+                letters.size
+            ) { Offset.Zero }.toTypedArray()
         )
     }
     var selectedLettersIndices by remember(letters) { mutableStateOf(listOf<Int>()) }

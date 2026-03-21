@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
 
-        // If we were in PiP and we are no longer in it, and the activity is
+        // If we were in PiP, and we are no longer in it, and the activity is
         // finishing, it means the user closed the PiP window.
         if (!isInPictureInPictureMode && isFinishing) {
             val intent = Intent(this, PlaybackService::class.java)

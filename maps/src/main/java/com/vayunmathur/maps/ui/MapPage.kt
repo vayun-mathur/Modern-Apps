@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,9 +42,7 @@ import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -54,7 +51,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.R
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.RouteService
@@ -66,7 +62,7 @@ import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.ensurePmtilesReady
 import com.vayunmathur.maps.ui.components.BottomSheetContent
 import com.vayunmathur.maps.ui.components.MyMapLayers
-import com.vayunmathur.maps.ui.components.UserIcon
+import com.vayunmathur.maps.ui.components.drawUserIcon
 import com.vayunmathur.maps.ui.components.verticalShape
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -79,7 +75,6 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okio.source
 import org.maplibre.compose.camera.CameraPosition
-import org.maplibre.compose.camera.CameraState
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
@@ -249,7 +244,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                         }
                     }
                     Canvas(Modifier.fillMaxSize()) {
-                        UserIcon(userPosition, userBearing, camera)
+                        drawUserIcon(userPosition, userBearing, camera)
                     }
                 }
 

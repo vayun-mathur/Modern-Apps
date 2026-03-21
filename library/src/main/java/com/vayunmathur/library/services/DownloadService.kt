@@ -19,8 +19,10 @@ import java.util.concurrent.TimeUnit
 
 class DownloadService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val NOTIF_ID = 1001
-    private val CHANNEL_ID = "high_speed_download_channel"
+    companion object {
+        private const val NOTIF_ID = 1001
+        private const val CHANNEL_ID = "high_speed_download_channel"
+    }
 
     private var wifiLock: WifiManager.WifiLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
