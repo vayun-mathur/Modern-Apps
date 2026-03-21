@@ -78,7 +78,6 @@ jobs:
             sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
           
           REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
-          REVERSED_DIRS="findfamily"
           echo "module_dirs=$REVERSED_DIRS" >> $GITHUB_ENV
 
       - name: Prepare F-Droid Metadata
