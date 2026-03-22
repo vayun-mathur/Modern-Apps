@@ -1,67 +1,24 @@
 package com.vayunmathur.openassistant
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.MediaRecorder
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,13 +38,10 @@ import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconMenu
 import com.vayunmathur.library.util.DatabaseViewModel
 import dev.jeziellago.compose.markdowntext.MarkdownText
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
-import java.util.UUID
 import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,29 +49,23 @@ import kotlin.time.Clock
 fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel: DatabaseViewModel) {
     val activeConversation by viewModel.getNullable<Conversation>(conversationId)
     val allMessages by viewModel.data<Message>().collectAsState(initial = emptyList())
+    val filteredMessages = remember(allMessages, conversationId) {
+        allMessages.filter { it.conversationId == conversationId }.sortedBy { it.timestamp }
+    }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     var inputText by remember { mutableStateOf("") }
-
-    val filteredMessages = remember(allMessages, conversationId) {
-        allMessages.filter { it.conversationId == conversationId }.sortedBy { it.timestamp }
-    }
-
-    // State for multiple images
     val selectedImageUris = remember { mutableStateListOf<Uri>() }
     val selectedImageFiles = remember { mutableStateListOf<File>() }
-
     var isRecording by remember { mutableStateOf(false) }
     var audioRecorder by remember { mutableStateOf<WavRecorder?>(null) }
     var recordedAudioFile by remember { mutableStateOf<File?>(null) }
 
     LaunchedEffect(filteredMessages.size) {
-        if (filteredMessages.isNotEmpty()) {
-            listState.animateScrollToItem(filteredMessages.size - 1)
-        }
+        if (filteredMessages.isNotEmpty()) listState.animateScrollToItem(filteredMessages.size - 1)
     }
 
     val recordAudioPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -125,19 +73,15 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
             val file = File(context.cacheDir, "recording_${Clock.System.now().toEpochMilliseconds()}.wav")
             recordedAudioFile = file
             try {
-                val recorder = WavRecorder(context, file, scope)
-                recorder.start()
-                audioRecorder = recorder
+                audioRecorder = WavRecorder(context, file, scope).apply { start() }
                 isRecording = true
             } catch (e: Exception) {
                 Toast.makeText(context, "Mic error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            Toast.makeText(context, "Microphone permission denied", Toast.LENGTH_SHORT).show()
         }
     }
 
-    val imagePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri> ->
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         uris.forEach { uri ->
             selectedImageUris.add(uri)
             scope.launch(Dispatchers.IO) {
@@ -148,271 +92,130 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
     }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val customNavSuiteType = with(adaptiveInfo) {
-        if (windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)) {
-            NavigationSuiteType.WideNavigationRailExpanded
-        } else {
-            NavigationSuiteType.None
-        }
-    }
+    val navType = if (adaptiveInfo.windowSizeClass.isWidthAtLeastBreakpoint(WIDTH_DP_EXPANDED_LOWER_BOUND)) {
+        NavigationSuiteType.WideNavigationRailExpanded
+    } else NavigationSuiteType.None
+
     val allConversations by viewModel.data<Conversation>().collectAsState(initial = emptyList())
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
 
-    val coroutineScope = rememberCoroutineScope()
-
-    NavigationSuiteScaffold(layoutType = customNavSuiteType, navigationSuiteItems = {
-        allConversations.forEach {
-            item(it.id == conversationId, {
-                backStack.reset(Route.ConversationPage(it.id))
-            }, {}, label = {Text(it.title)})
-        }
+    NavigationSuiteScaffold(layoutType = navType, navigationSuiteItems = {
+        allConversations.forEach { item(it.id == conversationId, { backStack.reset(Route.ConversationPage(it.id)) }, {}, label = { Text(it.title, Modifier.fillMaxWidth()) }) }
     }) {
-        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         ModalNavigationDrawer({
             ModalDrawerSheet {
-                allConversations.forEach {
-                    NavigationDrawerItem(
-                        { Text(it.title) },
-                        selected = it.id == conversationId,
-                        onClick = {
-                            backStack.reset(Route.ConversationPage(it.id))
-                        })
-                }
+                allConversations.forEach { NavigationDrawerItem({ Text(it.title) }, it.id == conversationId, { backStack.reset(Route.ConversationPage(it.id)) }, Modifier.fillMaxWidth()) }
             }
         }, drawerState = drawerState) {
             Scaffold(
                 topBar = {
                     CenterAlignedTopAppBar(
-                        title = {
-                            Text(
-                                activeConversation?.title ?: "New Conversation",
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        actions = {
-                            if(conversationId != 0L) {
-                                IconButton({ backStack.reset(Route.ConversationPage(0)) }) {
-                                    IconAdd()
-                                }
-                            }
-                        },
-                        navigationIcon = {
-                            if(customNavSuiteType == NavigationSuiteType.None) {
-                                IconButton({ coroutineScope.launch {
-                                    drawerState.open()
-                                }}) {
-                                    IconMenu()
-                                }
-                            }
-                        }
+                        title = { Text(activeConversation?.title ?: "New Conversation", fontWeight = FontWeight.Bold) },
+                        actions = { if (conversationId != 0L) IconButton({ backStack.reset(Route.ConversationPage(0)) }) { IconAdd() } },
+                        navigationIcon = { if (navType == NavigationSuiteType.None) IconButton({ scope.launch { drawerState.open() } }) { IconMenu() } }
                     )
                 },
                 bottomBar = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        if (selectedImageUris.isNotEmpty() || isRecording) {
-                            Row(
-                                modifier = Modifier.padding(bottom = 8.dp),
-                                verticalAlignment = Alignment.Bottom
-                            ) {
-                                if (selectedImageUris.isNotEmpty()) {
-                                    LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    ) {
-                                        items(selectedImageUris) { uri ->
-                                            Box(modifier = Modifier.size(80.dp)) {
-                                                AsyncImage(
-                                                    model = uri,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .clip(RoundedCornerShape(12.dp))
-                                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                                IconButton(
-                                                    onClick = {
-                                                        val index = selectedImageUris.indexOf(uri)
-                                                        if (index != -1) {
-                                                            selectedImageUris.removeAt(index)
-                                                            if (index < selectedImageFiles.size) selectedImageFiles.removeAt(
-                                                                index
-                                                            )
-                                                        }
-                                                    }
-                                                ) {
-                                                    IconClose()
-                                                }
-                                            }
-                                        }
-                                    }
+                    ChatInput(
+                        Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                        inputText = inputText,
+                        onTextChange = { inputText = it },
+                        selectedImageUris = selectedImageUris,
+                        isRecording = isRecording,
+                        onAddImage = { imagePicker.launch("image/*") },
+                        onRecord = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                val file = File(context.cacheDir, "recording_${Clock.System.now().toEpochMilliseconds()}.wav")
+                                recordedAudioFile = file
+                                try {
+                                    audioRecorder = WavRecorder(context, file, scope).apply { start() }
+                                    isRecording = true
+                                } catch (e: Exception) {}
+                            } else recordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        },
+                        onSend = {
+                            if (isRecording) { audioRecorder?.stop(); audioRecorder = null; isRecording = false }
+                            scope.launch {
+                                var currentId = conversationId
+                                if (currentId == 0L) {
+                                    currentId = viewModel.upsert(Conversation("New Conversation"))
+                                    backStack.reset(Route.ConversationPage(currentId))
                                 }
-                                if (isRecording) {
-                                    Spacer(Modifier.width(8.dp))
-                                    Card(
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Row(
-                                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                "Recording...",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.error
-                                            )
-                                            IconButton(
-                                                onClick = {
-                                                    audioRecorder?.stop()
-                                                    audioRecorder = null
-                                                    isRecording = false
-                                                    recordedAudioFile = null
-                                                }
-                                            ) {
-                                                IconClose()
-                                            }
-                                        }
-                                    }
-                                }
+                                viewModel.upsert(Message(currentId, inputText, "user", selectedImageFiles.map { it.absolutePath }, recordedAudioFile != null))
+                                context.startService(Intent(context, InferenceService::class.java).apply {
+                                    putExtra("conversation_id", currentId)
+                                    putExtra("user_text", inputText)
+                                    putExtra("image_paths", selectedImageFiles.map { it.absolutePath }.toTypedArray())
+                                    putExtra("audio_path", recordedAudioFile?.absolutePath)
+                                })
+                                inputText = ""; selectedImageFiles.clear(); selectedImageUris.clear(); recordedAudioFile = null
                             }
+                        },
+                        onCancelMedia = {
+                            selectedImageUris.clear(); selectedImageFiles.clear()
+                            audioRecorder?.stop(); audioRecorder = null; isRecording = false; recordedAudioFile = null
                         }
+                    )
+                }
+            ) { padding ->
+                LazyColumn(state = listState, modifier = Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(filteredMessages, key = { it.id }) { ChatBubble(it) }
+                }
+            }
+        }
+    }
+}
 
-                        Surface(
-                            tonalElevation = 3.dp,
-                            shape = RoundedCornerShape(28.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                IconButton(onClick = { imagePickerLauncher.launch("image/*") }) { IconAdd() }
-                                IconButton(
-                                    onClick = {
-                                        if (ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.RECORD_AUDIO
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            val file = File(
-                                                context.cacheDir,
-                                                "recording_${
-                                                    Clock.System.now().toEpochMilliseconds()
-                                                }.wav"
-                                            )
-                                            recordedAudioFile = file
-                                            try {
-                                                val recorder = WavRecorder(context, file, scope)
-                                                recorder.start()
-                                                audioRecorder = recorder
-                                                isRecording = true
-                                            } catch (e: Exception) {
-                                            }
-                                        } else recordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-                                    }
-                                ) {
-                                    Icon(
-                                        painterResource(android.R.drawable.ic_btn_speak_now),
-                                        contentDescription = "Voice"
-                                    )
-                                }
-
-                                TextField(
-                                    value = inputText,
-                                    onValueChange = { inputText = it },
-                                    modifier = Modifier.weight(1f),
-                                    placeholder = { Text("Message...") },
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
-                                        disabledContainerColor = Color.Transparent,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent
-                                    )
-                                )
-
-                                val canSend =
-                                    (inputText.isNotBlank() || selectedImageFiles.isNotEmpty() || recordedAudioFile != null)
-                                IconButton(
-                                    enabled = canSend,
-                                    onClick = {
-                                        if (isRecording) {
-                                            audioRecorder?.stop()
-                                            audioRecorder = null
-                                            isRecording = false
-                                        }
-
-                                        scope.launch {
-                                            var currentId = conversationId
-                                            if (currentId == 0L) {
-                                                val newConv = Conversation(title = "New Conversation")
-                                                currentId = viewModel.upsert(newConv)
-                                                backStack.reset(Route.ConversationPage(currentId))
-                                            }
-
-                                            // 1. Save User Message to Database
-                                            val userMsg = Message(
-                                                conversationId = currentId,
-                                                text = inputText,
-                                                role = "user",
-                                                imagePaths = selectedImageFiles.map { it.absolutePath },
-                                                hasAudio = recordedAudioFile != null,
-                                                timestamp = Clock.System.now().toEpochMilliseconds()
-                                            )
-                                            viewModel.upsert(userMsg)
-
-                                            // 2. Start Service with the message payload
-                                            val intent =
-                                                Intent(context, InferenceService::class.java).apply {
-                                                    putExtra("conversation_id", currentId)
-                                                    putExtra("user_text", inputText)
-                                                    putExtra(
-                                                        "image_paths",
-                                                        selectedImageFiles.map { it.absolutePath }
-                                                            .toTypedArray()
-                                                    )
-                                                    putExtra(
-                                                        "audio_path",
-                                                        recordedAudioFile?.absolutePath
-                                                    )
-                                                }
-                                            context.startService(intent)
-
-                                            // 3. Clear UI State
-                                            inputText = ""
-                                            selectedImageFiles.clear()
-                                            selectedImageUris.clear()
-                                            recordedAudioFile = null
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        painterResource(android.R.drawable.ic_menu_send),
-                                        contentDescription = "Send",
-                                        tint = if (canSend) MaterialTheme.colorScheme.primary else Color.Gray
-                                    )
-                                }
+@Composable
+fun ChatInput(
+    modifier: Modifier,
+    inputText: String,
+    onTextChange: (String) -> Unit,
+    selectedImageUris: List<Uri>,
+    isRecording: Boolean,
+    onAddImage: () -> Unit,
+    onRecord: () -> Unit,
+    onSend: () -> Unit,
+    onCancelMedia: () -> Unit
+) {
+    Column(modifier.fillMaxWidth().padding(16.dp, 8.dp)) {
+        if (selectedImageUris.isNotEmpty() || isRecording) {
+            Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
+                if (selectedImageUris.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f, false)) {
+                        items(selectedImageUris) { uri ->
+                            Box(Modifier.size(80.dp)) {
+                                AsyncImage(uri, null, Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentScale = ContentScale.Crop)
+                                IconButton(onCancelMedia) { IconClose() }
                             }
                         }
                     }
                 }
-            ) { padding ->
-                Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(filteredMessages, key = { it.id }) { msg -> ChatBubble(msg) }
+                if (isRecording) {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(12.dp)) {
+                        Row(Modifier.padding(12.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Recording...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                            IconButton(onCancelMedia) { IconClose() }
+                        }
                     }
+                }
+            }
+        }
+
+        Surface(tonalElevation = 3.dp, shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp, 4.dp)) {
+                IconButton(onAddImage) { IconAdd() }
+                IconButton(onRecord) { Icon(painterResource(android.R.drawable.ic_btn_speak_now), "Voice") }
+                TextField(
+                    value = inputText,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Message...") },
+                    colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, disabledContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent)
+                )
+                val canSend = inputText.isNotBlank() || selectedImageUris.isNotEmpty() || isRecording
+                IconButton(enabled = canSend, onClick = onSend) {
+                    Icon(painterResource(android.R.drawable.ic_menu_send), "Send", tint = if (canSend) MaterialTheme.colorScheme.primary else Color.Gray)
                 }
             }
         }
@@ -421,151 +224,21 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
 
 @Composable
 fun ChatBubble(message: Message) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (message.role == "user") Alignment.End else Alignment.Start
-    ) {
-        if (message.role == "user") {
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp),
-                modifier = Modifier.widthIn(max = 300.dp)
-            ) {
-                Column(modifier = Modifier.padding(if (message.imagePaths.isNotEmpty() || message.hasAudio) 4.dp else 12.dp)) {
-                    message.imagePaths.forEach { path ->
-                        AsyncImage(
-                            model = path,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 240.dp)
-                                .clip(RoundedCornerShape(16.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+    val isUser = message.role == "user"
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
+        if (isUser) {
+            Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp), modifier = Modifier.widthIn(max = 300.dp)) {
+                Column(Modifier.padding(if (message.imagePaths.isNotEmpty() || message.hasAudio) 4.dp else 12.dp)) {
+                    message.imagePaths.forEach { AsyncImage(it, null, Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop) }
+                    if (message.hasAudio) Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(painterResource(android.R.drawable.ic_btn_speak_now), null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                        Text("Voice Message", Modifier.padding(start = 8.dp), color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
                     }
-
-                    if (message.hasAudio) {
-                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(painterResource(android.R.drawable.ic_btn_speak_now), null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Voice Message", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
-                        }
-                    }
-
-                    if (message.text.isNotBlank()) {
-                        Text(
-                            text = message.text,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontSize = 15.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                    if (message.text.isNotBlank()) Text(message.text, Modifier.padding(8.dp, 4.dp), color = MaterialTheme.colorScheme.onPrimary, fontSize = 15.sp)
                 }
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 4.dp).padding(end = 100.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                if (message.text.isNotBlank()) {
-                    MarkdownText(
-                        message.text,
-                        style = LocalTextStyle.current.copy(fontSize = 16.sp, lineHeight = 22.sp),
-                    )
-                }
-            }
+        } else if (message.text.isNotBlank()) {
+            MarkdownText(message.text, Modifier.padding(vertical = 4.dp, horizontal = 0.dp).padding(end = 100.dp), style = LocalTextStyle.current.copy(fontSize = 16.sp, lineHeight = 22.sp))
         }
     }
-}
-
-/**
- * Helper to record audio and write to a WAV file
- */
-class WavRecorder(val context: Context, val outputFile: File, val scope: CoroutineScope) {
-    private var audioRecord: AudioRecord? = null
-    private var isRecording = false
-    private val sampleRate = 16000
-    private val channelConfig = AudioFormat.CHANNEL_IN_MONO
-    private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
-    private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-
-    @SuppressLint("MissingPermission")
-    fun start() {
-        audioRecord = AudioRecord(MediaRecorder.AudioSource.MIC, sampleRate, channelConfig, audioFormat, bufferSize)
-        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) return
-
-        isRecording = true
-        audioRecord?.startRecording()
-
-        scope.launch(Dispatchers.IO) {
-            val tempRaw = File(context.cacheDir, "temp_${Clock.System.now().toEpochMilliseconds()}.raw")
-            FileOutputStream(tempRaw).use { fos ->
-                val buffer = ByteArray(bufferSize)
-                while (isRecording) {
-                    val read = audioRecord?.read(buffer, 0, bufferSize) ?: 0
-                    if (read > 0) fos.write(buffer, 0, read)
-                }
-            }
-            writeWavFile(tempRaw, outputFile)
-            tempRaw.delete()
-        }
-    }
-
-    fun stop() {
-        isRecording = false
-        audioRecord?.apply {
-            if (state == AudioRecord.STATE_INITIALIZED) {
-                try { stop() } catch(e: Exception) {}
-            }
-            release()
-        }
-        audioRecord = null
-    }
-
-    private fun writeWavFile(rawFile: File, wavFile: File) {
-        val rawData = rawFile.readBytes()
-        val totalAudioLen = rawData.size.toLong()
-        val totalDataLen = totalAudioLen + 36
-        val byteRate = (16 * sampleRate * 1 / 8).toLong()
-
-        FileOutputStream(wavFile).use { out ->
-            val header = ByteArray(44)
-            header[0] = 'R'.toByte(); header[1] = 'I'.toByte(); header[2] = 'F'.toByte(); header[3] = 'F'.toByte()
-            header[4] = (totalDataLen and 0xff).toByte()
-            header[5] = ((totalDataLen shr 8) and 0xff).toByte()
-            header[6] = ((totalDataLen shr 16) and 0xff).toByte()
-            header[7] = ((totalDataLen shr 24) and 0xff).toByte()
-            header[8] = 'W'.toByte(); header[9] = 'A'.toByte(); header[10] = 'V'.toByte(); header[11] = 'E'.toByte()
-            header[12] = 'f'.toByte(); header[13] = 'm'.toByte(); header[14] = 't'.toByte(); header[15] = ' '.toByte()
-            header[16] = 16; header[17] = 0; header[18] = 0; header[19] = 0
-            header[20] = 1; header[21] = 0 // PCM
-            header[22] = 1; header[23] = 0 // Mono
-            header[24] = (sampleRate and 0xff).toByte()
-            header[25] = ((sampleRate shr 8) and 0xff).toByte()
-            header[26] = ((sampleRate shr 16) and 0xff).toByte()
-            header[27] = ((sampleRate shr 24) and 0xff).toByte()
-            header[28] = (byteRate and 0xff).toByte()
-            header[29] = ((byteRate shr 8) and 0xff).toByte()
-            header[30] = ((byteRate shr 16) and 0xff).toByte()
-            header[31] = ((byteRate shr 24) and 0xff).toByte()
-            header[32] = 2; header[33] = 0 // block align
-            header[34] = 16; header[35] = 0 // bits per sample
-            header[36] = 'd'.toByte(); header[37] = 'a'.toByte(); header[38] = 't'.toByte(); header[39] = 'a'.toByte()
-            header[40] = (totalAudioLen and 0xff).toByte()
-            header[41] = ((totalAudioLen shr 8) and 0xff).toByte()
-            header[42] = ((totalAudioLen shr 16) and 0xff).toByte()
-            header[43] = ((totalAudioLen shr 24) and 0xff).toByte()
-            out.write(header)
-            out.write(rawData)
-        }
-    }
-}
-
-private fun copyUriToFile(context: Context, uri: Uri): File {
-    val tempFile = File(context.cacheDir, "img_${Clock.System.now().toEpochMilliseconds()}_${UUID.randomUUID()}.jpg")
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        FileOutputStream(tempFile).use { output -> input.copyTo(output) }
-    }
-    return tempFile
 }
