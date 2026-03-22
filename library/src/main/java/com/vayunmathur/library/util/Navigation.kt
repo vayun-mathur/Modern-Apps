@@ -122,7 +122,7 @@ fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider: EntryP
     Scaffold(contentWindowInsets = WindowInsets()) { paddingValues ->
         CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
             NavDisplay(
-                modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues).imePadding(),
+                modifier = Modifier.padding(paddingValues).imePadding(),
                 sceneStrategy = DialogSceneStrategy<T>().then(sceneStrategy),
                 backStack = backStack.backStack, entryProvider = {
                     EntryProviderScope(it).apply {

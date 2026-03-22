@@ -20,11 +20,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -139,7 +141,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
             }) {
                 IconAdd()
             }
-        },
+        }
     ) { innerPadding ->
         Row(
             Modifier
@@ -333,7 +335,7 @@ private fun HourlyGrid(
         Modifier
             .fillMaxSize()
             .verticalScroll(verticalState)
-            .padding(bottom = innerPadding.calculateBottomPadding()), Arrangement.spacedBy(4.dp)
+            .padding(bottom = innerPadding.calculateBottomPadding()).padding(bottom = 4.dp), Arrangement.spacedBy(4.dp)
     ) {
         // create 7 equal columns with weight so all 7 fit on screen
         for (d in weekDays) {
