@@ -71,6 +71,8 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             isShrinkResources = true
             if (signingConfigs.findByName("release") != null) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), proguardFile.absolutePath,
