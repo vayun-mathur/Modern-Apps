@@ -6,7 +6,7 @@ import com.vayunmathur.library.util.DatabaseItem
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Entity(tableName = "passwords")
+@Entity
 data class Password(
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
     val name: String = "",
