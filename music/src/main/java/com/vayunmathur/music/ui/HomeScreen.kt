@@ -3,6 +3,7 @@ package com.vayunmathur.music.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -60,7 +61,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
         ), Route.Home)
     }) { paddingValues ->
-        Box(Modifier.padding(paddingValues)) {
+        Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {
             ListPage<Music, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.title) }, {
                 Text(it.artist)
             }, { toPlay ->

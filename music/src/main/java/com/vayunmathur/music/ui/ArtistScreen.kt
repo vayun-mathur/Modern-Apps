@@ -1,6 +1,7 @@
 package com.vayunmathur.music.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Scaffold
@@ -32,8 +33,6 @@ fun ArtistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
 
-    val coroutineScope = rememberCoroutineScope()
-
     Scaffold(bottomBar = {
         BottomNavBar(backStack, listOf(
             BottomBarItem("Home", Route.Home, R.drawable.baseline_library_music_24),
@@ -41,7 +40,7 @@ fun ArtistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
         ), Route.Artists)
     }) { paddingValues ->
-        Box(Modifier.padding(paddingValues)) {
+        Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {
             ListPage<Artist, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.name) }, {
             }, {
                 Route.ArtistDetail(it)
