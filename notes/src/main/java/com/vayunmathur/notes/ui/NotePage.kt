@@ -1,5 +1,8 @@
 package com.vayunmathur.notes.ui
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -24,23 +27,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconVisible
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.notes.parseMarkdown
 import com.vayunmathur.notes.Route
 import com.vayunmathur.notes.data.Note
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteID: Long) {
     var note by viewModel.getEditable<Note>(noteID) {Note(0, "", "")}
     var isEditing by remember { mutableStateOf(true) }
+
+    val context = LocalContext.current
 
     Scaffold(topBar = {
         TopAppBar({ }, navigationIcon = {
@@ -50,6 +59,18 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
                 isEditing = !isEditing
             }) {
                 if(isEditing) IconVisible() else IconEdit()
+            }
+            IconButton({
+                val fileUri = getTmpFileUri(context, note.title, note.content)
+
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/markdown"
+                    putExtra(Intent.EXTRA_STREAM, fileUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Share Note"))
+            }) {
+                IconShare()
             }
             IconButton(onClick = {
                 viewModel.delete(note)
@@ -124,4 +145,18 @@ fun NotePage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, noteI
             }
         }
     }
+}
+
+fun getTmpFileUri(context: Context, fileName: String, content: String): Uri {
+    val cachePath = File(context.cacheDir, "shared_notes")
+    cachePath.mkdirs() // Create folder if it doesn't exist
+
+    val file = File(cachePath, "$fileName.md")
+    file.writeText(content) // Write your DB string to the file
+
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
 }
