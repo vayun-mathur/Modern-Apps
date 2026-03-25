@@ -107,3 +107,8 @@ fun IconStop(tint: Color = LocalContentColor.current) {
 fun IconMenu(tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.baseline_menu_24), "Add", tint = tint)
 }
+
+@Composable
+fun IconUpload(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.baseline_upload_24), "Upload", tint = tint)
+}
