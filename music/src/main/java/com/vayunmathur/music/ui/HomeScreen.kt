@@ -83,17 +83,19 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 @Composable
 fun ShufflePlayFab(viewModel: DatabaseViewModel, playbackManager: PlaybackManager) {
     val coroutineScope = rememberCoroutineScope()
+    val allSongs by viewModel.data<Music>().collectAsState()
 
-    FloatingActionButton({
-        coroutineScope.launch {
-            val allSongs = viewModel.getAll<Music>()
-            val toPlayIndex = Random.nextInt(allSongs.size)
-            playbackManager.playSong(allSongs, toPlayIndex)
-            if (!playbackManager.shuffleMode.value)
-                playbackManager.toggleShuffle()
+    if(allSongs.isNotEmpty()) {
+        FloatingActionButton({
+            coroutineScope.launch {
+                val toPlayIndex = Random.nextInt(allSongs.size)
+                playbackManager.playSong(allSongs, toPlayIndex)
+                if (!playbackManager.shuffleMode.value)
+                    playbackManager.toggleShuffle()
+            }
+        }) {
+            Icon(painterResource(R.drawable.ic_shuffle), null)
         }
-    }) {
-        Icon(painterResource(R.drawable.ic_shuffle), null)
     }
 }
 
