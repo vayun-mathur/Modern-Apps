@@ -370,7 +370,7 @@ fun GameBoard(
     onLevelWon: () -> Unit,
     isLevelWon: Boolean
 ) {
-    val screenWidth = LocalWindowInfo.current.containerSize.width.dp
+    val screenWidth = LocalWindowInfo.current.containerDpSize.width
     val boardSize = screenWidth - 32.dp // accounting for padding
     val cellWidth = boardSize / levelData.dimension.width
     val cellHeight = boardSize / levelData.dimension.height
