@@ -24,9 +24,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<NoteDatabase>(listOf(Migration(1, 2) {
-            it.execSQL("ALTER TABLE Note ADD COLUMN position REAL NOT NULL DEFAULT 0.0")
-        }))
+        val db = buildDatabase<NoteDatabase>()
         val viewModel = DatabaseViewModel(db, Note::class to db.noteDao())
         setContent {
             DynamicTheme {
