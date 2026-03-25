@@ -1,5 +1,7 @@
 package com.vayunmathur.photos
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +15,7 @@ import androidx.compose.ui.res.painterResource
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.PermissionsChecker
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
@@ -33,7 +36,25 @@ class MainActivity : ComponentActivity() {
         ImageLoader.init(this)
         setContent {
             DynamicTheme {
-                Navigation(viewModel)
+                if(Build.VERSION.SDK_INT >= 33) {
+                    PermissionsChecker(
+                        arrayOf(
+                            Manifest.permission.READ_MEDIA_IMAGES,
+                            Manifest.permission.READ_MEDIA_VIDEO,
+                            Manifest.permission.ACCESS_MEDIA_LOCATION
+                        ), "Grant Image/Video Permissions"
+                    ) {
+                        Navigation(viewModel)
+                    }
+                } else {
+                    PermissionsChecker(
+                        arrayOf(
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        ), "Grant Storage Permission"
+                    ) {
+                        Navigation(viewModel)
+                    }
+                }
             }
         }
     }
