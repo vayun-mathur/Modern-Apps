@@ -4,6 +4,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260325
+        versionName = "v2.2.2"
         applicationId = "com.vayunmathur.contacts"
     }
 }
