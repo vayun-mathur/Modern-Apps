@@ -1,5 +1,7 @@
 package com.vayunmathur.music
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.media3.session.MediaController
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.PermissionsChecker
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
@@ -36,10 +39,28 @@ class MainActivity : ComponentActivity() {
         val pm = PlaybackManager.getInstance(this)
         setContent {
             DynamicTheme {
-                LaunchedEffect(Unit) {
-                    saveMediaToFile(this@MainActivity, viewModel)
+                if(Build.VERSION.SDK_INT >= 33) {
+                    PermissionsChecker(
+                        arrayOf(Manifest.permission.READ_MEDIA_AUDIO),
+                        "Grant Audio Media Permissions"
+                    ) {
+                        LaunchedEffect(Unit) {
+                            saveMediaToFile(this@MainActivity, viewModel)
+                        }
+                        Navigation(viewModel)
+                    }
+                } else {
+
+                    PermissionsChecker(
+                        arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                        "Grant Storage Permissions"
+                    ) {
+                        LaunchedEffect(Unit) {
+                            saveMediaToFile(this@MainActivity, viewModel)
+                        }
+                        Navigation(viewModel)
+                    }
                 }
-                Navigation(viewModel)
             }
         }
     }
