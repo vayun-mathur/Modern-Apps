@@ -7,6 +7,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import android.provider.ContactsContract.Profile
+import androidx.core.database.getBlobOrNull
 import androidx.core.database.getStringOrNull
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -494,7 +495,8 @@ fun getDetails(context: Context, id: Long, isProfile: Boolean = false): ContactD
     // Photos
     val photos = queryData(listOf(CDKPhoto._ID, CDKPhoto.PHOTO), CDKPhoto.CONTENT_ITEM_TYPE) { cursor ->
         val id = cursor.getLong(cursor.getColumnIndexOrThrow(CDKPhoto._ID))
-        val photo = Base64.encode(cursor.getBlob(cursor.getColumnIndexOrThrow(CDKPhoto.PHOTO)))
+        val photo = cursor.getBlobOrNull(cursor.getColumnIndexOrThrow(CDKPhoto.PHOTO))?.let { Base64.encode(it) }
+        if(photo == null) return@queryData null
         Photo(id, photo)
     }
 
@@ -518,19 +520,19 @@ fun getDetails(context: Context, id: Long, isProfile: Boolean = false): ContactD
 
     val orgs = queryData(listOf(CDKOrg._ID, CDKOrg.COMPANY), CDKOrg.CONTENT_ITEM_TYPE) {
         val id = it.getLong(it.getColumnIndexOrThrow(CDKOrg._ID))
-        val company = it.getString(it.getColumnIndexOrThrow(CDKOrg.COMPANY))
+        val company = it.getStringOrNull(it.getColumnIndexOrThrow(CDKOrg.COMPANY)) ?: ""
         Organization(id, company)
     }
 
     val note = queryData(listOf(CDKNote._ID, CDKNote.NOTE), CDKNote.CONTENT_ITEM_TYPE) {
         val id = it.getLong(it.getColumnIndexOrThrow(CDKNote._ID))
-        val note = it.getString(it.getColumnIndexOrThrow(CDKNote.NOTE))
+        val note = it.getStringOrNull(it.getColumnIndexOrThrow(CDKNote.NOTE)) ?: ""
         Note(id, note)
     }
 
     val nicknames = queryData(listOf(CDKNickname._ID, CDKNickname.NAME, CDKNickname.TYPE), CDKNickname.CONTENT_ITEM_TYPE) {
         val id = it.getLong(it.getColumnIndexOrThrow(CDKNickname._ID))
-        val nickname = it.getString(it.getColumnIndexOrThrow(CDKNickname.NAME))
+        val nickname = it.getStringOrNull(it.getColumnIndexOrThrow(CDKNickname.NAME)) ?: ""
         val type = it.getInt(it.getColumnIndexOrThrow(CDKNickname.TYPE))
         Nickname(id, nickname, type)
     }
