@@ -14,6 +14,9 @@ The v2.x.x versions of these apps are all to be considered beta versions. Lots o
 Just for the "interesting" apps
 
 ## FindFamily
+
+iOS: https://apps.apple.com/us/app/find-family-secure-private/id6760863634
+
 ### Features:
 - End-to-end encryption
 - No emails, phone numbers, or any other personal information required
