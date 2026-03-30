@@ -337,12 +337,13 @@ data class Contact(
 
     companion object {
 
-        private fun processDetails(details: ContactDetails, displayName: String): ContactDetails? {
+        private fun processDetails(details: ContactDetails, displayName: String?): ContactDetails? {
             var details = details
             if(details.names.isEmpty())
                 details = details.copy(names = listOf(Name(0, "", "", "", "", "")))
 
             if((details.names.first().firstName.isEmpty() && details.names.first().lastName.isEmpty())) {
+                if(displayName == null) return null
                 val firstName = displayName.split(" ").first()
                 val lastName = displayName.split(" ").last()
                 if(firstName.isEmpty() && lastName.isEmpty()) return null
@@ -378,7 +379,7 @@ data class Contact(
             cursor?.use {
                 while (it.moveToNext()) {
                     val id = it.getLong(it.getColumnIndexOrThrow(ContactsContract.RawContacts._ID))
-                    val displayName = it.getString(it.getColumnIndexOrThrow(ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY))
+                    val displayName = it.getStringOrNull(it.getColumnIndexOrThrow(ContactsContract.RawContacts.DISPLAY_NAME_PRIMARY))
                     val isFavorite = it.getInt(it.getColumnIndexOrThrow(ContactsContract.RawContacts.STARRED)) == 1
                     val accountName = it.getStringOrNull(it.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_NAME))
                     val accountType = it.getStringOrNull(it.getColumnIndexOrThrow(ContactsContract.RawContacts.ACCOUNT_TYPE))
