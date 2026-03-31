@@ -50,7 +50,9 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
                         routeFeature,
                         userPosition.value,
                         it
-                    )
+                    ).also {
+                        println(it)
+                    }
                 }
                 else -> {
                     RouteService.computeRoute(routeFeature, userPosition.value, it)

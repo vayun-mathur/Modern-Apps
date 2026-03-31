@@ -49,9 +49,9 @@ class MainActivity : ComponentActivity() {
         Logger.setVerbosity(Logger.INFO)
         runBlocking {
 //            File(getExternalFilesDir(null)!!, "edge_index.bin").delete()
-//            File(getExternalFilesDir(null)!!, "edges.bin").delete()
+//            File(getExternalFilesDir(null)!!, "amenities.db").delete()
 //            ds.setBoolean("dbSetupComplete", false)
-//            ds.setBoolean("done_edge_index.bin", false)
+//            ds.setBoolean("done_amenities.db", false)
 //            ds.setBoolean("done_edges.bin", false)
         }
 //        finish()
@@ -59,10 +59,10 @@ class MainActivity : ComponentActivity() {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
                     Triple("https://data.vayunmathur.com/amenities.db", "amenities.db", "Downloading Amenity Database..."),
-                    Triple("https://data.vayunmathur.com/nodes_lookup.bin", "nodes_lookup.bin", "Downloading Routing Nodes..."),
+                    Triple("https://data.vayunmathur.com/nodes_master.bin", "nodes_master.bin", "Downloading Routing Nodes..."),
                     Triple("https://data.vayunmathur.com/nodes_spatial.bin", "nodes_spatial.bin", "Downloading Spatial Index..."),
                     Triple("https://data.vayunmathur.com/edges.bin", "edges.bin", "Downloading Routing Graph..."),
-                    Triple("https://data.vayunmathur.com/edge_index.bin", "edge_index.bin", "Downloading Edge Index...")
+                    Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", "Downloading Edge Index...")
                 )) {
                     val db = remember { buildAmenityDatabase(this@MainActivity) }
                     Navigation(db)
