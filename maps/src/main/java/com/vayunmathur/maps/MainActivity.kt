@@ -1,5 +1,6 @@
 package com.vayunmathur.maps
 
+import android.Manifest
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,6 +12,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.InitialDownloadChecker
+import com.vayunmathur.library.ui.PermissionsChecker
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -65,7 +67,9 @@ class MainActivity : ComponentActivity() {
                     Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", "Downloading Edge Index...")
                 )) {
                     val db = remember { buildAmenityDatabase(this@MainActivity) }
-                    Navigation(db)
+                    PermissionsChecker(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), "Grant Location Permission") {
+                        Navigation(db)
+                    }
                 }
             }
         }
