@@ -192,7 +192,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
 
     LaunchedEffect(isLevelWon) {
         if (isLevelWon) {
-            completedLevelsRepository.updateBestScore(levelIndex, getCurrentMoves())
+            completedLevelsRepository.updateBestScore(pack.levels[levelIndex].id, getCurrentMoves())
             levelStats = completedLevelsRepository.getLevelStats() // Refresh stats
             delay(1000)
             changeLevel(levelIndex + 1)

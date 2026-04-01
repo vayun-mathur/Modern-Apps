@@ -7,7 +7,6 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 
 data class Coord(
     val x: Int,
@@ -34,16 +33,13 @@ data class LevelPack(
             private set
 
         fun init(context: Context) {
-            val json = context.assets.open("levels.json").bufferedReader().readText()
-            PACKS = listOf(LevelPack("Original Pack", Json.parseToJsonElement(json).jsonArray.map {
-                fromJson(it.jsonObject)
-            }))
+            PACKS = listOf(packFromJson(context.assets.open("original_pack.json").bufferedReader().readText()))
         }
     }
 }
 
 data class LevelData(
-    val id: Long,
+    val id: String,
     val dimension: Dimension,
     val exit: Coord,
     val blocks: List<Block>,
@@ -51,8 +47,15 @@ data class LevelData(
     val lastMovedBlockIndex: Int? = null
 )
 
+private fun packFromJson(json: String): LevelPack {
+    val jsonObject = Json.parseToJsonElement(json).jsonObject
+    return LevelPack(jsonObject["name"]!!.jsonPrimitive.content, jsonObject["levels"]!!.jsonArray.map {
+        fromJson(it.jsonObject)
+    })
+}
+
 private fun fromJson(json: JsonObject): LevelData {
-    val id = json["id"]!!.jsonPrimitive.long
+    val id = json["id"]!!.jsonPrimitive.content
     val dimension = Dimension(
         json["w"]!!.jsonPrimitive.int,
         json["h"]!!.jsonPrimitive.int
