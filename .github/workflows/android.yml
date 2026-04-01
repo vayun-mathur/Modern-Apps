@@ -86,12 +86,12 @@ jobs:
             module_key=$(echo $dir | sed 's|/|-|g')
             target_path="$dir/src/main/play/listings/en-US"
           
-            mkdir -p "$target_path/graphics/icons"
+            mkdir -p "$target_path/graphics/icon"
             mkdir -p "$target_path/graphics/phone-screenshots"
           
             icon_source="$dir/src/main/ic_launcher-playstore.png"
             if [ -f "$icon_source" ]; then
-              cp "$icon_source" "$target_path/graphics/icons/icon.png"
+              cp "$icon_source" "$target_path/graphics/icon/icon.png"
             fi
           
             screenshot_source="metadata_data/photos/${module_key}.png"
