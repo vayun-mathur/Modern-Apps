@@ -16,7 +16,7 @@ public:
         uint32_t search_id;
     };
 
-    explicit RoutingScratchpad(uint32_t power_of_two_size = 20);
+    explicit RoutingScratchpad(uint32_t power_of_two_size);
 
     /**
      * @brief "Clears" the scratchpad by incrementing the generation ID.
@@ -33,6 +33,8 @@ public:
      */
     Entry& get_entry(uint32_t node_id);
 
+    double load_factor() const;
+
 private:
     uint32_t m_size;
     uint32_t m_mask;
@@ -40,6 +42,9 @@ private:
     std::vector<Entry> m_buffer;
 
     inline uint32_t hash(uint32_t x) const {
+        x = ((x >> 16) ^ x) * 0x45d9f3b;
+        x = ((x >> 16) ^ x) * 0x45d9f3b;
+        x = (x >> 16) ^ x;
         return x & m_mask;
     }
 };
