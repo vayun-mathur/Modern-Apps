@@ -20,7 +20,7 @@ interface UserDao: TrueDao<User>
 @Dao
 interface TemporaryLinkDao: TrueDao<TemporaryLink>
 
-@Database(entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class], version = 1)
+@Database(entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class], version = 2)
 @TypeConverters(DefaultConverters::class)
 abstract class FFDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

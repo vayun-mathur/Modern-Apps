@@ -165,7 +165,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun startTracking() {
-        val db = buildDatabase<FFDatabase>()
+        val db = buildDatabase<FFDatabase>(listOf(Migration_1_2))
         viewModel = DatabaseViewModel(db,
             User::class to db.userDao(),
             Waypoint::class to db.waypointDao(),

@@ -154,12 +154,12 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         }
     }
 
-    val dataStateCache = mutableMapOf<KClass<*>, StateFlow<List<*>>>()
+    val dataStateCache = mutableMapOf<Pair<KClass<*>, String?>, StateFlow<List<*>>>()
 
     @Suppress("UNCHECKED_CAST")
     inline fun <reified E : DatabaseItem> data(filterQuery: String? = null): StateFlow<List<E>> {
         return runBlocking {
-            dataStateCache.getOrPut(E::class) {
+            dataStateCache.getOrPut(Pair(E::class, filterQuery)) {
                 val tableName = E::class.simpleName!!
 
                 callbackFlow<List<E>> {
@@ -213,6 +213,12 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
     inline fun <reified E: DatabaseItem> delete(t: E) {
         viewModelScope.launch {
             getDao<E>().delete(t)
+        }
+    }
+
+    inline fun <reified E: DatabaseItem> deleteIf(filter: String) {
+        viewModelScope.launch {
+            getDao<E>().observeNothing(SimpleSQLiteQuery("DELETE FROM ${E::class.simpleName} WHERE $filter"))
         }
     }
 
@@ -273,6 +279,8 @@ interface TrueDao<T: DatabaseItem> {
     suspend fun observeRawList(query: SupportSQLiteQuery): List<T>
     @RawQuery
     suspend fun observeRaw(query: SupportSQLiteQuery): T
+    @RawQuery
+    suspend fun observeNothing(query: SupportSQLiteQuery): Long
     @RawQuery
     suspend fun observeRawNullable(query: SupportSQLiteQuery): T?
 }

@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -44,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -76,6 +76,7 @@ import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
@@ -87,10 +88,15 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     val users by viewModel.data<User>().collectAsState()
     val temporaryLinks by viewModel.data<TemporaryLink>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
-    val locationValues by viewModel.data<LocationValue>().collectAsState()
+    val timestamp = Clock.System.now() - 7.days
+    val locationValues by viewModel.data<LocationValue>("timestamp > ${timestamp.epochSeconds}").collectAsState()
     val userPositions by remember { derivedStateOf {
         locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
+
+    LaunchedEffect(Unit) {
+        viewModel.deleteIf<LocationValue>("timestamp < ${timestamp.epochSeconds}")
+    }
 
     Scaffold(floatingActionButton = {
         var expanded by remember { mutableStateOf(false) }
@@ -242,7 +248,6 @@ fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: Location
         }
         "Since $formattedTime $formattedDate"
     }
-    val context = LocalContext.current
     Card(if(showSupportingContent) Modifier.clickable(onClick = {
         backStack.add(Route.UserPage(user.id))
     }) else Modifier) {

@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.room.migration.Migration
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.LocationValue
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<FFDatabase>()
+        val db = buildDatabase<FFDatabase>(listOf(Migration_1_2))
         val viewModel = DatabaseViewModel(db, User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao(), TemporaryLink::class to db.temporaryLinkDao())
         val platform = Platform(this)
         setContent {
@@ -118,6 +119,10 @@ class MainActivity : ComponentActivity() {
         }
         Navigation(platform, viewModel)
     }
+}
+
+val Migration_1_2 = Migration(1, 2) {
+    it.execSQL("CREATE INDEX IF NOT EXISTS index_LocationValue_timestamp ON LocationValue (timestamp)")
 }
 
 @Composable

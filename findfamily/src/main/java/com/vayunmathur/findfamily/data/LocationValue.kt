@@ -1,5 +1,6 @@
 package com.vayunmathur.findfamily.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -14,6 +15,7 @@ data class LocationValue(
     @Embedded val coord: Coord,
     val speed: Float,
     val acc: Float,
+    @ColumnInfo(index = true)
     val timestamp: Instant,
     val battery: Float,
     @PrimaryKey(autoGenerate = true) override val id: Long = 0
