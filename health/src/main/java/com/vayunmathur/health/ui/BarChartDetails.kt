@@ -1,6 +1,5 @@
 package com.vayunmathur.health.ui
 
-import android.util.Range
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,11 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,9 +24,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -51,30 +45,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.database.RecordType
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.util.Tuple3
 import com.vayunmathur.library.util.Tuple4
+import com.vayunmathur.library.util.round
 import com.vayunmathur.library.util.toStringCommas
 import com.vayunmathur.library.util.toStringDigits
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
 
 /**
  * Configuration for health metrics.
@@ -303,7 +293,7 @@ fun BarChartDetails(
                     Spacer(Modifier.height(16.dp))
 
                     Row(verticalAlignment = Alignment.Bottom) {
-                        val formatVal = { v: Double -> if (config.useDecimals) String.format("%.1f", v) else String.format("%,d", v.toLong()) }
+                        val formatVal = { v: Double -> if (config.useDecimals) v.round(1).toString() else v.toLong().toStringCommas() }
                         val avgString = if(config == HealthMetricConfig.HEART_RATE) {
                             "${formatVal(dataState.primaryRange?.start ?: 0.0)} - ${formatVal(dataState.primaryRange?.endInclusive ?: 0.0)}"
                         } else if (dataState.secondaryAverage != null && config.isDualSeries) {
@@ -423,8 +413,8 @@ fun GenericLineChart(
             secondaryData?.let { drawSeries(it, secondaryLineColor) }
         }
 
-        Text(text = String.format("%,d", maxChartValue.toLong()), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
-        Text(text = String.format("%,d", goalValue.toLong()), color = lineColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
+        Text(text = maxChartValue.toLong().toStringCommas(), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
+        Text(text = goalValue.toLong().toStringCommas(), color = lineColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
         Text(text = "0", color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.BottomEnd))
     }
 }
@@ -465,8 +455,8 @@ fun GenericBarChart(
             }
         }
 
-        Text(text = String.format("%,d", maxChartValue.toLong()), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
-        Text(text = String.format("%,d", goalValue), color = barColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
+        Text(text = maxChartValue.toLong().toStringCommas(), color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.TopEnd))
+        Text(text = goalValue.toStringCommas(), color = barColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterEnd).padding(top = 40.dp))
         Text(text = "0", color = labelColor, fontSize = 10.sp, modifier = Modifier.align(Alignment.BottomEnd))
     }
 }

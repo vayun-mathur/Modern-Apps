@@ -21,84 +21,66 @@ data class Dimension(
 
 data class Block(
     val position: Coord, // top left
-    val dimension: Dimension,
-    val fixed: Boolean = false
+    val dimension: Dimension
 )
 
-/*
-{
-    "b": [
-      {
-        "y": 2,
-        "w": 2,
-        "h": 1
-      },
-      {
-        "x": 2,
-        "y": 2,
-        "w": 1,
-        "h": 2
-      }
-    ],
-    "e": {
-      "x": 4,
-      "y": 2
-    },
-    "w": 4,
-    "h": 4,
-    "c": 2
-  }
- */
+data class LevelPack(
+    val name: String,
+    val levels: List<LevelData>
+) {
+    companion object {
+
+        var PACKS: List<LevelPack> = listOf()
+            private set
+
+        fun init(context: Context) {
+            PACKS = listOf(packFromJson(context.assets.open("original_pack.json").bufferedReader().readText()))
+        }
+    }
+}
 
 data class LevelData(
+    val id: String,
     val dimension: Dimension,
     val exit: Coord,
     val blocks: List<Block>,
     val optimalMoves: Int,
     val lastMovedBlockIndex: Int? = null
-) {
-    companion object {
+)
 
-        var LEVELS = listOf<LevelData>()
-            private set
+private fun packFromJson(json: String): LevelPack {
+    val jsonObject = Json.parseToJsonElement(json).jsonObject
+    return LevelPack(jsonObject["name"]!!.jsonPrimitive.content, jsonObject["levels"]!!.jsonArray.map {
+        fromJson(it.jsonObject)
+    })
+}
 
-        private fun fromJson(json: JsonObject): LevelData {
-            val dimension = Dimension(
-                json["w"]!!.jsonPrimitive.int,
-                json["h"]!!.jsonPrimitive.int
-            )
-            val exit = Coord(
-                json["e"]!!.jsonObject["x"]!!.jsonPrimitive.int,
-                dimension.height - (json["e"]!!.jsonObject["y"]!!.jsonPrimitive.int) - 1
-            )
-            val blocks = json["b"]!!.jsonArray.map {
-                val block = it.jsonObject
-                val blockDim = Dimension(
-                    block["w"]!!.jsonPrimitive.int,
-                    block["h"]!!.jsonPrimitive.int
-                )
-                val y = block["y"]?.jsonPrimitive?.int ?: 0
-                Block(
-                    Coord(
-                        block["x"]?.jsonPrimitive?.int ?: 0,
-                        dimension.height - y - blockDim.height
-                    ),
-                    blockDim,
-                    block["fixed"]?.jsonPrimitive?.boolean ?: false
-                )
-            }
-            val optimalMoves = json["c"]!!.jsonPrimitive.int
-            return LevelData(dimension, exit, blocks, optimalMoves)
-        }
-
-        fun init(context: Context) {
-            val json = context.assets.open("levels.json").bufferedReader().readText()
-            LEVELS = Json.parseToJsonElement(json).jsonArray.map {
-                fromJson(it.jsonObject)
-            }
-        }
-
-        // to be 250, 1000, 1000, 1000, everything else
-        val PACKS = listOf("Original Pack" to 250, "Extended Pack 1" to 0, "Extended Pack 2" to 0, "Extended Pack 3" to 0, "Infinite Pack" to 0)
+private fun fromJson(json: JsonObject): LevelData {
+    val id = json["id"]!!.jsonPrimitive.content
+    val dimension = Dimension(
+        json["w"]!!.jsonPrimitive.int,
+        json["h"]!!.jsonPrimitive.int
+    )
+    val exit = Coord(
+        json["e"]!!.jsonObject["x"]!!.jsonPrimitive.int,
+        dimension.height - (json["e"]!!.jsonObject["y"]!!.jsonPrimitive.int) - 1
+    )
+    val blocks = json["b"]!!.jsonArray.map {
+        val block = it.jsonObject
+        val blockDim = Dimension(
+            block["w"]!!.jsonPrimitive.int,
+            block["h"]!!.jsonPrimitive.int
+        )
+        val y = block["y"]?.jsonPrimitive?.int ?: 0
+        Block(
+            Coord(
+                block["x"]?.jsonPrimitive?.int ?: 0,
+                dimension.height - y - blockDim.height
+            ),
+            blockDim,
+            block["fixed"]?.jsonPrimitive?.boolean ?: false
+        )
     }
+    val optimalMoves = json["c"]!!.jsonPrimitive.int
+    return LevelData(id, dimension, exit, blocks, optimalMoves)
 }

@@ -28,7 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.contacts.ui.ContactDetailsPage
 import com.vayunmathur.contacts.ui.ContactList
 import com.vayunmathur.contacts.ui.ContactListPick
@@ -40,7 +40,6 @@ import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
@@ -123,7 +122,7 @@ fun Navigation(viewModel: ContactViewModel) {
                 backStack = backStack,
                 onContactClick = { contact ->
                     if(backStack.last() is Route.ContactDetail || backStack.last() is Route.EditContact) {
-                        backStack[backStack.lastIndex] = Route.ContactDetail(contact.id)
+                        backStack.setLast(Route.ContactDetail(contact.id))
                     } else {
                         backStack.add(Route.ContactDetail(contact.id))
                     }

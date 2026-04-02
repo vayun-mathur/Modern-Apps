@@ -11,7 +11,6 @@ import okio.buffer
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 fun <T> tryOrDefault(default: T, block: () -> T): T {
     return try {
@@ -57,4 +56,8 @@ fun nowState() = produceState(Clock.System.now()) {
         value = Clock.System.now()
         delay(100)
     }
+}
+
+fun String.firstLetterUppercase(): String {
+    return replaceFirstChar { it.uppercase() }
 }

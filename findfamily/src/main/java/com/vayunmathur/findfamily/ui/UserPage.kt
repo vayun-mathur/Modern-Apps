@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,7 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
@@ -48,7 +50,6 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -65,7 +66,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     val selectedUser by viewModel.getState<User>(userId)
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
-        locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
+        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
 
     var isShowingPresent by remember { mutableStateOf(true) }
@@ -84,9 +85,9 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 IconDelete()
             }
     }) }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
+        Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
             Column {
-                UserCard(backStack, platform, selectedUser, userPositions[selectedUser.id], true)
+                UserCard(backStack, selectedUser, userPositions[selectedUser.id], true)
                 Spacer(Modifier.height(4.dp))
                 Column(
                     Modifier.fillMaxWidth(),

@@ -56,7 +56,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.scale
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.vayunmathur.contacts.CDKEmail
 import com.vayunmathur.contacts.CDKEvent
@@ -79,7 +79,6 @@ import com.vayunmathur.contacts.Route
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 import kotlinx.datetime.format.MonthNames
@@ -166,6 +165,8 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         )
                         val newContact = contact?.copy(details = details) ?: Contact(
                             0,
+                            null,
+                            null,
                             false,
                             details = details
                         )

@@ -14,10 +14,11 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
-class AlarmScheduler(private val context: Context) {
-    private val alarmManager = context.getSystemService(AlarmManager::class.java)
+class AlarmScheduler {
 
-    fun schedule(alarm: Alarm) {
+    fun schedule(context: Context, alarm: Alarm) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", alarm.id)
         }
@@ -39,7 +40,8 @@ class AlarmScheduler(private val context: Context) {
         )
     }
 
-    fun cancel(alarm: Alarm) {
+    fun cancel(context: Context, alarm: Alarm) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -52,9 +54,9 @@ class AlarmScheduler(private val context: Context) {
 
     companion object {
         private var INSTANCE: AlarmScheduler? = null
-        fun get(context: Context): AlarmScheduler {
+        fun get(): AlarmScheduler {
             return INSTANCE ?: synchronized(this) {
-                AlarmScheduler(context).also { INSTANCE = it }
+                AlarmScheduler().also { INSTANCE = it }
             }
         }
     }
@@ -83,7 +85,7 @@ class AlarmScheduler(private val context: Context) {
         repeat(7) {
             val dayOfWeek = candidate.dayOfWeek // kotlinx.datetime.DayOfWeek
 
-            // Map kotlinx DayOfWeek (Mon=1..Sun=7) to your bitmask (Sun=0..Sat=6)
+            // Map kotlinx DayOfWeek (Mon=1...Sun=7) to your bitmask (Sun=0...Sat=6)
             val bit = if (dayOfWeek == DayOfWeek.SUNDAY) 0 else dayOfWeek.isoDayNumber
 
             if ((alarm.days and (1 shl bit)) != 0) {

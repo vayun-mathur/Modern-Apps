@@ -1,13 +1,12 @@
-android {
-    defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
-        applicationId = "com.vayunmathur.findfamily"
-    }
+plugins {
+    id("common-conventions-app")
+    alias(libs.plugins.ksp)
 }
 
-plugins {
-    alias(libs.plugins.ksp)
+android {
+    defaultConfig {
+        applicationId = "com.vayunmathur.findfamily"
+    }
 }
 
 dependencies {
@@ -16,9 +15,6 @@ dependencies {
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
-
-    // Navigation 3
-    implementation(libs.androidx.navigation3.runtime)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

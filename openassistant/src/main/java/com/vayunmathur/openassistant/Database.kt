@@ -1,9 +1,7 @@
 package com.vayunmathur.openassistant
 
-import android.net.Uri
 import androidx.room.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
-import androidx.core.net.toUri
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity

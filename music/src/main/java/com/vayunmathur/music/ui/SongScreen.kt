@@ -25,11 +25,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.AlbumArt
 import com.vayunmathur.music.PlaybackManager
 import com.vayunmathur.music.R
@@ -44,7 +43,7 @@ data class LyricLine(val timestamp: Long, val text: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SongScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
+fun SongScreen(backStack: NavBackStack<Route>) {
     val context = LocalContext.current
     val playbackManager = remember { PlaybackManager.getInstance(context) }
     val currentlyPlaying by playbackManager.currentMediaItem.collectAsState()
@@ -295,7 +294,7 @@ private fun formatTime(ms: Long): String {
 fun getLyricsFromContentUri(context: Context, contentUri: Uri): String? {
     var tempFile: File? = null
     try {
-        tempFile = File.createTempFile("temp_music", ".m4a", context.getCacheDir())
+        tempFile = File.createTempFile("temp_music", ".m4a", context.cacheDir)
         context.contentResolver.openInputStream(contentUri).use { inputStream ->
             FileOutputStream(tempFile).use { outputStream ->
                 val buffer = ByteArray(8192)
@@ -305,9 +304,9 @@ fun getLyricsFromContentUri(context: Context, contentUri: Uri): String? {
                 }
             }
         }
-        val f = org.jaudiotagger.audio.AudioFileIO.read(tempFile)
+        val f = AudioFileIO.read(tempFile)
         val tag = f.tag
-        return tag.getFirst(org.jaudiotagger.tag.FieldKey.LYRICS)
+        return tag.getFirst(FieldKey.LYRICS)
     } catch (e: Exception) {
         e.printStackTrace()
         return null

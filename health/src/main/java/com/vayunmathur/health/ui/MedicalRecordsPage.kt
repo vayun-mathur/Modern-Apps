@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.MedicalResource
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.fhir.Patient

@@ -7,7 +7,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-data class TransitRoute(val steps: List<Step>, override val duration: Duration = steps.fold(0.seconds, {a, b -> a + b.duration}), override val distanceMeters: Double = steps.sumOf { it.distanceMeters }): RouteService.RouteType {
+data class TransitRoute(val steps: List<Step>, override val duration: Duration = steps.fold(0.seconds) { a, b -> a + b.duration }, override val distanceMeters: Double = steps.sumOf { it.distanceMeters }): RouteService.RouteType {
     sealed interface Step {
         val polyline: List<Position>
         val duration: Duration
@@ -56,23 +56,27 @@ data class TransitRoute(val steps: List<Step>, override val duration: Duration =
                                  userPosition: Position): TransitRoute? {
             val res = RouteService.computeRoute(features, userPosition, RouteService.TravelMode.TRANSIT) ?: return null
             val steps = res.step.map {
-                if(it.travelMode == RouteService.TravelMode.WALK) {
-                    Step.WalkStep(it.staticDuration, it.distanceMeters, it.polyline)
-                } else if(it.travelMode == RouteService.TravelMode.TRANSIT) {
-                    it.transitDetails ?: throw Exception("Transit details not found")
-                    Step.TransitStep(
-                        it.staticDuration,
-                        it.distanceMeters,
-                        it.polyline,
-                        it.transitDetails.stopDetails.departureStop.name,
-                        it.transitDetails.stopDetails.arrivalStop.name,
-                        it.transitDetails.transitLine.color,
-                        it.transitDetails.transitLine.nameShort ?: it.transitDetails.transitLine.name,
-                        it.transitDetails.headsign,
-                        Instant.parse(it.transitDetails.stopDetails.departureTime),
-                        Instant.parse(it.transitDetails.stopDetails.arrivalTime)
-                    )
-                } else throw Exception("Unknown travel mode")
+                when (it.travelMode) {
+                    RouteService.TravelMode.WALK -> {
+                        Step.WalkStep(it.staticDuration, it.distanceMeters, it.polyline)
+                    }
+                    RouteService.TravelMode.TRANSIT -> {
+                        it.transitDetails ?: throw Exception("Transit details not found")
+                        Step.TransitStep(
+                            it.staticDuration,
+                            it.distanceMeters,
+                            it.polyline,
+                            it.transitDetails.stopDetails.departureStop.name,
+                            it.transitDetails.stopDetails.arrivalStop.name,
+                            it.transitDetails.transitLine.color,
+                            it.transitDetails.transitLine.nameShort ?: it.transitDetails.transitLine.name,
+                            it.transitDetails.headsign,
+                            Instant.parse(it.transitDetails.stopDetails.departureTime),
+                            Instant.parse(it.transitDetails.stopDetails.arrivalTime)
+                        )
+                    }
+                    else -> throw Exception("Unknown travel mode")
+                }
             }
             return TransitRoute(steps.combineAdjacent({a, b -> a is Step.WalkStep && b is Step.WalkStep}, {a, b ->
                 Step.WalkStep((a as Step.WalkStep).duration + (b as Step.WalkStep).duration, a.distanceMeters + b.distanceMeters, a.polyline + b.polyline)

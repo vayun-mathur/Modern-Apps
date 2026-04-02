@@ -1,19 +1,17 @@
 plugins {
+    id("common-conventions-app")
     alias(libs.plugins.ksp)
 }
 
 android {
     defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
         applicationId = "com.vayunmathur.youpipe"
     }
 }
 
 dependencies {
     implementation(libs.coil.compose)
-    implementation(libs.androidx.navigation3.runtime)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.0")
+    implementation(libs.newpipeextractor)
     implementation(libs.okhttp)
 
     implementation(libs.androidx.room.runtime)

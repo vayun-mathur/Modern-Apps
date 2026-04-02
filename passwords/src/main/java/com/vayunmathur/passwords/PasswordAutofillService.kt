@@ -191,7 +191,7 @@ class PasswordAutofillService : AutofillService() {
                     }
                 }
             }
-            // Fallback: Check input type if hints are missing (129 = textPassword, 145 = textVisiblePassword, etc)
+            // Fallback: Check input type if hints are missing (129 = textPassword, 145 = textVisiblePassword, etc.)
             else {
                 if (passwordId == null && (node.inputType and 0xFFF) == 0x81) { // InputType.TYPE_TEXT_VARIATION_PASSWORD
                     passwordId = node.autofillId

@@ -51,7 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.contacts.CDKEmail
 import com.vayunmathur.contacts.CDKPhone
 import com.vayunmathur.contacts.CDKStructuredPostal
@@ -316,7 +316,7 @@ fun ContactItem(
     }
 
     Column {
-        val hasDropdown = dropdownList != null && dropdownList.isNotEmpty()
+        val hasDropdown = !dropdownList.isNullOrEmpty()
         ListItem(
             modifier = modifier
                 .clip(RoundedCornerShape(16.dp, 16.dp, if(hasDropdown) 0.dp else 16.dp, if(hasDropdown) 0.dp else 16.dp)),
@@ -370,7 +370,9 @@ fun ContactItem(
                 }
             },
 
-            trailingContent = null,
+            trailingContent = {
+                Text(contact.accountName ?: "On-Device")
+            },
 
             colors = ListItemDefaults.colors(
                 containerColor = if (isSelected) {

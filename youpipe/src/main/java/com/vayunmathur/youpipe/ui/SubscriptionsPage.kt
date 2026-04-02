@@ -31,7 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconEdit
@@ -63,9 +63,9 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
     var isLoading by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
 
-    val filePickerActivityContract = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
-        it?.let {
-            val channelURLs = Json.parseToJsonElement(context.contentResolver.openInputStream(it)!!.bufferedReader().readText()).jsonObject["subscriptions"]!!.jsonArray.map {
+    val filePickerActivityContract = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if(uri != null) {
+            val channelURLs = Json.parseToJsonElement(context.contentResolver.openInputStream(uri)!!.bufferedReader().readText()).jsonObject["subscriptions"]!!.jsonArray.map {
                 it.jsonObject["url"]!!.jsonPrimitive.content
             }
             coroutineScope.launch(Dispatchers.IO) {

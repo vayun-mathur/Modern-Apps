@@ -47,10 +47,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
@@ -185,7 +184,7 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
             error = false
             backStack.pop()
         }) {
-            Card() {
+            Card {
                 Column(Modifier.padding(16.dp)) {
                     Text("Video load error - Youtube may have blocked anonymous watch access from this IP")
                     Spacer(Modifier.height(8.dp))
@@ -224,9 +223,11 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
 
     Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
-            videoData?.let {
-                VideoPlayer(viewModel, VideoInfo(it.title, videoID, it.duration, it.views, it.uploadDate, it.thumbnailURL, it.author), videoStreams, audioStreams, segments, isFullscreen, { isFullscreen = it })
-                VideoDetails(backStack, it)
+            videoData?.let { videoData ->
+                VideoPlayer(viewModel, VideoInfo(videoData.title, videoID, videoData.duration, videoData.views, videoData.uploadDate, videoData.thumbnailURL, videoData.author), videoStreams, audioStreams, segments, isFullscreen) {
+                    isFullscreen = it
+                }
+                VideoDetails(backStack, videoData)
             }
             if(!isFullscreen) {
                 val pagerState = rememberPagerState(pageCount = { 2 })

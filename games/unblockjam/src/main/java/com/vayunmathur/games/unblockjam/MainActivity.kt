@@ -41,7 +41,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,15 +48,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.games.unblockjam.ui.theme.UnblockJamTheme
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
@@ -66,7 +65,6 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
-import java.io.Serial
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -76,7 +74,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        LevelData.init(this)
+        LevelPack.init(this)
         completedLevelsRepository = CompletedLevelsRepository(this)
         setContent {
             UnblockJamTheme {
@@ -93,7 +91,7 @@ sealed interface Route: NavKey {
     @Serializable
     data class LevelSelector(val packIndex: Int): Route
     @Serializable
-    data class Game(val levelIndex: Int): Route
+    data class Game(val packIndex: Int, val levelIndex: Int): Route
 }
 
 @Composable
@@ -107,7 +105,7 @@ fun Navigation(completedLevelsRepository: CompletedLevelsRepository) {
             LevelScreen(backStack, completedLevelsRepository, it.packIndex)
         }
         entry<Route.Game> {
-            GameScreen(backStack, completedLevelsRepository, it.levelIndex)
+            GameScreen(backStack, completedLevelsRepository, it.packIndex, it.levelIndex)
         }
     }
 }
@@ -123,12 +121,12 @@ fun PackScreen(backStack: NavBackStack<Route>) {
             contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            itemsIndexed(LevelData.PACKS) { index, pack ->
+            itemsIndexed(LevelPack.PACKS) { index, pack ->
                 Card(Modifier.clickable{
                     backStack.add(Route.LevelSelector(index))
                 }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
                     Box(Modifier.fillMaxWidth().padding(8.dp)) {
-                        Text(pack.first, Modifier.align(Alignment.Center), style = MaterialTheme.typography.displayMedium)
+                        Text(pack.name, Modifier.align(Alignment.Center), style = MaterialTheme.typography.displayMedium)
                     }
                 }
             }
@@ -139,8 +137,7 @@ fun PackScreen(backStack: NavBackStack<Route>) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository, packIndex: Int) {
-    val packStartIndex = LevelData.PACKS.subList(0, packIndex).sumOf { it.second }
-    val packEndIndex = packStartIndex + LevelData.PACKS[packIndex].second
+    val pack = LevelPack.PACKS[packIndex]
     val levelStats = completedLevelsRepository.getLevelStats()
     Scaffold(topBar = {
         TopAppBar({Text(stringResource(R.string.level_selector))})
@@ -152,9 +149,9 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            itemsIndexed(LevelData.LEVELS.subList(packStartIndex, packEndIndex)) { index, levelData ->
+            itemsIndexed(pack.levels) { index, levelData ->
                 Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
-                    backStack.add(Route.Game(index))
+                    backStack.add(Route.Game(packIndex, index))
                 }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
                     Box(Modifier.fillMaxSize().padding(8.dp)) {
                         Text("${index + 1}", Modifier.align(Alignment.Center))
@@ -175,15 +172,16 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository, levelIndex: Int) {
-    var currentLevelData by remember { mutableStateOf(LevelData.LEVELS[levelIndex]) }
+fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: CompletedLevelsRepository, packIndex: Int, levelIndex: Int) {
+    val pack = LevelPack.PACKS[packIndex]
+    var currentLevelData by remember { mutableStateOf(pack.levels[levelIndex]) }
     val history = remember { mutableStateListOf<LevelData>() }
     var isLevelWon by remember { mutableStateOf(false) }
     var levelStats by remember { mutableStateOf(completedLevelsRepository.getLevelStats()) }
 
     fun changeLevel(newLevelIndex: Int) {
-        val boundedIndex = newLevelIndex.coerceIn(0, LevelData.LEVELS.lastIndex)
-        backStack[backStack.lastIndex] = Route.Game(boundedIndex)
+        val boundedIndex = newLevelIndex.coerceIn(0, pack.levels.lastIndex)
+        backStack.setLast(Route.Game(packIndex, boundedIndex))
     }
 
     fun getCurrentMoves(): Int {
@@ -194,7 +192,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
 
     LaunchedEffect(isLevelWon) {
         if (isLevelWon) {
-            completedLevelsRepository.updateBestScore(levelIndex, getCurrentMoves())
+            completedLevelsRepository.updateBestScore(pack.levels[levelIndex].id, getCurrentMoves())
             levelStats = completedLevelsRepository.getLevelStats() // Refresh stats
             delay(500)
             changeLevel(levelIndex + 1)
@@ -224,7 +222,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                         levelIndex = levelIndex,
                         onLevelChange = ::changeLevel,
                         isCompleted = currentLevelStats != null,
-                        maxLevelIndex = LevelData.LEVELS.lastIndex
+                        maxLevelIndex = pack.levels.lastIndex
                     )
                     MovesInfoBox(
                         moves = getCurrentMoves(),
@@ -272,7 +270,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     }
                     Button(onClick = {
                         history.clear()
-                        currentLevelData = LevelData.LEVELS[levelIndex]
+                        currentLevelData = pack.levels[levelIndex]
                         isLevelWon = false
                     },
                         enabled = history.isNotEmpty() && !isLevelWon) {
@@ -371,7 +369,7 @@ fun GameBoard(
     onLevelWon: () -> Unit,
     isLevelWon: Boolean
 ) {
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+    val screenWidth = LocalWindowInfo.current.containerDpSize.width
     val boardSize = screenWidth - 32.dp // accounting for padding
     val cellWidth = boardSize / levelData.dimension.width
     val cellHeight = boardSize / levelData.dimension.height

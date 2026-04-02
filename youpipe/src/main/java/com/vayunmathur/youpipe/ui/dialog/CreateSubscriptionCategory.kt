@@ -28,10 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.pop
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory
@@ -50,7 +49,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
     var selectedSubscriptions by remember { mutableStateOf(subscriptionsAlreadyInCategory) }
     val coroutineScope = rememberCoroutineScope()
     Dialog({backStack.pop()}) {
-        Card() {
+        Card {
             Column(Modifier.padding(16.dp)) {
                 if(id == null)
                     Text("Create subscription category", style = MaterialTheme.typography.titleLarge)

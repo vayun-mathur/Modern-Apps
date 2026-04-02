@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.InitialDownloadChecker
 import com.vayunmathur.library.util.DataStoreUtils
@@ -47,7 +47,7 @@ sealed interface Route: NavKey {
 fun Navigation(viewModel: DatabaseViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.ConversationPage(0))
     MainNavigation(backStack) {
-        entry<Route.ConversationPage>() {
+        entry<Route.ConversationPage> {
             LiteRTChatUi(backStack, it.id, viewModel)
         }
     }

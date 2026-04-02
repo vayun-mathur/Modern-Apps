@@ -17,17 +17,12 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSerializable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.navigation3.runtime.EntryProviderScope
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.serialization.NavBackStackSerializer
-import androidx.navigation3.runtime.serialization.NavKeySerializer
+import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -58,30 +53,64 @@ inline fun <reified T> ResultEffect(key: String, crossinline onResult: suspend (
     }
 }
 
+interface NavKey
+class NavBackStack<T: NavKey>(initial: Array<out T>) {
+    private val backend = mutableStateListOf(*initial)
+    val backStack: List<T> = backend
+
+    fun pop() {
+        backend.removeAt(backend.lastIndex)
+    }
+
+    fun set(index: Int, value: T) {
+        backend[index] = value
+    }
+
+    fun add(value: T) {
+        backend.add(value)
+    }
+
+    fun clear() {
+        backend.clear()
+    }
+
+    fun setLast(value: T) {
+        set(backend.lastIndex, value)
+    }
+
+    fun last(): T {
+        return backend.last()
+    }
+
+    fun reset(vararg keys: T) {
+        // set values
+        clear()
+        while(backend.size > keys.size) {
+            pop()
+        }
+        keys.forEachIndexed { idx, key ->
+            if(backend.size <= idx) {
+                add(key)
+            } else
+                set(idx, key)
+        }
+    }
+}
+
 // Make it available everywhere via CompositionLocal
 val LocalNavResultRegistry = staticCompositionLocalOf<NavResultRegistry> {
     error("No NavResultRegistry provided")
 }
 
-fun <T: NavKey> NavBackStack<T>.pop() {
-    removeAt(lastIndex)
-}
+class EntryProviderScope<T: NavKey>(val obj: T) {
+    var result: NavEntry<T>? = null
 
-fun <T: NavKey> NavBackStack<T>.setLast(value: T) {
-    set(lastIndex, value)
-}
-
-fun <T: NavKey> NavBackStack<T>.reset(vararg keys: T) {
-    // set values
-    clear()
-    while(size > keys.size) {
-        pop()
-    }
-    keys.forEachIndexed { idx, key ->
-        if(size <= idx) {
-            add(key)
-        } else
-            set(idx, key)
+    inline fun <reified E: T> entry(metadata: Map<String, Any> = emptyMap(), crossinline content: @Composable (E) -> Unit) {
+        if(obj is E) {
+            result = NavEntry(obj, metadata = metadata) {
+                content(obj)
+            }
+        }
     }
 }
 
@@ -93,21 +122,19 @@ fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider: EntryP
     Scaffold(contentWindowInsets = WindowInsets()) { paddingValues ->
         CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
             NavDisplay(
-                modifier = Modifier.padding(paddingValues).consumeWindowInsets(paddingValues).imePadding(),
+                modifier = Modifier.padding(paddingValues).imePadding(),
                 sceneStrategy = DialogSceneStrategy<T>().then(sceneStrategy),
-                backStack = backStack, entryProvider = entryProvider {
-                    entryProvider()
+                backStack = backStack.backStack, entryProvider = {
+                    EntryProviderScope(it).apply {
+                        entryProvider()
+                    }.result!!
                 })
         }
     }
 }
 @Composable
 fun <T: NavKey> rememberNavBackStack(vararg elements: T): NavBackStack<T> {
-    return rememberSerializable(
-        serializer = NavBackStackSerializer(elementSerializer = NavKeySerializer())
-    ) {
-        NavBackStack(*elements)
-    }
+    return remember { NavBackStack(elements) }
 }
 
 fun DialogPage() = DialogSceneStrategy.dialog()
@@ -135,14 +162,11 @@ fun <Route : NavKey> BottomNavBar(backStack: NavBackStack<Route>, pages: List<Bo
     FlexibleBottomAppBar {
         pages.forEach { page ->
             NavigationBarItem(
-                selected = currentPage == page.route,
-                onClick = {
+                currentPage == page.route, {
                     if (backStack.last() != page.route) {
                         backStack.add(page.route)
                     }
-                },
-                label = { Text(page.name) },
-                icon = { Icon(painterResource(page.icon), null) }
+                }, { Icon(painterResource(page.icon), null) }, label = { Text(page.name) }
             )
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -33,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,13 +45,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
@@ -74,6 +76,7 @@ import kotlinx.datetime.format.Padding
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
@@ -85,10 +88,15 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     val users by viewModel.data<User>().collectAsState()
     val temporaryLinks by viewModel.data<TemporaryLink>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
-    val locationValues by viewModel.data<LocationValue>().collectAsState()
+    val timestamp = Clock.System.now() - 7.days
+    val locationValues by viewModel.data<LocationValue>("timestamp > ${timestamp.epochSeconds}").collectAsState()
     val userPositions by remember { derivedStateOf {
-        locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
+        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
+
+    LaunchedEffect(Unit) {
+        viewModel.deleteIf<LocationValue>("timestamp < ${timestamp.epochSeconds}")
+    }
 
     Scaffold(floatingActionButton = {
         var expanded by remember { mutableStateOf(false) }
@@ -111,10 +119,10 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
             }, {Text("Link")}, {Icon(painterResource(R.drawable.outline_link_24), null)})
         }
     }, bottomBar = {
-        Surface(Modifier.heightIn(max = 400.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
-            LazyColumn(Modifier.padding(bottom = 24.dp).padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp)) {
+        Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
+            LazyColumn(Modifier.padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 16.dp)) {
                 items(users.filter { it.requestStatus == RequestStatus.MUTUAL_CONNECTION || it.requestStatus == RequestStatus.AWAITING_RESPONSE }) {
-                    UserCard(backStack, platform, it, userPositions[it.id], true)
+                    UserCard(backStack, it, userPositions[it.id], true)
                 }
                 if (users.any { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
                     item {
@@ -122,7 +130,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                     }
                 }
                 items(users.filter { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
-                    AwaitingRequestCard(backStack, platform, it.id)
+                    AwaitingRequestCard(backStack, it.id)
                 }
                 if (temporaryLinks.isNotEmpty()) {
                     item {
@@ -150,7 +158,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
 }
 
 @Composable
-fun AwaitingRequestCard(backStack: NavBackStack<Route>, platform: Platform, id: Long) {
+fun AwaitingRequestCard(backStack: NavBackStack<Route>, id: Long) {
     Card {
         ListItem({
             Text("Request from ${id.encodeBase26()}")
@@ -214,7 +222,7 @@ fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List
 
 @OptIn(ExperimentalTime::class)
 @Composable
-fun UserCard(backStack: NavBackStack<Route>, platform: Platform, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
+fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
     val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false) } ?: "Never"
     val speed = locationValue?.speed?.times(10)?.roundToInt()?.div(10F) ?: 0.0
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
@@ -240,7 +248,6 @@ fun UserCard(backStack: NavBackStack<Route>, platform: Platform, user: User, loc
         }
         "Since $formattedTime $formattedDate"
     }
-    val context = LocalContext.current
     Card(if(showSupportingContent) Modifier.clickable(onClick = {
         backStack.add(Route.UserPage(user.id))
     }) else Modifier) {

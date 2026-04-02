@@ -1,11 +1,10 @@
 plugins {
+    id("common-conventions-app")
     alias(libs.plugins.ksp)
 }
 
 android {
     defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
         applicationId = "com.vayunmathur.maps"
     }
 
@@ -34,7 +33,6 @@ dependencies {
     // room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.navigation3.runtime)
     ksp(libs.androidx.room.compiler)
 
     implementation("com.github.anboralabs:spatia-room:1.0.1")

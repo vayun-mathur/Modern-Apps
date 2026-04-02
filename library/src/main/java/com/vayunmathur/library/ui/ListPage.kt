@@ -35,8 +35,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.R
 import com.vayunmathur.library.util.DatabaseItem
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -162,29 +162,51 @@ inline fun <reified T : ReorderableDatabaseItem<T>, Route : NavKey, reified Edit
     var localData by remember { mutableStateOf(dbData) }
 
     val state = rememberReorderableLazyListState(listState, onMove = { from, to ->
-        // 2. ONLY update the local shadow list during the drag
-        val toReal = if(to.index > from.index) to.index else to.index-1
-        val toItemPosition = localData.getOrNull(toReal)?.position ?: (localData[0].position - 50.0)
-        val nextItemPosition = localData.getOrNull(toReal + 1)?.position ?: (toItemPosition + 50.0)
-        val resultItemPosition = (toItemPosition+nextItemPosition)/2
-        localData = localData.toMutableList().apply {
-            set(from.index, localData[from.index].withPosition(resultItemPosition))
-            add(to.index, removeAt(from.index))
+        // 1. Normalize UI indices to 0-based Data indices
+        // If search is on, UI says "1" but we need "0".
+        val fromIdx = if (searchEnabled) from.index - 1 else from.index
+        val toIdx = if (searchEnabled) to.index - 1 else to.index
+
+        // 2. Safety Bounds Check
+        if (fromIdx in localData.indices && toIdx in localData.indices) {
+
+            // 3. Find the neighbors to calculate the new fractional position.
+            // If moving DOWN: target is at toIdx, neighbor above is also toIdx (since item will drop AFTER it).
+            // If moving UP: target is at toIdx, neighbor above is toIdx - 1.
+            val prevIdx = if (toIdx > fromIdx) toIdx else toIdx - 1
+            val nextIdx = if (toIdx > fromIdx) toIdx + 1 else toIdx
+
+            val prevPos = localData.getOrNull(prevIdx)?.position
+            val nextPos = localData.getOrNull(nextIdx)?.position
+
+            // 4. Calculate the midpoint
+            val resultItemPosition = when {
+                prevPos == null -> (nextPos ?: 0.0) - 50.0
+                nextPos == null -> (prevPos ?: 0.0) + 50.0
+                else -> (prevPos + nextPos) / 2.0
+            }
+
+            // 5. Atomic Update: Create new list, move item, and update state
+            val mutableList = localData.toMutableList()
+            val movedItem = mutableList.removeAt(fromIdx).withPosition(resultItemPosition)
+            mutableList.add(toIdx, movedItem)
+
+            localData = mutableList
+
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
         }
-        hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
     })
 
     // Keep localData in sync with DB updates, but NOT while dragging
     LaunchedEffect(dbData) {
         if (!state.isAnyItemDragging) {
-            localData = dbData
+            localData = dbData.sortedBy { it.position }
         }
     }
 
     val isDragging = state.isAnyItemDragging
     LaunchedEffect(isDragging) {
         if (!isDragging && localData != dbData) {
-            println(localData)
             // Find the changes and update the DB once
             viewModel.upsertAll<T>(localData)
         }

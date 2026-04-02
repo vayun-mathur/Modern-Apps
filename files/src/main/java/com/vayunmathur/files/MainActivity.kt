@@ -172,7 +172,7 @@ fun DirectoryPage(rootFile: Path) {
         LazyColumn(Modifier.padding(padding)) {
             val allItems = directories.sortedBy { it.name.lowercase() } + files.sortedBy { it.name.lowercase() }
 
-            items(allItems, key = { it }) { child ->
+            items(allItems, key = { it.toFile().absolutePath }) { child ->
                 val isSelected = selectedPaths.contains(child)
                 val isEditing = pathBeingRenamed == child
 

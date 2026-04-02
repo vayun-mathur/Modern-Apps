@@ -17,15 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.atTime
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 object HealthAPI {
@@ -81,7 +74,7 @@ object HealthAPI {
                         val firstDayOfWeek = date.plus((date.dayOfWeek.ordinal+1)%7, DateTimeUnit.DAY)
                         firstDayOfWeek.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }
@@ -92,7 +85,7 @@ object HealthAPI {
                         val firstDayOfMonth = date.minus(date.day-1, DateTimeUnit.DAY)
                         firstDayOfMonth.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }
@@ -135,7 +128,7 @@ object HealthAPI {
                         val firstDayOfWeek = date.plus((date.dayOfWeek.ordinal+1)%7, DateTimeUnit.DAY)
                         firstDayOfWeek.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }
@@ -146,7 +139,7 @@ object HealthAPI {
                         val firstDayOfMonth = date.minus(date.day-1, DateTimeUnit.DAY)
                         firstDayOfMonth.toEpochDays()
                     }
-                    .mapValues { it.value.map { it.totalValue }.average() to it.value.map { it.totalValue2 }.average() }
+                    .mapValues { day -> day.value.map { it.totalValue }.average() to day.value.map { it.totalValue2 }.average() }
                     .map { Tuple3(it.key, it.value.first, it.value.second) }
                 return dailySums
             }

@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.aggregate.AggregationResult
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.NutritionRecord
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.health.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route

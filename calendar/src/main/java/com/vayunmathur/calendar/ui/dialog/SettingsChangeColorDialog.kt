@@ -24,10 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Route
-import com.vayunmathur.library.util.pop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +50,7 @@ fun SettingsChangeColorDialog(viewModel: ContactViewModel, backStack: NavBackSta
         0xFFFFC107.toInt(), // amber
         0xFFFF9800.toInt(), // orange
         0xFF795548.toInt(), // brown
-        0xFF607D8B.toInt()  // blue grey
+        0xFF607D8B.toInt()  // blue gray
     )
 
     AlertDialog(

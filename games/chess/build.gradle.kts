@@ -1,7 +1,9 @@
+plugins {
+    id("common-conventions-app")
+}
+
 android {
     defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
         applicationId = "com.vayunmathur.games.chess"
     }
 
@@ -11,13 +13,4 @@ android {
             version = "3.22.1"
         }
     }
-}
-
-dependencies {
-    // ktor
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.websockets)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
 }

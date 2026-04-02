@@ -48,8 +48,8 @@ class AlarmReceiver : BroadcastReceiver() {
             if(alarm.days == 0) {
                 db.alarmDao().upsert(alarm.copy(enabled = false))
             } else {
-                val alarmScheduler = AlarmScheduler.get(context)
-                alarmScheduler.schedule(alarm)
+                val alarmScheduler = AlarmScheduler.get()
+                alarmScheduler.schedule(context, alarm)
             }
         }
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

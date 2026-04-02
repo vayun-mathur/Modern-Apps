@@ -10,7 +10,7 @@ import com.vayunmathur.passwords.Password
 @Dao
 interface PasswordDao: TrueDao<Password>
 
-@Database(entities = [Password::class], version = 2)
+@Database(entities = [Password::class], version = 1)
 @TypeConverters(Converters::class)
 abstract class PasswordDatabase : RoomDatabase() {
     abstract fun passwordDao(): PasswordDao

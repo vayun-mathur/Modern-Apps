@@ -19,11 +19,11 @@ class CompletedLevelsRepository(context: Context) {
         return Json.decodeFromString<Map<String, LevelStats>>(jsonString)
     }
 
-    fun updateBestScore(levelIndex: Int, score: Int) {
+    fun updateBestScore(levelId: String, score: Int) {
         val allStats = getLevelStats().toMutableMap()
-        val currentStats = allStats[levelIndex.toString()]
+        val currentStats = allStats[levelId]
         if (currentStats == null || score < currentStats.bestScore) {
-            allStats[levelIndex.toString()] = LevelStats(bestScore = score)
+            allStats[levelId] = LevelStats(bestScore = score)
             val jsonString = Json.encodeToString(allStats)
             prefs.edit {
                 putString(levelStatsKey, jsonString)

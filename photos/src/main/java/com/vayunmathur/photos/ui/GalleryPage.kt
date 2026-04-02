@@ -23,9 +23,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.database.getLongOrNull
 import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.photos.ImageLoader
 import com.vayunmathur.photos.NavigationBar
@@ -64,7 +65,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 LocalDate(date.year, date.month, 1)
             }.toSortedMap(Comparator<LocalDate>(LocalDate::compareTo).reversed()).mapKeys {
                 MonthNames.ENGLISH_ABBREVIATED.names[it.key.month.ordinal] + " " + it.key.year
-            }.mapValues { it.value.sortedByDescending { it.date } }
+            }.mapValues { pair -> pair.value.sortedByDescending { it.date } }
         }
     }
     Scaffold(bottomBar = { NavigationBar(Route.Gallery, backStack) }) { paddingValues ->
@@ -102,7 +103,8 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
     val projection = arrayOf(
         MediaStore.Images.Media._ID,
         MediaStore.Images.Media.DISPLAY_NAME,
-        MediaStore.Images.Media.INFERRED_DATE,
+        MediaStore.Images.Media.DATE_TAKEN,
+        MediaStore.Images.Media.DATE_ADDED,
         MediaStore.Images.Media.WIDTH,
         MediaStore.Images.Media.HEIGHT
     )
@@ -115,7 +117,8 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
     query?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
         val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-        val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.INFERRED_DATE)
+        val date1Column = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+        val date2Column = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
         val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
         val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
 
@@ -123,7 +126,7 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
             val id = cursor.getLong(idColumn)
             val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
             val name = cursor.getString(nameColumn)
-            val date = cursor.getLong(dateColumn)
+            val date = cursor.getLongOrNull(date1Column) ?: cursor.getLong(date2Column)
             val width = cursor.getInt(widthColumn)
             val height = cursor.getInt(heightColumn)
 
@@ -134,7 +137,8 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
     val projectionVideo = arrayOf(
         MediaStore.Video.Media._ID,
         MediaStore.Video.Media.DISPLAY_NAME,
-        MediaStore.Video.Media.INFERRED_DATE,
+        MediaStore.Video.Media.DATE_TAKEN,
+        MediaStore.Video.Media.DATE_ADDED,
         MediaStore.Video.Media.WIDTH,
         MediaStore.Video.Media.HEIGHT,
         MediaStore.Video.Media.DURATION
@@ -148,7 +152,8 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
     queryVideo?.use { cursor ->
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
         val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-        val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.INFERRED_DATE)
+        val date1Column = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_TAKEN)
+        val date2Column = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
         val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
         val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
         val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
@@ -157,7 +162,7 @@ fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
             val id = cursor.getLong(idColumn)
             val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
             val name = cursor.getString(nameColumn)
-            val date = cursor.getLong(dateColumn)
+            val date = cursor.getLongOrNull(date1Column) ?: cursor.getLong(date2Column)
             val width = cursor.getInt(widthColumn)
             val height = cursor.getInt(heightColumn)
             val duration = cursor.getLong(durationColumn)

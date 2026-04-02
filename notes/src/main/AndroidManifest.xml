@@ -37,6 +37,16 @@
             android:theme="@android:style/Theme.NoDisplay"
             android:permission="com.vayunmathur.notes.permissions.ACCESS_NOTES">
         </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.vayunmathur.notes.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

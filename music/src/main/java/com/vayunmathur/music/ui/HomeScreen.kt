@@ -3,6 +3,7 @@ package com.vayunmathur.music.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,7 +33,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.ui.ListPage
@@ -60,7 +61,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
         ), Route.Home)
     }) { paddingValues ->
-        Box(Modifier.padding(paddingValues)) {
+        Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {
             ListPage<Music, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.title) }, {
                 Text(it.artist)
             }, { toPlay ->
@@ -82,17 +83,19 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 @Composable
 fun ShufflePlayFab(viewModel: DatabaseViewModel, playbackManager: PlaybackManager) {
     val coroutineScope = rememberCoroutineScope()
+    val allSongs by viewModel.data<Music>().collectAsState()
 
-    FloatingActionButton({
-        coroutineScope.launch {
-            val allSongs = viewModel.getAll<Music>()
-            val toPlayIndex = Random.nextInt(allSongs.size)
-            playbackManager.playSong(allSongs, toPlayIndex)
-            if (!playbackManager.shuffleMode.value)
-                playbackManager.toggleShuffle()
+    if(allSongs.isNotEmpty()) {
+        FloatingActionButton({
+            coroutineScope.launch {
+                val toPlayIndex = Random.nextInt(allSongs.size)
+                playbackManager.playSong(allSongs, toPlayIndex)
+                if (!playbackManager.shuffleMode.value)
+                    playbackManager.toggleShuffle()
+            }
+        }) {
+            Icon(painterResource(R.drawable.ic_shuffle), null)
         }
-    }) {
-        Icon(painterResource(R.drawable.ic_shuffle), null)
     }
 }
 

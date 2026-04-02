@@ -9,14 +9,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +28,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -43,18 +45,15 @@ import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.R
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSettings
-import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.RouteService
@@ -66,7 +65,8 @@ import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.ensurePmtilesReady
 import com.vayunmathur.maps.ui.components.BottomSheetContent
 import com.vayunmathur.maps.ui.components.MyMapLayers
-import com.vayunmathur.maps.ui.components.UserIcon
+import com.vayunmathur.maps.ui.components.drawUserIcon
+import com.vayunmathur.maps.ui.components.verticalShape
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
@@ -78,7 +78,6 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okio.source
 import org.maplibre.compose.camera.CameraPosition
-import org.maplibre.compose.camera.CameraState
 import org.maplibre.compose.camera.rememberCameraState
 import org.maplibre.compose.map.GestureOptions
 import org.maplibre.compose.map.MapOptions
@@ -94,7 +93,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel, ds: DataStoreUtils, db: AmenityDatabase) {
+fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel, db: AmenityDatabase) {
     val selectedFeature by viewModel.selectedFeature.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -248,7 +247,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                         }
                     }
                     Canvas(Modifier.fillMaxSize()) {
-                        UserIcon(userPosition, userBearing, camera)
+                        drawUserIcon(userPosition, userBearing, camera)
                     }
                 }
 
@@ -279,6 +278,9 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                             item?.name
                                                 ?: "Your location"
                                         )
+                                    }, Modifier.clickable {
+                                        val bbox = camera.projection!!.queryVisibleBoundingBox()
+                                        backStack.add(Route.SearchPage(idx, bbox.east, bbox.west, bbox.north, bbox.south))
                                     }, trailingContent = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             if(idx > 0 && idx < routeFeature.waypoints.size - 1) {
@@ -292,14 +294,10 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                             }
                                             Icon(
                                                 painterResource(R.drawable.drag_handle_24px),
-                                                contentDescription = "Reorder",
-                                                modifier = Modifier.draggableHandle(),
+                                                "Reorder", Modifier.draggableHandle(),
                                             )
                                         }
-                                    }, colors = ListItemDefaults.colors(Color.Transparent), modifier = Modifier.clickable {
-                                        val bbox = camera.projection!!.queryVisibleBoundingBox()
-                                        backStack.add(Route.SearchPage(idx, bbox.east, bbox.west, bbox.north, bbox.south))
-                                    })
+                                    }, colors = ListItemDefaults.colors(Color.Transparent))
                                 }
                             }
                         }
@@ -322,15 +320,12 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
 
                 // DOWNLOAD DIALOG
                 if (showDownloadDialog && activeZone != null) {
-                    androidx.compose.material3.AlertDialog(
-                        onDismissRequest = {
+                    AlertDialog(
+                        {
                             showDownloadDialog = false
                             dismissedZone = activeZone
-                        },
-                        title = { Text("Download Offline Map?") },
-                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB)?") },
-                        confirmButton = {
-                            androidx.compose.material3.Button(onClick = {
+                        }, {
+                            Button({
                                 zoneManager.startDownload(activeZone)
                                 showDownloadDialog = false
                                 // We don't need to set dismissedZone here because getZoneStatus
@@ -338,9 +333,10 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                             }) {
                                 Text("Download")
                             }
-                        },
+                        }, title = { Text("Download Offline Map?") },
+                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB)?") },
                         dismissButton = {
-                            androidx.compose.material3.TextButton(onClick = {
+                            TextButton({
                                 showDownloadDialog = false
                                 dismissedZone = activeZone
                             }) {

@@ -48,7 +48,7 @@ import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.WheelchairPushesRecord
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.health.database.HealthDatabase
 import com.vayunmathur.health.ui.BarChartDetails
 import com.vayunmathur.health.ui.HealthMetricConfig
@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         HealthSyncWorker.enqueue(this@MainActivity)
                     }
-                    Navigation(db)
+                    Navigation()
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -147,7 +147,7 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(db: HealthDatabase) {
+fun Navigation() {
     val backStack = rememberNavBackStack<Route>(Route.MainPage)
     MainNavigation(backStack) {
         entry<Route.MainPage> {

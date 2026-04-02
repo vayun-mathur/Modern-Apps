@@ -8,7 +8,7 @@ import com.vayunmathur.library.util.TrueDao
 @Dao
 interface NoteDao: TrueDao<Note>
 
-@Database(entities = [Note::class], version = 2)
+@Database(entities = [Note::class], version = 1)
 abstract class NoteDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
 }

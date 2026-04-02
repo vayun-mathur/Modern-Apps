@@ -1,19 +1,16 @@
+plugins {
+    id("common-conventions-app")
+    alias(libs.plugins.ksp)
+}
+
 android {
     defaultConfig {
-        versionCode = 20260317
-        versionName = "v2.2.0"
         minSdk = 35
         applicationId = "com.vayunmathur.passwords"
     }
 }
 
-plugins {
-    alias(libs.plugins.ksp)
-}
-
 dependencies {
-    implementation(libs.androidx.navigation3.runtime)
-
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

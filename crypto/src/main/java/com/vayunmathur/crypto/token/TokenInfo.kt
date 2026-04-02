@@ -147,6 +147,6 @@ data class TokenInfo(
             TOKEN_MAP = TOKEN_LIST.associateBy { it.mintAddress }
         }
 
-        fun BY_TYPE(category: Category) = TOKEN_LIST.filter { it.category == category }
+        fun byType(category: Category) = TOKEN_LIST.filter { it.category == category }
     }
 }

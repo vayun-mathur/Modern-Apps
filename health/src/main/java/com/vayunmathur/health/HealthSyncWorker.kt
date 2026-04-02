@@ -65,14 +65,14 @@ class HealthSyncWorker(
         var token = ds.getString("hc_token")
         if (token == null) {
             // 2. If no token exists, initialize one for the data types you care about
-            CLASSES.forEach {
+            CLASSES.forEach { clazz ->
                 var pageToken: String? = null
                 do {
-                    val records = healthConnectClient.readRecords(ReadRecordsRequest(it, TimeRangeFilter.after(Instant.EPOCH), pageSize = 5000, pageToken = pageToken))
-                    db.healthDao().upsert(records.records.map { it.toRecord() }.flatten())
+                    val records = healthConnectClient.readRecords(ReadRecordsRequest(clazz, TimeRangeFilter.after(Instant.EPOCH), pageSize = 5000, pageToken = pageToken))
+                    db.healthDao().upsert(records.records.flatMap { it.toRecord() })
                     pageToken = records.pageToken
                 } while (pageToken != null)
-                println("Completed inserting ${it.simpleName}")
+                println("Completed inserting ${clazz.simpleName}")
             }
             token = healthConnectClient.getChangesToken(
                 ChangesTokenRequest(
@@ -87,9 +87,9 @@ class HealthSyncWorker(
             // Handle new/updated records
             val upsertedRecords = response.changes.filterIsInstance<UpsertionChange>().map { it.record }
 
-            val newRecords = upsertedRecords.map {
+            val newRecords = upsertedRecords.flatMap {
                 it.toRecord()
-            }.flatten()
+            }
             db.healthDao().upsert(newRecords)
             println("Upserted ${newRecords.size} records")
 

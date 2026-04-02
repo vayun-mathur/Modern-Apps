@@ -26,17 +26,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSearch
-import com.vayunmathur.library.util.pop
+import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.SelectedFeatureViewModel
 import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.AmenityEntity
 import com.vayunmathur.maps.data.OpeningHours
 import com.vayunmathur.maps.data.SpecificFeature
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.maplibre.spatialk.geojson.Position
 
@@ -70,10 +69,10 @@ fun SearchPage(
                             searchQuery = query
                             scope.launch {
                                 // Trigger search if query length is sufficient
-                                if (query.length >= 2) {
+                                results = if (query.length >= 2) {
                                     // Using the bounding box provided (North, South, East, West)
                                     // and the FTS4 wildcard search pattern
-                                    results = db.amenityDao().getInBBox(
+                                    db.amenityDao().getInBBox(
                                         query = "*$query*",
                                         latMin = south,
                                         latMax = north,
@@ -81,7 +80,7 @@ fun SearchPage(
                                         lonMax = east
                                     )
                                 } else {
-                                    results = emptyList()
+                                    emptyList()
                                 }
                             }
                         },
@@ -122,7 +121,7 @@ fun SearchPage(
                         ListItem(
                             headlineContent = { Text(amenity.name.ifBlank { "Unnamed Amenity" }) },
                             supportingContent = {
-                                Text("Coordinates: ${String.format("%.4f", amenity.lat)}, ${String.format("%.4f", amenity.lon)}")
+                                Text("Coordinates: ${amenity.lat.round(4)}, ${amenity.lon.round(4)}")
                             },
                             modifier = Modifier.clickable {
                                 scope.launch {

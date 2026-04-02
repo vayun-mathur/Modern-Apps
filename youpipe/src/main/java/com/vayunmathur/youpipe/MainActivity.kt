@@ -19,7 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.PictureInPictureModeChangedInfo
 import androidx.core.util.Consumer
-import androidx.navigation3.runtime.NavKey
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
 
-        // If we were in PiP and we are no longer in it, and the activity is
+        // If we were in PiP, and we are no longer in it, and the activity is
         // finishing, it means the user closed the PiP window.
         if (!isInPictureInPictureMode && isFinishing) {
             val intent = Intent(this, PlaybackService::class.java)

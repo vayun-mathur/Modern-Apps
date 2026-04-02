@@ -17,10 +17,6 @@ data class PositionedEvent(
     val totalColumns: Int,
 )
 
-/**
- * Compute positioned events (column assignment) for the given day. Caller may pass events that span the day.
- * This function will clamp per-day start/end to [0,1440) and ignore zero-length slices.
- */
 fun computePositionedEventsForDay(instances: List<Instance>, day: LocalDate): List<PositionedEvent> {
     // Build per-day slices
     data class Slice(val instanceID: Long, val eventID: Long, val title: String, val color: Int, val start: Int, val end: Int)

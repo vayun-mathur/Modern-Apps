@@ -154,12 +154,12 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         }
     }
 
-    val dataStateCache = mutableMapOf<KClass<*>, StateFlow<List<*>>>()
+    val dataStateCache = mutableMapOf<Pair<KClass<*>, String?>, StateFlow<List<*>>>()
 
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified E : DatabaseItem> data(): StateFlow<List<E>> {
+    inline fun <reified E : DatabaseItem> data(filterQuery: String? = null): StateFlow<List<E>> {
         return runBlocking {
-            dataStateCache.getOrPut(E::class) {
+            dataStateCache.getOrPut(Pair(E::class, filterQuery)) {
                 val tableName = E::class.simpleName!!
 
                 callbackFlow<List<E>> {
@@ -167,7 +167,7 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
                     val observer = object : InvalidationTracker.Observer(tableName) {
                         override fun onInvalidated(tables: Set<String>) {
                             // When the table changes, re-fetch the data
-                            launch { send(getAll<E>()) }
+                            launch { send(getAll<E>(filterQuery)) }
                         }
                     }
 
@@ -191,8 +191,8 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         upsertAll(items)
     }
 
-    suspend inline fun <reified E: DatabaseItem> getAll(): List<E> {
-        return getDao<E>().getAll<E>()
+    suspend inline fun <reified E: DatabaseItem> getAll(filterQuery: String? = null): List<E> {
+        return getDao<E>().getAll<E>(filterQuery)
     }
 
     suspend inline fun <reified E: DatabaseItem> get(id: Long): E {
@@ -213,6 +213,19 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
     inline fun <reified E: DatabaseItem> delete(t: E) {
         viewModelScope.launch {
             getDao<E>().delete(t)
+        }
+    }
+
+    inline fun <reified E: DatabaseItem> deleteIf(filter: String) {
+        viewModelScope.launch {
+            getDao<E>().observeNothing(SimpleSQLiteQuery("DELETE FROM ${E::class.simpleName} WHERE $filter"))
+        }
+    }
+
+    inline fun <reified E: DatabaseItem> update(id: Long, crossinline function: (E) -> E) {
+        viewModelScope.launch {
+            val t = getDao<E>().get<E>(id)
+            getDao<E>().upsert(function(t))
         }
     }
 }
@@ -267,12 +280,17 @@ interface TrueDao<T: DatabaseItem> {
     @RawQuery
     suspend fun observeRaw(query: SupportSQLiteQuery): T
     @RawQuery
+    suspend fun observeNothing(query: SupportSQLiteQuery): Long
+    @RawQuery
     suspend fun observeRawNullable(query: SupportSQLiteQuery): T?
 }
 
-suspend inline fun <reified E : DatabaseItem> TrueDao<E>.getAll(): List<E> {
+suspend inline fun <reified E : DatabaseItem> TrueDao<E>.getAll(filterQuery: String? = null): List<E> {
     val tableName = E::class.simpleName!!
-    return observeRawList(SimpleSQLiteQuery("SELECT * FROM $tableName"))
+    if(filterQuery == null) {
+        return observeRawList(SimpleSQLiteQuery("SELECT * FROM $tableName"))
+    }
+    return observeRawList(SimpleSQLiteQuery("SELECT * FROM $tableName WHERE $filterQuery"))
 }
 
 suspend inline fun <reified E : DatabaseItem> TrueDao<E>.get(id: Long): E {

@@ -34,14 +34,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.RRule
 import com.vayunmathur.calendar.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.ui.dateFormat
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate

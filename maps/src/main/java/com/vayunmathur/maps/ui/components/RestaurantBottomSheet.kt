@@ -1,4 +1,4 @@
-package com.vayunmathur.maps.ui
+package com.vayunmathur.maps.ui.components
 
 import android.content.Context
 import android.content.Intent
@@ -9,14 +9,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +35,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.vayunmathur.library.util.firstLetterUppercase
 import com.vayunmathur.maps.FullPlaceInfo
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.Reviews
@@ -45,6 +44,7 @@ import com.vayunmathur.maps.data.timeFormat
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.toLocalDateTime
+import kotlin.collections.iterator
 import kotlin.time.Clock
 
 fun goto(context: Context, uri: String) {
@@ -91,7 +91,7 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
                 append(" • ")
                 if(isOpen) append("Closes ${nextChangeTime.time.format(timeFormat)}")
                 else append("Opens ${nextChangeTime.time.format(timeFormat)}")
-                if(nextChangeTime.date != now.date) append(" ${nextChangeTime.date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}")
+                if(nextChangeTime.date != now.date) append(" ${nextChangeTime.date.dayOfWeek.name.lowercase().firstLetterUppercase()}")
             }.toAnnotatedString()
             Column {
                 RestaurantItem(
@@ -106,7 +106,7 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
                     Card(shape = verticalShape(1, 2)) {
                         for ((day, hours) in it.openingHours()) {
                             ListItem(
-                                { Text(day.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                { Text(day.name.lowercase().firstLetterUppercase()) },
                                 leadingContent = {},
                                 trailingContent = { Text(hours) },
                                 colors = ListItemDefaults.colors(Color.Transparent)
@@ -166,7 +166,7 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
                 append(" • ")
                 if(isOpen) append("Closes ${nextChangeTime.time.format(timeFormat)}")
                 else append("Opens ${nextChangeTime.time.format(timeFormat)}")
-                if(nextChangeTime.date != now.date) append(" ${nextChangeTime.date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}")
+                if(nextChangeTime.date != now.date) append(" ${nextChangeTime.date.dayOfWeek.name.lowercase().firstLetterUppercase()}")
             }.toAnnotatedString()
             Column {
                 RestaurantItem(
@@ -181,7 +181,7 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
                     Card(shape = verticalShape(1, 2)) {
                         for ((day, hours) in it.openingHours()) {
                             ListItem(
-                                { Text(day.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                { Text(day.name.lowercase().firstLetterUppercase()) },
                                 leadingContent = {},
                                 trailingContent = { Text(hours) },
                                 colors = ListItemDefaults.colors(Color.Transparent)

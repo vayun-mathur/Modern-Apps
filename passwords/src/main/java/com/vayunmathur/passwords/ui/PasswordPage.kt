@@ -48,7 +48,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
@@ -74,7 +74,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             TopAppBar(
                 title = { Text(password.name.ifBlank { "Password" }) },
                 actions = {
-                    IconButton(onClick = { viewModel.delete(password); backStack.removeLastOrNull() }) {
+                    IconButton(onClick = { viewModel.delete(password); backStack.pop() }) {
                         IconDelete()
                     }
                 },
@@ -84,11 +84,11 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { backStack.add(Route.PasswordEditPage(id)) }) {
+            FloatingActionButton({ backStack.add(Route.PasswordEditPage(id)) }) {
                 IconEdit()
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             Modifier
@@ -201,7 +201,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                             // Circular progress showing proportion of time remaining
                             Box(contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator({ progress }, Modifier.size(56.dp))
-                                IconButton(onClick = {
+                                IconButton({
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("totp", currentCode))
                                     scope.launch { snackbarHostState.showSnackbar("TOTP copied") }

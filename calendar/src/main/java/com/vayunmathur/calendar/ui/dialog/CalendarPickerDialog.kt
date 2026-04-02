@@ -22,11 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.util.LocalNavResultRegistry
-import com.vayunmathur.library.util.pop
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

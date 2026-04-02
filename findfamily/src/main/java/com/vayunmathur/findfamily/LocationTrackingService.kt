@@ -39,6 +39,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 
 class LocationTrackingService : Service() {
@@ -46,6 +47,7 @@ class LocationTrackingService : Service() {
     private lateinit var locationManager: LocationManager
     private lateinit var viewModel: DatabaseViewModel
     private lateinit var users: StateFlow<List<User>>
+    private lateinit var locationValues: StateFlow<List<LocationValue>>
     private lateinit var waypoints: StateFlow<List<Waypoint>>
     private lateinit var temporaryLinks: StateFlow<List<TemporaryLink>>
     private lateinit var bm: BatteryManager
@@ -80,7 +82,6 @@ class LocationTrackingService : Service() {
             }
             delay(3000)
             Networking.receiveLocations()?.let { locations ->
-                viewModel.upsertAll(locations)
                 val usersRecieved = locations.map { it.userid }.distinct()
                 val newUsers = usersRecieved.filter { it !in userIDs }
                 viewModel.upsertAll(newUsers.map {
@@ -99,19 +100,49 @@ class LocationTrackingService : Service() {
                 // update the user.locationName
                 users.forEach { user ->
                     val lastLocation = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
+                    val lastSavedLocation = locationValues.value.lastOrNull { it.userid == user.id }
+
+
+                    if(lastLocation.battery <= 15f && (lastSavedLocation?.battery?:100f) > 15f) {
+                        if(user.id != Networking.userid)
+                            createNotificationWithCategory(
+                                user.name,
+                                "${user.name} has low battery",
+                                "BATTERY_LOW"
+                            )
+                    }
+
                     val inWaypoint = waypoints.find { havershine(it.coord, lastLocation.coord) < it.range }
-                    if(inWaypoint != null) {
-                        if(inWaypoint.name != user.locationName)
-                            viewModel.upsertAsync(user.copy(locationName = inWaypoint.name, lastLocationChangeTime = lastLocation.timestamp))
-                    } else {
-                        val address =
-                            fetchAddress(lastLocation.coord.lat, lastLocation.coord.lon)?.let {
-                                it.featureName ?: it.thoroughfare
-                            } ?: "Unknown Location"
-                        if(user.locationName != address)
-                            viewModel.upsertAsync(user.copy(locationName = address, lastLocationChangeTime = lastLocation.timestamp))
+
+                    val newLocationName = inWaypoint?.name ?: fetchAddress(lastLocation.coord.lat, lastLocation.coord.lon)?.let {
+                        it.featureName ?: it.thoroughfare
+                    } ?: "Unknown Location"
+
+                    if(newLocationName != user.locationName) {
+                        viewModel.update<User>(user.id) {
+                            it.copy(
+                                locationName = newLocationName,
+                                lastLocationChangeTime = lastLocation.timestamp
+                            )
+                        }
+                        if(user.id != Networking.userid) {
+                            if(inWaypoint != null) {
+                                createNotificationWithCategory(
+                                    user.name,
+                                    "${user.name} has entered ${inWaypoint.name}",
+                                    "ENTRY_EXIT"
+                                )
+                            } else if(waypoints.find { it.name == user.locationName } != null) {
+                                createNotificationWithCategory(
+                                    user.name,
+                                    "${user.name} has exited ${user.locationName}",
+                                    "ENTRY_EXIT"
+                                )
+                            }
+                        }
                     }
                 }
+                viewModel.upsertAll(locations)
             }
         }
     }
@@ -134,7 +165,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun startTracking() {
-        val db = buildDatabase<FFDatabase>()
+        val db = buildDatabase<FFDatabase>(listOf(Migration_1_2))
         viewModel = DatabaseViewModel(db,
             User::class to db.userDao(),
             Waypoint::class to db.waypointDao(),
@@ -144,6 +175,8 @@ class LocationTrackingService : Service() {
         users = viewModel.data<User>()
         waypoints = viewModel.data<Waypoint>()
         temporaryLinks = viewModel.data<TemporaryLink>()
+        val time = Clock.System.now() - 1.days
+        locationValues = viewModel.data<LocationValue>("timestamp > ${time.epochSeconds}")
         CoroutineScope(Dispatchers.IO).launch {
             Networking.init(viewModel, DataStoreUtils.getInstance(this@LocationTrackingService))
         }
@@ -155,17 +188,19 @@ class LocationTrackingService : Service() {
             // Request GPS updates
             locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER,
-                30_000L, // 30 seconds
+                10_000L, // 30 seconds
                 0f,   // regardless of movement
                 locationListener
             )
-        } catch (unlikely: SecurityException) {
+        } catch (_: SecurityException) {
             // Handle missing permissions
         }
     }
 
     companion object {
         private const val CHANNEL_ID = "location_tracking_channel"
+        private const val BATTERY_CHANNEL_ID = "battery_channel"
+        private const val ENTRY_EXIT_CHANNEL_ID = "entry_exit_channel"
         private const val NOTIFICATION_ID = 101
     }
 
@@ -179,8 +214,28 @@ class LocationTrackingService : Service() {
             description = "Used for FindFamily background location updates"
         }
 
+        // 2. Battery Alerts Channel (High Importance for visibility)
+        val batteryChannel = NotificationChannel(
+            BATTERY_CHANNEL_ID,
+            "Battery Alerts",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Alerts when a family member has low battery"
+        }
+
+        // 3. Entry/Exit Channel
+        val arrivalChannel = NotificationChannel(
+            ENTRY_EXIT_CHANNEL_ID,
+            "Arrivals & Departures",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Notifications for when family members enter or leave waypoints"
+        }
+
+        // Register all channels
+
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(channel)
+        manager.createNotificationChannels(listOf(channel, batteryChannel, arrivalChannel))
 
         // 2. Create an Intent to open the app when the notification is clicked
         val pendingIntent = PendingIntent.getActivity(
@@ -198,6 +253,27 @@ class LocationTrackingService : Service() {
             .setContentIntent(pendingIntent)
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE) // API 31+ specific
             .build()
+    }
+
+    private fun createNotificationWithCategory(title: String, message: String, category: String) {
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+        val channelId = when (category) {
+            "BATTERY_LOW" -> BATTERY_CHANNEL_ID
+            "ENTRY_EXIT" -> ENTRY_EXIT_CHANNEL_ID
+            else -> CHANNEL_ID
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(R.drawable.ic_launcher_foreground) // Consider using specific icons for battery/location
+            .setAutoCancel(true)
+            .build()
+
+        // Generate a unique ID so notifications don't overwrite each other
+        val notificationId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+        manager.notify(notificationId, notification)
     }
 
     override fun onDestroy() {
@@ -229,12 +305,12 @@ suspend fun Context.fetchAddress(lat: Double, lng: Double): Address? =
                 @Suppress("DEPRECATION")
                 val address = geocoder.getFromLocation(lat, lng, 1)?.firstOrNull()
                 continuation.resume(address)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 continuation.resume(null)
             }
         }
 
-        // Safety: If the calling scope is cancelled, stop the continuation
+        // Safety: If the calling scope is canceled, stop the continuation
         continuation.invokeOnCancellation {
             // Geocoder doesn't support manual cancellation,
             // but this prevents memory leaks in the listener.

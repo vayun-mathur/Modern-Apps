@@ -61,7 +61,7 @@ fun InitialDownloadScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                "Downloading required AI models and assets via high-speed service.",
+                "Downloading required components for this app.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )

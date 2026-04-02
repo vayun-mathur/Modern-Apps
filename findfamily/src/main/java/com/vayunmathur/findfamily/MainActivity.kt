@@ -8,12 +8,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,8 +27,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.navigation3.runtime.NavKey
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.room.migration.Migration
+import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.TemporaryLink
@@ -50,15 +63,48 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<FFDatabase>()
+        val db = buildDatabase<FFDatabase>(listOf(Migration_1_2))
         val viewModel = DatabaseViewModel(db, User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao(), TemporaryLink::class to db.temporaryLinkDao())
         val platform = Platform(this)
         setContent {
             DynamicTheme {
-                val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                var hasPermissions by remember { mutableStateOf(permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) }
-                if (!hasPermissions) {
-                    NoPermissionsScreen(permissions) { hasPermissions = it }
+                val context = LocalContext.current
+                val foregroundPermission = Manifest.permission.ACCESS_FINE_LOCATION
+                val backgroundPermission = Manifest.permission.ACCESS_BACKGROUND_LOCATION
+
+                var hasForeground by remember {
+                    mutableStateOf(ContextCompat.checkSelfPermission(context, foregroundPermission) == PackageManager.PERMISSION_GRANTED)
+                }
+                var hasBackground by remember {
+                    mutableStateOf(ContextCompat.checkSelfPermission(context, backgroundPermission) == PackageManager.PERMISSION_GRANTED)
+                }
+
+                // Automatically re-check when returning from System Settings
+                val lifecycleOwner = LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            hasForeground = ContextCompat.checkSelfPermission(
+                                context,
+                                foregroundPermission
+                            ) == PackageManager.PERMISSION_GRANTED
+                            hasBackground = ContextCompat.checkSelfPermission(
+                                context,
+                                backgroundPermission
+                            ) == PackageManager.PERMISSION_GRANTED
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+
+                if (!hasForeground || !hasBackground) {
+                    NoPermissionsScreen(
+                        hasForeground = hasForeground,
+                        hasBackground = hasBackground,
+                        onForegroundGranted = { hasForeground = true },
+                        onBackgroundGranted = { hasBackground = true }
+                    )
                 } else {
                     Main(platform, viewModel)
                 }
@@ -75,26 +121,63 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+val Migration_1_2 = Migration(1, 2) {
+    it.execSQL("CREATE INDEX IF NOT EXISTS index_LocationValue_timestamp ON LocationValue (timestamp)")
+}
+
 @Composable
-fun NoPermissionsScreen(permissions: Array<String>, setHasPermissions: (Boolean) -> Unit) {
-    val permissionRequestor = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissionsResult ->
-        setHasPermissions(permissionsResult.values.all { it })
+fun NoPermissionsScreen(
+    hasForeground: Boolean,
+    hasBackground: Boolean,
+    onForegroundGranted: () -> Unit,
+    onBackgroundGranted: () -> Unit
+) {
+    // Launcher for Fine Location
+    val foregroundLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) onForegroundGranted()
     }
-    LaunchedEffect(Unit) {
-        permissionRequestor.launch(permissions)
+
+    // Launcher for Background Location (Redirects to Settings)
+    val backgroundLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) onBackgroundGranted()
     }
-    Scaffold {
-        Box(
-            modifier = Modifier
-                .padding(it)
-                .fillMaxSize()
+
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            androidx.compose.material3.Button(
-                {
-                    permissionRequestor.launch(permissions)
-                }, Modifier.align(Alignment.Center)
+            // STEP 1: Fine Location
+            Button(
+                onClick = { foregroundLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                enabled = !hasForeground
             ) {
-                Text(text = "Please grant location permissions")
+                Text(if (hasForeground) "✅ Fine Location Granted" else "1. Grant Fine Location")
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // STEP 2: Background Location
+            Button(
+                onClick = { backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
+                enabled = hasForeground && !hasBackground
+            ) {
+                val label = if (hasBackground) "✅ Background Granted" else "2. Enable 'Allow all the time'"
+                Text(label)
+            }
+
+            if (hasForeground && !hasBackground) {
+                Text(
+                    text = "To enable background tracking, please select 'Allow all the time' in the next screen.",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
+                )
             }
         }
     }
@@ -142,7 +225,7 @@ fun Navigation(platform: Platform, viewModel: DatabaseViewModel) {
             AddPersonDialog(backStack, viewModel, platform, it.id)
         }
         entry<Route.AddLinkDialog>(metadata = DialogPage()) {
-            AddLinkDialog(backStack, viewModel, platform)
+            AddLinkDialog(backStack, viewModel)
         }
     }
 }

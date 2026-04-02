@@ -1,20 +1,21 @@
 [versions]
 # Build & Core Language
-agp = "9.0.1"
-kotlin = "2.3.10"
-ksp = "2.3.4"
+agp = "9.1.0"
+kotlin = "2.3.20"
+ksp = "2.3.6"
 
 # AndroidX Core & Lifecycle
-coreKtx = "1.17.0"
+coreKtx = "1.18.0"
 lifecycleRuntimeKtx = "2.10.0"
 lifecycleViewmodel = "2.10.0"
 litertlmAndroid = "0.9.0-alpha06"
+newpipeextractor = "v0.26.0"
 workRuntimeKtx = "2.11.1"
-datastorePreferences = "1.2.0"
+datastorePreferences = "1.2.1"
 
 # Compose & UI Foundations
-composeBom = "2026.02.01"
-activityCompose = "1.12.4"
+composeBom = "2026.03.00"
+activityCompose = "1.13.0"
 material3 = "1.5.0-alpha15"
 reorderable = "3.0.0"
 composeMarkdown = "0.5.8"
@@ -24,30 +25,27 @@ navigation3 = "1.0.1"
 adaptiveNavigation3 = "1.3.0-alpha09"
 
 # Media & Images
-media3Exoplayer = "1.9.2"
+media3Exoplayer = "1.9.3"
 coilCompose = "2.7.0"
 jaudiotagger = "3.0.1"
 exifinterface = "1.4.2"
 
 # Networking & Data
-ktor = "3.4.0"
+ktor = "3.4.1"
 okhttp = "5.3.2"
-okio = "3.16.4"
+okio = "3.17.0"
 kotlinxSerializationJson = "1.10.0"
 kotlinxDatetime = "0.7.1"
 room = "2.8.4"
 
 # Specialized Features (PDF, Maps, Health, Crypto)
-pdfViewer = "1.0.0-alpha14"
+pdfViewer = "1.0.0-alpha15"
 glance = "1.1.1"
 connectClient = "1.2.0-alpha02"
 cryptographyCore = "0.5.0"
 sol4k = "0.7.0"
-libphonenumber = "9.0.24"
+libphonenumber = "9.0.26"
 kotlinCsvJvm = "1.10.0"
-junit = "4.13.2"
-junitVersion = "1.3.0"
-espressoCore = "3.7.0"
 material3AdaptiveNavigationSuite = "1.4.0"
 
 [libraries]
@@ -85,6 +83,7 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose"
 coil-video = { module = "io.coil-kt:coil-video", version.ref = "coilCompose" }
 compose-markdown = { group = "com.github.jeziellago", name = "compose-markdown", version.ref = "composeMarkdown" }
 litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlmAndroid" }
+newpipeextractor = { module = "com.github.TeamNewPipe:NewPipeExtractor", version.ref = "newpipeextractor" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 # PDF Support
@@ -126,14 +125,10 @@ cryptography-provider-jdk = { module = "dev.whyoleg.cryptography:cryptography-pr
 jaudiotagger = { module = "net.jthink:jaudiotagger", version.ref = "jaudiotagger" }
 sol4k = { group = "org.sol4k", name = "sol4k", version.ref = "sol4k" }
 libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite", version.ref = "material3AdaptiveNavigationSuite" }
+
+kotlin-compose-gradle = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
+kotlin-serialization-gradle = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,1 +1,0 @@
-A modern, fast, open-source, and offline map app using OpenStreetMap

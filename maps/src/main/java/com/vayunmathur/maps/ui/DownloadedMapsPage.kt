@@ -17,7 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.maps.Route
@@ -36,7 +36,7 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
         })
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
-            LazyColumn() {
+            LazyColumn {
                 if(downloadingZones.isNotEmpty()) {
                     item {
                         Text("Downloading Zones:", Modifier.padding(horizontal = 16.dp))

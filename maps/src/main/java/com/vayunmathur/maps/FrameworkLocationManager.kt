@@ -12,7 +12,7 @@ import android.location.LocationManager
 import android.os.Bundle
 import org.maplibre.spatialk.geojson.Position
 
-class FrameworkLocationManager(private val context: Context) : SensorEventListener {
+class FrameworkLocationManager(context: Context) : SensorEventListener {
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 

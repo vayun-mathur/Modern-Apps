@@ -4,37 +4,56 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.*
 import okhttp3.*
+import okio.BufferedSink
 import okio.buffer
 import okio.appendingSink
 import okio.sink
 import java.io.File
+import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class DownloadService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val NOTIF_ID = 1001
-    private val CHANNEL_ID = "high_speed_download_channel"
+
+    companion object {
+        private const val NOTIF_ID = 1001
+        private const val CHANNEL_ID = "high_speed_download_channel"
+        private const val MAX_RETRIES = 5
+        private const val BUFFER_SIZE = 262144L
+    }
 
     private var wifiLock: WifiManager.WifiLock? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.SECONDS)
         .build()
 
     override fun onCreate() {
         super.onCreate()
-        val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "AiChat:HighPerf")
-        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+
+        // Handle deprecated WIFI_MODE_FULL_HIGH_PERF
+        val wifiMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+        } else {
+            @Suppress("DEPRECATION")
+            WifiManager.WIFI_MODE_FULL_HIGH_PERF
+        }
+
+        wifiLock = wm.createWifiLock(wifiMode, "AiChat:HighPerf")
+
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AiChat:DownloadWakeLock")
     }
 
@@ -43,7 +62,7 @@ class DownloadService : Service() {
         val fileNames = intent?.getStringArrayExtra("fileNames") ?: emptyArray()
 
         createNotificationChannel()
-        startForeground(NOTIF_ID, createNotification("Initializing 100GB Transfer..."),
+        startForeground(NOTIF_ID, createNotification("Preparing high-speed transfer..."),
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
 
         wifiLock?.acquire()
@@ -56,49 +75,43 @@ class DownloadService : Service() {
                 val fileName = fileNames[index]
                 val destFile = File(getExternalFilesDir(null), fileName)
 
-                var lastBytes = 0L
-                var lastTime = System.currentTimeMillis()
+                if(ds.getBoolean("done_$fileName", false)) return@forEachIndexed
 
-                try {
-                    if(ds.getBoolean("done_$fileName", false)) return@forEachIndexed
-                    downloadFileWithResume(url, destFile) { downloaded, total ->
-                        val currentTime = System.currentTimeMillis()
-                        val timeDiff = (currentTime - lastTime) / 1000.0
+                var retryCount = 0
+                var success = false
 
-                        if (timeDiff >= 1.0 || downloaded == total) {
-                            val progress = if (total > 0) downloaded.toDouble() / total else 0.0
-                            val speedMbps = ((downloaded - lastBytes) * 8.0) / 1_000_000.0 / timeDiff
+                while (retryCount < MAX_RETRIES && !success && isActive) {
+                    try {
+                        performDownload(url, destFile, ds, fileName)
+                        success = true
+                    } catch (e: Exception) {
+                        retryCount++
+                        val errorMsg = "Retry $retryCount/$MAX_RETRIES: ${e.message}"
+                        updateNotification(errorMsg)
+                        ds.setString("error_$fileName", errorMsg)
 
-                            launch {
-                                ds.setDouble("progress_$fileName", progress)
-                                ds.setDouble("speed_$fileName", if (downloaded == total) 0.0 else speedMbps)
-                                ds.setBoolean("done_$fileName", downloaded == total)
-                            }
-
-                            updateNotification("Downloading $fileName: ${(progress * 100).toInt()}% (${speedMbps.toInt()} Mbps)")
-
-                            lastBytes = downloaded
-                            lastTime = currentTime
+                        if (retryCount in 1..MAX_RETRIES) {
+                            delay(TimeUnit.SECONDS.toMillis(Math.pow(2.0, retryCount.toDouble()).toLong()))
                         }
                     }
-
-                    // Final Verification
-                    updateNotification("Verifying $fileName integrity...")
-                    // If you have a server hash, you would check it here
-                    // val isValid = verifyHash(destFile, "expected_hash_here")
-
-                } catch (e: Exception) {
-                    launch { ds.setString("error_$fileName", e.message ?: "Network Error") }
                 }
             }
             ds.setBoolean("dbSetupComplete", true)
             cleanupAndStop()
         }
-        return START_NOT_STICKY
+
+        return START_REDELIVER_INTENT
     }
 
-    private suspend fun downloadFileWithResume(url: String, file: File, onProgress: (Long, Long) -> Unit) {
+    private suspend fun performDownload(
+        url: String,
+        file: File,
+        ds: DataStoreUtils,
+        fileName: String
+    ) = withContext(Dispatchers.IO) {
         val existingSize = if (file.exists()) file.length() else 0L
+        var lastBytes = existingSize
+        var lastTime = System.currentTimeMillis()
 
         val request = Request.Builder()
             .url(url)
@@ -109,45 +122,70 @@ class DownloadService : Service() {
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful && response.code != 206) {
-                throw Exception("Failed: ${response.code}")
+                if (response.code == 416) {
+                    markAsDone(ds, fileName)
+                    return@withContext
+                }
+                throw IOException("Server returned ${response.code}")
             }
 
+            // Elvis operator removed as body is expected to be present if call succeeded
+            val body = response.body ?: throw IOException("Received empty response body")
             val isResuming = response.code == 206
-            val body = response.body ?: throw Exception("Empty body")
             val totalSize = if (isResuming) existingSize + body.contentLength() else body.contentLength()
 
-            // AppendingSink ensures we write exactly from where the last byte ended
-            val sink = if (isResuming) file.appendingSink().buffer() else file.sink().buffer()
             val source = body.source()
+            val sink: BufferedSink = if (isResuming) file.appendingSink().buffer() else file.sink().buffer()
 
             var downloaded = if (isResuming) existingSize else 0L
-            val buffer = ByteArray(131072) // 128KB buffer for massive files
-            var bytesRead: Int
 
-            source.use { input ->
+            try {
                 sink.use { output ->
-                    while (input.read(buffer).also { bytesRead = it } != -1) {
-                        output.write(buffer, 0, bytesRead)
-                        downloaded += bytesRead
-                        onProgress(downloaded, totalSize)
+                    source.use { input ->
+                        while (isActive && !input.exhausted()) {
+                            val read = input.read(output.buffer, BUFFER_SIZE)
+                            if (read == -1L) break
+
+                            output.emit()
+                            downloaded += read
+
+                            val currentTime = System.currentTimeMillis()
+                            val timeDiffMs = currentTime - lastTime
+
+                            if (timeDiffMs >= 1000L || downloaded == totalSize) {
+                                val progress = if (totalSize > 0) downloaded.toDouble() / totalSize else 0.0
+                                val speedMbps = ((downloaded - lastBytes) * 8.0) / 1_000_000.0 / (timeDiffMs / 1000.0)
+
+                                ds.setDouble("progress_$fileName", progress)
+                                ds.setDouble("speed_$fileName", if (downloaded == totalSize) 0.0 else speedMbps)
+
+                                val speedText = if (speedMbps > 0) "${speedMbps.toInt()} Mbps" else "Finishing..."
+                                updateNotification("Downloading $fileName: ${(progress * 100).toInt()}% ($speedText)")
+
+                                lastBytes = downloaded
+                                lastTime = currentTime
+                            }
+                        }
+                        output.flush()
                     }
-                    output.flush() // Force write to physical storage
                 }
+
+                if (totalSize > 0 && downloaded >= totalSize) {
+                    markAsDone(ds, fileName)
+                } else if (isActive && totalSize > 0) {
+                    throw IOException("Connection lost: $downloaded/$totalSize bytes received")
+                }
+
+            } catch (e: Exception) {
+                throw e
             }
         }
     }
 
-    private fun verifyHash(file: File, expectedHash: String): Boolean {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val buffer = ByteArray(262144)
-        file.inputStream().use { input ->
-            var bytesRead: Int
-            while (input.read(buffer).also { bytesRead = it } != -1) {
-                digest.update(buffer, 0, bytesRead)
-            }
-        }
-        val actualHash = digest.digest().joinToString("") { "%02x".format(it) }
-        return actualHash.equals(expectedHash, ignoreCase = true)
+    private suspend fun markAsDone(ds: DataStoreUtils, fileName: String) {
+        ds.setBoolean("done_$fileName", true)
+        ds.setDouble("progress_$fileName", 1.0)
+        ds.setDouble("speed_$fileName", 0.0)
     }
 
     private fun cleanupAndStop() {
@@ -159,11 +197,12 @@ class DownloadService : Service() {
 
     private fun createNotification(content: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("High-Speed Setup")
+            .setContentTitle("Data Transfer Active")
             .setContentText(content)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setSilent(true)
+            .setOnlyAlertOnce(true)
             .build()
     }
 
@@ -173,7 +212,7 @@ class DownloadService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, "AI Downloads", NotificationManager.IMPORTANCE_LOW)
+        val channel = NotificationChannel(CHANNEL_ID, "Background Transfers", NotificationManager.IMPORTANCE_LOW)
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
     }

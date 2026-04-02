@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,7 +40,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationCompat
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.clock.MAIN_PAGES
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
@@ -74,14 +75,12 @@ fun TimerPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             IconAdd()
         }
     }) { paddingValues ->
-        Column(Modifier.padding(paddingValues)) {
-            LazyColumn(
-                contentPadding = PaddingValues(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(timers, key = { it.id }) { timer ->
-                    TimerCard(timer, now, viewModel)
-                }
+        LazyColumn(
+            contentPadding = paddingValues + PaddingValues(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(timers, key = { it.id }) { timer ->
+                TimerCard(timer, now, viewModel)
             }
         }
     }

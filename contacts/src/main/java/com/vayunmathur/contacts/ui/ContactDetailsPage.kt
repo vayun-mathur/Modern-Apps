@@ -86,7 +86,7 @@ fun ContactDetailsPage(
     onDelete: () -> Unit,
     showBackButton: Boolean = true
 ) {
-    val contact by viewModel.getContactFlow(contactId).filterNotNull().collectAsState(initial = viewModel.getContact(contactId))
+    val contact by remember { viewModel.getContactFlow(contactId).filterNotNull() }.collectAsState(initial = viewModel.getContact(contactId))
     val details = contact?.details
 
     if (contact == null) {
@@ -98,17 +98,10 @@ fun ContactDetailsPage(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { /* No title in the reference image */ },
-                navigationIcon = if (showBackButton) {
-                    @Composable {
-                        IconNavigation(onBack)
-                    }
-                } else {{}},
+    Scaffold(Modifier, {
+            TopAppBar({}, Modifier, {if (showBackButton) IconNavigation(onBack) },
                 actions = {
-                    IconButton(onClick = {
+                    IconButton({
                         val newFavoriteState = !contact!!.isFavorite
                         CoroutineScope(Dispatchers.IO).launch {
                             val newContact = contact!!.copy(isFavorite = newFavoriteState)
@@ -117,7 +110,7 @@ fun ContactDetailsPage(
                     }) {
                         Icon(
                             if (!contact!!.isFavorite) painterResource(R.drawable.outline_star_24) else painterResource(R.drawable.baseline_star_24),
-                            contentDescription = "Favorite",
+                            "Favorite",
                             tint = if (contact!!.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -151,8 +144,7 @@ fun ContactDetailsPage(
                     containerColor = Color.Transparent
                 )
             )
-        },
-        containerColor = MaterialTheme.colorScheme.background
+        }, containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         if (details == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {

@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Route
@@ -49,7 +49,6 @@ import com.vayunmathur.findfamily.data.radians
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.library.util.reset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -85,7 +84,7 @@ fun MapView(
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val locationValues by viewModel.data<LocationValue>().collectAsState()
     val userPositions by remember { derivedStateOf {
-        locationValues.groupBy { it.userid }.mapValues { it.value.maxBy { it.timestamp } }
+        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
     } }
 
     LaunchedEffect(Unit) {
@@ -139,7 +138,12 @@ fun MapView(
             camera,
             0f..20f,
             options = MapOptions(
-                gestureOptions = GestureOptions(false, true, false, true),
+                gestureOptions = GestureOptions(
+                    isRotateEnabled = false,
+                    isScrollEnabled = true,
+                    isTiltEnabled = false,
+                    isZoomEnabled = true
+                ),
                 ornamentOptions = OrnamentOptions.AllDisabled
             ),
             onMapClick = { _, offset ->
@@ -168,7 +172,7 @@ fun MapView(
                             Position(coord.lon + radiusInDegrees, coord.lat)
                         )
                         val radiusPx = abs((center.x - edgePoint.x).toPx())
-                        Circle(
+                        drawCircleWithBorder(
                             center.toOffset(this),
                             Color(0x80Add8e6),
                             Color(0xffAdd8e6),
@@ -203,7 +207,7 @@ fun MapView(
     }
 }
 
-fun DrawScope.Circle(position: Offset, color: Color, borderColor: Color, radius: Float) {
+fun DrawScope.drawCircleWithBorder(position: Offset, color: Color, borderColor: Color, radius: Float) {
     drawCircle(color, radius, position)
     drawCircle(borderColor, radius, position, style = Stroke(width = radius/20))
 }

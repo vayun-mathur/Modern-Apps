@@ -128,7 +128,7 @@ fun ImportScreen(events: List<Event>, calendars: List<Calendar>, onImportClick: 
     Scaffold(
         floatingActionButton = {
             if(selectedCalendar != null) {
-                FloatingActionButton(onClick = {onImportClick(selectedCalendar!!.id)}) {
+                FloatingActionButton({onImportClick(selectedCalendar!!.id)}) {
                     IconSave()
                 }
             }
@@ -140,13 +140,13 @@ fun ImportScreen(events: List<Event>, calendars: List<Calendar>, onImportClick: 
                     Text(selectedCalendar?.displayName ?: "Select Calendar")
                 }, Modifier.clickable {
                     showDropdown = true
-                }, trailingContent = {
-                    Icon(painterResource(R.drawable.arrow_drop_down_24px), contentDescription = null)
-                }, leadingContent = {
+                }, {}, {}, {
                     selectedCalendar?.color?.let { Box(Modifier.size(24.dp).background(Color(it), RectangleShape)) }
+                }, {
+                    Icon(painterResource(R.drawable.arrow_drop_down_24px), contentDescription = null)
                 })
                 if(showDropdown) {
-                    DropdownMenu(expanded = true, onDismissRequest = { showDropdown = false }) {
+                    DropdownMenu(true, { showDropdown = false }) {
                         grouped.forEach { (account, cals) ->
                             DropdownMenuItem(
                                 { Text(account) },
@@ -157,7 +157,7 @@ fun ImportScreen(events: List<Event>, calendars: List<Calendar>, onImportClick: 
                                     {
                                         selectedCalendar = cal
                                         showDropdown = false
-                                    }, leadingIcon = {
+                                    }, Modifier, {
                                         Box(
                                             Modifier.size(16.dp)
                                                 .background(Color(cal.color), RectangleShape)

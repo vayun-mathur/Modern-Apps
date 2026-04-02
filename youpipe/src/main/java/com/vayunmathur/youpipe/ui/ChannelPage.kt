@@ -33,7 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.NavBackStack
+import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -74,14 +74,14 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
         }
     }
 
-    Scaffold() { paddingValues ->
+    Scaffold { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
-            channelInfo?.let {
-                ChannelHeader(it)
+            channelInfo?.let { channelInfo ->
+                ChannelHeader(channelInfo)
                 val existingSubscription = subscriptions.firstOrNull { it.channelID == channelID }
                 if(existingSubscription == null) {
                     Button({
-                        viewModel.upsertAsync(Subscription(name = it.name, channelID = channelID, avatarURL = it.avatar))
+                        viewModel.upsertAsync(Subscription(name = channelInfo.name, channelID = channelID, avatarURL = channelInfo.avatar))
                     }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
                         Text("Subscribe")
                     }
@@ -95,7 +95,7 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
                 Spacer(Modifier.height(4.dp))
                 HorizontalDivider()
             }
-            LazyColumn() {
+            LazyColumn {
                 items(videos, {it.videoID}) {
                     VideoItem(backStack, viewModel, it, false)
                 }
@@ -133,7 +133,7 @@ fun VideoItem(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
             }, Modifier, {
 
             }, {
-                Column() {
+                Column {
                     if(showAuthor) {
                         Text(videoInfo.author, style = MaterialTheme.typography.bodySmall)
                     }

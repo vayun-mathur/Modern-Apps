@@ -210,7 +210,7 @@ fun getProperties(fgbFeature: FgbFeature, header: Header): Map<String, JsonEleme
             8 -> JsonPrimitive(bb.long)                      // ULong
             9 -> JsonPrimitive(bb.float)                     // Float
             10 -> JsonPrimitive(bb.double)                   // Double
-            11, 12, 13 -> { // String, Json, DateTime
+            11, 12, 13 -> { // String, JSON, DateTime
                 val len = bb.int
                 val bytes = ByteArray(len)
                 bb.get(bytes)
