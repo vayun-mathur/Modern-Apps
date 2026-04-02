@@ -4,6 +4,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260401
+        versionName = "v2.3.0"
         applicationId = "com.vayunmathur.games.wordmaker"
     }
 }
