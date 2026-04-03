@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.InitialDownloadChecker
@@ -13,7 +14,9 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +27,13 @@ class MainActivity : ComponentActivity() {
         val db = buildDatabase<AppDatabase>()
         val viewModel = DatabaseViewModel(db, Conversation::class to db.conversationDao(), Message::class to db.messageDao())
 
+        val oldModelFile = File(applicationContext.getExternalFilesDir(null)!!, "model.litertlm")
+        if(oldModelFile.exists()) {
+            oldModelFile.delete()
+            runBlocking {
+                ds.setBoolean("dbSetupComplete", false)
+            }
+        }
         setContent {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
