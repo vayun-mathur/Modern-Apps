@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
-                    Triple("https://huggingface.co/na5h13/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm", "model.litertlm", "Model"),
+                    Triple("https://huggingface.co/samirsayyed/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm", "gemma4.litertlm", "Model"),
                 )) {
                     // Once downloads are complete, find the file in internal storage
                     Navigation(viewModel)
