@@ -44,7 +44,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
     // Initialize available items to 0-3 if empty
     LaunchedEffect(availableItems) {
         if (availableItems.isEmpty()) {
-            (0L..3L).forEach { ds.addStringToSet("available_items", it.toString()) }
+            (1L..4L).forEach { ds.addStringToSet("available_items", it.toString()) }
         }
     }
 
@@ -169,7 +169,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                                         onClick = {}
                                     )
                             ) {
-                                ElementIcon(id)
+                                DynamicAlchemyIcon(id)
                             }
                             Text(item?.name ?: "", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -199,24 +199,6 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
 }
 
 @Composable
-fun ElementIcon(id: Long) {
-    val context = LocalContext.current
-    val bitmap = remember(id) {
-        try {
-            val inputStream = context.assets.open("$id.png")
-            BitmapFactory.decodeStream(inputStream).asImageBitmap()
-        } catch (e: Exception) {
-            null
-        }
-    }
-    if (bitmap != null) {
-        Image(bitmap, null, Modifier.fillMaxSize())
-    } else {
-        Box(Modifier.fillMaxSize().background(Color.Gray))
-    }
-}
-
-@Composable
 fun DraggableElement(
     id: Long,
     initialOffset: Offset,
@@ -242,7 +224,7 @@ fun DraggableElement(
                 }
             }
     ) {
-        ElementIcon(id)
+        DynamicAlchemyIcon(id)
     }
 }
 

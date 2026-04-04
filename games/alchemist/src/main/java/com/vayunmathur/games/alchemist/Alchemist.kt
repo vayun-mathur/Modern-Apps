@@ -12,7 +12,6 @@ object Alchemist {
 
     fun init(context: Context) {
         val jsonItems = Json.decodeFromString<List<JsonItem>>(context.assets.open("items.json").bufferedReader().readText())
-        items = jsonItems.map { item -> AlchemyItem(item.id, item.name, item.final) }
         recipes = jsonItems.flatMap { item ->
             item.recipes.map { recipe ->
                 AlchemyRecipe(
@@ -22,12 +21,14 @@ object Alchemist {
             }
         }.groupBy { it.inputs }.map { (inputs, outputs) -> AlchemyRecipe(inputs,
             outputs.flatMap { it.outputs }) }
+        val nonFinals = recipes.flatMap { it.outputs }.toSet()
+        items = jsonItems.map { item -> AlchemyItem(item.id, item.name, item.id !in nonFinals) }
         println(recipes)
         println(items)
     }
 
     @Serializable
-    data class JsonItem(val id: Long, val name: String, val recipes: List<List<Long>>, val final: Boolean)
+    data class JsonItem(val id: Long, val name: String, val recipes: List<List<Long>>)
 }
 
 data class AlchemyItem(val id: Long, val name: String, val final: Boolean)
