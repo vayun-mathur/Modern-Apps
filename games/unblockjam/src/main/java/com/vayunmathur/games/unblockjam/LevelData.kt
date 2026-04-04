@@ -21,7 +21,8 @@ data class Dimension(
 
 data class Block(
     val position: Coord, // top left
-    val dimension: Dimension
+    val dimension: Dimension,
+    val fixed: Boolean
 )
 
 data class LevelPack(
