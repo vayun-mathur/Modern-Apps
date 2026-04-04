@@ -182,7 +182,7 @@ inline fun <reified T : ReorderableDatabaseItem<T>, Route : NavKey, reified Edit
             // 4. Calculate the midpoint
             val resultItemPosition = when {
                 prevPos == null -> (nextPos ?: 0.0) - 50.0
-                nextPos == null -> (prevPos ?: 0.0) + 50.0
+                nextPos == null -> prevPos + 50.0
                 else -> (prevPos + nextPos) / 2.0
             }
 

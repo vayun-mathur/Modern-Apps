@@ -130,7 +130,7 @@ class DownloadService : Service() {
             }
 
             // Elvis operator removed as body is expected to be present if call succeeded
-            val body = response.body ?: throw IOException("Received empty response body")
+            val body = response.body
             val isResuming = response.code == 206
             val totalSize = if (isResuming) existingSize + body.contentLength() else body.contentLength()
 

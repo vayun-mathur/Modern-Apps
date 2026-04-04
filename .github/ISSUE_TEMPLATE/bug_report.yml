@@ -15,6 +15,7 @@ body:
         - crypto
         - files
         - findfamily
+        - alchemist
         - chess
         - unblockjam
         - wordmaker

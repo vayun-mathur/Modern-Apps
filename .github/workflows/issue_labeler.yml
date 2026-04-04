@@ -21,7 +21,7 @@ jobs:
             
             if (match && match[1]) {
               const selectedApp = match[1].trim().toLowerCase();
-              const validApps = ['calendar', 'clock', 'contacts', 'crypto', 'files', 'findfamily', 'chess', 'unblockjam', 'wordmaker', 'health', 'maps', 'music', 'notes', 'openassistant', 'passwords', 'pdf', 'photos', 'youpipe'];
+              const validApps = ['calendar', 'clock', 'contacts', 'crypto', 'files', 'findfamily', 'alchemist', 'chess', 'unblockjam', 'wordmaker', 'health', 'maps', 'music', 'notes', 'openassistant', 'passwords', 'pdf', 'photos', 'youpipe'];
             
               if (validApps.includes(selectedApp)) {
                 await github.rest.issues.addLabels({

@@ -1,0 +1,34 @@
+[
+  {
+    "id": 0,
+    "name": "Earth",
+    "recipes": [],
+    "final": false
+  },
+  {
+    "id": 1,
+    "name": "Fire",
+    "recipes": [],
+    "final": false
+  },
+  {
+    "id": 2,
+    "name": "Water",
+    "recipes": [],
+    "final": false
+  },
+  {
+    "id": 3,
+    "name": "Air",
+    "recipes": [],
+    "final": false
+  },
+  {
+    "id": 4,
+    "name": "Steam",
+    "recipes": [
+      [1, 2]
+    ],
+    "final": false
+  }
+]
