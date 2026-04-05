@@ -15,9 +15,7 @@ dependencies {
     implementation(libs.coil.video)
     implementation(libs.androidx.exifinterface)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementRoom(libs)
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui.compose.material3)

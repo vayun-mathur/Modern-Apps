@@ -14,9 +14,7 @@ dependencies {
     implementation(libs.newpipeextractor)
     implementation(libs.okhttp)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementRoom(libs)
 
     implementation(libs.androidx.media3.ui.compose.material3)
     implementation(libs.androidx.media3.exoplayer)
@@ -25,8 +23,5 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
 
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
+    implementKtor(libs)
 }

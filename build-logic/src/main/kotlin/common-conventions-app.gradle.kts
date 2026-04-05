@@ -1,8 +1,12 @@
+import gradle.kotlin.dsl.accessors._fbec4b978d86c39e55b50a6ada210591.implementation
+import gradle.kotlin.dsl.accessors._fbec4b978d86c39e55b50a6ada210591.ksp
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.autonomousapps.dependency-analysis")
+    id("com.google.devtools.ksp")
 }
 
 val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
@@ -107,4 +111,15 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(project(":library"))
+}
+
+fun DependencyHandlerScope.justSoItShowsAsUsedSomewhere() {
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
 }

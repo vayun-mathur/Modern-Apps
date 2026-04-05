@@ -19,10 +19,7 @@ android {
 dependencies {
     implementation(libs.maplibre.compose)
 
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
+    implementKtor(libs)
 
     implementation("org.wololo:flatgeobuf:3.28.2")
 
@@ -30,7 +27,5 @@ dependencies {
     implementation(libs.reorderable)
 
     // room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementRoom(libs)
 }

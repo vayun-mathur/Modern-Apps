@@ -20,12 +20,11 @@ dependencies {
     implementation(libs.reorderable)
 
     // room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementRoom(libs)
 
     // work
     implementation(libs.androidx.work.runtime.ktx)
 
+    // datastore
     implementation(libs.androidx.datastore.preferences)
 }

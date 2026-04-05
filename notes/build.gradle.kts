@@ -10,8 +10,5 @@ android {
 }
 
 dependencies {
-    // room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementRoom(libs)
 }

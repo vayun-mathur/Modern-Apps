@@ -11,15 +11,11 @@ android {
 
 dependencies {
     // ktor
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
+    implementKtor(libs)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
+    implementRoom(libs)
+
     implementation(libs.androidx.work.runtime.ktx)
-    ksp(libs.androidx.room.compiler)
 
     implementation(libs.coil.compose)
 

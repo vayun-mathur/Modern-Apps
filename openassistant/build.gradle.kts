@@ -11,9 +11,7 @@ android {
 
 dependencies {
     // room
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementRoom(libs)
 
     // adaptive navigation
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
