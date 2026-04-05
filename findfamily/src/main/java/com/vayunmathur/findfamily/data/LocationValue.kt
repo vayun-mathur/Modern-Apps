@@ -3,13 +3,14 @@ package com.vayunmathur.findfamily.data
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.vayunmathur.library.util.DatabaseItem
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
 @Serializable
-@Entity
+@Entity(indices = [Index(value = ["userid", "timestamp"])])
 data class LocationValue(
     val userid: Long,
     @Embedded val coord: Coord,

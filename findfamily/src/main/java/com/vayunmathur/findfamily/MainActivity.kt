@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<FFDatabase>(listOf(Migration_1_2))
+        val db = buildDatabase<FFDatabase>(listOf(Migration_1_2, Migration_2_3))
         val viewModel = DatabaseViewModel(db, User::class to db.userDao(), Waypoint::class to db.waypointDao(), LocationValue::class to db.locationValueDao(), TemporaryLink::class to db.temporaryLinkDao())
         val platform = Platform(this)
         setContent {
@@ -124,6 +124,12 @@ class MainActivity : ComponentActivity() {
 val Migration_1_2 = Migration(1, 2) {
     it.execSQL("CREATE INDEX IF NOT EXISTS index_LocationValue_timestamp ON LocationValue (timestamp)")
 }
+
+val Migration_2_3 = Migration(2, 3) {
+    it.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_LocationValue_userid_timestamp` " +
+                "ON `LocationValue` (`userid`, `timestamp`)"
+    )}
 
 @Composable
 fun NoPermissionsScreen(

@@ -45,6 +45,7 @@ import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
+import com.vayunmathur.findfamily.data.getLatestMap
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconNavigation
@@ -64,10 +65,7 @@ import kotlin.time.Clock
 @Composable
 fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, userId: Long) {
     val selectedUser by viewModel.getState<User>(userId)
-    val locationValues by viewModel.data<LocationValue>().collectAsState()
-    val userPositions by remember { derivedStateOf {
-        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
-    } }
+    val userPositions by remember { viewModel.getLatestMap() }.collectAsState(emptyMap())
 
     var isShowingPresent by remember { mutableStateOf(true) }
     var historicalPosition by remember { mutableStateOf<Position?>(null) }
@@ -119,14 +117,14 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     }) { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxWidth()) {
             MapView(backStack, viewModel, navEnabled = true, selectedUser = SelectedUser(selectedUser, isShowingPresent, historicalPosition))
-            HistoryBar(backStack, isShowingPresent, {isShowingPresent = it}, locationValues) {historicalPosition = it}
+            HistoryBar(backStack, isShowingPresent, {isShowingPresent = it}, viewModel, userId) {historicalPosition = it}
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun BoxScope.HistoryBar(backStack: NavBackStack<Route>, isShowingPresent: Boolean, setShowingPresent: (Boolean) -> Unit, locs: List<LocationValue>, setHistoricalPosition: (Position) -> Unit) {
+fun BoxScope.HistoryBar(backStack: NavBackStack<Route>, isShowingPresent: Boolean, setShowingPresent: (Boolean) -> Unit, viewModel: DatabaseViewModel, userid: Long, setHistoricalPosition: (Position) -> Unit) {
     Card(Modifier.width(105.dp).padding(2.dp).align(Alignment.BottomEnd)) {
         val colmod = if(isShowingPresent) Modifier else Modifier.fillMaxHeight(1f)
         Column(colmod.padding(4.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -213,6 +211,8 @@ fun BoxScope.HistoryBar(backStack: NavBackStack<Route>, isShowingPresent: Boolea
                 }
                 val simulatedTimestamp = pickedLocalDate.atTime(pickedLocalTime)
                     .toInstant(TimeZone.currentSystemDefault())
+
+                val locs by remember(userid) { viewModel.data<LocationValue>("userid = $userid")}.collectAsState()
 
                 if (locs.isNotEmpty()) {
                     val points = locs.map { it.timestamp to it.coord }

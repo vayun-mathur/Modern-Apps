@@ -25,6 +25,7 @@ import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.data.getLatestMap
 import com.vayunmathur.findfamily.data.havershine
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -34,12 +35,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 class LocationTrackingService : Service() {
@@ -47,7 +50,6 @@ class LocationTrackingService : Service() {
     private lateinit var locationManager: LocationManager
     private lateinit var viewModel: DatabaseViewModel
     private lateinit var users: StateFlow<List<User>>
-    private lateinit var locationValues: StateFlow<List<LocationValue>>
     private lateinit var waypoints: StateFlow<List<Waypoint>>
     private lateinit var temporaryLinks: StateFlow<List<TemporaryLink>>
     private lateinit var bm: BatteryManager
@@ -97,10 +99,11 @@ class LocationTrackingService : Service() {
                     )
                 })
 
+                val locationValues = viewModel.getLatestMap().first()
                 // update the user.locationName
                 users.forEach { user ->
                     val lastLocation = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
-                    val lastSavedLocation = locationValues.value.lastOrNull { it.userid == user.id }
+                    val lastSavedLocation = locationValues[user.id]
 
 
                     if(lastLocation.battery <= 15f && (lastSavedLocation?.battery?:100f) > 15f) {
@@ -175,8 +178,6 @@ class LocationTrackingService : Service() {
         users = viewModel.data<User>()
         waypoints = viewModel.data<Waypoint>()
         temporaryLinks = viewModel.data<TemporaryLink>()
-        val time = Clock.System.now() - 1.days
-        locationValues = viewModel.data<LocationValue>("timestamp > ${time.epochSeconds}")
         CoroutineScope(Dispatchers.IO).launch {
             Networking.init(viewModel, DataStoreUtils.getInstance(this@LocationTrackingService))
         }
