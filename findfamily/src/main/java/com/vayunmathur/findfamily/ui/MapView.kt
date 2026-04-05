@@ -42,9 +42,11 @@ import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.LocationValueDao
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.data.getLatestMap
 import com.vayunmathur.findfamily.data.radians
 import com.vayunmathur.findfamily.data.toPosition
 import com.vayunmathur.library.ui.invisibleClickable
@@ -82,10 +84,7 @@ fun MapView(
 ) {
     val users by viewModel.data<User>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
-    val locationValues by viewModel.data<LocationValue>().collectAsState()
-    val userPositions by remember { derivedStateOf {
-        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
-    } }
+    val userPositions by remember { viewModel.getLatestMap() }.collectAsState(emptyMap())
 
     LaunchedEffect(Unit) {
         delay(1000)

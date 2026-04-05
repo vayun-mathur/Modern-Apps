@@ -55,10 +55,12 @@ import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
+import com.vayunmathur.findfamily.data.LocationValueDao
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.data.getLatestMap
 import com.vayunmathur.findfamily.ui.dialog.encodeBase26
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
@@ -89,10 +91,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
     val temporaryLinks by viewModel.data<TemporaryLink>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val timestamp = Clock.System.now() - 7.days
-    val locationValues by viewModel.data<LocationValue>("timestamp > ${timestamp.epochSeconds}").collectAsState()
-    val userPositions by remember { derivedStateOf {
-        locationValues.groupBy(LocationValue::userid).mapValues { it.value.maxBy(LocationValue::timestamp) }
-    } }
+    val userPositions by remember { viewModel.getLatestMap() }.collectAsState(emptyMap())
 
     LaunchedEffect(Unit) {
         viewModel.deleteIf<LocationValue>("timestamp < ${timestamp.epochSeconds}")
