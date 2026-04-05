@@ -25,6 +25,7 @@ import com.vayunmathur.games.alchemist.Route
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.flow.map
+import kotlin.collections.sortedBy
 import kotlin.math.roundToInt
 
 data class PlacedItem(
@@ -35,9 +36,11 @@ data class PlacedItem(
 
 @Composable
 fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
-    val availableItems by remember {
+    val itemsIds by remember {
         ds.stringSetFlow("available_items").map { set -> set.map { it.toLong() }.toSet() }
     }.collectAsState(initial = emptySet())
+
+    val availableItems by remember { derivedStateOf { Alchemist.items.filter{ it.id in itemsIds}.sortedBy { it.name } }}
 
     LaunchedEffect(availableItems) {
         if (availableItems.isEmpty()) {
@@ -95,7 +98,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                                         activeItems.removeAll { it.key in toRemove.map { r -> r.key } }
                                         activeItems.addAll(toAdd)
                                         toAdd.forEach { newItem ->
-                                            if (newItem.id !in availableItems) {
+                                            if (newItem.id !in itemsIds) {
                                                 ds.addStringToSet("available_items", newItem.id.toString())
                                             }
                                         }
@@ -126,18 +129,17 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    items(availableItems.toList(), key = { it }) { id ->
-                        val itemData = Alchemist.items.find { it.id == id }
+                    items(availableItems, key = { it.id }) { item ->
                         var itemPosInWindow by remember { mutableStateOf(Offset.Zero) }
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .onGloballyPositioned { itemPosInWindow = it.positionInWindow() }
-                                .pointerInput(id) {
+                                .pointerInput(item.id) {
                                     detectDragGestures(
                                         onDragStart = { startOffset ->
-                                            draggingInventoryId = id
+                                            draggingInventoryId = item.id
                                             val fingerInWindow = itemPosInWindow + startOffset
                                             draggingInventoryOffset = Offset(
                                                 x = fingerInWindow.x - playAreaOffsetInWindow.x - 100f,
@@ -152,14 +154,14 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                                             // Final Check: Drop it if it's clear of the sidebar
                                             // Using -72f to ensure the icon is fully out before adding to board
                                             if (draggingInventoryOffset.x < (screenWidth - panelWidth - 72f)) {
-                                                val newItem = PlacedItem(id, draggingInventoryOffset)
+                                                val newItem = PlacedItem(item.id, draggingInventoryOffset)
                                                 activeItems.add(newItem)
 
                                                 checkCombinations(newItem.key, newItem.offset, activeItems) { toRemove, toAdd ->
                                                     activeItems.removeAll { it.key in toRemove.map { r -> r.key } }
                                                     activeItems.addAll(toAdd)
                                                     toAdd.forEach { res ->
-                                                        if (res.id !in availableItems) {
+                                                        if (res.id !in itemsIds) {
                                                             ds.addStringToSet("available_items", res.id.toString())
                                                         }
                                                     }
@@ -180,15 +182,15 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                                     .background(MaterialTheme.colorScheme.surface)
                                     .combinedClickable(
                                         onLongClick = {
-                                            contextMenuElementId = id
+                                            contextMenuElementId = item.id
                                             contextMenuExpanded = true
                                         },
                                         onClick = {}
                                     )
                             ) {
-                                DynamicAlchemyIcon(id)
+                                DynamicAlchemyIcon(item.id)
                             }
-                            Text(itemData?.name ?: "", fontSize = 10.sp)
+                            Text(item.name ?: "", fontSize = 10.sp)
                         }
                     }
                 }
@@ -271,9 +273,8 @@ fun checkCombinations(
     }
 
     if (target != null) {
-        val recipe = Alchemist.recipes.find {
-            it.inputs.size == 2 && it.inputs.contains(movedItem.id) && it.inputs.contains(target.id)
-        }
+        val combined = listOf(movedItem.id, target.id).sorted()
+        val recipe = Alchemist.recipes.find { it.inputs.sorted() == combined }
         if (recipe != null) {
             onCombined(listOf(movedItem, target), recipe.outputs.map { PlacedItem(it, target.offset) })
         }
