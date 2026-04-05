@@ -69,14 +69,19 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            if (signingConfigs.findByName("release") != null) {
-                signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (signingConfigs.findByName("release") != null) {
+                signingConfigs.getByName("release")
             } else {
-                signingConfig = signingConfigs.getByName("debug")
+                signingConfigs.getByName("debug")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), proguardFile.absolutePath,
             )
+
+            // This applies ONLY to your release APK/Bundle
+            ndk {
+                abiFilters.add("arm64-v8a")
+            }
         }
     }
 }
