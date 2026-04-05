@@ -18,7 +18,6 @@ android {
 
 dependencies {
     implementation(libs.maplibre.compose)
-    implementation(libs.maplibre.composeMaterial3)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
@@ -34,6 +33,4 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-
-    implementation("com.github.anboralabs:spatia-room:1.0.1")
 }
