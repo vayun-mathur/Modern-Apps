@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +73,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
             ) {
                 activeItems.forEach { item ->
                     key(item.key) {
+                        val density = LocalDensity.current
                         DraggableElement(
                             item = item,
                             onOffsetChanged = { newOffset ->
@@ -81,9 +83,12 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                                 }
                             },
                             onDragEnd = { finalOffset ->
+                                val limit = with(density) {
+                                    screenWidth - panelWidth - 72.dp.toPx()
+                                }
                                 // DELETION: Triggered if any part of the item touches the sidebar
                                 // screenWidth - panelWidth is the exact left edge of the sidebar.
-                                if (finalOffset.x > (screenWidth - panelWidth - 72f)) {
+                                if (finalOffset.x > limit) {
                                     activeItems.removeAll { it.key == item.key }
                                 } else {
                                     checkCombinations(item.key, finalOffset, activeItems) { toRemove, toAdd ->
