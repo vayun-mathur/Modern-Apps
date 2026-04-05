@@ -115,14 +115,14 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
             Surface(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(100.dp)
+                    .width(140.dp)
                     .align(Alignment.CenterEnd)
                     .onGloballyPositioned { panelWidth = it.size.width.toFloat() },
                 tonalElevation = 8.dp,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
             ) {
                 LazyColumn(
-                    contentPadding = PaddingValues(8.dp),
+                    contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
