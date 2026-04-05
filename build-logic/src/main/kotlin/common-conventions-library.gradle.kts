@@ -14,7 +14,7 @@ configure<com.android.build.api.dsl.LibraryExtension> {
 
     namespace = "com.vayunmathur.$name"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     defaultConfig {

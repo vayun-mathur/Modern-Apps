@@ -1,6 +1,6 @@
 [versions]
 # Build & Core Language
-agp = "9.1.0"
+agp = "9.2.0-alpha07"
 kotlin = "2.3.20"
 ksp = "2.3.6"
 
@@ -122,6 +122,7 @@ sol4k = { group = "org.sol4k", name = "sol4k", version.ref = "sol4k" }
 libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
 
 
+gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-compose-gradle = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 kotlin-serialization-gradle = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
 symbol-processing-gradle-plugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }

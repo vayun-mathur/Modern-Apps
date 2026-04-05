@@ -1,6 +1,3 @@
-import gradle.kotlin.dsl.accessors._fbec4b978d86c39e55b50a6ada210591.implementation
-import gradle.kotlin.dsl.accessors._fbec4b978d86c39e55b50a6ada210591.ksp
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -40,7 +37,7 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
 
     namespace = "com.vayunmathur${path.replace(":", ".")}"
     compileSdk {
-        version = release(36)
+        version = release(37)
     }
 
     ndkVersion = "29.0.14206865"
