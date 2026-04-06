@@ -155,8 +155,10 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
                 }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
                     Box(Modifier.fillMaxSize().padding(8.dp)) {
                         Text("${index + 1}", Modifier.align(Alignment.Center))
-                        if(levelStats[index.toString()] != null) {
-                            if (levelStats[index.toString()]!!.bestScore == levelData.optimalMoves) {
+                        val levelStat = levelStats[levelData.id]
+                        if(levelStat != null) {
+                            // using <= to cover the (unlikely) case where optimalMoves is incorrect
+                            if (levelStat.bestScore <= levelData.optimalMoves) {
                                 Box(Modifier.align(Alignment.TopEnd)) {
                                     IconStar()
                                 }
@@ -217,7 +219,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val currentLevelStats = levelStats[levelIndex.toString()]
+                    val currentLevelStats = pack.levels.getOrNull(levelIndex)?.id?.let { levelStats[it] }
                     PuzzleInfoBox(
                         levelIndex = levelIndex,
                         onLevelChange = ::changeLevel,
@@ -270,10 +272,10 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     }
                     Button(
                         onClick = {
-                        history.clear()
-                        currentLevelData = pack.levels[levelIndex]
-                        isLevelWon = false
-                    },
+                            history.clear()
+                            currentLevelData = pack.levels[levelIndex]
+                            isLevelWon = false
+                        },
                         enabled = history.isNotEmpty() && !isLevelWon
                     ) {
                         Text(stringResource(R.string.restart))
@@ -451,7 +453,7 @@ fun GameBoard(
                             offsetYProvider = { offsetY },
                             offsetXUpdater = { offsetX = it },
                             offsetYUpdater = { offsetY = it }
-                            )
+                        )
                 )
             }
         }
