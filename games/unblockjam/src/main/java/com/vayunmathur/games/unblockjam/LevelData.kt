@@ -30,12 +30,17 @@ data class LevelPack(
     val levels: List<LevelData>
 ) {
     companion object {
+        private val PACK_FILES = listOf(
+            "original_pack.json"
+        )
 
         var PACKS: List<LevelPack> = listOf()
             private set
 
         fun init(context: Context) {
-            PACKS = listOf(packFromJson(context.assets.open("original_pack.json").bufferedReader().readText()))
+            PACKS = PACK_FILES.map { filename ->
+                packFromJson(context.assets.open(filename).bufferedReader().readText())
+            }
         }
     }
 }
