@@ -388,8 +388,8 @@ fun GameBoard(
     Box {
         Box(
             Modifier
-                .size(cellWidth * exitWidthMult, cellHeight)
-                .offset(boardSize, cellHeight * levelData.exit.y)
+                .size(cellWidth * exitWidthMult + 1.dp, cellHeight)
+                .offset(boardSize - 1.dp, cellHeight * levelData.exit.y)
                 .background(MaterialTheme.colorScheme.primary)
         )
         Box(
