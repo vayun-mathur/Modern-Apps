@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -143,27 +142,29 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
         TopAppBar({Text(stringResource(R.string.level_selector))})
     }) { paddingValues ->
         LazyVerticalGrid(
-            GridCells.Adaptive(80.dp),
+            GridCells.Adaptive(88.dp),
             Modifier.fillMaxSize(),
             contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             itemsIndexed(pack.levels) { index, levelData ->
-                Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
-                    backStack.add(Route.Game(packIndex, index))
-                }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
+                Card(
+                    Modifier.fillMaxWidth().clickable { backStack.add(Route.Game(packIndex, index)) },
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
+                ) {
                     Box(Modifier.fillMaxSize().padding(8.dp)) {
                         Text("${index + 1}", Modifier.align(Alignment.Center))
                         val levelStat = levelStats[levelData.id]
-                        if(levelStat != null) {
-                            // using <= to cover the (unlikely) case where optimalMoves is incorrect
-                            if (levelStat.bestScore <= levelData.optimalMoves) {
-                                Box(Modifier.align(Alignment.TopEnd)) {
-                                    IconStar()
-                                }
+                        Box(
+                            Modifier.size(20.dp).align(Alignment.CenterEnd),
+                            Alignment.Center
+                        ) {
+                            when {
+                                levelStat == null -> return@Box
+                                levelStat.bestScore <= levelData.optimalMoves -> IconStar()
+                                else -> IconCheck()
                             }
-                            Box(Modifier.align(Alignment.BottomEnd)) {IconCheck()}
                         }
                     }
                 }
