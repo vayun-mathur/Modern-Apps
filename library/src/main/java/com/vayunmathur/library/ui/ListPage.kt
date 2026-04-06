@@ -60,22 +60,20 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
     crossinline leadingContent: @Composable (T) -> Unit = {},
     crossinline trailingContent: @Composable (T) -> Unit = {},
     searchEnabled: Boolean = false,
+    sortOrder: Comparator<T>? = null,
     crossinline searchString: (T) -> String = {it.toString()},
     noinline bottomBar: @Composable () -> Unit = {},
     noinline fab: (@Composable () -> Unit)? = null
 ) {
     val dbDataUnfiltered by viewModel.data<T>().collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    val dbData by remember { derivedStateOf { dbDataUnfiltered.filter { searchQuery.isBlank() || searchString(it).contains(searchQuery, true) } } }
+    val dbData by remember { derivedStateOf {
+        val filtered = dbDataUnfiltered.filter { searchQuery.isBlank() || searchString(it).contains(searchQuery, true) }
+        if(sortOrder != null) filtered.sortedWith(sortOrder) else filtered
+    } }
 
     // 1. Initialize the reorderable state
     val listState = rememberLazyListState()
-    var localData by remember { mutableStateOf(dbData) }
-
-    // Keep localData in sync with DB updates, but NOT while dragging
-    LaunchedEffect(dbData) {
-        localData = dbData
-    }
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -119,7 +117,7 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
                         })
                 }
             }
-            items(localData, key = { it.id }) { item ->
+            items(dbData, key = { it.id }) { item ->
                 ListItem({ headlineContent(item) }, Modifier.clickable {
                     coroutineScope.launch {
                         backStack.add(viewPage(item.id))

@@ -53,7 +53,7 @@ fun ArtistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 PlayingBottomBar(playbackManager, backStack)
             }, fab = {
                 ShufflePlayFab(viewModel, playbackManager)
-            })
+            }, sortOrder = Comparator.comparing { it.name })
         }
     }
 }
