@@ -66,6 +66,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlin.math.roundToInt
+import kotlin.math.min
 
 class MainActivity : ComponentActivity() {
 
@@ -382,10 +383,15 @@ fun GameBoard(
                 .background(MaterialTheme.colorScheme.primary)
         )
 
+        // dynamic corner radius based on the level's dimensions for consistent visuals
+        val minCells = minOf(levelData.dimension.width, levelData.dimension.height)
+        val boardCornerRadius = (boardSize / minCells) * 0.13f
+        val blockPadding = (boardSize / minCells) * 0.04f
+
         Box(
             modifier = Modifier
                 .size(boardSize)
-                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(boardCornerRadius))
         ) {
 
 
@@ -423,8 +429,8 @@ fun GameBoard(
                     modifier = Modifier
                         .size(blockWidth, blockHeight)
                         .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
-                        .padding(4.dp)
-                        .background(color, shape = RoundedCornerShape(8.dp))
+                        .padding(blockPadding)
+                        .background(color, shape = RoundedCornerShape(percent = 12))
                         .pointerInput(block, levelData, isLevelWon) {
                             if (isLevelWon) return@pointerInput
                             if (block.fixed) return@pointerInput
