@@ -37,30 +37,39 @@ struct SpatialNode {
 };
 #pragma pack(pop)
 
+// Constants
+const double WALK_SPEED_M_S = 4.5 / 3.6;
+const double BICYCLE_SPEED_M_S = 16.0 / 3.6;
+const uint64_t NO_EDGES_SENTINEL = (1ULL << 40) - 1;
+const double EARTH_RADIUS_MM = 6371000.0 * 1000.0;
+const double DEG_TO_RAD = M_PI / 180.0;
+
+// Global Data Pointers
 NodeMaster* g_nodes = nullptr;
 Edge* g_edges = nullptr;
 SpatialNode* g_spatial = nullptr;
 char* g_road_names = nullptr;
 size_t g_node_count = 0;
 
-// Sentinel for nodes with no outgoing edges (2^40 - 1)
-const uint64_t NO_EDGES_SENTINEL = (1ULL << 40) - 1;
+// Optimization: Cosine Lookup Table
+// 180 degrees * 10 steps per degree = 1801 entries (from -90.0 to 90.0)
+float g_cos_lat_lookup[1801];
 
-// Speed constants
-const double WALK_SPEED_M_S = 4.5 / 3.6;
-const double BICYCLE_SPEED_M_S = 16.0 / 3.6;
+// Simplified lookup: Assumes lat_e7 is in valid range [-90e7, 90e7]
+inline float get_cos_lat(int32_t lat_e7) {
+    // (lat_e7 / 1,000,000) + 900 translates -900,000,000 to index 0
+    // and 900,000,000 to index 1800.
+    int idx = (lat_e7 / 1000000) + 900;
+    return g_cos_lat_lookup[idx];
+}
 
-// Reconstruct 40-bit pointer.
+// --- CORE UTILITIES ---
+
 inline uint64_t get_ptr(uint32_t idx) {
     if (idx >= g_node_count) return NO_EDGES_SENTINEL;
     return ((uint64_t)g_nodes[idx].edge_ptr_high << 32) | g_nodes[idx].edge_ptr_low;
 }
 
-/**
- * Finds the end of the edge list for a given node.
- * If subsequent nodes have the NO_EDGES_SENTINEL, it scans forward
- * to find the next valid pointer.
- */
 inline uint64_t get_end_ptr(uint32_t idx) {
     uint32_t next_idx = idx + 1;
     while (next_idx < g_node_count) {
@@ -68,24 +77,35 @@ inline uint64_t get_end_ptr(uint32_t idx) {
         if (ptr != NO_EDGES_SENTINEL) return ptr;
         next_idx++;
     }
-    return NO_EDGES_SENTINEL; // Truly the end of the global edge buffer
+    return NO_EDGES_SENTINEL;
 }
 
 // --- GEOMETRY HELPERS ---
 
+// Accurate distance for snapping and final results
 uint32_t haversine_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t lon2_e7) {
-    double lat1 = (lat1_e7 / 1e7) * (M_PI / 180.0);
-    double lon1 = (lon1_e7 / 1e7) * (M_PI / 180.0);
-    double lat2 = (lat2_e7 / 1e7) * (M_PI / 180.0);
-    double lon2 = (lon2_e7 / 1e7) * (M_PI / 180.0);
+    double lat1 = (lat1_e7 / 1e7) * DEG_TO_RAD;
+    double lon1 = (lon1_e7 / 1e7) * DEG_TO_RAD;
+    double lat2 = (lat2_e7 / 1e7) * DEG_TO_RAD;
+    double lon2 = (lon2_e7 / 1e7) * DEG_TO_RAD;
     double a = sin((lat2 - lat1) / 2) * sin((lat2 - lat1) / 2) + cos(lat1) * cos(lat2) * sin((lon2 - lon1) / 2) * sin((lon2 - lon1) / 2);
-    return (uint32_t)(2 * atan2(sqrt(a), sqrt(1 - a)) * 6371000.0 * 1000.0);
+    return (uint32_t)(2 * atan2(sqrt(a), sqrt(1 - a)) * EARTH_RADIUS_MM);
+}
+
+// Optimized Equirectangular distance for A* Heuristic
+inline uint32_t fast_dist_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t lon2_e7) {
+    double dlat = (double)(lat2_e7 - lat1_e7) / 1e7 * DEG_TO_RAD;
+    double dlon = (double)(lon2_e7 - lon1_e7) / 1e7 * DEG_TO_RAD;
+    float cosLat = get_cos_lat(lat1_e7);
+    double x = dlon * cosLat;
+    double y = dlat;
+    return (uint32_t)(sqrt(x * x + y * y) * EARTH_RADIUS_MM);
 }
 
 double get_bearing(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2) {
-    double f1 = (lat1 / 1e7) * (M_PI / 180.0);
-    double f2 = (lat2 / 1e7) * (M_PI / 180.0);
-    double dl = ((lon2 - lon1) / 1e7) * (M_PI / 180.0);
+    double f1 = (lat1 / 1e7) * DEG_TO_RAD;
+    double f2 = (lat2 / 1e7) * DEG_TO_RAD;
+    double dl = ((lon2 - lon1) / 1e7) * DEG_TO_RAD;
     double y = sin(dl) * cos(f2);
     double x = cos(f1) * sin(f2) - sin(f1) * cos(f2) * cos(dl);
     return atan2(y, x) * (180.0 / M_PI);
@@ -124,8 +144,9 @@ uint32_t get_edge_time_10ms(uint32_t dist_mm, uint8_t road_type, int mode) {
     return (uint32_t)((double)dist_mm / (10.0 * base_speed * modifier));
 }
 
+// Optimized heuristic using fast_dist_mm
 uint32_t heuristic_time_10ms(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2, int mode) {
-    uint32_t dist_mm = haversine_mm(lat1, lon1, lat2, lon2);
+    uint32_t dist_mm = fast_dist_mm(lat1, lon1, lat2, lon2);
     double max_speed = (mode == BICYCLE) ? BICYCLE_SPEED_M_S : WALK_SPEED_M_S;
     double h_speed = (mode == BICYCLE) ? (max_speed / 0.7) : (max_speed / 0.8);
     return (uint32_t)((double)dist_mm / (10.0 * h_speed));
@@ -176,36 +197,26 @@ SnappedEdge find_nearest_edge(double lat, double lon, int mode, const char* labe
     for (intptr_t i = std::max((intptr_t)0, center - window); i <= std::min((intptr_t)g_node_count - 1, center + window); ++i) {
         uint32_t u = g_spatial[i].local_id;
         uint64_t s = get_ptr(u);
-
-        // Skip nodes that explicitly have no outgoing edges
         if (s == NO_EDGES_SENTINEL) continue;
-
         uint64_t e_ptr = get_end_ptr(u);
-
         for (uint64_t j = s; j < e_ptr; ++j) {
             Edge& e = g_edges[j];
             if (!is_accessible(e.type, mode)) continue;
             Projection p = get_projection(pLat, pLon, g_nodes[u].lat_e7, g_nodes[u].lon_e7, g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7);
             if (p.dist_mm < minSnapDist) {
                 minSnapDist = p.dist_mm;
-                best.nodeA = u;
-                best.nodeB = e.target;
-                best.proj_lat = p.lat_e7;
-                best.proj_lon = p.lon_e7;
+                best.nodeA = u; best.nodeB = e.target; best.proj_lat = p.lat_e7; best.proj_lon = p.lon_e7;
                 best.distA_mm = haversine_mm(p.lat_e7, p.lon_e7, g_nodes[u].lat_e7, g_nodes[u].lon_e7);
                 best.distB_mm = haversine_mm(p.lat_e7, p.lon_e7, g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7);
-                best.type = e.type;
-                best.name_offset = e.name_offset;
+                best.type = e.type; best.name_offset = e.name_offset;
             }
         }
     }
-
     if (best.nodeA != 0xFFFFFFFF) {
         LOGD("[%s SNAP] Success! Nearest Edge: %u -> %u. Snap Distance: %u mm", label, best.nodeA, best.nodeB, minSnapDist);
     } else {
         LOGE("[%s SNAP] Failed to find any accessible edges near (%f, %f)", label, lat, lon);
     }
-
     return best;
 }
 
@@ -227,6 +238,14 @@ Java_com_vayunmathur_maps_OfflineRouter_init(JNIEnv* env, jobject thiz, jstring 
     g_spatial = (SpatialNode*)m_file(base + "/nodes_spatial.bin", s3);
     g_road_names = (char*)m_file(base + "/road_names.bin", s4);
     if (g_nodes) g_node_count = s1 / sizeof(NodeMaster);
+
+    // Initialize Lookup Table in-place
+    for (int i = 0; i <= 1800; ++i) {
+        double lat_deg = (i / 10.0) - 90.0;
+        g_cos_lat_lookup[i] = (float)cos(lat_deg * DEG_TO_RAD);
+    }
+
+    LOGD("[INIT] Loaded %zu nodes. Cosine lookup table ready.", g_node_count);
     env->ReleaseStringUTFChars(base_path, path);
     return (g_nodes && g_edges && g_spatial && g_road_names);
 }
@@ -238,7 +257,6 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
     g_scratchpad.reset();
     SnappedEdge start = find_nearest_edge(sLat, sLon, mode, "START");
     SnappedEdge end = find_nearest_edge(eLat, eLon, mode, "END");
-
     if (start.nodeA == 0xFFFFFFFF || end.nodeA == 0xFFFFFFFF) return nullptr;
 
     using NodeScore = std::pair<uint32_t, uint32_t>;
@@ -246,7 +264,6 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
 
     uint32_t timeToA = get_edge_time_10ms(start.distA_mm, start.type, mode);
     uint32_t timeToB = get_edge_time_10ms(start.distB_mm, start.type, mode);
-
     g_scratchpad[start.nodeA].g_score = timeToA;
     g_scratchpad[start.nodeB].g_score = timeToB;
 
@@ -260,15 +277,12 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
     while (!pq.empty() && iterations < 1500000) {
         uint32_t u = pq.top().second; pq.pop();
         iterations++;
-
-        uint32_t current_dist = haversine_mm(g_nodes[u].lat_e7, g_nodes[u].lon_e7, end.proj_lat, end.proj_lon);
+        uint32_t current_dist = fast_dist_mm(g_nodes[u].lat_e7, g_nodes[u].lon_e7, end.proj_lat, end.proj_lon);
         if (current_dist < min_dist_to_dest) min_dist_to_dest = current_dist;
 
-        if (iterations % 1000 == 0) {
-            LOGD("[A* PROGRESS] Iteration: %d. Node: %u. Distance: %u mm. Min found so far: %u mm. load factor: %f",
-                 iterations, u, current_dist, min_dist_to_dest, g_scratchpad.load_factor());
+        if (iterations % 5000 == 0) {
+            LOGD("[A* PROGRESS] Iteration: %d. Node: %u. Approx Dist: %u mm. Min found: %u mm.", iterations, u, current_dist, min_dist_to_dest);
         }
-
         if (u == end.nodeA || u == end.nodeB) {
             found_node = u;
             LOGD("[A* SUCCESS] Destination edge reached at node %u after %d iterations", u, iterations);
@@ -277,21 +291,14 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
 
         uint64_t s_ptr = get_ptr(u);
         if (s_ptr == NO_EDGES_SENTINEL) continue;
-
         uint64_t e_ptr = get_end_ptr(u);
-
-        // Safety guards: corruption check
-        if (e_ptr < s_ptr || (e_ptr - s_ptr) > 1000) {
-            continue;
-        }
+        if (e_ptr < s_ptr || (e_ptr - s_ptr) > 1000) continue;
 
         for (uint64_t i = s_ptr; i < e_ptr; ++i) {
             Edge& e = g_edges[i];
             if (!is_accessible(e.type, mode)) continue;
-
             uint32_t travel_time = get_edge_time_10ms(e.dist_mm, e.type, mode);
             uint32_t new_g = g_scratchpad[u].g_score + travel_time;
-
             if (new_g < g_scratchpad[e.target].g_score) {
                 g_scratchpad[e.target].g_score = new_g;
                 g_scratchpad[e.target].parent_id = u;
@@ -317,65 +324,50 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
     jmethodID stepCtor = env->GetMethodID(stepClass, "<init>", "(ILjava/lang/String;JJ[D)V");
     std::vector<jobject> jSteps;
 
-    // First Partial Step
+    // Start Step
     {
         std::vector<double> geom = {sLon, sLat, (double)start.proj_lon / 1e7, (double)start.proj_lat / 1e7};
         uint32_t target_node = path_nodes[0];
-        geom.push_back((double)g_nodes[target_node].lon_e7 / 1e7);
-        geom.push_back((double)g_nodes[target_node].lat_e7 / 1e7);
-
+        geom.push_back((double)g_nodes[target_node].lon_e7 / 1e7); geom.push_back((double)g_nodes[target_node].lat_e7 / 1e7);
         uint32_t d = (target_node == start.nodeA) ? start.distA_mm : start.distB_mm;
         uint32_t t = get_edge_time_10ms(d, start.type, mode);
         std::string name = (start.name_offset == 0xFFFFFFFF) ? "Unnamed Road" : (g_road_names + start.name_offset);
-
-        jdoubleArray jGeom = env->NewDoubleArray(geom.size());
-        env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
+        jdoubleArray jGeom = env->NewDoubleArray(geom.size()); env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
         jstring jName = env->NewStringUTF(name.c_str());
         jSteps.push_back(env->NewObject(stepClass, stepCtor, 19, jName, (jlong)d, (jlong)t, jGeom));
         env->DeleteLocalRef(jName); env->DeleteLocalRef(jGeom);
     }
 
-    // Middle Steps
+    // Path Aggregation
     double last_bearing = get_bearing(start.proj_lat, start.proj_lon, g_nodes[path_nodes[0]].lat_e7, g_nodes[path_nodes[0]].lon_e7);
     size_t idx = 0;
     while (idx < path_nodes.size() - 1) {
         uint32_t step_start_idx = idx, u = path_nodes[idx], v = path_nodes[idx+1];
         uint32_t current_name_off = 0xFFFFFFFF, current_type = 0;
-        uint64_t sp = get_ptr(u);
-        uint64_t ep = get_end_ptr(u);
-
-        for (uint64_t k = sp; k < ep; ++k) {
-            if (g_edges[k].target == v) { current_name_off = g_edges[k].name_offset; current_type = g_edges[k].type; break; }
-        }
-
+        uint64_t sp = get_ptr(u); uint64_t ep = get_end_ptr(u);
+        for (uint64_t k = sp; k < ep; ++k) { if (g_edges[k].target == v) { current_name_off = g_edges[k].name_offset; current_type = g_edges[k].type; break; } }
         std::string roadName = (current_name_off == 0xFFFFFFFF) ? "Unnamed Road" : (g_road_names + current_name_off);
-        std::vector<double> geom;
-        uint64_t step_dist = 0;
+        std::vector<double> geom; uint64_t step_dist = 0;
         while (idx < path_nodes.size() - 1) {
             uint32_t cu = path_nodes[idx], cv = path_nodes[idx+1];
             uint32_t name_off = 0xFFFFFFFF, d = 0;
-            uint64_t s = get_ptr(cu);
-            uint64_t e = get_end_ptr(cu);
+            uint64_t s = get_ptr(cu); uint64_t e = get_end_ptr(cu);
             for (uint64_t k = s; k < e; ++k) { if (g_edges[k].target == cv) { name_off = g_edges[k].name_offset; d = g_edges[k].dist_mm; break; } }
             if (name_off != current_name_off && step_start_idx != idx) break;
             geom.push_back(g_nodes[cu].lon_e7 / 1e7); geom.push_back(g_nodes[cu].lat_e7 / 1e7);
             step_dist += d; idx++;
         }
         geom.push_back(g_nodes[path_nodes[idx]].lon_e7 / 1e7); geom.push_back(g_nodes[path_nodes[idx]].lat_e7 / 1e7);
-
         double cur_bearing = get_bearing(g_nodes[path_nodes[step_start_idx]].lat_e7, g_nodes[path_nodes[step_start_idx]].lon_e7, g_nodes[path_nodes[idx]].lat_e7, g_nodes[path_nodes[idx]].lon_e7);
-        int maneuver = get_maneuver(last_bearing, cur_bearing);
-        last_bearing = cur_bearing;
-
-        jdoubleArray jGeom = env->NewDoubleArray(geom.size());
-        env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
+        int maneuver = get_maneuver(last_bearing, cur_bearing); last_bearing = cur_bearing;
+        jdoubleArray jGeom = env->NewDoubleArray(geom.size()); env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
         jstring jName = env->NewStringUTF(roadName.c_str());
         uint64_t step_time = get_edge_time_10ms((uint32_t)step_dist, current_type, mode);
         jSteps.push_back(env->NewObject(stepClass, stepCtor, maneuver, jName, (jlong)step_dist, (jlong)step_time, jGeom));
         env->DeleteLocalRef(jName); env->DeleteLocalRef(jGeom);
     }
 
-    // Last Partial Step
+    // Arrival Step
     {
         uint32_t last_node = path_nodes.back();
         std::vector<double> geom = { (double)g_nodes[last_node].lon_e7 / 1e7, (double)g_nodes[last_node].lat_e7 / 1e7, (double)end.proj_lon / 1e7, (double)end.proj_lat / 1e7, eLon, eLat };
@@ -384,15 +376,12 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
         std::string name = (end.name_offset == 0xFFFFFFFF) ? "Destination Road" : (g_road_names + end.name_offset);
         double cur_bearing = get_bearing(g_nodes[last_node].lat_e7, g_nodes[last_node].lon_e7, end.proj_lat, end.proj_lon);
         int maneuver = get_maneuver(last_bearing, cur_bearing);
-        jdoubleArray jGeom = env->NewDoubleArray(geom.size());
-        env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
+        jdoubleArray jGeom = env->NewDoubleArray(geom.size()); env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
         jstring jName = env->NewStringUTF(name.c_str());
         jSteps.push_back(env->NewObject(stepClass, stepCtor, maneuver, jName, (jlong)d, (jlong)t, jGeom));
         env->DeleteLocalRef(jName); env->DeleteLocalRef(jGeom);
     }
-
-    LOGD("[ROUTE RECONSTRUCTION] Generated %zu steps for total path", jSteps.size());
-
+    LOGD("[ROUTE RECONSTRUCTION] Generated %zu steps", jSteps.size());
     jobjectArray resArray = env->NewObjectArray(jSteps.size(), stepClass, nullptr);
     for (size_t s = 0; s < jSteps.size(); ++s) { env->SetObjectArrayElement(resArray, s, jSteps[s]); env->DeleteLocalRef(jSteps[s]); }
     return resArray;
