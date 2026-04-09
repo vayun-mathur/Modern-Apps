@@ -58,6 +58,7 @@
       </SelectionState>
       <SelectionState runConfigName="games.unblockjam">
         <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="games.chess">
         <option name="selectionMode" value="DROPDOWN" />

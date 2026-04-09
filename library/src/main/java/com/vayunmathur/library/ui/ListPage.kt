@@ -3,7 +3,10 @@ package com.vayunmathur.library.ui
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -100,33 +104,45 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = paddingValues
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                // Only apply top padding here to keep Search Bar below TopAppBar
+                .padding(top = paddingValues.calculateTopPadding())
         ) {
-            if(searchEnabled) {
-                item {
-                    OutlinedTextField(
-                        searchQuery,
-                        { searchQuery = it },
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        singleLine = true,
-                        leadingIcon = {
-                            IconSearch()
-                        })
-                }
+            if (searchEnabled) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    singleLine = true,
+                    leadingIcon = { IconSearch() }
+                )
             }
-            items(dbData, key = { it.id }) { item ->
-                ListItem({ headlineContent(item) }, Modifier.clickable {
-                    coroutineScope.launch {
-                        backStack.add(viewPage(item.id))
-                    }
-                }, {}, { supportingContent(item) }, {leadingContent(item)}, {
-                    Row {
-                        trailingContent(item)
-                    }
-                }, ListItemDefaults.colors())
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f),
+                // Apply the remaining Scaffold padding here
+                contentPadding = PaddingValues(
+                    start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                    end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                    bottom = paddingValues.calculateBottomPadding()
+                )
+            ) {
+                items(dbData, key = { it.id }) { item ->
+                    ListItem({ headlineContent(item) }, Modifier.clickable {
+                        coroutineScope.launch {
+                            backStack.add(viewPage(item.id))
+                        }
+                    }, {}, { supportingContent(item) }, {leadingContent(item)}, {
+                        Row {
+                            trailingContent(item)
+                        }
+                    }, ListItemDefaults.colors())
+                }
             }
         }
     }
@@ -229,53 +245,68 @@ inline fun <reified T : ReorderableDatabaseItem<T>, Route : NavKey, reified Edit
             }
         }
     ) { paddingValues ->
-        // 2. Apply reorderable modifier to the LazyColumn
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = paddingValues
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                // Only apply top padding here to keep Search Bar below TopAppBar
+                .padding(top = paddingValues.calculateTopPadding())
         ) {
-            item {
-                if(searchEnabled) {
-                    OutlinedTextField(searchQuery, { searchQuery = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), singleLine = true, leadingIcon = {
-                        IconSearch()
-                    })
-                }
+            if (searchEnabled) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    singleLine = true,
+                    leadingIcon = { IconSearch() }
+                )
             }
-            items(localData, key = { it.id }) { item ->
-                // 3. Wrap each item in ReorderableItem
-                ReorderableItem(state, key = item.id) { isDragging ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f),
+                // Apply the remaining Scaffold padding here
+                contentPadding = PaddingValues(
+                    start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                    end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                    bottom = paddingValues.calculateBottomPadding()
+                )
+            ) {
+                items(localData, key = { it.id }) { item ->
+                    // 3. Wrap each item in ReorderableItem
+                    ReorderableItem(state, key = item.id) { isDragging ->
 
-                    val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+                        val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
 
-                    Surface(Modifier.animateItem(), shadowElevation = elevation) {
-                        ListItem({ headlineContent(item) }, Modifier.clickable {
-                            backStack.add(viewPage(item.id))
-                        }, {}, { supportingContent(item) }, { leadingContent(item) }, {
-                            Row {
-                                trailingContent(item)
-                                IconButton(
-                                    modifier = Modifier.draggableHandle(
-                                        onDragStarted = {
-                                            hapticFeedback.performHapticFeedback(
-                                                HapticFeedbackType.GestureThresholdActivate
-                                            )
-                                        },
-                                        onDragStopped = {
-                                            hapticFeedback.performHapticFeedback(
-                                                HapticFeedbackType.GestureEnd
-                                            )
-                                        },
-                                    ),
-                                    onClick = {},
-                                ) {
-                                    Icon(
-                                        painterResource(R.drawable.drag_handle_24px),
-                                        contentDescription = "Reorder"
-                                    )
+                        Surface(Modifier.animateItem(), shadowElevation = elevation) {
+                            ListItem({ headlineContent(item) }, Modifier.clickable {
+                                backStack.add(viewPage(item.id))
+                            }, {}, { supportingContent(item) }, { leadingContent(item) }, {
+                                Row {
+                                    trailingContent(item)
+                                    IconButton(
+                                        modifier = Modifier.draggableHandle(
+                                            onDragStarted = {
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.GestureThresholdActivate
+                                                )
+                                            },
+                                            onDragStopped = {
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.GestureEnd
+                                                )
+                                            },
+                                        ),
+                                        onClick = {},
+                                    ) {
+                                        Icon(
+                                            painterResource(R.drawable.drag_handle_24px),
+                                            contentDescription = "Reorder"
+                                        )
+                                    }
                                 }
-                            }
-                        }, ListItemDefaults.colors(), elevation, elevation)
+                            }, ListItemDefaults.colors(), elevation, elevation)
+                        }
                     }
                 }
             }
