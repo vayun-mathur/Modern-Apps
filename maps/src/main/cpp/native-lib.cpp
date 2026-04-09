@@ -10,6 +10,7 @@
 #include <android/log.h>
 
 #include "scratchpad.h"
+#include "bucket_queue.h"
 
 #define LOG_TAG "OfflineRouterNative"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -52,13 +53,14 @@ char* g_road_names = nullptr;
 size_t g_node_count = 0;
 
 // Optimization: Cosine Lookup Table
-// 180 degrees * 10 steps per degree = 1801 entries (from -90.0 to 90.0)
 float g_cos_lat_lookup[1801];
 
-// Simplified lookup: Assumes lat_e7 is in valid range [-90e7, 90e7]
+// Speed/Modifier Lookup Table: [Mode][RoadType]
+// Modes: 2 (WALK), 3 (BICYCLE)
+// RoadTypes: 0-15
+float g_speed_modifiers[4][16];
+
 inline float get_cos_lat(int32_t lat_e7) {
-    // (lat_e7 / 1,000,000) + 900 translates -900,000,000 to index 0
-    // and 900,000,000 to index 1800.
     int idx = (lat_e7 / 1000000) + 900;
     return g_cos_lat_lookup[idx];
 }
@@ -66,7 +68,6 @@ inline float get_cos_lat(int32_t lat_e7) {
 // --- CORE UTILITIES ---
 
 inline uint64_t get_ptr(uint32_t idx) {
-    if (idx >= g_node_count) return NO_EDGES_SENTINEL;
     return ((uint64_t)g_nodes[idx].edge_ptr_high << 32) | g_nodes[idx].edge_ptr_low;
 }
 
@@ -82,7 +83,6 @@ inline uint64_t get_end_ptr(uint32_t idx) {
 
 // --- GEOMETRY HELPERS ---
 
-// Accurate distance for snapping and final results
 uint32_t haversine_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t lon2_e7) {
     double lat1 = (lat1_e7 / 1e7) * DEG_TO_RAD;
     double lon1 = (lon1_e7 / 1e7) * DEG_TO_RAD;
@@ -92,7 +92,6 @@ uint32_t haversine_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t
     return (uint32_t)(2 * atan2(sqrt(a), sqrt(1 - a)) * EARTH_RADIUS_MM);
 }
 
-// Optimized Equirectangular distance for A* Heuristic
 inline uint32_t fast_dist_mm(int32_t lat1_e7, int32_t lon1_e7, int32_t lat2_e7, int32_t lon2_e7) {
     double dlat = (double)(lat2_e7 - lat1_e7) / 1e7 * DEG_TO_RAD;
     double dlon = (double)(lon2_e7 - lon1_e7) / 1e7 * DEG_TO_RAD;
@@ -125,30 +124,19 @@ int get_maneuver(double prev_bearing, double next_bearing) {
     return 6; // SHARP_RIGHT
 }
 
-bool is_accessible(uint8_t road_type, int mode) {
-    if (mode == WALK) return (road_type > 2);
-    if (mode == BICYCLE) return (road_type > 2 && road_type != 15);
-    return true;
-}
-
-uint32_t get_edge_time_10ms(uint32_t dist_mm, uint8_t road_type, int mode) {
+inline uint32_t get_edge_time_10ms(uint32_t dist_mm, uint8_t road_type, int mode) {
     double base_speed = (mode == BICYCLE) ? BICYCLE_SPEED_M_S : WALK_SPEED_M_S;
-    double modifier = 1.0;
-    if (mode == WALK) {
-        if (road_type == 12 || road_type == 10) modifier = 0.8;
-        if (road_type == 15) modifier = 1.5;
-    } else if (mode == BICYCLE) {
-        if (road_type == 13) modifier = 0.7;
-        if (road_type == 7 || road_type == 8) modifier = 1.1;
-    }
-    return (uint32_t)((double)dist_mm / (10.0 * base_speed * modifier));
+    // modifier = 1.0 / actual_modifier. High cost = low speed.
+    // Modifier from lookup table is essentially the penalty factor.
+    return (uint32_t)((double)dist_mm / (10.0 * base_speed * g_speed_modifiers[mode][road_type & 0xF]));
 }
 
-// Optimized heuristic using fast_dist_mm
 uint32_t heuristic_time_10ms(int32_t lat1, int32_t lon1, int32_t lat2, int32_t lon2, int mode) {
     uint32_t dist_mm = fast_dist_mm(lat1, lon1, lat2, lon2);
     double max_speed = (mode == BICYCLE) ? BICYCLE_SPEED_M_S : WALK_SPEED_M_S;
-    double h_speed = (mode == BICYCLE) ? (max_speed / 0.7) : (max_speed / 0.8);
+    // Heuristic must be admissible: assume the best possible modifier (e.g. 1.5 for stairs in walk mode)
+    // Actually, to be safe and admissible, use a speed higher than any modified speed.
+    double h_speed = max_speed * 1.6;
     return (uint32_t)((double)dist_mm / (10.0 * h_speed));
 }
 
@@ -201,7 +189,7 @@ SnappedEdge find_nearest_edge(double lat, double lon, int mode, const char* labe
         uint64_t e_ptr = get_end_ptr(u);
         for (uint64_t j = s; j < e_ptr; ++j) {
             Edge& e = g_edges[j];
-            if (!is_accessible(e.type, mode)) continue;
+            // No longer checking is_accessible here; we want to find the nearest edge regardless of type penalty
             Projection p = get_projection(pLat, pLon, g_nodes[u].lat_e7, g_nodes[u].lon_e7, g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7);
             if (p.dist_mm < minSnapDist) {
                 minSnapDist = p.dist_mm;
@@ -215,7 +203,7 @@ SnappedEdge find_nearest_edge(double lat, double lon, int mode, const char* labe
     if (best.nodeA != 0xFFFFFFFF) {
         LOGD("[%s SNAP] Success! Nearest Edge: %u -> %u. Snap Distance: %u mm", label, best.nodeA, best.nodeB, minSnapDist);
     } else {
-        LOGE("[%s SNAP] Failed to find any accessible edges near (%f, %f)", label, lat, lon);
+        LOGE("[%s SNAP] Failed to find any edges near (%f, %f)", label, lat, lon);
     }
     return best;
 }
@@ -239,49 +227,70 @@ Java_com_vayunmathur_maps_OfflineRouter_init(JNIEnv* env, jobject thiz, jstring 
     g_road_names = (char*)m_file(base + "/road_names.bin", s4);
     if (g_nodes) g_node_count = s1 / sizeof(NodeMaster);
 
-    // Initialize Lookup Table in-place
+    // Initialize Cosine Lookup Table
     for (int i = 0; i <= 1800; ++i) {
         double lat_deg = (i / 10.0) - 90.0;
         g_cos_lat_lookup[i] = (float)cos(lat_deg * DEG_TO_RAD);
     }
 
-    LOGD("[INIT] Loaded %zu nodes. Cosine lookup table ready.", g_node_count);
+    // Initialize Speed Modifier 2D Array
+    // Default penalty for "inaccessible" is 0.001x speed (1000x time)
+    for (int m = 0; m < 4; ++m) {
+        for (int r = 0; r < 16; ++r) g_speed_modifiers[m][r] = 0.001f;
+    }
+
+    // WALK MODIFIERS (Mode 2)
+    // Road types 3-15 are generally walking friendly. 0-2 (Motorways etc) are penalized.
+    for (int r = 3; r <= 15; ++r) g_speed_modifiers[WALK][r] = 1.0f;
+    g_speed_modifiers[WALK][12] = 0.8f; // Path/Grass
+    g_speed_modifiers[WALK][10] = 0.8f; // Living Street
+    g_speed_modifiers[WALK][15] = 1.5f; // Stairs
+
+    // BICYCLE MODIFIERS (Mode 3)
+    // Road types 3-14 are generally biking friendly. 15 (Stairs) and 0-2 penalized.
+    for (int r = 3; r <= 14; ++r) g_speed_modifiers[BICYCLE][r] = 1.0f;
+    g_speed_modifiers[BICYCLE][13] = 0.7f; // Trail
+    g_speed_modifiers[BICYCLE][7] = 1.1f;  // Tertiary
+    g_speed_modifiers[BICYCLE][8] = 1.1f;  // Secondary
+
+    LOGD("[INIT] Loaded %zu nodes. Cosine and Speed lookup tables ready.", g_node_count);
     env->ReleaseStringUTFChars(base_path, path);
     return (g_nodes && g_edges && g_spatial && g_road_names);
 }
 
 static RoutingScratchpad g_scratchpad(25);
+static BucketQueue g_bq;
 
 extern "C" JNIEXPORT jobjectArray JNICALL
 Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thiz, jdouble sLat, jdouble sLon, jdouble eLat, jdouble eLon, jint mode) {
     g_scratchpad.reset();
+    g_bq.clear();
+
     SnappedEdge start = find_nearest_edge(sLat, sLon, mode, "START");
     SnappedEdge end = find_nearest_edge(eLat, eLon, mode, "END");
     if (start.nodeA == 0xFFFFFFFF || end.nodeA == 0xFFFFFFFF) return nullptr;
-
-    using NodeScore = std::pair<uint32_t, uint32_t>;
-    std::priority_queue<NodeScore, std::vector<NodeScore>, std::greater<NodeScore>> pq;
 
     uint32_t timeToA = get_edge_time_10ms(start.distA_mm, start.type, mode);
     uint32_t timeToB = get_edge_time_10ms(start.distB_mm, start.type, mode);
     g_scratchpad[start.nodeA].g_score = timeToA;
     g_scratchpad[start.nodeB].g_score = timeToB;
 
-    pq.push({timeToA + heuristic_time_10ms(g_nodes[start.nodeA].lat_e7, g_nodes[start.nodeA].lon_e7, end.proj_lat, end.proj_lon, mode), start.nodeA});
-    pq.push({timeToB + heuristic_time_10ms(g_nodes[start.nodeB].lat_e7, g_nodes[start.nodeB].lon_e7, end.proj_lat, end.proj_lon, mode), start.nodeB});
+    g_bq.push(timeToA + heuristic_time_10ms(g_nodes[start.nodeA].lat_e7, g_nodes[start.nodeA].lon_e7, end.proj_lat, end.proj_lon, mode), start.nodeA);
+    g_bq.push(timeToB + heuristic_time_10ms(g_nodes[start.nodeB].lat_e7, g_nodes[start.nodeB].lon_e7, end.proj_lat, end.proj_lon, mode), start.nodeB);
 
     uint32_t found_node = 0xFFFFFFFF;
     int iterations = 0;
     uint32_t min_dist_to_dest = 0xFFFFFFFF;
 
-    while (!pq.empty() && iterations < 1500000) {
-        uint32_t u = pq.top().second; pq.pop();
+    while (!g_bq.empty() && iterations < 2500000) { // Increased iterations for larger search space
+        uint32_t u = g_bq.pop();
         iterations++;
+
         uint32_t current_dist = fast_dist_mm(g_nodes[u].lat_e7, g_nodes[u].lon_e7, end.proj_lat, end.proj_lon);
         if (current_dist < min_dist_to_dest) min_dist_to_dest = current_dist;
 
-        if (iterations % 5000 == 0) {
-            LOGD("[A* PROGRESS] Iteration: %d. Node: %u. Approx Dist: %u mm. Min found: %u mm.", iterations, u, current_dist, min_dist_to_dest);
+        if (iterations % 50000 == 0) {
+            LOGD("[A* BUCKET] Iter: %d. Node: %u. Approx Dist: %u mm. Min found: %u mm.", iterations, u, current_dist, min_dist_to_dest);
         }
         if (u == end.nodeA || u == end.nodeB) {
             found_node = u;
@@ -296,14 +305,14 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
 
         for (uint64_t i = s_ptr; i < e_ptr; ++i) {
             Edge& e = g_edges[i];
-            if (!is_accessible(e.type, mode)) continue;
+            // No longer skipping via is_accessible. All edges are relaxed.
             uint32_t travel_time = get_edge_time_10ms(e.dist_mm, e.type, mode);
             uint32_t new_g = g_scratchpad[u].g_score + travel_time;
             if (new_g < g_scratchpad[e.target].g_score) {
                 g_scratchpad[e.target].g_score = new_g;
                 g_scratchpad[e.target].parent_id = u;
                 uint32_t h = heuristic_time_10ms(g_nodes[e.target].lat_e7, g_nodes[e.target].lon_e7, end.proj_lat, end.proj_lon, mode);
-                pq.push({new_g + h, e.target});
+                g_bq.push(new_g + h, e.target);
             }
         }
     }
@@ -313,10 +322,11 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
         return nullptr;
     }
 
+    // --- RECONSTRUCTION ---
     std::vector<uint32_t> path_nodes;
     for (uint32_t c = found_node; c != 0xFFFFFFFF; c = g_scratchpad[c].parent_id) {
         path_nodes.push_back(c);
-        if (path_nodes.size() > 50000) break;
+        if (path_nodes.size() > 100000) break;
     }
     std::reverse(path_nodes.begin(), path_nodes.end());
 
@@ -347,22 +357,21 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
         uint64_t sp = get_ptr(u); uint64_t ep = get_end_ptr(u);
         for (uint64_t k = sp; k < ep; ++k) { if (g_edges[k].target == v) { current_name_off = g_edges[k].name_offset; current_type = g_edges[k].type; break; } }
         std::string roadName = (current_name_off == 0xFFFFFFFF) ? "Unnamed Road" : (g_road_names + current_name_off);
-        std::vector<double> geom; uint64_t step_dist = 0;
+        std::vector<double> geom; uint64_t step_dist = 0; uint64_t step_time = 0;
         while (idx < path_nodes.size() - 1) {
             uint32_t cu = path_nodes[idx], cv = path_nodes[idx+1];
-            uint32_t name_off = 0xFFFFFFFF, d = 0;
+            uint32_t name_off = 0xFFFFFFFF, d = 0, type = 0;
             uint64_t s = get_ptr(cu); uint64_t e = get_end_ptr(cu);
-            for (uint64_t k = s; k < e; ++k) { if (g_edges[k].target == cv) { name_off = g_edges[k].name_offset; d = g_edges[k].dist_mm; break; } }
+            for (uint64_t k = s; k < e; ++k) { if (g_edges[k].target == cv) { name_off = g_edges[k].name_offset; d = g_edges[k].dist_mm; type = g_edges[k].type; break; } }
             if (name_off != current_name_off && step_start_idx != idx) break;
             geom.push_back(g_nodes[cu].lon_e7 / 1e7); geom.push_back(g_nodes[cu].lat_e7 / 1e7);
-            step_dist += d; idx++;
+            step_dist += d; step_time += get_edge_time_10ms(d, type, mode); idx++;
         }
         geom.push_back(g_nodes[path_nodes[idx]].lon_e7 / 1e7); geom.push_back(g_nodes[path_nodes[idx]].lat_e7 / 1e7);
         double cur_bearing = get_bearing(g_nodes[path_nodes[step_start_idx]].lat_e7, g_nodes[path_nodes[step_start_idx]].lon_e7, g_nodes[path_nodes[idx]].lat_e7, g_nodes[path_nodes[idx]].lon_e7);
         int maneuver = get_maneuver(last_bearing, cur_bearing); last_bearing = cur_bearing;
         jdoubleArray jGeom = env->NewDoubleArray(geom.size()); env->SetDoubleArrayRegion(jGeom, 0, geom.size(), geom.data());
         jstring jName = env->NewStringUTF(roadName.c_str());
-        uint64_t step_time = get_edge_time_10ms((uint32_t)step_dist, current_type, mode);
         jSteps.push_back(env->NewObject(stepClass, stepCtor, maneuver, jName, (jlong)step_dist, (jlong)step_time, jGeom));
         env->DeleteLocalRef(jName); env->DeleteLocalRef(jGeom);
     }
@@ -381,7 +390,6 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
         jSteps.push_back(env->NewObject(stepClass, stepCtor, maneuver, jName, (jlong)d, (jlong)t, jGeom));
         env->DeleteLocalRef(jName); env->DeleteLocalRef(jGeom);
     }
-    LOGD("[ROUTE RECONSTRUCTION] Generated %zu steps", jSteps.size());
     jobjectArray resArray = env->NewObjectArray(jSteps.size(), stepClass, nullptr);
     for (size_t s = 0; s < jSteps.size(); ++s) { env->SetObjectArrayElement(resArray, s, jSteps[s]); env->DeleteLocalRef(jSteps[s]); }
     return resArray;
