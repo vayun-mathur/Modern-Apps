@@ -233,10 +233,10 @@ void perform_search_loop(int mode, RoutingContext& ctx) {
 
         // Termination condition for Bidirectional A*
         if (g_fwd_heap.top_key() + g_bwd_heap.top_key() >= ctx.best_total_time) break;
-        if (__builtin_expect(ctx.iterations > 100000000, 0)) break;
+        if (__builtin_expect(ctx.iterations > 1000000000, 0)) break;
 
         // Periodic logging
-        if (__builtin_expect((ctx.iterations & 0x7FFFF) == 0, 0)) {
+        if (__builtin_expect((ctx.iterations & 0xFFFFF) == 0, 0)) {
             LOGD("[BI-A*] Iter: %d. Fwd Keys: %u, Bwd Keys: %u. Best meeting: %u",
                  ctx.iterations, g_fwd_heap.top_key(), g_bwd_heap.top_key(), ctx.best_total_time);
         }
