@@ -8,7 +8,7 @@
 #define LOG_TAG "OfflineRouterNative"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-constexpr uint32_t SCRATCHPAD_POWER = 25;
+constexpr uint32_t SCRATCHPAD_POWER = 28;
 constexpr uint32_t SCRATCHPAD_SIZE = (1 << SCRATCHPAD_POWER);
 constexpr uint32_t SCRATCHPAD_MASK = (SCRATCHPAD_SIZE - 1);
 

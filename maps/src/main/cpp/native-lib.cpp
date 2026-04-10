@@ -466,6 +466,7 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
         LOGE("[A* FAILURE] No route found after %d iterations", ctx.iterations);
         return nullptr;
     }
+    LOGD("[A* SUCCESS] Route found! Total Iterations: %d. Final Node: %u", ctx.iterations, ctx.found_node);
 
     return reconstruct_path(env, sLat, sLon, eLat, eLon, mode, ctx);
 }
