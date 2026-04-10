@@ -35,12 +35,6 @@ public:
         memset(m_sizes, 0, sizeof(m_sizes));
     }
 
-    ~RadixHeap() {
-        for (int i = 0; i < 33; ++i) {
-            if (m_buckets[i]) free(m_buckets[i]);
-        }
-    }
-
     inline void push(uint32_t score, uint32_t node_id) {
         uint32_t i = get_bucket_idx(score);
         uint32_t pos = m_sizes[i]++;

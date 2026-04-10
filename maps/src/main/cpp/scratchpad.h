@@ -25,15 +25,9 @@ public:
     };
 
     // Single array of structures for cache efficiency
-    Entry* m_entries;
+    Entry m_entries[SCRATCHPAD_SIZE];
 
-    RoutingScratchpad() {
-        m_entries = (Entry*)malloc(SCRATCHPAD_SIZE * sizeof(Entry));
-    }
-
-    ~RoutingScratchpad() {
-        if (m_entries) free(m_entries);
-    }
+    RoutingScratchpad() {}
 
     inline void reset() {
         // Initialize node_ids to 0xFFFFFFFF to mark as empty
