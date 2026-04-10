@@ -1,52 +1,72 @@
 #ifndef SCRATCHPAD_H
 #define SCRATCHPAD_H
 
-#include <vector>
 #include <cstdint>
+#include <cstring> // For memset
+#include <android/log.h>
 
-/**
- * @brief A high-performance, non-allocating scratchpad for A* search metadata.
- */
+#define LOG_TAG "OfflineRouterNative"
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+constexpr uint32_t SCRATCHPAD_POWER = 25;
+constexpr uint32_t SCRATCHPAD_SIZE = (1 << SCRATCHPAD_POWER);
+constexpr uint32_t SCRATCHPAD_MASK = (SCRATCHPAD_SIZE - 1);
+
 class RoutingScratchpad {
 public:
-    struct Entry {
-        uint32_t node_id;
-        uint32_t g_score;
-        uint32_t parent_id;
-        uint32_t search_id;
+    struct EntryProxy {
+        uint32_t& g_score;
+        uint32_t& parent_id;
     };
 
-    explicit RoutingScratchpad(uint32_t power_of_two_size);
+    uint32_t m_node_ids[SCRATCHPAD_SIZE];
+    uint32_t m_g_scores[SCRATCHPAD_SIZE];
+    uint32_t m_parent_ids[SCRATCHPAD_SIZE];
 
-    /**
-     * @brief "Clears" the scratchpad by incrementing the generation ID.
-     */
-    void reset();
+    RoutingScratchpad() {
+    }
 
-    /**
-     * @brief Access metadata for a specific node ID using array syntax.
-     */
-    Entry& operator[](uint32_t node_id);
+    inline void reset() {
+        memset(m_node_ids, 0xFF, sizeof(m_node_ids));
+    }
 
-    /**
-     * @brief Explicitly gets or initializes metadata for a node.
-     */
-    Entry& get_entry(uint32_t node_id);
+    inline uint32_t get_g_score(uint32_t node_id) const {
+        uint32_t h = (node_id ^ (node_id >> 16)) & SCRATCHPAD_MASK;
+        while (__builtin_expect(m_node_ids[h] != node_id, 0)) {
+            h = (h + 1) & SCRATCHPAD_MASK;
+        }
+        return m_g_scores[h];
+    }
 
-    double load_factor() const;
+    inline EntryProxy get_entry(uint32_t node_id) {
+        uint32_t h = (node_id ^ (node_id >> 16)) & SCRATCHPAD_MASK;
 
-private:
-    uint32_t m_size;
-    uint32_t m_mask;
-    uint32_t m_current_search_id;
-    std::vector<Entry> m_buffer;
+        for (uint32_t i = 0; i < 10000; ++i) {
+            uint32_t current_slot_id = m_node_ids[h];
 
-    inline uint32_t hash(uint32_t x) const {
-        x = ((x >> 16) ^ x) * 0x45d9f3b;
-        x = ((x >> 16) ^ x) * 0x45d9f3b;
-        x = (x >> 16) ^ x;
-        return x & m_mask;
+            // Scenario 1: Found the node
+            if (__builtin_expect(current_slot_id == node_id, 1)) {
+                return { m_g_scores[h], m_parent_ids[h] };
+            }
+
+            // Scenario 2: Found an empty slot
+            if (__builtin_expect(current_slot_id == 0xFFFFFFFF, 0)) {
+                m_node_ids[h] = node_id;
+                m_g_scores[h] = 0xFFFFFFFF;
+                m_parent_ids[h] = 0xFFFFFFFF;
+                return { m_g_scores[h], m_parent_ids[h] };
+            }
+
+            h = (h + 1) & SCRATCHPAD_MASK;
+        }
+
+        LOGE("CRITICAL: Scratchpad probe limit exceeded for node %u", node_id);
+        return { m_g_scores[0], m_parent_ids[0] };
+    }
+
+    inline EntryProxy operator[](uint32_t node_id) {
+        return get_entry(node_id);
     }
 };
 
-#endif // SCRATCHPAD_H
+#endif
