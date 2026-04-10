@@ -31,11 +31,6 @@ struct Edge {
     uint32_t name_offset;
     uint8_t type;
 };
-
-struct SpatialNode {
-    uint64_t spatial_id;
-    uint32_t local_id;
-};
 #pragma pack(pop)
 
 // Constants
@@ -48,7 +43,7 @@ const double DEG_TO_RAD = M_PI / 180.0;
 // Global Data Pointers
 NodeMaster* g_nodes = nullptr;
 Edge* g_edges = nullptr;
-SpatialNode* g_spatial = nullptr;
+uint64_t* g_spatial = nullptr;
 char* g_road_names = nullptr;
 size_t g_node_count = 0;
 
@@ -174,8 +169,7 @@ struct SnappedEdge {
 SnappedEdge find_nearest_edge(double lat, double lon, int mode, const char* label) {
     uint64_t target_spatial = latlng_to_spatial(lat, lon);
     int32_t pLat = (int32_t)(lat * 1e7), pLon = (int32_t)(lon * 1e7);
-    auto it = std::lower_bound(g_spatial, g_spatial + g_node_count, target_spatial,
-                               [](const SpatialNode& a, uint64_t val) { return a.spatial_id < val; });
+    auto it = std::lower_bound(g_spatial, g_spatial + g_node_count, target_spatial);
     intptr_t center = std::distance(g_spatial, it);
 
     SnappedEdge best = {0xFFFFFFFF, 0xFFFFFFFF, pLat, pLon, 0, 0, 0, 0xFFFFFFFF};
@@ -183,7 +177,7 @@ SnappedEdge find_nearest_edge(double lat, double lon, int mode, const char* labe
 
     intptr_t window = 800;
     for (intptr_t i = std::max((intptr_t)0, center - window); i <= std::min((intptr_t)g_node_count - 1, center + window); ++i) {
-        uint32_t u = g_spatial[i].local_id;
+        uint32_t u = i;
         uint64_t s = get_ptr(u);
         if (s == NO_EDGES_SENTINEL) continue;
         uint64_t e_ptr = get_end_ptr(u);
@@ -223,7 +217,7 @@ Java_com_vayunmathur_maps_OfflineRouter_init(JNIEnv* env, jobject thiz, jstring 
     size_t s1, s2, s3, s4;
     g_nodes = (NodeMaster*)m_file(base + "/nodes_master.bin", s1);
     g_edges = (Edge*)m_file(base + "/edges.bin", s2);
-    g_spatial = (SpatialNode*)m_file(base + "/nodes_spatial.bin", s3);
+    g_spatial = (uint64_t*)m_file(base + "/nodes_spatial.bin", s3);
     g_road_names = (char*)m_file(base + "/road_names.bin", s4);
     if (g_nodes) g_node_count = s1 / sizeof(NodeMaster);
 
@@ -282,14 +276,14 @@ Java_com_vayunmathur_maps_OfflineRouter_findRouteNative(JNIEnv* env, jobject thi
     int iterations = 0;
     uint32_t min_dist_to_dest = 0xFFFFFFFF;
 
-    while (!g_bq.empty() && iterations < 2500000) { // Increased iterations for larger search space
+    while (!g_bq.empty() && iterations < 25000000) { // Increased iterations for larger search space
         uint32_t u = g_bq.pop();
         iterations++;
 
         uint32_t current_dist = fast_dist_mm(g_nodes[u].lat_e7, g_nodes[u].lon_e7, end.proj_lat, end.proj_lon);
         if (current_dist < min_dist_to_dest) min_dist_to_dest = current_dist;
 
-        if (iterations % 50000 == 0) {
+        if (iterations % 250000 == 0) {
             LOGD("[A* BUCKET] Iter: %d. Node: %u. Approx Dist: %u mm. Min found: %u mm.", iterations, u, current_dist, min_dist_to_dest);
         }
         if (u == end.nodeA || u == end.nodeB) {
