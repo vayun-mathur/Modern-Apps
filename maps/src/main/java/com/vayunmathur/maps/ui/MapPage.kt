@@ -67,7 +67,9 @@ import com.vayunmathur.maps.ui.components.BottomSheetContent
 import com.vayunmathur.maps.ui.components.MyMapLayers
 import com.vayunmathur.maps.ui.components.drawUserIcon
 import com.vayunmathur.maps.ui.components.verticalShape
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -125,12 +127,20 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
         x
     }
 
-    val json = remember(hybridUrl) {
-        patchStyleForHybrid(
-            context.assets.open("style.json").source().readLines().joinToString("\n"),
-            ensurePmtilesReady(context),
-            hybridUrl
-        )
+    // Inside MapPage
+    var json by remember { mutableStateOf<String?>(null) }
+
+// Move heavy processing to a background thread
+    LaunchedEffect(hybridUrl) {
+        val updatedStyle = withContext(Dispatchers.Default) {
+            val rawStyle = context.assets.open("style.json").source().readLines().joinToString("\n")
+            patchStyleForHybrid(
+                rawStyle,
+                ensurePmtilesReady(context),
+                hybridUrl
+            )
+        }
+        json = updatedStyle
     }
 
     var dismissedZone by remember { mutableStateOf<Int?>(null) }
@@ -205,30 +215,42 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                 } }, colors = TopAppBarDefaults.topAppBarColors(Color.Transparent))
         }) { innerPadding ->
             Box(Modifier.padding(innerPadding).fillMaxSize()) {
-                MaplibreMap(Modifier,
-                    BaseStyle.Json(json),
-                    camera,
-                    options = MapOptions(RenderOptions(), GestureOptions.Standard, OrnamentOptions.AllDisabled),
-                    onMapClick = { _, offset ->
-                        coroutineScope.launch {
-                            val projection = camera.projection
-                            val features = projection?.queryRenderedFeatures(offset, setOf("places_country", "places_region", "pois").flatMap {
-                                listOf("${it}_base", "${it}_hybrid")
-                            }.toSet()) ?: emptyList()
-                            println("FEATURES: $features")
-                            val listedFeatures = features.mapNotNull { parse(it, db) }
-                            println("LISTED FEATURES: $listedFeatures")
+                json?.let { json ->
+                    MaplibreMap(
+                        Modifier,
+                        BaseStyle.Json(json),
+                        camera,
+                        options = MapOptions(
+                            RenderOptions(),
+                            GestureOptions.Standard,
+                            OrnamentOptions.AllDisabled
+                        ),
+                        onMapClick = { _, offset ->
+                            coroutineScope.launch {
+                                val projection = camera.projection
+                                val features = projection?.queryRenderedFeatures(
+                                    offset,
+                                    setOf("places_country", "places_region", "pois").flatMap {
+                                        listOf("${it}_base", "${it}_hybrid")
+                                    }.toSet()
+                                ) ?: emptyList()
+                                println("FEATURES: $features")
+                                val listedFeatures = features.mapNotNull { parse(it, db) }
+                                println("LISTED FEATURES: $listedFeatures")
 
-                            listedFeatures.firstOrNull()?.let {
-                                if(selectedFeature is SpecificFeature.Route) viewModel.setInactiveNavigation(selectedFeature as SpecificFeature.Route)
-                                viewModel.set(it)
-                                scaffoldState.bottomSheetState.expand()
+                                listedFeatures.firstOrNull()?.let {
+                                    if (selectedFeature is SpecificFeature.Route) viewModel.setInactiveNavigation(
+                                        selectedFeature as SpecificFeature.Route
+                                    )
+                                    viewModel.set(it)
+                                    scaffoldState.bottomSheetState.expand()
+                                }
                             }
+                            ClickResult.Pass
                         }
-                        ClickResult.Pass
+                    ) {
+                        MyMapLayers(selectedFeature, route?.get(selectedRouteType))
                     }
-                ) {
-                    MyMapLayers(selectedFeature, route?.get(selectedRouteType))
                 }
 
                 // USER ICON

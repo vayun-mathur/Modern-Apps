@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -95,10 +97,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                             Text("${(route.distanceMeters / 1000.0).round(2)} km")
                         })
                         Spacer(Modifier.height(8.dp))
-                        Column(
-                            Modifier.verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             if (route is TransitRoute) {
                                 val timeFormat = LocalTime.Format {
                                     amPmHour(Padding.NONE)
@@ -106,15 +105,23 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                     minute()
                                     amPmMarker(" AM", " PM")
                                 }
-                                Card(shape = verticalShape(0, 2)) {
-                                    ListItem({
-                                        val origin = selectedFeature.waypoints.first()?.name ?: "Your location"
-                                        Text(origin)
-                                    }, trailingContent = {
-                                        Text(route.startTime().toLocalDateTime(TimeZone.currentSystemDefault()).time.format(timeFormat))
-                                    })
+                                item {
+                                    Card(shape = verticalShape(0, 2)) {
+                                        ListItem({
+                                            val origin = selectedFeature.waypoints.first()?.name
+                                                ?: "Your location"
+                                            Text(origin)
+                                        }, trailingContent = {
+                                            Text(
+                                                route.startTime()
+                                                    .toLocalDateTime(TimeZone.currentSystemDefault()).time.format(
+                                                    timeFormat
+                                                )
+                                            )
+                                        })
+                                    }
                                 }
-                                route.steps.forEachIndexed { idx, it ->
+                                itemsIndexed(route.steps) { idx, it ->
                                     Card {
                                         when (it) {
                                             is TransitRoute.Step.WalkStep -> {
@@ -187,21 +194,24 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                         }
                                     }
                                 }
-                                Card(shape = verticalShape(1, 2)) {
-                                    ListItem({
-                                        val origin = selectedFeature.waypoints.last()?.name ?: "Your location"
-                                        Text(origin)
-                                    }, trailingContent = {
-                                        Text(
-                                            route.endTime()
-                                                .toLocalDateTime(TimeZone.currentSystemDefault()).time.format(
-                                                timeFormat
+                                item {
+                                    Card(shape = verticalShape(1, 2)) {
+                                        ListItem({
+                                            val origin = selectedFeature.waypoints.last()?.name
+                                                ?: "Your location"
+                                            Text(origin)
+                                        }, trailingContent = {
+                                            Text(
+                                                route.endTime()
+                                                    .toLocalDateTime(TimeZone.currentSystemDefault()).time.format(
+                                                        timeFormat
+                                                    )
                                             )
-                                        )
-                                    })
+                                        })
+                                    }
                                 }
                             } else if (route is RouteService.Route) {
-                                route.step.forEachIndexed { idx, it ->
+                                itemsIndexed(route.step) { idx, it ->
                                     Card(shape = verticalShape(idx, route.step.size)) {
                                         ListItem({
                                             Text(it.navInstruction.instructions)
