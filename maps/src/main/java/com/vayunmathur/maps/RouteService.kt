@@ -13,6 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.maplibre.spatialk.geojson.Position
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 object RouteService {
     private val client = HttpClient {
@@ -181,5 +182,10 @@ object RouteService {
     interface RouteType {
         val duration: Duration
         val distanceMeters: Double
+    }
+
+    class EmptyRoute: RouteType {
+        override val duration: Duration = 0.seconds
+        override val distanceMeters: Double = 0.0
     }
 }

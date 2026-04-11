@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.maps.data.SpecificFeature
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.maplibre.spatialk.geojson.Position
@@ -39,36 +40,38 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     }
 
     // Move heavy computation to a background StateFlow
+    @OptIn(ExperimentalCoroutinesApi::class)
     val routes = selectedFeature
-        .map { feature ->
+        .flatMapLatest { feature ->
             val pos = userPosition.value
-            val routeFeature = feature as? SpecificFeature.Route ?: return@map null
+            val routeFeature = feature as? SpecificFeature.Route ?: return@flatMapLatest flowOf(null)
 
-            // Perform heavy routing on Dispatchers.Default
-            kotlinx.coroutines.withContext(Dispatchers.Default) {
-                RouteService.TravelMode.entries.associateWith { mode ->
-                    try {
+            // Create a flow that emits results one by one
+            flow {
+                // Start with an empty map
+                emit(emptyMap())
+
+                // Run calculations for each mode
+                RouteService.TravelMode.entries.forEach { mode ->
+                    val result = try {
                         when (mode) {
-                            RouteService.TravelMode.TRANSIT -> {
-                                TransitRoute.computeRoute(routeFeature, pos)
-                            }
+                            RouteService.TravelMode.TRANSIT -> TransitRoute.computeRoute(routeFeature, pos)
                             RouteService.TravelMode.BICYCLE, RouteService.TravelMode.WALK -> {
-                                OfflineRouter.getRoute(
-                                    application.applicationContext,
-                                    routeFeature,
-                                    pos,
-                                    mode
-                                )
+                                OfflineRouter.getRoute(application, routeFeature, pos, mode)
                             }
-                            else -> {
-                                RouteService.computeRoute(routeFeature, pos, mode)
-                            }
+                            else -> RouteService.computeRoute(routeFeature, pos, mode)
                         }
                     } catch (e: Exception) {
-                        null
+                        RouteService.EmptyRoute()
                     }
+                    // Emit the new pair
+                    emit(mapOf(mode to result))
                 }
             }
+                .scan(RouteService.TravelMode.entries.associateWith { null as RouteService.RouteType? }) { accumulator, newEntry ->
+                    accumulator + newEntry // Combine the old map with the new calculation
+                }
+                .flowOn(Dispatchers.Default)
         }
         .stateIn(
             scope = viewModelScope,

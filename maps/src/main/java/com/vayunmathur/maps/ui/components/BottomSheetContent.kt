@@ -93,10 +93,12 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                     }
                     val route = route[selectedRouteType]
                     if(route != null) {
-                        ListItem({ Text(route.duration.toString()) }, supportingContent = {
-                            Text("${(route.distanceMeters / 1000.0).round(2)} km")
-                        })
-                        Spacer(Modifier.height(8.dp))
+                        if(route !is RouteService.EmptyRoute) {
+                            ListItem({ Text(route.duration.toString()) }, supportingContent = {
+                                Text("${(route.distanceMeters / 1000.0).round(2)} km")
+                            })
+                            Spacer(Modifier.height(8.dp))
+                        }
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             if (route is TransitRoute) {
                                 val timeFormat = LocalTime.Format {
@@ -222,11 +224,17 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                         })
                                     }
                                 }
+                            } else if(route is RouteService.EmptyRoute) {
+                                item {
+                                    ListItem({
+                                        Text("No route found")
+                                    })
+                                }
                             }
                         }
                     } else {
                         ListItem({
-                            Text("No route found")
+                            Text("Generating Route...")
                         })
                     }
                 }
