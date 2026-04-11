@@ -24,7 +24,8 @@ class ZoneDownloadManager(private val context: Context) {
      */
     fun getDownloadingZonesFlow(): Flow<Map<Int, Float>> = flow {
         while (true) {
-            val progressMap = mutableMapOf<Int, Float>()
+            val progressSumMap = mutableMapOf<Int, Float>()
+            val countMap = mutableMapOf<Int, Int>()
 
             // Query for any task that isn't finished or failed
             val query = DownloadManager.Query().setFilterByStatus(
@@ -44,13 +45,18 @@ class ZoneDownloadManager(private val context: Context) {
                         val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
 
                         val progress = if (total > 0) downloaded.toFloat() / total.toFloat() else 0f
-                        progressMap[zoneId] = progress
+                        progressSumMap[zoneId] = progressSumMap.getOrDefault(zoneId, 0f) + progress
+                        countMap[zoneId] = countMap.getOrDefault(zoneId, 0) + 1
                     }
                 }
             }
             cursor.close()
 
-            emit(progressMap)
+            val finalProgressMap = progressSumMap.mapValues { (zoneId, sum) ->
+                sum / (countMap[zoneId] ?: 1).toFloat()
+            }
+
+            emit(finalProgressMap)
             delay(1000) // Poll faster (1s) for progress updates
         }
     }
@@ -73,10 +79,17 @@ class ZoneDownloadManager(private val context: Context) {
         }
         cursor.close()
 
-        // 2. Remove the file from disk
-        val file = File(context.getExternalFilesDir(null), "zone_$zoneId.pmtiles")
-        if (file.exists()) {
-            file.delete()
+        // 2. Remove the files from disk
+        val files = listOf(
+            "zone_$zoneId.pmtiles",
+            "nodes_zone_$zoneId.bin",
+            "edges_zone_$zoneId.bin"
+        )
+        files.forEach { fileName ->
+            val file = File(context.getExternalFilesDir(null), fileName)
+            if (file.exists()) {
+                file.delete()
+            }
         }
     }
 
@@ -101,65 +114,50 @@ class ZoneDownloadManager(private val context: Context) {
     }
 
     fun getZoneStatus(zoneId: Int): ZoneStatus {
-        val file = File(context.getExternalFilesDir(null), "zone_$zoneId.pmtiles")
+        val pmtilesFile = File(context.getExternalFilesDir(null), "zone_$zoneId.pmtiles")
+        val nodesFile = File(context.getExternalFilesDir(null), "nodes_zone_$zoneId.bin")
+        val edgesFile = File(context.getExternalFilesDir(null), "edges_zone_$zoneId.bin")
 
         val query = DownloadManager.Query()
         val cursor = downloadManager.query(query)
-        var foundStatus: ZoneStatus? = null
+        var isDownloading = false
 
         while (cursor.moveToNext()) {
             val title = cursor.getString(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TITLE))
             if (title == "Map Zone $zoneId") {
                 val systemStatus = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                foundStatus = when (systemStatus) {
-                    DownloadManager.STATUS_SUCCESSFUL -> if (file.exists()) ZoneStatus.FINISHED else ZoneStatus.NOT_STARTED
-                    DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PAUSED, DownloadManager.STATUS_PENDING -> ZoneStatus.DOWNLOADING
-                    DownloadManager.STATUS_FAILED -> {
-                        if (file.exists()) file.delete() // Clean up ghost file
-                        ZoneStatus.NOT_STARTED
-                    }
-                    else -> ZoneStatus.NOT_STARTED
+                if (systemStatus == DownloadManager.STATUS_RUNNING ||
+                    systemStatus == DownloadManager.STATUS_PAUSED ||
+                    systemStatus == DownloadManager.STATUS_PENDING) {
+                    isDownloading = true
                 }
-                break
             }
         }
         cursor.close()
 
-        if (foundStatus != null) return foundStatus
-        return if (file.exists()) ZoneStatus.FINISHED else ZoneStatus.NOT_STARTED
+        if (isDownloading) return ZoneStatus.DOWNLOADING
+
+        val allFilesExist = pmtilesFile.exists() && nodesFile.exists() && edgesFile.exists()
+        return if (allFilesExist) ZoneStatus.FINISHED else ZoneStatus.NOT_STARTED
     }
 
     fun startDownload(zoneId: Int) {
-        val originalZoneId = getOriginalZoneIdFromMorton(zoneId)
-        val url = "https://data.vayunmathur.com/zone_$originalZoneId.pmtiles"
-        val request = DownloadManager.Request(url.toUri())
-            .setTitle("Map Zone $zoneId")
-            .setDescription("Downloading high-detail offline map")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationInExternalFilesDir(context, null, "zone_$zoneId.pmtiles")
-            .setAllowedOverMetered(true)
+        deleteZone(zoneId)
+        val files = listOf(
+            "zone_$zoneId.pmtiles" to "https://data.vayunmathur.com/zone_$zoneId.pmtiles",
+            "nodes_zone_$zoneId.bin" to "https://data.vayunmathur.com/nodes_zone_$zoneId.bin",
+            "edges_zone_$zoneId.bin" to "https://data.vayunmathur.com/edges_zone_$zoneId.bin"
+        )
 
-        downloadManager.enqueue(request)
-    }
+        files.forEach { (fileName, url) ->
+            val request = DownloadManager.Request(url.toUri())
+                .setTitle("Map Zone $zoneId")
+                .setDescription("Downloading high-detail offline map data")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalFilesDir(context, null, fileName)
+                .setAllowedOverMetered(true)
 
-    private fun getOriginalZoneIdFromMorton(mortonZoneId: Int): Int {
-        var lonIdx = 0
-        var latIdx = 0
-
-        // mortonZoneId is a 6-bit number (0-63)
-        // Interleaving: Bit 5=Y2, Bit 4=X2, Bit 3=Y1, Bit 2=X1, Bit 1=Y0, Bit 0=X0
-
-        // De-interleave Longitude (X) bits: bits 0, 2, 4
-        if ((mortonZoneId and (1 shl 0)) != 0) lonIdx = lonIdx or (1 shl 0)
-        if ((mortonZoneId and (1 shl 2)) != 0) lonIdx = lonIdx or (1 shl 1)
-        if ((mortonZoneId and (1 shl 4)) != 0) lonIdx = lonIdx or (1 shl 2)
-
-        // De-interleave Latitude (Y) bits: bits 1, 3, 5
-        if ((mortonZoneId and (1 shl 1)) != 0) latIdx = latIdx or (1 shl 0)
-        if ((mortonZoneId and (1 shl 3)) != 0) latIdx = latIdx or (1 shl 1)
-        if ((mortonZoneId and (1 shl 5)) != 0) latIdx = latIdx or (1 shl 2)
-
-        // Combine into row-major format (Lat * 8 + Lon)
-        return (latIdx * 8) + lonIdx
+            downloadManager.enqueue(request)
+        }
     }
 }

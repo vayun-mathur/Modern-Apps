@@ -113,18 +113,14 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
     }
 
     val hybridUrl = remember(activeZone) {
-        val remoteUrl = "pmtiles://https://demo-bucket.protomaps.com/v4.pmtiles"
-
-        if (activeZone == null) return@remember remoteUrl
+        if (activeZone == null) return@remember ""
 
         val localFile = File(context.getExternalFilesDir(null), "zone_$activeZone.pmtiles")
-        val x = if (zoneManager.getZoneStatus(activeZone) == ZoneDownloadManager.ZoneStatus.FINISHED) {
+        if (zoneManager.getZoneStatus(activeZone) == ZoneDownloadManager.ZoneStatus.FINISHED) {
             "pmtiles://file://${localFile.absolutePath}"
         } else {
-            remoteUrl
+            ""
         }
-        println("URL: $x")
-        x
     }
 
     // Inside MapPage
@@ -356,7 +352,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                 Text("Download")
                             }
                         }, title = { Text("Download Offline Map?") },
-                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB)?") },
+                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB) to see more than just the overview?") },
                         dismissButton = {
                             TextButton({
                                 showDownloadDialog = false
@@ -376,7 +372,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
  * Maps GPS coordinates to your 45x22.5 grid.
  */
 fun calculateZoneId(lat: Double, lon: Double, zoom: Float): Int? {
-    if(zoom < 6f) return null
+    if(zoom < 7f) return null
     // 1. Normalize coordinates to [0, 1] range
     val normX = (lon + 180.0) / 360.0
     val normY = (lat + 90.0) / 180.0
@@ -432,19 +428,19 @@ fun patchStyleForHybrid(
             if (type == "background") {
                 add(layer)
             } else {
-                // Zoom 0-6: Base Local
+                // Zoom 0-7: Base Local
                 add(buildJsonObject {
                     layer.forEach { (k, v) -> put(k, v) }
                     put("id", "${id}_base")
                     put("source", "protomaps_base")
-                    put("maxzoom", 6)
+                    put("maxzoom", 7)
                 })
-                // Zoom 6+: Hybrid (Switches between Local and Remote)
+                // Zoom 7+: Hybrid (Local Only)
                 add(buildJsonObject {
                     layer.forEach { (k, v) -> put(k, v) }
                     put("id", "${id}_hybrid")
                     put("source", "protomaps_hybrid")
-                    put("minzoom", 6)
+                    put("minzoom", 7)
                 })
             }
         }

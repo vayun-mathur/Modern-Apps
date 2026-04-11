@@ -62,8 +62,6 @@ class MainActivity : ComponentActivity() {
                 InitialDownloadChecker(ds, listOf(
                     Triple("https://data.vayunmathur.com/amenities.db", "amenities.db", "Downloading Amenity Database..."),
                     Triple("https://data.vayunmathur.com/metadata.bin", "metadata.bin", "Downloading Navigation Tiling Metadata..."),
-                    Triple("https://data.vayunmathur.com/nodes_zone_35.bin", "nodes_zone_35.bin", "Downloading Routing Nodes..."),
-                    Triple("https://data.vayunmathur.com/edges_zone_35.bin", "edges_zone_35.bin", "Downloading Routing Graph..."),
                     Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", "Downloading Road Data...")
                 )) {
                     val db = remember { buildAmenityDatabase(this@MainActivity) }
