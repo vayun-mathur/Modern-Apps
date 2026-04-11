@@ -130,7 +130,8 @@ class ZoneDownloadManager(private val context: Context) {
     }
 
     fun startDownload(zoneId: Int) {
-        val url = "https://data.vayunmathur.com/zone_$zoneId.pmtiles"
+        val originalZoneId = getOriginalZoneIdFromMorton(zoneId)
+        val url = "https://data.vayunmathur.com/zone_$originalZoneId.pmtiles"
         val request = DownloadManager.Request(url.toUri())
             .setTitle("Map Zone $zoneId")
             .setDescription("Downloading high-detail offline map")
@@ -139,5 +140,26 @@ class ZoneDownloadManager(private val context: Context) {
             .setAllowedOverMetered(true)
 
         downloadManager.enqueue(request)
+    }
+
+    private fun getOriginalZoneIdFromMorton(mortonZoneId: Int): Int {
+        var lonIdx = 0
+        var latIdx = 0
+
+        // mortonZoneId is a 6-bit number (0-63)
+        // Interleaving: Bit 5=Y2, Bit 4=X2, Bit 3=Y1, Bit 2=X1, Bit 1=Y0, Bit 0=X0
+
+        // De-interleave Longitude (X) bits: bits 0, 2, 4
+        if ((mortonZoneId and (1 shl 0)) != 0) lonIdx = lonIdx or (1 shl 0)
+        if ((mortonZoneId and (1 shl 2)) != 0) lonIdx = lonIdx or (1 shl 1)
+        if ((mortonZoneId and (1 shl 4)) != 0) lonIdx = lonIdx or (1 shl 2)
+
+        // De-interleave Latitude (Y) bits: bits 1, 3, 5
+        if ((mortonZoneId and (1 shl 1)) != 0) latIdx = latIdx or (1 shl 0)
+        if ((mortonZoneId and (1 shl 3)) != 0) latIdx = latIdx or (1 shl 1)
+        if ((mortonZoneId and (1 shl 5)) != 0) latIdx = latIdx or (1 shl 2)
+
+        // Combine into row-major format (Lat * 8 + Lon)
+        return (latIdx * 8) + lonIdx
     }
 }

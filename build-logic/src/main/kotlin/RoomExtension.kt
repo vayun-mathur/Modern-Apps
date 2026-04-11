@@ -1,5 +1,5 @@
-import gradle.kotlin.dsl.accessors._b80debccebb9ece8e914e516f0647706.implementation
-import gradle.kotlin.dsl.accessors._b80debccebb9ece8e914e516f0647706.ksp
+import gradle.kotlin.dsl.accessors._fbec4b978d86c39e55b50a6ada210591.implementation
+import gradle.kotlin.dsl.accessors._fbec4b978d86c39e55b50a6ada210591.ksp
 import org.gradle.kotlin.dsl.DependencyHandlerScope
 
 fun DependencyHandlerScope.implementRoom(libs: org.gradle.accessors.dm.LibrariesForLibs) {

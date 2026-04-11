@@ -376,12 +376,31 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
  * Maps GPS coordinates to your 45x22.5 grid.
  */
 fun calculateZoneId(lat: Double, lon: Double, zoom: Float): Int? {
-    if (zoom < 6f) return null
+    if(zoom < 6f) return null
+    // 1. Normalize coordinates to [0, 1] range
+    val normX = (lon + 180.0) / 360.0
+    val normY = (lat + 90.0) / 180.0
 
-    val lonIdx = ((lon + 180) / 45).toInt().coerceIn(0, 7)
-    val latIdx = ((lat + 90) / 22.5).toInt().coerceIn(0, 7)
+    // 2. Map to 32-bit unsigned integer space (matching C++ uint32_t)
+    // We use Long in Kotlin to safely handle unsigned 32-bit range, then toUInt
+    val ix = (normX * 4294967295.0).toLong().toUInt()
+    val iy = (normY * 4294967295.0).toLong().toUInt()
 
-    return (latIdx * 8) + lonIdx
+    // 3. Interleave the bits (Morton Encoding)
+    // Since we only need the Zone ID (top 6 bits of the 64-bit spatial ID),
+    // we only actually need to interleave the top 3 bits of ix and iy.
+    var spatialId: Long = 0
+    for (i in 0 until 32) {
+        val xBit = (ix.toLong() shr i) and 1L
+        val yBit = (iy.toLong() shr i) and 1L
+
+        spatialId = spatialId or (xBit shl (2 * i))
+        spatialId = spatialId or (yBit shl (2 * i + 1))
+    }
+
+    // 4. Extract top 6 bits (matching C++: (spatial_id >> 58) & 0x3F)
+    // In Kotlin, for signed Long, we use ushr for logical right shift
+    return ((spatialId ushr 58) and 0x3F).toInt()
 }
 
 fun patchStyleForHybrid(

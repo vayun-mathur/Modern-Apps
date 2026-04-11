@@ -50,10 +50,10 @@ class MainActivity : ComponentActivity() {
         println(OfflineRouter.checkFiles(this))
         Logger.setVerbosity(Logger.INFO)
         runBlocking {
-//            File(getExternalFilesDir(null)!!, "edge_index.bin").delete()
+//            File(getExternalFilesDir(null)!!, "edges_zone_35.bin").delete()
 //            File(getExternalFilesDir(null)!!, "amenities.db").delete()
 //            ds.setBoolean("dbSetupComplete", false)
-//            ds.setBoolean("done_amenities.db", false)
+//            ds.setBoolean("done_edges_zone_35.bin", false)
 //            ds.setBoolean("done_edges.bin", false)
         }
 //        finish()
@@ -61,10 +61,10 @@ class MainActivity : ComponentActivity() {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
                     Triple("https://data.vayunmathur.com/amenities.db", "amenities.db", "Downloading Amenity Database..."),
-                    Triple("https://data.vayunmathur.com/nodes_master.bin", "nodes_master.bin", "Downloading Routing Nodes..."),
-                    Triple("https://data.vayunmathur.com/nodes_spatial.bin", "nodes_spatial.bin", "Downloading Spatial Index..."),
-                    Triple("https://data.vayunmathur.com/edges.bin", "edges.bin", "Downloading Routing Graph..."),
-                    Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", "Downloading Edge Index...")
+                    Triple("https://data.vayunmathur.com/metadata.bin", "metadata.bin", "Downloading Navigation Tiling Metadata..."),
+                    Triple("https://data.vayunmathur.com/nodes_zone_35.bin", "nodes_zone_35.bin", "Downloading Routing Nodes..."),
+                    Triple("https://data.vayunmathur.com/edges_zone_35.bin", "edges_zone_35.bin", "Downloading Routing Graph..."),
+                    Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", "Downloading Road Data...")
                 )) {
                     val db = remember { buildAmenityDatabase(this@MainActivity) }
                     PermissionsChecker(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), "Grant Location Permission") {
