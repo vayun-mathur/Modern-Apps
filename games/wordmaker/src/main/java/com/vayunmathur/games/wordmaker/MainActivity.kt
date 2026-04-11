@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -82,6 +83,10 @@ import kotlin.math.sqrt
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        for(i in 750..862) {
+            println(i)
+            CrosswordData.fromAsset(this, "levels/$i.txt")
+        }
         enableEdgeToEdge()
         setContent {
             DynamicTheme {
@@ -95,11 +100,12 @@ class MainActivity : ComponentActivity() {
 fun WordMakerGameLoader() {
     val context = LocalContext.current
     val levelDataStore = remember { LevelDataStore(context) }
-    val currentLevel by levelDataStore.currentLevel.collectAsState(initial = 1)
+    val currentLevel = 862 // by levelDataStore.currentLevel.collectAsState(initial = 1)
     var crosswordData by remember { mutableStateOf<CrosswordData?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val dictionary by remember { mutableStateOf(Dictionary()) }
     val coroutineScope = rememberCoroutineScope { Dispatchers.IO }
+    val isGameComplete = currentLevel > 861
 
     LaunchedEffect(Unit) {
         coroutineScope.launch {
@@ -120,6 +126,14 @@ fun WordMakerGameLoader() {
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when {
+            isGameComplete -> {
+                Scaffold {
+                    Column(Modifier.padding(it).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Text("All levels have been completed")
+                        Text("Stay tuned for new levels in future updates")
+                    }
+                }
+            }
             error != null -> {
                 Text(text = error!!, color = colorScheme.error)
             }

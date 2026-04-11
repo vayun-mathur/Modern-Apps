@@ -48,6 +48,7 @@
       </SelectionState>
       <SelectionState runConfigName="games.wordmaker">
         <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="findfamily">
         <option name="selectionMode" value="DROPDOWN" />
