@@ -117,7 +117,7 @@ fun ContactList(
                 IconButton(onClick = {
                     exportLauncher.launch("contacts.vcf")
                 }) {
-                    Icon(painterResource(R.drawable.upload_24px), // Using Upload for export
+                    Icon(painterResource(R.drawable.download_24px), // Using Upload for export
                         contentDescription = "Export selected contacts"
                     )
                 }
