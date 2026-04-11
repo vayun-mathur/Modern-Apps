@@ -63,6 +63,7 @@ import org.maplibre.compose.map.OrnamentOptions
 import org.maplibre.compose.style.BaseStyle
 import org.maplibre.compose.util.ClickResult
 import org.maplibre.spatialk.geojson.Position
+import kotlin.io.encoding.Base64
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.time.Clock
@@ -241,9 +242,19 @@ val ColorFilter.Companion.GrayScale: ColorFilter
 @Composable
 fun UserPicture(userPhoto: String?, firstChar: Char, size: Dp, grayscale: Boolean, onClick: () -> Unit) {
     val modifier = Modifier.clip(CircleShape).size(size).border(2.dp, MaterialTheme.colorScheme.primary, CircleShape).invisibleClickable(onClick)
-    if(userPhoto != null)
-        AsyncImage(userPhoto, null, modifier, contentScale = ContentScale.FillWidth, colorFilter = if(grayscale) ColorFilter.GrayScale else null)
-    else {
+    if(userPhoto != null) {
+        val userOutput: Any = if(userPhoto.startsWith("data")) {
+            val cleanString = userPhoto.substringAfter("base64,")
+            Base64.UrlSafe.decode(cleanString)
+        } else userPhoto
+        AsyncImage(
+            userOutput,
+            null,
+            modifier,
+            contentScale = ContentScale.FillWidth,
+            colorFilter = if (grayscale) ColorFilter.GrayScale else null
+        )
+    } else {
         GreenCircle(size, firstChar, grayscale, onClick = onClick)
     }
 }

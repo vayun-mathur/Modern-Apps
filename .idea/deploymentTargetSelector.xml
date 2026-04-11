@@ -51,6 +51,7 @@
       </SelectionState>
       <SelectionState runConfigName="findfamily">
         <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="maps">
         <option name="selectionMode" value="DROPDOWN" />
