@@ -18,6 +18,7 @@ android {
 
 dependencies {
     implementation(libs.maplibre.compose)
+    implementation(libs.coil.compose)
 
     implementKtor(libs)
 

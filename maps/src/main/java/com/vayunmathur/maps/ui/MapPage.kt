@@ -352,7 +352,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                 Text("Download")
                             }
                         }, title = { Text("Download Offline Map?") },
-                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map (approx. 4.7GB) to see more than just the overview?") },
+                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map to see more than just the overview?") },
                         dismissButton = {
                             TextButton({
                                 showDownloadDialog = false
