@@ -28,56 +28,18 @@ import kotlin.coroutines.resumeWithException
 import kotlin.time.Clock
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.decodeFromString
+import kotlin.reflect.KClass
 
 class AssistantToolSet(private val context: Context) : ToolSet {
-
-    private fun <Input : Any, Output : Any> launchIntent(
-        packageName: String,
-        className: String,
-        inputSerializer: KSerializer<Input>,
-        outputSerializer: KSerializer<Output>,
-        input: Input
-    ): Output = runBlocking {
-        suspendCancellableCoroutine { cont ->
-            val receiver = object : ResultReceiver(Handler(Looper.getMainLooper())) {
-                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
-                    val data = resultData?.getString("RESPONSE_DATA")
-                    if (data != null) {
-                        try {
-                            cont.resume(Json.decodeFromString(outputSerializer, data))
-                        } catch (e: Exception) {
-                            cont.resumeWithException(e)
-                        }
-                    } else {
-                        cont.resumeWithException(Exception("No data returned"))
-                    }
-                }
-            }
-
-            val intent = Intent().apply {
-                setClassName(packageName, className)
-                putExtra("DATA", Json.encodeToString(inputSerializer, input))
-                putExtra("RECEIVER", receiver)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-
-            if (context.packageManager.resolveActivity(intent, 0) == null) {
-                cont.resumeWithException(Exception("App not installed"))
-                return@suspendCancellableCoroutine
-            }
-
-            context.startActivity(intent)
-        }
-    }
 
     @Tool(description = "Get a list of all notes")
     fun get_notes(): String {
         return try {
-            val result = launchIntent(
+            val result: List<NoteData> = launchIntent(
+                context,
                 "com.vayunmathur.notes",
                 "com.vayunmathur.notes.intents.GetIntent",
-                serializer<Unit>(),
-                serializer<List<NoteData>>(),
                 Unit
             )
             result.toString()
@@ -87,11 +49,10 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Create a new note")
     fun create_note(title: String, content: String): String {
         return try {
-            launchIntent(
+            launchIntentU(
+                context,
                 "com.vayunmathur.notes",
                 "com.vayunmathur.notes.intents.InsertIntent",
-                serializer<NoteData>(),
-                serializer<Unit>(),
                 NoteData(title, content)
             )
             "Success: Created note '$title'"
@@ -101,11 +62,10 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Get a list of all contacts")
     fun get_contacts(): String {
         return try {
-            val result = launchIntent(
+            val result: List<ContactData> = launchIntent(
+                context,
                 "com.vayunmathur.contacts",
                 "com.vayunmathur.contacts.intents.GetIntent",
-                serializer<Unit>(),
-                serializer<List<ContactData>>(),
                 Unit
             )
             result.toString()
@@ -115,11 +75,10 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Create a new contact")
     fun create_contact(name: String, phoneNumber: String): String {
         return try {
-            launchIntent(
+            launchIntentU(
+                context,
                 "com.vayunmathur.contacts",
                 "com.vayunmathur.contacts.intents.InsertIntent",
-                serializer<ContactData>(),
-                serializer<Unit>(),
                 ContactData(name, phoneNumber)
             )
             "Success: Created contact '$name'"
@@ -129,11 +88,10 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Get a list of calendar events")
     fun get_calendar_events(): String {
         return try {
-            val result = launchIntent(
+            val result: List<EventData> = launchIntent(
+                context,
                 "com.vayunmathur.calendar",
                 "com.vayunmathur.calendar.intents.GetIntent",
-                serializer<Unit>(),
-                serializer<List<EventData>>(),
                 Unit
             )
             result.toString()
@@ -141,14 +99,13 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     }
 
     @Tool(description = "Create a new calendar event")
-    fun create_calendar_event(title: String, start: Long, end: Long, location: String = ""): String {
+    fun create_calendar_event(title: String, start: Double, end: Double, location: String = ""): String {
         return try {
-            launchIntent(
+            launchIntentU(
+                context,
                 "com.vayunmathur.calendar",
                 "com.vayunmathur.calendar.intents.InsertIntent",
-                serializer<EventData>(),
-                serializer<Unit>(),
-                EventData(title, start, end, location)
+                EventData(title, start.toLong(), end.toLong(), location)
             )
             "Success: Created event '$title'"
         } catch (e: Exception) { "Error: ${e.message}" }
@@ -157,13 +114,13 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Get a list of family members and their current locations")
     fun get_family_locations(): String {
         return try {
-            val result = launchIntent(
+            val result: List<FamilyMemberData> = launchIntent(
+                context,
                 "com.vayunmathur.findfamily",
                 "com.vayunmathur.findfamily.intents.GetIntent",
-                serializer<Unit>(),
-                serializer<List<FamilyMemberData>>(),
                 Unit
             )
+            println(result)
             result.toString()
         } catch (e: Exception) { "Error: ${e.message}" }
     }
@@ -171,11 +128,10 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Search for music (songs, albums, artists, or playlists)")
     fun search_music(query: String): String {
         return try {
-            val result = launchIntent(
+            val result: List<MusicSearchResult> = launchIntent(
+                context,
                 "com.vayunmathur.music",
                 "com.vayunmathur.music.intents.SearchIntent",
-                serializer<String>(),
-                serializer<List<MusicSearchResult>>(),
                 query
             )
             result.toString()
@@ -183,14 +139,13 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     }
 
     @Tool(description = "Play music given its id and type (song, album, artist, or playlist)")
-    fun play_music(id: Long, type: String): String {
+    fun play_music(id: Double, type: String): String {
         return try {
-            launchIntent(
+            launchIntentU(
+                context,
                 "com.vayunmathur.music",
                 "com.vayunmathur.music.intents.PlayIntent",
-                serializer<PlayMusicData>(),
-                serializer<Unit>(),
-                PlayMusicData(id, type)
+                PlayMusicData(id.toLong(), type),
             )
             "Success: Playing music"
         } catch (e: Exception) { "Error: ${e.message}" }
@@ -254,4 +209,23 @@ class AssistantToolSet(private val context: Context) : ToolSet {
 
     @Tool(description = "Get weather")
     fun get_weather(latitude: Double, longitude: Double): String = "Weather: 22°C, Sunny."
+}
+
+inline fun <reified Input : Any, reified Output : Any> launchIntent(
+    context: Context,
+    packageName: String,
+    className: String,
+    input: Input,
+): Output = runBlocking {
+    val stringOutput = MainActivity.intentLauncher.launch(context, packageName, className, serializer<Input>(), input)
+    Json.decodeFromString(serializer<Output>(), stringOutput)
+}
+inline fun <reified Input : Any> launchIntentU(
+    context: Context,
+    packageName: String,
+    className: String,
+    input: Input,
+): Unit = runBlocking {
+    val stringOutput = MainActivity.intentLauncher.launch(context, packageName, className, serializer<Input>(), input)
+    Json.decodeFromString(serializer<Unit>(), stringOutput)
 }

@@ -8,11 +8,13 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.datastore.core.Serializer
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 import kotlin.coroutines.resume
@@ -78,14 +80,14 @@ class IntentLauncher(activity: ComponentActivity) {
         context: Context,
         packageName: String,
         className: String,
-        kClass: KClass<Input>,
+        serializer: SerializationStrategy<Input>,
         input: Input
     ): String = suspendCancellableCoroutine { cont ->
         continuation = cont
 
         val intent = Intent().apply {
             setClassName(packageName, className)
-            putExtra("DATA", Json.encodeToString(kClass.serializer(), input))
+            putExtra("DATA", Json.encodeToString(serializer, input))
         }
 
         // 1. Check if the package/activity is resolvable
