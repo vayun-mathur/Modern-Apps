@@ -73,10 +73,17 @@ jobs:
 
       - name: Detect App Modules
         run: |
+          # Define modules to exclude here (space-separated)
+          EXCLUDE_LIST="pdf"
+
+          # Convert space-separated list to a grep-ready regex: (pdf|wear|benchmark)
+          EXCLUDE_REGEX="($(echo $EXCLUDE_LIST | sed 's/ /|/g'))"
+
           RAW_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
             grep -vE "^\./build.gradle.kts$" | \
-            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
-          
+            sed 's|^\./||; s|/build.gradle.kts$||' | \
+            grep -vE "^$EXCLUDE_REGEX$" | sort -u)
+
           REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
           echo "module_dirs=$REVERSED_DIRS" >> $GITHUB_ENV
 
