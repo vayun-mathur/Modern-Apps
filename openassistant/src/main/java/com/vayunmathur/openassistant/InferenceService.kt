@@ -100,14 +100,7 @@ class InferenceService : Service() {
     }
 
     private fun setupConversation(id: Long, history: List<Message>) {
-        val systemPrompt = """
-            You are a helpful Android assistant. Use tool calls:
-            <start_function_call>tool_name(arg1="val1")<end_function_call>
-            Interpret tool results conversationally.
-            
-            MANDATORY: You must identify the conversation topic based on the user's first input and provide a short summary title (3-5 words). 
-            Your very first response in this conversation MUST start exactly with <title_start>Your Summary Title<title_end>.
-        """.trimIndent()
+        val systemPrompt = """You are a helpful Android assistant.""".trimIndent()
 
         val initialMessages = history.map { msg ->
             when (msg.role) {
@@ -121,7 +114,7 @@ class InferenceService : Service() {
             systemInstruction = Contents.of(systemPrompt),
             initialMessages = initialMessages,
             tools = listOf(tool(AssistantToolSet(applicationContext))),
-            automaticToolCalling = false
+            automaticToolCalling = true,
         ))
         currentConversationId = id
     }
@@ -142,123 +135,73 @@ class InferenceService : Service() {
             timestamp = Clock.System.now().toEpochMilliseconds()
         ))
 
-        var isLooping = true
-        var nextInput: com.google.ai.edge.litertlm.Message? = null
+        var fullResponseText = ""
+        var displayedText = ""
+        var tagBuffer = ""
+        var insideTag = false
+        var insideTitleBlock = false
+        var titleBuffer = ""
 
-        while (isLooping) {
-            var fullResponseText = ""
-            var displayedText = ""
-            var tagBuffer = ""
-            var insideTag = false
-            var insideFunctionBlock = false
-            var insideTitleBlock = false
-            var titleBuffer = ""
+        // On the first loop iteration, build multimodal content
+        val stream = run {
+            val contents = mutableListOf<Content>()
 
-            // On the first loop iteration, build multimodal content
-            val stream = if (nextInput == null) {
-                val contents = mutableListOf<Content>()
-                
-                // Add images
-                imagePaths.forEach { path ->
-                    contents.add(Content.ImageFile(path))
-                }
-                
-                // Add audio
-                audioPath?.let { path ->
-                    if (File(path).exists()) {
-                        contents.add(Content.AudioFile(path))
-                    }
-                }
-                
-                // Add text last
-                if (userText.isNotBlank()) {
-                    contents.add(Content.Text(userText))
-                }
-
-                conv.sendMessageAsync(com.google.ai.edge.litertlm.Message.user(Contents.of(contents)))
-            } else {
-                conv.sendMessageAsync(nextInput)
+            // Add images
+            imagePaths.forEach { path ->
+                contents.add(Content.ImageFile(path))
             }
 
-            stream.catch { e ->
-                updateMessageInDb(aiMsgId, "Error: ${e.message}")
-                isLooping = false
-            }.collect { chunk ->
-                val chunkText = chunk.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
-                fullResponseText += chunkText
+            // Add audio
+            audioPath?.let { path ->
+                if (File(path).exists()) {
+                    contents.add(Content.AudioFile(path))
+                }
+            }
 
-                for (char in chunkText) {
-                    if (char == '<') { 
-                        insideTag = true
-                        tagBuffer = "<" 
-                    } else if (insideTag) {
-                        tagBuffer += char
-                        if (char == '>') {
-                            insideTag = false
-                            when {
-                                tagBuffer.contains("start_function_call") -> insideFunctionBlock = true
-                                tagBuffer.contains("end_function_call") -> insideFunctionBlock = false
-                                tagBuffer.contains("title_start") -> insideTitleBlock = true
-                                tagBuffer.contains("title_end") -> {
-                                    insideTitleBlock = false
-                                    updateTitleInDb(conversationId, titleBuffer.trim())
-                                }
+            // Add text last
+            if (userText.isNotBlank()) {
+                contents.add(Content.Text(userText))
+            }
+
+            conv.sendMessageAsync(com.google.ai.edge.litertlm.Message.user(Contents.of(contents)))
+        }
+
+        stream.catch { e ->
+            updateMessageInDb(aiMsgId, "Error: ${e.message}")
+        }.collect { chunk ->
+            val chunkText = chunk.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
+            fullResponseText += chunkText
+
+            for (char in chunkText) {
+                if (char == '<') {
+                    insideTag = true
+                    tagBuffer = "<"
+                } else if (insideTag) {
+                    tagBuffer += char
+                    if (char == '>') {
+                        insideTag = false
+                        when {
+                            tagBuffer.contains("title_start") -> insideTitleBlock = true
+                            tagBuffer.contains("title_end") -> {
+                                insideTitleBlock = false
+                                updateTitleInDb(conversationId, titleBuffer.trim())
                             }
-                            tagBuffer = ""
                         }
-                    } else {
-                        if (insideTitleBlock) {
-                            titleBuffer += char
-                        } else if (!insideFunctionBlock) {
-                            displayedText += char
-                        }
+                        tagBuffer = ""
                     }
-                }
-                
-                if (displayedText.isNotBlank()) {
-                    updateMessageInDb(aiMsgId, displayedText)
+                } else {
+                    if (insideTitleBlock) {
+                        titleBuffer += char
+                    } else {
+                        displayedText += char
+                    }
                 }
             }
 
-            // Check for tool calls to continue the loop
-            val toolRegex = Pattern.compile("<start_function_call>(.*?)<end_function_call>", Pattern.DOTALL)
-            val matcher = toolRegex.matcher(fullResponseText)
-
-            if (matcher.find()) {
-                val callBody = matcher.group(1)?.trim() ?: ""
-                val toolResult = processManualCallBody(callBody)
-                updateMessageInDb(aiMsgId, "Thinking...")
-                nextInput = com.google.ai.edge.litertlm.Message.tool(Contents.of(listOf(Content.ToolResponse("manual_action", toolResult))))
-            } else {
-                isLooping = false
+            if (displayedText.isNotBlank()) {
+                updateMessageInDb(aiMsgId, displayedText)
             }
         }
-    }
-
-    private fun processManualCallBody(body: String): String {
-        return try {
-            val tools = AssistantToolSet(applicationContext)
-            val name = body.substringBefore("(").trim()
-            val argsString = body.substringAfter("(").substringBeforeLast(")")
-            val argsMap = mutableMapOf<String, String>()
-            if (argsString.isNotBlank()) {
-                argsString.split(",").forEach { pair ->
-                    val parts = pair.split("=")
-                    if (parts.size == 2) {
-                        argsMap[parts[0].trim()] = parts[1].trim().removeSurrounding("\"").removeSurrounding("'")
-                    }
-                }
-            }
-            when (name) {
-                "get_local_current_date_time" -> tools.getLocalCurrentDateTime()
-                "get_list_of_apps" -> tools.getListOfApps()
-                "open_app" -> tools.openApp(argsMap["packageId"] ?: "")
-                "send_message" -> tools.sendMessage(argsMap["recipient"] ?: "", argsMap["message"] ?: "")
-                "make_phone_call" -> tools.makePhoneCall(argsMap["recipient"] ?: "")
-                "get_weather" -> tools.getWeather(argsMap["latitude"]?.toDoubleOrNull() ?: 0.0, argsMap["longitude"]?.toDoubleOrNull() ?: 0.0)
-                else -> "Error: Unknown tool $name"
-            }
-        } catch (e: Exception) { "Error: ${e.message}" }
     }
 
     // Database interaction placeholders - implementation should be provided by your DB layer

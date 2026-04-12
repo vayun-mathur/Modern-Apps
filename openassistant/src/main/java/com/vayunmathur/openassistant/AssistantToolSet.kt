@@ -14,7 +14,7 @@ import kotlin.time.Clock
 
 class AssistantToolSet(private val context: Context) : ToolSet {
     @Tool(description = "Get the current date and time in the local timezone")
-    fun getLocalCurrentDateTime(): String {
+    fun get_local_current_date_time(): String {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val tzId = TimeZone.currentSystemDefault().id
         return "$tzId: $now"
@@ -22,14 +22,14 @@ class AssistantToolSet(private val context: Context) : ToolSet {
 
     @SuppressLint("QueryPermissionsNeeded")
     @Tool(description = "Get a list of installed apps on the device")
-    fun getListOfApps(): String {
+    fun get_app_list(): String {
         val pm = context.packageManager
         val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         return apps.map { it.loadLabel(pm).toString() }.toString()
     }
 
     @Tool(description = "Open an app given its package id")
-    fun openApp(@ToolParam(description = "package id") packageId: String): String {
+    fun open_app(@ToolParam(description = "package id") packageId: String): String {
         val intent = context.packageManager.getLaunchIntentForPackage(packageId)
         return if (intent != null) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -39,7 +39,7 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     }
 
     @Tool(description = "Send a message")
-    fun sendMessage(recipient: String, message: String): String {
+    fun send_message(recipient: String, message: String): String {
         return try {
             val intent = Intent(Intent.ACTION_SENDTO).apply {
                 data = "smsto:$recipient".toUri()
@@ -52,7 +52,7 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     }
 
     @Tool(description = "Make a phone call")
-    fun makePhoneCall(recipient: String): String {
+    fun make_phone_call(recipient: String): String {
         return try {
             val intent = Intent(Intent.ACTION_DIAL).apply {
                 data = "tel:$recipient".toUri()
@@ -64,5 +64,5 @@ class AssistantToolSet(private val context: Context) : ToolSet {
     }
 
     @Tool(description = "Get weather")
-    fun getWeather(latitude: Double, longitude: Double): String = "Weather: 22°C, Sunny."
+    fun get_weather(latitude: Double, longitude: Double): String = "Weather: 22°C, Sunny."
 }

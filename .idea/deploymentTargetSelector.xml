@@ -25,6 +25,7 @@
       </SelectionState>
       <SelectionState runConfigName="openassistant">
         <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="passwords">
         <option name="selectionMode" value="DROPDOWN" />
