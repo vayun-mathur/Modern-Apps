@@ -14,6 +14,10 @@ import kotlin.time.Clock
 
 class InferenceService : Service() {
 
+    companion object {
+        var newTitle: String? = null
+    }
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     // Keeping the engine and conversation warm in memory
@@ -100,7 +104,10 @@ class InferenceService : Service() {
     }
 
     private fun setupConversation(id: Long, history: List<Message>) {
-        val systemPrompt = """You are a helpful Android assistant.""".trimIndent()
+        val systemPrompt = """
+            You are a helpful Android assistant.
+            On the first request the user sends to you, you MUST define a title for the conversation. You may optionally change the title if the topic of conversation changes sufficiently
+            """.trimIndent()
 
         val initialMessages = history.map { msg ->
             when (msg.role) {
@@ -137,10 +144,6 @@ class InferenceService : Service() {
 
         var fullResponseText = ""
         var displayedText = ""
-        var tagBuffer = ""
-        var insideTag = false
-        var insideTitleBlock = false
-        var titleBuffer = ""
 
         // On the first loop iteration, build multimodal content
         val stream = run {
@@ -171,31 +174,11 @@ class InferenceService : Service() {
         }.collect { chunk ->
             val chunkText = chunk.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
             fullResponseText += chunkText
+            displayedText += chunkText
 
-            for (char in chunkText) {
-                if (char == '<') {
-                    insideTag = true
-                    tagBuffer = "<"
-                } else if (insideTag) {
-                    tagBuffer += char
-                    if (char == '>') {
-                        insideTag = false
-                        when {
-                            tagBuffer.contains("title_start") -> insideTitleBlock = true
-                            tagBuffer.contains("title_end") -> {
-                                insideTitleBlock = false
-                                updateTitleInDb(conversationId, titleBuffer.trim())
-                            }
-                        }
-                        tagBuffer = ""
-                    }
-                } else {
-                    if (insideTitleBlock) {
-                        titleBuffer += char
-                    } else {
-                        displayedText += char
-                    }
-                }
+            if(newTitle != null) {
+                updateTitleInDb(conversationId, newTitle!!)
+                newTitle = null
             }
 
             if (displayedText.isNotBlank()) {

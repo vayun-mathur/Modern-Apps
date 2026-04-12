@@ -63,6 +63,12 @@ class AssistantToolSet(private val context: Context) : ToolSet {
         } catch (e: Exception) { "Error: ${e.message}" }
     }
 
+    @Tool("Set title of current conversation. Mandatory for first response")
+    fun set_conversation_title(newTitle: String): String {
+        InferenceService.newTitle = newTitle
+        return "Conversation title set successfully"
+    }
+
     @Tool(description = "Get weather")
     fun get_weather(latitude: Double, longitude: Double): String = "Weather: 22°C, Sunny."
 }
