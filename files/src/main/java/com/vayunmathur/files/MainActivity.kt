@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.webkit.MimeTypeMap
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,6 +39,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
@@ -48,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +67,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
+import kotlinx.coroutines.launch
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toOkioPath
@@ -124,6 +127,8 @@ fun Path.deleteRecursively() {
 @Composable
 fun DirectoryPage(rootFile: Path) {
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     var currentDirectory by remember { mutableStateOf(rootFile) }
     var selectedPaths by remember(currentDirectory) { mutableStateOf(setOf<Path>()) }
     var pathBeingRenamed by remember { mutableStateOf<Path?>(null) }
@@ -167,6 +172,7 @@ fun DirectoryPage(rootFile: Path) {
                 focusManager.clearFocus()
                 pathBeingRenamed = null
             },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -252,7 +258,9 @@ fun DirectoryPage(rootFile: Path) {
                             try {
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("No app found to open this file")
+                                }
                             }
                         }
                     }
