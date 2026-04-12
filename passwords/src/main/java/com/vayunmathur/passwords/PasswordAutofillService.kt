@@ -20,8 +20,15 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.passwords.data.PasswordDatabase
 import kotlinx.coroutines.runBlocking
+import android.util.Log
 
+/**
+ * Updated Password Manager Service.
+ * Fixed for Chrome Virtual Hierarchy and modern Android Autofill requirements.
+ */
 class PasswordAutofillService : AutofillService() {
+
+    private val TAG = "AutofillService"
 
     private val viewModel by lazy {
         val db = applicationContext.buildDatabase<PasswordDatabase>()
@@ -31,10 +38,12 @@ class PasswordAutofillService : AutofillService() {
     override fun onFillRequest(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
         val parser = StructureParser(request.fillContexts)
 
-        // 1. If we can't find username or password fields, abort
+        // 1. Identify fields
         val usernameId = parser.usernameId
         val passwordId = parser.passwordId
-        if (usernameId == null && passwordId == null) {
+
+        // If we can't find a password field at minimum, we likely aren't on a login form
+        if (passwordId == null) {
             callback.onSuccess(null)
             return
         }
@@ -52,43 +61,42 @@ class PasswordAutofillService : AutofillService() {
                     pass.websites.any { site -> matchesContext(site, targetPackage, targetWebDomain) }
                 }
 
+                if (matches.isEmpty()) {
+                    callback.onSuccess(null)
+                    return@runBlocking
+                }
+
                 // 4. Build Response
                 val responseBuilder = FillResponse.Builder()
 
                 for (pass in matches) {
-                    val dataset = Dataset.Builder()
+                    val datasetBuilder = Dataset.Builder()
 
-                    // 1. Create the RemoteViews (The UI)
-                    val remoteViews = createPresentation(pass.name.ifBlank { pass.userId })
+                    // Create Presentations for both Dropdown and Keyboard suggestions
+                    val presentation = createPresentations(pass.name.ifBlank { pass.userId })
 
-                    // 2. Wrap it in a 'Presentations' object (REQUIRED for setField)
-                    val presentation = Presentations.Builder()
-                        .setMenuPresentation(remoteViews)
-                        .build()
-
-                    // Set Username Field
+                    // Handle Username
                     if (usernameId != null) {
                         val field = Field.Builder()
                             .setValue(AutofillValue.forText(pass.userId))
-                            .setPresentations(presentation) // Now passing 'Presentations' type
-                            .build()
-                        dataset.setField(usernameId, field)
-                    }
-
-                    // Set Password Field
-                    if (passwordId != null) {
-                        val field = Field.Builder()
-                            .setValue(AutofillValue.forText(pass.password))
                             .setPresentations(presentation)
                             .build()
-                        dataset.setField(passwordId, field)
+                        datasetBuilder.setField(usernameId, field)
                     }
 
-                    responseBuilder.addDataset(dataset.build())
+                    // Handle Password
+                    val passField = Field.Builder()
+                        .setValue(AutofillValue.forText(pass.password))
+                        .setPresentations(presentation)
+                        .build()
+                    datasetBuilder.setField(passwordId, passField)
+
+                    responseBuilder.addDataset(datasetBuilder.build())
                 }
 
                 callback.onSuccess(responseBuilder.build())
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in onFillRequest", e)
                 callback.onSuccess(null)
             }
         }
@@ -102,17 +110,16 @@ class PasswordAutofillService : AutofillService() {
         if (!username.isNullOrBlank() && !password.isNullOrBlank()) {
             runBlocking {
                 val existing = viewModel.getAll<Password>().firstOrNull { it.userId == username }
-
                 if (existing != null) {
                     viewModel.upsertAsync(existing.copy(password = password))
                 } else {
                     viewModel.upsertAsync(
                         Password(
-                            name = "New Login",
+                            name = "Saved Login",
                             userId = username,
                             password = password,
                             totpSecret = null,
-                            websites = emptyList()
+                            websites = listOfNotNull(parser.webDomain)
                         )
                     )
                 }
@@ -122,35 +129,51 @@ class PasswordAutofillService : AutofillService() {
     }
 
     /**
-     * Creates the UI that appears in the dropdown menu.
+     * Creates standard Presentations for the system to show UI.
+     * Includes Menu (dropdown) support.
      */
-    private fun createPresentation(text: String): RemoteViews {
-        // Note: Ensure you have a layout (e.g., simple_list_item_1) or a custom layout in your resources
-        val presentation = RemoteViews(packageName, android.R.layout.simple_list_item_1)
-        presentation.setTextViewText(android.R.id.text1, text)
-        return presentation
+    private fun createPresentations(text: String): Presentations {
+        val remoteViews = RemoteViews(packageName, android.R.layout.simple_list_item_1)
+        remoteViews.setTextViewText(android.R.id.text1, text)
+
+        return Presentations.Builder()
+            .setMenuPresentation(remoteViews)
+            .build()
     }
 
     /**
-     * Checks if a stored website matches the current app package or web domain.
+     * Robust matching logic for Android Packages and Web Domains.
      */
     private fun matchesContext(storedSite: String, currentPkg: String?, currentWeb: String?): Boolean {
         val normalized = storedSite.trim().lowercase()
+            .replace("https://", "")
+            .replace("http://", "")
+            .removeSuffix("/")
 
-        // Check Android Package match
-        if (currentPkg != null && normalized == currentPkg.lowercase()) return true
-        if (currentPkg != null && normalized == "android-app://${currentPkg.lowercase()}") return true
-
-        // Check Web Domain match
-        if (currentWeb != null) {
-            val host = try { (if (normalized.startsWith("http")) normalized else "https://$normalized").toUri().host } catch (_: Exception) { normalized }
-            if (currentWeb.contains(host ?: normalized)) return true
+        // 1. Package Name Match
+        if (currentPkg != null) {
+            val pkg = currentPkg.lowercase()
+            if (normalized == pkg || normalized == "android-app://$pkg") return true
         }
+
+        // 2. Web Domain Match (Chrome / WebViews)
+        if (currentWeb != null) {
+            val currentHost = try {
+                val uri = if (currentWeb.contains("://")) currentWeb.toUri() else "https://$currentWeb".toUri()
+                uri.host?.lowercase() ?: currentWeb.lowercase()
+            } catch (_: Exception) {
+                currentWeb.lowercase()
+            }
+
+            // Check for suffix match (e.g. "facebook.com" matches "m.facebook.com")
+            if (currentHost.endsWith(normalized) || normalized.endsWith(currentHost)) return true
+        }
+
         return false
     }
 
     /**
-     * Helper class to traverse the View Structure and find IDs/Text.
+     * Parser optimized for Chrome and Virtual Hierarchies.
      */
     private class StructureParser(contexts: List<FillContext>) {
         var usernameId: AutofillId? = null
@@ -169,40 +192,36 @@ class PasswordAutofillService : AutofillService() {
         }
 
         private fun traverse(node: AssistStructure.ViewNode) {
-            // Check for Web Domain (Standard API)
+            // 1. Extract Web Domain (Chrome stores this in virtual nodes or root)
             if (webDomain == null && node.webDomain != null) {
                 webDomain = node.webDomain
             }
 
+            // 2. Identify Fields using Hints and HTML Info (Chrome/WebViews)
             val hints = node.autofillHints
-            val text = node.text?.toString()
+            val htmlName = node.htmlInfo?.attributes?.find { it.first == "name" }?.second?.lowercase()
+            val idEntry = node.idEntry?.lowercase()
 
-            // Heuristics to identify fields
-            if (hints != null) {
-                for (hint in hints) {
-                    val h = hint.lowercase()
-                    if (h.contains("username") || h.contains("email")) {
-                        if (usernameId == null) usernameId = node.autofillId
-                        if (usernameText == null) usernameText = text
-                    }
-                    if (h.contains("password")) {
-                        if (passwordId == null) passwordId = node.autofillId
-                        if (passwordText == null) passwordText = text
-                    }
-                }
-            }
-            // Fallback: Check input type if hints are missing (129 = textPassword, 145 = textVisiblePassword, etc.)
-            else {
-                if (passwordId == null && (node.inputType and 0xFFF) == 0x81) { // InputType.TYPE_TEXT_VARIATION_PASSWORD
-                    passwordId = node.autofillId
-                    passwordText = text
-                }
-                // Very basic fallback for username if it looks like an email
-                if (usernameId == null && text != null && text.contains("@")) {
-                    usernameText = text
-                }
+            val isUsername = hints?.any { it.contains("username") || it.contains("email") } == true ||
+                    htmlName?.contains("user") == true || htmlName?.contains("email") == true ||
+                    idEntry?.contains("user") == true || idEntry?.contains("email") == true
+
+            val isPassword = hints?.any { it.contains("password") } == true ||
+                    htmlName?.contains("pass") == true ||
+                    idEntry?.contains("pass") == true ||
+                    (node.inputType and 0xFFF) == 0x81 // TYPE_TEXT_VARIATION_PASSWORD
+
+            if (isUsername && usernameId == null) {
+                usernameId = node.autofillId
+                usernameText = node.autofillValue?.textValue?.toString() ?: node.text?.toString()
             }
 
+            if (isPassword && passwordId == null) {
+                passwordId = node.autofillId
+                passwordText = node.autofillValue?.textValue?.toString() ?: node.text?.toString()
+            }
+
+            // 3. Recurse into children (including Virtual nodes for Chrome)
             for (i in 0 until node.childCount) {
                 traverse(node.getChildAt(i))
             }
