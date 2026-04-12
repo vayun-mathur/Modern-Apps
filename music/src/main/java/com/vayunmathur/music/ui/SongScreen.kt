@@ -171,8 +171,12 @@ fun SongScreen(backStack: NavBackStack<Route>) {
             ) {
                 IconButton(onClick = { playbackManager.toggleRepeat() }) {
                     Icon(
-                        painter = painterResource(if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat),
-                        contentDescription = null,
+                        painter = painterResource(
+                            if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.ic_repeat_one_on
+                            else if (repeatMode == Player.REPEAT_MODE_ALL) R.drawable.ic_repeat_on
+                            else R.drawable.ic_repeat
+                        ),
+                        contentDescription = "Repeat",
                         tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -204,7 +208,8 @@ fun SongScreen(backStack: NavBackStack<Route>) {
 
                 IconButton(onClick = { playbackManager.toggleShuffle() }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_shuffle), null,
+                        painter = painterResource(if (shuffleMode) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle),
+                        contentDescription = "Shuffle",
                         tint = if (shuffleMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
