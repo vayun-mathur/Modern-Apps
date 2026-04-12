@@ -25,6 +25,7 @@ import androidx.glance.layout.fillMaxSize
 import com.vayunmathur.library.ui.DynamicThemeGlance
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.photos.data.MIGRATION_1_2
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDatabase
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,7 @@ import kotlinx.coroutines.withContext
 class PhotoGlanceWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
 
-        val db = context.buildDatabase<PhotoDatabase>()
+        val db = context.buildDatabase<PhotoDatabase>(listOf(MIGRATION_1_2))
         val viewModel = DatabaseViewModel(db, Photo::class to db.photoDao())
         val photos = viewModel.getAll<Photo>()
 

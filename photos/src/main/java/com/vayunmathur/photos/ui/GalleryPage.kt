@@ -51,11 +51,10 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        delay(200)
         withContext(Dispatchers.IO) {
-            setAllPhotos(context, viewModel)
-            println(photos.count { !it.exifSet })
-            setExifData(photos, viewModel, context)
+            syncPhotos(context, viewModel)
+            val updatedPhotos = viewModel.getAll<Photo>()
+            setExifData(updatedPhotos, viewModel, context)
         }
     }
     val photosGroupedByMonth by remember {
@@ -70,7 +69,7 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     }
     Scaffold(bottomBar = { NavigationBar(Route.Gallery, backStack) }) { paddingValues ->
         LazyVerticalGrid(
-            GridCells.Adaptive(40.dp),
+            GridCells.Adaptive(100.dp),
             Modifier.padding(paddingValues),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -97,104 +96,90 @@ fun GalleryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 
 
 
-fun setAllPhotos(context: Context, viewModel: DatabaseViewModel) {
-    val photos = mutableListOf<Photo>()
+suspend fun syncPhotos(context: Context, viewModel: DatabaseViewModel) {
+    val existingPhotos = viewModel.getAll<Photo>().associateBy { it.id }
+    val newOrUpdatedPhotos = mutableListOf<Photo>()
+    val mediaStoreIds = mutableSetOf<Long>()
 
-    val projection = arrayOf(
-        MediaStore.Images.Media._ID,
-        MediaStore.Images.Media.DISPLAY_NAME,
-        MediaStore.Images.Media.DATE_TAKEN,
-        MediaStore.Images.Media.DATE_ADDED,
-        MediaStore.Images.Media.WIDTH,
-        MediaStore.Images.Media.HEIGHT
-    )
-    val query = context.contentResolver.query(
+    fun processCursor(cursor: android.database.Cursor, isVideo: Boolean) {
+        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+        val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
+        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+        val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH)
+        val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
+        val durationColumn = if (isVideo) cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
+
+        val baseUri = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+
+        while (cursor.moveToNext()) {
+            val id = cursor.getLong(idColumn)
+            mediaStoreIds.add(id)
+            val name = cursor.getString(nameColumn)
+            val dateTaken = cursor.getLongOrNull(dateTakenColumn)
+            val date = if (dateTaken != null && dateTaken > 0) dateTaken else (cursor.getLong(dateAddedColumn) * 1000)
+            val width = cursor.getInt(widthColumn)
+            val height = cursor.getInt(heightColumn)
+            val contentUri = ContentUris.withAppendedId(baseUri, id).toString()
+            val videoData = if (isVideo) VideoData(cursor.getLong(durationColumn)) else null
+
+            val existing = existingPhotos[id]
+            if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData) {
+                newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData)
+            }
+        }
+    }
+
+    // Images
+    context.contentResolver.query(
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        projection,
+        arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT),
         null, null, null
-    )
+    )?.use { processCursor(it, false) }
 
-    query?.use { cursor ->
-        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-        val date1Column = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
-        val date2Column = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-        val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
-        val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
-
-        while (cursor.moveToNext()) {
-            val id = cursor.getLong(idColumn)
-            val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
-            val name = cursor.getString(nameColumn)
-            val date = cursor.getLongOrNull(date1Column) ?: cursor.getLong(date2Column)
-            val width = cursor.getInt(widthColumn)
-            val height = cursor.getInt(heightColumn)
-
-            photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null, null)
-        }
-    }
-
-    val projectionVideo = arrayOf(
-        MediaStore.Video.Media._ID,
-        MediaStore.Video.Media.DISPLAY_NAME,
-        MediaStore.Video.Media.DATE_TAKEN,
-        MediaStore.Video.Media.DATE_ADDED,
-        MediaStore.Video.Media.WIDTH,
-        MediaStore.Video.Media.HEIGHT,
-        MediaStore.Video.Media.DURATION
-    )
-    val queryVideo = context.contentResolver.query(
+    // Videos
+    context.contentResolver.query(
         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        projectionVideo,
+        arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DATE_TAKEN, MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT, MediaStore.Video.Media.DURATION),
         null, null, null
-    )
+    )?.use { processCursor(it, true) }
 
-    queryVideo?.use { cursor ->
-        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-        val date1Column = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_TAKEN)
-        val date2Column = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
-        val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
-        val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
-        val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-
-        while (cursor.moveToNext()) {
-            val id = cursor.getLong(idColumn)
-            val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-            val name = cursor.getString(nameColumn)
-            val date = cursor.getLongOrNull(date1Column) ?: cursor.getLong(date2Column)
-            val width = cursor.getInt(widthColumn)
-            val height = cursor.getInt(heightColumn)
-            val duration = cursor.getLong(durationColumn)
-
-            photos += Photo(id, name, contentUri.toString(), date, width, height, false, null, null, VideoData(duration))
-        }
+    if (newOrUpdatedPhotos.isNotEmpty()) {
+        viewModel.upsertAll(newOrUpdatedPhotos)
     }
 
-    viewModel.replaceAll(photos.sortedByDescending { it.date })
+    val toDelete = existingPhotos.keys - mediaStoreIds
+    if (toDelete.isNotEmpty()) {
+        toDelete.chunked(900).forEach { chunk ->
+            viewModel.deleteIf<Photo>("id IN (${chunk.joinToString(",")})")
+        }
+    }
 }
 
 suspend fun CoroutineScope.setExifData(photos: List<Photo>, viewModel: DatabaseViewModel, context: Context) {
     val ps = photos.filter { !it.exifSet }.sortedByDescending { it.date }
-    ps.chunked(50).forEachIndexed { it, photos ->
-        val newPhotos = photos.map { photo ->
+    ps.chunked(50).forEachIndexed { index, photosChunk ->
+        val newPhotos = photosChunk.map { photo ->
             async {
-                val (lat, long) = context.contentResolver.openInputStream(
-                    MediaStore.setRequireOriginal(
-                        photo.uri.toUri()
-                    )
-                )?.use { inputStream ->
-                    val exif = ExifInterface(inputStream)
-                    val latLong = exif.latLong
-                    val lat = latLong?.getOrNull(0)
-                    val long = latLong?.getOrNull(1)
-                    listOf(lat, long)
-                } ?: listOf(null, null)
-                photo.copy(exifSet = true, lat = lat, long = long)
+                try {
+                    val (lat, long) = context.contentResolver.openInputStream(
+                        MediaStore.setRequireOriginal(
+                            photo.uri.toUri()
+                        )
+                    )?.use { inputStream ->
+                        val exif = ExifInterface(inputStream)
+                        val latLong = exif.latLong
+                        val lat = latLong?.getOrNull(0)
+                        val long = latLong?.getOrNull(1)
+                        listOf(lat, long)
+                    } ?: listOf(null, null)
+                    photo.copy(exifSet = true, lat = lat, long = long)
+                } catch (e: Exception) {
+                    photo.copy(exifSet = true) // Mark as set even on error to avoid retry every time
+                }
             }
         }.awaitAll()
         viewModel.upsertAll(newPhotos)
-        println("${it * 50} / ${ps.size}")
+        println("${index * 50} / ${ps.size}")
     }
-
 }
