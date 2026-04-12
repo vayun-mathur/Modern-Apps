@@ -1,13 +1,5 @@
 package com.vayunmathur.music.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Music
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,19 +18,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
+import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.music.AlbumArt
 import com.vayunmathur.music.PlaybackManager
-import com.vayunmathur.music.AddToPlaylistButton
+import com.vayunmathur.music.Route
+import com.vayunmathur.music.database.Music
+import com.vayunmathur.music.database.Playlist
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, albumId: Long) {
-    val album by viewModel.getState<Album>(albumId)
+fun PlaylistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, playlistId: Long) {
+    val playlist by viewModel.getState<Playlist>(playlistId)
     val allMusic by viewModel.data<Music>().collectAsState()
-    val musicInAlbum = remember(allMusic, albumId) {
-        allMusic.filter { it.albumId == albumId }
+    var musicInPlaylist by remember { mutableStateOf(emptyList<Music>()) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(allMusic, playlistId) {
+        val musicIds = viewModel.getMatches<Playlist, Music>(playlistId)
+        musicInPlaylist = allMusic.filter { musicIds.contains(it.id) }
     }
 
     val context = LocalContext.current
@@ -59,23 +61,55 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // Header: Album Art
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AlbumArt(album.uri.toUri(), Modifier
+                    Box(Modifier
                         .size(260.dp)
                         .clip(RoundedCornerShape(24.dp))
-                        .background(Color.DarkGray))
+                        .background(Color.DarkGray),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(painterResource(com.vayunmathur.music.R.drawable.baseline_library_music_24), null, Modifier.size(100.dp))
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     ListItem({
-                        Text(album.name, style = MaterialTheme.typography.titleLarge)
-                    }, Modifier, {Text("Album")}, {
-                        Text("${album.artistString(viewModel)}\nJan 2016 • ${musicInAlbum.size} songs • 1:25:02")
+                        var showRenameDialog by remember { mutableStateOf(false) }
+                        var newName by remember(playlist.name) { mutableStateOf(playlist.name) }
+                        Text(playlist.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.clickable {
+                            showRenameDialog = true
+                        })
+
+                        if (showRenameDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showRenameDialog = false },
+                                title = { Text("Rename Playlist") },
+                                text = {
+                                    TextField(value = newName, onValueChange = { newName = it })
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            viewModel.upsert(playlist.copy(name = newName))
+                                            showRenameDialog = false
+                                        }
+                                    }) {
+                                        Text("Rename")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showRenameDialog = false }) {
+                                        Text("Cancel")
+                                    }
+                                }
+                            )
+                        }
+                    }, Modifier, {Text("Playlist")}, {
+                        Text("${musicInPlaylist.size} songs")
                     })
                 }
             }
@@ -90,7 +124,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                 ) {
                     Button(
                         onClick = {
-                            playbackManager.playSong(musicInAlbum, 0)
+                            playbackManager.playSong(musicInPlaylist, 0)
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.15f)),
@@ -104,7 +138,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
 
                     Button(
                         onClick = {
-                            playbackManager.playShuffled(musicInAlbum)
+                            playbackManager.playShuffled(musicInPlaylist)
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White),
@@ -118,34 +152,22 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                 }
             }
 
-            // Track List Header
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Songs",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            // Track Items
-            itemsIndexed(musicInAlbum) { idx, music ->
+            // Track List
+            itemsIndexed(musicInPlaylist) { idx, music ->
                 ListItem({
                     Text(music.title)
                 }, Modifier.clickable{
-                    playbackManager.playSong(musicInAlbum, idx)
+                    playbackManager.playSong(musicInPlaylist, idx)
+                }, {}, {
                 }, trailingContent = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("3:02")
-                        AddToPlaylistButton(backStack, music)
+                    IconButton({
+                        scope.launch {
+                            viewModel.unmatch<Playlist, Music>(playlistId, music.id)
+                            val musicIds = viewModel.getMatches<Playlist, Music>(playlistId)
+                            musicInPlaylist = allMusic.filter { musicIds.contains(it.id) }
+                        }
+                    }) {
+                        IconClose()
                     }
                 }, leadingContent = {
                     AlbumArt(music.uri.toUri(), Modifier.size(48.dp))

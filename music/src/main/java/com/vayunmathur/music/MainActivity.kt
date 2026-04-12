@@ -9,10 +9,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.media3.session.MediaController
+import androidx.room.migration.Migration
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.PermissionsChecker
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -20,12 +22,16 @@ import com.vayunmathur.music.database.Album
 import com.vayunmathur.music.database.Artist
 import com.vayunmathur.music.database.Music
 import com.vayunmathur.music.database.MusicDatabase
+import com.vayunmathur.music.database.Playlist
 import com.vayunmathur.music.ui.AlbumDetailScreen
 import com.vayunmathur.music.ui.AlbumScreen
 import com.vayunmathur.music.ui.ArtistDetailScreen
 import com.vayunmathur.music.ui.ArtistScreen
 import com.vayunmathur.music.ui.HomeScreen
+import com.vayunmathur.music.ui.PlaylistDetailScreen
+import com.vayunmathur.music.ui.PlaylistScreen
 import com.vayunmathur.music.ui.SongScreen
+import com.vayunmathur.music.ui.AddToPlaylistDialog
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
@@ -34,8 +40,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<MusicDatabase>()
-        val viewModel = DatabaseViewModel(db,Music::class to db.musicDao(), Album::class to db.albumDao(), Artist::class to db.artistDao(), matchingDao = db.matchingDao())
+        val db = buildDatabase<MusicDatabase>(listOf(MIGRATION_1_2))
+        val viewModel = DatabaseViewModel(db,Music::class to db.musicDao(), Album::class to db.albumDao(), Artist::class to db.artistDao(), Playlist::class to db.playlistDao(), matchingDao = db.matchingDao())
         val pm = PlaybackManager.getInstance(this)
         setContent {
             DynamicTheme {
@@ -75,6 +81,8 @@ sealed interface Route: NavKey {
     @Serializable
     data object Artists: Route
     @Serializable
+    data object Playlists: Route
+    @Serializable
     data object Song: Route
 
     @Serializable
@@ -82,6 +90,12 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class ArtistDetail(val artistId: Long): Route
+
+    @Serializable
+    data class PlaylistDetail(val playlistId: Long): Route
+
+    @Serializable
+    data class AddToPlaylistDialog(val musicId: Long): Route
 }
 
 @Composable
@@ -100,11 +114,31 @@ fun Navigation(viewModel: DatabaseViewModel) {
         entry<Route.Artists> {
             ArtistScreen(backStack, viewModel)
         }
+        entry<Route.Playlists> {
+            PlaylistScreen(backStack, viewModel)
+        }
         entry<Route.AlbumDetail> {
             AlbumDetailScreen(backStack, viewModel, it.albumId)
         }
         entry<Route.ArtistDetail> {
             ArtistDetailScreen(backStack, viewModel, it.artistId)
         }
+        entry<Route.PlaylistDetail> {
+            PlaylistDetailScreen(backStack, viewModel, it.playlistId)
+        }
+        entry<Route.AddToPlaylistDialog>(metadata = DialogPage()) {
+            AddToPlaylistDialog(backStack, viewModel, it.musicId)
+        }
     }
+}
+
+val MIGRATION_1_2 = Migration(1, 2) {
+    it.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `Playlist` (
+            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+            `name` TEXT NOT NULL
+        )
+        """.trimIndent()
+    )
 }

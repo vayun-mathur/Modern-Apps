@@ -73,6 +73,21 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         return ids
     }
 
+    suspend inline fun <reified A: DatabaseItem, reified B: DatabaseItem> match(idA: Long, idB: Long) {
+        val classAIndex = daos.keys.indexOf(A::class)
+        val classBIndex = daos.keys.indexOf(B::class)
+        val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+        val match = if(classAIndex < classBIndex) ManyManyMatching(idA, idB, type) else ManyManyMatching(idB, idA, type)
+        matchingDao!!.upsert(match)
+    }
+
+    suspend inline fun <reified A: DatabaseItem, reified B: DatabaseItem> unmatch(idA: Long, idB: Long) {
+        val classAIndex = daos.keys.indexOf(A::class)
+        val classBIndex = daos.keys.indexOf(B::class)
+        val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+        if(classAIndex < classBIndex) matchingDao!!.deleteMatch(idA, idB, type) else matchingDao!!.deleteMatch(idB, idA, type)
+    }
+
     val matchesStateFlow = matchingDao?.flow()?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @Composable
@@ -262,6 +277,8 @@ interface MatchingDao {
     suspend fun getFromLeft(leftID: Long, type: Int): List<Long>
     @Query("SELECT leftID FROM ManyManyMatching WHERE rightID = :rightID AND type = :type")
     suspend fun getFromRight(rightID: Long, type: Int): List<Long>
+    @Query("DELETE FROM ManyManyMatching WHERE leftID = :left AND rightID = :right AND type = :type")
+    suspend fun deleteMatch(left: Long, right: Long, type: Int)
     @Query("DELETE FROM ManyManyMatching")
     suspend fun clear()
     @Query("SELECT * FROM ManyManyMatching")

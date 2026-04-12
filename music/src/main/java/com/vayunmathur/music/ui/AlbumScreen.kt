@@ -33,6 +33,7 @@ fun AlbumScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             BottomBarItem("Home", Route.Home, R.drawable.baseline_library_music_24),
             BottomBarItem("Albums", Route.Albums, R.drawable.baseline_album_24),
             BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
+            BottomBarItem("Playlists", Route.Playlists, R.drawable.baseline_library_music_24),
         ), Route.Albums)
     }) { paddingValues ->
         Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {

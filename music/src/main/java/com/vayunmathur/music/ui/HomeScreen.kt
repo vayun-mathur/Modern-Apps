@@ -43,6 +43,7 @@ import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.AlbumArt
 import com.vayunmathur.music.PlaybackManager
+import com.vayunmathur.music.AddToPlaylistButton
 import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
 import com.vayunmathur.music.database.Music
@@ -59,6 +60,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             BottomBarItem("Home", Route.Home, R.drawable.baseline_library_music_24),
             BottomBarItem("Albums", Route.Albums, R.drawable.baseline_album_24),
             BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
+            BottomBarItem("Playlists", Route.Playlists, R.drawable.baseline_library_music_24),
         ), Route.Home)
     }) { paddingValues ->
         Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {
@@ -71,6 +73,8 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                 Route.Song
             }, leadingContent = { music ->
                 AlbumArt(music.uri.toUri(), Modifier.size(40.dp))
+            }, trailingContent = { music ->
+                AddToPlaylistButton(backStack, music)
             }, searchEnabled = true, bottomBar = {
                 PlayingBottomBar(playbackManager, backStack)
             }, fab = {

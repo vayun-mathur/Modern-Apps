@@ -44,6 +44,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.music.AddToPlaylistButton
 import com.vayunmathur.music.AlbumArt
 import com.vayunmathur.music.PlaybackManager
 import com.vayunmathur.music.Route
@@ -176,8 +177,11 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
                     Text(music.title)
                 }, Modifier.clickable{
                     playbackManager.playSong(artistsMusic, idx)
-                }, {}, {
-                    Text("3:02")
+                }, trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("3:02")
+                        AddToPlaylistButton(backStack, music)
+                    }
                 }, leadingContent = {
                     AlbumArt(music.uri.toUri(), Modifier.size(48.dp))
                 })
