@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,17 +85,11 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 
 @Composable
 fun ShufflePlayFab(viewModel: DatabaseViewModel, playbackManager: PlaybackManager) {
-    val coroutineScope = rememberCoroutineScope()
     val allSongs by viewModel.data<Music>().collectAsState()
 
     if(allSongs.isNotEmpty()) {
         FloatingActionButton({
-            coroutineScope.launch {
-                val toPlayIndex = Random.nextInt(allSongs.size)
-                playbackManager.playSong(allSongs, toPlayIndex)
-                if (!playbackManager.shuffleMode.value)
-                    playbackManager.toggleShuffle()
-            }
+            playbackManager.playShuffled(allSongs)
         }) {
             Icon(painterResource(R.drawable.ic_shuffle), null)
         }

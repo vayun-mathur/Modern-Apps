@@ -59,12 +59,6 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         }
     }
 
-    fun clearMatchings() {
-        viewModelScope.launch {
-            matchingDao!!.clear()
-        }
-    }
-
     inline fun <reified A: DatabaseItem, reified B: DatabaseItem> clearMatchings() {
         val classAIndex = daos.keys.indexOf(A::class)
         val classBIndex = daos.keys.indexOf(B::class)
