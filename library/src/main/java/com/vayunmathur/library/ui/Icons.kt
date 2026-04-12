@@ -112,3 +112,8 @@ fun IconMenu(tint: Color = LocalContentColor.current) {
 fun IconUpload(tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.baseline_upload_24), "Upload", tint = tint)
 }
+
+@Composable
+fun IconChevronRight(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.chevron_right_24px), "Chevron", tint = tint)
+}

@@ -2,9 +2,12 @@ package com.vayunmathur.files
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.webkit.MimeTypeMap
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,18 +17,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -51,8 +59,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import okio.FileSystem
@@ -130,7 +140,19 @@ fun DirectoryPage(rootFile: Path) {
 
     val focusManager = LocalFocusManager.current
 
-    BackHandler(currentDirectory != Environment.getExternalStorageDirectory()) {
+    val root = remember { Environment.getExternalStorageDirectory().toOkioPath() }
+    val breadcrumbs = remember(currentDirectory) {
+        val list = mutableListOf<Path>()
+        var temp: Path? = currentDirectory
+        while (temp != null) {
+            list.add(0, temp)
+            if (temp == root) break
+            temp = temp.parent
+        }
+        list
+    }
+
+    BackHandler(currentDirectory != root) {
         if (selectedPaths.isNotEmpty()) {
             selectedPaths = emptySet()
         } else {
@@ -147,7 +169,27 @@ fun DirectoryPage(rootFile: Path) {
             },
         topBar = {
             TopAppBar(
-                title = { Text(currentDirectory.name.ifEmpty { "Internal Storage" }) },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.horizontalScroll(rememberScrollState())
+                    ) {
+                        breadcrumbs.forEachIndexed { index, path ->
+                            Text(
+                                text = if (path == root) Build.MODEL else path.name,
+                                modifier = Modifier.clickable {
+                                    currentDirectory = path
+                                },
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            if (index < breadcrumbs.size - 1) {
+                                IconChevronRight(
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                },
                 actions = {
                     // Show Rename Button if exactly 1 is selected
                     if (selectedPaths.size == 1) {
@@ -198,13 +240,27 @@ fun DirectoryPage(rootFile: Path) {
                         } else if (child.isDirectory) {
                             currentDirectory = child
                         } else {
+                            val file = child.toFile()
+                            val extension = file.extension
+                            val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "*/*"
+
                             val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", child.toFile())
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION or  Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                                setDataAndType(uri, mimeType)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                             }
-                            context.startActivity(intent)
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
         }
