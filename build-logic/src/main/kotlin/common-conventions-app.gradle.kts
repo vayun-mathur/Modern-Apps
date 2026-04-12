@@ -37,7 +37,7 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
 
     namespace = "com.vayunmathur${path.replace(":", ".")}"
     compileSdk {
-        version = release(37)
+        version = release(36)
     }
 
     ndkVersion = "29.0.14206865"

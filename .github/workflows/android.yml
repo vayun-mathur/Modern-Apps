@@ -77,6 +77,8 @@ jobs:
             grep -vE "^\./build.gradle.kts$" | \
             sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
           
+          RAW_DIRS="findfamily"
+          
           REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
           echo "module_dirs=$REVERSED_DIRS" >> $GITHUB_ENV
 
