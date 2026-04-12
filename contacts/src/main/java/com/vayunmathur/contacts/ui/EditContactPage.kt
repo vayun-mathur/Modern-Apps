@@ -44,6 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +53,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -64,6 +66,7 @@ import com.vayunmathur.contacts.CDKNickname
 import com.vayunmathur.contacts.CDKPhone
 import com.vayunmathur.contacts.CDKStructuredPostal
 import com.vayunmathur.contacts.Contact
+import com.vayunmathur.contacts.ContactAccount
 import com.vayunmathur.contacts.ContactDetail
 import com.vayunmathur.contacts.ContactDetails
 import com.vayunmathur.contacts.ContactViewModel
@@ -102,6 +105,11 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
     var nickname by remember { mutableStateOf(contact?.nickname?.nickname ?: "") }
     var photo by remember { mutableStateOf(contact?.photo) }
     var birthday by remember { mutableStateOf(contact?.birthday?.startDate) }
+    
+    var accountName by remember { mutableStateOf(contact?.accountName ?: "") }
+    var accountType by remember { mutableStateOf(contact?.accountType ?: "com.vayunmathur.contacts.local") }
+
+    val accounts by viewModel.accounts.collectAsState()
 
     val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
@@ -165,8 +173,8 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         )
                         val newContact = contact?.copy(details = details) ?: Contact(
                             0,
-                            null,
-                            null,
+                            accountType.ifEmpty { null },
+                            accountName.ifEmpty { null },
                             false,
                             details = details
                         )
@@ -194,6 +202,14 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                 photo = null
             })
             Spacer(Modifier.height(24.dp))
+            
+            if (contact == null) {
+                AccountChooser(accountName, accountType, accounts) { name, type ->
+                    accountName = name
+                    accountType = type
+                }
+                Spacer(Modifier.height(16.dp))
+            }
 
             OutlinedTextField(
                 value = firstName,
@@ -293,6 +309,42 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+fun AccountChooser(
+    accountName: String,
+    accountType: String,
+    accounts: List<ContactAccount>,
+    onAccountChange: (String, String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = if (accountName.isEmpty()) "On-Device" else accountName,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Account") },
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(painterResource(R.drawable.baseline_arrow_drop_down_24), "Choose account")
+                }
+            }
+        )
+        DropdownMenu(expanded, { expanded = false }) {
+            accounts.forEach { account ->
+                DropdownMenuItem(
+                    text = { Text(account.name.ifEmpty { "On-Device" } + " (${account.type})") },
+                    onClick = {
+                        onAccountChange(account.name, account.type)
+                        expanded = false
+                    }
+                )
+            }
+        }
+        Box(Modifier.matchParentSize().clickable { expanded = true })
     }
 }
 

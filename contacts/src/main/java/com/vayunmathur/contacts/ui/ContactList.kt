@@ -61,6 +61,7 @@ import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.contacts.VcfUtils
 import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,7 +80,7 @@ fun ContactList(
 
     val (favorites, otherContacts) = remember(contacts) { contacts.partition { it.isFavorite } }
     val groupedContacts = remember(otherContacts) {
-        otherContacts.groupBy { it.name.value.first().uppercaseChar() }
+        otherContacts.groupBy { it.name.value.firstOrNull()?.uppercaseChar() ?: '#' }
             .mapValues { (_, c) -> c.sortedBy { it.name.value } }
             .toSortedMap()
     }
@@ -114,6 +115,9 @@ fun ContactList(
     Scaffold(
         topBar = {
             TopAppBar({Text("Contacts")}, actions = {
+                IconButton(onClick = { backStack.add(Route.Settings) }) {
+                    IconSettings()
+                }
                 IconButton(onClick = {
                     exportLauncher.launch("contacts.vcf")
                 }) {

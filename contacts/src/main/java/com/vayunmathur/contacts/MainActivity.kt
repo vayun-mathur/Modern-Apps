@@ -33,6 +33,8 @@ import com.vayunmathur.contacts.ui.ContactDetailsPage
 import com.vayunmathur.contacts.ui.ContactList
 import com.vayunmathur.contacts.ui.ContactListPick
 import com.vayunmathur.contacts.ui.EditContactPage
+import com.vayunmathur.contacts.ui.SettingsPage
+import com.vayunmathur.contacts.ui.dialog.AddAccountDialog
 import com.vayunmathur.contacts.ui.dialog.EventDatePickerDialog
 import com.vayunmathur.contacts.ui.dialog.EventDeleteConfirmDialog
 import com.vayunmathur.library.ui.DynamicTheme
@@ -153,6 +155,14 @@ fun Navigation(viewModel: ContactViewModel) {
             EditContactPage(backStack, viewModel, key.contactId)
         }
 
+        entry<Route.Settings>(metadata = ListDetailPage()) {
+            SettingsPage(viewModel, backStack)
+        }
+
+        entry<Route.AddAccountDialog>(metadata = DialogPage()) {
+            AddAccountDialog(viewModel) { backStack.pop() }
+        }
+
         entry<Route.EventDatePickerDialog>(metadata = DialogPage()) { key ->
             EventDatePickerDialog(key.id, key.initialDate) { backStack.pop() }
         }
@@ -185,4 +195,10 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class EventDeleteConfirmDialog(val contactId: Long, val contactName: String?): Route
+
+    @Serializable
+    object Settings : Route
+
+    @Serializable
+    object AddAccountDialog : Route
 }
