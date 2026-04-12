@@ -32,7 +32,7 @@ fun IconDelete(tint: Color = LocalContentColor.current) {
 
 @Composable
 fun IconShare(tint: Color = LocalContentColor.current) {
-    Icon(painterResource(R.drawable.share_24px), "Delete", tint = tint)
+    Icon(painterResource(R.drawable.share_24px), "Share", tint = tint)
 }
 
 @Composable
@@ -57,7 +57,7 @@ fun IconSearch(tint: Color = LocalContentColor.current) {
 
 @Composable
 fun IconCopy(tint: Color = LocalContentColor.current) {
-    Icon(painterResource(R.drawable.outline_content_copy_24), "Search", tint = tint)
+    Icon(painterResource(R.drawable.outline_content_copy_24), "Copy", tint = tint)
 }
 
 @Composable
@@ -65,7 +65,7 @@ fun IconNavigation(navBack: () -> Unit) {
     IconButton({
         navBack()
     }) {
-        Icon(painterResource(R.drawable.arrow_back_24px), "Navigation")
+        Icon(painterResource(R.drawable.arrow_back_24px), "Back")
     }
 }
 
@@ -74,7 +74,7 @@ fun IconNavigation(backStack: NavBackStack<out NavKey>) {
     IconButton({
         backStack.pop()
     }) {
-        Icon(painterResource(R.drawable.arrow_back_24px), "Navigation")
+        Icon(painterResource(R.drawable.arrow_back_24px), "Back")
     }
 }
 
@@ -85,7 +85,7 @@ fun IconCheck(tint: Color = LocalContentColor.current) {
 
 @Composable
 fun IconStar(tint: Color = LocalContentColor.current) {
-    Icon(painterResource(R.drawable.baseline_star_24), "Check", tint = tint)
+    Icon(painterResource(R.drawable.baseline_star_24), "Star", tint = tint)
 }
 
 @Composable
@@ -100,12 +100,12 @@ fun IconPause(tint: Color = LocalContentColor.current) {
 
 @Composable
 fun IconStop(tint: Color = LocalContentColor.current) {
-    Icon(painterResource(R.drawable.baseline_stop_24), "Add", tint = tint)
+    Icon(painterResource(R.drawable.baseline_stop_24), "Stop", tint = tint)
 }
 
 @Composable
 fun IconMenu(tint: Color = LocalContentColor.current) {
-    Icon(painterResource(R.drawable.baseline_menu_24), "Add", tint = tint)
+    Icon(painterResource(R.drawable.baseline_menu_24), "Menu", tint = tint)
 }
 
 @Composable
