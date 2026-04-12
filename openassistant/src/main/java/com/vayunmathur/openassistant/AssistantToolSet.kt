@@ -15,6 +15,8 @@ import com.google.ai.edge.litertlm.ToolSet
 import com.vayunmathur.library.intents.calendar.EventData
 import com.vayunmathur.library.intents.contacts.ContactData
 import com.vayunmathur.library.intents.findfamily.FamilyMemberData
+import com.vayunmathur.library.intents.music.MusicSearchResult
+import com.vayunmathur.library.intents.music.PlayMusicData
 import com.vayunmathur.library.intents.notes.NoteData
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -163,6 +165,34 @@ class AssistantToolSet(private val context: Context) : ToolSet {
                 Unit
             )
             result.toString()
+        } catch (e: Exception) { "Error: ${e.message}" }
+    }
+
+    @Tool(description = "Search for music (songs, albums, artists, or playlists)")
+    fun search_music(query: String): String {
+        return try {
+            val result = launchIntent(
+                "com.vayunmathur.music",
+                "com.vayunmathur.music.intents.SearchIntent",
+                serializer<String>(),
+                serializer<List<MusicSearchResult>>(),
+                query
+            )
+            result.toString()
+        } catch (e: Exception) { "Error: ${e.message}" }
+    }
+
+    @Tool(description = "Play music given its id and type (song, album, artist, or playlist)")
+    fun play_music(id: Long, type: String): String {
+        return try {
+            launchIntent(
+                "com.vayunmathur.music",
+                "com.vayunmathur.music.intents.PlayIntent",
+                serializer<PlayMusicData>(),
+                serializer<Unit>(),
+                PlayMusicData(id, type)
+            )
+            "Success: Playing music"
         } catch (e: Exception) { "Error: ${e.message}" }
     }
 
