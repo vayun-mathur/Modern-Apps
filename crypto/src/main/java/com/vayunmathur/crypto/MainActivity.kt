@@ -22,6 +22,7 @@ import com.vayunmathur.crypto.ui.StockDetailScreen
 import com.vayunmathur.crypto.ui.SwapScreen
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.BottomBarItem
+import com.vayunmathur.library.util.LocalSnackbarHostState
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
@@ -69,6 +70,13 @@ data object PrivateKeyPage: NavKey
 fun Navigation(viewModel: PortfolioViewModel) {
     val walletInitialized by viewModel.walletInitialized.collectAsState()
     val backStack = rememberNavBackStack(if (walletInitialized) PortfolioPage else LoginPage)
+    val snackbarHostState = LocalSnackbarHostState.current
+
+    LaunchedEffect(viewModel.messages) {
+        viewModel.messages.collect { message ->
+            snackbarHostState?.showSnackbar(message)
+        }
+    }
 
     LaunchedEffect(walletInitialized) {
         if (!walletInitialized) {

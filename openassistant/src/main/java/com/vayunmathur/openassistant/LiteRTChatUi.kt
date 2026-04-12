@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -55,6 +54,7 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
 
     var inputText by remember { mutableStateOf("") }
@@ -76,7 +76,9 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
                 audioRecorder = WavRecorder(context, file, scope).apply { start() }
                 isRecording = true
             } catch (e: Exception) {
-                Toast.makeText(context, "Mic error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                scope.launch {
+                    snackbarHostState.showSnackbar("Mic error: ${e.localizedMessage}")
+                }
             }
         }
     }
@@ -108,6 +110,7 @@ fun LiteRTChatUi(backStack: NavBackStack<Route>, conversationId: Long, viewModel
             }
         }, drawerState = drawerState) {
             Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
                     CenterAlignedTopAppBar(
                         title = { Text(activeConversation?.title ?: "New Conversation", fontWeight = FontWeight.Bold) },

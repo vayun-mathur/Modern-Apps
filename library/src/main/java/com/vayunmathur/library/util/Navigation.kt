@@ -10,6 +10,8 @@ import androidx.compose.material3.FlexibleBottomAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
@@ -17,6 +19,7 @@ import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneSt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -102,6 +105,8 @@ val LocalNavResultRegistry = staticCompositionLocalOf<NavResultRegistry> {
     error("No NavResultRegistry provided")
 }
 
+val LocalSnackbarHostState = compositionLocalOf<SnackbarHostState?> { null }
+
 class EntryProviderScope<T: NavKey>(val obj: T) {
     var result: NavEntry<T>? = null
 
@@ -119,8 +124,16 @@ class EntryProviderScope<T: NavKey>(val obj: T) {
 fun <T: NavKey> MainNavigation(backStack: NavBackStack<T>, entryProvider: EntryProviderScope<T>.() -> Unit) {
     val sceneStrategy: ListDetailSceneStrategy<T> = rememberListDetailSceneStrategy()
     val resultRegistry = remember { NavResultRegistry() }
-    Scaffold(contentWindowInsets = WindowInsets()) { paddingValues ->
-        CompositionLocalProvider(LocalNavResultRegistry provides resultRegistry) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        contentWindowInsets = WindowInsets(),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        CompositionLocalProvider(
+            LocalNavResultRegistry provides resultRegistry,
+            LocalSnackbarHostState provides snackbarHostState
+        ) {
             NavDisplay(
                 modifier = Modifier.padding(paddingValues).imePadding(),
                 sceneStrategy = DialogSceneStrategy<T>().then(sceneStrategy),

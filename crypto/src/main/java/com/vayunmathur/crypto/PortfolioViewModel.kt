@@ -1,7 +1,6 @@
 package com.vayunmathur.crypto
 
 import android.app.Application
-import android.widget.Toast
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -16,9 +15,11 @@ import com.vayunmathur.crypto.token.TokenInfo
 import com.vayunmathur.crypto.token.TokenPriceRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -52,6 +53,9 @@ class PortfolioViewModel(private val application: Application) : AndroidViewMode
 
     private val _predictionMarkets = MutableStateFlow<List<PredictionMarket.Event>>(emptyList())
     val predictionMarkets: StateFlow<List<PredictionMarket.Event>> = _predictionMarkets
+
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    val messages = _messages.receiveAsFlow()
 
 
     lateinit var wallet: Keypair
@@ -220,7 +224,7 @@ class PortfolioViewModel(private val application: Application) : AndroidViewMode
                         _tokens.value = allTokens
                     }
                 } else {
-                    showToast("Transaction failed")
+                    _messages.send("Transaction failed")
                 }
             }
         }
@@ -231,12 +235,6 @@ class PortfolioViewModel(private val application: Application) : AndroidViewMode
             CoroutineScope(Dispatchers.IO).launch {
                 SolanaAPI.createTokenAccount(wallet, tokenInfo)
             }
-        }
-    }
-
-    private suspend fun showToast(message: String) {
-        withContext(Dispatchers.Main) {
-            Toast.makeText(application.applicationContext, message, Toast.LENGTH_SHORT).show()
         }
     }
 
