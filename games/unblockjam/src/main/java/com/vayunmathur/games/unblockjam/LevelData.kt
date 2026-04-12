@@ -4,6 +4,7 @@ import android.content.Context
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -20,7 +21,8 @@ data class Dimension(
 
 data class Block(
     val position: Coord, // top left
-    val dimension: Dimension
+    val dimension: Dimension,
+    val fixed: Boolean
 )
 
 data class LevelPack(
@@ -28,12 +30,17 @@ data class LevelPack(
     val levels: List<LevelData>
 ) {
     companion object {
+        private val PACK_FILES = listOf(
+            "original_pack.json"
+        )
 
         var PACKS: List<LevelPack> = listOf()
             private set
 
         fun init(context: Context) {
-            PACKS = listOf(packFromJson(context.assets.open("original_pack.json").bufferedReader().readText()))
+            PACKS = PACK_FILES.map { filename ->
+                packFromJson(context.assets.open(filename).bufferedReader().readText())
+            }
         }
     }
 }
@@ -76,7 +83,8 @@ private fun fromJson(json: JsonObject): LevelData {
                 block["x"]?.jsonPrimitive?.int ?: 0,
                 dimension.height - y - blockDim.height
             ),
-            blockDim
+            blockDim,
+            block["fixed"]?.jsonPrimitive?.boolean ?: false
         )
     }
     val optimalMoves = json["c"]!!.jsonPrimitive.int

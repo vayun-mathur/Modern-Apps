@@ -8,13 +8,11 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -47,7 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -55,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.games.unblockjam.ui.theme.UnblockJamTheme
@@ -65,7 +65,6 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
-import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
 
@@ -143,25 +142,29 @@ fun LevelScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Compl
         TopAppBar({Text(stringResource(R.string.level_selector))})
     }) { paddingValues ->
         LazyVerticalGrid(
-            GridCells.Adaptive(80.dp),
+            GridCells.Adaptive(88.dp),
             Modifier.fillMaxSize(),
             contentPadding = paddingValues + PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             itemsIndexed(pack.levels) { index, levelData ->
-                Card(Modifier.fillMaxWidth().aspectRatio(1f).clickable{
-                    backStack.add(Route.Game(packIndex, index))
-                }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)) {
+                Card(
+                    Modifier.fillMaxWidth().clickable { backStack.add(Route.Game(packIndex, index)) },
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surface)
+                ) {
                     Box(Modifier.fillMaxSize().padding(8.dp)) {
                         Text("${index + 1}", Modifier.align(Alignment.Center))
-                        if(levelStats[index.toString()] != null) {
-                            if (levelStats[index.toString()]!!.bestScore == levelData.optimalMoves) {
-                                Box(Modifier.align(Alignment.TopEnd)) {
-                                    IconStar()
-                                }
+                        val levelStat = levelStats[levelData.id]
+                        Box(
+                            Modifier.size(20.dp).align(Alignment.CenterEnd),
+                            Alignment.Center
+                        ) {
+                            when {
+                                levelStat == null -> return@Box
+                                levelStat.bestScore <= levelData.optimalMoves -> IconStar()
+                                else -> IconCheck()
                             }
-                            Box(Modifier.align(Alignment.BottomEnd)) {IconCheck()}
                         }
                     }
                 }
@@ -194,7 +197,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
         if (isLevelWon) {
             completedLevelsRepository.updateBestScore(pack.levels[levelIndex].id, getCurrentMoves())
             levelStats = completedLevelsRepository.getLevelStats() // Refresh stats
-            delay(1000)
+            delay(500)
             changeLevel(levelIndex + 1)
         }
     }
@@ -217,7 +220,7 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val currentLevelStats = levelStats[levelIndex.toString()]
+                    val currentLevelStats = pack.levels.getOrNull(levelIndex)?.id?.let { levelStats[it] }
                     PuzzleInfoBox(
                         levelIndex = levelIndex,
                         onLevelChange = ::changeLevel,
@@ -268,12 +271,14 @@ fun GameScreen(backStack: NavBackStack<Route>, completedLevelsRepository: Comple
                     ) {
                         Text(stringResource(R.string.undo))
                     }
-                    Button(onClick = {
-                        history.clear()
-                        currentLevelData = pack.levels[levelIndex]
-                        isLevelWon = false
-                    },
-                        enabled = history.isNotEmpty() && !isLevelWon) {
+                    Button(
+                        onClick = {
+                            history.clear()
+                            currentLevelData = pack.levels[levelIndex]
+                            isLevelWon = false
+                        },
+                        enabled = history.isNotEmpty() && !isLevelWon
+                    ) {
                         Text(stringResource(R.string.restart))
                     }
                 }
@@ -370,216 +375,88 @@ fun GameBoard(
     isLevelWon: Boolean
 ) {
     val screenWidth = LocalWindowInfo.current.containerDpSize.width
-    val boardSize = screenWidth - 32.dp // accounting for padding
+    val boardSize = screenWidth - 32.dp
     val cellWidth = boardSize / levelData.dimension.width
     val cellHeight = boardSize / levelData.dimension.height
-    // Visual for the exit
+
+    // scale values based on the level's dimensions for consistent visuals
+    val scaling = boardSize / minOf(levelData.dimension.width, levelData.dimension.height) / 100
+
+    // make sure the exit can cover the whole main block
+    val exitWidthMult = 1 + levelData.blocks[0].dimension.width
+
     Box {
         Box(
-            modifier = Modifier
-                .size(cellWidth, cellHeight)
-                .offset(boardSize, cellHeight * levelData.exit.y)
+            Modifier
+                .size(cellWidth * exitWidthMult + 1.dp, cellHeight)
+                .offset(boardSize - 1.dp, cellHeight * levelData.exit.y)
                 .background(MaterialTheme.colorScheme.primary)
+        )
+        Box(
+            Modifier
+                .size(cellWidth * exitWidthMult, cellHeight)
+                .offset(boardSize, cellHeight * levelData.exit.y)
+                .zIndex(1f)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            1f / exitWidthMult to MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
         )
 
         Box(
-            modifier = Modifier
+            Modifier
                 .size(boardSize)
-                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(scaling * 12))
         ) {
-
 
             levelData.blocks.forEachIndexed { index, block ->
                 val isMainBlock = index == 0
-                val color = if (isMainBlock) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primaryContainer
+                val color = if (isMainBlock)
+                    MaterialTheme.colorScheme.error
+                else if (block.fixed)
+                    MaterialTheme.colorScheme.secondaryContainer
+                else
+                    MaterialTheme.colorScheme.primaryContainer
                 val blockWidth = cellWidth * block.dimension.width
                 val blockHeight = cellHeight * block.dimension.height
 
-                var offsetX by remember(
-                    block,
-                    levelData
-                ) { mutableStateOf(cellWidth * block.position.x) }
-                var offsetY by remember(
-                    block,
-                    levelData
-                ) { mutableStateOf(cellHeight * block.position.y) }
+                var offsetX by remember(block, levelData) { mutableStateOf(cellWidth * block.position.x) }
+                var offsetY by remember(block, levelData) { mutableStateOf(cellHeight * block.position.y) }
 
-                val targetOffsetX = if (isMainBlock && isLevelWon) boardSize else offsetX
+                val targetOffsetX = if (isMainBlock && isLevelWon) boardSize + cellWidth else offsetX
                 val currentOffsetX by animateDpAsState(
-                    targetValue = targetOffsetX,
-                    animationSpec = tween(durationMillis = if (isMainBlock && isLevelWon) 500 else 0),
-                    label = "blockOffset"
+                    targetOffsetX,
+                    tween(if (isMainBlock && isLevelWon) 600 else 0),
+                    "blockOffset"
                 )
-
-                var minOffset by remember { mutableStateOf(0.dp) }
-                var maxOffset by remember { mutableStateOf(0.dp) }
 
                 Box(
                     modifier = Modifier
                         .size(blockWidth, blockHeight)
                         .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
-                        .padding(4.dp)
-                        .background(color, shape = RoundedCornerShape(8.dp))
-                        .pointerInput(block, levelData, isLevelWon) {
-                            if (isLevelWon) return@pointerInput
-
-                            detectDragGestures(
-                                onDragStart = {
-                                    val otherBlocks = levelData.blocks.minus(block)
-
-                                    fun isOccupied(x: Int, y: Int): Boolean {
-                                        return otherBlocks.any {
-                                            x >= it.position.x && x < it.position.x + it.dimension.width &&
-                                                    y >= it.position.y && y < it.position.y + it.dimension.height
-                                        }
-                                    }
-
-                                    if (block.dimension.width > block.dimension.height) { // Horizontal
-                                        var minX = block.position.x
-                                        var maxX = block.position.x
-
-                                        // Find minX
-                                        while (minX > 0) {
-                                            var clear = true
-                                            for (y in block.position.y until block.position.y + block.dimension.height) {
-                                                if (isOccupied(minX - 1, y)) {
-                                                    clear = false
-                                                    break
-                                                }
-                                            }
-                                            if (clear) minX-- else break
-                                        }
-
-                                        // Find maxX
-                                        while (maxX + block.dimension.width < levelData.dimension.width) {
-                                            var clear = true
-                                            for (y in block.position.y until block.position.y + block.dimension.height) {
-                                                if (isOccupied(maxX + block.dimension.width, y)) {
-                                                    clear = false
-                                                    break
-                                                }
-                                            }
-                                            if (clear) maxX++ else break
-                                        }
-
-                                        if (isMainBlock && block.position.y == levelData.exit.y) {
-                                            var pathToExitIsClear = true
-                                            for (x in (maxX + block.dimension.width) until levelData.dimension.width) {
-                                                if (isOccupied(x, block.position.y)) {
-                                                    pathToExitIsClear = false
-                                                    break
-                                                }
-                                            }
-                                            if (pathToExitIsClear) {
-                                                maxX = levelData.exit.x
-                                            }
-                                        }
-
-                                        minOffset = cellWidth * minX
-                                        maxOffset = cellWidth * maxX
-
-                                    } else { // Vertical
-                                        var minY = block.position.y
-                                        var maxY = block.position.y
-
-                                        // Find minY
-                                        while (minY > 0) {
-                                            var clear = true
-                                            for (x in block.position.x until block.position.x + block.dimension.width) {
-                                                if (isOccupied(x, minY - 1)) {
-                                                    clear = false
-                                                    break
-                                                }
-                                            }
-                                            if (clear) minY-- else break
-                                        }
-
-                                        // Find maxY
-                                        while (maxY + block.dimension.height < levelData.dimension.height) {
-                                            var clear = true
-                                            for (x in block.position.x until block.position.x + block.dimension.width) {
-                                                if (isOccupied(x, maxY + block.dimension.height)) {
-                                                    clear = false
-                                                    break
-                                                }
-                                            }
-                                            if (clear) maxY++ else break
-                                        }
-                                        minOffset = cellHeight * minY
-                                        maxOffset = cellHeight * maxY
-                                    }
-                                },
-                                onDragEnd = {
-                                    val newX: Int
-                                    val newY: Int
-
-                                    if (block.dimension.width > block.dimension.height) { // Horizontal
-                                        newX = (offsetX / cellWidth).roundToInt()
-                                        newY = block.position.y
-                                    } else { // Vertical
-                                        newX = block.position.x
-                                        newY = (offsetY / cellHeight).roundToInt()
-                                    }
-
-                                    val newBlock = block.copy(position = Coord(newX, newY))
-
-                                    if (isMainBlock && block.position.y == levelData.exit.y && newX >= levelData.exit.x) {
-                                        onLevelWon()
-                                    } else if (newBlock.position != block.position && isMoveValid(
-                                            newBlock,
-                                            levelData.blocks.minus(block),
-                                            levelData.dimension
-                                        )
-                                    ) {
-                                        val newBlocks = levelData.blocks.toMutableList()
-                                        newBlocks[index] = newBlock
-                                        onLevelChanged(levelData.copy(blocks = newBlocks, lastMovedBlockIndex = index))
-                                    } else {
-                                        offsetX = cellWidth * block.position.x
-                                        offsetY = cellHeight * block.position.y
-                                    }
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    if (block.dimension.width > block.dimension.height) { // Horizontal
-                                        offsetX =
-                                            (offsetX + dragAmount.x.toDp()).coerceIn(
-                                                minOffset,
-                                                maxOffset
-                                            )
-                                        val currentX = (offsetX / cellWidth).roundToInt()
-                                        if (isMainBlock && block.position.y == levelData.exit.y && currentX + block.dimension.width - 1 >= levelData.exit.x) {
-                                            onLevelWon()
-                                        }
-                                    } else { // Vertical
-                                        offsetY =
-                                            (offsetY + dragAmount.y.toDp()).coerceIn(
-                                                minOffset,
-                                                maxOffset
-                                            )
-                                    }
-                                }
-                            )
-                        }
+                        .padding(scaling * 4)
+                        .background(color, shape = RoundedCornerShape(percent = 10))
+                        .blockDragGestures(
+                            block = block,
+                            levelData = levelData,
+                            isLevelWon = isLevelWon,
+                            cellWidth = cellWidth,
+                            cellHeight = cellHeight,
+                            isMainBlock = isMainBlock,
+                            onLevelWon = onLevelWon,
+                            onLevelChanged = onLevelChanged,
+                            index = index,
+                            offsetXProvider = { offsetX },
+                            offsetYProvider = { offsetY },
+                            offsetXUpdater = { offsetX = it },
+                            offsetYUpdater = { offsetY = it }
+                        )
                 )
             }
         }
     }
-}
-
-fun isMoveValid(movedBlock: Block, otherBlocks: List<Block>, dimension: Dimension): Boolean {
-    if (movedBlock.position.x < 0 || movedBlock.position.y < 0) return false
-    if (movedBlock.position.x + movedBlock.dimension.width > dimension.width) return false
-    if (movedBlock.position.y + movedBlock.dimension.height > dimension.height) return false
-
-    for (other in otherBlocks) {
-        if (movedBlock.position.x < other.position.x + other.dimension.width &&
-            movedBlock.position.x + movedBlock.dimension.width > other.position.x &&
-            movedBlock.position.y < other.position.y + other.dimension.height &&
-            movedBlock.position.y + movedBlock.dimension.height > other.position.y
-        ) {
-            return false
-        }
-    }
-    return true
 }

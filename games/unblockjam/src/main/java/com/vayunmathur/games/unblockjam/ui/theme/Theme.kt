@@ -17,6 +17,7 @@ private val CustomDarkColorScheme = darkColorScheme(
     onBackground = Color.White,
     onSurface = Color.White,
     primaryContainer = Orange,
+    secondaryContainer = WarmGray,
     error = Color.Red
 )
 
