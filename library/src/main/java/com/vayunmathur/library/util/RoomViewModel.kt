@@ -65,6 +65,15 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         }
     }
 
+    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> clearMatchings() {
+        val classAIndex = daos.keys.indexOf(A::class)
+        val classBIndex = daos.keys.indexOf(B::class)
+        val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+        viewModelScope.launch {
+            matchingDao!!.deleteByType(type)
+        }
+    }
+
     suspend inline fun <reified A: DatabaseItem, reified B: DatabaseItem> getMatches(a: Long): List<Long> {
         val classAIndex = daos.keys.indexOf(A::class)
         val classBIndex = daos.keys.indexOf(B::class)
@@ -279,6 +288,9 @@ interface MatchingDao {
     suspend fun getFromRight(rightID: Long, type: Int): List<Long>
     @Query("DELETE FROM ManyManyMatching WHERE leftID = :left AND rightID = :right AND type = :type")
     suspend fun deleteMatch(left: Long, right: Long, type: Int)
+    @Query("DELETE FROM ManyManyMatching WHERE type = :type")
+    suspend fun deleteByType(type: Int)
+
     @Query("DELETE FROM ManyManyMatching")
     suspend fun clear()
     @Query("SELECT * FROM ManyManyMatching")

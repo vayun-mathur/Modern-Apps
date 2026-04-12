@@ -49,7 +49,7 @@ suspend fun saveMediaToFile(context: Context, viewModel: DatabaseViewModel) {
     viewModel.replaceAll(musics)
     viewModel.replaceAll(albums)
     viewModel.replaceAll(artists)
-    viewModel.clearMatchings()
+    viewModel.clearMatchings<Album, Artist>()
     viewModel.addPairs(albumArtistPairs(musics, artists, albums))
 }
 
