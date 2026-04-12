@@ -72,7 +72,11 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseView
                         .background(Color.DarkGray),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(painterResource(com.vayunmathur.music.R.drawable.baseline_library_music_24), null, Modifier.size(100.dp))
+                        if (musicInPlaylist.isEmpty()) {
+                            Icon(painterResource(com.vayunmathur.music.R.drawable.baseline_library_music_24), null, Modifier.size(100.dp))
+                        } else {
+                            AlbumArt(musicInPlaylist.map { it.uri.toUri() }, Modifier.fillMaxSize())
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
