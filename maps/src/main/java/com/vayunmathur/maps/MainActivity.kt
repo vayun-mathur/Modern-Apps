@@ -47,7 +47,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val ds = DataStoreUtils.getInstance(this)
         ensurePmtilesReady(this)
-        println(OfflineRouter.checkFiles(this))
         Logger.setVerbosity(Logger.INFO)
         runBlocking {
 //            File(getExternalFilesDir(null)!!, "edges_zone_35.bin").delete()
