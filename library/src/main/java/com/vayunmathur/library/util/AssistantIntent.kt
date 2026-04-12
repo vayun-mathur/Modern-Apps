@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.ResultReceiver
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.CancellableContinuation
@@ -19,22 +20,34 @@ import kotlin.coroutines.resumeWithException
 import kotlin.reflect.KClass
 
 abstract class AssistantIntent<Input: Any, Output: Any>(val inputSerializer: KSerializer<Input>, val outputSerializer: KSerializer<Output>): Activity() {
-    @OptIn(InternalSerializationApi::class)
+    @OptIn(InternalSerializationApi::class, kotlinx.serialization.ExperimentalSerializationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // 1. Get the incoming data
-        val input = Json.decodeFromString(inputSerializer, intent.getStringExtra("DATA")!!)
+        val inputString = intent.getStringExtra("DATA")
+        if (inputString == null) {
+            finish()
+            return
+        }
+        val input = Json.decodeFromString(inputSerializer, inputString)
 
         // 2. Do your "rare" processing
         val result = runBlocking { performCalculation(input) }
 
         // 3. Prepare the response
+        val responseData = Json.encodeToString(outputSerializer, result)
         val responseIntent = Intent()
-        responseIntent.putExtra("RESPONSE_DATA", Json.encodeToString(outputSerializer, result))
+        responseIntent.putExtra("RESPONSE_DATA", responseData)
 
         // 4. Send the result back to the calling app
         setResult(RESULT_OK, responseIntent)
+
+        // Also send to ResultReceiver if present (useful for Services)
+        val receiver = intent.getParcelableExtra<ResultReceiver>("RECEIVER")
+        receiver?.send(RESULT_OK, Bundle().apply {
+            putString("RESPONSE_DATA", responseData)
+        })
 
         // 5. Vital: Close immediately!
         finish()

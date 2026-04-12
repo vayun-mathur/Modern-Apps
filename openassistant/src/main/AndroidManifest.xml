@@ -5,6 +5,14 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-permission android:name="com.vayunmathur.notes.permissions.ACCESS_NOTES" />
+    <uses-permission android:name="com.vayunmathur.contacts.permissions.ACCESS_CONTACTS" />
+    <uses-permission android:name="com.vayunmathur.calendar.permissions.ACCESS_CALENDAR" />
+    <uses-permission android:name="com.vayunmathur.findfamily.permissions.ACCESS_FAMILY" />
+
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -20,6 +28,9 @@
 
     <queries>
         <package android:name="com.vayunmathur.notes" />
+        <package android:name="com.vayunmathur.contacts" />
+        <package android:name="com.vayunmathur.calendar" />
+        <package android:name="com.vayunmathur.findfamily" />
     </queries>
 
     <application

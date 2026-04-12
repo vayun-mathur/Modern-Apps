@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
+    <permission
+        android:name="com.vayunmathur.calendar.permissions.ACCESS_CALENDAR"
+        android:protectionLevel="signature" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -53,6 +57,20 @@
                 <data android:mimeType="application/octet-stream" />
                 <data android:mimeType="application/ics" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".intents.GetIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.calendar.permissions.ACCESS_CALENDAR">
+        </activity>
+
+        <activity
+            android:name=".intents.InsertIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.calendar.permissions.ACCESS_CALENDAR">
         </activity>
     </application>
 
