@@ -63,10 +63,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
+import com.vayunmathur.library.ui.IconUnarchive
 import kotlinx.coroutines.launch
 import okio.FileSystem
 import okio.Path
@@ -133,6 +137,33 @@ fun DirectoryPage(rootFile: Path) {
     var selectedPaths by remember(currentDirectory) { mutableStateOf(setOf<Path>()) }
     var pathBeingRenamed by remember { mutableStateOf<Path?>(null) }
 
+    val zipToUnzip = remember(selectedPaths) {
+        if (selectedPaths.size == 1 && !selectedPaths.first().isDirectory && selectedPaths.first().name.endsWith(".zip", ignoreCase = true)) {
+            selectedPaths.first()
+        } else null
+    }
+
+    val treeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null && zipToUnzip != null) {
+            val path = uri.path?.split(":")?.lastOrNull()?.let {
+                Environment.getExternalStorageDirectory().resolve(it).toOkioPath()
+            } ?: currentDirectory
+
+            val unzipWork = OneTimeWorkRequestBuilder<UnzipWorker>()
+                .setInputData(workDataOf(
+                    "zip_path" to zipToUnzip.toString(),
+                    "dest_path" to path.toString()
+                ))
+                .build()
+            WorkManager.getInstance(context).enqueue(unzipWork)
+
+            selectedPaths = emptySet()
+            scope.launch {
+                snackbarHostState.showSnackbar("Unzipping started to ${path.name}")
+            }
+        }
+    }
+
     // Data state
     var filesList by remember(currentDirectory) {
         mutableStateOf(currentDirectory.listFiles().partition { it.isDirectory })
@@ -197,6 +228,11 @@ fun DirectoryPage(rootFile: Path) {
                     }
                 },
                 actions = {
+                    if (zipToUnzip != null) {
+                        IconButton(onClick = { treeLauncher.launch(null) }) {
+                            IconUnarchive()
+                        }
+                    }
                     // Show Rename Button if exactly 1 is selected
                     if (selectedPaths.size == 1) {
                         IconButton(onClick = { pathBeingRenamed = selectedPaths.first() }) {
