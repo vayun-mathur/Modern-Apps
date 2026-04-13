@@ -55,6 +55,8 @@ import com.vayunmathur.health.ui.BarChartDetails
 import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.MainPage
 import com.vayunmathur.health.ui.MedicalRecordsPage
+import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthSyncWorker
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
