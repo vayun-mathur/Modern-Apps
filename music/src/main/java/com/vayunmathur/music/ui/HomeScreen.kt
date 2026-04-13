@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -56,14 +57,14 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
 
     Scaffold(bottomBar = {
         BottomNavBar(backStack, listOf(
-            BottomBarItem("Home", Route.Home, R.drawable.baseline_library_music_24),
-            BottomBarItem("Albums", Route.Albums, R.drawable.baseline_album_24),
-            BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
-            BottomBarItem("Playlists", Route.Playlists, R.drawable.baseline_library_music_24),
+            BottomBarItem(stringResource(R.string.nav_home), Route.Home, R.drawable.baseline_library_music_24),
+            BottomBarItem(stringResource(R.string.nav_albums), Route.Albums, R.drawable.baseline_album_24),
+            BottomBarItem(stringResource(R.string.nav_artists), Route.Artists, R.drawable.outline_person_24),
+            BottomBarItem(stringResource(R.string.nav_playlists), Route.Playlists, R.drawable.baseline_library_music_24),
         ), Route.Home)
     }) { paddingValues ->
         Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {
-            ListPage<Music, Route, Route.Song>(backStack, viewModel, "Music", { Text(it.title) }, {
+            ListPage<Music, Route, Route.Song>(backStack, viewModel, stringResource(R.string.page_title_music), { Text(it.title) }, {
                 Text(it.artist)
             }, { toPlay ->
                 val allSongs = viewModel.getAll<Music>()
@@ -132,14 +133,14 @@ fun PlayingBottomBar(
                     // Leading: The Album Art
                     headlineContent = {
                         Text(
-                            text = metadata.title?.toString() ?: "Unknown Title",
+                            text = metadata.title?.toString() ?: stringResource(R.string.unknown_title),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     },
                     supportingContent = {
                         Text(
-                            text = metadata.artist?.toString() ?: "Unknown Artist",
+                            text = metadata.artist?.toString() ?: stringResource(R.string.unknown_artist),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

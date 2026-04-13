@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,7 +75,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
 
                     ListItem({
                         Text(album.name, style = MaterialTheme.typography.titleLarge)
-                    }, Modifier, {Text("Album")}, {
+                    }, Modifier, {Text(stringResource(R.string.label_album))}, {
                         Text("${album.artistString(viewModel)}\nJan 2016 • ${musicInAlbum.size} songs • 1:25:02")
                     })
                 }
@@ -99,7 +100,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     ) {
                         IconPlay(tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Play", color = Color.White)
+                        Text(stringResource(R.string.label_play), color = Color.White)
                     }
 
                     Button(
@@ -113,7 +114,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     ) {
                         Icon(painterResource(com.vayunmathur.music.R.drawable.ic_shuffle), contentDescription = null, tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Shuffle", color = Color.Black)
+                        Text(stringResource(R.string.label_shuffle), color = Color.Black)
                     }
                 }
             }
@@ -128,7 +129,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Songs",
+                        text = stringResource(R.string.label_songs),
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold

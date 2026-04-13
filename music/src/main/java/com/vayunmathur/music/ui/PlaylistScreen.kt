@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconAdd
@@ -38,14 +39,14 @@ fun PlaylistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel)
     val scope = rememberCoroutineScope()
     Scaffold(bottomBar = {
         BottomNavBar(backStack, listOf(
-            BottomBarItem("Home", Route.Home, R.drawable.baseline_library_music_24),
-            BottomBarItem("Albums", Route.Albums, R.drawable.baseline_album_24),
-            BottomBarItem("Artists", Route.Artists, R.drawable.outline_person_24),
-            BottomBarItem("Playlists", Route.Playlists, R.drawable.baseline_library_music_24),
+            BottomBarItem(stringResource(R.string.nav_home), Route.Home, R.drawable.baseline_library_music_24),
+            BottomBarItem(stringResource(R.string.nav_albums), Route.Albums, R.drawable.baseline_album_24),
+            BottomBarItem(stringResource(R.string.nav_artists), Route.Artists, R.drawable.outline_person_24),
+            BottomBarItem(stringResource(R.string.nav_playlists), Route.Playlists, R.drawable.baseline_library_music_24),
         ), Route.Playlists)
     }) { paddingValues ->
         Box(Modifier.padding(paddingValues).consumeWindowInsets(paddingValues)) {
-            ListPage<Playlist, Route, Route.Song>(backStack, viewModel, "Playlists", { Text(it.name) }, {
+            ListPage<Playlist, Route, Route.Song>(backStack, viewModel, stringResource(R.string.page_title_playlists), { Text(it.name) }, {
             }, {
                 Route.PlaylistDetail(it)
             }, leadingContent = { playlist ->
@@ -60,7 +61,7 @@ fun PlaylistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel)
             }, sortOrder = Comparator.comparing { it.name }, otherActions = {
                 IconButton(onClick = {
                     scope.launch {
-                        viewModel.upsert(Playlist(name = "New Playlist"))
+                        viewModel.upsert(Playlist(name = context.getString(R.string.new_playlist)))
                     }
                 }) {
                     IconAdd()

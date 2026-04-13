@@ -24,6 +24,7 @@ import com.vayunmathur.music.database.Artist
 import com.vayunmathur.music.database.Music
 import com.vayunmathur.music.database.MusicDatabase
 import com.vayunmathur.music.database.Playlist
+import com.vayunmathur.music.R
 import com.vayunmathur.music.ui.AlbumDetailScreen
 import com.vayunmathur.music.ui.AlbumScreen
 import com.vayunmathur.music.ui.ArtistDetailScreen
@@ -49,14 +50,14 @@ class MainActivity : ComponentActivity() {
                 if(Build.VERSION.SDK_INT >= 33) {
                     PermissionsChecker(
                         arrayOf(Manifest.permission.READ_MEDIA_AUDIO),
-                        "Grant Audio Media Permissions"
+                        getString(R.string.grant_audio_permissions)
                     ) {
                         Navigation(viewModel)
                     }
                 } else {
                     PermissionsChecker(
                         arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                        "Grant Storage Permissions"
+                        getString(R.string.grant_storage_permissions)
                     ) {
                         Navigation(viewModel)
                     }

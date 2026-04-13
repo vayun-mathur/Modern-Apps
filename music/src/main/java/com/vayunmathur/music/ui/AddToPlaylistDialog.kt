@@ -15,7 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.music.R
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.music.Route
 import com.vayunmathur.music.database.Music
@@ -30,7 +32,7 @@ fun AddToPlaylistDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewM
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text("Add to Playlist") },
+        title = { Text(stringResource(R.string.dialog_add_to_playlist)) },
         text = {
             Column {
                 playlists.forEach { playlist ->
@@ -57,12 +59,12 @@ fun AddToPlaylistDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewM
                     }
                 }
             ) {
-                Text("OK")
+                Text(stringResource(R.string.dialog_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = { backStack.pop() }) {
-                Text("Cancel")
+                Text(stringResource(R.string.dialog_cancel))
             }
         }
     )

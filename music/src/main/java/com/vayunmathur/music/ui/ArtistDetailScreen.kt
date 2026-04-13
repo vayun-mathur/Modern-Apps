@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,7 +105,7 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
 
                     ListItem({
                         Text(artist.name, style = MaterialTheme.typography.titleLarge)
-                    }, Modifier, {Text("Artist")}, {
+                    }, Modifier, {Text(stringResource(R.string.label_artist))}, {
                         Text("${artistsMusic.size} songs • 1:25:02")
                     })
                 }
@@ -129,7 +130,7 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
                     ) {
                         IconPlay(tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Play", color = Color.White)
+                        Text(stringResource(R.string.label_play), color = Color.White)
                     }
 
                     Button(
@@ -143,14 +144,14 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
                     ) {
                         Icon(painterResource(com.vayunmathur.music.R.drawable.ic_shuffle), contentDescription = null, tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Shuffle", color = Color.Black)
+                        Text(stringResource(R.string.label_shuffle), color = Color.Black)
                     }
                 }
             }
 
             // Track List Header
             item {
-                Text("Albums", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.label_albums), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             }
 
             // Track Items
@@ -168,7 +169,7 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
 
             // Track List Header
             item {
-                Text("Songs", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.label_songs), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             }
 
             // Track Items
