@@ -8,6 +8,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.games.alchemist.R
 import com.vayunmathur.games.alchemist.Route
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DataStoreUtils
@@ -17,7 +19,7 @@ import com.vayunmathur.library.util.NavBackStack
 @Composable
 fun ItemDetailsScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils, itemId: Int) {
     Scaffold(topBar = {
-        TopAppBar({Text("Item Details")}, navigationIcon = { IconNavigation(backStack) })
+        TopAppBar({Text(stringResource(R.string.item_details))}, navigationIcon = { IconNavigation(backStack) })
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues)) {
 

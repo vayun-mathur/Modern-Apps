@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.alchemist.R
 
 @Composable
@@ -28,7 +29,7 @@ fun DynamicAlchemyIcon(iconId: Long, modifier: Modifier = Modifier) {
     if (resId != 0) {
         Image(
             painter = painterResource(id = resId),
-            contentDescription = "Alchemy Icon $iconId",
+            contentDescription = stringResource(R.string.alchemy_icon_content_description, iconId),
             modifier = modifier
         )
     } else {
