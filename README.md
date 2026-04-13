@@ -7,6 +7,10 @@ This ecosystem also contains apps that aren't as well covered by the open-source
 
 This ecosystem also includes games, which I personally believe are an important part of a good phone experience (at least the kind from the "golden age" of mobile games are), so I have remade some mobile games I enjoyed and might add more as time goes on.
 
+### Certificate
+All APK files made by me will match this SHA-256 certificate:
+`17:6F:CB:25:25:57:3E:5B:E8:E1:CB:3A:49:6D:D9:7B:13:7E:81:CA:5B:88:7A:1D:32:CB:89:4B:4E:57:17:B4`
+
 ### Acknowledgement of Bugs
 The v2.x.x versions of these apps are all to be considered beta versions. Lots of features/apps being done in a short period of time will inevitably result in some bugs here and there. All bug reports are appreciated, and any PRs to add fixes or new features (as long as not bloaty) are very appreciated. Version numbering will change to v3.x.x when all the apps are stable.
 
