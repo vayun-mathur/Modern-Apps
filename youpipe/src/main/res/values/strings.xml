@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">YouPipe</string>
+    <string name="title_history">History</string>
+    <string name="label_search">Search</string>
+    <string name="subscribers_count">%1$s subscribers</string>
+    <string name="title_create_subscription_category">Create subscription category</string>
+    <string name="title_update_subscription_category">Update subscription category</string>
+    <string name="label_category_name">Category name</string>
+    <string name="label_select_subscriptions">Select subscriptions:</string>
+    <string name="action_create">Create</string>
+    <string name="action_update">Update</string>
+    <string name="video_load_error">Video load error - Youtube may have blocked anonymous watch access from this IP</string>
+    <string name="action_go_back">Go Back</string>
+    <string name="label_comments">Comments</string>
+    <string name="label_related_videos">Related Videos</string>
+    <string name="title_subscriptions">Subscriptions</string>
+    <string name="label_groups">Groups:</string>
+    <string name="label_all_subscriptions">All Subscriptions</string>
+    <string name="label_channels">Channels:</string>
+    <string name="action_subscribe">Subscribe</string>
+    <string name="action_unsubscribe">Unsubscribe</string>
+    <string name="channel_info">%1$s subscribers | %2$s videos</string>
 </resources>

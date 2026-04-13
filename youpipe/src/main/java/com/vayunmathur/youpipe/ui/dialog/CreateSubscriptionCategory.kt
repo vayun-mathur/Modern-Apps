@@ -28,9 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory
@@ -52,13 +54,13 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
         Card {
             Column(Modifier.padding(16.dp)) {
                 if(id == null)
-                    Text("Create subscription category", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.title_create_subscription_category), style = MaterialTheme.typography.titleLarge)
                 else
-                    Text("Update subscription category", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.title_update_subscription_category), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(categoryName, {categoryName = it}, label = {Text("Category name")})
+                OutlinedTextField(categoryName, {categoryName = it}, label = {Text(stringResource(R.string.label_category_name))})
                 Spacer(Modifier.height(8.dp))
-                Text("Select subscriptions:")
+                Text(stringResource(R.string.label_select_subscriptions))
                 LazyColumn(Modifier.weight(1f)) {
                     items(subscriptions) {subscription ->
                         ListItem({
@@ -93,9 +95,9 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
                     enabled = categoryName.isNotBlank() && selectedSubscriptions.isNotEmpty() && (id != null || categoryName !in categoryNames)
                 ) {
                     if(id == null)
-                        Text("Create")
+                        Text(stringResource(R.string.action_create))
                     else
-                        Text("Update")
+                        Text(stringResource(R.string.action_update))
                 }
             }
         }

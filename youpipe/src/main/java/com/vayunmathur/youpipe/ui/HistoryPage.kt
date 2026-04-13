@@ -11,7 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.youpipe.R
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
@@ -25,7 +27,7 @@ fun HistoryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val history = historyVideos.sortedByDescending { it.timestamp }
 
     Scaffold(topBar = {
-        TopAppBar({Text("History")})
+        TopAppBar({Text(stringResource(R.string.title_history))})
     }, bottomBar = { BottomNavBar(backStack, MAIN_BOTTOM_BAR_ITEMS, Route.History) }) {paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             items(history) {historyItem ->

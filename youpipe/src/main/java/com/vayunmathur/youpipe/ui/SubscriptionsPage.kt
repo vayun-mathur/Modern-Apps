@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
@@ -79,7 +80,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
         }
     }
     Scaffold(topBar = {
-        TopAppBar({Text("Subscriptions")}, actions = {
+        TopAppBar({Text(stringResource(R.string.title_subscriptions))}, actions = {
             if(!isLoading) {
                 IconButton({
                     // save subscription to file
@@ -99,7 +100,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
             LazyColumn(Modifier.padding(paddingValues)) {
                 item {
                     ListItem({
-                        Text("Groups:")
+                        Text(stringResource(R.string.label_groups))
                     }, trailingContent = {
                         IconButton({
                             backStack.add(Route.CreateSubscriptionCategory(null))
@@ -110,7 +111,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                 }
                 item {
                     ListItem({
-                        Text("All Subscriptions")
+                        Text(stringResource(R.string.label_all_subscriptions))
                     }, Modifier.clickable {
                         backStack.add(Route.SubscriptionVideosPage(null))
                     })
@@ -129,7 +130,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     })
                 }
                 item {
-                    ListItem({ Text("Channels:") })
+                    ListItem({ Text(stringResource(R.string.label_channels)) })
                 }
                 items(subscriptions) {
                     ListItem({
