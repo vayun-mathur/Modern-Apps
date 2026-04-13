@@ -57,8 +57,6 @@ An example message to the server looks like the following:
 ```
 The only information the server can read is an anonymous ID representing who the shared location is for. The server cannot read the location itself, as the decryption key is only on the recipient's device.
 
-If you are using Android, the connection is made through Tor, so the server won't know your IP address either.
-
 ## Maps
 Officially unreleased, but the apk is available for download for testing.
 ### Features
