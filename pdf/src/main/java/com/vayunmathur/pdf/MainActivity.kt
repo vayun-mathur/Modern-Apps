@@ -1,5 +1,8 @@
 package com.vayunmathur.pdf
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -78,6 +81,7 @@ import androidx.pdf.compose.PdfViewerState
 import androidx.pdf.models.FormEditInfo
 import androidx.pdf.models.FormWidgetInfo
 import androidx.pdf.models.FormWidgetInfo.Companion.WIDGET_TYPE_CHECKBOX
+import androidx.pdf.selection.model.ImageSelection
 import androidx.pdf.view.Highlight
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconSave
@@ -161,40 +165,6 @@ fun PdfViewerScreen(pdfDocument: EditablePdfDocument) {
     var searchResults by remember { mutableStateOf(emptyList<PdfRect>()) }
     var searchIndex by remember(searchResults) { mutableIntStateOf(0) }
     var searchText by remember { mutableStateOf("") }
-
-    var formWidgets by remember {mutableStateOf(listOf<Pair<Int, FormWidgetInfo>>())}
-    val formStrings = remember { mutableStateMapOf<Pair<Int, Int>, String>() }
-
-    LaunchedEffect(pdfDocument.uri) {
-        coroutineScope.launch {
-            val allWidgets = mutableListOf<Pair<Int, FormWidgetInfo>>()
-            for(i in 0 until pdfDocument.pageCount) {
-                allWidgets += pdfDocument.getFormWidgetInfos(i).map { i to it }
-            }
-            formWidgets = allWidgets
-            formStrings.clear()
-        }
-    }
-
-    DisposableEffect(Unit) {
-        val listener = object : PdfDocument.OnPdfContentInvalidatedListener {
-            override fun onPdfContentInvalidated(
-                pageNumber: Int,
-                dirtyAreas: List<android.graphics.Rect>
-            ) {
-                coroutineScope.launch {
-                    formWidgets =
-                        formWidgets.filter { it.first != pageNumber } + pdfDocument.getFormWidgetInfos(
-                            pageNumber
-                        ).map { pageNumber to it }
-                }
-            }
-        }
-        pdfDocument.addOnPdfContentInvalidatedListener(Executors.newSingleThreadExecutor(), listener)
-        onDispose {
-            pdfDocument.removeOnPdfContentInvalidatedListener(listener)
-        }
-    }
 
     BackHandler(showSearchBar) {
         showSearchBar = false
@@ -331,109 +301,34 @@ fun PdfViewerScreen(pdfDocument: EditablePdfDocument) {
     ) { innerPadding ->
         Column(Modifier.padding(innerPadding)) {
             Box(Modifier.fillMaxSize()) {
-                PdfViewer(pdfDocument, pdfState, Modifier.onGloballyPositioned { coordinates ->
-                    center = coordinates.size.center.toOffset()
-                }, isFormFillingEnabled = true) { uri ->
+                PdfViewer(
+                    pdfDocument = pdfDocument,
+                    state = pdfState,
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        center = coordinates.size.center.toOffset()
+                    },
+                    isFormFillingEnabled = true,
+                    //isImageSelectionEnabled = true,
+                    onFormWidgetInfoUpdated = { editInfo ->
+                        coroutineScope.launch {
+                            pdfDocument.applyEdit(editInfo)
+                            changesMade = true
+                        }
+                    },
+//                    appendContextMenuComponents = {
+//                        val selection = pdfState.currentSelection
+//                        if (selection is ImageSelection) {
+//                            item("copy_image", "Copy Image", null) {
+//                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+//                                val clip = ClipData.newPlainText("PDF Image", "Image selected")
+//                                clipboard.setPrimaryClip(clip)
+//                            }
+//                        }
+//                    }
+                ) { uri ->
                     val intent = Intent(Intent.ACTION_VIEW, uri)
                     context.startActivity(intent)
                     true
-                }
-                BoxWithConstraints(Modifier.fillMaxSize()) {
-                    val density = LocalDensity.current.density
-
-                    val viewportWidth = constraints.maxWidth.toFloat()
-                    val viewportHeight = constraints.maxHeight.toFloat()
-                    val viewportRect = Rect(0f, 0f, viewportWidth, viewportHeight)
-
-                    formWidgets.forEach { widgetInfo ->
-                        // 1. Memoize the calculation so it only updates when the scroll/offset changes
-                        val rectByOffset by remember(widgetInfo, pdfState.firstVisiblePageOffset) {
-                            derivedStateOf {
-                                val topLeft = (pdfState.pdfPointToVisibleOffset(
-                                    PdfPoint(
-                                        widgetInfo.first,
-                                        widgetInfo.second.widgetRect.left.toFloat(),
-                                        widgetInfo.second.widgetRect.top.toFloat()
-                                    )
-                                ) ?: Offset.Zero)
-                                val bottomRight = (pdfState.pdfPointToVisibleOffset(
-                                    PdfPoint(
-                                        widgetInfo.first,
-                                        widgetInfo.second.widgetRect.right.toFloat(),
-                                        widgetInfo.second.widgetRect.bottom.toFloat()
-                                    )
-                                ) ?: Offset.Zero)
-                                Rect(topLeft, bottomRight)
-                            }
-                        }
-
-                        if (!viewportRect.overlaps(rectByOffset)) {
-                            return@forEach
-                        }
-
-                        Box(
-                            Modifier
-                                .graphicsLayer {
-                                    // 2. Use graphicsLayer to bypass layout phase
-                                    translationX = rectByOffset.left
-                                    translationY = rectByOffset.top
-                                }
-                                .size(
-                                    (rectByOffset.width/density).dp,
-                                    (rectByOffset.height/density).dp
-                                )
-                                .background(Color.Red.copy(alpha = 0.5f)) // Use alpha to see PDF underneath
-                        ) {
-                            if(widgetInfo.second.widgetType == WIDGET_TYPE_CHECKBOX) {
-                                Box(Modifier.clickable{
-                                    coroutineScope.launch {
-                                        pdfDocument.applyEdit(
-                                            FormEditInfo.createClick(
-                                                widgetInfo.second.widgetIndex,
-                                                PdfPoint(widgetInfo.first, widgetInfo.second.widgetRect.exactCenterX(), widgetInfo.second.widgetRect.exactCenterY())
-                                            )
-                                        )
-                                        changesMade = true
-                                    }
-                                }.fillMaxSize())
-                            } else if(widgetInfo.second.widgetType == FormWidgetInfo.WIDGET_TYPE_TEXTFIELD) {
-                                BasicTextField(
-                                    value = widgetInfo.second.textValue ?: "",
-                                    onValueChange = {
-                                        if(it.length > widgetInfo.second.maxLength && widgetInfo.second.maxLength > 0) return@BasicTextField
-                                        coroutineScope.launch {
-                                            pdfDocument.applyEdit(
-                                                FormEditInfo.createSetText(
-                                                    widgetInfo.first,
-                                                    widgetInfo.second.widgetIndex,
-                                                    it
-                                                )
-                                            )
-                                            changesMade = true
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.Center),
-                                    // 1. Make text invisible but keep layout metrics
-                                    textStyle = TextStyle.Default.copy(
-                                        color = Color.Transparent,
-                                        fontSize = widgetInfo.second.fontSize.sp * pdfState.zoom / density
-                                    ),
-                                    // 2. Ensure the cursor remains visible
-                                    cursorBrush = SolidColor(Color.Black),
-                                    decorationBox = { innerTextField ->
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.CenterStart // Match PDF alignment
-                                        ) {
-                                            innerTextField()
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
