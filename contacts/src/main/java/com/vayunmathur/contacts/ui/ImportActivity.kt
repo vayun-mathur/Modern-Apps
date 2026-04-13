@@ -26,6 +26,7 @@ import com.vayunmathur.library.ui.IconSave
 import okio.source
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.R
 
 class ImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

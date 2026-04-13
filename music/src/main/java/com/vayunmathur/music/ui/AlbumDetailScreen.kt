@@ -32,6 +32,7 @@ import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.music.util.AlbumArt
 import com.vayunmathur.music.util.PlaybackManager
 import com.vayunmathur.music.util.AddToPlaylistButton
+import com.vayunmathur.music.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

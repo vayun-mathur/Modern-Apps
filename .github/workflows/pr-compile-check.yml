@@ -1,0 +1,29 @@
+name: "✅ PR Compile Check"
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set Up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Change Gradle Wrapper Permissions
+        run: chmod +x ./gradlew
+
+      - name: Check All Apps Compile
+        run: ./gradlew :calendar:compileDebugKotlin :contacts:compileDebugKotlin :pdf:compileDebugKotlin :crypto:compileDebugKotlin :openassistant:compileDebugKotlin :passwords:compileDebugKotlin :notes:compileDebugKotlin :files:compileDebugKotlin :photos:compileDebugKotlin :health:compileDebugKotlin :youpipe:compileDebugKotlin :findfamily:compileDebugKotlin :maps:compileDebugKotlin :games:chess:compileDebugKotlin :games:unblockjam:compileDebugKotlin :games:wordmaker:compileDebugKotlin :music:compileDebugKotlin :clock:compileDebugKotlin :games:alchemist:compileDebugKotlin

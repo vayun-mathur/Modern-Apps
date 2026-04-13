@@ -10,6 +10,7 @@ import androidx.work.WorkerParameters
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import java.util.zip.ZipInputStream
+import com.vayunmathur.files.R
 
 class UnzipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 

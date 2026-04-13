@@ -1,5 +1,6 @@
 package com.vayunmathur.games.chess.data
 import kotlin.math.abs
+import com.vayunmathur.games.chess.R
 
 enum class PieceType(
     val resID: Int

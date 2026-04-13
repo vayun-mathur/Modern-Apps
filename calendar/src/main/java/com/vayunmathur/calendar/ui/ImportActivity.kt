@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.calendar.ui.dateRangeString
+import com.vayunmathur.calendar.R
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconSave
 import kotlinx.datetime.LocalDate
