@@ -4,6 +4,14 @@
     <selectionStates>
       <SelectionState runConfigName="calendar">
         <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-04-13T03:55:05.549332400Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Vayun\.android\avd\Medium_Phone.avd" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="pdf">
         <option name="selectionMode" value="DROPDOWN" />
@@ -84,9 +92,6 @@
       <SelectionState runConfigName="youpipe">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="games">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="games.wordmaker">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
@@ -115,6 +120,14 @@
       </SelectionState>
       <SelectionState runConfigName="music">
         <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-04-13T03:55:05.549332400Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Vayun\.android\avd\Medium_Phone.avd" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="clock">
         <option name="selectionMode" value="DROPDOWN" />

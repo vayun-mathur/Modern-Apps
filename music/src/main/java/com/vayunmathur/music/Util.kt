@@ -42,74 +42,15 @@ fun getThumbnail(context: Context, uri: Uri): Bitmap? {
     }
 }
 
-suspend fun saveMediaToFile(context: Context, viewModel: DatabaseViewModel) {
-    val musics = getMedia(context)
-    val albums = getAlbums(context)
-    val artists = getArtists(context)
-    viewModel.replaceAll(musics)
-    viewModel.replaceAll(albums)
-    viewModel.replaceAll(artists)
-    viewModel.clearMatchings<Album, Artist>()
-    viewModel.addPairs(albumArtistPairs(musics, artists, albums))
-}
-
 fun albumArtistPairs(music: List<Music>, artists: List<Artist>, albums: List<Album>): List<Pair<Album, Artist>> {
     val albumArtistPairs = mutableListOf<Pair<Album, Artist>>()
     for(music in music) {
-        albumArtistPairs += Pair(albums.first { it.id == music.albumId }, artists.first { it.id == music.artistId })
+        val album = albums.firstOrNull { it.id == music.albumId } ?: continue
+        val artist = artists.firstOrNull { it.id == music.artistId } ?: continue
+        albumArtistPairs += Pair(album, artist)
     }
     return albumArtistPairs.distinct()
 }
-
-suspend fun getMedia(context: Context): List<Music> = withContext(Dispatchers.IO) {
-    val musicList = mutableListOf<Music>()
-    val projection = arrayOf(
-        MediaStore.Audio.Media._ID,
-        MediaStore.Audio.Media.TITLE,
-        MediaStore.Audio.Media.ARTIST,
-        MediaStore.Audio.Media.ARTIST_ID,
-        MediaStore.Audio.Media.ALBUM,
-        MediaStore.Audio.Media.ALBUM_ID,
-    )
-
-    // Filter to only get music files
-    val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
-    val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
-
-    context.contentResolver.query(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        selection,
-        null,
-        sortOrder
-    )?.use { cursor ->
-        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-        val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-        val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-        val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-        val artistIDColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
-        val albumIDColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-
-        while (cursor.moveToNext()) {
-            val id = cursor.getLong(idColumn)
-            val title = cursor.getString(titleColumn)
-            val artist = cursor.getString(artistColumn)
-            val album = cursor.getString(albumColumn)
-            val artistID = cursor.getLong(artistIDColumn)
-            val albumID = cursor.getLong(albumIDColumn)
-
-            // Construct the actual File URI
-            val contentUri = ContentUris.withAppendedId(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                id
-            ).toString()
-
-            musicList.add(Music(id, title, artist, artistID, album, albumID, contentUri))
-        }
-    }
-    return@withContext musicList
-}
-
 
 suspend fun getAlbums(context: Context): List<Album> = withContext(Dispatchers.IO) {
     val musicList = mutableListOf<Album>()
@@ -206,11 +147,13 @@ fun AlbumArt(artUris: List<Uri>, modifier: Modifier) {
 
     // Re-run whenever the list of URIs changes
     LaunchedEffect(artUris) {
-        bitmap = if (artUris.size > 1) {
-            createCollageBitmap(context, artUris.take(4))
-        } else {
-            // Fallback for single image
-            artUris.firstOrNull()?.let { getThumbnail(context, it) }
+        withContext(Dispatchers.IO) {
+            bitmap = if (artUris.size > 1) {
+                createCollageBitmap(context, artUris.take(4))
+            } else {
+                // Fallback for single image
+                artUris.firstOrNull()?.let { getThumbnail(context, it) }
+            }
         }
     }
 

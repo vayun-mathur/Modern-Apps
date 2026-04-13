@@ -91,9 +91,9 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMo
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val albums = remember { runBlocking { viewModel.getMatches<Artist, Album>(artist.id) } }
+                    val albumIds by viewModel.getMatchesState<Artist, Album>(artist.id)
                     val allAlbums by viewModel.data<Album>().collectAsState()
-                    val albumsUris = allAlbums.filter { it.id in albums }.map { it.uri.toUri() }
+                    val albumsUris by remember { derivedStateOf { allAlbums.filter { it.id in albumIds }.map { it.uri.toUri() } } }
 
                     AlbumArt(albumsUris, Modifier
                         .size(260.dp)

@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.media3.session.MediaController
 import androidx.room.migration.Migration
 import com.vayunmathur.library.util.NavKey
@@ -50,20 +51,13 @@ class MainActivity : ComponentActivity() {
                         arrayOf(Manifest.permission.READ_MEDIA_AUDIO),
                         "Grant Audio Media Permissions"
                     ) {
-                        LaunchedEffect(Unit) {
-                            saveMediaToFile(this@MainActivity, viewModel)
-                        }
                         Navigation(viewModel)
                     }
                 } else {
-
                     PermissionsChecker(
                         arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
                         "Grant Storage Permissions"
                     ) {
-                        LaunchedEffect(Unit) {
-                            saveMediaToFile(this@MainActivity, viewModel)
-                        }
                         Navigation(viewModel)
                     }
                 }
@@ -100,6 +94,11 @@ sealed interface Route: NavKey {
 
 @Composable
 fun Navigation(viewModel: DatabaseViewModel) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        SyncWorker.runOnce(context)
+        SyncWorker.enqueue(context)
+    }
     val backStack = rememberNavBackStack<Route>(Route.Home)
     MainNavigation(backStack) {
         entry<Route.Home> {

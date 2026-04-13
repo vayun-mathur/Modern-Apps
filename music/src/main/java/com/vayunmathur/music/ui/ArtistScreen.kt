@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,9 +47,9 @@ fun ArtistScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
             }, {
                 Route.ArtistDetail(it)
             }, leadingContent = { artist ->
-                val albums = remember { runBlocking { viewModel.getMatches<Artist, Album>(artist.id) } }
+                val albums by viewModel.getMatchesState<Artist, Album>(artist.id)
                 val allAlbums by viewModel.data<Album>().collectAsState()
-                val albumsUris = allAlbums.filter { it.id in albums }.map { it.uri.toUri() }
+                val albumsUris by remember { derivedStateOf { allAlbums.filter { it.id in albums }.map { it.uri.toUri() } } }
                 AlbumArt(albumsUris, Modifier.size(40.dp))
             }, searchEnabled = true, bottomBar = {
                 PlayingBottomBar(playbackManager, backStack)

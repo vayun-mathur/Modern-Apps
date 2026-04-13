@@ -49,22 +49,30 @@ import kotlin.time.Instant
 class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>, TrueDao<*>>, val matchingDao: MatchingDao? = null) : ViewModel() {
     val daos = daos.associate { it.first to it.second }
 
-    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> addPairs(pairs: List<Pair<A, B>>) {
+    suspend inline fun <reified A: DatabaseItem, reified B: DatabaseItem> addPairs(pairs: List<Pair<A, B>>) {
         val classAIndex = daos.keys.indexOf(A::class)
         val classBIndex = daos.keys.indexOf(B::class)
         val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
         val pairs = if(classAIndex < classBIndex) pairs else pairs.map { it.second to it.first }
+        matchingDao!!.upsert(pairs.map { (a, b) -> ManyManyMatching(a.id, b.id, type) })
+    }
+
+    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> addPairsAsync(pairs: List<Pair<A, B>>) {
         viewModelScope.launch {
-            matchingDao!!.upsert(pairs.map { (a, b) -> ManyManyMatching(a.id, b.id, type) })
+            addPairs(pairs)
         }
     }
 
-    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> clearMatchings() {
+    suspend inline fun <reified A: DatabaseItem, reified B: DatabaseItem> clearMatchings() {
         val classAIndex = daos.keys.indexOf(A::class)
         val classBIndex = daos.keys.indexOf(B::class)
         val type = min(classAIndex, classBIndex) + 100 * max(classAIndex, classBIndex)
+        matchingDao!!.deleteByType(type)
+    }
+
+    inline fun <reified A: DatabaseItem, reified B: DatabaseItem> clearMatchingsAsync() {
         viewModelScope.launch {
-            matchingDao!!.deleteByType(type)
+            clearMatchings<A, B>()
         }
     }
 
@@ -199,15 +207,25 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
         } as StateFlow<List<E>>
     }
 
-    inline fun <reified E: DatabaseItem> upsertAll(items: List<E>) {
+    suspend inline fun <reified E: DatabaseItem> upsertAll(items: List<E>) {
+        getDao<E>().upsertAll(items)
+    }
+
+    inline fun <reified E: DatabaseItem> upsertAllAsync(items: List<E>) {
         viewModelScope.launch {
-            getDao<E>().upsertAll(items)
+            upsertAll(items)
         }
     }
 
-    inline fun <reified E: DatabaseItem> replaceAll(items: List<E>) {
+    suspend inline fun <reified E: DatabaseItem> replaceAll(items: List<E>) {
         database.openHelper.writableDatabase.delete(E::class.simpleName!!, null, null)
         upsertAll(items)
+    }
+
+    inline fun <reified E: DatabaseItem> replaceAllAsync(items: List<E>) {
+        viewModelScope.launch {
+            replaceAll(items)
+        }
     }
 
     suspend inline fun <reified E: DatabaseItem> getAll(filterQuery: String? = null): List<E> {
