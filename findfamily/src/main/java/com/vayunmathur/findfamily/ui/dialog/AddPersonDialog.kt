@@ -19,11 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Platform
 import com.vayunmathur.findfamily.Route
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.RequestStatus
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.library.ui.IconCopy
@@ -54,7 +56,7 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
     Dialog({backStack.pop()}) {
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Add Person", style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.add_person_title), style = MaterialTheme.typography.headlineMedium)
 
                 OutlinedTextField(
                     Networking.userid.encodeBase26(),
@@ -62,7 +64,7 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
                     interactionSource = interactionSourceClickable {
                         platform.copy(Networking.userid.encodeBase26())
                     },
-                    label = { Text("Your FindFamily ID") },
+                    label = { Text(stringResource(R.string.your_findfamily_id)) },
                     trailingIcon = {
                         IconCopy()
                     },
@@ -73,24 +75,24 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
                     userid,
                     { userid = it },
                     readOnly = id != null,
-                    label = { Text("Contact's FindFamily ID") },
+                    label = { Text(stringResource(R.string.contact_findfamily_id)) },
                     isError = userStatus == RequestStatus.MUTUAL_CONNECTION || userStatus == RequestStatus.AWAITING_RESPONSE,
                     supportingText =
                         when (userStatus) {
-                            RequestStatus.AWAITING_REQUEST -> { @Composable {Text("This person has requested your location")}}
+                            RequestStatus.AWAITING_REQUEST -> { @Composable {Text(stringResource(R.string.status_awaiting_request))}}
                             RequestStatus.MUTUAL_CONNECTION -> {
                                 if (userid == Networking.userid.encodeBase26())
-                                    {@Composable {Text("Cannot share your location with yourself")}}
-                                else {@Composable {Text("Already sharing location with this person")}}
+                                    {@Composable {Text(stringResource(R.string.status_cannot_share_self))}}
+                                else {@Composable {Text(stringResource(R.string.status_already_sharing))}}
                             }
-                            RequestStatus.AWAITING_RESPONSE -> {@Composable {Text("Already requested to share with this person") } }
+                            RequestStatus.AWAITING_RESPONSE -> {@Composable {Text(stringResource(R.string.status_already_requested)) } }
                             else -> null
                         }
                     )
 
                 OutlinedTextField(contactName ?: "", {}, interactionSource = interactionSourceClickable {
                     requestPickContact2()
-                }, label = { Text("Contact's Name") }, readOnly = true)
+                }, label = { Text(stringResource(R.string.contact_name_label)) }, readOnly = true)
 
                 Button(
                     {
@@ -111,9 +113,9 @@ fun AddPersonDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel
                     enabled = userid.isNotBlank() && contactName != null && !(userStatus == RequestStatus.MUTUAL_CONNECTION || userStatus == RequestStatus.AWAITING_RESPONSE)
                 ) {
                     if (userStatus == RequestStatus.AWAITING_REQUEST) {
-                        Text("Accept Location Request")
+                        Text(stringResource(R.string.accept_location_request))
                     } else {
-                        Text("Request Location")
+                        Text(stringResource(R.string.request_location))
                     }
                 }
             }

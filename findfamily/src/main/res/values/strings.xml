@@ -1,3 +1,114 @@
 <resources>
     <string name="app_name">Find Family</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_location_tracking_name">Location Tracking</string>
+    <string name="notification_channel_location_tracking_desc">Used for FindFamily background location updates</string>
+    <string name="notification_channel_battery_name">Battery Alerts</string>
+    <string name="notification_channel_battery_desc">Alerts when a family member has low battery</string>
+    <string name="notification_channel_entry_exit_name">Arrivals &amp; Departures</string>
+    <string name="notification_channel_entry_exit_desc">Notifications for when family members enter or leave waypoints</string>
+
+    <!-- Foreground service notification -->
+    <string name="notification_tracking_title">FindFamily is active</string>
+    <string name="notification_tracking_text">Sharing location with your selected contacts</string>
+
+    <!-- Dynamic notifications -->
+    <string name="notification_low_battery">%1$s has low battery</string>
+    <string name="notification_entered_waypoint">%1$s has entered %2$s</string>
+    <string name="notification_exited_waypoint">%1$s has exited %2$s</string>
+
+    <!-- Permission screen -->
+    <string name="permission_fine_location_granted">✅ Fine Location Granted</string>
+    <string name="permission_grant_fine_location">1. Grant Fine Location</string>
+    <string name="permission_background_granted">✅ Background Granted</string>
+    <string name="permission_enable_all_the_time">2. Enable \'Allow all the time\'</string>
+    <string name="permission_background_explanation">To enable background tracking, please select \'Allow all the time\' in the next screen.</string>
+
+    <!-- MainPage FAB menu -->
+    <string name="fab_person">Person</string>
+    <string name="fab_location">Location</string>
+    <string name="fab_link">Link</string>
+
+    <!-- MainPage section headers -->
+    <string name="section_location_sharing_requests">Location Sharing Requests</string>
+    <string name="section_temporary_links">Temporary Links</string>
+    <string name="section_saved_places">Saved Places</string>
+
+    <!-- MainPage cards -->
+    <string name="request_from">Request from %1$s</string>
+    <string name="expires">Expires %1$s</string>
+    <string name="nobody_here">nobody is currently here</string>
+    <string name="user_is_here"> is currently here</string>
+    <string name="users_are_here"> are currently here</string>
+    <string name="last_updated_never">Never</string>
+    <string name="since_just_now">Since just now</string>
+    <string name="since_minutes_ago">Since %1$d minutes ago</string>
+    <string name="since_time_date">Since %1$s %2$s</string>
+    <string name="today">today</string>
+    <string name="yesterday">yesterday</string>
+    <string name="user_card_status">Updated %1$s\nAt %2$s\n%3$s</string>
+    <string name="speed_ms">%1$s m/s</string>
+    <string name="battery_percentage">%1$d%%</string>
+
+    <!-- timestring helper -->
+    <string name="time_just_now">just now</string>
+    <string name="time_minutes_ago">%1$d minutes ago</string>
+    <string name="time_hours_ago">%1$d hours ago</string>
+    <string name="time_days_ago">%1$d days ago</string>
+    <string name="time_very_soon">very soon</string>
+    <string name="time_in_minutes">in %1$d minutes</string>
+    <string name="time_in_hours">in %1$d hours</string>
+    <string name="time_in_days">in %1$d days</string>
+
+    <!-- UserPage -->
+    <string name="share_your_location">Share your location</string>
+    <string name="change_connected_contact">Change connected contact</string>
+    <string name="history_button">History</string>
+    <string name="hide_button">Hide</string>
+    <string name="history_rewind_large">&lt;&lt;&lt;</string>
+    <string name="history_forward_large">&gt;&gt;&gt;</string>
+    <string name="history_rewind_medium">&lt;&lt;</string>
+    <string name="history_forward_medium">&gt;&gt;</string>
+    <string name="history_rewind_small">&lt;</string>
+    <string name="history_forward_small">&gt;</string>
+
+    <!-- WaypointEditPage -->
+    <string name="waypoint_name_blank_error">Name cannot be blank</string>
+    <string name="waypoint_range_error">Range must be a number</string>
+    <string name="waypoint_range_suffix">meters</string>
+
+    <!-- AddLinkDialog -->
+    <string name="add_link_title">Share via link</string>
+    <string name="add_link_label">Link Label (to differentiate links)</string>
+    <string name="expiry_time_label">Expiry Time</string>
+    <string name="create_temporary_link">Create Temporary Link</string>
+    <string name="expiry_15_minutes">15 minutes</string>
+    <string name="expiry_30_minutes">30 minutes</string>
+    <string name="expiry_1_hour">1 hour</string>
+    <string name="expiry_2_hours">2 hours</string>
+    <string name="expiry_4_hours">4 hours</string>
+    <string name="expiry_6_hours">6 hours</string>
+    <string name="expiry_12_hours">12 hours</string>
+    <string name="expiry_1_day">1 day</string>
+    <string name="expiry_2_days">2 days</string>
+    <string name="expiry_1_week">1 week</string>
+
+    <!-- AddPersonDialog -->
+    <string name="add_person_title">Add Person</string>
+    <string name="your_findfamily_id">Your FindFamily ID</string>
+    <string name="contact_findfamily_id">Contact\'s FindFamily ID</string>
+    <string name="status_awaiting_request">This person has requested your location</string>
+    <string name="status_cannot_share_self">Cannot share your location with yourself</string>
+    <string name="status_already_sharing">Already sharing location with this person</string>
+    <string name="status_already_requested">Already requested to share with this person</string>
+    <string name="contact_name_label">Contact\'s Name</string>
+    <string name="accept_location_request">Accept Location Request</string>
+    <string name="request_location">Request Location</string>
+
+    <!-- Platform -->
+    <string name="clipboard_label">text</string>
+
+    <!-- MapView -->
+    <string name="me_label">Me</string>
 </resources>

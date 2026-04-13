@@ -20,12 +20,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Networking
 import com.vayunmathur.findfamily.Route
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.TemporaryLink
-import com.vayunmathur.library.util.DatabaseViewModel
 import dev.whyoleg.cryptography.algorithms.RSA
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,17 +41,27 @@ import kotlin.time.Duration.Companion.minutes
 fun AddLinkDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     var name by remember { mutableStateOf("") }
 
+    val expiry15min = stringResource(R.string.expiry_15_minutes)
     val options = mapOf(
-        "15 minutes" to 15.minutes, "30 minutes" to 30.minutes, "1 hour" to 1.hours, "2 hours" to 2.hours, "4 hours" to 4.hours, "6 hours" to 6.hours, "12 hours" to 12.hours, "1 day" to 1.days, "2 days" to 2.days, "1 week" to 7.days
+        expiry15min to 15.minutes,
+        stringResource(R.string.expiry_30_minutes) to 30.minutes,
+        stringResource(R.string.expiry_1_hour) to 1.hours,
+        stringResource(R.string.expiry_2_hours) to 2.hours,
+        stringResource(R.string.expiry_4_hours) to 4.hours,
+        stringResource(R.string.expiry_6_hours) to 6.hours,
+        stringResource(R.string.expiry_12_hours) to 12.hours,
+        stringResource(R.string.expiry_1_day) to 1.days,
+        stringResource(R.string.expiry_2_days) to 2.days,
+        stringResource(R.string.expiry_1_week) to 7.days
     )
-    var expiryTime by remember { mutableStateOf("15 minutes") }
+    var expiryTime by remember { mutableStateOf(expiry15min) }
 
     Dialog({backStack.pop()}) {
         Card {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Share via link", style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(R.string.add_link_title), style = MaterialTheme.typography.headlineMedium)
 
-                OutlinedTextField(name, {name = it}, label = {Text("Link Label (to differentiate links)")})
+                OutlinedTextField(name, {name = it}, label = {Text(stringResource(R.string.add_link_label))})
 
                 DropdownField(expiryTime, { expiryTime = it }, options.keys)
 
@@ -71,7 +82,7 @@ fun AddLinkDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) 
                     },
                     enabled = name.isNotBlank()
                 ) {
-                    Text("Create Temporary Link")
+                    Text(stringResource(R.string.create_temporary_link))
                 }
             }
         }
@@ -87,7 +98,7 @@ fun DropdownField(value: String, setValue: (String) -> Unit, options: Collection
             value, {},
             interactionSource = interactionSourceClickable { expanded = true },
             readOnly = true,
-            label = { Text("Expiry Time") },
+            label = { Text(stringResource(R.string.expiry_time_label)) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(
                     expanded = expanded

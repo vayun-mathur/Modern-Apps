@@ -17,6 +17,7 @@ import androidx.core.database.getBlobOrNull
 import androidx.core.database.getStringOrNull
 import kotlinx.coroutines.launch
 import kotlin.io.encoding.Base64
+import com.vayunmathur.findfamily.R
 
 class Platform(private val context: Context) {
     @SuppressLint("Range")
@@ -144,7 +145,7 @@ class Platform(private val context: Context) {
 
     fun copy(content: String) {
         val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val clipData = android.content.ClipData.newPlainText("text", content)
+        val clipData = android.content.ClipData.newPlainText(context.getString(R.string.clipboard_label), content)
         clipboardManager.setPrimaryClip(clipData)
     }
 }

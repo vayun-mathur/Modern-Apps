@@ -110,7 +110,7 @@ class LocationTrackingService : Service() {
                         if(user.id != Networking.userid)
                             createNotificationWithCategory(
                                 user.name,
-                                "${user.name} has low battery",
+                                getString(R.string.notification_low_battery, user.name),
                                 "BATTERY_LOW"
                             )
                     }
@@ -132,13 +132,13 @@ class LocationTrackingService : Service() {
                             if(inWaypoint != null) {
                                 createNotificationWithCategory(
                                     user.name,
-                                    "${user.name} has entered ${inWaypoint.name}",
+                                    getString(R.string.notification_entered_waypoint, user.name, inWaypoint.name),
                                     "ENTRY_EXIT"
                                 )
                             } else if(waypoints.find { it.name == user.locationName } != null) {
                                 createNotificationWithCategory(
                                     user.name,
-                                    "${user.name} has exited ${user.locationName}",
+                                    getString(R.string.notification_exited_waypoint, user.name, user.locationName),
                                     "ENTRY_EXIT"
                                 )
                             }
@@ -209,28 +209,28 @@ class LocationTrackingService : Service() {
         // 1. Create the Channel (Required for API 26+)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Location Tracking",
+            getString(R.string.notification_channel_location_tracking_name),
             NotificationManager.IMPORTANCE_LOW // Low importance so it doesn't "pop up" or make noise
         ).apply {
-            description = "Used for FindFamily background location updates"
+            description = getString(R.string.notification_channel_location_tracking_desc)
         }
 
         // 2. Battery Alerts Channel (High Importance for visibility)
         val batteryChannel = NotificationChannel(
             BATTERY_CHANNEL_ID,
-            "Battery Alerts",
+            getString(R.string.notification_channel_battery_name),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Alerts when a family member has low battery"
+            description = getString(R.string.notification_channel_battery_desc)
         }
 
         // 3. Entry/Exit Channel
         val arrivalChannel = NotificationChannel(
             ENTRY_EXIT_CHANNEL_ID,
-            "Arrivals & Departures",
+            getString(R.string.notification_channel_entry_exit_name),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Notifications for when family members enter or leave waypoints"
+            description = getString(R.string.notification_channel_entry_exit_desc)
         }
 
         // Register all channels
@@ -247,8 +247,8 @@ class LocationTrackingService : Service() {
 
         // 3. Build the notification
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("FindFamily is active")
-            .setContentText("Sharing location with your selected contacts")
+            .setContentTitle(getString(R.string.notification_tracking_title))
+            .setContentText(getString(R.string.notification_tracking_text))
             .setSmallIcon(R.drawable.ic_launcher_foreground) // Ensure this exists in your res/drawable
             .setOngoing(true) // Makes it persistent
             .setContentIntent(pendingIntent)

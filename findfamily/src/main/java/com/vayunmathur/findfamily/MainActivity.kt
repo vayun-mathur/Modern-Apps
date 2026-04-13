@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -36,6 +37,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.room.migration.Migration
 import com.vayunmathur.library.util.NavKey
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.TemporaryLink
@@ -163,7 +165,7 @@ fun NoPermissionsScreen(
                 onClick = { foregroundLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
                 enabled = !hasForeground
             ) {
-                Text(if (hasForeground) "✅ Fine Location Granted" else "1. Grant Fine Location")
+                Text(if (hasForeground) stringResource(R.string.permission_fine_location_granted) else stringResource(R.string.permission_grant_fine_location))
             }
 
             Spacer(Modifier.height(16.dp))
@@ -173,13 +175,13 @@ fun NoPermissionsScreen(
                 onClick = { backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
                 enabled = hasForeground && !hasBackground
             ) {
-                val label = if (hasBackground) "✅ Background Granted" else "2. Enable 'Allow all the time'"
+                val label = if (hasBackground) stringResource(R.string.permission_background_granted) else stringResource(R.string.permission_enable_all_the_time)
                 Text(label)
             }
 
             if (hasForeground && !hasBackground) {
                 Text(
-                    text = "To enable background tracking, please select 'Allow all the time' in the next screen.",
+                    text = stringResource(R.string.permission_background_explanation),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
