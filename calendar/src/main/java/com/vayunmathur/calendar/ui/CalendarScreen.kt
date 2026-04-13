@@ -306,6 +306,10 @@ private fun AllDayRow(
                             ) {
                                 Text(
                                     ev.title.ifEmpty { stringResource(R.string.no_title) },
+                                    Modifier.padding(4.dp),
+                                    Color.White,
+                                    fontSize = 12.sp
+                                )
                             }
                         }
                     }
@@ -388,6 +392,7 @@ private fun HourlyGrid(
                         ) {
                             Text(
                                 ev.title.ifEmpty { stringResource(R.string.no_title) },
+                                Modifier.padding(6.dp),
                                 Color.White,
                                 maxLines = 2,
                                 fontSize = 12.sp
