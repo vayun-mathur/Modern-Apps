@@ -83,13 +83,14 @@ fun ClockPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
             items(timeZones.toList()) {city ->
                 val it = citiesToTimezones?.get(city) ?: return@items
                 val timeHere = now.toLocalDateTime(TimeZone.of(it))
+                val amPm = if(timeHere.time.hour >= 12) stringResource(R.string.time_pm) else stringResource(R.string.time_am)
                 Card {
                     ListItem({Text(city)}, trailingContent = {
                         Text(timeHere.time.format(LocalTime.Format {
                             amPmHour(Padding.NONE)
                             chars(":")
                             minute()
-                        }) + if(timeHere.time.hour >= 12) stringResource(R.string.time_pm) else stringResource(R.string.time_am))
+                        }) + amPm)
                     }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
                 }
             }
