@@ -232,42 +232,42 @@ fun PhotoDetailView(
                 }
             }
     ) {
-        key(photo.dateModified) {
-            if (photo.videoData == null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(photo.uri.toUri())
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned { layoutCoordinates ->
-                            size = layoutCoordinates.size
-                        }
-                        .graphicsLayer {
-                            scaleX = currentZoom.scale
-                            scaleY = currentZoom.scale
-                            translationX = currentZoom.offset.x
-                            translationY = currentZoom.offset.y
-                        },
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                VideoPlayer(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned { size = it.size }
-                        .graphicsLayer {
-                            scaleX = currentZoom.scale
-                            scaleY = currentZoom.scale
-                            translationX = currentZoom.offset.x
-                            translationY = currentZoom.offset.y
-                        },
-                    uri = photo.uri.toUri(),
-                    isMetadataVisible = isMetadataVisible,
-                    isSettledPage = isSettled
-                )
-            }
+        if (photo.videoData == null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(photo.uri.toUri())
+                    .diskCacheKey("thumb_${photo.id}_${photo.dateModified}")
+                    .memoryCacheKey("thumb_${photo.id}_${photo.dateModified}")
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { layoutCoordinates ->
+                        size = layoutCoordinates.size
+                    }
+                    .graphicsLayer {
+                        scaleX = currentZoom.scale
+                        scaleY = currentZoom.scale
+                        translationX = currentZoom.offset.x
+                        translationY = currentZoom.offset.y
+                    },
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            VideoPlayer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { size = it.size }
+                    .graphicsLayer {
+                        scaleX = currentZoom.scale
+                        scaleY = currentZoom.scale
+                        translationX = currentZoom.offset.x
+                        translationY = currentZoom.offset.y
+                    },
+                uri = photo.uri.toUri(),
+                isMetadataVisible = isMetadataVisible,
+                isSettledPage = isSettled
+            )
         }
 
         AnimatedVisibility(

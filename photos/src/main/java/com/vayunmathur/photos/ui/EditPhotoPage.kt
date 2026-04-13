@@ -60,6 +60,7 @@ import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.Route
+import com.vayunmathur.photos.SyncWorker
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -344,6 +345,4 @@ suspend fun savePhoto(
             e.printStackTrace()
         }
     }
-    
-    syncPhotos(context, viewModel)
 }

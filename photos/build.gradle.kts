@@ -21,6 +21,9 @@ dependencies {
     implementation(libs.androidx.media3.ui.compose.material3)
 
 
+    // work
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Glance app widget
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)

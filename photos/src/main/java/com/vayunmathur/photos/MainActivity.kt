@@ -11,6 +11,7 @@ import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.painterResource
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -37,6 +38,8 @@ class MainActivity : ComponentActivity() {
         val db = buildDatabase<PhotoDatabase>(listOf(MIGRATION_1_2, MIGRATION_2_3))
         val viewModel = DatabaseViewModel(db, Photo::class to db.photoDao())
         ImageLoader.init(this)
+        SyncWorker.runOnce(this)
+        SyncWorker.enqueue(this)
         setContent {
             DynamicTheme {
                 if(Build.VERSION.SDK_INT >= 33) {
