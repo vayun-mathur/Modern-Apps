@@ -98,6 +98,7 @@ fun ContactDetailsPage(
     }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val shareContactLabel = stringResource(R.string.share_contact)
 
     Scaffold(Modifier, {
             TopAppBar({}, Modifier, {if (showBackButton) IconNavigation(onBack) },
@@ -129,7 +130,7 @@ fun ContactDetailsPage(
                             intent.type = "text/x-vcard"
                             intent.putExtra(Intent.EXTRA_STREAM, uri)
                             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_contact)))
+                            context.startActivity(Intent.createChooser(intent, shareContactLabel))
                         }
                     }) {
                         IconShare()
