@@ -1,8 +1,11 @@
 package com.vayunmathur.files
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipDescription
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -27,6 +30,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +42,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -50,6 +55,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -76,11 +82,13 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.IconArchive
 import com.vayunmathur.library.ui.IconChevronRight
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconDelete
@@ -111,18 +119,71 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeDirectoryPage() {
     val context = LocalContext.current
-    var isGranted by remember { mutableStateOf(Environment.isExternalStorageManager()) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        isGranted = Environment.isExternalStorageManager()
+    val prefs = remember { context.getSharedPreferences("files_prefs", Context.MODE_PRIVATE) }
+    
+    var isFilesGranted by remember { mutableStateOf(Environment.isExternalStorageManager()) }
+    var hasPromptedNotifications by remember { mutableStateOf(prefs.getBoolean("has_prompted_notifications", false)) }
+    var showNotificationDialog by remember { mutableStateOf(false) }
+
+    val filesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        isFilesGranted = Environment.isExternalStorageManager()
     }
 
-    if (!isGranted) {
+    val notificationsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        prefs.edit().putBoolean("has_prompted_notifications", true).apply()
+        hasPromptedNotifications = true
+        showNotificationDialog = false
+    }
+
+    LaunchedEffect(isFilesGranted, hasPromptedNotifications) {
+        if (isFilesGranted && !hasPromptedNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val isGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            if (!isGranted) {
+                showNotificationDialog = true
+            } else {
+                prefs.edit().putBoolean("has_prompted_notifications", true).apply()
+                hasPromptedNotifications = true
+            }
+        }
+    }
+
+    if (showNotificationDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                prefs.edit().putBoolean("has_prompted_notifications", true).apply()
+                hasPromptedNotifications = true
+                showNotificationDialog = false 
+            },
+            title = { Text("Enable Notifications?") },
+            text = { Text("Turning on notifications will allow you to see progress on background actions like zipping and unzipping files.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    prefs.edit().putBoolean("has_prompted_notifications", true).apply()
+                    hasPromptedNotifications = true
+                    showNotificationDialog = false
+                }) {
+                    Text("Skip")
+                }
+            }
+        )
+    }
+
+    if (!isFilesGranted) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Button(onClick = {
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
                     data = Uri.fromParts("package", context.packageName, null)
                 }
-                launcher.launch(intent)
+                filesLauncher.launch(intent)
             }) {
                 Text("Grant All Files Access")
             }
@@ -165,6 +226,48 @@ fun DirectoryPage(rootFile: Path) {
     
     var selectedPaths by remember(currentDirectory, currentFileSystem) { mutableStateOf(setOf<Path>()) }
     var pathBeingRenamed by remember { mutableStateOf<Path?>(null) }
+    var showArchiveDialog by remember { mutableStateOf(false) }
+    var archiveName by remember { mutableStateOf("archive.zip") }
+
+    if (showArchiveDialog) {
+        AlertDialog(
+            onDismissRequest = { showArchiveDialog = false },
+            title = { Text("Archive Selection") },
+            text = {
+                TextField(
+                    value = archiveName,
+                    onValueChange = { archiveName = it },
+                    label = { Text("Zip file name") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val destPath = currentDirectory.resolve(if (archiveName.endsWith(".zip")) archiveName else "$archiveName.zip")
+                    val zipWork = OneTimeWorkRequestBuilder<ZipWorker>()
+                        .setInputData(workDataOf(
+                            "source_paths" to selectedPaths.map { it.toString() }.toTypedArray(),
+                            "dest_path" to destPath.toString()
+                        ))
+                        .build()
+                    WorkManager.getInstance(context).enqueue(zipWork)
+                    selectedPaths = emptySet()
+                    pathBeingRenamed = null
+                    showArchiveDialog = false
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Archiving started...")
+                    }
+                }) {
+                    Text("Archive")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showArchiveDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     val zipToUnzip = remember(selectedPaths) {
         if (selectedPaths.size == 1 && !selectedPaths.first().isDirectory(currentFileSystem) && selectedPaths.first().name.endsWith(".zip", ignoreCase = true)) {
@@ -376,6 +479,14 @@ fun DirectoryPage(rootFile: Path) {
                         }
                     }
                     if (!isReadOnly) {
+                        if (selectedPaths.isNotEmpty()) {
+                            IconButton(onClick = {
+                                archiveName = if (selectedPaths.size == 1) "${selectedPaths.first().name}.zip" else "archive.zip"
+                                showArchiveDialog = true
+                            }) {
+                                IconArchive()
+                            }
+                        }
                         if (zipToUnzip != null) {
                             IconButton(onClick = { treeLauncher.launch(null) }) {
                                 IconUnarchive()

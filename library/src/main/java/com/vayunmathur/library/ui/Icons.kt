@@ -119,6 +119,11 @@ fun IconUnarchive(tint: Color = LocalContentColor.current) {
 }
 
 @Composable
+fun IconArchive(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.archive_24px), "Archive", tint = tint)
+}
+
+@Composable
 fun IconChevronRight(tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.chevron_right_24px), "Chevron", tint = tint)
 }
