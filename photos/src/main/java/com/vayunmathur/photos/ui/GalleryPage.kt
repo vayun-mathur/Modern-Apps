@@ -148,6 +148,7 @@ suspend fun syncPhotos(context: Context, viewModel: DatabaseViewModel) {
         val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
         val dateTakenColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
         val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+        val dateModifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
         val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH)
         val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
         val durationColumn = if (isVideo) cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
@@ -160,14 +161,15 @@ suspend fun syncPhotos(context: Context, viewModel: DatabaseViewModel) {
             val name = cursor.getString(nameColumn)
             val dateTaken = cursor.getLongOrNull(dateTakenColumn)
             val date = if (dateTaken != null && dateTaken > 0) dateTaken else (cursor.getLong(dateAddedColumn) * 1000)
+            val dateModified = cursor.getLong(dateModifiedColumn)
             val width = cursor.getInt(widthColumn)
             val height = cursor.getInt(heightColumn)
             val contentUri = ContentUris.withAppendedId(baseUri, id).toString()
             val videoData = if (isVideo) VideoData(cursor.getLong(durationColumn)) else null
 
             val existing = existingPhotos[id]
-            if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData || existing.width != width || existing.height != height) {
-                newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData)
+            if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData || existing.width != width || existing.height != height || existing.dateModified != dateModified) {
+                newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, dateModified, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData)
             }
         }
     }
@@ -175,14 +177,14 @@ suspend fun syncPhotos(context: Context, viewModel: DatabaseViewModel) {
     // Images
     context.contentResolver.query(
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-        arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT),
+        arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT, MediaStore.Images.Media.DATE_MODIFIED),
         null, null, null
     )?.use { processCursor(it, false) }
 
     // Videos
     context.contentResolver.query(
         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-        arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DATE_TAKEN, MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT, MediaStore.Video.Media.DURATION),
+        arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DATE_TAKEN, MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT, MediaStore.Video.Media.DURATION, MediaStore.Video.Media.DATE_MODIFIED),
         null, null, null
     )?.use { processCursor(it, true) }
 

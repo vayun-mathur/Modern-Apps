@@ -312,11 +312,13 @@ suspend fun savePhoto(
     }
 
     val resolver = context.contentResolver
+    val nowSeconds = System.currentTimeMillis() / 1000
     
     if (asCopy) {
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "Edited_${photo.name}")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.DATE_MODIFIED, nowSeconds)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
             }
@@ -334,6 +336,10 @@ suspend fun savePhoto(
             resolver.openOutputStream(uri, "rwt")?.use { out ->
                 transformedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
             }
+            val updateValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DATE_MODIFIED, nowSeconds)
+            }
+            resolver.update(uri, updateValues, null, null)
         } catch (e: Exception) {
             e.printStackTrace()
         }

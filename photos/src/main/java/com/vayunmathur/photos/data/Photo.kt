@@ -19,6 +19,7 @@ data class Photo(
     val date: Long,
     val width: Int,
     val height: Int,
+    val dateModified: Long,
     val exifSet: Boolean,
     val lat: Double?,
     val long: Double?,

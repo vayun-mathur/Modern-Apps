@@ -23,6 +23,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.data.MIGRATION_1_2
+import com.vayunmathur.photos.data.MIGRATION_2_3
 import com.vayunmathur.photos.ui.GalleryPage
 import com.vayunmathur.photos.ui.MapPage
 import com.vayunmathur.photos.ui.PhotoPage
@@ -33,7 +34,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val db = buildDatabase<PhotoDatabase>(listOf(MIGRATION_1_2))
+        val db = buildDatabase<PhotoDatabase>(listOf(MIGRATION_1_2, MIGRATION_2_3))
         val viewModel = DatabaseViewModel(db, Photo::class to db.photoDao())
         ImageLoader.init(this)
         setContent {
