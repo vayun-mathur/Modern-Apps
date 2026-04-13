@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.vayunmathur.contacts.data.Contact
+import com.vayunmathur.contacts.data.ContactDetails
 
 data class ContactAccount(val name: String, val type: String)
 

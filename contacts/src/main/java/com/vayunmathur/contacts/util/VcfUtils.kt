@@ -9,8 +9,7 @@ import okio.BufferedSink
 import okio.Sink
 import okio.Source
 import okio.buffer
-import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.contacts.data.ContactDetails
+import com.vayunmathur.contacts.data.*
 
 object VcfUtils {
     suspend fun exportContacts(contacts: List<Contact>, outputStream: Sink) {
