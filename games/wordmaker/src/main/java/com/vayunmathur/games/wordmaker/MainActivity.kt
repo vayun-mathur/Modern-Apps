@@ -80,6 +80,8 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.vayunmathur.games.wordmaker.util.Dictionary
+import com.vayunmathur.games.wordmaker.data.CrosswordData
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

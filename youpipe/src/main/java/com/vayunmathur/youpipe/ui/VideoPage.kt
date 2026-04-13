@@ -54,10 +54,10 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.channelURLtoID
+import com.vayunmathur.youpipe.util.channelURLtoID
 import com.vayunmathur.youpipe.findActivity
-import com.vayunmathur.youpipe.videoIDtoURL
-import com.vayunmathur.youpipe.videoURLtoID
+import com.vayunmathur.youpipe.util.videoIDtoURL
+import com.vayunmathur.youpipe.util.videoURLtoID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.vayunmathur.library.util.TrueDao
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 
 @Dao
 interface PasswordDao: TrueDao<Password>

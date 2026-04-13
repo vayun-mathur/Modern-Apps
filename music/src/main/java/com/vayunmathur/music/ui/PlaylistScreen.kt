@@ -23,12 +23,12 @@ import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
 import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Music
-import com.vayunmathur.music.database.Playlist
+import com.vayunmathur.music.data.Music
+import com.vayunmathur.music.data.Playlist
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 

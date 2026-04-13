@@ -42,7 +42,7 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.isNew
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.Route
 import kotlinx.coroutines.launch
 

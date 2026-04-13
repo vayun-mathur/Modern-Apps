@@ -54,7 +54,7 @@ import android.content.Context
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.findfamily.Platform
+import com.vayunmathur.findfamily.util.Platform
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
@@ -64,7 +64,7 @@ import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.getLatestMap
-import com.vayunmathur.findfamily.ui.dialog.encodeBase26
+import com.vayunmathur.findfamily.ui.dialogs.encodeBase26
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconCopy

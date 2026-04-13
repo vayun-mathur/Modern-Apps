@@ -30,12 +30,12 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.MaximizedRow
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.util.MaximizedRow
+import com.vayunmathur.crypto.util.PortfolioViewModel
 import com.vayunmathur.crypto.R
 import com.vayunmathur.crypto.SendPage
-import com.vayunmathur.crypto.token.TokenInfo
-import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.crypto.data.TokenInfo
+import com.vayunmathur.crypto.data.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 import org.sol4k.PublicKey

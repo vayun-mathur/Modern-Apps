@@ -21,7 +21,7 @@
         </activity>
 
         <service
-            android:name=".PasswordAutofillService"
+            android:name=".util.PasswordAutofillService"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE"
             android:exported="true">
             <intent-filter>

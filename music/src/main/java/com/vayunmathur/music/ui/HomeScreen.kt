@@ -41,12 +41,12 @@ import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
-import com.vayunmathur.music.AddToPlaylistButton
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
+import com.vayunmathur.music.util.AddToPlaylistButton
 import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Music
+import com.vayunmathur.music.data.Music
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 

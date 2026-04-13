@@ -46,7 +46,7 @@
                 android:resource="@xml/calendar_glance_widget_info" />
         </receiver>
         <activity
-            android:name="ImportActivity"
+            android:name=".ui.ImportActivity"
             android:exported="true"
             android:theme="@style/Theme.General"
             android:launchMode="singleTask">

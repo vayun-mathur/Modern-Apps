@@ -30,8 +30,8 @@ import com.vayunmathur.clock.ui.AlarmPage
 import com.vayunmathur.clock.ui.ClockPage
 import com.vayunmathur.clock.ui.StopwatchPage
 import com.vayunmathur.clock.ui.TimerPage
-import com.vayunmathur.clock.ui.dialog.NewTimerDialog
-import com.vayunmathur.clock.ui.dialog.SelectTimeZonesDialog
+import com.vayunmathur.clock.ui.dialogs.NewTimerDialog
+import com.vayunmathur.clock.ui.dialogs.SelectTimeZonesDialog
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.dialog.TimePickerDialogContent
 import com.vayunmathur.library.util.BottomBarItem

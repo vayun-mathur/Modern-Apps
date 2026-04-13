@@ -1,6 +1,6 @@
 package com.vayunmathur.calendar.intents
 
-import com.vayunmathur.calendar.Event
+import com.vayunmathur.calendar.data.Event
 import com.vayunmathur.library.intents.calendar.EventData
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.serialization.InternalSerializationApi

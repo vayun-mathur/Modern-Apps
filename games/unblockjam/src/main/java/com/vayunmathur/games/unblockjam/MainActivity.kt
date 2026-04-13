@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
-import com.vayunmathur.games.unblockjam.ui.theme.UnblockJamTheme
+import com.vayunmathur.games.unblockjam.ui.UnblockJamTheme
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconStar
@@ -65,6 +65,15 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
+import com.vayunmathur.games.unblockjam.data.LevelPack
+import com.vayunmathur.games.unblockjam.data.LevelData
+import com.vayunmathur.games.unblockjam.data.Block
+import com.vayunmathur.games.unblockjam.data.Coord
+import com.vayunmathur.games.unblockjam.data.Dimension
+import com.vayunmathur.games.unblockjam.data.CompletedLevelsRepository
+import com.vayunmathur.games.unblockjam.data.LevelStats
+import com.vayunmathur.games.unblockjam.util.blockDragGestures
+import com.vayunmathur.games.unblockjam.util.isMoveValid
 
 class MainActivity : ComponentActivity() {
 

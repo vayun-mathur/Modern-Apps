@@ -6,8 +6,8 @@ import androidx.compose.runtime.getValue
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Music
+import com.vayunmathur.music.data.Album
+import com.vayunmathur.music.data.Music
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,9 +29,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
-import com.vayunmathur.music.AddToPlaylistButton
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
+import com.vayunmathur.music.util.AddToPlaylistButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

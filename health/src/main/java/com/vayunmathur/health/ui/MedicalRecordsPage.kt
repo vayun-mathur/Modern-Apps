@@ -23,11 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.MedicalResource
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.HealthAPI
+import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.fhir.Patient
-import com.vayunmathur.health.fhir.displayString
+import com.vayunmathur.health.data.Patient
+import com.vayunmathur.health.data.displayString
 import com.vayunmathur.library.ui.IconNavigation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

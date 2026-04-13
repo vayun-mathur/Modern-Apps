@@ -27,11 +27,11 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
 import com.vayunmathur.crypto.PortfolioPage
-import com.vayunmathur.crypto.PortfolioViewModel
-import com.vayunmathur.crypto.api.JupiterAPI
-import com.vayunmathur.crypto.displayAmount
-import com.vayunmathur.crypto.token.JupiterLendRepository
-import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.crypto.util.PortfolioViewModel
+import com.vayunmathur.crypto.util.api.JupiterAPI
+import com.vayunmathur.crypto.util.displayAmount
+import com.vayunmathur.crypto.data.JupiterLendRepository
+import com.vayunmathur.crypto.data.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 

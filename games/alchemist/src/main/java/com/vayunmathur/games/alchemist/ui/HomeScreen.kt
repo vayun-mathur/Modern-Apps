@@ -20,7 +20,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.games.alchemist.Alchemist
+import com.vayunmathur.games.alchemist.data.Alchemist
 import com.vayunmathur.games.alchemist.Route
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.alchemist.R

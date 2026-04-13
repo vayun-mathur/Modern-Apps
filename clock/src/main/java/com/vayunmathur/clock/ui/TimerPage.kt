@@ -44,7 +44,7 @@ import androidx.core.app.NotificationCompat
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
-import com.vayunmathur.clock.TimerReceiver
+import com.vayunmathur.clock.util.TimerReceiver
 import com.vayunmathur.clock.mainPages
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.library.ui.IconAdd

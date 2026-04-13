@@ -41,8 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.findfamily.Networking
-import com.vayunmathur.findfamily.Platform
+import com.vayunmathur.findfamily.util.Networking
+import com.vayunmathur.findfamily.util.Platform
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.LocationValue

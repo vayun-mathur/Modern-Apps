@@ -48,10 +48,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.HealthAPI
+import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.database.RecordType
+import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.Tuple4

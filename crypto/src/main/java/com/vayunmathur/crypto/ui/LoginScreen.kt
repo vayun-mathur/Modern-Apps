@@ -21,7 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.util.PortfolioViewModel
 import com.vayunmathur.crypto.R
 import org.sol4k.Base58
 import org.sol4k.Keypair

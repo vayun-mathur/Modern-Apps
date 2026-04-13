@@ -33,7 +33,7 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.SelectedFeatureViewModel
+import com.vayunmathur.maps.util.SelectedFeatureViewModel
 import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.AmenityEntity
 import com.vayunmathur.maps.data.OpeningHours

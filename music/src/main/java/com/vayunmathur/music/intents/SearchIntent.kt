@@ -4,11 +4,11 @@ import com.vayunmathur.library.intents.music.MusicSearchResult
 import com.vayunmathur.library.util.AssistantIntent
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
-import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Artist
-import com.vayunmathur.music.database.Music
-import com.vayunmathur.music.database.MusicDatabase
-import com.vayunmathur.music.database.Playlist
+import com.vayunmathur.music.data.Album
+import com.vayunmathur.music.data.Artist
+import com.vayunmathur.music.data.Music
+import com.vayunmathur.music.data.MusicDatabase
+import com.vayunmathur.music.data.Playlist
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 

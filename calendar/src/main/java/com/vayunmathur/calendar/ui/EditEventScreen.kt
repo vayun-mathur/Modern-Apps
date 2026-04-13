@@ -42,10 +42,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.util.ContactViewModel
 import com.vayunmathur.calendar.R
-import com.vayunmathur.calendar.RRule
-import com.vayunmathur.calendar.RecurrenceParams
+import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.util.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave

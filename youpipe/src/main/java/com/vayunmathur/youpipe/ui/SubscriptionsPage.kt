@@ -41,16 +41,17 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.channelURLtoID
+import com.vayunmathur.youpipe.util.channelURLtoID
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory
-import com.vayunmathur.youpipe.getChannelInfo
+import com.vayunmathur.youpipe.util.getChannelInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.vayunmathur.youpipe.util.setupHourlyTask
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

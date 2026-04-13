@@ -19,11 +19,11 @@ import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
 import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Album
+import com.vayunmathur.music.data.Album
 
 @Composable
 fun AlbumScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {

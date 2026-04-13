@@ -28,7 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.util.PortfolioViewModel
 import com.vayunmathur.crypto.R
 import com.vayunmathur.library.ui.IconNavigation
 

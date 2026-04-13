@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.library.ui.IconAdd

@@ -1,6 +1,6 @@
 package com.vayunmathur.contacts.intents
 
-import com.vayunmathur.contacts.Contact
+import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.library.intents.contacts.ContactData
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.serialization.InternalSerializationApi

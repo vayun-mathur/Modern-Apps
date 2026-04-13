@@ -44,7 +44,7 @@
         </activity>
 
         <service
-            android:name=".ui.PlaybackService"
+            android:name=".util.PlaybackService"
             android:foregroundServiceType="mediaPlayback"
             android:stopWithTask="true"
             android:exported="true">

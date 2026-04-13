@@ -26,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.maplibre.android.log.Logger
 import java.io.File
+import com.vayunmathur.maps.util.SelectedFeatureViewModel
 
 fun ensurePmtilesReady(context: Context): String {
     val fileName = "world_z0-6.pmtiles"

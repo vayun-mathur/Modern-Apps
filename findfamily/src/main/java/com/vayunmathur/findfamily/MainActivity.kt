@@ -46,8 +46,8 @@ import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.ui.MainPage
 import com.vayunmathur.findfamily.ui.UserPage
 import com.vayunmathur.findfamily.ui.WaypointEditPage
-import com.vayunmathur.findfamily.ui.dialog.AddLinkDialog
-import com.vayunmathur.findfamily.ui.dialog.AddPersonDialog
+import com.vayunmathur.findfamily.ui.dialogs.AddLinkDialog
+import com.vayunmathur.findfamily.ui.dialogs.AddPersonDialog
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -60,6 +60,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
+import com.vayunmathur.findfamily.util.Platform
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

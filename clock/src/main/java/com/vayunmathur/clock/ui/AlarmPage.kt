@@ -28,7 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.clock.AlarmScheduler
+import com.vayunmathur.clock.util.AlarmScheduler
 import com.vayunmathur.clock.mainPages
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route

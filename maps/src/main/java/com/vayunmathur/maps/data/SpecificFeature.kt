@@ -1,6 +1,6 @@
 package com.vayunmathur.maps.data
 
-import com.vayunmathur.maps.Wikidata
+import com.vayunmathur.maps.util.Wikidata
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive

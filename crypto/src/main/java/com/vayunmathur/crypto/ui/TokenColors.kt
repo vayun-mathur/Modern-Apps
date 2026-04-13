@@ -1,7 +1,7 @@
 package com.vayunmathur.crypto.ui
 
 import androidx.compose.ui.graphics.Color
-import com.vayunmathur.crypto.token.TokenInfo
+import com.vayunmathur.crypto.data.TokenInfo
 
 fun getTokenColor(tokenInfo: TokenInfo): Color {
     return when (tokenInfo.symbol) {

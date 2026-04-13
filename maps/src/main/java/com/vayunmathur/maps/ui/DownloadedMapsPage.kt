@@ -44,7 +44,7 @@ import coil.request.ImageRequest
 import coil.ImageLoader
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.R
-import com.vayunmathur.maps.ZoneDownloadManager
+import com.vayunmathur.maps.util.ZoneDownloadManager
 import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class)

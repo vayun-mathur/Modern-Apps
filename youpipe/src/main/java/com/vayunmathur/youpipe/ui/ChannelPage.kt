@@ -42,8 +42,8 @@ import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
-import com.vayunmathur.youpipe.getChannelInfo
-import com.vayunmathur.youpipe.getChannelVideos
+import com.vayunmathur.youpipe.util.getChannelInfo
+import com.vayunmathur.youpipe.util.getChannelVideos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable

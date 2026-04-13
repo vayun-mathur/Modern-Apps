@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
-import com.vayunmathur.findfamily.Networking
+import com.vayunmathur.findfamily.util.Networking
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.Coord

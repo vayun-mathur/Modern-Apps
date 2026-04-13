@@ -62,10 +62,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.Calendar
-import com.vayunmathur.calendar.ContactViewModel
-import com.vayunmathur.calendar.Event
-import com.vayunmathur.calendar.Instance
+import com.vayunmathur.calendar.data.Calendar
+import com.vayunmathur.calendar.util.ContactViewModel
+import com.vayunmathur.calendar.data.Event
+import com.vayunmathur.calendar.data.Instance
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconAdd

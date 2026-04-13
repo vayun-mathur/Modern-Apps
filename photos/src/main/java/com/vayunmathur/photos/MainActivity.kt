@@ -32,6 +32,8 @@ import com.vayunmathur.photos.ui.MapPage
 import com.vayunmathur.photos.ui.PhotoPage
 import com.vayunmathur.photos.ui.EditPhotoPage
 import kotlinx.serialization.Serializable
+import com.vayunmathur.photos.util.ImageLoader
+import com.vayunmathur.photos.util.SyncWorker
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

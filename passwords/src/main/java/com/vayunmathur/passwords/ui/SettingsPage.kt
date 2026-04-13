@@ -34,7 +34,7 @@ import com.github.doyaaaaaken.kotlincsv.client.CsvReader
 import com.github.doyaaaaaken.kotlincsv.dsl.context.CsvReaderContext
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)

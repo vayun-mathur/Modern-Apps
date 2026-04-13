@@ -45,13 +45,13 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.music.AddToPlaylistButton
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
+import com.vayunmathur.music.util.AddToPlaylistButton
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Artist
-import com.vayunmathur.music.database.Music
+import com.vayunmathur.music.data.Album
+import com.vayunmathur.music.data.Artist
+import com.vayunmathur.music.data.Music
 import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)

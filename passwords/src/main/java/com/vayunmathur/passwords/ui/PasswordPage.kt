@@ -54,10 +54,10 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.Route
-import com.vayunmathur.passwords.TOTP
+import com.vayunmathur.passwords.util.TOTP
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

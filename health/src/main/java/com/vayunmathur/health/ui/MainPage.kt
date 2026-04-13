@@ -42,10 +42,10 @@ import androidx.health.connect.client.aggregate.AggregationResult
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.NutritionRecord
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.HealthAPI
+import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.database.RecordType
+import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.Dispatchers
