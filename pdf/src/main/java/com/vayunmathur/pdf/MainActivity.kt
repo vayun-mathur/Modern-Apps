@@ -66,6 +66,7 @@ import androidx.pdf.compose.PdfViewerState
 import androidx.pdf.selection.model.ImageSelection
 import androidx.pdf.view.Highlight
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.pdf.util.PdfStateStore
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.IconShare
