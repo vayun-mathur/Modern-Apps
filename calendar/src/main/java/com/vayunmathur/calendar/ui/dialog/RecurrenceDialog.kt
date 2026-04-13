@@ -33,9 +33,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.RRule
+import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.calendar.ui.dateFormat
@@ -90,22 +92,22 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
 
                 scope.launch { registry.dispatchResult(resultKey, rrule) }
                 backStack.pop()
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.ok)) }
         },
         dismissButton = {
-            Button(onClick = { backStack.pop() }) { Text("Cancel") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(R.string.cancel)) }
         },
         text = {
             Column(Modifier.padding(8.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Repeat   ")
+                    Text(stringResource(R.string.repeat))
                     var openDropdown by remember { mutableStateOf(false) }
 
                     OutlinedTextField(
                         intervalStr,
                         { intervalStr = it },
-                        leadingIcon = {Text("  Every")},
+                        leadingIcon = {Text(stringResource(R.string.every))},
                         trailingIcon = {
                             Text("$freq ▼  ", Modifier.clickable{
                                 openDropdown = true
@@ -123,7 +125,7 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
                 }
 
                 if (freq == "weeks") {
-                    Text("On days of week")
+                    Text(stringResource(R.string.on_days_of_week))
                     val dayOfWeekCircle = @Composable { d: DayOfWeek ->
                         Surface(Modifier.clickable {
                             daysOfWeek = if (daysOfWeek.contains(d)) daysOfWeek - d else daysOfWeek + d
@@ -149,7 +151,7 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
                 }
 
                 if (freq == "months") {
-                    Text("Monthly type")
+                    Text(stringResource(R.string.monthly_type))
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         SegmentedButton(monthlyType == 0, {monthlyType = 0}, shape = SegmentedButtonDefaults.itemShape(0, 2)) {
                             Text(ordinal(startDate.day))
@@ -160,17 +162,17 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
                     }
                 }
 
-                Text("End")
+                Text(stringResource(R.string.end))
 
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                     SegmentedButton(endCondition is RRule.EndCondition.Never, {endCondition = RRule.EndCondition.Never}, shape = SegmentedButtonDefaults.itemShape(0, 3)) {
-                        Text("Never")
+                        Text(stringResource(R.string.never))
                     }
                     SegmentedButton(endCondition is RRule.EndCondition.Count, {endCondition = RRule.EndCondition.Count(1)}, shape = SegmentedButtonDefaults.itemShape(1, 3)) {
-                        Text("Count")
+                        Text(stringResource(R.string.count))
                     }
                     SegmentedButton(endCondition is RRule.EndCondition.Until, {endCondition = RRule.EndCondition.Until(startDate)}, shape = SegmentedButtonDefaults.itemShape(2, 3)) {
-                        Text("Until")
+                        Text(stringResource(R.string.until))
                     }
                 }
                 if (endCondition is RRule.EndCondition.Count) {
@@ -179,11 +181,11 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
                         val v = new.toLongOrNull() ?: 1L
                         countStr = new
                         endCondition = RRule.EndCondition.Count(v)
-                    }, label = { Text("Count") })
+                    }, label = { Text(stringResource(R.string.count)) })
                 }
                 if(endCondition is RRule.EndCondition.Until) {
                     OutlinedTextField(
-                        "Until: ${(endCondition as RRule.EndCondition.Until).date.format(dateFormat)}",
+                        stringResource(R.string.until_date, (endCondition as RRule.EndCondition.Until).date.format(dateFormat)),
                         { },
                         readOnly = true,
                         interactionSource = remember { MutableInteractionSource() }

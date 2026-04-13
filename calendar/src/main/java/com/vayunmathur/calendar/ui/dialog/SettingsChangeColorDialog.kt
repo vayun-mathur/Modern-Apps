@@ -23,9 +23,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +57,7 @@ fun SettingsChangeColorDialog(viewModel: ContactViewModel, backStack: NavBackSta
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text(text = "Change color for \"${cal.displayName}\"") },
+        title = { Text(stringResource(R.string.change_color_for, cal.displayName)) },
         text = {
             Column {
                 // swatches row
@@ -87,12 +89,12 @@ fun SettingsChangeColorDialog(viewModel: ContactViewModel, backStack: NavBackSta
                 viewModel.setCalendarColor(cal.id, tempColor)
                 backStack.pop()
             }) {
-                Text("Change color")
+                Text(stringResource(R.string.change_color))
             }
         },
         dismissButton = {
             Button(onClick = { backStack.pop() }) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

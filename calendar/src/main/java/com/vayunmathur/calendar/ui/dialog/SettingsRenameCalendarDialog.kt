@@ -14,9 +14,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,13 +33,13 @@ fun SettingsRenameCalendarDialog(viewModel: ContactViewModel, backStack: NavBack
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text("Rename calendar") },
+        title = { Text(stringResource(R.string.rename_calendar)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = renameText,
                     onValueChange = { renameText = it },
-                    label = { Text("New name") },
+                    label = { Text(stringResource(R.string.new_name)) },
                     modifier = Modifier
                         .padding(0.dp)
                 )
@@ -47,10 +49,10 @@ fun SettingsRenameCalendarDialog(viewModel: ContactViewModel, backStack: NavBack
             Button(enabled = renameText.isNotBlank(), onClick = {
                 viewModel.renameCalendar(calendarId, renameText)
                 backStack.pop()
-            }) { Text("Rename") }
+            }) { Text(stringResource(R.string.rename)) }
         },
         dismissButton = {
-            Button(onClick = { backStack.pop() }) { Text("Cancel") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

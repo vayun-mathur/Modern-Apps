@@ -25,9 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,18 +54,18 @@ fun SettingsAddCalendarDialog(viewModel: ContactViewModel, backStack: NavBackSta
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text(text = "New local calendar") },
+        title = { Text(text = stringResource(R.string.new_local_calendar)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = newDisplayName,
                     onValueChange = { newDisplayName = it },
-                    label = { Text("Calendar name") },
+                    label = { Text(stringResource(R.string.calendar_name)) },
                     modifier = Modifier
                         .padding(0.dp)
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Choose color:")
+                Text(stringResource(R.string.choose_color))
                 LazyRow {
                     items(swatches) { c ->
                         val selected = (newColor == c)
@@ -89,10 +91,10 @@ fun SettingsAddCalendarDialog(viewModel: ContactViewModel, backStack: NavBackSta
                 val accessLevel = android.provider.CalendarContract.Calendars.CAL_ACCESS_EDITOR
                 viewModel.createLocalCalendar("Offline Calendar", newDisplayName.ifEmpty { "New Calendar" }, newColor, true, accessLevel)
                 backStack.pop()
-            }) { Text("Create") }
+            }) { Text(stringResource(R.string.create)) }
         },
         dismissButton = {
-            Button(onClick = { backStack.pop() }) { Text("Cancel") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

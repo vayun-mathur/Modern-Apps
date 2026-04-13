@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.util.NavBackStack
@@ -38,11 +39,12 @@ fun CalendarPickerDialog(backStack: NavBackStack<Route>, resultKey: String) {
 
     // group calendars by accountName and filter editable ones (canModify)
     val editable = calendars.filter { it.canModify }
-    val grouped = editable.groupBy { it.accountName.ifEmpty { "(Local)" } }
+    val localAccountLabel = stringResource(com.vayunmathur.calendar.R.string.local_account)
+    val grouped = editable.groupBy { it.accountName.ifEmpty { localAccountLabel } }
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text("Choose calendar") },
+        title = { Text(stringResource(com.vayunmathur.calendar.R.string.choose_calendar)) },
         text = {
             // scrollable list of calendars grouped by account
             LazyColumn(modifier = Modifier.height(320.dp)) {
@@ -68,7 +70,7 @@ fun CalendarPickerDialog(backStack: NavBackStack<Route>, resultKey: String) {
             }
         },
         confirmButton = {
-            Button(onClick = { backStack.pop() }) { Text("Close") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(com.vayunmathur.calendar.R.string.close)) }
         }
     )
 }

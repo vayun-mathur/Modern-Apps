@@ -5,6 +5,8 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.calendar.R
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,11 +34,11 @@ fun CalendarSetDateDialog(backStack: NavBackStack<Route>, dateViewingEpochDays: 
                 scope.launch { registry.dispatchResult("GotoDate", result) }
                 backStack.pop()
             }, enabled = state.selectedDateMillis != null) {
-                Text("Go to date")
+                Text(stringResource(R.string.go_to_date))
             }
         },
         dismissButton = {
-            Button(onClick = { backStack.pop() }) { Text("Cancel") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(R.string.cancel)) }
         }
     ) {
         DatePicker(state)

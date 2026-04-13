@@ -7,8 +7,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -16,19 +18,20 @@ import com.vayunmathur.calendar.Route
 fun SettingsDeleteCalendarDialog(viewModel: ContactViewModel, backStack: NavBackStack<Route>, calendarId: Long) {
     val calendars by viewModel.calendars.collectAsState()
     val cal = calendars.find { it.id == calendarId }
+    val thisCalendar = stringResource(R.string.this_calendar)
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text("Delete calendar") },
-        text = { Text(text = "Are you sure you want to delete \"${cal?.displayName ?: "this calendar"}\"? This will remove all events in the calendar.") },
+        title = { Text(stringResource(R.string.delete_calendar)) },
+        text = { Text(stringResource(R.string.delete_calendar_confirm, cal?.displayName ?: thisCalendar)) },
         confirmButton = {
             Button(onClick = {
                 viewModel.deleteCalendar(calendarId)
                 backStack.pop()
-            }) { Text("Delete") }
+            }) { Text(stringResource(R.string.delete)) }
         },
         dismissButton = {
-            Button(onClick = { backStack.pop() }) { Text("Cancel") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

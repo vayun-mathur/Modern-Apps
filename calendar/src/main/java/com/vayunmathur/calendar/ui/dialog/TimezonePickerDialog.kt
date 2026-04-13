@@ -20,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.calendar.R
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
@@ -56,11 +58,11 @@ fun TimezonePickerDialog(backStack: NavBackStack<com.vayunmathur.calendar.Route>
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
-        title = { Text("Choose timezone") },
+        title = { Text(stringResource(R.string.choose_timezone)) },
         text = {
             Column {
                 // Search field
-                OutlinedTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), label = { Text("Search") })
+                OutlinedTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), label = { Text(stringResource(R.string.search)) })
 
                 // Scrollable list of zones with offsets
                 LazyColumn(modifier = Modifier.height(360.dp)) {
@@ -82,7 +84,7 @@ fun TimezonePickerDialog(backStack: NavBackStack<com.vayunmathur.calendar.Route>
             }
         },
         confirmButton = {
-            Button(onClick = { backStack.pop() }) { Text("Close") }
+            Button(onClick = { backStack.pop() }) { Text(stringResource(R.string.close)) }
         }
     )
 }

@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -167,7 +168,7 @@ fun CalendarScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                             .height(56.dp)
                             .width(56.dp)) {
                             Text(
-                                text = if (hour == 0) "12 AM" else if (hour < 12) "$hour AM" else if (hour == 12) "12 PM" else "${hour - 12} PM",
+                                text = if (hour == 0) stringResource(R.string.twelve_am) else if (hour < 12) stringResource(R.string.hour_am, hour) else if (hour == 12) stringResource(R.string.twelve_pm) else stringResource(R.string.hour_pm, hour - 12),
                                 modifier = Modifier.padding(start = 8.dp),
                                 style = MaterialTheme.typography.labelSmall
                             )
@@ -304,11 +305,7 @@ private fun AllDayRow(
                                     .fillMaxWidth()
                             ) {
                                 Text(
-                                    ev.title.ifEmpty { "(No title)" },
-                                    Modifier.padding(4.dp),
-                                    Color.White,
-                                    fontSize = 12.sp
-                                )
+                                    ev.title.ifEmpty { stringResource(R.string.no_title) },
                             }
                         }
                     }
@@ -390,8 +387,7 @@ private fun HourlyGrid(
                                 .clickable { onEventClick(instance) }
                         ) {
                             Text(
-                                ev.title.ifEmpty { "(No title)" },
-                                Modifier.padding(6.dp),
+                                ev.title.ifEmpty { stringResource(R.string.no_title) },
                                 Color.White,
                                 maxLines = 2,
                                 fontSize = 12.sp
