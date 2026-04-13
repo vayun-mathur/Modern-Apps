@@ -1,6 +1,7 @@
 package com.vayunmathur.games.chess
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,7 @@ data class ChessUiState(
     val isBoardFlipped: Boolean = false
 )
 
-class ChessViewModel : ViewModel() {
+class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(ChessUiState())
     val uiState: StateFlow<ChessUiState> = _uiState.asStateFlow()
@@ -125,9 +126,13 @@ class ChessViewModel : ViewModel() {
 
     private fun getGameStatus(board: Board): String? {
         val turn = if (_uiState.value.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE
+        val ctx = getApplication<Application>()
         return when {
-            board.isCheckmate(turn) -> "Checkmate! ${if (turn == PieceColor.WHITE) "Black" else "White"} wins."
-            board.isKingInCheck(turn) -> "Check!"
+            board.isCheckmate(turn) -> ctx.getString(
+                R.string.checkmate_wins,
+                if (turn == PieceColor.WHITE) ctx.getString(R.string.color_black) else ctx.getString(R.string.color_white)
+            )
+            board.isKingInCheck(turn) -> ctx.getString(R.string.check)
             else -> null
         }
     }
