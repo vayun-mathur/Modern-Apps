@@ -1,3 +1,50 @@
 <resources>
     <string name="app_name">Maps</string>
+
+    <!-- BottomSheetContent -->
+    <string name="your_location">Your location</string>
+    <string name="walk_duration_distance">Walk %1$s (%2$s km)</string>
+    <string name="transfer">Transfer</string>
+    <string name="no_route_found">No route found</string>
+    <string name="generating_route">Generating Route...</string>
+    <string name="distance_km">%1$s km</string>
+
+    <!-- SearchPage -->
+    <string name="search_nearby">Search nearby...</string>
+    <string name="no_results_found">No results found in this area</string>
+    <string name="type_to_search">Type at least 2 characters to search</string>
+    <string name="unnamed_amenity">Unnamed Amenity</string>
+    <string name="coordinates">Coordinates: %1$s, %2$s</string>
+
+    <!-- DownloadedMapsPage -->
+    <string name="downloaded_maps">Downloaded Maps</string>
+    <string name="download_offline_map_title">Download Offline Map?</string>
+    <string name="download_offline_map_text">You are viewing Zone %1$d. Would you like to download the high-detail offline map and enable navigation in this area?</string>
+    <string name="download">Download</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete_offline_map_title">Delete Offline Map?</string>
+    <string name="delete_offline_map_text">Are you sure you want to delete or cancel the download for Zone %1$d?</string>
+    <string name="delete">Delete</string>
+    <string name="download_progress">%1$d%%</string>
+
+    <!-- RestaurantBottomSheet -->
+    <string name="reviews_summary">%1$s stars | %2$s reviews</string>
+    <string name="directions">Directions</string>
+    <string name="add_stop_to_route">Add Stop to Route</string>
+    <string name="open_status">Open</string>
+    <string name="closed_status">Closed</string>
+    <string name="closes_at">Closes %1$s</string>
+    <string name="opens_at">Opens %1$s</string>
+    <string name="menu_label">Menu</string>
+
+    <!-- MapPage -->
+    <string name="search_placeholder">Search...</string>
+    <string name="reorder">Reorder</string>
+    <string name="download_offline_map_text_overview">You are viewing Zone %1$d. Would you like to download the high-detail offline map to see more than just the overview?</string>
+
+    <!-- MainActivity -->
+    <string name="downloading_amenity_database">Downloading Amenity Database...</string>
+    <string name="downloading_navigation_metadata">Downloading Navigation Tiling Metadata...</string>
+    <string name="downloading_road_data">Downloading Road Data...</string>
+    <string name="grant_location_permission">Grant Location Permission</string>
 </resources>

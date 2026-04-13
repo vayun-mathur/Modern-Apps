@@ -1,3 +1,56 @@
 <resources>
     <string name="app_name">Music</string>
+
+    <!-- Bottom navigation labels -->
+    <string name="nav_home">Home</string>
+    <string name="nav_albums">Albums</string>
+    <string name="nav_artists">Artists</string>
+    <string name="nav_playlists">Playlists</string>
+
+    <!-- List page titles -->
+    <string name="page_title_music">Music</string>
+    <string name="page_title_playlists">Playlists</string>
+
+    <!-- Now Playing screen -->
+    <string name="now_playing">Now Playing</string>
+    <string name="unknown_title">Unknown Title</string>
+    <string name="unknown_artist">Unknown Artist</string>
+    <string name="content_desc_repeat">Repeat</string>
+    <string name="content_desc_shuffle">Shuffle</string>
+    <string name="no_lyrics_available">No lyrics available</string>
+
+    <!-- Detail screen overlines / section headers -->
+    <string name="label_album">Album</string>
+    <string name="label_artist">Artist</string>
+    <string name="label_playlist">Playlist</string>
+    <string name="label_play">Play</string>
+    <string name="label_shuffle">Shuffle</string>
+    <string name="label_songs">Songs</string>
+    <string name="label_albums">Albums</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_add_to_playlist">Add to Playlist</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_rename_playlist">Rename Playlist</string>
+    <string name="dialog_rename">Rename</string>
+
+    <!-- Playlist -->
+    <string name="new_playlist">New Playlist</string>
+
+    <!-- Permissions -->
+    <string name="grant_audio_permissions">Grant Audio Media Permissions</string>
+    <string name="grant_storage_permissions">Grant Storage Permissions</string>
+
+    <!-- Content descriptions -->
+    <string name="content_desc_album_art">Album Art</string>
+    <string name="content_desc_album_art_grid">Album Art Grid</string>
+    <string name="content_desc_add_to_playlist">Add to playlist</string>
+
+    <!-- Database / metadata -->
+    <string name="various_artists">Various Artists</string>
+
+    <!-- Notification button display names -->
+    <string name="notification_shuffle">Shuffle</string>
+    <string name="notification_repeat">Repeat</string>
 </resources>
