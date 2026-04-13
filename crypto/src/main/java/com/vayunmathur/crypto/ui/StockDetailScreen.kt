@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
@@ -26,6 +27,7 @@ import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
 import com.vayunmathur.crypto.PortfolioPage
 import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.R
 import com.vayunmathur.crypto.api.JupiterAPI
 import com.vayunmathur.crypto.displayAmount
 import com.vayunmathur.crypto.token.TokenInfo
@@ -68,10 +70,10 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
 
             SingleChoiceSegmentedButtonRow {
                 SegmentedButton(dialogOption == 1, {dialogOption = 1}, SegmentedButtonDefaults.itemShape(0, 2)) {
-                    Text("Deposit")
+                    Text(stringResource(R.string.deposit))
                 }
                 SegmentedButton(dialogOption == 2, {dialogOption = 2}, SegmentedButtonDefaults.itemShape(1, 2)) {
-                    Text("Withdraw")
+                    Text(stringResource(R.string.withdraw))
                 }
             }
 
@@ -82,8 +84,8 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
                     usdcToken,
                     stockToken.tokenInfo,
                     false,
-                    { Text("Deposit ${stockToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Deposit ${outputAmount.round(2)} ${stockToken.tokenInfo.symbol}") },
+                    { Text(stringResource(R.string.deposit_token, stockToken.tokenInfo.symbol)) },
+                    { outputAmount -> Text(stringResource(R.string.deposit_amount_token, outputAmount.round(2), stockToken.tokenInfo.symbol)) },
                     { dialogOption = 0}
                 )
             }
@@ -99,8 +101,8 @@ fun StockDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<Nav
                     stockToken.tokenInfo,
                     usdcToken,
                     true,
-                    { Text("Withdraw ${stockToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Withdraw ${outputAmount.round(2)} ${stockToken.tokenInfo.symbol}") },
+                    { Text(stringResource(R.string.withdraw_token, stockToken.tokenInfo.symbol)) },
+                    { outputAmount -> Text(stringResource(R.string.withdraw_amount_token, outputAmount.round(2), stockToken.tokenInfo.symbol)) },
                     { dialogOption = 0}
                 )
             }

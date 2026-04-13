@@ -216,7 +216,7 @@ fun TokenListScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
             item {
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(
-                    "Prediction Positions",
+                    stringResource(R.string.prediction_positions),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -263,7 +263,7 @@ fun TokenCard(token: Token, onClick: () -> Unit = {}) {
                     }
                     TokenInfo.Companion.Category.JUPITER_LEND -> {
                         val apy = JupiterLendRepository[token.tokenInfo]?.apy ?: 0.0
-                        Text(text = "${(apy * 100).round(2)}% APY", color = Color.Green)
+                        Text(text = stringResource(R.string.apy_format, (apy * 100).round(2)), color = Color.Green)
                     }
 
                     TokenInfo.Companion.Category.PRED_MARKET -> {
