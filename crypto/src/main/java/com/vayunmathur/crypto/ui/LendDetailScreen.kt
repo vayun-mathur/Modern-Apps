@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.crypto.R
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
@@ -69,10 +71,10 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
 
             SingleChoiceSegmentedButtonRow {
                 SegmentedButton(dialogOption == 1, {dialogOption = 1}, SegmentedButtonDefaults.itemShape(0, 2)) {
-                    Text("Deposit")
+                    Text(stringResource(R.string.deposit))
                 }
                 SegmentedButton(dialogOption == 2, {dialogOption = 2}, SegmentedButtonDefaults.itemShape(1, 2)) {
-                    Text("Withdraw")
+                    Text(stringResource(R.string.withdraw))
                 }
             }
 
@@ -83,8 +85,8 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
                     underlyingToken,
                     jlToken.tokenInfo,
                     false,
-                    { Text("Deposit ${jlToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Deposit ${outputAmount.round(2)} ${jlToken.tokenInfo.symbol}") },
+                    { Text(stringResource(R.string.deposit_token, jlToken.tokenInfo.symbol)) },
+                    { outputAmount -> Text(stringResource(R.string.deposit_amount_token, outputAmount.round(2), jlToken.tokenInfo.symbol)) },
                     { dialogOption = 0}
                 )
             }
@@ -100,8 +102,8 @@ fun LendDetailScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavK
                     jlToken.tokenInfo,
                     underlyingToken,
                     true,
-                    { Text("Withdraw ${jlToken.tokenInfo.symbol}") },
-                    { outputAmount -> Text("Withdraw ${outputAmount.round(2)} ${jlToken.tokenInfo.symbol}") },
+                    { Text(stringResource(R.string.withdraw_token, jlToken.tokenInfo.symbol)) },
+                    { outputAmount -> Text(stringResource(R.string.withdraw_amount_token, outputAmount.round(2), jlToken.tokenInfo.symbol)) },
                     { dialogOption = 0}
                 )
             }

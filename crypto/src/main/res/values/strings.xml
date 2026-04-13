@@ -1,3 +1,76 @@
 <resources>
     <string name="app_name">Crypto</string>
+
+    <!-- Common actions -->
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="copy">Copy</string>
+    <string name="send">Send</string>
+    <string name="swap">Swap</string>
+    <string name="deposit">Deposit</string>
+    <string name="withdraw">Withdraw</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="max">MAX</string>
+    <string name="fifty_percent">50%</string>
+    <string name="seventy_five_percent">75%</string>
+    <string name="insufficient_balance">Insufficient Balance</string>
+
+    <!-- Login screen -->
+    <string name="enter_private_key_label">Enter your private key to restore</string>
+    <string name="restore_existing_wallet">Restore Existing Wallet</string>
+    <string name="create_new_wallet">Create New Wallet</string>
+
+    <!-- Portfolio screen -->
+    <string name="wallet_label">Wallet</string>
+    <string name="menu_content_description">Menu</string>
+    <string name="token_positions">Token Positions</string>
+    <string name="stock_positions">Stock Positions</string>
+    <string name="lending_positions">Lending Positions</string>
+    <string name="prediction_positions">Prediction Positions</string>
+    <string name="disconnect_wallet">Disconnect Wallet</string>
+    <string name="disconnect_wallet_message">Please make sure you have your private key saved somewhere so you can restore your wallet again.</string>
+    <string name="private_key">Private Key</string>
+    <string name="add_new_account">Add a New Account</string>
+
+    <!-- Private key screen -->
+    <string name="private_key_safety_message">Please keep this safe and do not share with anyone. We never ask for your recovery phase. It resides locally on your device.</string>
+    <string name="private_key_copy_warning">Copying your recovery phrase or private key may expose it to other apps. If unsure, consider writing it down on paper and storing it safely.</string>
+    <string name="warning_content_description">Warning</string>
+
+    <!-- Send screen -->
+    <string name="confirm_transaction">Confirm Transaction</string>
+    <string name="recipient_address">Recipient Address</string>
+    <string name="confirm_transaction_message">You are about to send %1$s %2$s to %3$s. This action cannot be undone.</string>
+
+    <!-- Swap screen -->
+    <string name="confirm_swap">Confirm Swap</string>
+    <string name="confirm_swap_message">You are about to swap %1$s %2$s for %3$s %4$s.</string>
+    <string name="exchange_rate_format">1 %1$s = %2$s %3$s</string>
+
+    <!-- Order dialog -->
+    <string name="amount_to_spend">Amount to spend</string>
+    <string name="token_exchange_display">%1$s %2$s = %3$s %4$s</string>
+
+    <!-- Deposit/Withdraw format strings -->
+    <string name="deposit_token">Deposit %1$s</string>
+    <string name="deposit_amount_token">Deposit %1$s %2$s</string>
+    <string name="withdraw_token">Withdraw %1$s</string>
+    <string name="withdraw_amount_token">Withdraw %1$s %2$s</string>
+
+    <!-- Prediction market -->
+    <string name="prediction_market_notice">Prediction Market viewing is available, but trading currently is unavailable until our provider increases liquidity</string>
+    <string name="live_indicator">● Live</string>
+    <string name="show_more">Show More ></string>
+    <string name="buy_choice">Buy %1$s</string>
+    <string name="buy_win_format">Buy %1$s -> Win $%2$s</string>
+    <string name="market_subtitle_separator"> — %1$s</string>
+    <string name="yes_price_cents">Yes %1$s¢</string>
+    <string name="no_price_cents">No %1$s¢</string>
+    <string name="market_volume_format">$%1$s vol</string>
+
+    <!-- Shared format strings -->
+    <string name="balance_format">Balance: %1$s</string>
+    <string name="apy_format">%1$s%% APY</string>
+    <string name="token_name_apy_format">%1$s - %2$s%% APY</string>
 </resources>

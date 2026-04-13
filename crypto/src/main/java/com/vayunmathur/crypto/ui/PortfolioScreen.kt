@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.crypto.LendDetailPage
@@ -79,8 +80,8 @@ fun PortfolioScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
         ConfirmationDialog(
             onConfirm = { viewModel.logout() },
             onDismiss = { showDialog = false },
-            title = "Disconnect Wallet",
-            content = "Please make sure you have your private key saved somewhere so you can restore your wallet again."
+            title = stringResource(R.string.disconnect_wallet),
+            content = stringResource(R.string.disconnect_wallet_message)
         )
     }
     val tokens by viewModel.tokens.collectAsState()
@@ -94,12 +95,12 @@ fun PortfolioScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
         drawerContent = {
             ModalDrawerSheet {
                 NavigationDrawerItem(
-                    label = { Text("Private Key") },
+                    label = { Text(stringResource(R.string.private_key)) },
                     selected = false,
                     onClick = { backStack.add(PrivateKeyPage) }
                 )
                 NavigationDrawerItem(
-                    label = { Text("Disconnect Wallet") },
+                    label = { Text(stringResource(R.string.disconnect_wallet)) },
                     selected = false,
                     onClick = { showDialog = true }
                 )
@@ -111,7 +112,7 @@ fun PortfolioScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
         }, topBar = {
             TopAppBar(title = { }, navigationIcon = {
                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                    Icon(painterResource(R.drawable.menu_24px), contentDescription = "Menu")
+                    Icon(painterResource(R.drawable.menu_24px), contentDescription = stringResource(R.string.menu_content_description))
                 }
             })
         }, floatingActionButton = {
@@ -155,7 +156,7 @@ fun TokenListScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
             }, verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Wallet",
+                text = stringResource(R.string.wallet_label),
                 style = MaterialTheme.typography.bodyLarge
             )
             Spacer(Modifier.width(4.dp))
@@ -172,7 +173,7 @@ fun TokenListScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
         LazyColumn {
             item {
                 Text(
-                    "Token Positions",
+                    stringResource(R.string.token_positions),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -185,7 +186,7 @@ fun TokenListScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
             item {
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(
-                    "Stock Positions",
+                    stringResource(R.string.stock_positions),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -200,7 +201,7 @@ fun TokenListScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKe
             item {
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(
-                    "Lending Positions",
+                    stringResource(R.string.lending_positions),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )

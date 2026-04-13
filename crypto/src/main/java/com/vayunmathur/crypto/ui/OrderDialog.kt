@@ -29,7 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.crypto.R
 import com.vayunmathur.crypto.PortfolioViewModel
 import com.vayunmathur.crypto.api.PendingOrder
 import com.vayunmathur.crypto.token.TokenInfo
@@ -89,7 +91,7 @@ fun OrderDialog(
                 value = amount,
                 onValueChange = { amount = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Amount to spend") },
+                label = { Text(stringResource(R.string.amount_to_spend)) },
                 prefix = { Text(if(inputTheOutput) outputToken.symbol else inputToken.symbol) }
             )
             Spacer(Modifier.height(12.dp))
@@ -100,8 +102,8 @@ fun OrderDialog(
                 )
                 Spacer(Modifier.width(16.dp))
                 order?.let {
-                    if(inputTheOutput) Text("$outputAmount ${outputToken.symbol} = $inputAmount ${inputToken.symbol}")
-                    else Text("$inputAmount ${inputToken.symbol} = $outputAmount ${outputToken.symbol}")
+                    if(inputTheOutput) Text(stringResource(R.string.token_exchange_display, "$outputAmount", outputToken.symbol, "$inputAmount", inputToken.symbol))
+                    else Text(stringResource(R.string.token_exchange_display, "$inputAmount", inputToken.symbol, "$outputAmount", outputToken.symbol))
                 }
             }
             Spacer(Modifier.height(24.dp))
