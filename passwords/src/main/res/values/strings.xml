@@ -1,4 +1,18 @@
 <resources>
     <string name="app_name">Passwords</string>
     <string name="autofill_service_description">Provide autofill suggestions for saved passwords</string>
+    <string name="label_name">Name</string>
+    <string name="label_user_id_email">User ID / Email</string>
+    <string name="label_password">Password</string>
+    <string name="label_totp_secret">TOTP Secret</string>
+    <string name="label_add_website">Add website</string>
+    <string name="title_settings">Settings</string>
+    <string name="import_csv_warning">Importing a CSV will bring plaintext credentials into this app. Please delete the export after importing.</string>
+    <string name="import_bitwarden_csv">Import from Bitwarden (CSV)</string>
+    <string name="section_password">Password</string>
+    <string name="section_totp">TOTP</string>
+    <string name="totp_not_configured">(not configured)</string>
+    <string name="totp_refreshes_in">Refreshes in %1$d s</string>
+    <string name="section_websites">Websites</string>
+    <string name="websites_none">(none)</string>
 </resources>

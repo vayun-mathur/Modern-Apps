@@ -27,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.passwords.R
 import androidx.compose.ui.unit.dp
 import com.github.doyaaaaaken.kotlincsv.client.CsvReader
 import com.github.doyaaaaaken.kotlincsv.dsl.context.CsvReaderContext
@@ -51,7 +53,7 @@ fun SettingsPage(backStack: com.vayunmathur.library.util.NavBackStack<com.vayunm
     }
 
     Scaffold(Modifier, {
-        TopAppBar({ Text("Settings") }, navigationIcon = {
+        TopAppBar({ Text(stringResource(R.string.title_settings)) }, navigationIcon = {
             IconNavigation(backStack)
         })
     }) { paddingValues ->
@@ -61,14 +63,14 @@ fun SettingsPage(backStack: com.vayunmathur.library.util.NavBackStack<com.vayunm
             .padding(16.dp), Arrangement.Top
         ) {
 
-            Text("Importing a CSV will bring plaintext credentials into this app. Please delete the export after importing.")
+            Text(stringResource(R.string.import_csv_warning))
             Spacer(Modifier.height(16.dp))
 
             Button(onClick = {
                 // Open document types for CSV/plain text
                 pickLauncher.launch(arrayOf("text/csv", "text/plain", "application/octet-stream", "text/comma-separated-values"))
             }, enabled = !importing) {
-                Text("Import from Bitwarden (CSV)")
+                Text(stringResource(R.string.import_bitwarden_csv))
             }
 
             Spacer(Modifier.height(16.dp))
