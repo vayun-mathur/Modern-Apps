@@ -130,7 +130,10 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (contact == null) stringResource(R.string.add_contact) else stringResource(R.string.edit_contact)) },
+                title = {
+                    val pageTitle = if (contact == null) stringResource(R.string.add_contact) else stringResource(R.string.edit_contact)
+                    Text(pageTitle)
+                },
                 navigationIcon = {
                     IconButton(onClick = { backStack.pop() }) {
                         IconClose()
@@ -644,9 +647,10 @@ private fun AddPictureSection(photo: String?, onClick: () -> Unit, removePhoto: 
         }
         Spacer(Modifier.height(8.dp))
         Row {
+            val pictureLabel = if (photo != null) stringResource(R.string.change_picture) else stringResource(R.string.add_picture)
             TextButton(onClick) {
                 Text(
-                    text = if (photo != null) stringResource(R.string.change_picture) else stringResource(R.string.add_picture),
+                    text = pictureLabel,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
