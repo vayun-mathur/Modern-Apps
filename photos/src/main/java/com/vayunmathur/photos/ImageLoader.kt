@@ -66,8 +66,8 @@ object ImageLoader {
                 model = ImageRequest.Builder(context)
                     .data(photo.uri.toUri())
                     .videoFrameMillis(1000) // Grabs frame at 1s mark
-                    .diskCacheKey("thumb_${photo.id}")
-                    .memoryCacheKey("thumb_${photo.id}")
+                    .diskCacheKey("thumb_${photo.id}_${photo.dateModified}")
+                    .memoryCacheKey("thumb_${photo.id}_${photo.dateModified}")
                     .crossfade(true)
                     .size(256) // Increased slightly for better quality on high-DPI screens
                     .build(),
