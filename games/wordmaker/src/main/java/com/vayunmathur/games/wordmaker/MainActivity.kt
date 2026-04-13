@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
 fun WordMakerGameLoader() {
     val context = LocalContext.current
     val levelDataStore = remember { LevelDataStore(context) }
-    val currentLevel = 862 // by levelDataStore.currentLevel.collectAsState(initial = 1)
+    val currentLevel by levelDataStore.currentLevel.collectAsState(initial = 1)
     var crosswordData by remember { mutableStateOf<CrosswordData?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val dictionary by remember { mutableStateOf(Dictionary()) }
