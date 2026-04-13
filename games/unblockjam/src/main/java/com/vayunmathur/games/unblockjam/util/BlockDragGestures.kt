@@ -6,8 +6,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.vayunmathur.games.unblockjam.data.Block
-import com.vayunmathur.games.unblockjam.data.LevelData
 import com.vayunmathur.games.unblockjam.data.Coord
+import com.vayunmathur.games.unblockjam.data.Dimension
+import com.vayunmathur.games.unblockjam.data.LevelData
 
 fun Modifier.blockDragGestures(
     block: Block,

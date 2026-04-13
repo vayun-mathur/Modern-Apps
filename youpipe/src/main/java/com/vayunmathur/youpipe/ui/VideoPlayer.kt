@@ -71,6 +71,7 @@ import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.findActivity
 import com.vayunmathur.youpipe.rememberIsInPipMode
+import com.vayunmathur.youpipe.util.PlaybackService
 import kotlinx.coroutines.delay
 
 @OptIn(UnstableApi::class)
