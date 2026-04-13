@@ -1,3 +1,106 @@
 <resources>
     <string name="app_name">Health</string>
+
+    <!-- MainActivity -->
+    <string name="grant_permissions">Grant Permissions</string>
+
+    <!-- BarChartDetails – tabs -->
+    <string name="tab_day">Day</string>
+    <string name="tab_week">Week</string>
+    <string name="tab_month">Month</string>
+    <string name="tab_year">Year</string>
+
+    <!-- BarChartDetails – navigation icon content descriptions -->
+    <string name="nav_prev">Prev</string>
+    <string name="nav_next">Next</string>
+
+    <!-- BarChartDetails – date header format strings -->
+    <string name="week_of">Week of %1$s</string>
+
+    <!-- BarChartDetails – history list labels -->
+    <string name="history_day_label">Day %1$d</string>
+    <string name="history_month_label">Month %1$d</string>
+
+    <!-- BarChartDetails – unit suffix -->
+    <string name="per_day_avg"> per day (avg)</string>
+
+    <!-- HealthMetricConfig titles -->
+    <string name="metric_energy_burned">Energy Burned</string>
+    <string name="metric_active_calories">Active Calories</string>
+    <string name="metric_basal_metabolic_rate">Basal Metabolic Rate</string>
+    <string name="metric_steps">Steps</string>
+    <string name="metric_wheelchair_pushes">Wheelchair Pushes</string>
+    <string name="metric_distance">Distance</string>
+    <string name="metric_elevation_gained">Elevation Gained</string>
+    <string name="metric_floors_climbed">Floors Climbed</string>
+    <string name="metric_hydration">Hydration</string>
+    <string name="metric_blood_pressure">Blood Pressure</string>
+    <string name="metric_blood_glucose">Blood Glucose</string>
+    <string name="metric_vo2_max">VO2 Max</string>
+    <string name="metric_skin_temp_variation">Skin Temp Variation</string>
+    <string name="metric_breathing_rate">Breathing Rate</string>
+    <string name="metric_resting_heart_rate">Resting Heart Rate</string>
+    <string name="metric_oxygen_saturation">Oxygen Saturation</string>
+    <string name="metric_heart_rate_variability">Heart Rate Variability</string>
+    <string name="metric_heart_rate">Heart Rate</string>
+    <string name="metric_height">Height</string>
+    <string name="metric_weight">Weight</string>
+    <string name="metric_body_fat">Body Fat</string>
+    <string name="metric_lean_body_mass">Lean Body Mass</string>
+    <string name="metric_bone_mass">Bone Mass</string>
+    <string name="metric_body_water_mass">Body Water Mass</string>
+
+    <!-- MainPage – section headers -->
+    <string name="section_medical_records">Medical Records</string>
+    <string name="section_activity">Activity</string>
+    <string name="section_vitals_clinical">Vitals &amp; Clinical</string>
+    <string name="section_nutrition_today">Nutrition (Today)</string>
+    <string name="section_body_composition">Body Composition</string>
+
+    <!-- MainPage – mini-card labels -->
+    <string name="label_active">Active</string>
+    <string name="label_basal">Basal</string>
+
+    <!-- MainPage – date labels used in GenericCard -->
+    <string name="label_today">Today</string>
+    <string name="label_last_night">Last night</string>
+
+    <!-- MainPage – GenericCard titles -->
+    <string name="label_energy">Energy</string>
+    <string name="label_steps">Steps</string>
+    <string name="label_wheelchair_pushes">Wheelchair Pushes</string>
+    <string name="label_mindfulness">Mindfulness</string>
+    <string name="label_elevation">Elevation</string>
+    <string name="label_floors">Floors</string>
+    <string name="label_distance">Distance</string>
+    <string name="label_heart_rate">Heart rate</string>
+    <string name="label_sleep">Sleep</string>
+    <string name="label_hydration">Hydration</string>
+
+    <!-- MainPage – VitalsDashboard labels -->
+    <string name="label_blood_pressure">Blood Pressure</string>
+    <string name="label_blood_glucose">Blood Glucose</string>
+    <string name="label_oxygen_saturation">Oxygen Saturation</string>
+    <string name="label_breathing_rate">Breathing Rate</string>
+    <string name="label_resting_heart_rate">Resting Heart Rate</string>
+    <string name="label_hrv_rmssd">HRV (RMSSD)</string>
+    <string name="label_vo2_max">VO2 Max</string>
+    <string name="label_skin_temp_var">Skin Temp Var</string>
+
+    <!-- MainPage – BodyCompositionDashboard labels -->
+    <string name="label_height">Height</string>
+    <string name="label_weight">Weight</string>
+    <string name="label_body_fat">Body Fat</string>
+    <string name="label_lean_body_mass">Lean Body Mass</string>
+    <string name="label_bone_mass">Bone Mass</string>
+    <string name="label_body_water_mass">Body Water Mass</string>
+
+    <!-- MainPage – NutritionSummaryCard labels -->
+    <string name="label_total_intake">Total Intake</string>
+    <string name="label_protein">Protein</string>
+    <string name="label_carbs">Carbs</string>
+    <string name="label_fat">Fat</string>
+
+    <!-- MedicalRecordsPage -->
+    <string name="unknown">Unknown</string>
 </resources>

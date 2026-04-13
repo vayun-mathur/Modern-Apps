@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
@@ -125,7 +126,7 @@ class MainActivity : ComponentActivity() {
                         contentAlignment = Alignment.Center
                     ) {
                         Button(onClick = { requestPermissions.launch(PERMISSIONS) }) {
-                            Text("Grant Permissions")
+                            Text(stringResource(R.string.grant_permissions))
                         }
                     }
                 }
