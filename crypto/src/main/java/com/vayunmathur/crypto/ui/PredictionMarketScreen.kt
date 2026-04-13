@@ -29,17 +29,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.MaximizedRow
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.R
+import com.vayunmathur.crypto.util.MaximizedRow
+import com.vayunmathur.crypto.util.PortfolioViewModel
 import com.vayunmathur.crypto.PredictionMarketPage
-import com.vayunmathur.crypto.api.PredictionMarket
-import com.vayunmathur.crypto.token.TokenInfo
+import com.vayunmathur.crypto.util.api.PredictionMarket
+import com.vayunmathur.crypto.data.TokenInfo
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 
@@ -62,7 +64,7 @@ fun PredictionMarketScreen(viewModel: PortfolioViewModel, backStack: NavBackStac
                 .fillMaxSize()
                 .padding(paddingValues).padding(horizontal = 16.dp)
         ) {
-            Text("Prediction Market viewing is available, but trading currently is unavailable until our provider increases liquidity", style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(R.string.prediction_market_notice), style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(markets.filter { it.anyMarketOpen() }) { market ->
@@ -90,13 +92,13 @@ fun PredictionMarketScreen(viewModel: PortfolioViewModel, backStack: NavBackStac
             {
                 Row {
                     Text(
-                        "Buy ${if (isYes) "Yes" else "No"}",
+                        stringResource(R.string.buy_choice, if (isYes) stringResource(R.string.yes) else stringResource(R.string.no)),
                         color = if (isYes) Color(0xFF25D366) else Color(0xFFF44336)
                     )
-                    Text(" — ${marketItem.subtitle}")
+                    Text(stringResource(R.string.market_subtitle_separator, marketItem.subtitle))
                 }
             },
-            { outputAmount -> Text("Buy ${if(isYes) "Yes" else "No"} -> Win $${outputAmount.round(2)}") },
+            { outputAmount -> Text(stringResource(R.string.buy_win_format, if (isYes) stringResource(R.string.yes) else stringResource(R.string.no), outputAmount.round(2))) },
             { selectedMarket = null },
         )
     }
@@ -110,7 +112,7 @@ fun PredictionMarketCard(market: PredictionMarket.Event, backStack: NavBackStack
         Column(Modifier.padding(12.dp)) {
             MaximizedRow {
                 Text(market.title, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                Text("● Live", color = Color.Green, fontSize = 12.sp)
+                Text(stringResource(R.string.live_indicator), color = Color.Green, fontSize = 12.sp)
             }
             Spacer(Modifier.height(12.dp))
             market.markets.filter{it.closeTime > System.currentTimeMillis() / 1000 }.sortedByDescending { it.chance }.take(3).forEach { marketItem ->
@@ -122,12 +124,12 @@ fun PredictionMarketCard(market: PredictionMarket.Event, backStack: NavBackStack
                             SegmentedButton(selectedMarket == Pair(marketItem, true), {
                                 setSelectedMarket(Pair(marketItem, true))
                             }, SegmentedButtonDefaults.itemShape(0, 2), contentPadding = PaddingValues(horizontal = 8.dp)) {
-                                Text("Yes")
+                                Text(stringResource(R.string.yes))
                             }
                             SegmentedButton(selectedMarket == Pair(marketItem, false), {
                                 setSelectedMarket(Pair(marketItem, false))
                             }, SegmentedButtonDefaults.itemShape(1, 2), contentPadding = PaddingValues(horizontal = 8.dp)) {
-                                Text("No")
+                                Text(stringResource(R.string.no))
                             }
                         }
                     }
@@ -136,8 +138,8 @@ fun PredictionMarketCard(market: PredictionMarket.Event, backStack: NavBackStack
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("Show More >", style = MaterialTheme.typography.labelSmall)
-                Text("$${market.volume} vol",
+                Text(stringResource(R.string.show_more), style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.market_volume_format, market.volume),
                     style = MaterialTheme.typography.labelSmall
                 )
             }

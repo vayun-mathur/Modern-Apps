@@ -35,16 +35,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.aggregate.AggregationResult
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.NutritionRecord
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.HealthAPI
+import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.database.RecordType
+import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.Dispatchers
@@ -139,27 +140,27 @@ fun MainPage(backStack: NavBackStack<Route>) {
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Medical Records", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.section_medical_records), style = MaterialTheme.typography.labelLarge)
             Card(Modifier.invisibleClickable{
                 backStack.add(Route.MedicalRecords)
             }) {
                 Row(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Medical Records")
+                    Text(stringResource(R.string.section_medical_records))
                 }
             }
 
             // 4. Activity & Energy
-            Text("Activity", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.section_activity), style = MaterialTheme.typography.labelLarge)
             EnergyBurned(backStack, totalCaloriesBurnedToday)
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f)) {
-                    MiniMetricCard("Active", activeCaloriesBurnedToday.toString(), "cal", onClick = {
+                    MiniMetricCard(stringResource(R.string.label_active), activeCaloriesBurnedToday.toString(), "cal", onClick = {
                         backStack.add(Route.BarChartDetails(HealthMetricConfig.ACTIVE_CALORIES))
                     })
                 }
                 Box(Modifier.weight(1f)) {
-                    MiniMetricCard("Basal", basalCaloriesBurnedToday.toString(), "cal", onClick = {
+                    MiniMetricCard(stringResource(R.string.label_basal), basalCaloriesBurnedToday.toString(), "cal", onClick = {
                         backStack.add(Route.BarChartDetails(HealthMetricConfig.BASAL_METABOLIC_RATE))
                     })
                 }
@@ -186,17 +187,17 @@ fun MainPage(backStack: NavBackStack<Route>) {
 
 
             // 1. Vitals & Clinical Metrics
-            Text("Vitals & Clinical", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.section_vitals_clinical), style = MaterialTheme.typography.labelLarge)
             VitalsDashboard(backStack, br, spo2, rhr, hrv, skinTemp, vo2Max, bloodGlucose, bloodPressure)
 
             // 2. Nutrition Summary
-            Text("Nutrition (Today)", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.section_nutrition_today), style = MaterialTheme.typography.labelLarge)
             // TODO: add this back
             //NutritionSummaryCard(aggregates)
             Hydration(backStack, hydrationToday)
 
             // 3. Body Composition
-            Text("Body Composition", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.section_body_composition), style = MaterialTheme.typography.labelLarge)
             BodyCompositionDashboard(backStack, height, weight, bodyFat, leanBodyMass, boneMass, bodyWaterMass)
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -210,16 +211,16 @@ fun NutritionSummaryCard(res: AggregationResult?) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text("Total Intake", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.label_total_intake), style = MaterialTheme.typography.labelMedium)
                     Text("${res?.get(NutritionRecord.ENERGY_TOTAL)?.inKilocalories?.round(0) ?: "--"} kcal", style = MaterialTheme.typography.headlineSmall)
                 }
                 Icon(painterResource(R.drawable.baseline_local_fire_department_24), null, tint = Color(255, 165, 0))
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                NutritionMacro("Protein", res?.get(NutritionRecord.PROTEIN_TOTAL)?.inGrams, "g")
-                NutritionMacro("Carbs", res?.get(NutritionRecord.TOTAL_CARBOHYDRATE_TOTAL)?.inGrams, "g")
-                NutritionMacro("Fat", res?.get(NutritionRecord.TOTAL_FAT_TOTAL)?.inGrams, "g")
+                NutritionMacro(stringResource(R.string.label_protein), res?.get(NutritionRecord.PROTEIN_TOTAL)?.inGrams, "g")
+                NutritionMacro(stringResource(R.string.label_carbs), res?.get(NutritionRecord.TOTAL_CARBOHYDRATE_TOTAL)?.inGrams, "g")
+                NutritionMacro(stringResource(R.string.label_fat), res?.get(NutritionRecord.TOTAL_FAT_TOTAL)?.inGrams, "g")
             }
         }
     }
@@ -237,28 +238,28 @@ fun NutritionMacro(label: String, value: Double?, unit: String) {
 fun VitalsDashboard(backStack: NavBackStack<Route>, br: Double?, spo2: Double?, rhr: Long?, hrv: Double?, temp: Double?, vo2: Double?, bg: Double?, bp: Pair<Double, Double>?) {
     val items = 8
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        MetricSegmentCard(0, items, "Blood Pressure", bp?.let { "${it.first.toInt()}/${it.second.toInt()}" }, "mmHg", onClick = {
+        MetricSegmentCard(0, items, stringResource(R.string.label_blood_pressure), bp?.let { "${it.first.toInt()}/${it.second.toInt()}" }, "mmHg", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.BLOOD_PRESSURE))
         })
-        MetricSegmentCard(1, items, "Blood Glucose", bg, "mg/dL", onClick = {
+        MetricSegmentCard(1, items, stringResource(R.string.label_blood_glucose), bg, "mg/dL", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.GLUCOSE))
         })
-        MetricSegmentCard(2, items, "Oxygen Saturation", spo2, "%", onClick = {
+        MetricSegmentCard(2, items, stringResource(R.string.label_oxygen_saturation), spo2, "%", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.OXYGEN_SATURATION))
         })
-        MetricSegmentCard(3, items, "Breathing Rate", br, "brpm", onClick = {
+        MetricSegmentCard(3, items, stringResource(R.string.label_breathing_rate), br, "brpm", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.BREATHING_RATE))
         })
-        MetricSegmentCard(4, items, "Resting Heart Rate", rhr?.toDouble(), "bpm", onClick = {
+        MetricSegmentCard(4, items, stringResource(R.string.label_resting_heart_rate), rhr?.toDouble(), "bpm", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.RESTING_HEART_RATE))
         })
-        MetricSegmentCard(5, items, "HRV (RMSSD)", hrv, "ms", onClick = {
+        MetricSegmentCard(5, items, stringResource(R.string.label_hrv_rmssd), hrv, "ms", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.HRV))
         })
-        MetricSegmentCard(6, items, "VO2 Max", vo2, "mL/kg/min", onClick = {
+        MetricSegmentCard(6, items, stringResource(R.string.label_vo2_max), vo2, "mL/kg/min", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.VO2_MAX))
         })
-        MetricSegmentCard(7, items, "Skin Temp Var", temp, "°C", showSign = true, onClick = {
+        MetricSegmentCard(7, items, stringResource(R.string.label_skin_temp_var), temp, "°C", showSign = true, onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.SKIN_TEMP))
         })
     }
@@ -268,22 +269,22 @@ fun VitalsDashboard(backStack: NavBackStack<Route>, br: Double?, spo2: Double?, 
 fun BodyCompositionDashboard(backStack: NavBackStack<Route>, h: Double?, w: Double?, bf: Double?, lbm: Double?, bm: Double?, bw: Double?) {
     val items = 6
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        MetricSegmentCard(0, items, "Height", h?.let { it * 100 }, "cm", onClick = {
+        MetricSegmentCard(0, items, stringResource(R.string.label_height), h?.let { it * 100 }, "cm", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.HEIGHT))
         })
-        MetricSegmentCard(1, items, "Weight", w, "kg", onClick = {
+        MetricSegmentCard(1, items, stringResource(R.string.label_weight), w, "kg", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.WEIGHT))
         })
-        MetricSegmentCard(2, items, "Body Fat", bf, "%", onClick = {
+        MetricSegmentCard(2, items, stringResource(R.string.label_body_fat), bf, "%", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.BODY_FAT))
         })
-        MetricSegmentCard(3, items, "Lean Body Mass", lbm, "kg", onClick = {
+        MetricSegmentCard(3, items, stringResource(R.string.label_lean_body_mass), lbm, "kg", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.LEAN_BODY_MASS))
         })
-        MetricSegmentCard(4, items, "Bone Mass", bm, "kg", onClick = {
+        MetricSegmentCard(4, items, stringResource(R.string.label_bone_mass), bm, "kg", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.BONE_MASS))
         })
-        MetricSegmentCard(5, items, "Body Water Mass", bw, "kg", onClick = {
+        MetricSegmentCard(5, items, stringResource(R.string.label_body_water_mass), bw, "kg", onClick = {
             backStack.add(Route.BarChartDetails(HealthMetricConfig.BODY_WATER_MASS))
         })
     }
@@ -339,7 +340,7 @@ fun verticalSegmentedCardShape(index: Int, total: Int): Shape {
 
 @Composable
 fun Hydration(backStack: NavBackStack<Route>, ml: Double) {
-    GenericCard("Hydration", null, "mL", ml.toInt().toString(), "Today", onClick = {
+    GenericCard(stringResource(R.string.label_hydration), null, "mL", ml.toInt().toString(), stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.HYDRATION))
     }) {
         ProgressBarGraphic(R.drawable.baseline_local_fire_department_24, ml.toFloat(), 3000f, Color(0xFF2196F3))
@@ -348,7 +349,7 @@ fun Hydration(backStack: NavBackStack<Route>, ml: Double) {
 
 @Composable
 fun FloorsClimbed(backStack: NavBackStack<Route>, floors: Double) {
-    GenericCard("Floors", null, "fl", floors.round(1).toString(), "Today", onClick = {
+    GenericCard(stringResource(R.string.label_floors), null, "fl", floors.round(1).toString(), stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.FLOORS))
     }) {
         ProgressBarGraphic(R.drawable.baseline_location_pin_24, floors.toFloat(), 10f, Color(0xFFFFA726))
@@ -357,7 +358,7 @@ fun FloorsClimbed(backStack: NavBackStack<Route>, floors: Double) {
 
 @Composable
 fun ElevationGained(backStack: NavBackStack<Route>, meters: Double) {
-    GenericCard("Elevation", null, "m", meters.round(1).toString(), "Today", onClick = {
+    GenericCard(stringResource(R.string.label_elevation), null, "m", meters.round(1).toString(), stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.ELEVATION))
     }) {
         ProgressBarGraphic(R.drawable.baseline_location_pin_24, meters.toFloat(), 100f, Color(0xFF8D6E63))
@@ -366,7 +367,7 @@ fun ElevationGained(backStack: NavBackStack<Route>, meters: Double) {
 
 @Composable
 fun Distance(backStack: NavBackStack<Route>, km: Double) {
-    GenericCard("Distance", null, "km", "${km.round(2)}", "Today", onClick = {
+    GenericCard(stringResource(R.string.label_distance), null, "km", "${km.round(2)}", stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.DISTANCE))
     }) {
         ProgressBarGraphic(R.drawable.baseline_location_pin_24, km.toFloat(), 5.0f, Color(0xFFFFEB3B))
@@ -375,7 +376,7 @@ fun Distance(backStack: NavBackStack<Route>, km: Double) {
 
 @Composable
 fun HeartRate(backStack: NavBackStack<Route>, max: Long, min: Long) {
-    GenericCard("Heart rate", null, "bpm", if(max > 0) "$min-$max" else "--", "Today", onClick = {
+    GenericCard(stringResource(R.string.label_heart_rate), null, "bpm", if(max > 0) "$min-$max" else "--", stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.HEART_RATE))
     }) {
         ProgressBarGraphic(R.drawable.baseline_favorite_24, max.toFloat(), 200f, Color(0xFFF44336))
@@ -384,14 +385,14 @@ fun HeartRate(backStack: NavBackStack<Route>, max: Long, min: Long) {
 
 @Composable
 fun Sleep(min: Long) {
-    GenericCard("Sleep", null, "hr", hoursMinutesString(min), "Last night") {
+    GenericCard(stringResource(R.string.label_sleep), null, "hr", hoursMinutesString(min), stringResource(R.string.label_last_night)) {
         ProgressBarGraphic(R.drawable.baseline_bedtime_24, min.toFloat(), 480f, Color(0xFF9C27B0))
     }
 }
 
 @Composable
 fun Steps(backStack: NavBackStack<Route>, count: Long) {
-    GenericCard("Steps", null, "steps", count.toString(), "Today", onClick = {
+    GenericCard(stringResource(R.string.label_steps), null, "steps", count.toString(), stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.STEPS))
     }) {
         ProgressBarGraphic(R.drawable.outline_directions_walk_24, count.toFloat(), 10000f, Color(0xFF03A9F4))
@@ -400,7 +401,7 @@ fun Steps(backStack: NavBackStack<Route>, count: Long) {
 
 @Composable
 fun WheelchairPushes(backStack: NavBackStack<Route>, count: Long) {
-    GenericCard("Wheelchair Pushes", null, "pushes", count.toString(), "Today", onClick = {
+    GenericCard(stringResource(R.string.label_wheelchair_pushes), null, "pushes", count.toString(), stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.WHEELCHAIR_PUSHES))
     }) {
         ProgressBarGraphic(R.drawable.outline_directions_walk_24, count.toFloat(), 5000f, Color(0xFF00BCD4))
@@ -409,14 +410,14 @@ fun WheelchairPushes(backStack: NavBackStack<Route>, count: Long) {
 
 @Composable
 fun Mindfulness(min: Long) {
-    GenericCard("Mindfulness", null, "min", min.toString(), "Today") {
+    GenericCard(stringResource(R.string.label_mindfulness), null, "min", min.toString(), stringResource(R.string.label_today)) {
         ProgressBarGraphic(R.drawable.baseline_bedtime_24, min.toFloat(), 20f, Color(0xFF81C784))
     }
 }
 
 @Composable
 fun EnergyBurned(backStack: NavBackStack<Route>, kcal: Long) {
-    GenericCard("Energy", null, "cal", kcal.toString(), "Today", onClick = {
+    GenericCard(stringResource(R.string.label_energy), null, "cal", kcal.toString(), stringResource(R.string.label_today), onClick = {
         backStack.add(Route.BarChartDetails(HealthMetricConfig.ENERGY))
     }) {
         ProgressBarGraphic(R.drawable.baseline_local_fire_department_24, kcal.toFloat(), 2500f, Color(0xFF00E676))

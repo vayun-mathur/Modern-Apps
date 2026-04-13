@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
@@ -49,7 +50,7 @@ import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.WheelchairPushesRecord
 import com.vayunmathur.library.util.NavKey
-import com.vayunmathur.health.database.HealthDatabase
+import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.ui.BarChartDetails
 import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.MainPage
@@ -125,7 +126,7 @@ class MainActivity : ComponentActivity() {
                         contentAlignment = Alignment.Center
                     ) {
                         Button(onClick = { requestPermissions.launch(PERMISSIONS) }) {
-                            Text("Grant Permissions")
+                            Text(stringResource(R.string.grant_permissions))
                         }
                     }
                 }

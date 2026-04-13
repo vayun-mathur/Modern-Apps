@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -53,10 +54,10 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.Route
-import com.vayunmathur.passwords.TOTP
+import com.vayunmathur.passwords.util.TOTP
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -128,7 +129,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             // Password card
             Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
-                    Text("Password", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.section_password), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -158,11 +159,11 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             // TOTP card: show generated code and circular timer
             Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
-                    Text("TOTP", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.section_totp), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
 
                     if (password.totpSecret.isNullOrBlank()) {
-                        Text("(not configured)")
+                        Text(stringResource(R.string.totp_not_configured))
                     } else {
                         var currentCode by remember { mutableStateOf("") }
                         var progress by remember { mutableFloatStateOf(1f) }
@@ -195,7 +196,7 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
                             Column {
                                 Text(currentCode, style = MaterialTheme.typography.displayMedium)
                                 Spacer(Modifier.height(4.dp))
-                                Text("Refreshes in $secondsRemaining s", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.totp_refreshes_in, secondsRemaining), style = MaterialTheme.typography.bodySmall)
                             }
 
                             // Circular progress showing proportion of time remaining
@@ -217,10 +218,10 @@ fun PasswordPage(backStack: NavBackStack<Route>, id: Long, viewModel: DatabaseVi
             // Websites
             Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
-                    Text("Websites", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.section_websites), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
                     if (password.websites.isEmpty()) {
-                        Text("(none)")
+                        Text(stringResource(R.string.websites_none))
                     } else {
                         for (w in password.websites) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier

@@ -20,10 +20,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.ContactViewModel
-import com.vayunmathur.calendar.Instance
+import com.vayunmathur.calendar.util.ContactViewModel
+import com.vayunmathur.calendar.data.Instance
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconDelete
@@ -42,7 +43,7 @@ fun EventScreen(viewModel: ContactViewModel, instance: Instance, backStack: NavB
     val event = events.find { it.id == instance.eventID }
     if (event == null) {
         // simple empty state
-        Text("Event not found")
+        Text(stringResource(R.string.event_not_found))
         return
     }
 

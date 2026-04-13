@@ -62,6 +62,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -79,6 +80,8 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import com.vayunmathur.games.wordmaker.util.Dictionary
+import com.vayunmathur.games.wordmaker.data.CrosswordData
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,10 +120,10 @@ fun WordMakerGameLoader() {
         try {
             crosswordData = CrosswordData.fromAsset(context, "levels/$currentLevel.txt")
             if (crosswordData == null) {
-                error = "Failed to parse level data."
+                error = context.getString(R.string.error_parse_level)
             }
         } catch (e: Exception) {
-            error = "Failed to load level data: ${e.message}"
+            error = context.getString(R.string.error_load_level, e.message)
         }
     }
 
@@ -129,8 +132,8 @@ fun WordMakerGameLoader() {
             isGameComplete -> {
                 Scaffold {
                     Column(Modifier.padding(it).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Text("All levels have been completed")
-                        Text("Stay tuned for new levels in future updates")
+                        Text(stringResource(R.string.all_levels_completed))
+                        Text(stringResource(R.string.stay_tuned_new_levels))
                     }
                 }
             }
@@ -248,7 +251,7 @@ fun WordGameScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Level $currentLevel",
+                    text = stringResource(R.string.level_number, currentLevel),
                     style = typography.headlineMedium,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -293,7 +296,7 @@ fun WordGameScreen(
                                 }
                             }
                         ) {
-                            Text("Next Level")
+                            Text(stringResource(R.string.next_level))
                         }
                     } else {
                         LetterChooser(
@@ -425,7 +428,7 @@ fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Un
         text = { Text(text = definition.joinToString("\n\n")) },
         confirmButton = {
             Button(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.close))
             }
         }
     )
@@ -436,7 +439,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
     var definitionDialog by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Bonus Words") },
+        title = { Text(text = stringResource(R.string.bonus_words)) },
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(bonusWords.toList().sorted()) { word ->
@@ -455,7 +458,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
             Button(
                 onClick = onDismiss
             ) {
-                Text("Close")
+                Text(stringResource(R.string.close))
             }
         }
     )

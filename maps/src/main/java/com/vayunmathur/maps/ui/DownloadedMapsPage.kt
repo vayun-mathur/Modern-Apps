@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,7 +43,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.ImageLoader
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.ZoneDownloadManager
+import com.vayunmathur.maps.R
+import com.vayunmathur.maps.util.ZoneDownloadManager
 import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +63,7 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
     }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Downloaded Maps") }, navigationIcon = {
+        TopAppBar(title = { Text(stringResource(R.string.downloaded_maps)) }, navigationIcon = {
             IconNavigation(backStack)
         })
     }) { paddingValues ->
@@ -151,14 +153,14 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
                     zoneManager.startDownload(zoneId)
                     showDownloadDialogForZone = null
                 }) {
-                    Text("Download")
+                    Text(stringResource(R.string.download))
                 }
             },
-            title = { Text("Download Offline Map?") },
-            text = { Text("You are viewing Zone $zoneId. Would you like to download the high-detail offline map and enable navigation in this area?") },
+            title = { Text(stringResource(R.string.download_offline_map_title)) },
+            text = { Text(stringResource(R.string.download_offline_map_text, zoneId)) },
             dismissButton = {
                 TextButton({ showDownloadDialogForZone = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -172,14 +174,14 @@ fun DownloadedMapsPage(backStack: NavBackStack<Route>) {
                     zoneManager.deleteZone(zoneId)
                     showDeleteDialogForZone = null
                 }) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
-            title = { Text("Delete Offline Map?") },
-            text = { Text("Are you sure you want to delete or cancel the download for Zone $zoneId?") },
+            title = { Text(stringResource(R.string.delete_offline_map_title)) },
+            text = { Text(stringResource(R.string.delete_offline_map_text, zoneId)) },
             dismissButton = {
                 TextButton({ showDeleteDialogForZone = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -227,7 +229,7 @@ private fun ZoneCell(
             }
             ZoneDownloadManager.ZoneStatus.DOWNLOADING -> {
                 Text(
-                    text = "${(progress * 100).toInt()}%",
+                    text = stringResource(R.string.download_progress, (progress * 100).toInt()),
                     color = Color.Black,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold

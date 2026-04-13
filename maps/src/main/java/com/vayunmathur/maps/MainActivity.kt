@@ -18,6 +18,7 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.buildAmenityDatabase
+import com.vayunmathur.maps.R
 import com.vayunmathur.maps.ui.DownloadedMapsPage
 import com.vayunmathur.maps.ui.MapPage
 import com.vayunmathur.maps.ui.SearchPage
@@ -25,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.maplibre.android.log.Logger
 import java.io.File
+import com.vayunmathur.maps.util.SelectedFeatureViewModel
 
 fun ensurePmtilesReady(context: Context): String {
     val fileName = "world_z0-6.pmtiles"
@@ -59,12 +61,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             DynamicTheme {
                 InitialDownloadChecker(ds, listOf(
-                    Triple("https://data.vayunmathur.com/amenities.db", "amenities.db", "Downloading Amenity Database..."),
-                    Triple("https://data.vayunmathur.com/metadata.bin", "metadata.bin", "Downloading Navigation Tiling Metadata..."),
-                    Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", "Downloading Road Data...")
+                    Triple("https://data.vayunmathur.com/amenities.db", "amenities.db", getString(R.string.downloading_amenity_database)),
+                    Triple("https://data.vayunmathur.com/metadata.bin", "metadata.bin", getString(R.string.downloading_navigation_metadata)),
+                    Triple("https://data.vayunmathur.com/road_names.bin", "road_names.bin", getString(R.string.downloading_road_data))
                 )) {
                     val db = remember { buildAmenityDatabase(this@MainActivity) }
-                    PermissionsChecker(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), "Grant Location Permission") {
+                    PermissionsChecker(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), getString(R.string.grant_location_permission)) {
                         Navigation(db)
                     }
                 }

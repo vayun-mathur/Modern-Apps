@@ -6,8 +6,8 @@ import androidx.compose.runtime.getValue
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Music
+import com.vayunmathur.music.data.Album
+import com.vayunmathur.music.data.Music
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,15 +22,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
-import com.vayunmathur.music.AddToPlaylistButton
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
+import com.vayunmathur.music.util.AddToPlaylistButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +75,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
 
                     ListItem({
                         Text(album.name, style = MaterialTheme.typography.titleLarge)
-                    }, Modifier, {Text("Album")}, {
+                    }, Modifier, {Text(stringResource(R.string.label_album))}, {
                         Text("${album.artistString(viewModel)}\nJan 2016 • ${musicInAlbum.size} songs • 1:25:02")
                     })
                 }
@@ -99,7 +100,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     ) {
                         IconPlay(tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Play", color = Color.White)
+                        Text(stringResource(R.string.label_play), color = Color.White)
                     }
 
                     Button(
@@ -113,7 +114,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     ) {
                         Icon(painterResource(com.vayunmathur.music.R.drawable.ic_shuffle), contentDescription = null, tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Shuffle", color = Color.Black)
+                        Text(stringResource(R.string.label_shuffle), color = Color.Black)
                     }
                 }
             }
@@ -128,7 +129,7 @@ fun AlbumDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Songs",
+                        text = stringResource(R.string.label_songs),
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold

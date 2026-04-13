@@ -39,12 +39,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.util.ContactViewModel
 import com.vayunmathur.calendar.R
-import com.vayunmathur.calendar.RRule
-import com.vayunmathur.calendar.RecurrenceParams
+import com.vayunmathur.calendar.util.RRule
+import com.vayunmathur.calendar.util.RecurrenceParams
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
@@ -211,34 +212,34 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
         }
     }) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
-            OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Title") })
+            OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text(stringResource(R.string.label_title)) })
 
             // Calendar selector: moved above the datetime section — only when creating a new event
             if (eventId == null) {
                 Item(
                     { Box(modifier = Modifier.size(24.dp).background(Color(calendars.find { it.id == selectedCalendar }?.color ?: 0))) },
-                    { Text(calendars.find { it.id == selectedCalendar }?.displayName ?: "Select calendar", Modifier.clickable { backStack.add(Route.EditEvent.CalendarPickerDialog(KEY_CALENDAR)) }) },
+                    { Text(calendars.find { it.id == selectedCalendar }?.displayName ?: stringResource(R.string.select_calendar), Modifier.clickable { backStack.add(Route.EditEvent.CalendarPickerDialog(KEY_CALENDAR)) }) },
                     {}
                 )
             }
 
-            OutlinedTextField(description, { description = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Description") })
+            OutlinedTextField(description, { description = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text(stringResource(R.string.label_description)) })
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
             Item(
                 { Icon(painterResource(R.drawable.nest_clock_farsight_analog_24px), null) },
-                {Text("All-day")},
+                {Text(stringResource(R.string.all_day))},
                 { Switch(allDay, { allDay = it }) }
             )
 
             // Recurrence selector
             Item(
                 { /* icon placeholder */ },
-                { Text(if (rruleObj == null) "Does not repeat" else rruleString.ifBlank { "Repeats" }, Modifier.clickable {
+                { Text(if (rruleObj == null) stringResource(R.string.does_not_repeat) else rruleString.ifBlank { stringResource(R.string.repeats) }, Modifier.clickable {
                     // pass initial RecurrenceParams based on existing rrule
                     val initial = RecurrenceParams.fromRRule(rruleObj)
                     backStack.add(Route.EditEvent.RecurrenceDialog(KEY_RECURRENCE, startDate, initial))
                 }) },
-                { if (rruleObj != null) Text("Remove", Modifier.clickable {
+                { if (rruleObj != null) Text(stringResource(R.string.remove), Modifier.clickable {
                     rruleObj = null
                 }) }
             )
@@ -276,7 +277,7 @@ fun EditEventScreen(viewModel: ContactViewModel, eventId: Long?, backStack: NavB
             }
 
             HorizontalDivider(Modifier.padding(vertical = 16.dp))
-            OutlinedTextField(location, { location = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text("Location") })
+            OutlinedTextField(location, { location = it }, Modifier.fillMaxWidth().padding(8.dp), label = { Text(stringResource(R.string.label_location)) })
         }
     }
 }

@@ -34,16 +34,17 @@ import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.ui.ChannelPage
 import com.vayunmathur.youpipe.ui.HistoryPage
-import com.vayunmathur.youpipe.ui.PlaybackService
+import com.vayunmathur.youpipe.util.PlaybackService
 import com.vayunmathur.youpipe.ui.SearchPage
 import com.vayunmathur.youpipe.ui.SubscriptionVideosPage
 import com.vayunmathur.youpipe.ui.SubscriptionsPage
 import com.vayunmathur.youpipe.ui.VideoPage
-import com.vayunmathur.youpipe.ui.dialog.CreateSubscriptionCategory
-import com.vayunmathur.youpipe.ui.setupHourlyTask
+import com.vayunmathur.youpipe.ui.dialogs.CreateSubscriptionCategory
+import com.vayunmathur.youpipe.util.setupHourlyTask
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import org.schabi.newpipe.extractor.NewPipe
+import com.vayunmathur.youpipe.util.videoURLtoID
 
 internal fun Context.findActivity(): ComponentActivity {
     var context = this

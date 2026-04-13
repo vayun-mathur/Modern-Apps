@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.center
 import androidx.compose.ui.unit.toOffset
@@ -107,7 +108,7 @@ class MainActivity : ComponentActivity() {
                         pdfDocument = pdfLoader.openDocument(data!!, password) as EditablePdfDocument
                     } catch(_: PdfPasswordException) {
                         if(password != null) {
-                            passwordError = "Incorrect password. Please try again."
+                            passwordError = getString(R.string.incorrect_password)
                         }
                         showPasswordDialog = true
                     }
@@ -213,7 +214,7 @@ fun PdfViewerScreen(pdfDocument: EditablePdfDocument) {
     Scaffold(
         modifier = Modifier.fillMaxSize().imePadding(),
         topBar = {
-            TopAppBar({ Text("PDF Viewer") }, actions = {
+            TopAppBar({ Text(stringResource(R.string.pdf_viewer_title)) }, actions = {
                 if (!showSearchBar) {
                     IconButton({ showSearchBar = true }) { IconSearch() }
                     IconButton({
@@ -226,7 +227,7 @@ fun PdfViewerScreen(pdfDocument: EditablePdfDocument) {
                     }
                 } else {
                     if (searchResults.isNotEmpty()) {
-                        Text("${searchIndex + 1} of ${searchResults.size}   ")
+                        Text(stringResource(R.string.search_result_counter, searchIndex + 1, searchResults.size) + "   ")
                     }
                 }
             })
@@ -238,7 +239,7 @@ fun PdfViewerScreen(pdfDocument: EditablePdfDocument) {
                         searchText,
                         { searchText = it; search() },
                         Modifier.fillMaxWidth().focusRequester(focusRequestor),
-                        label = { Text("Find") },
+                        label = { Text(stringResource(R.string.search_label)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.None),
                     )
@@ -326,17 +327,17 @@ fun PasswordDialog(
 
     AlertDialog(
         onDismissRequest = { /* Prevent dismissing by clicking outside */ },
-        title = { Text("Password Required") },
+        title = { Text(stringResource(R.string.password_dialog_title)) },
         text = {
             Column {
-                Text("This PDF is password protected. Please enter the password.")
+                Text(stringResource(R.string.password_dialog_message))
                 if (errorMessage != null) {
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.password_label)) },
                     singleLine = true,
                     isError = errorMessage != null
                 )
@@ -344,7 +345,7 @@ fun PasswordDialog(
         },
         confirmButton = {
             Button(onClick = { onPasswordEntered(password) }) {
-                Text("OK")
+                Text(stringResource(R.string.ok))
             }
         },
         dismissButton = null

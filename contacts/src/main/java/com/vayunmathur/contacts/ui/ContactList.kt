@@ -49,17 +49,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.contacts.CDKEmail
-import com.vayunmathur.contacts.CDKPhone
-import com.vayunmathur.contacts.CDKStructuredPostal
-import com.vayunmathur.contacts.Contact
-import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.data.CDKEmail
+import com.vayunmathur.contacts.data.CDKPhone
+import com.vayunmathur.contacts.data.CDKStructuredPostal
+import com.vayunmathur.contacts.data.Contact
+import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
-import com.vayunmathur.contacts.VcfUtils
+import com.vayunmathur.contacts.util.VcfUtils
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconSettings
 import kotlinx.coroutines.Dispatchers
@@ -114,15 +115,15 @@ fun ContactList(
 
     Scaffold(
         topBar = {
-            TopAppBar({Text("Contacts")}, actions = {
+            TopAppBar({Text(stringResource(R.string.app_name))}, actions = {
                 IconButton(onClick = { backStack.add(Route.Settings) }) {
                     IconSettings()
                 }
                 IconButton(onClick = {
                     exportLauncher.launch("contacts.vcf")
                 }) {
-                    Icon(painterResource(R.drawable.download_24px), // Using Upload for export
-                        contentDescription = "Export selected contacts"
+                    Icon(painterResource(R.drawable.download_24px),
+                        contentDescription = stringResource(R.string.export_contacts)
                     )
                 }
             })
@@ -174,7 +175,7 @@ fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -
         .groupBy { it.name.value.first().uppercaseChar() }
         .toSortedMap()
 
-    Scaffold(topBar = { TopAppBar({ Text("Contacts") }) }) { paddingValues ->
+    Scaffold(topBar = { TopAppBar({ Text(stringResource(R.string.app_name)) }) }) { paddingValues ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(paddingValues),
             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -236,11 +237,11 @@ fun FavoritesHeader(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(painterResource(R.drawable.baseline_star_24), "Favorites",
+        Icon(painterResource(R.drawable.baseline_star_24), stringResource(R.string.favorites),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "Favorites",
+            text = stringResource(R.string.favorites),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -255,11 +256,11 @@ fun ProfilesHeader(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(painterResource(R.drawable.person_24px), "Profiles",
+        Icon(painterResource(R.drawable.person_24px), stringResource(R.string.profiles),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "User Profile",
+            text = stringResource(R.string.user_profile),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -375,7 +376,8 @@ fun ContactItem(
             },
 
             trailingContent = {
-                Text(contact.accountName ?: "On-Device")
+                val onDevice = stringResource(R.string.on_device)
+                Text(contact.accountName ?: onDevice)
             },
 
             colors = ListItemDefaults.colors(

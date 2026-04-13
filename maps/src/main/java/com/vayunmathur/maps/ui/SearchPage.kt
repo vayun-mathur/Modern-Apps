@@ -25,13 +25,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.maps.R
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.SelectedFeatureViewModel
+import com.vayunmathur.maps.util.SelectedFeatureViewModel
 import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.AmenityEntity
 import com.vayunmathur.maps.data.OpeningHours
@@ -84,7 +86,7 @@ fun SearchPage(
                                 }
                             }
                         },
-                        placeholder = { Text("Search nearby...") },
+                        placeholder = { Text(stringResource(R.string.search_nearby)) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -104,13 +106,13 @@ fun SearchPage(
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             if (results.isEmpty() && searchQuery.length >= 2) {
                 Text(
-                    text = "No results found in this area",
+                    text = stringResource(R.string.no_results_found),
                     modifier = Modifier.align(Alignment.Center),
                     style = MaterialTheme.typography.bodyLarge
                 )
             } else if (searchQuery.length < 2) {
                 Text(
-                    text = "Type at least 2 characters to search",
+                    text = stringResource(R.string.type_to_search),
                     modifier = Modifier.align(Alignment.Center),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -119,9 +121,9 @@ fun SearchPage(
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(results) { amenity ->
                         ListItem(
-                            headlineContent = { Text(amenity.name.ifBlank { "Unnamed Amenity" }) },
+                            headlineContent = { Text(amenity.name.ifBlank { stringResource(R.string.unnamed_amenity) }) },
                             supportingContent = {
-                                Text("Coordinates: ${amenity.lat.round(4)}, ${amenity.lon.round(4)}")
+                                Text(stringResource(R.string.coordinates, amenity.lat.round(4), amenity.lon.round(4)))
                             },
                             modifier = Modifier.clickable {
                                 scope.launch {

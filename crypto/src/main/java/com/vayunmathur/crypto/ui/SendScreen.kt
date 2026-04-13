@@ -23,17 +23,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.MaximizedRow
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.util.MaximizedRow
+import com.vayunmathur.crypto.util.PortfolioViewModel
+import com.vayunmathur.crypto.R
 import com.vayunmathur.crypto.SendPage
-import com.vayunmathur.crypto.token.TokenInfo
-import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.crypto.data.TokenInfo
+import com.vayunmathur.crypto.data.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 import org.sol4k.PublicKey
@@ -62,8 +64,8 @@ fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                 recipientAddress = ""
             },
             onDismiss = { showDialog = false },
-            title = "Confirm Transaction",
-            content = "You are about to send $fromAmount ${fromTokenInfo.symbol} to $recipientAddress. This action cannot be undone."
+            title = stringResource(R.string.confirm_transaction),
+            content = stringResource(R.string.confirm_transaction_message, fromAmount, fromTokenInfo.symbol, recipientAddress)
         )
     }
 
@@ -90,19 +92,19 @@ fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                             TextButton(onClick = {
                                 val balance = fromToken?.amount ?: 0.0
                                 fromAmount = (balance * 0.5).toString()
-                            }, Modifier.width(70.dp).height(40.dp)) { Text("50%") }
+                            }, Modifier.width(70.dp).height(40.dp)) { Text(stringResource(R.string.fifty_percent)) }
                             TextButton(onClick = {
                                 val balance = fromToken?.amount ?: 0.0
                                 fromAmount = (balance * 0.75).toString()
-                            }, Modifier.width(70.dp).height(40.dp)) { Text("75%") }
+                            }, Modifier.width(70.dp).height(40.dp)) { Text(stringResource(R.string.seventy_five_percent)) }
                             TextButton(onClick = {
                                 fromAmount = (fromToken?.amount ?: 0.0).toString()
-                            }, Modifier.width(70.dp).height(40.dp)) { Text("MAX") }
+                            }, Modifier.width(70.dp).height(40.dp)) { Text(stringResource(R.string.max)) }
                         }
                     }
                     Row {
                         Text(
-                            "Balance: ${fromToken?.amount ?: 0.0}",
+                            stringResource(R.string.balance_format, fromToken?.amount ?: 0.0),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -128,7 +130,7 @@ fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
             OutlinedTextField(
                 value = recipientAddress,
                 onValueChange = { recipientAddress = it },
-                label = { Text("Recipient Address") },
+                label = { Text(stringResource(R.string.recipient_address)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
@@ -142,7 +144,7 @@ fun SendScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                     .height(50.dp),
                 enabled = fromAmountDouble > 0 && hasSufficientBalance && recipientAddress.isNotBlank()
             ) {
-                val buttonText = if (fromAmountDouble > balance) "Insufficient Balance" else "Send"
+                val buttonText = if (fromAmountDouble > balance) stringResource(R.string.insufficient_balance) else stringResource(R.string.send)
                 Text(buttonText, fontSize = 16.sp)
             }
         }

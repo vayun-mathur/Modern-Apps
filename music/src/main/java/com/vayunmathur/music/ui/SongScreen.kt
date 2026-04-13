@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,8 +30,8 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.IconPlay
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
 import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
 import org.jaudiotagger.audio.AudioFileIO
@@ -80,7 +81,7 @@ fun SongScreen(backStack: NavBackStack<Route>) {
         containerColor = Color(0xFF0A0A0A),
         topBar = {
             TopAppBar(
-                title = { Text("Now Playing", style = MaterialTheme.typography.labelLarge) },
+                title = { Text(stringResource(R.string.now_playing), style = MaterialTheme.typography.labelLarge) },
                 navigationIcon = { IconNavigation(backStack) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
@@ -176,7 +177,7 @@ fun SongScreen(backStack: NavBackStack<Route>) {
                             else if (repeatMode == Player.REPEAT_MODE_ALL) R.drawable.ic_repeat_on
                             else R.drawable.ic_repeat
                         ),
-                        contentDescription = "Repeat",
+                        contentDescription = stringResource(R.string.content_desc_repeat),
                         tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -209,7 +210,7 @@ fun SongScreen(backStack: NavBackStack<Route>) {
                 IconButton(onClick = { playbackManager.toggleShuffle() }) {
                     Icon(
                         painter = painterResource(if (shuffleMode) R.drawable.ic_shuffle_on else R.drawable.ic_shuffle),
-                        contentDescription = "Shuffle",
+                        contentDescription = stringResource(R.string.content_desc_shuffle),
                         tint = if (shuffleMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -237,7 +238,7 @@ fun LyricsView(lyrics: List<LyricLine>, currentIndex: Int) {
     ) {
         if (lyrics.isEmpty()) {
             Text(
-                "No lyrics available",
+                stringResource(R.string.no_lyrics_available),
                 color = Color.Gray,
                 modifier = Modifier.align(Alignment.Center),
                 textAlign = TextAlign.Center

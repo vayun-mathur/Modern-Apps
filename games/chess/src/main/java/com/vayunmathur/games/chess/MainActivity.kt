@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -53,6 +54,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.games.chess.util.ChessViewModel
+import com.vayunmathur.games.chess.util.ChessUiState
+import com.vayunmathur.games.chess.util.GameMode
+import com.vayunmathur.games.chess.util.StockfishEngine
+import com.vayunmathur.games.chess.util.ChessApi
+import com.vayunmathur.games.chess.data.Board
+import com.vayunmathur.games.chess.data.Piece
+import com.vayunmathur.games.chess.data.PieceColor
+import com.vayunmathur.games.chess.data.PieceType
+import com.vayunmathur.games.chess.data.Position
+import com.vayunmathur.games.chess.data.Move
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,16 +117,16 @@ fun NewGameDialog(onNewGame: (GameMode) -> Unit) {
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
             modifier = Modifier.fillMaxWidth(0.9f),
             onDismissRequest = { showSettings = null },
-            title = { Text("Start New Game") },
+            title = { Text(stringResource(R.string.start_new_game)) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Play as    ")
+                        Text(stringResource(R.string.play_as))
                         SingleChoiceSegmentedButtonRow {
-                            PieceColor.entries.zip(listOf("White", "Black"))
+                            PieceColor.entries.zip(listOf(stringResource(R.string.color_white), stringResource(R.string.color_black)))
                                 .forEachIndexed { idx, (value, label) ->
                                     SegmentedButton(
                                         shape = SegmentedButtonDefaults.itemShape(idx, 2),
@@ -132,7 +144,7 @@ fun NewGameDialog(onNewGame: (GameMode) -> Unit) {
                     }
                     Spacer(Modifier.height(16.dp))
                     SingleChoiceSegmentedButtonRow {
-                        StockfishEngine.Difficulty.entries.zip(listOf("Easy", "Medium", "Hard", "Master")).forEachIndexed { idx, (value, label) ->
+                        StockfishEngine.Difficulty.entries.zip(listOf(stringResource(R.string.difficulty_easy), stringResource(R.string.difficulty_medium), stringResource(R.string.difficulty_hard), stringResource(R.string.difficulty_master))).forEachIndexed { idx, (value, label) ->
                             SegmentedButton(
                                 shape = SegmentedButtonDefaults.itemShape(idx, 4),
                                 onClick = { selectedDifficulty = value },
@@ -145,7 +157,7 @@ fun NewGameDialog(onNewGame: (GameMode) -> Unit) {
                     Button({
                         startGame(selectedColor, selectedDifficulty)
                     }, Modifier.fillMaxWidth()) {
-                        Text("Start Game")
+                        Text(stringResource(R.string.start_game))
                     }
                 }
             },
@@ -154,11 +166,11 @@ fun NewGameDialog(onNewGame: (GameMode) -> Unit) {
     } ?:
         AlertDialog(
             onDismissRequest = { },
-            title = { Text(text = "New Game") },
+            title = { Text(text = stringResource(R.string.new_game)) },
             text = {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Button(onClick = { onNewGame(GameMode.TwoPlayer) }) {
-                        Text("2-Player Local")
+                        Text(stringResource(R.string.two_player_local))
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Button(onClick = {
@@ -166,7 +178,7 @@ fun NewGameDialog(onNewGame: (GameMode) -> Unit) {
                             onNewGame(GameMode.VsAI(color, difficulty))
                         }
                     }) {
-                        Text("Human vs AI")
+                        Text(stringResource(R.string.human_vs_ai))
                     }
                 }
             },
@@ -205,7 +217,7 @@ fun ChessGame(
             CapturedPiecesRow(uiState.board.capturedByWhite)
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onNewGame) {
-                Text("New Game")
+                Text(stringResource(R.string.new_game))
             }
 
             uiState.gameStatus?.let {
@@ -226,9 +238,9 @@ fun MovesList(moves: List<Move>, turn: PieceColor) {
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-                    Text("White", fontWeight = if (turn == PieceColor.WHITE) FontWeight.Bold else FontWeight.Normal)
+                    Text(stringResource(R.string.color_white), fontWeight = if (turn == PieceColor.WHITE) FontWeight.Bold else FontWeight.Normal)
                     VerticalDivider(color = MaterialTheme.colorScheme.primary)
-                    Text("Black", fontWeight = if (turn == PieceColor.BLACK) FontWeight.Bold else FontWeight.Normal)
+                    Text(stringResource(R.string.color_black), fontWeight = if (turn == PieceColor.BLACK) FontWeight.Bold else FontWeight.Normal)
                 }
             }
             items(moves.chunked(2)) { move ->
@@ -251,7 +263,7 @@ fun MovesList(moves: List<Move>, turn: PieceColor) {
 fun PawnPromotionDialog(color: PieceColor, onPromote: (PieceType) -> Unit) {
     AlertDialog(
         onDismissRequest = { },
-        title = { Text(text = "Promote Pawn") },
+        title = { Text(text = stringResource(R.string.promote_pawn)) },
         text = {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
                 for (pieceType in listOf(PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT)) {

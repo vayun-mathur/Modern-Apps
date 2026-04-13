@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.util.NavKey
@@ -34,9 +35,9 @@ import com.vayunmathur.contacts.ui.ContactList
 import com.vayunmathur.contacts.ui.ContactListPick
 import com.vayunmathur.contacts.ui.EditContactPage
 import com.vayunmathur.contacts.ui.SettingsPage
-import com.vayunmathur.contacts.ui.dialog.AddAccountDialog
-import com.vayunmathur.contacts.ui.dialog.EventDatePickerDialog
-import com.vayunmathur.contacts.ui.dialog.EventDeleteConfirmDialog
+import com.vayunmathur.contacts.ui.dialogs.AddAccountDialog
+import com.vayunmathur.contacts.ui.dialogs.EventDatePickerDialog
+import com.vayunmathur.contacts.ui.dialogs.EventDeleteConfirmDialog
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.ListDetailPage
@@ -102,7 +103,7 @@ fun NoPermissionsScreen(permissions: Array<String>, setHasPermissions: (Boolean)
                     permissionRequestor.launch(permissions)
                 }, Modifier.align(Alignment.Center)
             ) {
-                Text(text = "Please grant contacts permission")
+                Text(text = stringResource(R.string.grant_contacts_permission))
             }
         }
     }
@@ -116,7 +117,7 @@ fun Navigation(viewModel: ContactViewModel) {
     MainNavigation(backStack) {
         entry<Route.ContactsList>(metadata = ListPage {
             Column(Modifier.fillMaxSize(), Arrangement.Center, Alignment.CenterHorizontally) {
-                Text("Select a contact to view details")
+                Text(stringResource(R.string.select_contact_hint))
             }
         }) {
             ContactList(

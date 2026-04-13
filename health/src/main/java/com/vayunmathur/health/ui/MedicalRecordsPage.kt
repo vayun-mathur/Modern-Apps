@@ -18,14 +18,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.MedicalResource
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.HealthAPI
+import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.fhir.Patient
-import com.vayunmathur.health.fhir.displayString
+import com.vayunmathur.health.data.Patient
+import com.vayunmathur.health.data.displayString
 import com.vayunmathur.library.ui.IconNavigation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,7 +65,7 @@ fun PatientCard(patient: Patient) {
     val addressString = patient.address.firstOrNull()?.displayString()
     Card {
         ListItem({
-            Text(nameString ?: "Unknown")
+            Text(nameString ?: stringResource(R.string.unknown))
         }, supportingContent = {
             Column {
                 if (patient.gender != null)

@@ -44,7 +44,7 @@
         </activity>
 
         <!-- Text editor activity to open/edit/save text files using SAF -->
-        <activity android:name=".TextEditorActivity"
+        <activity android:name=".ui.TextEditorActivity"
             android:exported="true"
             android:launchMode="standard"
             android:documentLaunchMode="intoExisting">

@@ -36,14 +36,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.clock.MAIN_PAGES
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
+import com.vayunmathur.clock.mainPages
 import com.vayunmathur.library.ui.IconPause
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.util.BottomNavBar
@@ -74,9 +75,9 @@ fun StopwatchPage(backStack: NavBackStack<Route>) {
     }
 
     Scaffold(topBar = {
-        TopAppBar({Text("Stopwatch")})
+        TopAppBar({Text(stringResource(R.string.label_stopwatch))})
     }, bottomBar = {
-        BottomNavBar(backStack, MAIN_PAGES, Route.Stopwatch)
+        BottomNavBar(backStack, mainPages(), Route.Stopwatch)
     }, floatingActionButton = {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if(isRunning) {
@@ -178,9 +179,9 @@ fun StopwatchPage(backStack: NavBackStack<Route>) {
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Laps", Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
-                        Text("Split", Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
-                        Text("Total", Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.header_laps), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.header_split), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.header_total), Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge)
                     }
                     HorizontalDivider(Modifier.padding(horizontal = 8.dp), color = Color.Gray.copy(alpha = 0.5f))
 

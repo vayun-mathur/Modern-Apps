@@ -26,14 +26,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
+import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.channelURLtoID
-import com.vayunmathur.youpipe.videoURLtoID
+import com.vayunmathur.youpipe.util.channelURLtoID
+import com.vayunmathur.youpipe.util.videoURLtoID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -123,7 +125,7 @@ fun SearchPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Search") },
+                label = { Text(stringResource(R.string.label_search)) },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { search() }),
                 singleLine = true
@@ -168,7 +170,7 @@ fun ChannelItem(backStack: NavBackStack<Route>, channelInfo: ChannelInfo) {
     }, {
 
     }, {
-        Text("${countString(channelInfo.subscribers)} subscribers")
+        Text(stringResource(R.string.subscribers_count, countString(channelInfo.subscribers)))
     }, {
         AsyncImage(
             model = channelInfo.avatar,

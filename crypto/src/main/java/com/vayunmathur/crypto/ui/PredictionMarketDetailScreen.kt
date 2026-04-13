@@ -27,17 +27,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.MaximizedRow
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.R
+import com.vayunmathur.crypto.util.MaximizedRow
+import com.vayunmathur.crypto.util.PortfolioViewModel
 import com.vayunmathur.crypto.PredictionMarketPage
-import com.vayunmathur.crypto.api.PredictionMarket
-import com.vayunmathur.crypto.token.TokenInfo
+import com.vayunmathur.crypto.util.api.PredictionMarket
+import com.vayunmathur.crypto.data.TokenInfo
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
@@ -76,7 +78,7 @@ fun PredictionMarketDetailScreen(viewModel: PortfolioViewModel, backStack: NavBa
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(12.dp))
-                        Text("● Live", color = Color.Green, fontSize = 12.sp)
+                        Text(stringResource(R.string.live_indicator), color = Color.Green, fontSize = 12.sp)
                     }
                     Spacer(Modifier.height(16.dp))
                 }
@@ -111,7 +113,7 @@ fun PredictionMarketDetailScreen(viewModel: PortfolioViewModel, backStack: NavBa
                             ) {
                                 val yesNum = (marketItem.yesPrice * 100).toInt()
                                 Text(
-                                    "Yes ${yesNum}¢",
+                                    stringResource(R.string.yes_price_cents, yesNum),
                                     color = Color(0xFF25D366),
                                     style = MaterialTheme.typography.labelMedium
                                 )
@@ -132,7 +134,7 @@ fun PredictionMarketDetailScreen(viewModel: PortfolioViewModel, backStack: NavBa
                             ) {
                                 val noNum = (marketItem.noPrice * 100).toInt()
                                 Text(
-                                    "No ${noNum}¢",
+                                    stringResource(R.string.no_price_cents, noNum),
                                     color = Color(0xFFF44336),
                                     style = MaterialTheme.typography.labelMedium
                                 )
@@ -162,13 +164,13 @@ fun PredictionMarketDetailScreen(viewModel: PortfolioViewModel, backStack: NavBa
             {
                 Row {
                     Text(
-                        "Buy ${if (isYes) "Yes" else "No"}",
+                        stringResource(R.string.buy_choice, if (isYes) stringResource(R.string.yes) else stringResource(R.string.no)),
                         color = if (isYes) Color(0xFF25D366) else Color(0xFFF44336)
                     )
-                    Text(" — ${marketItem.subtitle}")
+                    Text(stringResource(R.string.market_subtitle_separator, marketItem.subtitle))
                 }
             },
-            { outputAmount -> Text("Buy ${if(isYes) "Yes" else "No"} -> Win $${outputAmount.round(2)}") },
+            { outputAmount -> Text(stringResource(R.string.buy_win_format, if (isYes) stringResource(R.string.yes) else stringResource(R.string.no), outputAmount.round(2))) },
             { selectedMarket = null },
         )
     }

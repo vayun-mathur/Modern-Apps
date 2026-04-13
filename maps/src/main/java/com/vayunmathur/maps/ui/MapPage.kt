@@ -49,24 +49,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.R
+import com.vayunmathur.maps.R as MapsR
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.util.readLines
 import com.vayunmathur.maps.Route
-import com.vayunmathur.maps.RouteService
-import com.vayunmathur.maps.SelectedFeatureViewModel
-import com.vayunmathur.maps.ZoneDownloadManager
+import com.vayunmathur.maps.util.RouteService
+import com.vayunmathur.maps.util.SelectedFeatureViewModel
+import com.vayunmathur.maps.util.ZoneDownloadManager
 import com.vayunmathur.maps.data.AmenityDatabase
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.ensurePmtilesReady
-import com.vayunmathur.maps.ui.components.BottomSheetContent
-import com.vayunmathur.maps.ui.components.MyMapLayers
-import com.vayunmathur.maps.ui.components.drawUserIcon
-import com.vayunmathur.maps.ui.components.verticalShape
+import com.vayunmathur.maps.ui.BottomSheetContent
+import com.vayunmathur.maps.ui.MyMapLayers
+import com.vayunmathur.maps.ui.drawUserIcon
+import com.vayunmathur.maps.ui.verticalShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -294,7 +296,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                     ListItem({
                                         Text(
                                             item?.name
-                                                ?: "Your location"
+                                                ?: stringResource(MapsR.string.your_location)
                                         )
                                     }, Modifier.clickable {
                                         val bbox = camera.projection!!.queryVisibleBoundingBox()
@@ -312,7 +314,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                             }
                                             Icon(
                                                 painterResource(R.drawable.drag_handle_24px),
-                                                "Reorder", Modifier.draggableHandle(),
+                                                stringResource(MapsR.string.reorder), Modifier.draggableHandle(),
                                             )
                                         }
                                     }, colors = ListItemDefaults.colors(Color.Transparent))
@@ -324,7 +326,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                     val name = if(selectedFeature is SpecificFeature.RoutableFeature) {
                         (selectedFeature as SpecificFeature.RoutableFeature).name
                     } else {
-                        "Search..."
+                        stringResource(MapsR.string.search_placeholder)
                     }
                     Card(Modifier.padding(16.dp), shape = RoundedCornerShape(12.dp)) {
                         ListItem({
@@ -349,16 +351,16 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                 // We don't need to set dismissedZone here because getZoneStatus
                                 // will now return DOWNLOADING, preventing the effect from re-triggering
                             }) {
-                                Text("Download")
+                                Text(stringResource(MapsR.string.download))
                             }
-                        }, title = { Text("Download Offline Map?") },
-                        text = { Text("You are viewing Zone $activeZone. Would you like to download the high-detail offline map to see more than just the overview?") },
+                        }, title = { Text(stringResource(MapsR.string.download_offline_map_title)) },
+                        text = { Text(stringResource(MapsR.string.download_offline_map_text_overview, activeZone!!)) },
                         dismissButton = {
                             TextButton({
                                 showDownloadDialog = false
                                 dismissedZone = activeZone
                             }) {
-                                Text("Cancel")
+                                Text(stringResource(MapsR.string.cancel))
                             }
                         }
                     )

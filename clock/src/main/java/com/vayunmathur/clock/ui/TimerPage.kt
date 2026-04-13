@@ -38,13 +38,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationCompat
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.clock.MAIN_PAGES
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
-import com.vayunmathur.clock.TimerReceiver
+import com.vayunmathur.clock.util.TimerReceiver
+import com.vayunmathur.clock.mainPages
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconDelete
@@ -65,9 +66,9 @@ fun TimerPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
     val timers by viewModel.data<Timer>().collectAsState(initial = emptyList())
 
     Scaffold(topBar = {
-        TopAppBar({ Text("Timer") })
+        TopAppBar({ Text(stringResource(R.string.label_timer)) })
     }, bottomBar = {
-        BottomNavBar(backStack, MAIN_PAGES, Route.Timer)
+        BottomNavBar(backStack, mainPages(), Route.Timer)
     }, floatingActionButton = {
         FloatingActionButton({
             backStack.add(Route.NewTimerDialog)
@@ -156,7 +157,7 @@ fun TimerCard(timer: Timer, now: Instant, viewModel: DatabaseViewModel) {
                             sendTimerNotification(context, updatedTimer, true)
                         }
                     }) {
-                        Text("+ 1:00")
+                        Text(stringResource(R.string.button_add_minute))
                     }
 
                     Spacer(Modifier.width(8.dp))

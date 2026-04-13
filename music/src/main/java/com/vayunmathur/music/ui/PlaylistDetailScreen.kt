@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,11 +24,12 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.music.AlbumArt
-import com.vayunmathur.music.PlaybackManager
+import com.vayunmathur.music.util.AlbumArt
+import com.vayunmathur.music.util.PlaybackManager
+import com.vayunmathur.music.R
 import com.vayunmathur.music.Route
-import com.vayunmathur.music.database.Music
-import com.vayunmathur.music.database.Playlist
+import com.vayunmathur.music.data.Music
+import com.vayunmathur.music.data.Playlist
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +93,7 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseView
                         if (showRenameDialog) {
                             AlertDialog(
                                 onDismissRequest = { showRenameDialog = false },
-                                title = { Text("Rename Playlist") },
+                                title = { Text(stringResource(R.string.dialog_rename_playlist)) },
                                 text = {
                                     TextField(value = newName, onValueChange = { newName = it })
                                 },
@@ -102,17 +104,17 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseView
                                             showRenameDialog = false
                                         }
                                     }) {
-                                        Text("Rename")
+                                        Text(stringResource(R.string.dialog_rename))
                                     }
                                 },
                                 dismissButton = {
                                     TextButton(onClick = { showRenameDialog = false }) {
-                                        Text("Cancel")
+                                        Text(stringResource(R.string.dialog_cancel))
                                     }
                                 }
                             )
                         }
-                    }, Modifier, {Text("Playlist")}, {
+                    }, Modifier, {Text(stringResource(R.string.label_playlist))}, {
                         Text("${musicInPlaylist.size} songs")
                     })
                 }
@@ -137,7 +139,7 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseView
                     ) {
                         IconPlay(tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Play", color = Color.White)
+                        Text(stringResource(R.string.label_play), color = Color.White)
                     }
 
                     Button(
@@ -151,7 +153,7 @@ fun PlaylistDetailScreen(backStack: NavBackStack<Route>, viewModel: DatabaseView
                     ) {
                         Icon(painterResource(com.vayunmathur.music.R.drawable.ic_shuffle), contentDescription = null, tint = Color.Black)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Shuffle", color = Color.Black)
+                        Text(stringResource(R.string.label_shuffle), color = Color.Black)
                     }
                 }
             }

@@ -19,8 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.util.PortfolioViewModel
+import com.vayunmathur.crypto.R
 import org.sol4k.Base58
 import org.sol4k.Keypair
 
@@ -47,14 +49,14 @@ fun LoginScreen(viewModel: PortfolioViewModel) {
             OutlinedTextField(
                 value = privateKey,
                 onValueChange = { privateKey = it },
-                label = { Text("Enter your private key to restore") }
+                label = { Text(stringResource(R.string.enter_private_key_label)) }
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { viewModel.initializeWallet(privateKey) },
                 enabled = privateKeyValid
             ) {
-                Text("Restore Existing Wallet")
+                Text(stringResource(R.string.restore_existing_wallet))
             }
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider()
@@ -62,7 +64,7 @@ fun LoginScreen(viewModel: PortfolioViewModel) {
             Button(
                 onClick = { viewModel.createWallet() }
             ) {
-                Text("Create New Wallet")
+                Text(stringResource(R.string.create_new_wallet))
             }
         }
     }

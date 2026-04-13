@@ -31,22 +31,22 @@
             </intent-filter>
         </activity>
         <receiver
-            android:name=".TimerReceiver"
+            android:name=".util.TimerReceiver"
             android:enabled="true"
             android:exported="false" />
         <receiver
-            android:name=".AlarmReceiver"
+            android:name=".util.AlarmReceiver"
             android:enabled="true"
             android:exported="false">
         </receiver>
         <activity
-            android:name=".AlarmActivity"
+            android:name=".ui.AlarmActivity"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:lockTaskMode="if_whitelisted"
             android:launchMode="singleInstance" />
         <service
-            android:name=".AlarmSoundService"
+            android:name=".util.AlarmSoundService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
     </application>

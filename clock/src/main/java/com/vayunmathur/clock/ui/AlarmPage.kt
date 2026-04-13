@@ -25,10 +25,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.clock.AlarmScheduler
-import com.vayunmathur.clock.MAIN_PAGES
+import com.vayunmathur.clock.util.AlarmScheduler
+import com.vayunmathur.clock.mainPages
+import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.library.ui.IconAdd
@@ -53,9 +55,9 @@ fun AlarmPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
         alarmScheduler.schedule(context,newAlarm.copy(id = id))
     }
     Scaffold(topBar = {
-        TopAppBar({Text("Alarm")})
+        TopAppBar({Text(stringResource(R.string.label_alarm))})
     }, bottomBar = {
-        BottomNavBar(backStack, MAIN_PAGES, Route.Alarm)
+        BottomNavBar(backStack, mainPages(), Route.Alarm)
     }, floatingActionButton = {
         FloatingActionButton({
             backStack.add(Route.NewAlarmDialog)

@@ -34,9 +34,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.calendar.ContactViewModel
+import com.vayunmathur.calendar.util.ContactViewModel
 import com.vayunmathur.calendar.Route
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconDelete
@@ -56,7 +57,7 @@ fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
 
     Scaffold(
         topBar = {
-            TopAppBar({Text("Settings")}, navigationIcon = {
+            TopAppBar({Text(stringResource(R.string.settings))}, navigationIcon = {
                 IconNavigation(backStack)
             }, actions = {
                 if(selectedCalendarId != null) {
@@ -81,7 +82,7 @@ fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = paddingValues + PaddingValues(8.dp)) {
             grouped.forEach { (account, cals) ->
                 item {
-                    Text(text = account.ifEmpty { "(No account)" }, modifier = Modifier.padding(vertical = 8.dp))
+                    Text(text = account.ifEmpty { stringResource(R.string.no_account) }, modifier = Modifier.padding(vertical = 8.dp))
                 }
                 items(cals) { cal ->
                     val isSelected = selectedCalendarId == cal.id
@@ -94,7 +95,7 @@ fun SettingsScreen(viewModel: ContactViewModel, backStack: NavBackStack<Route>) 
                                 // select this calendar (or deselect if already selected)
                                 selectedCalendarId = if (isSelected) null else cal.id
                             },
-                        supportingContent = { Text(text = "ID: ${cal.id}") },
+                        supportingContent = { Text(text = stringResource(R.string.calendar_id_label, cal.id)) },
                         leadingContent = {
                             // colored circle showing calendar color; clickable to open color picker
                             Box(

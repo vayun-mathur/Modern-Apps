@@ -2,7 +2,7 @@ package com.vayunmathur.calendar.intents
 
 import android.content.ContentValues
 import android.provider.CalendarContract
-import com.vayunmathur.calendar.Calendar
+import com.vayunmathur.calendar.data.Calendar
 import com.vayunmathur.library.intents.calendar.EventData
 import com.vayunmathur.library.util.AssistantIntent
 import kotlinx.datetime.TimeZone

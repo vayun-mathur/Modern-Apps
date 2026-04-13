@@ -37,20 +37,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.crypto.MAIN_NAVBAR_PAGES
-import com.vayunmathur.crypto.MaximizedRow
-import com.vayunmathur.crypto.PortfolioViewModel
+import com.vayunmathur.crypto.util.MaximizedRow
+import com.vayunmathur.crypto.util.PortfolioViewModel
 import com.vayunmathur.crypto.R
 import com.vayunmathur.crypto.SwapPage
-import com.vayunmathur.crypto.api.JupiterAPI
-import com.vayunmathur.crypto.api.PendingOrder
-import com.vayunmathur.crypto.token.TokenInfo
-import com.vayunmathur.crypto.token.TokenPriceRepository
+import com.vayunmathur.crypto.util.api.JupiterAPI
+import com.vayunmathur.crypto.util.api.PendingOrder
+import com.vayunmathur.crypto.data.TokenInfo
+import com.vayunmathur.crypto.data.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.round
 import kotlinx.coroutines.delay
@@ -79,8 +80,8 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                 pendingOrder?.let { viewModel.placeOrder(it) }
             },
             onDismiss = { showDialog = false },
-            title = "Confirm Swap",
-            content = "You are about to swap $fromAmountDouble ${fromTokenInfo.symbol} for $toAmount ${toTokenInfo.symbol}."
+            title = stringResource(R.string.confirm_swap),
+            content = stringResource(R.string.confirm_swap_message, fromAmountDouble, fromTokenInfo.symbol, toAmount, toTokenInfo.symbol)
         )
     }
 
@@ -133,19 +134,19 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                             TextButton(onClick = {
                                 val balance = fromToken?.amount ?: 0.0
                                 fromAmount = (balance * 0.5).toString()
-                            }, Modifier.width(70.dp).height(40.dp)) { Text("50%") }
+                            }, Modifier.width(70.dp).height(40.dp)) { Text(stringResource(R.string.fifty_percent)) }
                             TextButton(onClick = {
                                 val balance = fromToken?.amount ?: 0.0
                                 fromAmount = (balance * 0.75).toString()
-                            }, Modifier.width(70.dp).height(40.dp)) { Text("75%") }
+                            }, Modifier.width(70.dp).height(40.dp)) { Text(stringResource(R.string.seventy_five_percent)) }
                             TextButton(onClick = {
                                 fromAmount = (fromToken?.amount ?: 0.0).toString()
-                            }, Modifier.width(70.dp).height(40.dp)) { Text("MAX") }
+                            }, Modifier.width(70.dp).height(40.dp)) { Text(stringResource(R.string.max)) }
                         }
                     }
                     Row {
                         Text(
-                            "Balance: ${fromToken?.amount ?: 0.0}",
+                            stringResource(R.string.balance_format, fromToken?.amount ?: 0.0),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -178,7 +179,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                     val toAmount = pendingOrder?.let { it.outAmount / 10.0.pow(toTokenInfo.decimals) }
                     fromAmount = toAmount?.toString() ?: ""
                 }) {
-                    Icon(painterResource(R.drawable.swap_vert_24px), contentDescription = "Swap")
+                    Icon(painterResource(R.drawable.swap_vert_24px), contentDescription = stringResource(R.string.swap))
                 }
             }
 
@@ -198,7 +199,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                     }
                      Row {
                         Text(
-                            "Balance: ${toToken?.amount ?: 0.0}",
+                            stringResource(R.string.balance_format, toToken?.amount ?: 0.0),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Spacer(Modifier.weight(1f))
@@ -230,7 +231,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        "1 ${fromTokenInfo.symbol} = ${rate.round(6)} ${toTokenInfo.symbol}",
+                        stringResource(R.string.exchange_rate_format, fromTokenInfo.symbol, rate.round(6), toTokenInfo.symbol),
                         modifier = Modifier.padding(start = 8.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -250,7 +251,7 @@ fun SwapScreen(viewModel: PortfolioViewModel, backStack: NavBackStack<NavKey>) {
                     .height(50.dp),
                 enabled = pendingOrder != null && fromAmountDouble > 0 && hasSufficientBalance
             ) {
-                val buttonText = if (fromAmountDouble > balance) "Insufficient Balance" else "Swap"
+                val buttonText = if (fromAmountDouble > balance) stringResource(R.string.insufficient_balance) else stringResource(R.string.swap)
                 Text(buttonText, fontSize = 16.sp)
             }
         }

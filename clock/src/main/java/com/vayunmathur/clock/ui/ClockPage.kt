@@ -22,11 +22,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.clock.MAIN_PAGES
+import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.citiesToTimezones
+import com.vayunmathur.clock.mainPages
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.util.BottomNavBar
 import com.vayunmathur.library.util.DataStoreUtils
@@ -47,9 +49,9 @@ fun ClockPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
     val time = now.toLocalDateTime(TimeZone.currentSystemDefault())
     val timeZones by ds.stringSetFlow("time_zones").collectAsState(setOf())
     Scaffold(topBar = {
-        TopAppBar({Text("Clock")})
+        TopAppBar({Text(stringResource(R.string.label_clock))})
     }, bottomBar = {
-        BottomNavBar(backStack, MAIN_PAGES, Route.Clock)
+        BottomNavBar(backStack, mainPages(), Route.Clock)
     }, floatingActionButton = {
         FloatingActionButton({
             backStack.add(Route.SelectTimeZonesDialog)
@@ -66,7 +68,7 @@ fun ClockPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                         second()
                     }), style = MaterialTheme.typography.displayLarge)
                     Spacer(Modifier.width(8.dp))
-                    Text(if(time.time.hour >= 12) "PM" else "AM", style = MaterialTheme.typography.displayMedium)
+                    Text(if(time.time.hour >= 12) stringResource(R.string.time_pm) else stringResource(R.string.time_am), style = MaterialTheme.typography.displayMedium)
                 }
             }
             item {
@@ -81,13 +83,14 @@ fun ClockPage(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
             items(timeZones.toList()) {city ->
                 val it = citiesToTimezones?.get(city) ?: return@items
                 val timeHere = now.toLocalDateTime(TimeZone.of(it))
+                val amPm = if(timeHere.time.hour >= 12) stringResource(R.string.time_pm) else stringResource(R.string.time_am)
                 Card {
                     ListItem({Text(city)}, trailingContent = {
                         Text(timeHere.time.format(LocalTime.Format {
                             amPmHour(Padding.NONE)
                             chars(":")
                             minute()
-                        }) + if(timeHere.time.hour >= 12) "PM" else "AM")
+                        }) + amPm)
                     }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
                 }
             }

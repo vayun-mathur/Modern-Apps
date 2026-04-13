@@ -29,15 +29,15 @@ import com.vayunmathur.calendar.ui.CalendarScreen
 import com.vayunmathur.calendar.ui.EditEventScreen
 import com.vayunmathur.calendar.ui.EventScreen
 import com.vayunmathur.calendar.ui.SettingsScreen
-import com.vayunmathur.calendar.ui.dialog.CalendarPickerDialog
-import com.vayunmathur.calendar.ui.dialog.CalendarSetDateDialog
-import com.vayunmathur.calendar.ui.dialog.RecurrenceDialog
-import com.vayunmathur.calendar.ui.dialog.SettingsAddCalendarDialog
-import com.vayunmathur.calendar.ui.dialog.SettingsChangeColorDialog
-import com.vayunmathur.calendar.ui.dialog.SettingsDeleteCalendarDialog
-import com.vayunmathur.calendar.ui.dialog.SettingsRenameCalendarDialog
+import com.vayunmathur.calendar.ui.dialogs.CalendarPickerDialog
+import com.vayunmathur.calendar.ui.dialogs.CalendarSetDateDialog
+import com.vayunmathur.calendar.ui.dialogs.RecurrenceDialog
+import com.vayunmathur.calendar.ui.dialogs.SettingsAddCalendarDialog
+import com.vayunmathur.calendar.ui.dialogs.SettingsChangeColorDialog
+import com.vayunmathur.calendar.ui.dialogs.SettingsDeleteCalendarDialog
+import com.vayunmathur.calendar.ui.dialogs.SettingsRenameCalendarDialog
 import com.vayunmathur.library.ui.dialog.TimePickerDialogContent
-import com.vayunmathur.calendar.ui.dialog.TimezonePickerDialog
+import com.vayunmathur.calendar.ui.dialogs.TimezonePickerDialog
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.library.util.DialogPage
@@ -47,6 +47,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import com.vayunmathur.calendar.data.Instance
+import com.vayunmathur.calendar.util.ContactViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

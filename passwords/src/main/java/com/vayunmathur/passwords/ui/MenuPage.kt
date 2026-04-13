@@ -31,10 +31,10 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.ListPage
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.tryOrDefault
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.Route
-import com.vayunmathur.passwords.TOTP
+import com.vayunmathur.passwords.util.TOTP
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)

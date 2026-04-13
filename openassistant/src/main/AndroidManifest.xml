@@ -66,7 +66,7 @@
             android:name="com.vayunmathur.library.services.DownloadService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
-        <service android:name=".InferenceService" android:exported="false" />
+        <service android:name=".util.InferenceService" android:exported="false" />
     </application>
 
 </manifest>

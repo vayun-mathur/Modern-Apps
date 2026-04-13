@@ -1,6 +1,8 @@
 package com.vayunmathur.photos
 
 import android.Manifest
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -30,6 +32,8 @@ import com.vayunmathur.photos.ui.MapPage
 import com.vayunmathur.photos.ui.PhotoPage
 import com.vayunmathur.photos.ui.EditPhotoPage
 import kotlinx.serialization.Serializable
+import com.vayunmathur.photos.util.ImageLoader
+import com.vayunmathur.photos.util.SyncWorker
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +52,7 @@ class MainActivity : ComponentActivity() {
                             Manifest.permission.READ_MEDIA_IMAGES,
                             Manifest.permission.READ_MEDIA_VIDEO,
                             Manifest.permission.ACCESS_MEDIA_LOCATION
-                        ), "Grant Image/Video Permissions"
+                        ), getString(R.string.grant_image_video_permissions)
                     ) {
                         Navigation(viewModel)
                     }
@@ -56,7 +60,7 @@ class MainActivity : ComponentActivity() {
                     PermissionsChecker(
                         arrayOf(
                             Manifest.permission.READ_EXTERNAL_STORAGE
-                        ), "Grant Storage Permission"
+                        ), getString(R.string.grant_storage_permission)
                     ) {
                         Navigation(viewModel)
                     }
@@ -103,9 +107,9 @@ fun Navigation(viewModel: DatabaseViewModel) {
     }
 }
 
-private enum class MainRoute(val route: Route, val title: String, val icon: Int) {
-    Gallery(Route.Gallery, "Gallery", R.drawable.gallery_thumbnail_24px),
-    Map(Route.Map, "Map", R.drawable.map_24px)
+private enum class MainRoute(val route: Route, @StringRes val titleRes: Int, val icon: Int) {
+    Gallery(Route.Gallery, R.string.label_gallery, R.drawable.gallery_thumbnail_24px),
+    Map(Route.Map, R.string.label_map, R.drawable.map_24px)
 }
 
 @Composable
@@ -115,7 +119,7 @@ fun NavigationBar(currentRoute: Route, backStack: NavBackStack<Route>) {
             ShortNavigationBarItem(it.route == currentRoute, { backStack.add(it.route) }, {
                 Icon(painterResource(it.icon), null)
             }, {
-                Text(it.title)
+                Text(stringResource(it.titleRes))
             })
         }
     }

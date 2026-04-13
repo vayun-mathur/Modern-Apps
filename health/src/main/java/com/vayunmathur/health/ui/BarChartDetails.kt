@@ -40,16 +40,18 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.HealthAPI
+import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.database.RecordType
+import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.Tuple4
@@ -70,7 +72,7 @@ import kotlin.time.Clock
  * Configuration for health metrics.
  */
 enum class HealthMetricConfig(
-    val title: String,
+    @StringRes val titleRes: Int,
     val recordType: RecordType,
     val unit: String,
     val dailyGoal: Double,
@@ -79,34 +81,34 @@ enum class HealthMetricConfig(
     val useDecimals: Boolean = false,
     val isDualSeries: Boolean = false
 ) {
-    ENERGY("Energy Burned", RecordType.CaloriesTotal, "cal", 2470.0),
-    ACTIVE_CALORIES("Active Calories", RecordType.CaloriesActive, "cal", 500.0),
-    BASAL_METABOLIC_RATE("Basal Metabolic Rate", RecordType.CaloriesBasal, "cal", 1800.0),
-    STEPS("Steps", RecordType.Steps, "steps", 10000.0),
-    WHEELCHAIR_PUSHES("Wheelchair Pushes", RecordType.Wheelchair, "pushes", 3000.0),
-    DISTANCE("Distance", RecordType.Distance, "km", 5.0, isLineChart = false, useDecimals = true),
-    ELEVATION("Elevation Gained", RecordType.Elevation, "m", 50.0, isLineChart = false, useDecimals = true),
-    FLOORS("Floors Climbed", RecordType.Floors, "floors", 10.0, isLineChart = false, useDecimals = true),
-    HYDRATION("Hydration", RecordType.Hydration, "L", 2.5, isLineChart = false, useDecimals = true),
+    ENERGY(R.string.metric_energy_burned, RecordType.CaloriesTotal, "cal", 2470.0),
+    ACTIVE_CALORIES(R.string.metric_active_calories, RecordType.CaloriesActive, "cal", 500.0),
+    BASAL_METABOLIC_RATE(R.string.metric_basal_metabolic_rate, RecordType.CaloriesBasal, "cal", 1800.0),
+    STEPS(R.string.metric_steps, RecordType.Steps, "steps", 10000.0),
+    WHEELCHAIR_PUSHES(R.string.metric_wheelchair_pushes, RecordType.Wheelchair, "pushes", 3000.0),
+    DISTANCE(R.string.metric_distance, RecordType.Distance, "km", 5.0, isLineChart = false, useDecimals = true),
+    ELEVATION(R.string.metric_elevation_gained, RecordType.Elevation, "m", 50.0, isLineChart = false, useDecimals = true),
+    FLOORS(R.string.metric_floors_climbed, RecordType.Floors, "floors", 10.0, isLineChart = false, useDecimals = true),
+    HYDRATION(R.string.metric_hydration, RecordType.Hydration, "L", 2.5, isLineChart = false, useDecimals = true),
 
     // Biological & Medical (Line Charts)
-    BLOOD_PRESSURE("Blood Pressure", RecordType.BloodPressure, "mmHg", 120.0, secondaryGoal = 80.0, isLineChart = true, isDualSeries = true),
-    GLUCOSE("Blood Glucose", RecordType.BloodGlucose, "mg/dL", 100.0, isLineChart = true, useDecimals = true),
-    VO2_MAX("VO2 Max", RecordType.Vo2Max, "ml/kg/min", 45.0, isLineChart = true, useDecimals = true),
-    SKIN_TEMP("Skin Temp Variation", RecordType.SkinTemperature, "°C", 0.0, isLineChart = true, useDecimals = true),
-    BREATHING_RATE("Breathing Rate", RecordType.RespiratoryRate, "brpm", 16.0, isLineChart = true, useDecimals = true),
-    RESTING_HEART_RATE("Resting Heart Rate", RecordType.RestingHeartRate, "bpm", 60.0, isLineChart = true),
-    OXYGEN_SATURATION("Oxygen Saturation", RecordType.OxygenSaturation, "%", 95.0, isLineChart = true, useDecimals = true),
-    HRV("Heart Rate Variability", RecordType.HeartRateVariabilityRmssd, "ms", 50.0, isLineChart = true, useDecimals = true),
-    HEART_RATE("Heart Rate", RecordType.HeartRate, "bpm", 100.0, isLineChart = true),
+    BLOOD_PRESSURE(R.string.metric_blood_pressure, RecordType.BloodPressure, "mmHg", 120.0, secondaryGoal = 80.0, isLineChart = true, isDualSeries = true),
+    GLUCOSE(R.string.metric_blood_glucose, RecordType.BloodGlucose, "mg/dL", 100.0, isLineChart = true, useDecimals = true),
+    VO2_MAX(R.string.metric_vo2_max, RecordType.Vo2Max, "ml/kg/min", 45.0, isLineChart = true, useDecimals = true),
+    SKIN_TEMP(R.string.metric_skin_temp_variation, RecordType.SkinTemperature, "°C", 0.0, isLineChart = true, useDecimals = true),
+    BREATHING_RATE(R.string.metric_breathing_rate, RecordType.RespiratoryRate, "brpm", 16.0, isLineChart = true, useDecimals = true),
+    RESTING_HEART_RATE(R.string.metric_resting_heart_rate, RecordType.RestingHeartRate, "bpm", 60.0, isLineChart = true),
+    OXYGEN_SATURATION(R.string.metric_oxygen_saturation, RecordType.OxygenSaturation, "%", 95.0, isLineChart = true, useDecimals = true),
+    HRV(R.string.metric_heart_rate_variability, RecordType.HeartRateVariabilityRmssd, "ms", 50.0, isLineChart = true, useDecimals = true),
+    HEART_RATE(R.string.metric_heart_rate, RecordType.HeartRate, "bpm", 100.0, isLineChart = true),
 
     // Physical Measurements
-    HEIGHT("Height", RecordType.Height, "cm", 175.0, isLineChart = true, useDecimals = true),
-    WEIGHT("Weight", RecordType.Weight, "kg", 75.0, isLineChart = true, useDecimals = true),
-    BODY_FAT("Body Fat", RecordType.BodyFat, "%", 20.0, isLineChart = true, useDecimals = true),
-    LEAN_BODY_MASS("Lean Body Mass", RecordType.LeanBodyMass, "kg", 60.0, isLineChart = true, useDecimals = true),
-    BONE_MASS("Bone Mass", RecordType.BoneMass, "kg", 3.0, isLineChart = true, useDecimals = true),
-    BODY_WATER_MASS("Body Water Mass", RecordType.BodyWaterMass, "kg", 45.0, isLineChart = true, useDecimals = true)
+    HEIGHT(R.string.metric_height, RecordType.Height, "cm", 175.0, isLineChart = true, useDecimals = true),
+    WEIGHT(R.string.metric_weight, RecordType.Weight, "kg", 75.0, isLineChart = true, useDecimals = true),
+    BODY_FAT(R.string.metric_body_fat, RecordType.BodyFat, "%", 20.0, isLineChart = true, useDecimals = true),
+    LEAN_BODY_MASS(R.string.metric_lean_body_mass, RecordType.LeanBodyMass, "kg", 60.0, isLineChart = true, useDecimals = true),
+    BONE_MASS(R.string.metric_bone_mass, RecordType.BoneMass, "kg", 3.0, isLineChart = true, useDecimals = true),
+    BODY_WATER_MASS(R.string.metric_body_water_mass, RecordType.BodyWaterMass, "kg", 45.0, isLineChart = true, useDecimals = true)
 }
 
 data class MetricDashboardData(
@@ -136,12 +138,20 @@ fun BarChartDetails(
     config: HealthMetricConfig
 ) {
     var selectedTab by remember { mutableIntStateOf(if(config == HealthMetricConfig.HEART_RATE) 0 else 1) }
-    val tabs = listOf("Day", "Week", "Month", "Year")
+    val tabs = listOf(
+        stringResource(R.string.tab_day),
+        stringResource(R.string.tab_week),
+        stringResource(R.string.tab_month),
+        stringResource(R.string.tab_year)
+    )
 
     var anchorDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
     var dataState by remember { mutableStateOf(MetricDashboardData()) }
 
     val tz = TimeZone.currentSystemDefault()
+
+    val dayLabelFormat = stringResource(R.string.history_day_label)
+    val monthLabelFormat = stringResource(R.string.history_month_label)
 
     LaunchedEffect(selectedTab, anchorDate, config) {
         val (startDate, endDate, periodType, periodType2) = when (selectedTab) {
@@ -187,8 +197,8 @@ fun BarChartDetails(
             val label = when (selectedTab) {
                 0 -> ""
                 1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz).toLocalDateTime(tz).dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
-                2 -> "Day ${index + 1}"
-                else -> "Month ${index + 1}"
+                2 -> String.format(dayLabelFormat, index + 1)
+                else -> String.format(monthLabelFormat, index + 1)
             }
             HistoryItem(
                 label = label,
@@ -218,7 +228,7 @@ fun BarChartDetails(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(config.title) },
+                title = { Text(stringResource(config.titleRes)) },
                 navigationIcon = { IconNavigation(backStack) }
             )
         }
@@ -246,9 +256,10 @@ fun BarChartDetails(
                 contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp)
             ) {
                 item {
+                    val weekOfFormat = stringResource(R.string.week_of)
                     val headerLabel = when (selectedTab) {
                         0 -> "${anchorDate.month.name} ${anchorDate.day}, ${anchorDate.year}"
-                        1 -> "Week of ${anchorDate.minus((anchorDate.dayOfWeek.ordinal+1)%7, DateTimeUnit.DAY)}"
+                        1 -> String.format(weekOfFormat, anchorDate.minus((anchorDate.dayOfWeek.ordinal+1)%7, DateTimeUnit.DAY))
                         2 -> "${anchorDate.month.name} ${anchorDate.year}"
                         else -> anchorDate.year.toString()
                     }
@@ -266,7 +277,7 @@ fun BarChartDetails(
                                 else -> anchorDate.minus(1, DateTimeUnit.YEAR)
                             }
                         }) {
-                            Icon(painterResource(R.drawable.baseline_arrow_back_24), "Prev")
+                            Icon(painterResource(R.drawable.baseline_arrow_back_24), stringResource(R.string.nav_prev))
                         }
 
                         Text(headerLabel, style = MaterialTheme.typography.titleMedium, modifier = Modifier.widthIn(min = 140.dp), textAlign = TextAlign.Center)
@@ -286,7 +297,7 @@ fun BarChartDetails(
                                 else -> anchorDate.plus(1, DateTimeUnit.YEAR)
                             }
                         }, enabled = nextDate <= Clock.System.todayIn(TimeZone.currentSystemDefault())) {
-                            Icon(painterResource(R.drawable.outline_arrow_forward_24), "Next")
+                            Icon(painterResource(R.drawable.outline_arrow_forward_24), stringResource(R.string.nav_next))
                         }
                     }
 
@@ -307,8 +318,9 @@ fun BarChartDetails(
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.Light
                         )
+                        val perDayAvg = stringResource(R.string.per_day_avg)
                         Text(
-                            text = " ${config.unit}${if (selectedTab != 0 && !config.isLineChart) " per day (avg)" else ""}",
+                            text = " ${config.unit}${if (selectedTab != 0 && !config.isLineChart) perDayAvg else ""}",
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(bottom = 12.dp, start = 4.dp),
                             color = LocalContentColor.current.copy(alpha = 0.6f)

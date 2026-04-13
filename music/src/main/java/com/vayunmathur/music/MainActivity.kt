@@ -19,11 +19,12 @@ import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
-import com.vayunmathur.music.database.Album
-import com.vayunmathur.music.database.Artist
-import com.vayunmathur.music.database.Music
-import com.vayunmathur.music.database.MusicDatabase
-import com.vayunmathur.music.database.Playlist
+import com.vayunmathur.music.data.Album
+import com.vayunmathur.music.data.Artist
+import com.vayunmathur.music.data.Music
+import com.vayunmathur.music.data.MusicDatabase
+import com.vayunmathur.music.data.Playlist
+import com.vayunmathur.music.R
 import com.vayunmathur.music.ui.AlbumDetailScreen
 import com.vayunmathur.music.ui.AlbumScreen
 import com.vayunmathur.music.ui.ArtistDetailScreen
@@ -32,8 +33,10 @@ import com.vayunmathur.music.ui.HomeScreen
 import com.vayunmathur.music.ui.PlaylistDetailScreen
 import com.vayunmathur.music.ui.PlaylistScreen
 import com.vayunmathur.music.ui.SongScreen
-import com.vayunmathur.music.ui.AddToPlaylistDialog
+import com.vayunmathur.music.ui.dialogs.AddToPlaylistDialog
 import kotlinx.serialization.Serializable
+import com.vayunmathur.music.util.PlaybackManager
+import com.vayunmathur.music.util.SyncWorker
 
 class MainActivity : ComponentActivity() {
     var controller: MediaController? = null
@@ -49,14 +52,14 @@ class MainActivity : ComponentActivity() {
                 if(Build.VERSION.SDK_INT >= 33) {
                     PermissionsChecker(
                         arrayOf(Manifest.permission.READ_MEDIA_AUDIO),
-                        "Grant Audio Media Permissions"
+                        getString(R.string.grant_audio_permissions)
                     ) {
                         Navigation(viewModel)
                     }
                 } else {
                     PermissionsChecker(
                         arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                        "Grant Storage Permissions"
+                        getString(R.string.grant_storage_permissions)
                     ) {
                         Navigation(viewModel)
                     }

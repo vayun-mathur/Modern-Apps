@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -38,8 +39,9 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
-import com.vayunmathur.findfamily.Networking
+import com.vayunmathur.findfamily.util.Networking
 import com.vayunmathur.findfamily.Route
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.Coord
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.LocationValueDao
@@ -83,6 +85,7 @@ fun MapView(
     selectedUser: SelectedUser? = null,
     selectedWaypoint: SelectedWaypoint? = null,
 ) {
+    val meLabel = stringResource(R.string.me_label)
     val users by viewModel.data<User>().collectAsState()
     val waypoints by viewModel.data<Waypoint>().collectAsState()
     val userPositions by remember { viewModel.getLatestMap() }.collectAsState(emptyMap())
@@ -93,7 +96,7 @@ fun MapView(
             withContext(Dispatchers.IO) {
                 viewModel.upsertAsync(
                     User(
-                        "Me",
+                        meLabel,
                         null,
                         "Unnamed Location",
                         true,

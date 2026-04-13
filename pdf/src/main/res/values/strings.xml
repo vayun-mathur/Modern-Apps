@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">PDF</string>
+    <string name="pdf_viewer_title">PDF Viewer</string>
+    <string name="search_label">Find</string>
+    <string name="search_result_counter">%1$d of %2$d</string>
+    <string name="password_dialog_title">Password Required</string>
+    <string name="password_dialog_message">This PDF is password protected. Please enter the password.</string>
+    <string name="password_label">Password</string>
+    <string name="ok">OK</string>
+    <string name="incorrect_password">Incorrect password. Please try again.</string>
 </resources>

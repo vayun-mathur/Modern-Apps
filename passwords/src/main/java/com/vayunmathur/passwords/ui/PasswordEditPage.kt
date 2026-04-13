@@ -32,6 +32,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.passwords.R
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
@@ -40,7 +42,7 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.isNew
-import com.vayunmathur.passwords.Password
+import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.Route
 import kotlinx.coroutines.launch
 
@@ -111,8 +113,8 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
         Column(Modifier.padding(paddingValues).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = userId, onValueChange = { userId = it }, label = { Text("User ID / Email") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.label_name)) }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = userId, onValueChange = { userId = it }, label = { Text(stringResource(R.string.label_user_id_email)) }, modifier = Modifier.fillMaxWidth())
                 }
             }
 
@@ -121,7 +123,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.label_password)) },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
                         trailingIcon = {
@@ -129,7 +131,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
                         }
                     )
 
-                    OutlinedTextField(value = totp, onValueChange = { totp = it }, label = { Text("TOTP Secret") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions.Default)
+                    OutlinedTextField(value = totp, onValueChange = { totp = it }, label = { Text(stringResource(R.string.label_totp_secret)) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions.Default)
                 }
             }
 
@@ -139,7 +141,7 @@ fun PasswordEditPage(backStack: NavBackStack<Route>, id: Long, viewModel: Databa
                     OutlinedTextField(
                         value = websiteInput,
                         onValueChange = { websiteInput = it },
-                        label = { Text("Add website") },
+                        label = { Text(stringResource(R.string.label_add_website)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = {

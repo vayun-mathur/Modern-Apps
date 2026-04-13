@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
@@ -53,10 +54,10 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.round
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.channelURLtoID
+import com.vayunmathur.youpipe.util.channelURLtoID
 import com.vayunmathur.youpipe.findActivity
-import com.vayunmathur.youpipe.videoIDtoURL
-import com.vayunmathur.youpipe.videoURLtoID
+import com.vayunmathur.youpipe.util.videoIDtoURL
+import com.vayunmathur.youpipe.util.videoURLtoID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -186,13 +187,13 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
         }) {
             Card {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Video load error - Youtube may have blocked anonymous watch access from this IP")
+                    Text(stringResource(R.string.video_load_error))
                     Spacer(Modifier.height(8.dp))
                     Button({
                         error = false
                         backStack.pop()
                     }) {
-                        Text("Go Back")
+                        Text(stringResource(R.string.action_go_back))
                     }
                 }
             }
@@ -242,7 +243,7 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
                                 coroutineScope.launch { pagerState.animateScrollToPage(0) }
                             }
                         ) {
-                            Text("Comments", modifier = Modifier.padding(16.dp))
+                            Text(stringResource(R.string.label_comments), modifier = Modifier.padding(16.dp))
                         }
                         Tab(
                             selected = pagerState.currentPage == 1,
@@ -250,7 +251,7 @@ fun VideoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, vide
                                 coroutineScope.launch { pagerState.animateScrollToPage(1) }
                             }
                         ) {
-                            Text("Related Videos", modifier = Modifier.padding(16.dp))
+                            Text(stringResource(R.string.label_related_videos), modifier = Modifier.padding(16.dp))
                         }
                     }
 

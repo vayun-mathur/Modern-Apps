@@ -21,11 +21,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.findfamily.Route
-import com.vayunmathur.findfamily.data.Waypoint
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 
@@ -49,11 +50,11 @@ fun WaypointEditPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMode
     }, bottomBar = {
         Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.padding(16.dp)) {
-                OutlinedTextField(name, {name = it}, Modifier.fillMaxWidth(), isError = name.isBlank(), supportingText = if(name.isBlank()) { {Text("Name cannot be blank") } } else null)
+                OutlinedTextField(name, {name = it}, Modifier.fillMaxWidth(), isError = name.isBlank(), supportingText = if(name.isBlank()) { {Text(stringResource(R.string.waypoint_name_blank_error)) } } else null)
                 Spacer(Modifier.heightIn(8.dp))
-                OutlinedTextField(range, {range = it}, Modifier.fillMaxWidth(), suffix = {Text("meters")}, keyboardOptions = KeyboardOptions(
+                OutlinedTextField(range, {range = it}, Modifier.fillMaxWidth(), suffix = {Text(stringResource(R.string.waypoint_range_suffix))}, keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number
-                ), isError = range.toDoubleOrNull() == null, supportingText = if(range.toDoubleOrNull() == null) { {Text("Range must be a number") } } else null)
+                ), isError = range.toDoubleOrNull() == null, supportingText = if(range.toDoubleOrNull() == null) { {Text(stringResource(R.string.waypoint_range_error)) } } else null)
             }
         }
     }) { paddingValues ->

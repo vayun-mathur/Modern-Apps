@@ -38,7 +38,7 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconVisible
 import com.vayunmathur.library.util.DatabaseViewModel
-import com.vayunmathur.notes.parseMarkdown
+import com.vayunmathur.notes.util.parseMarkdown
 import com.vayunmathur.notes.Route
 import com.vayunmathur.notes.data.Note
 import java.io.File

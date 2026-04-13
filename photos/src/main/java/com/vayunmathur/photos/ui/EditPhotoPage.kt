@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconCheck
@@ -59,8 +60,9 @@ import com.vayunmathur.library.ui.IconRotateRight
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.photos.R
 import com.vayunmathur.photos.Route
-import com.vayunmathur.photos.SyncWorker
+import com.vayunmathur.photos.util.SyncWorker
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -83,7 +85,7 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Photo") },
+                title = { Text(stringResource(R.string.title_edit_photo)) },
                 navigationIcon = {
                     IconNavigation(backStack)
                 },
@@ -117,7 +119,7 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
                                 onDismissRequest = { showSaveMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Save") },
+                                    text = { Text(stringResource(R.string.action_save)) },
                                     onClick = {
                                         showSaveMenu = false
                                         photo?.let {
@@ -129,7 +131,7 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Save as Copy") },
+                                    text = { Text(stringResource(R.string.action_save_as_copy)) },
                                     onClick = {
                                         showSaveMenu = false
                                         photo?.let {

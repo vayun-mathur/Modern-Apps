@@ -35,7 +35,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextDefaults.defaultTextStyle
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.vayunmathur.calendar.Instance
+import com.vayunmathur.calendar.data.Instance
 import com.vayunmathur.calendar.MainActivity
 import com.vayunmathur.calendar.R
 import com.vayunmathur.calendar.ui.atEndOfDayIn

@@ -46,12 +46,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import android.content.Context
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.findfamily.Platform
+import com.vayunmathur.findfamily.util.Platform
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.Route
 import com.vayunmathur.findfamily.data.LocationValue
@@ -61,7 +64,7 @@ import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.getLatestMap
-import com.vayunmathur.findfamily.ui.dialog.encodeBase26
+import com.vayunmathur.findfamily.ui.dialogs.encodeBase26
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconCopy
@@ -109,13 +112,13 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
         }) {
             FloatingActionButtonMenuItem({
                 backStack.add(Route.AddPersonDialog())
-            }, {Text("Person")}, { Icon(painterResource(R.drawable.outline_person_24), null) })
+            }, {Text(stringResource(R.string.fab_person))}, { Icon(painterResource(R.drawable.outline_person_24), null) })
             FloatingActionButtonMenuItem({
                 backStack.add(Route.WaypointEditPage(0))
-            }, {Text("Location")}, {Icon(painterResource(R.drawable.outline_pin_drop_24), null)})
+            }, {Text(stringResource(R.string.fab_location))}, {Icon(painterResource(R.drawable.outline_pin_drop_24), null)})
             FloatingActionButtonMenuItem({
                 backStack.add(Route.AddLinkDialog)
-            }, {Text("Link")}, {Icon(painterResource(R.drawable.outline_link_24), null)})
+            }, {Text(stringResource(R.string.fab_link))}, {Icon(painterResource(R.drawable.outline_link_24), null)})
         }
     }, bottomBar = {
         Surface(Modifier.heightIn(max = 400.dp).padding(BottomAppBarDefaults.windowInsets.asPaddingValues()), color = MaterialTheme.colorScheme.background) {
@@ -125,7 +128,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 }
                 if (users.any { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
                     item {
-                        Text("Location Sharing Requests", Modifier.padding(start = 8.dp))
+                        Text(stringResource(R.string.section_location_sharing_requests), Modifier.padding(start = 8.dp))
                     }
                 }
                 items(users.filter { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
@@ -133,7 +136,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 }
                 if (temporaryLinks.isNotEmpty()) {
                     item {
-                        Text("Temporary Links", Modifier.padding(start = 8.dp))
+                        Text(stringResource(R.string.section_temporary_links), Modifier.padding(start = 8.dp))
                     }
                 }
                 items(temporaryLinks) {
@@ -141,7 +144,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                 }
                 item {
                     if (waypoints.isNotEmpty()) {
-                        Text("Saved Places", Modifier.padding(start = 8.dp))
+                        Text(stringResource(R.string.section_saved_places), Modifier.padding(start = 8.dp))
                     }
                 }
                 items(waypoints) {
@@ -160,7 +163,7 @@ fun MainPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
 fun AwaitingRequestCard(backStack: NavBackStack<Route>, id: Long) {
     Card {
         ListItem({
-            Text("Request from ${id.encodeBase26()}")
+            Text(stringResource(R.string.request_from, id.encodeBase26()))
         }, trailingContent = {
             IconButton({
                 backStack.add(Route.AddPersonDialog(id))
@@ -173,11 +176,12 @@ fun AwaitingRequestCard(backStack: NavBackStack<Route>, id: Long) {
 
 @Composable
 fun TemporaryLinkCard(platform: Platform, viewModel: DatabaseViewModel, temporaryLink: TemporaryLink) {
+    val context = LocalContext.current
     Card {
         ListItem({
             Text(temporaryLink.name)
         }, Modifier, {}, {
-            Text("Expires ${timestring(temporaryLink.deleteAt, true)}")
+            Text(stringResource(R.string.expires, timestring(temporaryLink.deleteAt, true, context)))
         }, trailingContent = {
             Row {
                 IconButton({
@@ -200,9 +204,9 @@ fun TemporaryLinkCard(platform: Platform, viewModel: DatabaseViewModel, temporar
 fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List<User>) {
     val usersWithin = users.filter { it.locationName == waypoint.name }
     val usersString = usersWithin.joinToString { it.name } + when(usersWithin.size) {
-        0 -> "nobody is currently here"
-        1 -> " is currently here"
-        else -> " are currently here"
+        0 -> stringResource(R.string.nobody_here)
+        1 -> stringResource(R.string.user_is_here)
+        else -> stringResource(R.string.users_are_here)
     }
     Card {
         ListItem(
@@ -222,16 +226,17 @@ fun WaypointCard(backStack: NavBackStack<Route>, waypoint: Waypoint, users: List
 @OptIn(ExperimentalTime::class)
 @Composable
 fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: LocationValue?, showSupportingContent: Boolean) {
-    val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false) } ?: "Never"
+    val context = LocalContext.current
+    val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false, context) } ?: stringResource(R.string.last_updated_never)
     val speed = locationValue?.speed?.times(10)?.roundToInt()?.div(10F) ?: 0.0
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
     val timeSinceEntry = Clock.System.now() - user.lastLocationChangeTime
     val sinceString = if(user.locationName == "Unnamed Location")
         ""
     else if(timeSinceEntry < 60.seconds)
-        "Since just now"
+        stringResource(R.string.since_just_now)
     else if(timeSinceEntry < 15.minutes)
-        "Since ${timeSinceEntry.inWholeMinutes} minutes ago"
+        stringResource(R.string.since_minutes_ago, timeSinceEntry.inWholeMinutes)
     else {
         val formattedTime = sinceTime.format(LocalDateTime.Format {
             amPmHour(Padding.NONE)
@@ -241,11 +246,11 @@ fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: Location
             amPmMarker("am", "pm")
         })
         val formattedDate = when(sinceTime.date.toEpochDays() - Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toEpochDays()) {
-            0L -> "today"
-            1L -> "yesterday"
+            0L -> stringResource(R.string.today)
+            1L -> stringResource(R.string.yesterday)
             else -> sinceTime.date.format(DateFormats.MONTH_DAY)
         }
-        "Since $formattedTime $formattedDate"
+        stringResource(R.string.since_time_date, formattedTime, formattedDate)
     }
     Card(if(showSupportingContent) Modifier.clickable(onClick = {
         backStack.add(Route.UserPage(user.id))
@@ -262,9 +267,9 @@ fun UserCard(backStack: NavBackStack<Route>, user: User, locationValue: Location
             },
             headlineContent = { Text(user.name, fontWeight = FontWeight.Bold) },
             supportingContent = { if(showSupportingContent) {
-                Text("Updated $lastUpdatedTime\nAt ${user.locationName}\n$sinceString")
+                Text(stringResource(R.string.user_card_status, lastUpdatedTime, user.locationName, sinceString))
             } }, trailingContent = { if(showSupportingContent){
-                Text("$speed m/s")
+                Text(stringResource(R.string.speed_ms, speed.toString()))
             } })
     }
 }
@@ -281,31 +286,31 @@ fun BatteryBar(percent: Float, width: Dp = 30.dp, height: Dp = 15.dp) {
         Box(Modifier.size(width, height).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))) {
             Box(Modifier.fillMaxHeight().width((width * (percent / 100f))).background(color, RoundedCornerShape(4.dp)))
         }
-        Text("${percent.toInt()}%", fontSize = 12.sp)
+        Text(stringResource(R.string.battery_percentage, percent.toInt()), fontSize = 12.sp)
     }
 }
 
-fun timestring(timestamp: Instant, future: Boolean): String {
+fun timestring(timestamp: Instant, future: Boolean, context: Context): String {
     val duration = (Clock.System.now() - timestamp).absoluteValue
     if(!future) {
         return if (duration.inWholeSeconds < 60) {
-            "just now"
+            context.getString(R.string.time_just_now)
         } else if (duration.inWholeMinutes < 60) {
-            "${duration.inWholeMinutes} minutes ago"
+            context.getString(R.string.time_minutes_ago, duration.inWholeMinutes)
         } else if (duration.inWholeHours < 24) {
-            "${duration.inWholeHours} hours ago"
+            context.getString(R.string.time_hours_ago, duration.inWholeHours)
         } else {
-            "${duration.inWholeDays} days ago"
+            context.getString(R.string.time_days_ago, duration.inWholeDays)
         }
     } else {
         return if (duration.inWholeSeconds < 60) {
-            "very soon"
+            context.getString(R.string.time_very_soon)
         } else if (duration.inWholeMinutes < 60) {
-            "in ${duration.inWholeMinutes} minutes"
+            context.getString(R.string.time_in_minutes, duration.inWholeMinutes)
         } else if (duration.inWholeHours < 24) {
-            "in ${duration.inWholeHours} hours"
+            context.getString(R.string.time_in_hours, duration.inWholeHours)
         } else {
-            "in ${duration.inWholeDays} days"
+            context.getString(R.string.time_in_days, duration.inWholeDays)
         }
     }
 }

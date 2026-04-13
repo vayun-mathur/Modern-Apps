@@ -39,10 +39,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.findfamily.Networking
-import com.vayunmathur.findfamily.Platform
+import com.vayunmathur.findfamily.util.Networking
+import com.vayunmathur.findfamily.util.Platform
 import com.vayunmathur.findfamily.Route
+import com.vayunmathur.findfamily.R
 import com.vayunmathur.findfamily.data.LocationValue
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.getLatestMap
@@ -96,7 +98,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                             Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Share your location")
+                            Text(stringResource(R.string.share_your_location))
                             Spacer(Modifier.weight(1f))
                             Checkbox(
                                 selectedUser.sendingEnabled,
@@ -109,7 +111,7 @@ fun UserPage(platform: Platform, backStack: NavBackStack<Route>, viewModel: Data
                     OutlinedButton({
                         requestPickContact1()
                     }) {
-                        Text("Change connected contact")
+                        Text(stringResource(R.string.change_connected_contact))
                     }
                 }
             }
@@ -166,36 +168,36 @@ fun BoxScope.HistoryBar(backStack: NavBackStack<Route>, isShowingPresent: Boolea
                     IconButton({
                         sliderState.value -= 5*60
                     }) {
-                        Text("<<<")
+                        Text(stringResource(R.string.history_rewind_large))
                     }
                     IconButton({
                         sliderState.value += 5*60
                     }) {
-                        Text(">>>")
+                        Text(stringResource(R.string.history_forward_large))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     IconButton({
                         sliderState.value -= 60
                     }) {
-                        Text("<<")
+                        Text(stringResource(R.string.history_rewind_medium))
                     }
                     IconButton({
                         sliderState.value += 60
                     }) {
-                        Text(">>")
+                        Text(stringResource(R.string.history_forward_medium))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     IconButton({
                         sliderState.value -= 10
                     }) {
-                        Text("<")
+                        Text(stringResource(R.string.history_rewind_small))
                     }
                     IconButton({
                         sliderState.value += 10
                     }) {
-                        Text(">")
+                        Text(stringResource(R.string.history_forward_small))
                     }
                 }
                 Text(pickedLocalTime.format(DateFormats.TIME_SECOND_AM_PM), fontSize = 11.sp)
@@ -233,7 +235,7 @@ fun BoxScope.HistoryBar(backStack: NavBackStack<Route>, isShowingPresent: Boolea
             OutlinedButton({
                 setShowingPresent(!isShowingPresent)
             }, Modifier.fillMaxWidth()) {
-                Text(if (isShowingPresent) "History" else "Hide", fontSize = 11.sp)
+                Text(if (isShowingPresent) stringResource(R.string.history_button) else stringResource(R.string.hide_button), fontSize = 11.sp)
             }
         }
     }

@@ -22,9 +22,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconNavigation
@@ -39,7 +41,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = { IconNavigation(backStack) }
             )
         },
@@ -55,7 +57,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
         ) {
             item {
                 Text(
-                    text = "Visible Accounts",
+                    text = stringResource(R.string.visible_accounts),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -63,8 +65,9 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
             }
             items(accounts) { account ->
                 val isVisible = account.name !in hiddenAccounts
+                val onDevice = stringResource(R.string.on_device)
                 ListItem(
-                    headlineContent = { Text(account.name.ifEmpty { "On-Device" }) },
+                    headlineContent = { Text(account.name.ifEmpty { onDevice }) },
                     supportingContent = { Text(account.type) },
                     trailingContent = {
                         Checkbox(

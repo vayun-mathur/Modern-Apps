@@ -49,17 +49,18 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.google.i18n.phonenumbers.NumberParseException
 import com.google.i18n.phonenumbers.PhoneNumberUtil
-import com.vayunmathur.contacts.CDKEvent
-import com.vayunmathur.contacts.Contact
-import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.data.CDKEvent
+import com.vayunmathur.contacts.data.Contact
+import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.contacts.R
-import com.vayunmathur.contacts.VcfUtils
+import com.vayunmathur.contacts.util.VcfUtils
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
@@ -91,12 +92,13 @@ fun ContactDetailsPage(
 
     if (contact == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            Text("Contact not found")
+            Text(stringResource(R.string.contact_not_found))
         }
         return
     }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val shareContactLabel = stringResource(R.string.share_contact)
 
     Scaffold(Modifier, {
             TopAppBar({}, Modifier, {if (showBackButton) IconNavigation(onBack) },
@@ -110,7 +112,7 @@ fun ContactDetailsPage(
                     }) {
                         Icon(
                             if (!contact!!.isFavorite) painterResource(R.drawable.outline_star_24) else painterResource(R.drawable.baseline_star_24),
-                            "Favorite",
+                            stringResource(R.string.favorite),
                             tint = if (contact!!.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -128,7 +130,7 @@ fun ContactDetailsPage(
                             intent.type = "text/x-vcard"
                             intent.putExtra(Intent.EXTRA_STREAM, uri)
                             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            context.startActivity(Intent.createChooser(intent, "Share Contact"))
+                            context.startActivity(Intent.createChooser(intent, shareContactLabel))
                         }
                     }) {
                         IconShare()
@@ -205,7 +207,7 @@ fun ContactDetailsPage(
 
             if(details.dates.isNotEmpty()) {
                 item {
-                    GroupedSection(title = "About ${contact!!.name.firstName}") {
+                    GroupedSection(title = stringResource(R.string.about_name, contact!!.name.firstName)) {
                         val format = LocalDate.Format {
                             monthName(MonthNames.ENGLISH_FULL)
                             chars(" ")
@@ -216,7 +218,7 @@ fun ContactDetailsPage(
                         contact!!.birthday?.let { birthday ->
                             ListItem(
                                 headlineContent = { Text(birthday.startDate.format(format)) },
-                                supportingContent = { Text("Birthday") },
+                                supportingContent = { Text(stringResource(R.string.birthday)) },
                                 leadingContent = { Icon(painterResource(R.drawable.outline_cake_24), birthday.typeString(context)) },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                             )
@@ -235,7 +237,7 @@ fun ContactDetailsPage(
             
             if (contact?.note?.content?.isNotEmpty() == true) {
                 item {
-                    GroupedSection(title = "Note") {
+                    GroupedSection(title = stringResource(R.string.note)) {
                         Text(
                             text = contact!!.note.content,
                             modifier = Modifier.padding(16.dp),
@@ -313,20 +315,20 @@ fun ActionButtonsRow(number: String?, email: String?) {
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        ActionButton(icon = painterResource(R.drawable.outline_call_24), label = "Call", active = number != null) {
+        ActionButton(icon = painterResource(R.drawable.outline_call_24), label = stringResource(R.string.action_call), active = number != null) {
             val intent = Intent(Intent.ACTION_DIAL)
             intent.data = "tel:$number".toUri()
             context.startActivity(intent)
         }
-        ActionButton(icon = painterResource(R.drawable.outline_sms_24), label = "Message", active = number != null) {
+        ActionButton(icon = painterResource(R.drawable.outline_sms_24), label = stringResource(R.string.action_message), active = number != null) {
             val intent = Intent(Intent.ACTION_SENDTO)
             intent.data = "sms:$number".toUri()
             context.startActivity(intent)
         }
-        ActionButton(icon = painterResource(R.drawable.outline_videocam_24), label = "Video", active = number != null) {
+        ActionButton(icon = painterResource(R.drawable.outline_videocam_24), label = stringResource(R.string.action_video), active = number != null) {
 
         }
-        ActionButton(icon = painterResource(R.drawable.outline_mail_24), label = "Email", active = email != null) {
+        ActionButton(icon = painterResource(R.drawable.outline_mail_24), label = stringResource(R.string.email), active = email != null) {
             val intent = Intent(Intent.ACTION_SENDTO)
             intent.data = "mailto:$email".toUri()
             context.startActivity(intent)
@@ -388,7 +390,7 @@ fun DetailItem(
             trailingContent = {
                 if (trailingIcon != null && onTrailingIconClick != null) {
                     IconButton(onClick = onTrailingIconClick) {
-                        Icon(trailingIcon, "Action")
+                        Icon(trailingIcon, stringResource(R.string.action))
                     }
                 }
             },

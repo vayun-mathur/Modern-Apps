@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.clock.data.Alarm
@@ -29,8 +30,8 @@ import com.vayunmathur.clock.ui.AlarmPage
 import com.vayunmathur.clock.ui.ClockPage
 import com.vayunmathur.clock.ui.StopwatchPage
 import com.vayunmathur.clock.ui.TimerPage
-import com.vayunmathur.clock.ui.dialog.NewTimerDialog
-import com.vayunmathur.clock.ui.dialog.SelectTimeZonesDialog
+import com.vayunmathur.clock.ui.dialogs.NewTimerDialog
+import com.vayunmathur.clock.ui.dialogs.SelectTimeZonesDialog
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.dialog.TimePickerDialogContent
 import com.vayunmathur.library.util.BottomBarItem
@@ -124,11 +125,12 @@ sealed interface Route : NavKey {
     data class AlarmSetTimeDialog(val id: Long, val time: LocalTime): Route
 }
 
-val MAIN_PAGES = listOf(
-    BottomBarItem("Alarm", Route.Alarm, R.drawable.baseline_access_alarm_24),
-    BottomBarItem("Clock", Route.Clock, R.drawable.baseline_access_time_24),
-    BottomBarItem("Timer", Route.Timer, R.drawable.baseline_hourglass_bottom_24),
-    BottomBarItem("Stopwatch", Route.Stopwatch, R.drawable.outline_timer_24)
+@Composable
+fun mainPages() = listOf(
+    BottomBarItem(stringResource(R.string.label_alarm), Route.Alarm, R.drawable.baseline_access_alarm_24),
+    BottomBarItem(stringResource(R.string.label_clock), Route.Clock, R.drawable.baseline_access_time_24),
+    BottomBarItem(stringResource(R.string.label_timer), Route.Timer, R.drawable.baseline_hourglass_bottom_24),
+    BottomBarItem(stringResource(R.string.label_stopwatch), Route.Stopwatch, R.drawable.outline_timer_24)
 )
 
 @Composable
@@ -167,20 +169,20 @@ fun createTimerNotificationChannels(context: Context) {
 
     nm.createNotificationChannels(listOf(
         // 1. Quiet channel for ongoing countdowns
-        NotificationChannel("active_timers_channel", "Ongoing Timers", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "Ongoing countdowns"
+        NotificationChannel("active_timers_channel", context.getString(R.string.channel_ongoing_timers_name), NotificationManager.IMPORTANCE_LOW).apply {
+            description = context.getString(R.string.channel_ongoing_timers_description)
             setShowBadge(false)
         },
         // 2. Loud channel for the "Time's Up" alert
-        NotificationChannel("finished_timers_channel", "Completed Timers", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Alerts when timers finish"
+        NotificationChannel("finished_timers_channel", context.getString(R.string.channel_completed_timers_name), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = context.getString(R.string.channel_completed_timers_description)
             enableVibration(true)
             setSound(
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
                 AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
         },
-        NotificationChannel("ALARM_CHANNEL_ID", "Alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Notifications for scheduled alarms"
+        NotificationChannel("ALARM_CHANNEL_ID", context.getString(R.string.channel_alarms_name), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = context.getString(R.string.channel_alarms_description)
             // Optional: Set a specific sound for the channel here
             setBypassDnd(true) // Allows alarm to ring during Doze/DND
             setSound(null, null) // Service handles sound via MediaPlayer

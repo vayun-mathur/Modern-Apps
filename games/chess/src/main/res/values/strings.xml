@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">Chess</string>
+    <string name="start_new_game">Start New Game</string>
+    <string name="play_as">"Play as    "</string>
+    <string name="color_white">White</string>
+    <string name="color_black">Black</string>
+    <string name="difficulty_easy">Easy</string>
+    <string name="difficulty_medium">Medium</string>
+    <string name="difficulty_hard">Hard</string>
+    <string name="difficulty_master">Master</string>
+    <string name="start_game">Start Game</string>
+    <string name="new_game">New Game</string>
+    <string name="two_player_local">2-Player Local</string>
+    <string name="human_vs_ai">Human vs AI</string>
+    <string name="promote_pawn">Promote Pawn</string>
+    <string name="check">Check!</string>
+    <string name="checkmate_wins">Checkmate! %1$s wins.</string>
 </resources>

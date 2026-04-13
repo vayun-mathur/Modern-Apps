@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Photos</string>
+    <string name="title_edit_photo">Edit Photo</string>
+    <string name="action_save">Save</string>
+    <string name="action_save_as_copy">Save as Copy</string>
+    <string name="label_gallery">Gallery</string>
+    <string name="label_map">Map</string>
+    <string name="grant_image_video_permissions">Grant Image/Video Permissions</string>
+    <string name="grant_storage_permission">Grant Storage Permission</string>
 </resources>

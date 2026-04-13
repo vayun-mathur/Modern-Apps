@@ -38,12 +38,12 @@
         </activity>
 
         <service
-            android:name=".LocationTrackingService"
+            android:name=".util.LocationTrackingService"
             android:foregroundServiceType="location"
             android:exported="false" />
 
 
-        <receiver android:name=".BootReceiver" android:exported="false">
+        <receiver android:name=".util.BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

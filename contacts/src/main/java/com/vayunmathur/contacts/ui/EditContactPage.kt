@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
@@ -60,23 +61,23 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.scale
 import com.vayunmathur.library.util.NavBackStack
 import com.google.i18n.phonenumbers.PhoneNumberUtil
-import com.vayunmathur.contacts.CDKEmail
-import com.vayunmathur.contacts.CDKEvent
-import com.vayunmathur.contacts.CDKNickname
-import com.vayunmathur.contacts.CDKPhone
-import com.vayunmathur.contacts.CDKStructuredPostal
-import com.vayunmathur.contacts.Contact
-import com.vayunmathur.contacts.ContactAccount
-import com.vayunmathur.contacts.ContactDetail
-import com.vayunmathur.contacts.ContactDetails
-import com.vayunmathur.contacts.ContactViewModel
-import com.vayunmathur.contacts.Event
-import com.vayunmathur.contacts.Name
-import com.vayunmathur.contacts.Nickname
-import com.vayunmathur.contacts.Note
-import com.vayunmathur.contacts.Organization
-import com.vayunmathur.contacts.PhoneNumber
-import com.vayunmathur.contacts.Photo
+import com.vayunmathur.contacts.data.CDKEmail
+import com.vayunmathur.contacts.data.CDKEvent
+import com.vayunmathur.contacts.data.CDKNickname
+import com.vayunmathur.contacts.data.CDKPhone
+import com.vayunmathur.contacts.data.CDKStructuredPostal
+import com.vayunmathur.contacts.data.Contact
+import com.vayunmathur.contacts.util.ContactAccount
+import com.vayunmathur.contacts.data.ContactDetail
+import com.vayunmathur.contacts.data.ContactDetails
+import com.vayunmathur.contacts.util.ContactViewModel
+import com.vayunmathur.contacts.data.Event
+import com.vayunmathur.contacts.data.Name
+import com.vayunmathur.contacts.data.Nickname
+import com.vayunmathur.contacts.data.Note
+import com.vayunmathur.contacts.data.Organization
+import com.vayunmathur.contacts.data.PhoneNumber
+import com.vayunmathur.contacts.data.Photo
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
 import com.vayunmathur.library.ui.IconClose
@@ -129,7 +130,10 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (contact == null) "Add contact" else "Edit contact") },
+                title = {
+                    val pageTitle = if (contact == null) stringResource(R.string.add_contact) else stringResource(R.string.edit_contact)
+                    Text(pageTitle)
+                },
                 navigationIcon = {
                     IconButton(onClick = { backStack.pop() }) {
                         IconClose()
@@ -181,7 +185,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         viewModel.saveContact(newContact)
                         backStack.pop()
                     }) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             )
@@ -214,7 +218,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             OutlinedTextField(
                 value = firstName,
                 onValueChange = { firstName = it },
-                label = { Text("First name") },
+                label = { Text(stringResource(R.string.first_name)) },
                 leadingIcon = { NamePrefixChooser(namePrefix) { namePrefix = it } },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -223,7 +227,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             OutlinedTextField(
                 value = middleName,
                 onValueChange = { middleName = it },
-                label = { Text("Middle name") },
+                label = { Text(stringResource(R.string.middle_name)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
@@ -231,7 +235,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             OutlinedTextField(
                 value = lastName,
                 onValueChange = { lastName = it },
-                label = { Text("Last name") },
+                label = { Text(stringResource(R.string.last_name)) },
                 trailingIcon = { NameSuffixChooser(nameSuffix) { nameSuffix = it } },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -240,7 +244,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             OutlinedTextField(
                 value = nickname,
                 onValueChange = { nickname = it },
-                label = { Text("Nickname") },
+                label = { Text(stringResource(R.string.nickname)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
@@ -248,13 +252,13 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             OutlinedTextField(
                 value = company,
                 onValueChange = { company = it },
-                label = { Text("Company") },
+                label = { Text(stringResource(R.string.company)) },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(16.dp))
 
             DetailsSection(
-                "Phone",
+                stringResource(R.string.phone),
                 phoneNumbers,
                 painterResource(R.drawable.outline_call_24),
                 KeyboardType.Phone,
@@ -264,7 +268,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             Spacer(Modifier.height(8.dp))
 
             DetailsSection(
-                "Email",
+                stringResource(R.string.email),
                 emails,
                 painterResource(R.drawable.outline_mail_24),
                 KeyboardType.Email,
@@ -286,7 +290,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             Spacer(Modifier.height(12.dp))
 
             DetailsSection(
-                "Addresses",
+                stringResource(R.string.addresses),
                 addresses,
                 painterResource(R.drawable.outline_event_24),
                 KeyboardType.Text,
@@ -299,7 +303,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             OutlinedTextField(
                 value = noteContent,
                 onValueChange = { noteContent = it },
-                label = { Text("Note") },
+                label = { Text(stringResource(R.string.note)) },
                 leadingIcon = {
                     IconEdit()
                 },
@@ -320,23 +324,24 @@ fun AccountChooser(
     onAccountChange: (String, String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val onDevice = stringResource(R.string.on_device)
     Box(Modifier.fillMaxWidth()) {
         OutlinedTextField(
-            value = if (accountName.isEmpty()) "On-Device" else accountName,
+            value = if (accountName.isEmpty()) onDevice else accountName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Account") },
+            label = { Text(stringResource(R.string.account)) },
             modifier = Modifier.fillMaxWidth(),
             trailingIcon = {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(painterResource(R.drawable.baseline_arrow_drop_down_24), "Choose account")
+                    Icon(painterResource(R.drawable.baseline_arrow_drop_down_24), stringResource(R.string.choose_account))
                 }
             }
         )
         DropdownMenu(expanded, { expanded = false }) {
             accounts.forEach { account ->
                 DropdownMenuItem(
-                    text = { Text(account.name.ifEmpty { "On-Device" } + " (${account.type})") },
+                    text = { Text(account.name.ifEmpty { onDevice } + " (${account.type})") },
                     onClick = {
                         onAccountChange(account.name, account.type)
                         expanded = false
@@ -422,13 +427,13 @@ private fun Birthday(
             }) ?: "",
             onValueChange = { },
             readOnly = true,
-            label = {Text("Birthday")},
+            label = {Text(stringResource(R.string.birthday))},
             modifier = Modifier.fillMaxWidth(),
             trailingIcon = {
                 IconButton(onClick = { setBirthday(null) }) {
                     Icon(
                         painterResource(R.drawable.baseline_remove_circle_outline_24),
-                        "Remove birthday"
+                        stringResource(R.string.remove_birthday)
                     )
                 }
             }
@@ -453,7 +458,7 @@ private fun ColumnScope.DateDetailsSection(
     icon: Painter,
     options: List<Int>
 ) {
-    val detailType = "Dates"
+    val detailType = stringResource(R.string.dates)
     val context = LocalContext.current
     details.forEachIndexed { index, detail ->
         if(detail.type == CDKEvent.TYPE_BIRTHDAY) return@forEachIndexed
@@ -498,7 +503,7 @@ private fun ColumnScope.DateDetailsSection(
                         IconButton(onClick = { details.removeAt(index) }) {
                             Icon(
                                 painterResource(R.drawable.baseline_remove_circle_outline_24),
-                                "Remove $detailType"
+                                stringResource(R.string.remove_detail_type, detailType)
                             )
                         }
                     }
@@ -522,14 +527,14 @@ private fun ColumnScope.DateDetailsSection(
         ) {
             Icon(icon, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Add $detailType")
+            Text(stringResource(R.string.add_detail_type, detailType))
         }
     } else {
         TextButton(
             onClick = { details += ContactDetail.default<Event>() },
             modifier = Modifier.align(Alignment.Start)
         ) {
-            Text("Add $detailType")
+            Text(stringResource(R.string.add_detail_type, detailType))
         }
     }
 }
@@ -583,7 +588,7 @@ private inline fun <reified T : ContactDetail<T>> ColumnScope.DetailsSection(
                     IconButton(onClick = { details.removeAt(index) }) {
                         Icon(
                             painterResource(R.drawable.baseline_remove_circle_outline_24),
-                            "Remove phone"
+                            stringResource(R.string.remove_detail_type, detailType)
                         )
                     }
                 }
@@ -600,14 +605,14 @@ private inline fun <reified T : ContactDetail<T>> ColumnScope.DetailsSection(
         ) {
             Icon(icon, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Add $detailType")
+            Text(stringResource(R.string.add_detail_type, detailType))
         }
     } else {
         TextButton(
             onClick = { details += ContactDetail.default<T>() },
             modifier = Modifier.align(Alignment.Start)
         ) {
-            Text("Add $detailType")
+            Text(stringResource(R.string.add_detail_type, detailType))
         }
     }
 }
@@ -627,14 +632,14 @@ private fun AddPictureSection(photo: String?, onClick: () -> Unit, removePhoto: 
                 val bitmap = BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Contact photo",
+                    contentDescription = stringResource(R.string.contact_photo),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Icon(
                     painterResource(R.drawable.outline_add_photo_alternate_24),
-                    contentDescription = "Add picture",
+                    contentDescription = stringResource(R.string.add_picture),
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -642,9 +647,10 @@ private fun AddPictureSection(photo: String?, onClick: () -> Unit, removePhoto: 
         }
         Spacer(Modifier.height(8.dp))
         Row {
+            val pictureLabel = if (photo != null) stringResource(R.string.change_picture) else stringResource(R.string.add_picture)
             TextButton(onClick) {
                 Text(
-                    text = if (photo != null) "Change" else "Add picture",
+                    text = pictureLabel,
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -652,7 +658,7 @@ private fun AddPictureSection(photo: String?, onClick: () -> Unit, removePhoto: 
             if (photo != null) {
                 TextButton(removePhoto) {
                     Text(
-                        text = "Remove",
+                        text = stringResource(R.string.remove_picture),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary
                     )

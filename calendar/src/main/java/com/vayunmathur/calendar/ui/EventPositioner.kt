@@ -1,6 +1,6 @@
 package com.vayunmathur.calendar.ui
 
-import com.vayunmathur.calendar.Instance
+import com.vayunmathur.calendar.data.Instance
 import kotlinx.datetime.LocalDate
 
 /**

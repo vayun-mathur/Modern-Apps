@@ -32,16 +32,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.HistoryVideo
 import com.vayunmathur.youpipe.data.Subscription
-import com.vayunmathur.youpipe.getChannelInfo
-import com.vayunmathur.youpipe.getChannelVideos
+import com.vayunmathur.youpipe.util.getChannelInfo
+import com.vayunmathur.youpipe.util.getChannelVideos
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -83,13 +85,13 @@ fun ChannelPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, ch
                     Button({
                         viewModel.upsertAsync(Subscription(name = channelInfo.name, channelID = channelID, avatarURL = channelInfo.avatar))
                     }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                        Text("Subscribe")
+                        Text(stringResource(R.string.action_subscribe))
                     }
                 } else {
                     OutlinedButton({
                         viewModel.delete(existingSubscription)
                     }, Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                        Text("Unsubscribe")
+                        Text(stringResource(R.string.action_unsubscribe))
                     }
                 }
                 Spacer(Modifier.height(4.dp))
@@ -154,7 +156,7 @@ fun ChannelHeader(channelInfo: ChannelInfo) {
     }, Modifier, {
 
     }, {
-        Text("${countString(channelInfo.subscribers)} subscribers | ${channelInfo.videos} videos")
+        Text(stringResource(R.string.channel_info, countString(channelInfo.subscribers), channelInfo.videos))
     }, {
         AsyncImage(
             model = channelInfo.avatar,

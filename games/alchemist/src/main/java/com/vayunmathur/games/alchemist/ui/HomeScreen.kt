@@ -20,8 +20,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vayunmathur.games.alchemist.Alchemist
+import com.vayunmathur.games.alchemist.data.Alchemist
 import com.vayunmathur.games.alchemist.Route
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.games.alchemist.R
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.flow.map
@@ -219,7 +221,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                 onDismissRequest = { contextMenuExpanded = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("See details") },
+                    text = { Text(stringResource(R.string.see_details)) },
                     onClick = {
                         contextMenuExpanded = false
                         contextMenuElementId?.let { backStack.add(Route.ItemDetails(it.toInt())) }

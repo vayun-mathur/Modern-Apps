@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
@@ -40,16 +41,17 @@ import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.youpipe.MAIN_BOTTOM_BAR_ITEMS
 import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
-import com.vayunmathur.youpipe.channelURLtoID
+import com.vayunmathur.youpipe.util.channelURLtoID
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.data.SubscriptionCategory
-import com.vayunmathur.youpipe.getChannelInfo
+import com.vayunmathur.youpipe.util.getChannelInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.vayunmathur.youpipe.util.setupHourlyTask
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +81,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
         }
     }
     Scaffold(topBar = {
-        TopAppBar({Text("Subscriptions")}, actions = {
+        TopAppBar({Text(stringResource(R.string.title_subscriptions))}, actions = {
             if(!isLoading) {
                 IconButton({
                     // save subscription to file
@@ -99,7 +101,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
             LazyColumn(Modifier.padding(paddingValues)) {
                 item {
                     ListItem({
-                        Text("Groups:")
+                        Text(stringResource(R.string.label_groups))
                     }, trailingContent = {
                         IconButton({
                             backStack.add(Route.CreateSubscriptionCategory(null))
@@ -110,7 +112,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                 }
                 item {
                     ListItem({
-                        Text("All Subscriptions")
+                        Text(stringResource(R.string.label_all_subscriptions))
                     }, Modifier.clickable {
                         backStack.add(Route.SubscriptionVideosPage(null))
                     })
@@ -129,7 +131,7 @@ fun SubscriptionsPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewMod
                     })
                 }
                 item {
-                    ListItem({ Text("Channels:") })
+                    ListItem({ Text(stringResource(R.string.label_channels)) })
                 }
                 items(subscriptions) {
                     ListItem({
