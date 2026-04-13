@@ -26,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.maps.R
 import androidx.core.graphics.toColorInt
 import com.vayunmathur.library.util.round
 import com.vayunmathur.maps.RouteService
@@ -95,7 +97,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                     if(route != null) {
                         if(route !is RouteService.EmptyRoute) {
                             ListItem({ Text(route.duration.toString()) }, supportingContent = {
-                                Text("${(route.distanceMeters / 1000.0).round(2)} km")
+                                Text(stringResource(R.string.distance_km, (route.distanceMeters / 1000.0).round(2)))
                             })
                             Spacer(Modifier.height(8.dp))
                         }
@@ -111,7 +113,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                     Card(shape = verticalShape(0, 2)) {
                                         ListItem({
                                             val origin = selectedFeature.waypoints.first()?.name
-                                                ?: "Your location"
+                                                ?: stringResource(R.string.your_location)
                                             Text(origin)
                                         }, trailingContent = {
                                             Text(
@@ -129,11 +131,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                             is TransitRoute.Step.WalkStep -> {
                                                 ListItem({
                                                     Text(
-                                                        "Walk ${it.duration} (${
-                                                            (it.distanceMeters / 1000).round(
-                                                                1
-                                                            )
-                                                        } km)"
+                                                        stringResource(R.string.walk_duration_distance, it.duration, (it.distanceMeters / 1000).round(1))
                                                     )
                                                 })
                                             }
@@ -144,7 +142,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                                         route.steps[idx - 1] as TransitRoute.Step.TransitStep
                                                     if (prev.arrivalStation == it.departureStation) {
                                                         ListItem({
-                                                            Text("Transfer")
+                                                            Text(stringResource(R.string.transfer))
                                                         })
                                                     }
                                                 }
@@ -200,7 +198,7 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                                     Card(shape = verticalShape(1, 2)) {
                                         ListItem({
                                             val origin = selectedFeature.waypoints.last()?.name
-                                                ?: "Your location"
+                                                ?: stringResource(R.string.your_location)
                                             Text(origin)
                                         }, trailingContent = {
                                             Text(
@@ -227,14 +225,14 @@ fun BottomSheetContent(selectedFeature: SpecificFeature?, setSelectedFeature: (S
                             } else if(route is RouteService.EmptyRoute) {
                                 item {
                                     ListItem({
-                                        Text("No route found")
+                                        Text(stringResource(R.string.no_route_found))
                                     })
                                 }
                             }
                         }
                     } else {
                         ListItem({
-                            Text("Generating Route...")
+                            Text(stringResource(R.string.generating_route))
                         })
                     }
                 }

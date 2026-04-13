@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -68,13 +69,13 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
                     style = MaterialTheme.typography.titleLarge,
                 )
             }, supportingContent = reviews?.let { reviews ->
-                { Text("${reviews.rating} stars | ${reviews.userRatingCount} reviews") }
+                { Text(stringResource(R.string.reviews_summary, reviews.rating, reviews.userRatingCount)) }
             }, trailingContent = {
                 Button({requestDirections()}) {
                     if(inactiveNavigation == null) {
-                        Text("Directions")
+                        Text(stringResource(R.string.directions))
                     } else {
-                        Text("Add Stop to Route")
+                        Text(stringResource(R.string.add_stop_to_route))
                     }
                 }
             }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
@@ -86,11 +87,15 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val isOpen = it.isOpen(now)
             val nextChangeTime = it.nextStatusChangeTime(now)
+            val openStr = stringResource(R.string.open_status)
+            val closedStr = stringResource(R.string.closed_status)
+            val closesAtStr = stringResource(R.string.closes_at, nextChangeTime.time.format(timeFormat))
+            val opensAtStr = stringResource(R.string.opens_at, nextChangeTime.time.format(timeFormat))
             val text = AnnotatedString.Builder().apply {
-                if(isOpen) withStyle(SpanStyle(Color.Green)){append("Open")} else withStyle(SpanStyle(Color.Red)){append("Closed")}
+                if(isOpen) withStyle(SpanStyle(Color.Green)){append(openStr)} else withStyle(SpanStyle(Color.Red)){append(closedStr)}
                 append(" • ")
-                if(isOpen) append("Closes ${nextChangeTime.time.format(timeFormat)}")
-                else append("Opens ${nextChangeTime.time.format(timeFormat)}")
+                if(isOpen) append(closesAtStr)
+                else append(opensAtStr)
                 if(nextChangeTime.date != now.date) append(" ${nextChangeTime.date.dayOfWeek.name.lowercase().firstLetterUppercase()}")
             }.toAnnotatedString()
             Column {
@@ -117,7 +122,7 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
             }
         }
         feature.menu?.let {
-            RestaurantItem(R.drawable.outline_menu_book_24, "Menu") { goto(context, it) }
+            RestaurantItem(R.drawable.outline_menu_book_24, stringResource(R.string.menu_label)) { goto(context, it) }
         }
         feature.website?.let {
             RestaurantItem(R.drawable.outline_globe_24, it.toUri().host!!) { goto(context, it) }
@@ -143,13 +148,13 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
                     style = MaterialTheme.typography.titleLarge,
                 )
             }, supportingContent = reviews?.let { reviews ->
-                { Text("${reviews.rating} stars | ${reviews.userRatingCount} reviews") }
+                { Text(stringResource(R.string.reviews_summary, reviews.rating, reviews.userRatingCount)) }
             }, trailingContent = {
                 Button({requestDirections()}) {
                     if(inactiveNavigation == null) {
-                        Text("Directions")
+                        Text(stringResource(R.string.directions))
                     } else {
-                        Text("Add Stop to Route")
+                        Text(stringResource(R.string.add_stop_to_route))
                     }
                 }
             }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
@@ -161,11 +166,15 @@ fun RestaurantBottomSheet(inactiveNavigation: SpecificFeature.Route?, feature: S
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val isOpen = it.isOpen(now)
             val nextChangeTime = it.nextStatusChangeTime(now)
+            val openStr = stringResource(R.string.open_status)
+            val closedStr = stringResource(R.string.closed_status)
+            val closesAtStr = stringResource(R.string.closes_at, nextChangeTime.time.format(timeFormat))
+            val opensAtStr = stringResource(R.string.opens_at, nextChangeTime.time.format(timeFormat))
             val text = AnnotatedString.Builder().apply {
-                if(isOpen) withStyle(SpanStyle(Color.Green)){append("Open")} else withStyle(SpanStyle(Color.Red)){append("Closed")}
+                if(isOpen) withStyle(SpanStyle(Color.Green)){append(openStr)} else withStyle(SpanStyle(Color.Red)){append(closedStr)}
                 append(" • ")
-                if(isOpen) append("Closes ${nextChangeTime.time.format(timeFormat)}")
-                else append("Opens ${nextChangeTime.time.format(timeFormat)}")
+                if(isOpen) append(closesAtStr)
+                else append(opensAtStr)
                 if(nextChangeTime.date != now.date) append(" ${nextChangeTime.date.dayOfWeek.name.lowercase().firstLetterUppercase()}")
             }.toAnnotatedString()
             Column {
