@@ -12,7 +12,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.R
 
 @Composable
 fun AddAccountDialog(
@@ -23,15 +25,15 @@ fun AddAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Contacts Account") },
+        title = { Text(stringResource(R.string.add_contacts_account)) },
         text = {
             Column {
-                Text("Enter a name for the new local account:")
+                Text(stringResource(R.string.enter_account_name))
                 TextField(
                     value = accountName,
                     onValueChange = { accountName = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Account Name") }
+                    label = { Text(stringResource(R.string.account_name)) }
                 )
             }
         },
@@ -44,12 +46,12 @@ fun AddAccountDialog(
                     }
                 }
             ) {
-                Text("Add")
+                Text(stringResource(R.string.add))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

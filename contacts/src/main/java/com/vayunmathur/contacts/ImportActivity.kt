@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconSave
@@ -52,7 +53,7 @@ class ImportActivity : ComponentActivity() {
 @androidx.compose.runtime.Composable
 fun ImportScreen(contacts: List<Contact>, onImport: () -> Unit) {
     Scaffold(
-        topBar = { TopAppBar({Text("Import Contacts")}) },
+        topBar = { TopAppBar({Text(stringResource(R.string.import_contacts))}) },
         floatingActionButton = {
             FloatingActionButton(onClick = onImport) {
                 IconSave()

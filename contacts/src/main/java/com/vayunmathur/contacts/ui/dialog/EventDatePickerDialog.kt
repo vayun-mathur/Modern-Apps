@@ -6,6 +6,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.vayunmathur.contacts.R
 import com.vayunmathur.library.util.LocalNavResultRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,12 +38,12 @@ fun EventDatePickerDialog(id: String, initialDate: LocalDate?, onDismiss: () -> 
                 }
                 onDismiss()
             }) {
-                Text("OK")
+                Text(stringResource(R.string.ok))
             }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     ) {

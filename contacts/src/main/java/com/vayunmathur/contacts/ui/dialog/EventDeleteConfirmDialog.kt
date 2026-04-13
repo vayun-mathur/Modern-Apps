@@ -5,7 +5,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.stringResource
 import com.vayunmathur.contacts.ContactViewModel
+import com.vayunmathur.contacts.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -21,15 +23,15 @@ fun EventDeleteConfirmDialog(
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text(text = "Delete contact") },
+        title = { Text(text = stringResource(R.string.delete_contact_title)) },
         text = {
+            val thisContact = stringResource(R.string.this_contact)
             Text(
-                text = "Are you sure you want to delete ${contactName ?: "this contact"}? This action cannot be undone."
+                text = stringResource(R.string.delete_contact_confirm, contactName ?: thisContact)
             )
         },
         confirmButton = {
             TextButton(onClick = {
-                // Perform deletion directly from the dialog using the provided ViewModel
                 scope.launch(Dispatchers.IO) {
                     viewModel.getContact(contactId)?.let { contact ->
                         viewModel.deleteContact(contact)
@@ -37,12 +39,12 @@ fun EventDeleteConfirmDialog(
                 }
                 onConfirm()
             }) {
-                Text("Delete")
+                Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
