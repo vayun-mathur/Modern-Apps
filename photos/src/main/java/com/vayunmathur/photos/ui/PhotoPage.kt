@@ -59,8 +59,11 @@ import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.R
+import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -75,7 +78,7 @@ import kotlin.time.Instant
 data class ZoomState(val scale: Float = 1f, val offset: Offset = Offset.Zero)
 
 @Composable
-fun PhotoPage(viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<Photo>?) {
+fun PhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<Photo>?) {
     val photosAll by viewModel.data<Photo>().collectAsState(initial = emptyList())
     val photos = overridePhotosList ?: photosAll
     val context = LocalContext.current
@@ -116,7 +119,8 @@ fun PhotoPage(viewModel: DatabaseViewModel, id: Long, overridePhotosList: List<P
                     isMetadataVisible = isMetadataVisible,
                     currentZoom = zoomState,
                     onZoomUpdate = { newState -> zoomStates[photo.id] = newState },
-                    onToggleMetadata = { isMetadataVisible = !isMetadataVisible }
+                    onToggleMetadata = { isMetadataVisible = !isMetadataVisible },
+                    onEditPhoto = { backStack.add(Route.EditPhoto(photo.id)) }
                 )
             }
         }
@@ -133,7 +137,8 @@ fun PhotoDetailView(
     isMetadataVisible: Boolean,
     currentZoom: ZoomState,
     onZoomUpdate: (ZoomState) -> Unit,
-    onToggleMetadata: () -> Unit
+    onToggleMetadata: () -> Unit,
+    onEditPhoto: () -> Unit
 ) {
     var countryName by remember(photo.id) { mutableStateOf<String?>(null) }
     var size by remember { mutableStateOf(IntSize.Zero) }
@@ -291,6 +296,15 @@ fun PhotoDetailView(
                     Text(text = "Location: ${countryName ?: "Detecting..."}", color = Color.LightGray)
                 }
                 Text(text = "Resolution: ${photo.width} x ${photo.height}", color = Color.LightGray)
+
+                if (photo.videoData == null) {
+                    IconButton(
+                        onClick = onEditPhoto,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        IconEdit(tint = Color.White)
+                    }
+                }
             }
         }
     }

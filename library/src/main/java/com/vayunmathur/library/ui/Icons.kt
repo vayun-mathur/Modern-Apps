@@ -61,6 +61,21 @@ fun IconCopy(tint: Color = LocalContentColor.current) {
 }
 
 @Composable
+fun IconCrop(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.crop_24px), "Crop", tint = tint)
+}
+
+@Composable
+fun IconRotateLeft(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.rotate_left_24px), "Rotate Left", tint = tint)
+}
+
+@Composable
+fun IconRotateRight(tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.rotate_right_24px), "Rotate Right", tint = tint)
+}
+
+@Composable
 fun IconNavigation(navBack: () -> Unit) {
     IconButton({
         navBack()

@@ -26,6 +26,7 @@ import com.vayunmathur.photos.data.MIGRATION_1_2
 import com.vayunmathur.photos.ui.GalleryPage
 import com.vayunmathur.photos.ui.MapPage
 import com.vayunmathur.photos.ui.PhotoPage
+import com.vayunmathur.photos.ui.EditPhotoPage
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +71,9 @@ sealed interface Route: NavKey {
     data class PhotoPage(val id: Long, val overridePhotosList: List<Photo>?): Route
 
     @Serializable
+    data class EditPhoto(val id: Long): Route
+
+    @Serializable
     data object Map: Route
 }
 
@@ -86,7 +90,11 @@ fun Navigation(viewModel: DatabaseViewModel) {
         }
 
         entry<Route.PhotoPage> {
-            PhotoPage(viewModel, it.id, it.overridePhotosList)
+            PhotoPage(backStack, viewModel, it.id, it.overridePhotosList)
+        }
+
+        entry<Route.EditPhoto> {
+            EditPhotoPage(backStack, viewModel, it.id)
         }
     }
 }

@@ -176,26 +176,27 @@ class DatabaseViewModel(val database: RoomDatabase, vararg daos: Pair<KClass<*>,
 
     @Suppress("UNCHECKED_CAST")
     inline fun <reified E : DatabaseItem> data(filterQuery: String? = null): StateFlow<List<E>> {
-        return runBlocking {
-            dataStateCache.getOrPut(Pair(E::class, filterQuery)) {
-                val tableName = E::class.simpleName!!
+        return dataStateCache.getOrPut(Pair(E::class, filterQuery)) {
+            val tableName = E::class.simpleName!!
 
-                callbackFlow<List<E>> {
-                    // 1. Create an observer for the specific table name
-                    val observer = object : InvalidationTracker.Observer(tableName) {
-                        override fun onInvalidated(tables: Set<String>) {
-                            // When the table changes, re-fetch the data
-                            launch { send(getAll<E>(filterQuery)) }
-                        }
+            callbackFlow<List<E>> {
+                // Fetch initial data
+                send(getAll<E>(filterQuery))
+
+                // 1. Create an observer for the specific table name
+                val observer = object : InvalidationTracker.Observer(tableName) {
+                    override fun onInvalidated(tables: Set<String>) {
+                        // When the table changes, re-fetch the data
+                        launch { send(getAll<E>(filterQuery)) }
                     }
+                }
 
-                    database.invalidationTracker.addObserver(observer)
+                database.invalidationTracker.addObserver(observer)
 
-                    // 3. Clean up the observer when the UI stops listening
-                    awaitClose { database.invalidationTracker.removeObserver(observer) }
-                }.stateIn(viewModelScope, SharingStarted.Eagerly, getAll<E>())
-            } as StateFlow<List<E>>
-        }
+                // 3. Clean up the observer when the UI stops listening
+                awaitClose { database.invalidationTracker.removeObserver(observer) }
+            }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        } as StateFlow<List<E>>
     }
 
     inline fun <reified E: DatabaseItem> upsertAll(items: List<E>) {

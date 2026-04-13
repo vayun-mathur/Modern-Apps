@@ -166,7 +166,7 @@ suspend fun syncPhotos(context: Context, viewModel: DatabaseViewModel) {
             val videoData = if (isVideo) VideoData(cursor.getLong(durationColumn)) else null
 
             val existing = existingPhotos[id]
-            if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData) {
+            if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData || existing.width != width || existing.height != height) {
                 newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData)
             }
         }
