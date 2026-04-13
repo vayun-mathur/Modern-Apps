@@ -1,3 +1,52 @@
 <resources>
     <string name="app_name">Clock</string>
+
+    <!-- Navigation / page labels (reused across top bars, nav bar, and notifications) -->
+    <string name="label_alarm">Alarm</string>
+    <string name="label_clock">Clock</string>
+    <string name="label_timer">Timer</string>
+    <string name="label_stopwatch">Stopwatch</string>
+
+    <!-- AlarmActivity -->
+    <string name="button_stop">STOP</string>
+    <string name="button_snooze">SNOOZE (5 MIN)</string>
+
+    <!-- AlarmReceiver / AlarmSoundService notifications -->
+    <string name="alarm_notification_wake_up">Wake up!</string>
+    <string name="alarm_ringing_notification_title">Alarm is Ringing</string>
+
+    <!-- Notification channels (MainActivity) -->
+    <string name="channel_ongoing_timers_name">Ongoing Timers</string>
+    <string name="channel_ongoing_timers_description">Ongoing countdowns</string>
+    <string name="channel_completed_timers_name">Completed Timers</string>
+    <string name="channel_completed_timers_description">Alerts when timers finish</string>
+    <string name="channel_alarms_name">Alarms</string>
+    <string name="channel_alarms_description">Notifications for scheduled alarms</string>
+
+    <!-- StopwatchPage column headers -->
+    <string name="header_laps">Laps</string>
+    <string name="header_split">Split</string>
+    <string name="header_total">Total</string>
+
+    <!-- TimerPage -->
+    <string name="button_add_minute">+ 1:00</string>
+
+    <!-- TimerReceiver notifications -->
+    <string name="timer_finished_title">Timer Finished</string>
+    <string name="timer_finished_text">%1$s has ended!</string>
+
+    <!-- NewTimerDialog -->
+    <string name="field_label">Label</string>
+    <string name="field_minutes">Minutes</string>
+    <string name="field_seconds">Seconds</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_save">Save</string>
+
+    <!-- SelectTimeZonesDialog -->
+    <string name="select_cities_title">Select Cities</string>
+    <string name="search_city_hint">Search city or region…</string>
+
+    <!-- Time indicators (ClockPage) -->
+    <string name="time_am">AM</string>
+    <string name="time_pm">PM</string>
 </resources>

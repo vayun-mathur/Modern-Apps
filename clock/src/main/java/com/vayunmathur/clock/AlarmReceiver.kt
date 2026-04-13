@@ -34,8 +34,8 @@ class AlarmReceiver : BroadcastReceiver() {
         // 3. Build the Notification
         val builder = NotificationCompat.Builder(context, "ALARM_CHANNEL_ID")
             .setSmallIcon(R.drawable.baseline_access_alarm_24)
-            .setContentTitle("Alarm")
-            .setContentText("Wake up!")
+            .setContentTitle(context.getString(R.string.label_alarm))
+            .setContentText(context.getString(R.string.alarm_notification_wake_up))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             // This is the key: it launches the activity automatically if the phone is locked

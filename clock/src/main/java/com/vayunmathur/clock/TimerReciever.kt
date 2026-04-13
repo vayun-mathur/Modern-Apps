@@ -14,7 +14,7 @@ import kotlin.time.Duration
 
 class TimerReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val name = intent.getStringExtra("timer_name") ?: "Timer"
+        val name = intent.getStringExtra("timer_name") ?: context.getString(R.string.label_timer)
         val id = intent.getLongExtra("timer_id", 0L)
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -49,8 +49,8 @@ class TimerReceiver : BroadcastReceiver() {
 
         val notification = NotificationCompat.Builder(context, "finished_timers_channel")
             .setSmallIcon(R.drawable.outline_timer_24)
-            .setContentTitle("Timer Finished")
-            .setContentText("$name has ended!")
+            .setContentTitle(context.getString(R.string.timer_finished_title))
+            .setContentText(context.getString(R.string.timer_finished_text, name))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)

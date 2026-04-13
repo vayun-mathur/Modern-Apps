@@ -25,9 +25,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.citiesToTimezones
 import com.vayunmathur.library.util.DataStoreUtils
@@ -62,13 +64,13 @@ fun SelectTimeZonesDialog(backStack: NavBackStack<Route>, ds: DataStoreUtils) {
                 .fillMaxHeight(0.8f) // Limit height so it doesn't take the whole screen
         ) {
             Column(Modifier.padding(16.dp)) {
-                Text("Select Cities", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.select_cities_title), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search city or region...") },
+                    label = { Text(stringResource(R.string.search_city_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )

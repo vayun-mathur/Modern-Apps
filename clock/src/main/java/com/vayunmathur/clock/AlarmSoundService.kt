@@ -20,7 +20,7 @@ class AlarmSoundService : Service() {
         // 2. Build and show notification FIRST
         val notification = NotificationCompat.Builder(this, "ALARM_CHANNEL_ID")
             .setSmallIcon(R.drawable.baseline_access_alarm_24)
-            .setContentTitle("Alarm is Ringing")
+            .setContentTitle(getString(R.string.alarm_ringing_notification_title))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)

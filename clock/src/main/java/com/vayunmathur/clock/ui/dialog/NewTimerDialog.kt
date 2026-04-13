@@ -14,9 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.clock.R
 import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.clock.ui.sendTimerNotification
@@ -34,14 +36,14 @@ fun NewTimerDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel)
     Dialog({ backStack.pop() }) {
         Card {
             Column(Modifier.padding(16.dp)) {
-                OutlinedTextField(name, {name = it}, label = { Text("Label") })
-                OutlinedTextField(minutes?.toString()?:"", {minutes = it.toUIntOrNull()?.toInt()}, label = { Text("Minutes") })
-                OutlinedTextField(seconds?.toString()?:"", {seconds = it.toUIntOrNull()?.toInt()}, label = { Text("Seconds") })
+                OutlinedTextField(name, {name = it}, label = { Text(stringResource(R.string.field_label)) })
+                OutlinedTextField(minutes?.toString()?:"", {minutes = it.toUIntOrNull()?.toInt()}, label = { Text(stringResource(R.string.field_minutes)) })
+                OutlinedTextField(seconds?.toString()?:"", {seconds = it.toUIntOrNull()?.toInt()}, label = { Text(stringResource(R.string.field_seconds)) })
                 Row {
                     Button({
                         backStack.pop()
                     }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.button_cancel))
                     }
                     Button({
                         val timer = Timer(true, name, Clock.System.now(), minutes!!.minutes + seconds!!.seconds, minutes!!.minutes + seconds!!.seconds)
@@ -50,7 +52,7 @@ fun NewTimerDialog(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel)
                         }
                         backStack.pop()
                     }, enabled = minutes != null && seconds != null) {
-                        Text("Save")
+                        Text(stringResource(R.string.button_save))
                     }
                 }
             }
