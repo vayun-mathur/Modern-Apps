@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.ListenableWorker.Result as WorkResult
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.getAll
@@ -36,12 +37,18 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             matchingDao = database.matchingDao()
         )
         
+        val dataStore = DataStoreUtils.getInstance(applicationContext)
+        val lastGeneration = dataStore.getLong("last_music_generation") ?: 0L
+        val currentGeneration = MediaStore.getGeneration(applicationContext, MediaStore.VOLUME_EXTERNAL)
+
         val triggeredUris = triggeredContentUris
         if (triggeredUris.isNotEmpty()) {
             syncMusic(applicationContext, database, viewModel, triggeredUris.toList())
         } else {
-            syncMusic(applicationContext, database, viewModel)
+            syncMusic(applicationContext, database, viewModel, null, lastGeneration)
         }
+
+        dataStore.setLong("last_music_generation", currentGeneration)
         
         // Enqueue next observation
         enqueue(applicationContext)
@@ -79,9 +86,38 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     }
 }
 
-suspend fun syncMusic(context: Context, database: MusicDatabase, viewModel: DatabaseViewModel, uris: List<Uri>? = null) {
+suspend fun syncMusic(context: Context, database: MusicDatabase, viewModel: DatabaseViewModel, uris: List<Uri>? = null, lastGeneration: Long = 0L) {
     val musicDao = database.musicDao()
 
+    // 1. Get all current IDs in MediaStore to handle deletions correctly
+    val allMediaStoreIds = mutableSetOf<Long>()
+    context.contentResolver.query(
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+        arrayOf(MediaStore.Audio.Media._ID),
+        "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+        null,
+        null
+    )?.use { cursor ->
+        val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+        while (cursor.moveToNext()) allMediaStoreIds.add(cursor.getLong(idCol))
+    }
+
+    // 2. Handle deletions
+    val toDelete = if (uris != null) {
+        val triggeredIds = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }.toSet()
+        triggeredIds - allMediaStoreIds
+    } else {
+        val localIds = musicDao.getAll<Music>().map { it.id }.toSet()
+        localIds - allMediaStoreIds
+    }
+
+    if (toDelete.isNotEmpty()) {
+        toDelete.chunked(900).forEach { chunk ->
+            musicDao.observeNothing(SimpleSQLiteQuery("DELETE FROM Music WHERE id IN (${chunk.joinToString(",")})"))
+        }
+    }
+
+    // 3. Process incremental or full updates for Music
     val musicList = mutableListOf<Music>()
     val projection = arrayOf(
         MediaStore.Audio.Media._ID,
@@ -92,11 +128,17 @@ suspend fun syncMusic(context: Context, database: MusicDatabase, viewModel: Data
         MediaStore.Audio.Media.ALBUM_ID,
     )
 
-    val selection = if (uris != null) {
-        val ids = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }
-        if (ids.isEmpty()) "${MediaStore.Audio.Media.IS_MUSIC} != 0"
-        else "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media._ID} IN (${ids.joinToString(",")})"
-    } else "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+    val selection = when {
+        uris != null -> {
+            val ids = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }
+            if (ids.isEmpty()) "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+            else "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media._ID} IN (${ids.joinToString(",")})"
+        }
+        lastGeneration > 0 -> {
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.MediaColumns.GENERATION_MODIFIED} > $lastGeneration"
+        }
+        else -> "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+    }
 
     context.contentResolver.query(
         MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -125,26 +167,24 @@ suspend fun syncMusic(context: Context, database: MusicDatabase, viewModel: Data
         }
     }
 
-    if (uris == null) {
+    if (uris == null && lastGeneration == 0L) {
         viewModel.replaceAll(musicList)
     } else {
         musicDao.upsertAll(musicList)
-        // Handle deletions for triggered IDs not found in MediaStore
-        val triggeredIds = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }.toSet()
-        val foundIds = musicList.map { it.id }.toSet()
-        val deletedIds = triggeredIds - foundIds
-        if (deletedIds.isNotEmpty()) {
-            musicDao.observeNothing(SimpleSQLiteQuery("DELETE FROM Music WHERE id IN (${deletedIds.joinToString(",")})"))
-        }
     }
 
-    // Always refresh albums and artists for now to keep it simple and consistent
-    val allMusic = musicDao.getAll<Music>()
+    // 4. Always refresh Albums and Artists completely to ensure consistency
     val albums = getAlbums(context)
     val artists = getArtists(context)
     
     viewModel.replaceAll(albums)
     viewModel.replaceAll(artists)
+    
+    // 5. Rebuild relationship matchings
+    val allMusic = musicDao.getAll<Music>()
+    val allAlbums = database.albumDao().getAll<Album>()
+    val allArtists = database.artistDao().getAll<Artist>()
+    
     viewModel.clearMatchings<Album, Artist>()
-    viewModel.addPairs(albumArtistPairs(allMusic, artists, albums))
+    viewModel.addPairs(albumArtistPairs(allMusic, allArtists, allAlbums))
 }

@@ -15,6 +15,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.ListenableWorker.Result as WorkResult
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.getAll
 import com.vayunmathur.photos.data.MIGRATION_1_2
@@ -32,16 +33,22 @@ import java.util.concurrent.TimeUnit
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
         val database = applicationContext.buildDatabase<PhotoDatabase>(listOf(MIGRATION_1_2, MIGRATION_2_3))
+        val dataStore = DataStoreUtils.getInstance(applicationContext)
         
         val triggeredUris = triggeredContentUris
+        val lastGeneration = dataStore.getLong("last_photos_generation") ?: 0L
+        val currentGeneration = MediaStore.getGeneration(applicationContext, MediaStore.VOLUME_EXTERNAL)
+
         if (triggeredUris.isNotEmpty()) {
-            syncPhotos(applicationContext, database, triggeredUris)
+            syncPhotos(applicationContext, database, triggeredUris.toList())
         } else {
-            syncPhotos(applicationContext, database)
+            syncPhotos(applicationContext, database, null, lastGeneration)
         }
         
         val photos = database.photoDao().getAll<Photo>()
         setExifData(photos, database, applicationContext)
+        
+        dataStore.setLong("last_photos_generation", currentGeneration)
         
         // Enqueue next observation
         enqueue(applicationContext)
@@ -78,19 +85,66 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     }
 }
 
-suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri>? = null) {
+suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri>? = null, lastGeneration: Long = 0L) {
     val photoDao = database.photoDao()
-    val existingPhotos = if (uris == null) {
-        photoDao.getAll<Photo>().associateBy { it.id }
-    } else {
-        // Only fetch existing photos for the triggered IDs
-        val ids = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }
-        if (ids.isEmpty()) emptyMap()
-        else photoDao.getAll<Photo>("id IN (${ids.joinToString(",")})").associateBy { it.id }
-    }
     
+    // 1. Get all IDs currently in MediaStore to detect deletions
+    val allMediaStoreIds = mutableSetOf<Long>()
+    fun collectIds(baseUri: Uri) {
+        context.contentResolver.query(baseUri, arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+            while (cursor.moveToNext()) allMediaStoreIds.add(cursor.getLong(idCol))
+        }
+    }
+    collectIds(MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+    collectIds(MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+
+    // 2. Handle deletions
+    val toDelete = if (uris != null) {
+        // Triggered sync: only delete triggered items that no longer exist
+        val triggeredIds = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }.toSet()
+        triggeredIds - allMediaStoreIds
+    } else {
+        // Full or incremental sync: delete everything local not in MediaStore
+        val localIds = photoDao.getAll<Photo>().map { it.id }.toSet()
+        localIds - allMediaStoreIds
+    }
+
+    if (toDelete.isNotEmpty()) {
+        toDelete.chunked(900).forEach { chunk ->
+            photoDao.observeNothing(SimpleSQLiteQuery("DELETE FROM Photo WHERE id IN (${chunk.joinToString(",")})"))
+        }
+    }
+
+    // 3. Process additions/updates
+    val selection = when {
+        uris != null -> {
+            val ids = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }
+            if (ids.isEmpty()) null else "_id IN (${ids.joinToString(",")})"
+        }
+        lastGeneration > 0 -> {
+            "${MediaStore.MediaColumns.GENERATION_MODIFIED} > $lastGeneration"
+        }
+        else -> null
+    }
+
+    // Pre-fetch local data for comparison to avoid redundant updates
+    val existingPhotos = if (selection != null) {
+        if (uris != null) {
+            val ids = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }
+            photoDao.getAll<Photo>("id IN (${ids.joinToString(",")})").associateBy { it.id }
+        } else {
+            // For generation-based sync, we don't know exactly which IDs changed, 
+            // so we might need all local photos for comparison if we want to be surgical.
+            // For simplicity and correctness, fetch all.
+            photoDao.getAll<Photo>().associateBy { it.id }
+        }
+    } else {
+        // Full sync: we'll check against all local data
+        photoDao.getAll<Photo>().associateBy { it.id }
+    }
+
     val newOrUpdatedPhotos = mutableListOf<Photo>()
-    val mediaStoreIds = mutableSetOf<Long>()
 
     fun processCursor(cursor: android.database.Cursor, isVideo: Boolean) {
         val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
@@ -106,7 +160,6 @@ suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idColumn)
-            mediaStoreIds.add(id)
             val name = cursor.getString(nameColumn)
             val dateTaken = cursor.getLongOrNull(dateTakenColumn)
             val date = if (dateTaken != null && dateTaken > 0) dateTaken else (cursor.getLong(dateAddedColumn) * 1000)
@@ -123,19 +176,13 @@ suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri
         }
     }
 
-    val selection = if (uris != null) {
-        val ids = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }
-        if (ids.isEmpty()) null else "_id IN (${ids.joinToString(",")})"
-    } else null
-
-    // Images
+    // Query MediaStore for the specific selection (generation or IDs)
     context.contentResolver.query(
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
         arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.WIDTH, MediaStore.Images.Media.HEIGHT, MediaStore.Images.Media.DATE_MODIFIED),
         selection, null, null
     )?.use { processCursor(it, false) }
 
-    // Videos
     context.contentResolver.query(
         MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
         arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DATE_TAKEN, MediaStore.Video.Media.DATE_ADDED, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT, MediaStore.Video.Media.DURATION, MediaStore.Video.Media.DATE_MODIFIED),
@@ -144,20 +191,6 @@ suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri
 
     if (newOrUpdatedPhotos.isNotEmpty()) {
         photoDao.upsertAll(newOrUpdatedPhotos)
-    }
-
-    val toDelete = if (uris == null) {
-        existingPhotos.keys - mediaStoreIds
-    } else {
-        // For partial sync, any triggered ID not found in MediaStore should be deleted
-        val triggeredIds = uris.mapNotNull { runCatching { ContentUris.parseId(it) }.getOrNull() }.toSet()
-        triggeredIds - mediaStoreIds
-    }
-
-    if (toDelete.isNotEmpty()) {
-        toDelete.chunked(900).forEach { chunk ->
-            photoDao.observeNothing(SimpleSQLiteQuery("DELETE FROM Photo WHERE id IN (${chunk.joinToString(",")})"))
-        }
     }
 }
 
