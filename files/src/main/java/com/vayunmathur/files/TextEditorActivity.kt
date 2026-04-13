@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconEdit
@@ -67,7 +68,7 @@ private fun TextEditorScreen(uri: Uri) {
         Modifier.imePadding(),
         topBar = {
             TopAppBar(
-                title = { Text(uri.lastPathSegment ?: "File") },
+                title = { Text(uri.lastPathSegment ?: stringResource(R.string.file_fallback)) },
                 actions = {
                     IconButton(onClick = {
                         if (isEditing && state.text != initialContent) {

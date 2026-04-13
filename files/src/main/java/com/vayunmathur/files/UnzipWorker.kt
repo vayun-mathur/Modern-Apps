@@ -99,7 +99,7 @@ class UnzipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             channelId,
-            "Unzip Operations",
+            applicationContext.getString(R.string.unzip_channel_name),
             NotificationManager.IMPORTANCE_LOW
         )
         notificationManager.createNotificationChannel(channel)
@@ -107,7 +107,7 @@ class UnzipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
     private fun createForegroundInfo(progress: Int): ForegroundInfo {
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Unzipping...")
+            .setContentTitle(applicationContext.getString(R.string.unzipping))
             .setSmallIcon(R.drawable.folder_24px)
             .setProgress(100, progress, false)
             .setOngoing(true)
@@ -118,7 +118,7 @@ class UnzipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
 
     private fun updateNotification(progress: Int) {
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Unzipping...")
+            .setContentTitle(applicationContext.getString(R.string.unzipping))
             .setSmallIcon(R.drawable.folder_24px)
             .setProgress(100, progress, false)
             .setOngoing(true)

@@ -80,6 +80,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -154,15 +155,15 @@ fun HomeDirectoryPage() {
                 hasPromptedNotifications = true
                 showNotificationDialog = false 
             },
-            title = { Text("Enable Notifications?") },
-            text = { Text("Turning on notifications will allow you to see progress on background actions like zipping and unzipping files.") },
+            title = { Text(stringResource(R.string.enable_notifications)) },
+            text = { Text(stringResource(R.string.notification_permission_rationale)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 }) {
-                    Text("Enable")
+                    Text(stringResource(R.string.enable))
                 }
             },
             dismissButton = {
@@ -171,7 +172,7 @@ fun HomeDirectoryPage() {
                     hasPromptedNotifications = true
                     showNotificationDialog = false
                 }) {
-                    Text("Skip")
+                    Text(stringResource(R.string.skip))
                 }
             }
         )
@@ -185,7 +186,7 @@ fun HomeDirectoryPage() {
                 }
                 filesLauncher.launch(intent)
             }) {
-                Text("Grant All Files Access")
+                Text(stringResource(R.string.grant_all_files_access))
             }
         }
     } else {
@@ -232,12 +233,12 @@ fun DirectoryPage(rootFile: Path) {
     if (showArchiveDialog) {
         AlertDialog(
             onDismissRequest = { showArchiveDialog = false },
-            title = { Text("Archive Selection") },
+            title = { Text(stringResource(R.string.archive_selection)) },
             text = {
                 TextField(
                     value = archiveName,
                     onValueChange = { archiveName = it },
-                    label = { Text("Zip file name") },
+                    label = { Text(stringResource(R.string.zip_file_name_label)) },
                     singleLine = true
                 )
             },
@@ -255,15 +256,15 @@ fun DirectoryPage(rootFile: Path) {
                     pathBeingRenamed = null
                     showArchiveDialog = false
                     scope.launch {
-                        snackbarHostState.showSnackbar("Archiving started...")
+                        snackbarHostState.showSnackbar(context.getString(R.string.archiving_started))
                     }
                 }) {
-                    Text("Archive")
+                    Text(stringResource(R.string.archive))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showArchiveDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -291,7 +292,7 @@ fun DirectoryPage(rootFile: Path) {
 
             selectedPaths = emptySet()
             scope.launch {
-                snackbarHostState.showSnackbar("Unzipping started to ${path.name}")
+                snackbarHostState.showSnackbar(context.getString(R.string.unzipping_started_to, path.name))
             }
         }
     }
@@ -423,7 +424,7 @@ fun DirectoryPage(rootFile: Path) {
                                                                     movedAny = true
                                                                 } catch (e: Exception) {
                                                                     scope.launch {
-                                                                        snackbarHostState.showSnackbar("Move failed: ${e.localizedMessage}")
+                                                                        snackbarHostState.showSnackbar(context.getString(R.string.move_failed, e.localizedMessage))
                                                                     }
                                                                 }
                                                             }
@@ -557,7 +558,7 @@ fun DirectoryPage(rootFile: Path) {
                                 currentDirectory = "/".toPath()
                             } catch (e: Exception) {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Could not open zip: ${e.localizedMessage}")
+                                    snackbarHostState.showSnackbar(context.getString(R.string.could_not_open_zip, e.localizedMessage))
                                 }
                             }
                         } else if (currentFileSystem == fs) {
@@ -574,12 +575,12 @@ fun DirectoryPage(rootFile: Path) {
                                 context.startActivity(intent)
                             } catch (e: Exception) {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("No app found to open this file")
+                                    snackbarHostState.showSnackbar(context.getString(R.string.no_app_found_to_open_file))
                                 }
                             }
                         } else {
                             scope.launch {
-                                snackbarHostState.showSnackbar("Viewing files inside zip is limited to browsing")
+                                snackbarHostState.showSnackbar(context.getString(R.string.zip_browse_only))
                             }
                         }
                     },
@@ -593,7 +594,7 @@ fun DirectoryPage(rootFile: Path) {
                                         movedAny = true
                                     } catch (e: Exception) {
                                         scope.launch {
-                                            snackbarHostState.showSnackbar("Move failed: ${e.localizedMessage}")
+                                            snackbarHostState.showSnackbar(context.getString(R.string.move_failed, e.localizedMessage))
                                         }
                                     }
                                 }

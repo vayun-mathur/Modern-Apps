@@ -108,7 +108,7 @@ class ZipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(co
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             channelId,
-            "Zip Operations",
+            applicationContext.getString(R.string.zip_channel_name),
             NotificationManager.IMPORTANCE_LOW
         )
         notificationManager.createNotificationChannel(channel)
@@ -116,7 +116,7 @@ class ZipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(co
 
     private fun createForegroundInfo(progress: Int): ForegroundInfo {
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Archiving...")
+            .setContentTitle(applicationContext.getString(R.string.archiving))
             .setSmallIcon(R.drawable.folder_24px)
             .setProgress(100, progress, false)
             .setOngoing(true)
@@ -127,7 +127,7 @@ class ZipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(co
 
     private fun updateNotification(progress: Int) {
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Archiving...")
+            .setContentTitle(applicationContext.getString(R.string.archiving))
             .setSmallIcon(R.drawable.folder_24px)
             .setProgress(100, progress, false)
             .setOngoing(true)
