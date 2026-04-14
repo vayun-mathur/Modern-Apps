@@ -8,6 +8,7 @@ import android.media.RingtoneManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationCompat
+import com.vayunmathur.clock.R
 
 class AlarmSoundService : Service() {
     private var mediaPlayer: MediaPlayer? = null

@@ -1,5 +1,6 @@
 package com.vayunmathur.maps.util
 import com.vayunmathur.maps.data.SpecificFeature
+import com.vayunmathur.maps.R
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation

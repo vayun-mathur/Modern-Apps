@@ -44,12 +44,8 @@ class DownloadService : Service() {
         val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
 
         // Handle deprecated WIFI_MODE_FULL_HIGH_PERF
-        val wifiMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val wifiMode =
             WifiManager.WIFI_MODE_FULL_LOW_LATENCY
-        } else {
-            @Suppress("DEPRECATION")
-            WifiManager.WIFI_MODE_FULL_HIGH_PERF
-        }
 
         wifiLock = wm.createWifiLock(wifiMode, "AiChat:HighPerf")
 

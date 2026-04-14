@@ -20,6 +20,8 @@ import com.vayunmathur.crypto.ui.PrivateKeyScreen
 import com.vayunmathur.crypto.ui.SendScreen
 import com.vayunmathur.crypto.ui.StockDetailScreen
 import com.vayunmathur.crypto.ui.SwapScreen
+import com.vayunmathur.crypto.util.PortfolioViewModel
+import com.vayunmathur.crypto.util.PortfolioViewModelFactory
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.LocalSnackbarHostState

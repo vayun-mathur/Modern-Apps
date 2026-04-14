@@ -43,6 +43,7 @@ import com.vayunmathur.crypto.PredictionMarketPage
 import com.vayunmathur.crypto.util.api.PredictionMarket
 import com.vayunmathur.crypto.data.TokenInfo
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.crypto.ui.dialogs.OrderDialog
 import com.vayunmathur.library.util.round
 
 @Composable

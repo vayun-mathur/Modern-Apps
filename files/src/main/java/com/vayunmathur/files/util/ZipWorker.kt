@@ -12,6 +12,7 @@ import okio.Path
 import okio.Path.Companion.toPath
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import com.vayunmathur.files.R
 
 class ZipWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 

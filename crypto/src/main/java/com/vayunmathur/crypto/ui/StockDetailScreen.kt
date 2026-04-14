@@ -33,6 +33,7 @@ import com.vayunmathur.crypto.util.displayAmount
 import com.vayunmathur.crypto.data.TokenInfo
 import com.vayunmathur.crypto.data.TokenPriceRepository
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.crypto.ui.dialogs.OrderDialog
 import com.vayunmathur.library.util.round
 
 @Composable

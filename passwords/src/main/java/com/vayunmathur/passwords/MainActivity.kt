@@ -16,6 +16,7 @@ import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.passwords.data.PasswordDatabase
 import com.vayunmathur.passwords.ui.MenuPage
+import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.ui.PasswordEditPage
 import com.vayunmathur.passwords.ui.PasswordPage
 import com.vayunmathur.passwords.ui.SettingsPage

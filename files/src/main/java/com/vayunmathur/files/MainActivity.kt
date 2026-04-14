@@ -88,6 +88,8 @@ import androidx.core.content.FileProvider
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.vayunmathur.files.util.UnzipWorker
+import com.vayunmathur.files.util.ZipWorker
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconArchive
 import com.vayunmathur.library.ui.IconChevronRight

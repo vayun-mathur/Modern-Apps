@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.vayunmathur.clock.data.ClockDatabase
 import com.vayunmathur.clock.data.Timer
+import com.vayunmathur.clock.R
 import com.vayunmathur.library.util.buildDatabase
 import kotlinx.coroutines.*
 import kotlin.time.Clock

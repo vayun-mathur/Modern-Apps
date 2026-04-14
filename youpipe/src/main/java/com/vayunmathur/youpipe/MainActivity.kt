@@ -35,6 +35,7 @@ import com.vayunmathur.youpipe.data.SubscriptionVideo
 import com.vayunmathur.youpipe.ui.ChannelPage
 import com.vayunmathur.youpipe.ui.HistoryPage
 import com.vayunmathur.youpipe.util.PlaybackService
+import com.vayunmathur.youpipe.util.MyDownloader
 import com.vayunmathur.youpipe.ui.SearchPage
 import com.vayunmathur.youpipe.ui.SubscriptionVideosPage
 import com.vayunmathur.youpipe.ui.SubscriptionsPage

@@ -26,6 +26,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.openassistant.R
+import com.vayunmathur.openassistant.Route
+import com.vayunmathur.openassistant.data.Conversation
+import com.vayunmathur.openassistant.data.Message
+import com.vayunmathur.openassistant.util.InferenceService
+import com.vayunmathur.openassistant.util.WavRecorder
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +42,7 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconMenu
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.openassistant.util.copyUriToFile
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

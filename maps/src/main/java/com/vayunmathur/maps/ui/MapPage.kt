@@ -354,7 +354,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                                 Text(stringResource(MapsR.string.download))
                             }
                         }, title = { Text(stringResource(MapsR.string.download_offline_map_title)) },
-                        text = { Text(stringResource(MapsR.string.download_offline_map_text_overview, activeZone!!)) },
+                        text = { Text(stringResource(MapsR.string.download_offline_map_text_overview, activeZone)) },
                         dismissButton = {
                             TextButton({
                                 showDownloadDialog = false

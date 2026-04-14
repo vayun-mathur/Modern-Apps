@@ -33,6 +33,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconVisible
+import com.vayunmathur.files.R
 
 class TextEditorActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

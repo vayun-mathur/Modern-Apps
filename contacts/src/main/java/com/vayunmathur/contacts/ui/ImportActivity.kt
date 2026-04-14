@@ -21,11 +21,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.contacts.MainActivity
+import com.vayunmathur.contacts.data.ContactDetails
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconSave
 import okio.source
 import com.vayunmathur.contacts.data.Contact
 import com.vayunmathur.contacts.util.VcfUtils
+import com.vayunmathur.contacts.R
 
 class ImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -25,6 +25,7 @@ import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.photos.data.Photo
+import com.vayunmathur.photos.R
 
 object ImageLoader {
     private lateinit var imageLoader: ImageLoader

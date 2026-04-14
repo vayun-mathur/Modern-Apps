@@ -15,6 +15,7 @@ import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.getAll
+import com.vayunmathur.music.MIGRATION_1_2
 import com.vayunmathur.music.data.Album
 import com.vayunmathur.music.data.Artist
 import com.vayunmathur.music.data.Music

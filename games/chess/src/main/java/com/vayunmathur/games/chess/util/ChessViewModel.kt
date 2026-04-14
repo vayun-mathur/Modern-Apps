@@ -14,6 +14,7 @@ import com.vayunmathur.games.chess.data.PieceColor
 import com.vayunmathur.games.chess.data.PieceType
 import com.vayunmathur.games.chess.data.Position
 import com.vayunmathur.games.chess.data.Move
+import com.vayunmathur.games.chess.R
 
 sealed class GameMode {
     object TwoPlayer : GameMode()
