@@ -10,6 +10,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,12 +35,15 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -50,7 +54,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
-import coil.compose.AsyncImage
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.asImageBitmap
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconCrop
@@ -81,6 +87,69 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
     var rotation by remember { mutableFloatStateOf(0f) }
     var cropRect by remember { mutableStateOf(Rect(0f, 0f, 1f, 1f)) }
     var showSaveMenu by remember { mutableStateOf(false) }
+
+    var originalBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var transformedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(photo?.uri) {
+        val uri = photo?.uri?.toUri() ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val options = BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
+                    BitmapFactory.decodeStream(inputStream, null, options)
+
+                    var inSampleSize = 1
+                    val targetW = 2048
+                    val targetH = 2048
+                    if (options.outHeight > targetH || options.outWidth > targetW) {
+                        val halfHeight = options.outHeight / 2
+                        val halfWidth = options.outWidth / 2
+                        while (halfHeight / inSampleSize >= targetH && halfWidth / inSampleSize >= targetW) {
+                            inSampleSize *= 2
+                        }
+                    }
+
+                    options.inJustDecodeBounds = false
+                    options.inSampleSize = inSampleSize
+
+                    context.contentResolver.openInputStream(uri)?.use { inputStream2 ->
+                        originalBitmap = BitmapFactory.decodeStream(inputStream2, null, options)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    LaunchedEffect(originalBitmap, rotation, isCropping) {
+        val original = originalBitmap ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            val matrix = Matrix()
+            matrix.postRotate(rotation)
+
+            var result = Bitmap.createBitmap(
+                original,
+                0, 0, original.width, original.height,
+                matrix, true
+            )
+
+            if (!isCropping) {
+                val left = (cropRect.left * result.width).roundToInt().coerceIn(0, result.width - 1)
+                val top = (cropRect.top * result.height).roundToInt().coerceIn(0, result.height - 1)
+                val width = ((cropRect.right - cropRect.left) * result.width).roundToInt().coerceAtMost(result.width - left)
+                val height = ((cropRect.bottom - cropRect.top) * result.height).roundToInt().coerceAtMost(result.height - top)
+
+                if (width > 0 && height > 0) {
+                    result = Bitmap.createBitmap(result, left, top, width, height)
+                }
+            }
+            transformedBitmap = result
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -158,7 +227,8 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 val maxWidth = constraints.maxWidth.toFloat()
@@ -167,25 +237,33 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
                 photo?.let { p ->
                     val isFlipped = (rotation / 90f).roundToInt() % 2 != 0
                     val photoRatio = if (isFlipped) p.height.toFloat() / p.width.toFloat() else p.width.toFloat() / p.height.toFloat()
+                    
+                    val displayRatio = if (isCropping) photoRatio else (cropRect.width / cropRect.height) * photoRatio
                     val containerRatio = maxWidth / maxHeight
 
-                    val (imageWidth, imageHeight) = if (photoRatio > containerRatio) {
-                        maxWidth to (maxWidth / photoRatio)
+                    val (viewportWidth, viewportHeight) = if (displayRatio > containerRatio) {
+                        maxWidth to (maxWidth / displayRatio)
                     } else {
-                        (maxHeight * photoRatio) to maxHeight
+                        (maxHeight * displayRatio) to maxHeight
                     }
 
-                    Box(modifier = Modifier.size(imageWidth.dp, imageHeight.dp)) {
-                        AsyncImage(
-                            model = p.uri.toUri(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    rotationZ = rotation
-                                },
-                            contentScale = ContentScale.Fit
-                        )
+                    val density = LocalDensity.current
+                    val viewportWidthDp = with(density) { viewportWidth.toDp() }
+                    val viewportHeightDp = with(density) { viewportHeight.toDp() }
+
+                    Box(
+                        modifier = Modifier
+                            .size(viewportWidthDp, viewportHeightDp)
+                            .graphicsLayer { clip = false },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        transformedBitmap?.let { bitmap ->
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
                         if (isCropping) {
                             CropOverlay(
@@ -216,7 +294,14 @@ fun CropOverlay(
                 right = cropRect.right * width,
                 bottom = cropRect.bottom * height
             )
-            
+
+            val path = Path().apply {
+                addRect(Rect(0f, 0f, width, height))
+                addRect(rect)
+                fillType = PathFillType.EvenOdd
+            }
+            drawPath(path, Color.Black.copy(alpha = 0.5f))
+
             drawRect(
                 color = Color.White,
                 topLeft = Offset(rect.left, rect.top),
@@ -225,36 +310,101 @@ fun CropOverlay(
             )
         }
 
+        // Body drag handle
+        Box(
+            modifier = Modifier
+                .offset {
+                    IntOffset(
+                        (cropRect.left * width).roundToInt(),
+                        (cropRect.top * height).roundToInt()
+                    )
+                }
+                .size(
+                    width = with(LocalDensity.current) { (cropRect.width * width).toDp() },
+                    height = with(LocalDensity.current) { (cropRect.height * height).toDp() }
+                )
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        val dx = dragAmount.x / width
+                        val dy = dragAmount.y / height
+
+                        val newLeft = (cropRect.left + dx).coerceIn(0f, 1f - cropRect.width)
+                        val newTop = (cropRect.top + dy).coerceIn(0f, 1f - cropRect.height)
+
+                        onCropRectChange(
+                            Rect(
+                                left = newLeft,
+                                top = newTop,
+                                right = newLeft + cropRect.width,
+                                bottom = newTop + cropRect.height
+                            )
+                        )
+                    }
+                }
+        )
+
+        // Corners
         Handle(
             offset = Offset(cropRect.left * width, cropRect.top * height),
             onDrag = { delta ->
-                val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.1f)
-                val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.1f)
+                val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.05f)
+                val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.05f)
                 onCropRectChange(cropRect.copy(left = newLeft, top = newTop))
             }
         )
         Handle(
             offset = Offset(cropRect.right * width, cropRect.top * height),
             onDrag = { delta ->
-                val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.1f, 1f)
-                val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.1f)
+                val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.05f, 1f)
+                val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.05f)
                 onCropRectChange(cropRect.copy(right = newRight, top = newTop))
             }
         )
         Handle(
             offset = Offset(cropRect.left * width, cropRect.bottom * height),
             onDrag = { delta ->
-                val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.1f)
-                val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.1f, 1f)
+                val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.05f)
+                val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.05f, 1f)
                 onCropRectChange(cropRect.copy(left = newLeft, bottom = newBottom))
             }
         )
         Handle(
             offset = Offset(cropRect.right * width, cropRect.bottom * height),
             onDrag = { delta ->
-                val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.1f, 1f)
-                val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.1f, 1f)
+                val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.05f, 1f)
+                val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.05f, 1f)
                 onCropRectChange(cropRect.copy(right = newRight, bottom = newBottom))
+            }
+        )
+
+        // Side handles
+        Handle(
+            offset = Offset((cropRect.left + cropRect.right) / 2 * width, cropRect.top * height),
+            onDrag = { delta ->
+                val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.05f)
+                onCropRectChange(cropRect.copy(top = newTop))
+            }
+        )
+        Handle(
+            offset = Offset((cropRect.left + cropRect.right) / 2 * width, cropRect.bottom * height),
+            onDrag = { delta ->
+                val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.05f, 1f)
+                onCropRectChange(cropRect.copy(bottom = newBottom))
+            }
+        )
+        Handle(
+            offset = Offset(cropRect.left * width, (cropRect.top + cropRect.bottom) / 2 * height),
+            onDrag = { delta ->
+                val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.05f)
+                onCropRectChange(cropRect.copy(left = newLeft))
+            }
+        )
+        Handle(
+            offset = Offset(cropRect.right * width, (cropRect.top + cropRect.bottom) / 2 * height),
+            onDrag = { delta ->
+                val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.05f, 1f)
+                onCropRectChange(cropRect.copy(right = newRight))
             }
         )
     }
@@ -263,8 +413,9 @@ fun CropOverlay(
 @Composable
 fun Handle(offset: Offset, onDrag: (Offset) -> Unit) {
     val density = LocalDensity.current
-    val handleSize = 30.dp
+    val handleSize = 24.dp
     val handleRadiusPx = with(density) { (handleSize / 2).toPx() }
+    val currentOnDrag by rememberUpdatedState(onDrag)
 
     Box(
         modifier = Modifier
@@ -276,10 +427,11 @@ fun Handle(offset: Offset, onDrag: (Offset) -> Unit) {
             }
             .size(handleSize)
             .background(Color.White, CircleShape)
+            .border(1.dp, Color.Black, CircleShape)
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
-                    onDrag(dragAmount)
+                    currentOnDrag(dragAmount)
                 }
             }
     )
