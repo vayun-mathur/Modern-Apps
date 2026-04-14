@@ -25,12 +25,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,7 @@ import androidx.core.net.toUri
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.getValue
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconCrop
@@ -64,6 +66,7 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconRotateLeft
 import com.vayunmathur.library.ui.IconRotateRight
 import com.vayunmathur.library.ui.IconSave
+import com.vayunmathur.library.ui.IconUndo
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.R
@@ -86,7 +89,23 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
     var isCropping by remember { mutableStateOf(false) }
     var rotation by remember { mutableFloatStateOf(0f) }
     var cropRect by remember { mutableStateOf(Rect(0f, 0f, 1f, 1f)) }
+    var startCropRect by remember { mutableStateOf(Rect(0f, 0f, 1f, 1f)) }
     var showSaveMenu by remember { mutableStateOf(false) }
+
+    data class EditState(val rotation: Float, val cropRect: Rect)
+    val history = remember { mutableStateListOf<EditState>() }
+
+    fun pushState() {
+        history.add(EditState(rotation, cropRect))
+    }
+
+    fun undo() {
+        if (history.isNotEmpty()) {
+            val lastState = history.removeAt(history.size - 1)
+            rotation = lastState.rotation
+            cropRect = lastState.cropRect
+        }
+    }
 
     var originalBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var transformedBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -125,7 +144,7 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
         }
     }
 
-    LaunchedEffect(originalBitmap, rotation, isCropping) {
+    LaunchedEffect(originalBitmap, rotation, isCropping, if (isCropping) Unit else cropRect) {
         val original = originalBitmap ?: return@LaunchedEffect
         withContext(Dispatchers.IO) {
             val matrix = Matrix()
@@ -160,23 +179,43 @@ fun EditPhotoPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel, 
                 },
                 actions = {
                     if (isCropping) {
-                        IconButton(onClick = { isCropping = false }) {
+                        IconButton(onClick = {
+                            if (cropRect != startCropRect) {
+                                history.add(EditState(rotation, startCropRect))
+                            }
+                            isCropping = false
+                        }) {
                             IconCheck()
                         }
                         IconButton(onClick = {
-                            cropRect = Rect(0f, 0f, 1f, 1f)
+                            cropRect = startCropRect
                             isCropping = false
                         }) {
                             IconClose()
                         }
                     } else {
-                        IconButton(onClick = { isCropping = true }) {
+                        IconButton(
+                            onClick = { undo() },
+                            enabled = history.isNotEmpty()
+                        ) {
+                            IconUndo()
+                        }
+                        IconButton(onClick = {
+                            startCropRect = cropRect
+                            isCropping = true
+                        }) {
                             IconCrop()
                         }
-                        IconButton(onClick = { rotation -= 90f }) {
+                        IconButton(onClick = {
+                            pushState()
+                            rotation -= 90f
+                        }) {
                             IconRotateLeft()
                         }
-                        IconButton(onClick = { rotation += 90f }) {
+                        IconButton(onClick = {
+                            pushState()
+                            rotation += 90f
+                        }) {
                             IconRotateRight()
                         }
                         Box {
