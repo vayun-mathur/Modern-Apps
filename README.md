@@ -70,8 +70,12 @@ Officially unreleased, but the apk is available for download for testing.
 ### In progress:
 - Move away from Google APIs for routing driving and public transit (both will still require internet for traffic and GTFS respectively)
 
+## OpenAssistant
+A 100% offline AI app that supports text, image, and audio input using the Gemma 4 models
+Also supports tool calling, which enables interactions with other apps in this ecosystem (reading and writing to notes, searching and playing music, etc.)
+
 ## YouPipe
-A youtube frontend using Material 3 You - based on the NewPipe Extractor library
+A YouTube frontend using Material 3 You - based on the NewPipe Extractor library
 
 #### In progress:
 - Downloading videos
