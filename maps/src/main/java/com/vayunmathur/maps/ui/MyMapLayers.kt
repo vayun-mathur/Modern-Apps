@@ -152,17 +152,15 @@ fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.RouteType
                                 routeSource.setData(GeoJsonData.Features(FeatureCollection(features)))
                             }
                         }
-                        if (routeSource != null) {
-                            LineLayer(
-                                "route",
-                                routeSource,
-                                color = feature["color"].cast<StringValue>().convertToColor(),
-                                width = const(8.dp),
-                                cap = const(
-                                    LineCap.Round
-                                )
+                        LineLayer(
+                            "route",
+                            routeSource,
+                            color = feature["color"].cast<StringValue>().convertToColor(),
+                            width = const(8.dp),
+                            cap = const(
+                                LineCap.Round
                             )
-                        }
+                        )
                     }
                 }
 

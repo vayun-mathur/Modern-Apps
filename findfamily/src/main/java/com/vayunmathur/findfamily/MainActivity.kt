@@ -61,6 +61,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 import com.vayunmathur.findfamily.util.Platform
+import com.vayunmathur.findfamily.util.ensureSync
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

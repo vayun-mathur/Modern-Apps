@@ -42,6 +42,7 @@ import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconMenu
 import com.vayunmathur.library.util.DatabaseViewModel
+import com.vayunmathur.openassistant.util.copyUriToFile
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

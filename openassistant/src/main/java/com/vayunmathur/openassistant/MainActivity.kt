@@ -21,6 +21,7 @@ import java.io.File
 import com.vayunmathur.openassistant.data.AppDatabase
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
+import com.vayunmathur.openassistant.ui.LiteRTChatUi
 
 class MainActivity : ComponentActivity() {
 
