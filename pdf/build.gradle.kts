@@ -4,6 +4,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260416
+        versionName = "v2.3.3"
         minSdk = 35
         applicationId = "com.vayunmathur.pdf"
     }
