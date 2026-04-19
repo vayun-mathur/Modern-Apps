@@ -1,0 +1,8 @@
+FASE      
+  C       
+ACHSE     
+  A   CASH
+  FESCH   
+    A E   
+    F F   
+ASCHE     

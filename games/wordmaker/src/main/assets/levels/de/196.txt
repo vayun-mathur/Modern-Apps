@@ -1,0 +1,8 @@
+ADER 
+ A  D
+ H  A
+ E  T
+TRADE
+   R 
+   E 
+   H 

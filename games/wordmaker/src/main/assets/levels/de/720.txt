@@ -1,0 +1,7 @@
+RAUS
+   T
+   A
+STUR
+A  T
+T   
+T   

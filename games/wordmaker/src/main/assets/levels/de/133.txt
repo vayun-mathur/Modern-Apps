@@ -1,0 +1,4 @@
+  FOTO
+  O O 
+  R R 
+ROT   

@@ -1,0 +1,6 @@
+STEG
+   A
+ G B
+BASE
+ S  
+STAB

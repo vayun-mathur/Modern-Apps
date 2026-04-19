@@ -1,0 +1,6 @@
+      P 
+PLANE L 
+    L A 
+   PANNE
+    N E 
+      N 

@@ -1,0 +1,7 @@
+   INSEL
+     E  
+   SKIN 
+KNIE N  
+   N    
+  LINK  
+   L    

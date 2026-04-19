@@ -1,0 +1,9 @@
+     T B
+     A A
+     B S
+    TUSE
+      T 
+   STAUB
+   T  B 
+   A  E 
+TAUB    

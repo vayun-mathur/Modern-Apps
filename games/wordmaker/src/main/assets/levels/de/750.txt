@@ -1,0 +1,9 @@
+    BANGE
+       R 
+     G A 
+     A B 
+     R E 
+   RABEN 
+   A E   
+GERN     
+   GAREN 

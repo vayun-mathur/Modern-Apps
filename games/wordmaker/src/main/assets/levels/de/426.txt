@@ -1,0 +1,7 @@
+  TEST    
+    E     
+    I NEST
+  SITTE   
+  E   T   
+  I  STEIN
+EINST     

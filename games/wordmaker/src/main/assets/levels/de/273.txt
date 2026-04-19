@@ -1,0 +1,7 @@
+    K
+  G U
+  R R
+KRAUS
+A S  
+R    
+GRAU 

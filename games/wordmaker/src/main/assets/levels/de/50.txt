@@ -1,0 +1,8 @@
+    DRAN
+  B  A  
+  RAND  
+  A     
+  N     
+BAD     
+ R      
+ D      

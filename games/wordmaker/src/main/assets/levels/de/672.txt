@@ -1,0 +1,4 @@
+KAHN  T  
+A  A HALT
+H  H  N  
+L  TALK  

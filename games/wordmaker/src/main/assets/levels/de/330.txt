@@ -1,0 +1,10 @@
+      R
+      A
+    B U
+    R C
+  BAUCH
+  R C  
+  A H  
+RAUB   
+  C    
+  H    

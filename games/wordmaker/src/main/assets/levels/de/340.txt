@@ -1,0 +1,7 @@
+     L
+   M A
+  HALS
+ S S T
+HALT  
+ M    
+ T    

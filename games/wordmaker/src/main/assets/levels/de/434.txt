@@ -1,0 +1,7 @@
+       N
+       E
+     R R
+   GRUND
+DUNE N  
+   R D  
+   N E  

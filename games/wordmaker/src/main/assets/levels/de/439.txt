@@ -1,0 +1,8 @@
+  L   
+  A  L
+  U  A
+  C  U
+  HALT
+   C  
+TUCH  
+   T  

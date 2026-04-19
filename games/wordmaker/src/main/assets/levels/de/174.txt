@@ -1,0 +1,9 @@
+        S
+      C C
+      A H
+R     S A
+A   SCHAR
+S   C   F
+CRASH    
+H   A    
+    F    

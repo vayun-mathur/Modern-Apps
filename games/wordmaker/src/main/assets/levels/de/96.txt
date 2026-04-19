@@ -1,0 +1,6 @@
+    S
+    T
+    A
+ STAR
+  A T
+SATT 

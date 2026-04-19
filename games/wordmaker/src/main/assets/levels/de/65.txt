@@ -1,0 +1,6 @@
+    G 
+  GRAB
+  A B 
+GAR E 
+  B   
+ABER  

@@ -1,0 +1,8 @@
+   A 
+   B 
+   E 
+ F N 
+BANDE
+ D   
+ E   
+ N   

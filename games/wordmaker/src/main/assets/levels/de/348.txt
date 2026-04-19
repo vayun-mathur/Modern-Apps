@@ -1,0 +1,5 @@
+KODE    
+  E  D  
+  MOVE  
+  O  K  
+    MODE

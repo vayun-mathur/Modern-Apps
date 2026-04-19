@@ -1,0 +1,10 @@
+      R   
+    C AUCH
+SCHAR S   
+    A C   
+  H SCHUR 
+ CASH   A 
+  U     U 
+  S     S 
+        C 
+        H 
