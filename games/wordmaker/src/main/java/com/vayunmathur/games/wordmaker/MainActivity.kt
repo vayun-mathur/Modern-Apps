@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,6 +78,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.wordmaker.data.CrosswordData
+import com.vayunmathur.games.wordmaker.data.AVAILABLE_LANGUAGES
 import com.vayunmathur.games.wordmaker.data.LevelDataStore
 import com.vayunmathur.games.wordmaker.util.AppBackupAgent
 import com.vayunmathur.games.wordmaker.util.Dictionary
@@ -93,6 +95,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -150,7 +153,11 @@ fun rememberAchievementsManager(levelDataStore: LevelDataStore): AchievementsMan
 fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDataStore) {
     val context = LocalContext.current
     val resources = LocalResources.current
+    val currentLanguageId by levelDataStore.currentLanguage.collectAsState(initial = "en")
     val currentLevel by levelDataStore.currentLevel.collectAsState(initial = 1)
+    val languageConfig = remember(currentLanguageId) {
+        AVAILABLE_LANGUAGES.find { it.id == currentLanguageId } ?: AVAILABLE_LANGUAGES.first()
+    }
     var crosswordData by remember { mutableStateOf<CrosswordData?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val dictionary by remember { mutableStateOf(Dictionary()) }
@@ -158,21 +165,37 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
 
     val achievementsManager = rememberAchievementsManager(levelDataStore)
     val newAchievement by achievementsManager.newAchievement.collectAsState()
+    var dictionary by remember { mutableStateOf(Dictionary.EMPTY) }
+    var totalLevels by remember { mutableStateOf<Int?>(null) }
+    var showLanguagePicker by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val isGameComplete = totalLevels != null && currentLevel > totalLevels!!
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentLanguageId) {
         achievementsManager.checkExistingAchievements()
-        coroutineScope.launch {
-            dictionary.init(context)
+        error = null
+        dictionary = withContext(Dispatchers.IO) {
+            Dictionary.load(context, languageConfig.dictionaryFile)
+        }
+        totalLevels = withContext(Dispatchers.IO) {
+            context.assets.list(languageConfig.levelsPath)?.count { it.endsWith(".txt") }
         }
     }
 
-    LaunchedEffect(currentLevel) {
+    LaunchedEffect(currentLevel, currentLanguageId) {
+        error = null
         try {
-            crosswordData = CrosswordData.fromAsset(context, "levels/$currentLevel.txt")
-            if (crosswordData == null) {
+            val data = withContext(Dispatchers.IO) {
+                CrosswordData.fromAsset(context, "${languageConfig.levelsPath}/$currentLevel.txt")
+            }
+            if (data == null) {
+                crosswordData = null
                 error = resources.getString(R.string.error_parse_level)
+            } else {
+                crosswordData = data
             }
         } catch (e: Exception) {
+            crosswordData = null
             error = resources.getString(R.string.error_load_level, e.message)
         }
     }
@@ -182,7 +205,6 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
             error != null -> {
                 Text(text = error!!, color = colorScheme.error)
             }
-
             crosswordData != null -> {
                 WordGameScreen(
                     crosswordData = crosswordData!!,
@@ -193,7 +215,6 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
                     onOpenGameCenter = { backStack.add(Route.GameCenter) }
                 )
             }
-
             else -> {
                 CircularProgressIndicator()
             }
@@ -203,6 +224,42 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
             AchievementNotification(it) {
                 achievementsManager.dismissNotification()
             }
+        }
+
+        androidx.compose.material3.TextButton(
+            onClick = { showLanguagePicker = true },
+            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp)
+        ) {
+            Text(currentLanguageId.uppercase())
+        }
+
+        if (showLanguagePicker) {
+            AlertDialog(
+                onDismissRequest = { showLanguagePicker = false },
+                title = { Text(stringResource(R.string.select_language)) },
+                text = {
+                    androidx.compose.foundation.lazy.LazyColumn {
+                        items(AVAILABLE_LANGUAGES) { lang ->
+                            Text(
+                                text = lang.displayName,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        coroutineScope.launch { levelDataStore.saveLanguage(lang.id) }
+                                        showLanguagePicker = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                                fontWeight = if (lang.id == currentLanguageId) FontWeight.Bold else null
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showLanguagePicker = false }) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
+            )
         }
     }
 }
