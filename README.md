@@ -14,6 +14,10 @@ All APK files made by me will match this SHA-256 certificate:
 ### Acknowledgement of Bugs
 The v2.x.x versions of these apps are all to be considered beta versions. Lots of features/apps being done in a short period of time will inevitably result in some bugs here and there. All bug reports are appreciated, and any PRs to add fixes or new features (as long as not bloaty) are very appreciated. Version numbering will change to v3.x.x when all the apps are stable.
 
+# LICENSE
+
+**[GPL v3.0 only](https://spdx.org/licenses/GPL-3.0-only.html)**
+
 # Download links:
 
 | App Name | F-Droid | Obtainium (Latest) |
