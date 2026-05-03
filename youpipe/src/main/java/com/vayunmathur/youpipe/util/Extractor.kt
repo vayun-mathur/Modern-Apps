@@ -33,8 +33,19 @@ fun channelIDtoURL(id: String): String {
     return "https://www.youtube.com/channel/$id"
 }
 
-fun channelURLtoID(url: String): String {
-    return url.toUri().lastPathSegment!!
+suspend fun getVideoInfo(videoId: Long): VideoInfo = coroutineScope {
+    val idString = decodeVideoID(videoId)
+    val ex = ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=$idString")
+    ex.fetchPage()
+    VideoInfo(
+        ex.name,
+        videoId,
+        ex.duration,
+        ex.viewCount,
+        ex.uploadDate!!.instant.toKotlinInstant(),
+        ex.thumbnails.first().url,
+        ex.uploaderName
+    )
 }
 
 fun getChannelVideos(channelId: String): Sequence<VideoInfo> = sequence {
@@ -62,14 +73,16 @@ fun getChannelVideos(channelId: String): Sequence<VideoInfo> = sequence {
     }
 }
 
-suspend fun getChannelInfo(channelId: String): ChannelInfo = coroutineScope {
-    val ex = ServiceList.YouTube.getChannelExtractor(channelIDtoURL(channelId))
+suspend fun getChannelInfo(channelId: String): ChannelInfo = getChannelInfoFromURL(channelIDtoURL(channelId))
+
+suspend fun getChannelInfoFromURL(url: String): ChannelInfo = coroutineScope {
+    val ex = ServiceList.YouTube.getChannelExtractor(url)
     ex.fetchPage()
     ChannelInfo(
         ex.name,
-        channelId,
+        ex.id,
         ex.subscriberCount,
         0,
-        ex.avatars.first().url,
+        ex.avatars.firstOrNull()?.url ?: "",
     )
 }
