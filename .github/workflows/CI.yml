@@ -1,0 +1,48 @@
+name: Build PDF App
+
+# 配置触发条件：推送到 bp4a 分支、提交 PR 到 bp4a，或者手动触发
+on:
+  push:
+    branches: [ "bp4a" ]
+  pull_request:
+    branches: [ "bp4a" ]
+  workflow_dispatch: 
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest # GitHub 托管的 Ubuntu 环境自带 Android SDK 和 NDK
+
+    steps:
+      # 1. 检出 bp4a 分支代码
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: bp4a # 确保拉取的是你精简后的目标分支
+
+      # 2. 配置 JDK 17 环境 (Modern-Apps 需要 JDK 17 才能正常编译)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle # 开启 Gradle 缓存，极大缩短后续构建的依赖下载时间
+
+      # 3. 赋予 Gradle Wrapper 执行权限（防止由于 Git 在不同系统间的操作导致丢失 +x 权限）
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 4. 执行构建
+      # 由于你已经剥离了其他模块，直接运行 assembleDebug 即可。
+      # 添加 --stacktrace 可以在构建偶尔失败时提供明确的堆栈日志
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      # 5. 上传生成的 APK 文件作为构建产物 (Artifact)
+      # 使用 `**/` 通配符：不论 pdf 模块依然在原有的 /pdf/ 目录下，还是被你移到了根目录，都能准确捕获到 APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-App-Debug-APK
+          path: '**/build/outputs/apk/debug/*.apk'
+          retention-days: 7 # 产物在 GitHub 上保留 7 天
