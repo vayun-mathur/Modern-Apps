@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PDF</string>
-    <string name="pdf_viewer_title">PDF 查看器</string>
+    <string name="pdf_viewer_title">PDF Viewer</string>
     <string name="search_label">查找</string>
     <string name="search_result_counter">%1$d / %2$d</string>
     <string name="password_dialog_title">需要密码</string>
-    <string name="password_dialog_message">此 PDF 受密码保护。请输入密码。</string>
+    <string name="password_dialog_message">此 PDF 受密码保护，请输入密码。</string>
     <string name="password_label">密码</string>
     <string name="ok">确定</string>
     <string name="incorrect_password">密码错误，请重试。</string>
