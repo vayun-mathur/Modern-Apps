@@ -162,25 +162,6 @@ fun MainPage(backStack: NavBackStack<Route>) {
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(stringResource(R.string.section_medical_records), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f)) {
-                    MiniMetricCard(stringResource(R.string.label_patients), "", "", onClick = {
-                        backStack.add(Route.Patients)
-                    })
-                }
-                Box(Modifier.weight(1f)) {
-                    MiniMetricCard(stringResource(R.string.label_immunizations), "", "", onClick = {
-                        backStack.add(Route.Immunizations)
-                    })
-                }
-                Box(Modifier.weight(1f)) {
-                    MiniMetricCard(stringResource(R.string.label_lab_results), "", "", onClick = {
-                        backStack.add(Route.LabResults)
-                    })
-                }
-            }
-
             // 4. Activity & Energy
             Text(stringResource(R.string.section_activity), style = MaterialTheme.typography.labelLarge)
             EnergyBurned(backStack, totalCaloriesBurnedToday)
@@ -225,12 +206,28 @@ fun MainPage(backStack: NavBackStack<Route>) {
             Text(stringResource(R.string.section_nutrition_today), style = MaterialTheme.typography.labelLarge)
             // TODO: add this back
             //NutritionSummaryCard(aggregates)
-            Nutrition(backStack, nutritionCaloriesToday)
-            Hydration(backStack, hydrationToday)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) { Nutrition(backStack, nutritionCaloriesToday) }
+                Box(Modifier.weight(1f)) { Hydration(backStack, hydrationToday) }
+            }
 
             // 3. Body Composition
             Text(stringResource(R.string.section_body_composition), style = MaterialTheme.typography.labelLarge)
             BodyCompositionDashboard(backStack, height, weight, bodyFat, leanBodyMass, boneMass, bodyWaterMass)
+
+            Text(stringResource(R.string.section_medical_records), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) {
+                    MiniMetricCard(stringResource(R.string.label_immunizations), "", "", onClick = {
+                        backStack.add(Route.Immunizations)
+                    })
+                }
+                Box(Modifier.weight(1f)) {
+                    MiniMetricCard(stringResource(R.string.label_lab_results), "", "", onClick = {
+                        backStack.add(Route.LabResults)
+                    })
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }

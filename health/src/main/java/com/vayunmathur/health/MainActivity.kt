@@ -58,7 +58,6 @@ import com.vayunmathur.health.ui.HealthMetricConfig
 import com.vayunmathur.health.ui.MainPage
 import com.vayunmathur.health.ui.ImmunizationsPage
 import com.vayunmathur.health.ui.LabResultsPage
-import com.vayunmathur.health.ui.PatientsPage
 import com.vayunmathur.health.ui.NutritionDetailsPage
 import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.util.HealthSyncWorker
@@ -152,9 +151,6 @@ sealed interface Route: NavKey {
     data object MainPage: Route
 
     @Serializable
-    data object Patients: Route
-
-    @Serializable
     data object Immunizations: Route
 
     @Serializable
@@ -173,9 +169,6 @@ fun Navigation() {
     MainNavigation(backStack) {
         entry<Route.MainPage> {
             MainPage(backStack)
-        }
-        entry<Route.Patients> {
-            PatientsPage(backStack)
         }
         entry<Route.Immunizations> {
             ImmunizationsPage(backStack)
