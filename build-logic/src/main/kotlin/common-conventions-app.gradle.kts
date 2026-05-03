@@ -112,7 +112,6 @@ dependencies {
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(project(":library"))
 }
 
 fun DependencyHandlerScope.justSoItShowsAsUsedSomewhere() {
