@@ -1,6 +1,0 @@
-H PAR  
-A      
-GRAPH G
-    A A
-    RAP
-    P  

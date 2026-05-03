@@ -1,7 +1,0 @@
- A    T
- N    A
- T  A I
-TITAN N
-  I T T
-  N I  
-INTACT 

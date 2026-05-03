@@ -1,5 +1,0 @@
-  TAR C
-CAR A A
-A ART R
-T C   T
-  T    

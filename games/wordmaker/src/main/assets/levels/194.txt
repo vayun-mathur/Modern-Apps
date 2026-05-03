@@ -1,7 +1,0 @@
-LACE  C C
-O O C ACE
-CELLO L L
-A A ALL L
-L   L    
-E        
-  LOCAL  

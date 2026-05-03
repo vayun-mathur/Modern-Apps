@@ -1,9 +1,0 @@
-M T         
-ATOM   R    
-T R   NORM  
-RANT   A A  
-O  ROMAN N  
-N  A O  ROAM
-   MOAN  R A
-     T     R
-           T

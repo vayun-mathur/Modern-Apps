@@ -1,6 +1,0 @@
-LAND  
-A     
-INLAND
-D A  I
-  I  A
-  NAIL

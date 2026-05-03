@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Contatos</string>
-    <string name="cancel">Cancelar</string>
-    <string name="ok">Ok</string>
-    <string name="delete">Excluir</string>
-    <string name="settings">Configurações</string>
-</resources>

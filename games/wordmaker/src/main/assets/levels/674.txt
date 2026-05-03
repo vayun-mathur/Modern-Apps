@@ -1,9 +1,0 @@
-S S      
-PINS     
-O I      
-OOPS     
-N  POISON
-   I  N I
-   N  O P
-     IONS
-      P  

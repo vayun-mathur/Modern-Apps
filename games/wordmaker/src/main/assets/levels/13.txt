@@ -1,5 +1,0 @@
-SAVE 
-A A A
-V SAD
-E E S
-D    

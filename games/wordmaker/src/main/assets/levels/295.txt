@@ -1,9 +1,0 @@
-  CARROT 
-  O   A  
-ACTOR T C
-    A   A
-C CAT   R
-O  R  ROT
-A  TACO  
-T   C A  
-    TAR  

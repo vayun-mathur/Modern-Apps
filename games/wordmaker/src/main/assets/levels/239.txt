@@ -1,6 +1,0 @@
-BOTTOM
-O O  O
-O MOOT
-M B  T
-     O
-BOOT  

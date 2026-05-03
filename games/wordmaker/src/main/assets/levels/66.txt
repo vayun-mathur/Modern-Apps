@@ -1,6 +1,0 @@
-D   DEMO
-O   O O 
-M MOVED 
-E O E E 
-  V     
-DOE     

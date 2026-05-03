@@ -1,7 +1,0 @@
- R B B 
-TUBE R 
- T TRUE
-     T 
-  TUBER
-    U U
-    TUB

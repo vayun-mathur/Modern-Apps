@@ -1,6 +1,0 @@
- LOAN     
- O        
-ANALOG    
- G   ALONG
-     L    
-   GOAL   

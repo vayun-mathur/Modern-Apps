@@ -1,1 +1,0 @@
-A markdown note-taking app

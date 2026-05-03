@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="notification_channel_battery_name">Akku Alarm</string>
-    <string name="notification_channel_location_tracking_name">Orten</string>
-    <string name="app_name">Find Family</string>
-    <string name="notification_channel_location_tracking_desc">Wird genutzt um FindFamily Ortung auch im Hintergrund durchzuführen</string>
-</resources>

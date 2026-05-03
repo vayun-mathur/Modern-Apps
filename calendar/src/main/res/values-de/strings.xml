@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="close">Schließen</string>
-    <string name="delete">Löschen</string>
-    <string name="ok">Ok</string>
-    <string name="cancel">Abbrechen</string>
-    <string name="settings">Einstellungen</string>
-    <string name="app_name">Kalender</string>
-</resources>

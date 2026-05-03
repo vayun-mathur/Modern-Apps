@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">OpenAssistant</string>
-    <string name="recording">Registrazione in corso…</string>
-    <string name="message_placeholder">Messaggio…</string>
-    <string name="voice_message">Messaggio vocale</string>
-    <string name="mic_error_format">Errore del microfono: %1$s</string>
-    <string name="new_conversation">Nuova conversazione</string>
-</resources>

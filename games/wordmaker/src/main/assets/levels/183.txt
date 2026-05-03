@@ -1,6 +1,0 @@
-GLOB G
-O    L
-BLOB O
-B  L B
-L LOBE
-E  G  

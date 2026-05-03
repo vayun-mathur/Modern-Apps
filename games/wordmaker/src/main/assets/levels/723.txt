@@ -1,9 +1,0 @@
-        S S
-      E THE
-    SET R C
-    H CHEST
-   TECH T  
-HER  R  C  
-  E  E  H  
-  S  S     
-  TEST     
