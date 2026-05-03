@@ -1,3 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Zdjęcia</string>
+    <string name="title_edit_photo">Edytuj zdjęcie</string>
+    <string name="action_save">Zapisz</string>
+    <string name="action_save_as_copy">Zapisz jako kopię</string>
+    <string name="action_undo">Cofnij</string>
+    <string name="label_gallery">Galeria</string>
+    <string name="label_map">Mapa</string>
+    <string name="label_trash">Kosz</string>
+    <string name="label_secure_folder">Bezpieczny folder</string>
+    <string name="action_move_to_secure">Przenieś do Bezpiecznego folderu</string>
+    <string name="action_restore_from_secure">Przywróć z Bezpiecznego folderu</string>
+    <string name="secure_folder_auth_title">Odblokuj Bezpieczny folder</string>
+    <string name="secure_folder_auth_subtitle">Zweryfikuj, aby uzyskać dostęp do swoich bezpiecznych zdjęć</string>
+    <string name="items_selected">%1$d wybrano</string>
+    <string name="month_year_format">%1$s %2$d</string>
+    <string name="taken_on">Zrobiono: %1$s</string>
+    <string name="location">Lokalizacja: %1$s</string>
+    <string name="resolution">Rozdzielczość: %1$d x %2$d</string>
+    <string name="detecting">Wykrywanie…</string>
+    <string name="date_format">%1$d %2$s %3$d</string>
+    <string name="grant_image_video_permissions">Udziel uprawnień do obrazów/wideo</string>
+    <string name="grant_storage_permission">Udziel uprawnienia do przechowywania</string>
+    <string name="search_photos">Szukaj zdjęć…</string>
+    <string name="indexing_photos">Indeksowanie zdjęć</string>
+    <string name="image_understanding_title">Eksperymentalne zrozumienie obrazu</string>
+    <string name="image_understanding_description">Ta funkcja wymaga zainstalowania aplikacji OpenAssistant i wykorzystuje jej lokalne modele do przetwarzania obrazów na urządzeniu.</string>
+    <string name="openassistant_not_found">Aplikacja OpenAssistant nie jest zainstalowana. Zainstaluj ją, aby włączyć tę funkcję.</string>
+    <string name="enable_feature">Włącz funkcję</string>
+    <string name="disable_ocr">Wyłącz indeksowanie AI</string>
+    <string name="indexing_progress_details">Przetworzono %1$d z %2$d zdjęć</string>
+    <string name="close">Zamknij</string>
 </resources>
