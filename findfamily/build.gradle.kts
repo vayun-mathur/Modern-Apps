@@ -7,6 +7,14 @@ android {
     defaultConfig {
         applicationId = "com.vayunmathur.findfamily"
     }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            isMinifyEnabled = false
+        }
+    }
 }
 
 dependencies {

@@ -19,11 +19,8 @@
     <string name="notification_exited_waypoint">%1$s has exited %2$s</string>
 
     <!-- Permission screen -->
-    <string name="permission_fine_location_granted">✅ Fine Location Granted</string>
-    <string name="permission_grant_fine_location">1. Grant Fine Location</string>
-    <string name="permission_background_granted">✅ Background Granted</string>
-    <string name="permission_enable_all_the_time">2. Enable \'Allow all the time\'</string>
-    <string name="permission_background_explanation">To enable background tracking, please select \'Allow all the time\' in the next screen.</string>
+    <string name="permission_grant_location">Allow Location Access</string>
+    <string name="permission_location_explanation">FindFamily needs location access to share your position with family. Tracking runs as a persistent notification, similar to other family safety apps.</string>
 
     <!-- MainPage FAB menu -->
     <string name="fab_person">Person</string>
@@ -118,4 +115,44 @@
 
     <!-- Settings -->
     <string name="settings">Settings</string>
+
+    <!-- Location Settings Section -->
+    <string name="settings_location_section">Location</string>
+    <string name="settings_location_mode">Location Mode</string>
+    <string name="settings_location_mode_desc">Balance accuracy and battery life</string>
+
+    <!-- Location Modes -->
+    <string name="location_mode_battery_saver">Battery Saver</string>
+    <string name="location_mode_battery_saver_desc">Cell/Wi-Fi only, updates every 15 min. Best battery life.</string>
+    <string name="location_mode_balanced">Balanced</string>
+    <string name="location_mode_balanced_desc">Network + GPS fallback, updates every 5 min. Recommended.</string>
+    <string name="location_mode_high_accuracy">High Accuracy</string>
+    <string name="location_mode_high_accuracy_desc">GPS + network, frequent updates. Uses more battery.</string>
+
+    <!-- Location Access Level -->
+    <string name="settings_location_access_desc">Location runs as a persistent foreground service (like GrapheneOS sandboxed Play Services)</string>
+
+    <!-- GPS Settings -->
+    <string name="settings_gps_fallback">GPS Fallback</string>
+    <string name="settings_gps_fallback_desc">Use GPS when network location is inaccurate</string>
+    <string name="settings_gps_fallback_enabled">Enabled — activates when accuracy drops below 100m</string>
+    <string name="settings_gps_fallback_disabled">Disabled — relies on network only</string>
+
+    <!-- Update Frequency -->
+    <string name="settings_update_frequency">Update Frequency</string>
+    <string name="settings_update_frequency_desc">How often to send location updates</string>
+    <string name="frequency_real_time">Real-time (~30s)</string>
+    <string name="frequency_frequent">Frequent (~5 min)</string>
+    <string name="frequency_normal">Normal (~15 min)</string>
+    <string name="frequency_saving">Power Saving (~30 min)</string>
+
+    <!-- Smart Tracking -->
+    <string name="settings_smart_tracking">Smart Tracking</string>
+    <string name="settings_smart_tracking_desc">Reduce updates when stationary to save battery</string>
+    <string name="settings_smart_tracking_enabled">Enabled — pauses updates when not moving</string>
+    <string name="settings_smart_tracking_disabled">Disabled — always updating</string>
+
+    <!-- Battery Info -->
+    <string name="settings_battery_info">Battery Impact</string>
+    <string name="settings_battery_info_text">Location tracking uses approximately %1$s battery per day. Select Battery Saver mode for minimal impact, or High Accuracy for best tracking.</string>
 </resources>

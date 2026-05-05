@@ -1,4 +1,5 @@
 package com.vayunmathur.findfamily.util
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -37,6 +38,7 @@ import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.startRepeatedTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -46,9 +48,17 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
+
+enum class LocationMode(val key: String, val updateIntervalMs: Long, val minDistanceM: Float, val accuracyThresholdM: Float, val usesGps: Boolean) {
+    BATTERY_SAVER("battery_saver", 900_000L, 500f, 500f, false),
+    BALANCED("balanced", 300_000L, 100f, 100f, true),
+    HIGH_ACCURACY("high_accuracy", 30_000L, 10f, 50f, true);
+
+    companion object {
+        fun fromKey(key: String): LocationMode = entries.find { it.key == key } ?: BALANCED
+    }
+}
 
 class LocationTrackingService : Service() {
 
@@ -58,19 +68,58 @@ class LocationTrackingService : Service() {
     private lateinit var waypoints: StateFlow<List<Waypoint>>
     private lateinit var temporaryLinks: StateFlow<List<TemporaryLink>>
     private lateinit var bm: BatteryManager
+    private lateinit var dataStore: DataStoreUtils
+
     private var isGpsRunning = false
+    private var locationMode = LocationMode.BALANCED
+    private var gpsFallbackEnabled = true
+    private var smartTrackingEnabled = true
+
+    private var lastLocation: Location? = null
+    private var lastUpdateTime = 0L
+    private var stationaryCount = 0
+    private var trackingJob: Job? = null
 
     private val networkListener = LocationListener { location ->
-        if (location.accuracy > 100f) {
-            if (!isGpsRunning) startGps()
+        handleLocationUpdate(location, isFromGps = false)
+    }
+
+    private val gpsListener = LocationListener { location ->
+        handleLocationUpdate(location, isFromGps = true)
+    }
+
+    private fun handleLocationUpdate(location: Location, isFromGps: Boolean) {
+        if (smartTrackingEnabled && isStationary(location)) {
+            stationaryCount++
+            if (stationaryCount > 3) return
         } else {
-            if (isGpsRunning) stopGps()
+            stationaryCount = 0
+        }
+
+        val now = System.currentTimeMillis()
+        if (now - lastUpdateTime < locationMode.updateIntervalMs / 10 && !isFromGps) return
+
+        if (!isFromGps && locationMode.usesGps && gpsFallbackEnabled) {
+            if (location.accuracy > locationMode.accuracyThresholdM) {
+                if (!isGpsRunning) startGps()
+            } else {
+                if (isGpsRunning) stopGps()
+                processLocation(location)
+            }
+        } else {
             processLocation(location)
         }
     }
 
-    private val gpsListener = LocationListener { location ->
-        processLocation(location)
+    private fun isStationary(location: Location): Boolean {
+        val last = lastLocation ?: return false
+        val distance = FloatArray(1)
+        android.location.Location.distanceBetween(
+            last.latitude, last.longitude,
+            location.latitude, location.longitude,
+            distance
+        )
+        return distance[0] < 10f
     }
 
     private fun processLocation(location: Location) {
@@ -80,20 +129,21 @@ class LocationTrackingService : Service() {
         val temporaryLinks = temporaryLinks.value
         val userIDs = users.map { it.id }
         val now = Clock.System.now()
-        println(location.accuracy)
+
+        lastLocation = location
+        lastUpdateTime = System.currentTimeMillis()
+
         val locationValue = LocationValue(
             Networking.userid,
             Coord(location.latitude, location.longitude),
-            0f,
+            location.speed,
             location.accuracy,
             Clock.System.now(),
             bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).toFloat()
         )
-        println(locationValue)
         CoroutineScope(Dispatchers.IO).launch {
             viewModel.upsertAsync(locationValue)
             Networking.ensureUserExists()
-            println(users)
             users.forEach { user ->
                 Networking.publishLocation(locationValue, user)
             }
@@ -105,7 +155,7 @@ class LocationTrackingService : Service() {
             }
             delay(3000)
             Networking.receiveLocations()?.let { locations ->
-                val usersRecieved = locations.map { it.userid }.distinct()
+                val usersRecieved = locations.filter { it.userid != Networking.userid }.map { it.userid }.distinct()
                 val newUsers = usersRecieved.filter { it !in userIDs }
                 viewModel.upsertAll(newUsers.map {
                     User(
@@ -121,11 +171,9 @@ class LocationTrackingService : Service() {
                 })
 
                 val locationValues = viewModel.getLatestMap().first()
-                // update the user.locationName
                 users.forEach { user ->
                     val lastLocation = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
                     val lastSavedLocation = locationValues[user.id]
-
 
                     if(lastLocation.battery <= 15f && (lastSavedLocation?.battery?:100f) > 15f) {
                         if(user.id != Networking.userid)
@@ -176,6 +224,8 @@ class LocationTrackingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        loadSettings()
+
         val notification = createNotification()
 
         startForeground(
@@ -186,6 +236,13 @@ class LocationTrackingService : Service() {
 
         startTracking()
         return START_STICKY
+    }
+
+    private fun loadSettings() {
+        dataStore = DataStoreUtils.getInstance(this)
+        locationMode = LocationMode.fromKey(dataStore.getString("location_mode") ?: "balanced")
+        gpsFallbackEnabled = dataStore.getBoolean("gps_fallback_enabled", true)
+        smartTrackingEnabled = dataStore.getBoolean("smart_tracking_enabled", true)
     }
 
     private fun startTracking() {
@@ -201,7 +258,7 @@ class LocationTrackingService : Service() {
             waypoints = viewModel.data<Waypoint>()
             temporaryLinks = viewModel.data<TemporaryLink>()
             Networking.init(viewModel, DataStoreUtils.getInstance(this@LocationTrackingService))
-            
+
             withContext(Dispatchers.Main) {
                 setupLocationUpdates()
             }
@@ -212,15 +269,71 @@ class LocationTrackingService : Service() {
         bm = getSystemService(BATTERY_SERVICE) as BatteryManager
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
 
+        stopAllUpdates()
+
+        when (locationMode) {
+            LocationMode.BATTERY_SAVER -> setupBatterySaverTracking()
+            LocationMode.BALANCED -> setupBalancedTracking()
+            LocationMode.HIGH_ACCURACY -> setupHighAccuracyTracking()
+        }
+    }
+
+    private fun setupBatterySaverTracking() {
         try {
             locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER,
-                10_000L,
-                0f,
+                locationMode.updateIntervalMs,
+                locationMode.minDistanceM,
                 networkListener
             )
         } catch (_: SecurityException) {
         }
+    }
+
+    private fun setupBalancedTracking() {
+        try {
+            locationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER,
+                locationMode.updateIntervalMs,
+                locationMode.minDistanceM,
+                networkListener
+            )
+        } catch (_: SecurityException) {
+        }
+    }
+
+    private fun setupHighAccuracyTracking() {
+        try {
+            locationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER,
+                locationMode.updateIntervalMs,
+                locationMode.minDistanceM,
+                networkListener
+            )
+        } catch (_: SecurityException) {
+        }
+
+        if (gpsFallbackEnabled) {
+            try {
+                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        locationMode.updateIntervalMs / 2,
+                        locationMode.minDistanceM / 2,
+                        gpsListener
+                    )
+                    isGpsRunning = true
+                }
+            } catch (_: SecurityException) {
+            }
+        }
+    }
+
+    private fun stopAllUpdates() {
+        locationManager.removeUpdates(networkListener)
+        locationManager.removeUpdates(gpsListener)
+        isGpsRunning = false
+        trackingJob?.cancel()
     }
 
     companion object {
@@ -231,16 +344,14 @@ class LocationTrackingService : Service() {
     }
 
     private fun createNotification(): Notification {
-        // 1. Create the Channel (Required for API 26+)
         val channel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.notification_channel_location_tracking_name),
-            NotificationManager.IMPORTANCE_LOW // Low importance so it doesn't "pop up" or make noise
+            NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = getString(R.string.notification_channel_location_tracking_desc)
         }
 
-        // 2. Battery Alerts Channel (High Importance for visibility)
         val batteryChannel = NotificationChannel(
             BATTERY_CHANNEL_ID,
             getString(R.string.notification_channel_battery_name),
@@ -249,7 +360,6 @@ class LocationTrackingService : Service() {
             description = getString(R.string.notification_channel_battery_desc)
         }
 
-        // 3. Entry/Exit Channel
         val arrivalChannel = NotificationChannel(
             ENTRY_EXIT_CHANNEL_ID,
             getString(R.string.notification_channel_entry_exit_name),
@@ -258,26 +368,28 @@ class LocationTrackingService : Service() {
             description = getString(R.string.notification_channel_entry_exit_desc)
         }
 
-        // Register all channels
-
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannels(listOf(channel, batteryChannel, arrivalChannel))
 
-        // 2. Create an Intent to open the app when the notification is clicked
         val pendingIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE // Required for API 31+
+            PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 3. Build the notification
+        val modeLabel = when (locationMode) {
+            LocationMode.BATTERY_SAVER -> getString(R.string.location_mode_battery_saver)
+            LocationMode.BALANCED -> getString(R.string.location_mode_balanced)
+            LocationMode.HIGH_ACCURACY -> getString(R.string.location_mode_high_accuracy)
+        }
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_tracking_title))
-            .setContentText(getString(R.string.notification_tracking_text))
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Ensure this exists in your res/drawable
-            .setOngoing(true) // Makes it persistent
+            .setContentText("$modeLabel • ${getString(R.string.notification_tracking_text)}")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setOngoing(true)
             .setContentIntent(pendingIntent)
-            .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE) // API 31+ specific
+            .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }
 
@@ -293,11 +405,10 @@ class LocationTrackingService : Service() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle(title)
             .setContentText(message)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Consider using specific icons for battery/location
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setAutoCancel(true)
             .build()
 
-        // Generate a unique ID so notifications don't overwrite each other
         val notificationId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
         manager.notify(notificationId, notification)
     }
@@ -324,10 +435,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // CRITICAL: Stop the hardware sensors
-        locationManager.removeUpdates(networkListener)
-        locationManager.removeUpdates(gpsListener)
-
+        stopAllUpdates()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 }
@@ -337,17 +445,11 @@ suspend fun Context.fetchAddress(lat: Double, lng: Double): Address? =
         val geocoder = Geocoder(this, Locale.getDefault())
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Modern Async API (Android 13+)
             geocoder.getFromLocation(lat, lng, 1) { addresses ->
                 val result = addresses.firstOrNull()
-
-                // Use the stable 3-parameter lambda
-                continuation.resume(result) { _, _, _ ->
-                    /* No specific cleanup needed for Address objects */
-                }
+                continuation.resume(result) { _, _, _ -> }
             }
         } else {
-            // Legacy Synchronous (Must be on background thread)
             try {
                 @Suppress("DEPRECATION")
                 val address = geocoder.getFromLocation(lat, lng, 1)?.firstOrNull()
@@ -357,11 +459,7 @@ suspend fun Context.fetchAddress(lat: Double, lng: Double): Address? =
             }
         }
 
-        // Safety: If the calling scope is canceled, stop the continuation
-        continuation.invokeOnCancellation {
-            // Geocoder doesn't support manual cancellation,
-            // but this prevents memory leaks in the listener.
-        }
+        continuation.invokeOnCancellation { }
     }
 
 class ServiceRestartWorker(

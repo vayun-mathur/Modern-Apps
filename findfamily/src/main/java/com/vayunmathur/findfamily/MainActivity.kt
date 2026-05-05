@@ -2,6 +2,7 @@ package com.vayunmathur.findfamily
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.LocationManager
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
@@ -33,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -53,6 +52,7 @@ import com.vayunmathur.findfamily.ui.WaypointEditPage
 import com.vayunmathur.findfamily.ui.dialogs.AddLinkDialog
 import com.vayunmathur.findfamily.ui.dialogs.AddPersonDialog
 import com.vayunmathur.findfamily.ui.SettingsPage
+import com.vayunmathur.findfamily.util.LocationTrackingService
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.library.util.DatabaseViewModel
@@ -80,16 +80,11 @@ class MainActivity : ComponentActivity() {
             DynamicTheme {
                 val context = LocalContext.current
                 val foregroundPermission = Manifest.permission.ACCESS_FINE_LOCATION
-                val backgroundPermission = Manifest.permission.ACCESS_BACKGROUND_LOCATION
 
                 var hasForeground by remember {
                     mutableStateOf(ContextCompat.checkSelfPermission(context, foregroundPermission) == PackageManager.PERMISSION_GRANTED)
                 }
-                var hasBackground by remember {
-                    mutableStateOf(ContextCompat.checkSelfPermission(context, backgroundPermission) == PackageManager.PERMISSION_GRANTED)
-                }
 
-                // Automatically re-check when returning from System Settings
                 val lifecycleOwner = LocalLifecycleOwner.current
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
@@ -98,22 +93,15 @@ class MainActivity : ComponentActivity() {
                                 context,
                                 foregroundPermission
                             ) == PackageManager.PERMISSION_GRANTED
-                            hasBackground = ContextCompat.checkSelfPermission(
-                                context,
-                                backgroundPermission
-                            ) == PackageManager.PERMISSION_GRANTED
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
-                if (!hasForeground || !hasBackground) {
+                if (!hasForeground) {
                     NoPermissionsScreen(
-                        hasForeground = hasForeground,
-                        hasBackground = hasBackground,
-                        onForegroundGranted = { hasForeground = true },
-                        onBackgroundGranted = { hasBackground = true }
+                        onForegroundGranted = { hasForeground = true }
                     )
                 } else {
                     Main(platform, viewModel)
@@ -133,6 +121,7 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             ensureSync(this@MainActivity)
+            context.startForegroundService(Intent(context, LocationTrackingService::class.java))
         }
         Navigation(platform, viewModel, !isNetworkEnabled || !isGeocoderPresent)
     }
@@ -150,23 +139,12 @@ val Migration_2_3 = Migration(2, 3) {
 
 @Composable
 fun NoPermissionsScreen(
-    hasForeground: Boolean,
-    hasBackground: Boolean,
-    onForegroundGranted: () -> Unit,
-    onBackgroundGranted: () -> Unit
+    onForegroundGranted: () -> Unit
 ) {
-    // Launcher for Fine Location
     val foregroundLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) onForegroundGranted()
-    }
-
-    // Launcher for Background Location (Redirects to Settings)
-    val backgroundLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) onBackgroundGranted()
     }
 
     Scaffold { padding ->
@@ -175,33 +153,18 @@ fun NoPermissionsScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // STEP 1: Fine Location
             Button(
-                onClick = { foregroundLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
-                enabled = !hasForeground
+                onClick = { foregroundLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
             ) {
-                Text(if (hasForeground) stringResource(R.string.permission_fine_location_granted) else stringResource(R.string.permission_grant_fine_location))
+                Text(stringResource(R.string.permission_grant_location))
             }
 
             Spacer(Modifier.height(16.dp))
-
-            // STEP 2: Background Location
-            Button(
-                onClick = { backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
-                enabled = hasForeground && !hasBackground
-            ) {
-                val label = if (hasBackground) stringResource(R.string.permission_background_granted) else stringResource(R.string.permission_enable_all_the_time)
-                Text(label)
-            }
-
-            if (hasForeground && !hasBackground) {
-                Text(
-                    text = stringResource(R.string.permission_background_explanation),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
-                )
-            }
+            Text(
+                text = stringResource(R.string.permission_location_explanation),
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
         }
     }
 }
@@ -209,8 +172,8 @@ fun NoPermissionsScreen(
 @Composable
 fun MissingFeaturesDialog(backStack: NavBackStack<Route>) {
     Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
+        shape = androidx.compose.material3.MaterialTheme.shapes.medium,
+        color = androidx.compose.material3.MaterialTheme.colorScheme.surface,
         modifier = Modifier.padding(16.dp)
     ) {
         Column(
@@ -220,14 +183,12 @@ fun MissingFeaturesDialog(backStack: NavBackStack<Route>) {
         ) {
             Text(
                 text = stringResource(R.string.missing_features_title),
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center
+                style = androidx.compose.material3.MaterialTheme.typography.headlineSmall
             )
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.missing_features_explanation),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
             )
             Spacer(Modifier.height(24.dp))
             Button(onClick = { backStack.pop() }) {
