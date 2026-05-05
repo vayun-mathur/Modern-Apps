@@ -20,7 +20,10 @@
 
     <!-- Permission screen -->
     <string name="permission_grant_location">Allow Location Access</string>
-    <string name="permission_location_explanation">FindFamily needs location access to share your position with family. Tracking runs as a persistent notification, similar to other family safety apps.</string>
+    <string name="permission_location_granted">✅ Location Granted</string>
+    <string name="permission_grant_notification">Allow Notifications</string>
+    <string name="permission_notification_granted">✅ Notifications Allowed</string>
+    <string name="permission_location_explanation">FindFamily needs location and notifications to share your position with family. Tracking runs as a persistent notification, similar to other family safety apps.</string>
 
     <!-- MainPage FAB menu -->
     <string name="fab_person">Person</string>

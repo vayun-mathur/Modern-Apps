@@ -80,9 +80,16 @@ class MainActivity : ComponentActivity() {
             DynamicTheme {
                 val context = LocalContext.current
                 val foregroundPermission = Manifest.permission.ACCESS_FINE_LOCATION
+                val notificationPermission = Manifest.permission.POST_NOTIFICATIONS
 
                 var hasForeground by remember {
                     mutableStateOf(ContextCompat.checkSelfPermission(context, foregroundPermission) == PackageManager.PERMISSION_GRANTED)
+                }
+                var hasNotification by remember {
+                    mutableStateOf(
+                        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
+                        ContextCompat.checkSelfPermission(context, notificationPermission) == PackageManager.PERMISSION_GRANTED
+                    )
                 }
 
                 val lifecycleOwner = LocalLifecycleOwner.current
@@ -93,15 +100,23 @@ class MainActivity : ComponentActivity() {
                                 context,
                                 foregroundPermission
                             ) == PackageManager.PERMISSION_GRANTED
+                            hasNotification = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    notificationPermission
+                                ) == PackageManager.PERMISSION_GRANTED
                         }
                     }
                     lifecycleOwner.lifecycle.addObserver(observer)
                     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
                 }
 
-                if (!hasForeground) {
+                if (!hasForeground || !hasNotification) {
                     NoPermissionsScreen(
-                        onForegroundGranted = { hasForeground = true }
+                        hasForeground = hasForeground,
+                        hasNotification = hasNotification,
+                        onForegroundGranted = { hasForeground = true },
+                        onNotificationGranted = { hasNotification = true }
                     )
                 } else {
                     Main(platform, viewModel)
@@ -139,12 +154,21 @@ val Migration_2_3 = Migration(2, 3) {
 
 @Composable
 fun NoPermissionsScreen(
-    onForegroundGranted: () -> Unit
+    hasForeground: Boolean,
+    hasNotification: Boolean,
+    onForegroundGranted: () -> Unit,
+    onNotificationGranted: () -> Unit
 ) {
     val foregroundLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) onForegroundGranted()
+    }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) onNotificationGranted()
     }
 
     Scaffold { padding ->
@@ -154,9 +178,21 @@ fun NoPermissionsScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(
-                onClick = { foregroundLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
+                onClick = { foregroundLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                enabled = !hasForeground
             ) {
-                Text(stringResource(R.string.permission_grant_location))
+                Text(if (hasForeground) stringResource(R.string.permission_location_granted) else stringResource(R.string.permission_grant_location))
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            if (hasForeground) {
+                Button(
+                    onClick = { notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                    enabled = !hasNotification
+                ) {
+                    Text(if (hasNotification) stringResource(R.string.permission_notification_granted) else stringResource(R.string.permission_grant_notification))
+                }
             }
 
             Spacer(Modifier.height(16.dp))
