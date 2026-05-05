@@ -138,8 +138,8 @@
     <!-- GPS Settings -->
     <string name="settings_gps_fallback">GPS Fallback</string>
     <string name="settings_gps_fallback_desc">Use GPS when network location is inaccurate</string>
-    <string name="settings_gps_fallback_enabled">Enabled — activates when accuracy drops below 100m</string>
-    <string name="settings_gps_fallback_disabled">Disabled — relies on network only</string>
+    <string name="settings_gps_fallback_enabled">Enabled (activates when accuracy drops below 100m)</string>
+    <string name="settings_gps_fallback_disabled">Disabled (relies on network only)</string>
 
     <!-- Update Frequency -->
     <string name="settings_update_frequency">Update Frequency</string>
@@ -153,7 +153,7 @@
     <string name="settings_smart_tracking">Smart Tracking</string>
     <string name="settings_smart_tracking_desc">Reduce updates when stationary to save battery</string>
     <string name="settings_smart_tracking_enabled">Enabled — pauses updates when not moving</string>
-    <string name="settings_smart_tracking_disabled">Disabled — always updating</string>
+    <string name="settings_smart_tracking_disabled">Disabled (always updating)</string>
 
     <!-- Battery Info -->
     <string name="settings_battery_info">Battery Impact</string>
