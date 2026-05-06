@@ -57,10 +57,18 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     fun setLayout(layout: CalendarLayout) {
         _currentLayout.value = layout
+        viewModelScope.launch {
+            dataStore.setString("default_calendar_layout", layout.name)
+        }
     }
 
     fun setLastViewedDate(d: LocalDate?) {
         _lastViewedDate.value = d
+        viewModelScope.launch {
+            if (d != null) {
+                dataStore.setString("last_viewed_date", d.toString())
+            }
+        }
     }
 
     fun loadData() {
@@ -79,6 +87,22 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
 
     init {
         loadData()
+        viewModelScope.launch {
+            dataStore.stringFlow("default_calendar_layout").collect { saved ->
+                try {
+                    _currentLayout.value = CalendarLayout.valueOf(saved)
+                } catch (e: Exception) {
+                }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.stringFlow("last_viewed_date").collect { saved ->
+                try {
+                    _lastViewedDate.value = LocalDate.parse(saved)
+                } catch (e: Exception) {
+                }
+            }
+        }
     }
 
     fun updateWidgets() {
