@@ -12,10 +12,17 @@ import android.location.Geocoder
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.*
+import kotlin.math.sqrt
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.vayunmathur.findfamily.data.Coord
@@ -50,118 +57,94 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
-class LocationTrackingService : Service() {
-
+class LocationTrackingService : Service(), SensorEventListener {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationManager: LocationManager
+    private lateinit var sensorManager: SensorManager
+    private lateinit var powerManager: PowerManager
+    private var accelerometer: Sensor? = null
+    
     private lateinit var viewModel: DatabaseViewModel
     private lateinit var users: StateFlow<List<User>>
     private lateinit var waypoints: StateFlow<List<Waypoint>>
     private lateinit var temporaryLinks: StateFlow<List<TemporaryLink>>
     private lateinit var bm: BatteryManager
+    
     private var isGpsRunning = false
+    private var isMoving = false
+    private var lastMovementTime = 0L
+    private var lastKnownLocation: Location? = null
 
     private val networkListener = LocationListener { location ->
+        lastKnownLocation = location
         if (location.accuracy > 100f) {
-            if (!isGpsRunning) startGps()
+            if (!isGpsRunning && isMoving) startGps()
         } else {
             if (isGpsRunning) stopGps()
-            processLocation(location)
         }
     }
-
     private val gpsListener = LocationListener { location ->
-        processLocation(location)
+        lastKnownLocation = location
     }
 
-    private fun processLocation(location: Location) {
-        if(Networking.userid == 0L) return
-        val users = users.value
-        val waypoints = waypoints.value
-        val temporaryLinks = temporaryLinks.value
-        val userIDs = users.map { it.id }
+    private suspend fun syncHeartbeat() {
+        val location = lastKnownLocation ?: return
+        if (Networking.userid == 0L) return
+        
+        val currentUsers = users.value
+        val currentWaypoints = waypoints.value
+        val currentLinks = temporaryLinks.value
+        val userIDs = currentUsers.map { it.id }
         val now = Clock.System.now()
-        println(location.accuracy)
+
         val locationValue = LocationValue(
             Networking.userid,
             Coord(location.latitude, location.longitude),
             0f,
             location.accuracy,
-            Clock.System.now(),
+            now,
             bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).toFloat()
         )
-        println(locationValue)
-        CoroutineScope(Dispatchers.IO).launch {
+
+        withContext(Dispatchers.IO) {
             viewModel.upsertAsync(locationValue)
             Networking.ensureUserExists()
-            println(users)
-            users.forEach { user ->
-                Networking.publishLocation(locationValue, user)
-            }
-            temporaryLinks.filter { now < it.deleteAt }.forEach { link ->
-                Networking.publishLocation(locationValue, link)
-            }
-            temporaryLinks.filter { now >= it.deleteAt }.forEach { link ->
-                viewModel.delete(link)
-            }
+            
+            currentUsers.forEach { Networking.publishLocation(locationValue, it) }
+            currentLinks.filter { now < it.deleteAt }.forEach { Networking.publishLocation(locationValue, it) }
+            currentLinks.filter { now >= it.deleteAt }.forEach { viewModel.delete(it) }
+
             delay(3000)
             Networking.receiveLocations()?.let { locations ->
                 val usersRecieved = locations.map { it.userid }.distinct()
                 val newUsers = usersRecieved.filter { it !in userIDs }
                 viewModel.upsertAll(newUsers.map {
-                    User(
-                        " ",
-                        null,
-                        "Unknown Location",
-                        false,
-                        RequestStatus.AWAITING_REQUEST,
-                        Clock.System.now(),
-                        null,
-                        it
-                    )
+                    User(" ", null, "Unknown Location", false, RequestStatus.AWAITING_REQUEST, Clock.System.now(), null, it)
                 })
 
-                val locationValues = viewModel.getLatestMap().first()
-                // update the user.locationName
-                users.forEach { user ->
-                    val lastLocation = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
-                    val lastSavedLocation = locationValues[user.id]
+                val latestMap = viewModel.getLatestMap().first()
+                currentUsers.forEach { user ->
+                    val lastLoc = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
+                    val lastSavedLoc = latestMap[user.id]
 
-
-                    if(lastLocation.battery <= 15f && (lastSavedLocation?.battery?:100f) > 15f) {
-                        if(user.id != Networking.userid)
-                            createNotificationWithCategory(
-                                user.name,
-                                getString(R.string.notification_low_battery, user.name),
-                                "BATTERY_LOW"
-                            )
+                    if (lastLoc.battery <= 15f && (lastSavedLoc?.battery ?: 100f) > 15f) {
+                        if (user.id != Networking.userid) {
+                            createNotificationWithCategory(user.name, getString(R.string.notification_low_battery, user.name), "BATTERY_LOW")
+                        }
                     }
 
-                    val inWaypoint = waypoints.find { havershine(it.coord, lastLocation.coord) < it.range }
-
-                    val newLocationName = inWaypoint?.name ?: fetchAddress(lastLocation.coord.lat, lastLocation.coord.lon)?.let {
+                    val inWaypoint = currentWaypoints.find { havershine(it.coord, lastLoc.coord) < it.range }
+                    val newLocationName = inWaypoint?.name ?: fetchAddress(lastLoc.coord.lat, lastLoc.coord.lon)?.let {
                         it.featureName ?: it.thoroughfare
                     } ?: "Unknown Location"
 
-                    if(newLocationName != user.locationName) {
-                        viewModel.update<User>(user.id) {
-                            it.copy(
-                                locationName = newLocationName,
-                                lastLocationChangeTime = lastLocation.timestamp
-                            )
-                        }
-                        if(user.id != Networking.userid) {
-                            if(inWaypoint != null) {
-                                createNotificationWithCategory(
-                                    user.name,
-                                    getString(R.string.notification_entered_waypoint, user.name, inWaypoint.name),
-                                    "ENTRY_EXIT"
-                                )
-                            } else if(waypoints.find { it.name == user.locationName } != null) {
-                                createNotificationWithCategory(
-                                    user.name,
-                                    getString(R.string.notification_exited_waypoint, user.name, user.locationName),
-                                    "ENTRY_EXIT"
-                                )
+                    if (newLocationName != user.locationName) {
+                        viewModel.update<User>(user.id) { it.copy(locationName = newLocationName, lastLocationChangeTime = lastLoc.timestamp) }
+                        if (user.id != Networking.userid) {
+                            if (inWaypoint != null) {
+                                createNotificationWithCategory(user.name, getString(R.string.notification_entered_waypoint, user.name, inWaypoint.name), "ENTRY_EXIT")
+                            } else if (currentWaypoints.any { it.name == user.locationName }) {
+                                createNotificationWithCategory(user.name, getString(R.string.notification_exited_waypoint, user.name, user.locationName), "ENTRY_EXIT")
                             }
                         }
                     }
@@ -170,6 +153,29 @@ class LocationTrackingService : Service() {
             }
         }
     }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_LINEAR_ACCELERATION) {
+            val x = event.values[0]
+            val y = event.values[1]
+            val z = event.values[2]
+            val accel = sqrt(x*x + y*y + z*z)
+            if (accel > 0.5f) {
+                lastMovementTime = System.currentTimeMillis()
+                if (!isMoving) {
+                    isMoving = true
+                    setupLocationUpdates()
+                }
+            } else {
+                if (isMoving && (System.currentTimeMillis() - lastMovementTime > 60_000L)) {
+                    isMoving = false
+                    stopTrackingUpdates()
+                }
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -189,7 +195,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun startTracking() {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             val db = buildDatabase<FFDatabase>(listOf(Migration_1_2, Migration_2_3))
             viewModel = DatabaseViewModel(db,
                 User::class to db.userDao(),
@@ -202,25 +208,49 @@ class LocationTrackingService : Service() {
             temporaryLinks = viewModel.data<TemporaryLink>()
             Networking.init(viewModel, DataStoreUtils.getInstance(this@LocationTrackingService))
             
+            launch {
+                while (isActive) {
+                    syncHeartbeat()
+                    delay(10_000L)
+                }
+            }
+
             withContext(Dispatchers.Main) {
+                registerSensors()
                 setupLocationUpdates()
             }
         }
     }
 
-    private fun setupLocationUpdates() {
+    private fun registerSensors() {
         bm = getSystemService(BATTERY_SERVICE) as BatteryManager
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        powerManager = getSystemService(POWER_SERVICE) as PowerManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    private fun setupLocationUpdates() {
+        if (!isMoving) return
+        val isLowPower = powerManager.isPowerSaveMode
+        val networkInterval = if (isLowPower) 30_000L else 10_000L
 
         try {
+            locationManager.removeUpdates(networkListener)
             locationManager.requestLocationUpdates(
                 LocationManager.NETWORK_PROVIDER,
-                10_000L,
+                networkInterval,
                 0f,
                 networkListener
             )
         } catch (_: SecurityException) {
         }
+    }
+
+    private fun stopTrackingUpdates() {
+        locationManager.removeUpdates(networkListener)
+        stopGps()
     }
 
     companion object {
@@ -303,11 +333,16 @@ class LocationTrackingService : Service() {
     }
 
     private fun startGps() {
+        if (!isMoving) return
+        val isLowPower = powerManager.isPowerSaveMode
+        val gpsInterval = if (isLowPower) 60_000L else 20_000L
+
         try {
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                locationManager.removeUpdates(gpsListener)
                 locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    10_000L,
+                    gpsInterval,
                     0f,
                     gpsListener
                 )
@@ -324,10 +359,9 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // CRITICAL: Stop the hardware sensors
-        locationManager.removeUpdates(networkListener)
-        locationManager.removeUpdates(gpsListener)
-
+        serviceScope.cancel()
+        sensorManager.unregisterListener(this)
+        stopTrackingUpdates()
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 }
