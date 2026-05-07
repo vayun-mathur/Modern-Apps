@@ -208,7 +208,6 @@ fun HomeScreen(backStack: NavBackStack<Route>, ds: DataStoreUtils, achievementsM
                                 Modifier
                                     .size(64.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surface)
                                     .combinedClickable(
                                         onLongClick = {
                                             contextMenuElementId = item.id

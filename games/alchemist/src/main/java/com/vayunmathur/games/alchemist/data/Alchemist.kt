@@ -20,8 +20,8 @@ object Alchemist {
             }
         }.groupBy { it.inputs }.map { (inputs, outputs) -> AlchemyRecipe(inputs,
             outputs.flatMap { it.outputs }) }
-        val nonFinals = recipes.flatMap { it.outputs }.toSet()
-        items = jsonItems.map { item -> AlchemyItem(item.id, item.name, item.id !in nonFinals) }
+        val hasCombinations = recipes.flatMap { it.inputs }.toSet()
+        items = jsonItems.map { item -> AlchemyItem(item.id, item.name, item.id !in hasCombinations) }
         println(recipes)
         println(items)
     }

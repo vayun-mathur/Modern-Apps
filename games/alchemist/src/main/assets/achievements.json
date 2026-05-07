@@ -26,5 +26,10 @@
     "name": "Omniscient",
     "description": "Discover every single item in the game!",
     "targetProgress": 720
+  },
+  {
+    "id": "created_life",
+    "name": "It's Alive!",
+    "description": "Create Life."
   }
 ]

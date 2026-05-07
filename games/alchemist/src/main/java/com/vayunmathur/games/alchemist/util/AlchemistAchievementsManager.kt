@@ -31,6 +31,9 @@ class AlchemistAchievementsManager(
                 if (discoveredFinal) {
                     onAchievementUnlocked("final_item")
                 }
+                if (itemIds.contains(44L)) {
+                    onAchievementUnlocked("created_life")
+                }
             }
         }
     }
