@@ -13,6 +13,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,6 +120,15 @@ sealed interface Route: NavKey {
 
     @Serializable
     data object SecureFolder: Route
+
+    @Serializable
+    data object Memories: Route
+
+    @Serializable
+    data object Library: Route
+
+    @Serializable
+    data object Search: Route
 }
 
 @Composable
@@ -121,6 +140,48 @@ fun Navigation(viewModel: DatabaseViewModel) {
     var vaultPassword by remember { mutableStateOf<String?>(null) }
 
     MainNavigation(backStack) {
+        entry<Route.Memories> {
+            Scaffold(bottomBar = { NavigationBar(Route.Memories, backStack) }) { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Memories Timeline", style = MaterialTheme.typography.headlineMedium)
+                }
+            }
+        }
+        entry<Route.Library> {
+            Scaffold(bottomBar = { NavigationBar(Route.Library, backStack) }) { padding ->
+                Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+                    Text("Library", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 24.dp))
+                    
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { backStack.add(Route.Trash) }.padding(16.dp)) {
+                            Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(painterResource(LibraryR.drawable.delete_24px), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Text("Trash", modifier = Modifier.padding(top = 8.dp))
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { backStack.add(Route.SecureFolder) }.padding(16.dp)) {
+                            Box(Modifier.size(64.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(painterResource(R.drawable.lock_24px), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Text("Locked", modifier = Modifier.padding(top = 8.dp))
+                        }
+                    }
+                }
+            }
+        }
+        entry<Route.Search> {
+            Scaffold(bottomBar = { NavigationBar(Route.Search, backStack) }) { padding ->
+                Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+                    Text("Search", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 24.dp))
+                    
+                    ListItem(
+                        headlineContent = { Text("Places & Map") },
+                        leadingContent = { Icon(painterResource(R.drawable.map_24px), null) },
+                        modifier = Modifier.clickable { backStack.add(Route.Map) }
+                    )
+                }
+            }
+        }
         entry<Route.Gallery> {
             GalleryPage(backStack, viewModel, vaultViewModel, vaultPassword, onVaultUnlocked = { vvm, pass -> 
                 vaultViewModel = vvm
@@ -165,11 +226,11 @@ fun Navigation(viewModel: DatabaseViewModel) {
     }
 }
 
-private enum class MainRoute(val route: Route, @StringRes val titleRes: Int, val icon: Int) {
-    Gallery(Route.Gallery, R.string.label_gallery, R.drawable.gallery_thumbnail_24px),
-    Map(Route.Map, R.string.label_map, R.drawable.map_24px),
-    Trash(Route.Trash, R.string.label_trash, LibraryR.drawable.delete_24px),
-    SecureFolder(Route.SecureFolder, R.string.label_secure_folder, R.drawable.lock_24px)
+private enum class MainRoute(val route: Route, val title: String, val icon: Int) {
+    Gallery(Route.Gallery, "Photos", R.drawable.gallery_thumbnail_24px),
+    Memories(Route.Memories, "Memories", R.drawable.gallery_thumbnail_24px),
+    Library(Route.Library, "Library", R.drawable.gallery_thumbnail_24px),
+    Search(Route.Search, "Search", LibraryR.drawable.search_24px)
 }
 
 @Composable
@@ -179,7 +240,7 @@ fun NavigationBar(currentRoute: Route, backStack: NavBackStack<Route>) {
             ShortNavigationBarItem(it.route == currentRoute, { backStack.add(it.route) }, {
                 Icon(painterResource(it.icon), null)
             }, {
-                Text(stringResource(it.titleRes))
+                Text(it.title)
             })
         }
     }

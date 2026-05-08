@@ -57,6 +57,29 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.ui.Alignment
+
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -115,7 +138,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
         enableEdgeToEdge()
-        setContent { DynamicTheme { HomeDirectoryPage(incomingUris) { incomingUris = null } } }
+        setContent { DynamicTheme { FilesMainScreen(incomingUris) { incomingUris = null } } }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -143,6 +166,124 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FilesMainScreen(incomingUris: List<Uri>? = null, onClearIncoming: () -> Unit = {}) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var currentBrowseDirectory by remember { mutableStateOf<Path?>(null) }
+    
+    if (currentBrowseDirectory != null) {
+        DirectoryPage(
+            rootFile = currentBrowseDirectory!!,
+            incomingUris = incomingUris,
+            onClearIncoming = onClearIncoming,
+            onBack = { currentBrowseDirectory = null }
+        )
+        return
+    }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.CleaningServices, contentDescription = "Clean") },
+                    label = { Text("Clean") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Folder, contentDescription = "Browse") },
+                    label = { Text("Browse") }
+                )
+            }
+        }
+    ) { paddingValues ->
+        if (selectedTab == 0) {
+            CleanTab(Modifier.padding(paddingValues))
+        } else {
+            BrowseTab(Modifier.padding(paddingValues), onNavigate = { currentBrowseDirectory = it })
+        }
+    }
+}
+
+@Composable
+fun CleanTab(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier.size(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.CircularProgressIndicator(
+                progress = { 0.75f },
+                modifier = Modifier.fillMaxSize(),
+                strokeWidth = 16.dp,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("96 GB", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold)
+                Text("Used", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Spacer(Modifier.height(32.dp))
+        Text("Your storage is looking good.", style = MaterialTheme.typography.headlineSmall)
+    }
+}
+
+@Composable
+fun BrowseTab(modifier: Modifier = Modifier, onNavigate: (Path) -> Unit) {
+    LazyColumn(modifier = modifier.fillMaxSize()) {
+        item {
+            Text("Categories", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                CategoryItem(Icons.Default.Image, "Images")
+                CategoryItem(Icons.Default.VideoFile, "Videos")
+                CategoryItem(Icons.Default.AudioFile, "Audio")
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                CategoryItem(Icons.Default.InsertDriveFile, "Documents")
+                CategoryItem(Icons.Default.Apps, "Apps")
+                Spacer(Modifier.weight(1f))
+            }
+        }
+        item {
+            HorizontalDivider(Modifier.padding(vertical = 16.dp))
+            Text("Storage devices", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        item {
+            ListItem(
+                headlineContent = { Text("Internal storage") },
+                leadingContent = { Icon(Icons.Default.Smartphone, contentDescription = null) },
+                modifier = Modifier.clickable { onNavigate(Environment.getExternalStorageDirectory().toOkioPath()) }
+            )
+        }
+    }
+}
+
+@Composable
+fun RowScope.CategoryItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+    Column(
+        modifier = Modifier.weight(1f).padding(8.dp).clip(RoundedCornerShape(12.dp)).clickable { }.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
 fun HomeDirectoryPage(incomingUris: List<Uri>? = null, onClearIncoming: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("files_prefs", Context.MODE_PRIVATE) }
@@ -266,7 +407,8 @@ fun Path.deleteRecursively(fileSystem: FileSystem = fs) {
 fun DirectoryPage(
         rootFile: Path,
         incomingUris: List<Uri>? = null,
-        onClearIncoming: () -> Unit = {}
+        onClearIncoming: () -> Unit = {},
+        onBack: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -277,6 +419,14 @@ fun DirectoryPage(
     var zipPath by remember { mutableStateOf<Path?>(null) }
 
     val isReadOnly = zipPath != null
+
+    BackHandler {
+        if (currentDirectory != rootFile) {
+            currentDirectory = currentDirectory.parent ?: rootFile
+        } else {
+            onBack?.invoke()
+        }
+    }
 
     var selectedPaths by
             remember(currentDirectory, currentFileSystem) { mutableStateOf(setOf<Path>()) }

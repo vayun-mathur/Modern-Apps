@@ -148,6 +148,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        entry<Route.Journal> {
+            Scaffold { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Journal (Activity History)")
+                }
+            }
+        }
+        entry<Route.Browse> {
+            Scaffold { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Browse Health Categories")
+                }
+            }
+        }
+        entry<Route.Profile> {
+            Scaffold { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Profile & Settings")
+                }
+            }
+        }
     }
 }
 
@@ -173,6 +195,15 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class BarChartDetails(val healthMetric: HealthMetricConfig): Route
+
+    @Serializable
+    data object Journal: Route
+
+    @Serializable
+    data object Browse: Route
+
+    @Serializable
+    data object Profile: Route
 }
 
 @Composable
@@ -185,7 +216,9 @@ fun Navigation() {
                 backStack = backStack,
                 pages = listOf(
                     com.vayunmathur.library.util.BottomBarItem("Home", Route.MainPage, com.vayunmathur.library.R.drawable.favorite_24px),
-                    com.vayunmathur.library.util.BottomBarItem("Nutrition", Route.NutritionDetails, com.vayunmathur.library.R.drawable.fire_24px)
+                    com.vayunmathur.library.util.BottomBarItem("Journal", Route.Journal, com.vayunmathur.library.R.drawable.calendar_month_24px),
+                    com.vayunmathur.library.util.BottomBarItem("Browse", Route.Browse, com.vayunmathur.library.R.drawable.search_24px),
+                    com.vayunmathur.library.util.BottomBarItem("Profile", Route.Profile, com.vayunmathur.library.R.drawable.person_24px)
                 ),
                 currentPage = backStack.last()
             )
@@ -211,6 +244,28 @@ fun Navigation() {
         }
         entry<Route.BarChartDetails> {
             BarChartDetails(backStack, it.healthMetric)
+        }
+
+        entry<Route.Journal> {
+            Scaffold { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Journal (Activity History)")
+                }
+            }
+        }
+        entry<Route.Browse> {
+            Scaffold { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Browse Health Categories")
+                }
+            }
+        }
+        entry<Route.Profile> {
+            Scaffold { padding ->
+                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Profile & Settings")
+                }
+            }
         }
     }
 }

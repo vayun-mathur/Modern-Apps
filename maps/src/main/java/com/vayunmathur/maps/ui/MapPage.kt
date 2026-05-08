@@ -25,6 +25,31 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalGroceryStore
+import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material3.SearchBar
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
+
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -197,21 +222,53 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
     var selectedRouteType by retain { mutableStateOf(RouteService.TravelMode.DRIVE) }
 
     // --- RENDER ---
+
+    var selectedTab by remember { mutableStateOf(0) }
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Explore, contentDescription = "Explore") },
+                    label = { Text("Explore") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.DirectionsBus, contentDescription = "Go") },
+                    label = { Text("Go") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.Bookmark, contentDescription = "Saved") },
+                    label = { Text("Saved") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.AddCircleOutline, contentDescription = "Contribute") },
+                    label = { Text("Contribute") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 },
+                    icon = { Icon(Icons.Default.Notifications, contentDescription = "Updates") },
+                    label = { Text("Updates") }
+                )
+            }
+        }
+    ) { mainPadding ->
+        Box(Modifier.padding(mainPadding).fillMaxSize()) {
     BottomSheetScaffold({
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 48.dp, top = 8.dp)) {
             BottomSheetContent(selectedFeature, { viewModel.set(it) }, route, selectedRouteType, { selectedRouteType = it }, inactiveNavigation)
         }
     }, Modifier, scaffoldState, 170.dp) { paddingValues ->
-        Scaffold(Modifier.padding(top = paddingValues.calculateTopPadding()), topBar = {
-            TopAppBar({}, actions = {
-                Row {
-                    IconButton({
-                        backStack.add(Route.DownloadedMapsPage)
-                    }) {
-                        IconSettings()
-                    }
-                } }, colors = TopAppBarDefaults.topAppBarColors(Color.Transparent))
-        }) { innerPadding ->
+
+        Box(Modifier.fillMaxSize()) {
+
             Box(Modifier.padding(innerPadding).fillMaxSize()) {
                 json?.let { json ->
                     MaplibreMap(
@@ -251,6 +308,44 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                     }
                 }
 
+
+                // FLOATING SEARCH & CHIPS
+                Column(Modifier.align(Alignment.TopCenter).padding(horizontal = 16.dp, vertical = 8.dp).zIndex(2f)) {
+                    var searchActive by remember { mutableStateOf(false) }
+                    SearchBar(
+                        query = "",
+                        onQueryChange = {},
+                        onSearch = { searchActive = false },
+                        active = searchActive,
+                        onActiveChange = { searchActive = it },
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(32.dp)),
+                        placeholder = { Text("Search here", fontSize = 16.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                                IconButton(onClick = { backStack.add(Route.DownloadedMapsPage) }) {
+                                    Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
+                                        Text("U", color = MaterialTheme.colorScheme.onPrimary)
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        // Search results could go here
+                    }
+                    
+                    if (!searchActive) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            MapChip(Icons.Default.Restaurant, "Restaurants")
+                            MapChip(Icons.Default.LocalGasStation, "Gas")
+                            MapChip(Icons.Default.LocalGroceryStore, "Groceries")
+                            MapChip(Icons.Default.Coffee, "Coffee")
+                            MapChip(Icons.Default.Hotel, "Hotels")
+                        }
+                    }
+                }
                 // USER ICON
                 key(camera.position) {
                     if(camera.projection != null) {
@@ -452,5 +547,17 @@ fun patchStyleForHybrid(
         root.forEach { (k, v) -> if (k != "sources" && k != "layers") put(k, v) }
         put("sources", newSources)
         put("layers", newLayers)
-    }.toString()
+        }
+    }
+}
+
+@Composable
+fun MapChip(icon: ImageVector, label: String) {
+    androidx.compose.material3.FilterChip(
+        selected = false,
+        onClick = {},
+        label = { Text(label) },
+        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+        shape = RoundedCornerShape(16.dp)
+    )
 }

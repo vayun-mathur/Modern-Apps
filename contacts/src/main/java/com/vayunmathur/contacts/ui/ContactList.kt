@@ -34,6 +34,14 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Build
+
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -138,7 +146,33 @@ fun ContactList(
         else -> null
     }
 
+    var selectedTab by remember { mutableStateOf(0) }
+
     Scaffold(
+        bottomBar = {
+            if (!isSelectionMode) {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = { Icon(Icons.Default.Person, contentDescription = "Contacts") },
+                        label = { Text("Contacts") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = { Icon(Icons.Default.Star, contentDescription = "Highlights") },
+                        label = { Text("Highlights") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        icon = { Icon(Icons.Default.Build, contentDescription = "Fix & manage") },
+                        label = { Text("Fix & manage") }
+                    )
+                }
+            }
+        },
         topBar = {
             if (isSelectionMode) {
                 TopAppBar(
@@ -201,6 +235,7 @@ fun ContactList(
             }
         },
         floatingActionButton = {
+            if (selectedTab == 0) {
             if(backStack.last() !is Route.EditContact && !isSelectionMode) {
                 FloatingActionButton(onClick = { onAddContactClick() }) {
                     IconAdd()
@@ -208,7 +243,8 @@ fun ContactList(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
+        if (selectedTab == 0) {
+            LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = paddingValues + PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -230,7 +266,8 @@ fun ContactList(
                             } else {
                                 onContactClick(contact)
                             }
-                        },
+                            }
+        },
                         onLongClick = {
                             if (!isSelectionMode) {
                                 selectedIds.add(contact.id)
@@ -298,6 +335,40 @@ fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -
                 items(contactsInGroup, key = { it.id }) { contact ->
                     ContactItemPick(contact, mimeType, onClick)
                 }
+            }
+        }
+        } else if (selectedTab == 1) {
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("Highlights & Favorites", style = MaterialTheme.typography.headlineMedium)
+                Text("Your favorite contacts will appear here.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else if (selectedTab == 2) {
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
+                Text("Fix & manage", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 24.dp))
+                
+                ListItem(
+                    headlineContent = { Text("Merge & fix") },
+                    supportingContent = { Text("Fix duplicate contacts") },
+                    leadingContent = { Icon(Icons.Default.Build, contentDescription = null) },
+                    modifier = Modifier.clickable { /* Handle merge */ }
+                )
+                ListItem(
+                    headlineContent = { Text("Import from file") },
+                    supportingContent = { Text("Import contacts from .vcf files") },
+                    leadingContent = { Icon(painterResource(R.drawable.arrow_drop_down_24px), contentDescription = null) },
+                    modifier = Modifier.clickable { /* Start import */ }
+                )
+                ListItem(
+                    headlineContent = { Text("Export to file") },
+                    supportingContent = { Text("Export contacts to .vcf files") },
+                    leadingContent = { Icon(painterResource(R.drawable.arrow_drop_down_24px), contentDescription = null) },
+                    modifier = Modifier.clickable { /* Start export */ }
+                )
+                ListItem(
+                    headlineContent = { Text("Blocked numbers") },
+                    leadingContent = { Icon(Icons.Default.Person, contentDescription = null) },
+                    modifier = Modifier.clickable { /* Show blocked */ }
+                )
             }
         }
     }

@@ -39,13 +39,11 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     val lastViewedDate: StateFlow<LocalDate?> = _lastViewedDate.asStateFlow()
 
     enum class CalendarLayout(val shortName: String, val prettyName: String) {
-        Agenda("A", "Agenda"),
-        Day("D", "Day"),
-        WorkWeek("W5", "Work Week"),
-        FullWeek("W7", "Full Week"),
-        Month("M", "Month"),
-        WorkWeekSummary("W5S", "Work Week Summary"),
-        FullWeekSummary("W7S", "Full Week Summary")
+        Agenda("S", "Schedule"),
+        Day("1D", "Day"),
+        WorkWeek("3D", "3 Days"),
+        FullWeek("W", "Week"),
+        Month("M", "Month")
     }
 
     private val _currentLayout = MutableStateFlow(

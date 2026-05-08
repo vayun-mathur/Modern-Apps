@@ -43,6 +43,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -130,47 +141,79 @@ fun CalendarScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
         dateViewing = result
     }
 
-    Scaffold(
-        Modifier,
-        {
-            TopAppBar(
-                {
-                    // show month/year of the currently visible date
-                    val mon = MonthNames.ENGLISH_ABBREVIATED.names[dateViewing.month.number - 1]
-                    Row(
-                        Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing)) },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(stringResource(R.string.month_year_format, mon, dateViewing.year), fontWeight = FontWeight.Bold)
-                        Icon(painterResource(R.drawable.arrow_drop_down_24px), null)
-                    }
-                }, actions = {
-                    var showLayoutMenu by remember { mutableStateOf(false) }
-                    Box {
-                        TextButton(onClick = { showLayoutMenu = true }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(currentLayout.shortName, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                Icon(painterResource(R.drawable.arrow_drop_down_24px), null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        DropdownMenu(expanded = showLayoutMenu, onDismissRequest = { showLayoutMenu = false }) {
-                            CalendarViewModel.CalendarLayout.entries.forEach { layout ->
-                                DropdownMenuItem(
-                                    text = { Text(layout.prettyName) },
-                                    onClick = {
-                                        viewModel.setLayout(layout)
-                                        showLayoutMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-                    IconButton({ backStack.add(Route.Settings) }) {
-                        IconSettings()
-                    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Text("Calendar", modifier = Modifier.padding(16.dp), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                HorizontalDivider()
+                
+                CalendarViewModel.CalendarLayout.entries.forEach { layout ->
+                    NavigationDrawerItem(
+                        label = { Text(layout.prettyName) },
+                        selected = currentLayout == layout,
+                        onClick = {
+                            viewModel.setLayout(layout)
+                            scope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
                 }
-            )
+                
+                HorizontalDivider()
+                Text("Calendars", modifier = Modifier.padding(16.dp), fontWeight = FontWeight.Bold)
+                
+                calendarsList.forEach { calendar ->
+                    val isVisible = calendarVisibility[calendar.id] ?: true
+                    NavigationDrawerItem(
+                        label = { Text(calendar.displayName) },
+                        selected = false,
+                        onClick = {
+                            viewModel.setCalendarVisibility(calendar.id, !isVisible)
+                        },
+                        badge = {
+                            androidx.compose.material3.Checkbox(
+                                checked = isVisible,
+                                onCheckedChange = { viewModel.setCalendarVisibility(calendar.id, it) }
+                            )
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+                }
+            }
+        }
+    ) {
+        Scaffold(
+            Modifier,
+            {
+                TopAppBar(
+                    title = {
+                        val mon = MonthNames.ENGLISH_ABBREVIATED.names[dateViewing.month.number - 1]
+                        Row(
+                            Modifier.clickable { backStack.add(Route.Calendar.GotoDialog(dateViewing)) },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(stringResource(R.string.month_year_format, mon, dateViewing.year), fontWeight = FontWeight.Bold)
+                            Icon(painterResource(R.drawable.arrow_drop_down_24px), null)
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu")
+                        }
+                    },
+                    actions = {
+                        IconButton({ /* TODO Search */ }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                        IconButton({ backStack.add(Route.Settings) }) {
+                            IconSettings()
+                        }
+                    }
+                )
         },
         floatingActionButton = {
             FloatingActionButton({
@@ -231,11 +274,10 @@ fun CalendarPagerView(
 ) {
     val daysToShow = when (currentLayout) {
         CalendarViewModel.CalendarLayout.Day -> 1
-        CalendarViewModel.CalendarLayout.WorkWeek, CalendarViewModel.CalendarLayout.WorkWeekSummary -> 5
+        CalendarViewModel.CalendarLayout.WorkWeek -> 3
         else -> 7
     }
-    val isSummary = currentLayout == CalendarViewModel.CalendarLayout.WorkWeekSummary || 
-                    currentLayout == CalendarViewModel.CalendarLayout.FullWeekSummary
+    val isSummary = false
     
     val pagerState = rememberPagerState(initialPage = 5000) { 10000 }
     
@@ -310,8 +352,8 @@ fun CalendarPagerView(
             
             val startDay = when (currentLayout) {
                 CalendarViewModel.CalendarLayout.Day -> pageStartDate
-                CalendarViewModel.CalendarLayout.WorkWeek, CalendarViewModel.CalendarLayout.WorkWeekSummary -> 
-                    pageStartDate.minus(DatePeriod(days = (pageStartDate.dayOfWeek.isoDayNumber - 1) % 7))
+                CalendarViewModel.CalendarLayout.WorkWeek -> 
+                    pageStartDate
                 else -> pageStartDate.minus(DatePeriod(days = pageStartDate.dayOfWeek.isoDayNumber % 7))
             }
             
@@ -545,6 +587,7 @@ fun MonthWeekRow(
                 }
             }
         }
+    }
     }
 }
 
