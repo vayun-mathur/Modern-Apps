@@ -2,4 +2,18 @@
 <resources>
     <string name="settings">Impostazioni</string>
     <string name="app_name">Trova Famiglia</string>
+    <string name="notification_channel_location_tracking_desc">Utilizzate per gli aggiornamenti della posizione in background di FindFamily</string>
+    <string name="notification_channel_battery_name">Avvisi della batteria</string>
+    <string name="notification_channel_battery_desc">Avvisa quando un familiare ha la batteria scarica</string>
+    <string name="notification_channel_entry_exit_name">Arrivi e Partenze</string>
+    <string name="notification_tracking_title">FindFamily è attivo</string>
+    <string name="notification_tracking_text">Posizione condivisa con i contatti selezionati</string>
+    <string name="notification_low_battery">%1$s ha la batteria scarica</string>
+    <string name="notification_entered_waypoint">%1$s è entrato in %2$s</string>
+    <string name="notification_exited_waypoint">%1$s è uscito da %2$s</string>
+    <string name="permission_fine_location_granted">✅ Posizione precisa concessa</string>
+    <string name="permission_grant_fine_location">1. Concedi la posizione precisa</string>
+    <string name="permission_background_granted">✅ Background concesso</string>
+    <string name="permission_enable_all_the_time">2. Attiva \"Consenti sempre\"</string>
+    <string name="permission_background_explanation">Per attivare il tracciamento in background, seleziona \"Consenti sempre\" nella schermata successiva.</string>
 </resources>
