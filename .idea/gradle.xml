@@ -36,6 +36,7 @@
             <option value="$PROJECT_DIR$/health" />
             <option value="$PROJECT_DIR$/library" />
             <option value="$PROJECT_DIR$/library/biometric" />
+            <option value="$PROJECT_DIR$/library/downloadservice" />
             <option value="$PROJECT_DIR$/maps" />
             <option value="$PROJECT_DIR$/music" />
             <option value="$PROJECT_DIR$/notes" />

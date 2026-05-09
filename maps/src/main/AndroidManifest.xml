@@ -29,10 +29,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service
-            android:name="com.vayunmathur.library.services.DownloadService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
     </application>
 
 </manifest>

@@ -29,4 +29,5 @@ dependencies {
 
     // room
     implementRoom(libs)
+    implementation(project(":library:downloadservice"))
 }

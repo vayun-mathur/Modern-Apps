@@ -1,4 +1,4 @@
-package com.vayunmathur.library.services
+package com.vayunmathur.library.downloadservice
 
 import android.app.*
 import android.content.Context

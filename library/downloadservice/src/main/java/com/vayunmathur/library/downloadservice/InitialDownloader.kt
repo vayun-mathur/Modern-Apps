@@ -1,4 +1,4 @@
-package com.vayunmathur.library.ui
+package com.vayunmathur.library.downloadservice
 
 import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.services.DownloadService
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.round
 

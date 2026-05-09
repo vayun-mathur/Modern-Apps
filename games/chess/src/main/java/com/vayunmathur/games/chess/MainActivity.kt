@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.library.ui.InitialDownloadChecker
+import com.vayunmathur.library.downloadservice.InitialDownloadChecker
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.games.chess.util.ChessViewModel
 import com.vayunmathur.games.chess.util.ChessUiState
@@ -289,7 +289,7 @@ fun ChessGame(
 
             if (uiState.gameMode is GameMode.VsAI) {
                 val diff = (uiState.gameMode as GameMode.VsAI).difficulty
-                if (diff == StockfishEngine.Difficulty.HARD || diff == StockfishEngine.Difficulty.MASTER) {
+                if (diff == StockfishEngine.Difficulty.ADVANCED || diff == StockfishEngine.Difficulty.GRANDMASTER) {
                     achievementsManager.onAchievementUnlocked("win_vs_ai_hard")
                 }
             }

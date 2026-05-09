@@ -14,3 +14,7 @@ android {
         }
     }
 }
+
+dependencies {
+    implementation(project(":library:downloadservice"))
+}

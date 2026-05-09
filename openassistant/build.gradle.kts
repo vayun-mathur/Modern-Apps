@@ -38,4 +38,6 @@ dependencies {
 
     // markdown
     implementation(libs.compose.markdown)
+
+    implementation(project(":library:downloadservice"))
 }
