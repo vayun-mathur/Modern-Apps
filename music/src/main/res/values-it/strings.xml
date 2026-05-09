@@ -37,4 +37,5 @@
     <string name="various_artists">Artisti vari</string>
     <string name="notification_shuffle">Casuale</string>
     <string name="notification_repeat">Ripeti</string>
+    <string name="go_to_source">Vai a %1$s</string>
 </resources>
