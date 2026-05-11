@@ -1,11 +1,16 @@
 package com.vayunmathur.maps.util
 import android.content.Context
+import android.util.Log
 import androidx.annotation.Keep
+import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.SpecificFeature
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.maplibre.spatialk.geojson.Position
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.time.Duration.Companion.seconds
 
 object OfflineRouter {
@@ -15,21 +20,43 @@ object OfflineRouter {
 
     private external fun init(basePath: String): Boolean
     private external fun findRouteNative(sLat: Double, sLon: Double, eLat: Double, eLon: Double, mode: Int): Array<RawStep>
+    private external fun updateTrafficNative(zoneId: Int, edgeIds: IntArray, speeds: ByteArray)
 
-    // Simple container for JNI data transfer
+    private val trafficScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+
+    @Keep
+    private fun fetchTrafficData(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, zoneId: Int) {
+        Log.d("TRAFFIC_DATA", "fetchTrafficData for bbox ($minLat,$minLon)-($maxLat,$maxLon) zone=$zoneId")
+        trafficScope.launch {
+            try {
+                val (status, bytes) = NetworkClient.performRequestBytes(
+                    url = "https://api.vayunmathur.com/maps/traffic?min_lat=$minLat&min_lon=$minLon&max_lat=$maxLat&max_lon=$maxLon"
+                )
+                if (status == 200 && bytes.size >= 5) {
+                    val n = bytes.size / 5
+                    val edgeIds = IntArray(n)
+                    val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                    for (i in 0 until n) edgeIds[i] = buffer.int
+                    val speeds = ByteArray(n)
+                    buffer.get(speeds)
+                    updateTrafficNative(zoneId, edgeIds, speeds)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     class RawStep @Keep constructor(
         val maneuverId: Int,
         val roadName: String,
         val distanceMm: Long,
         val duration10ms: Long,
-        val geometry: DoubleArray // [lon0, lat0, lon1, lat1...]
+        val geometry: DoubleArray
     )
 
     private var isInitialized = false
 
-    /**
-     * Overload to get route from a SpecificFeature.Route object.
-     */
     suspend fun getRoute(
         context: Context,
         route: SpecificFeature.Route,
@@ -41,9 +68,6 @@ object OfflineRouter {
         return@withContext getRoute(context, start, end, type)
     }
 
-    /**
-     * Primary routing function using the native A* implementation.
-     */
     suspend fun getRoute(
         context: Context,
         start: Position,

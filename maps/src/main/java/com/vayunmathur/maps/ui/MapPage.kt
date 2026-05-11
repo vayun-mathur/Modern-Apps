@@ -163,6 +163,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
 
     // --- UI & BOTTOM SHEET STATE ---
     var allowProgrammaticHide by retain { mutableStateOf(false) }
+
     val scaffoldState = rememberBottomSheetScaffoldState(
         rememberStandardBottomSheetState(SheetValue.Hidden, {
             it != SheetValue.Hidden || allowProgrammaticHide
@@ -252,7 +253,7 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
                     if(camera.projection != null) {
                         selectedFeature?.let { it as? SpecificFeature.RoutableFeature }?.let {
                             Icon(
-                                painterResource(R.drawable.location_on_24px),
+                                painterResource(MapsR.drawable.location_on_24px),
                                 null,
                                 Modifier.size(48.dp).graphicsLayer {
                                     val offset =

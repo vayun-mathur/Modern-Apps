@@ -71,6 +71,20 @@ object NetworkClient {
         )
     }
 
+    suspend fun performRequestBytes(
+        url: String,
+        method: String = "GET",
+        headers: Map<String, *> = emptyMap<String, Any>(),
+        body: Any? = null
+    ): Pair<Int, ByteArray> {
+        val response: HttpResponse = client.request(url) {
+            this.method = HttpMethod.parse(method)
+            applyHeaders(headers)
+            body?.let { setBody(it) }
+        }
+        return response.status.value to response.body<ByteArray>()
+    }
+
     suspend fun performRequest(
         url: String,
         method: String = "GET",
