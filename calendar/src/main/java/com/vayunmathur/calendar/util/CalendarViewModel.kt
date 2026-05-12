@@ -35,7 +35,11 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     val calendarVisibility: StateFlow<Map<Long, Boolean>> = _calendarVisibility.asStateFlow()
 
     // persist the last viewed date for the calendar (used to restore viewed week across restarts)
-    private val _lastViewedDate = MutableStateFlow<LocalDate?>(null)
+    private val _lastViewedDate = MutableStateFlow<LocalDate?>(
+        dataStore.getString("last_viewed_date")?.let {
+            try { LocalDate.parse(it) } catch (e: Exception) { null }
+        }
+    )
     val lastViewedDate: StateFlow<LocalDate?> = _lastViewedDate.asStateFlow()
 
     enum class CalendarLayout(val shortName: String, val prettyName: String) {
@@ -48,7 +52,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         FullWeekSummary("W7S", "Full Week Summary")
     }
 
-    private val _currentLayout = MutableStateFlow(
+    private val _currentLayout = MutableStateFlow<CalendarLayout>(
         dataStore.getString("default_calendar_layout")?.let { saved ->
             try { CalendarLayout.valueOf(saved) } catch (e: Exception) { CalendarLayout.FullWeek }
         } ?: CalendarLayout.FullWeek

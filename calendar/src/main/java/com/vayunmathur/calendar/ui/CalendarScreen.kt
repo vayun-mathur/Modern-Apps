@@ -110,8 +110,8 @@ fun CalendarScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
         lastViewed ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     
     // We use a stable anchor for pagers/scrollers so they don't shift bases.
-    val anchorDate = remember { initialDate }
-    var dateViewing by remember { mutableStateOf(initialDate) }
+    val anchorDate = remember(initialDate) { initialDate }
+    var dateViewing by remember(initialDate) { mutableStateOf(initialDate) }
 
     // shared vertical scroll so hour labels and grid scroll together
     val verticalState = rememberScrollState()

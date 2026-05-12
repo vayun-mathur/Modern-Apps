@@ -14,9 +14,11 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class DataStoreUtils private constructor(context: Context) {
     private val dataStore = createDataStore(context)
@@ -31,8 +33,18 @@ class DataStoreUtils private constructor(context: Context) {
         }
     }
 
+    private fun <T> getWithFallback(key: Preferences.Key<T>): T? {
+        @Suppress("UNCHECKED_CAST")
+        return stateMap[key] as T?
+    }
+
+    private suspend fun initialize() {
+        stateMap = dataStore.data.first().asMap()
+    }
+
+
     fun getByteArray(name: String): ByteArray? {
-        return stateMap[stringPreferencesKey(name)] as ByteArray?
+        return getWithFallback(byteArrayPreferencesKey(name))
     }
 
     suspend fun setByteArray(name: String, value: ByteArray, onlyIfAbsent: Boolean = false) {
@@ -43,7 +55,7 @@ class DataStoreUtils private constructor(context: Context) {
     }
 
     fun getLong(name: String): Long? {
-        return stateMap[longPreferencesKey(name)] as Long?
+        return getWithFallback(longPreferencesKey(name))
     }
 
     fun booleanFlow(name: String): Flow<Boolean> {
@@ -78,7 +90,7 @@ class DataStoreUtils private constructor(context: Context) {
     }
 
     fun getString(string: String): String? {
-        return stateMap[stringPreferencesKey(string)] as String?
+        return getWithFallback(stringPreferencesKey(string))
     }
 
     suspend fun setString(string: String, value: String, onlyIfAbsent: Boolean = false) {
@@ -115,7 +127,7 @@ class DataStoreUtils private constructor(context: Context) {
     }
 
     fun getBoolean(string: String, bool: Boolean): Boolean {
-        return stateMap[booleanPreferencesKey(string)] as Boolean? ?: bool
+        return getWithFallback(booleanPreferencesKey(string)) ?: bool
     }
 
     companion object {
@@ -126,7 +138,11 @@ class DataStoreUtils private constructor(context: Context) {
             // First check (no locking for performance)
             return instance ?: synchronized(this) {
                 // Second check (inside lock to ensure only one thread initializes)
-                instance ?: DataStoreUtils(context.applicationContext).also {
+                instance ?: runBlocking {
+                    DataStoreUtils(context.applicationContext).apply {
+                        initialize()
+                    }
+                }.also {
                     instance = it
                 }
             }
