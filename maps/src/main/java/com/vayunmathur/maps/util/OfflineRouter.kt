@@ -56,7 +56,11 @@ object OfflineRouter {
                     val bytes = getTrafficTileNative(z, x, y)
                     val output = client.getOutputStream()
                     if (bytes != null) {
-                        output.write("HTTP/1.1 200 OK\r\nContent-Type: application/vnd.mapbox-vector-tile\r\nContent-Length: ${bytes.size}\r\nAccess-Control-Allow-Origin: *\r\n\r\n".toByteArray())
+                        output.write(("HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: application/vnd.mapbox-vector-tile\r\n" +
+                                "Content-Encoding: gzip\r\n" +
+                                "Content-Length: ${bytes.size}\r\n" +
+                                "Access-Control-Allow-Origin: *\r\n\r\n").toByteArray())
                         output.write(bytes)
                     } else {
                         output.write("HTTP/1.1 204 No Content\r\n\r\n".toByteArray())
@@ -161,6 +165,13 @@ object OfflineRouter {
 
     private var isInitialized = false
 
+    fun initialize(context: Context) {
+        if (isInitialized) return
+        val path = context.getExternalFilesDir(null)?.absolutePath ?: return
+        isInitialized = init(path)
+        cacheDirPath = context.cacheDir.absolutePath
+    }
+
     suspend fun getRoute(
             context: Context,
             route: SpecificFeature.Route,
@@ -181,8 +192,7 @@ object OfflineRouter {
     ): RouteService.Route =
             withContext(Dispatchers.Default) {
                 if (!isInitialized) {
-                    isInitialized = init(context.getExternalFilesDir(null)!!.absolutePath)
-                    cacheDirPath = context.cacheDir.absolutePath
+                    initialize(context)
                 }
 
                 val rawSteps =

@@ -10,6 +10,8 @@
 #include <set>
 #include <map>
 #include <android/log.h>
+#include "sqlite3.h"
+#include <zlib.h>
 
 #include "scratchpad.h"
 #include "radix_heap.h"
@@ -69,6 +71,88 @@ static RadixHeap g_heap; // Only one heap needed for unidirectional
 static std::map<int, std::vector<double>> g_traffic_by_square;
 static std::vector<uint32_t> g_requested_squares; // Packed (lat_idx << 16 | lon_idx)
 static std::mutex g_traffic_mutex;
+static sqlite3* g_db = nullptr;
+
+// --- UTILS ---
+
+static std::vector<uint8_t> compress_gzip(const std::vector<uint8_t>& input) {
+    if (input.empty()) return {};
+    z_stream zs;
+    memset(&zs, 0, sizeof(zs));
+    if (deflateInit2(&zs, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) return {};
+    zs.next_in = (Bytef*)input.data();
+    zs.avail_in = input.size();
+    int ret;
+    char buffer[32768];
+    std::vector<uint8_t> output;
+    do {
+        zs.next_out = (Bytef*)buffer;
+        zs.avail_out = sizeof(buffer);
+        ret = deflate(&zs, Z_FINISH);
+        if (output.size() < zs.total_out) {
+            output.insert(output.end(), (uint8_t*)buffer, (uint8_t*)buffer + (zs.total_out - output.size()));
+        }
+    } while (ret == Z_OK);
+    deflateEnd(&zs);
+    if (ret != Z_STREAM_END) return {};
+    return output;
+}
+
+inline bool is_zone_mapped(int zone) {
+    return zone >= 0 && zone < NUM_ZONES && g_node_zones[zone] != nullptr;
+}
+
+inline uint32_t find_node_idx_for_edge(int zone, uint32_t local_edge_idx) {
+    if (!is_zone_mapped(zone)) return 0;
+    uint32_t node_count = g_zone_offsets[zone + 1] - g_zone_offsets[zone];
+    int32_t low = 0, high = (int32_t)node_count - 1;
+    uint32_t res = 0;
+    while (low <= high) {
+        int32_t mid = low + (high - low) / 2;
+        if (g_node_zones[zone][mid].edge_ptr <= local_edge_idx) {
+            res = (uint32_t)mid;
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return res;
+}
+
+inline int get_zone_for_id(uint32_t global_id) {
+    for (int i = 0; i < 64; ++i) {
+        if (global_id < g_zone_offsets[i+1]) return i;
+    }
+    return -1;
+}
+
+static void load_traffic_from_db(int packed_square) {
+    if (!g_db) return;
+    sqlite3_stmt* stmt;
+    sqlite3_prepare_v2(g_db, "SELECT zone_id, edge_id, speed FROM raw_traffic WHERE square_id = ?;", -1, &stmt, nullptr);
+    sqlite3_bind_int(stmt, 1, packed_square);
+    auto& segments = g_traffic_by_square[packed_square];
+    segments.clear();
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int zone_id = sqlite3_column_int(stmt, 0);
+        uint32_t local_id = (uint32_t)sqlite3_column_int(stmt, 1);
+        uint8_t speed = (uint8_t)sqlite3_column_int(stmt, 2);
+        if (is_zone_mapped(zone_id) && local_id < g_edge_count_in_zone[zone_id]) {
+            g_traffic_zones[zone_id].set_speed(local_id, speed);
+            const Edge& edge = g_edge_zones[zone_id][local_id];
+            const NodeMaster& node_u = g_node_zones[zone_id][find_node_idx_for_edge(zone_id, local_id)];
+            int zone_v = get_zone_for_id(edge.target);
+            if (is_zone_mapped(zone_v)) {
+                const NodeMaster& node_v = g_node_zones[zone_v][edge.target - g_zone_offsets[zone_v]];
+                double ratio = (edge.speed_limit > 0) ? (double)speed / edge.speed_limit : 1.0;
+                segments.push_back(node_u.lat_e7 * 1e-7); segments.push_back(node_u.lon_e7 * 1e-7);
+                segments.push_back(node_v.lat_e7 * 1e-7); segments.push_back(node_v.lon_e7 * 1e-7);
+                segments.push_back(ratio);
+            }
+        }
+    }
+    sqlite3_finalize(stmt);
+}
 
 // --- MVT ENCODING UTILS ---
 static void write_varint(std::vector<uint8_t>& buf, uint64_t value) {
@@ -117,10 +201,6 @@ uint64_t latlng_to_spatial(double lat, double lon) {
     return res;
 }
 
-inline bool is_zone_mapped(int zone) {
-    return zone >= 0 && zone < NUM_ZONES && g_node_zones[zone] != nullptr;
-}
-
 inline const NodeMaster& get_node(uint32_t global_id) {
     int zone = 0;
     for (int i = 0; i < 64; ++i) {
@@ -131,23 +211,6 @@ inline const NodeMaster& get_node(uint32_t global_id) {
         return null_node;
     }
     return g_node_zones[zone][global_id - g_zone_offsets[zone]];
-}
-
-inline uint32_t find_node_idx_for_edge(int zone, uint32_t local_edge_idx) {
-    if (!is_zone_mapped(zone)) return 0;
-    uint32_t node_count = g_zone_offsets[zone + 1] - g_zone_offsets[zone];
-    int32_t low = 0, high = (int32_t)node_count - 1;
-    uint32_t res = 0;
-    while (low <= high) {
-        int32_t mid = low + (high - low) / 2;
-        if (g_node_zones[zone][mid].edge_ptr <= local_edge_idx) {
-            res = (uint32_t)mid;
-            low = mid + 1;
-        } else {
-            high = mid - 1;
-        }
-    }
-    return res;
 }
 
 void ensure_traffic_loaded(JNIEnv* env, jobject thiz, int32_t lat_e7, int32_t lon_e7) {
@@ -183,13 +246,6 @@ inline bool is_mode_allowed(uint8_t road_type, int mode) {
         return (road_type >= MOTORWAY && road_type <= LIVING_STREET);
     }
     return (road_type >= MOTORWAY && road_type <= STEPS);
-}
-
-inline int get_zone_for_id(uint32_t global_id) {
-    for (int i = 0; i < 64; ++i) {
-        if (global_id < g_zone_offsets[i+1]) return i;
-    }
-    return -1;
 }
 
 // --- GEOMETRY ---
@@ -506,6 +562,17 @@ Java_com_vayunmathur_maps_util_OfflineRouter_init(JNIEnv* env, jobject thiz, jst
             g_edge_time_multipliers[m][r] = (uint64_t)((100.0 / (speed_m_s * 1000.0)) * 4294967296.0);
         }
     }
+
+    std::string db_path = base + "traffic_cache.mbtiles";
+    if (sqlite3_open(db_path.c_str(), &g_db) == SQLITE_OK) {
+        sqlite3_exec(g_db, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
+        sqlite3_exec(g_db, "CREATE TABLE IF NOT EXISTS metadata (name TEXT, value TEXT, PRIMARY KEY(name));", nullptr, nullptr, nullptr);
+        sqlite3_exec(g_db, "CREATE TABLE IF NOT EXISTS tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB, PRIMARY KEY(zoom_level, tile_column, tile_row));", nullptr, nullptr, nullptr);
+        sqlite3_exec(g_db, "CREATE TABLE IF NOT EXISTS raw_traffic (square_id INTEGER, zone_id INTEGER, edge_id INTEGER, speed INTEGER, PRIMARY KEY(square_id, edge_id));", nullptr, nullptr, nullptr);
+        sqlite3_exec(g_db, "INSERT OR IGNORE INTO metadata VALUES ('name', 'Traffic');", nullptr, nullptr, nullptr);
+        sqlite3_exec(g_db, "INSERT OR IGNORE INTO metadata VALUES ('format', 'pbf');", nullptr, nullptr, nullptr);
+    }
+
     env->ReleaseStringUTFChars(base_path, path_raw); return true;
 }
 
@@ -522,28 +589,45 @@ Java_com_vayunmathur_maps_util_OfflineRouter_updateTrafficNative(JNIEnv* env, jo
     jsize len = env->GetArrayLength(edge_ids); jint* ids_ptr = env->GetIntArrayElements(edge_ids, nullptr);
     jbyte* speeds_ptr = env->GetByteArrayElements(speeds, nullptr);
     std::lock_guard<std::mutex> lock(g_traffic_mutex);
+    
+    if (g_db) {
+        sqlite3_exec(g_db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+        sqlite3_stmt* stmt;
+        sqlite3_prepare_v2(g_db, "INSERT OR REPLACE INTO raw_traffic (square_id, zone_id, edge_id, speed) VALUES (?, ?, ?, ?);", -1, &stmt, nullptr);
+        for (jsize i = 0; i < len; i++) {
+            sqlite3_bind_int(stmt, 1, packed_square);
+            sqlite3_bind_int(stmt, 2, zone_id);
+            sqlite3_bind_int(stmt, 3, ids_ptr[i]);
+            sqlite3_bind_int(stmt, 4, (uint8_t)speeds_ptr[i]);
+            sqlite3_step(stmt);
+            sqlite3_reset(stmt);
+        }
+        sqlite3_finalize(stmt);
+        sqlite3_exec(g_db, "DELETE FROM tiles;", nullptr, nullptr, nullptr); // Simple invalidation
+        sqlite3_exec(g_db, "COMMIT;", nullptr, nullptr, nullptr);
+    }
+
     auto& segments = g_traffic_by_square[packed_square];
-    if (segments.size() > 100000) segments.clear(); 
+    segments.clear(); 
     size_t total_edges_in_zone = g_edge_count_in_zone[zone_id];
     for (jsize i = 0; i < len; i++) {
         uint32_t local_id = (uint32_t)ids_ptr[i]; uint8_t speed = (uint8_t)speeds_ptr[i];
-
-        if (g_node_zones[zone_id] && local_id < total_edges_in_zone) {
+        if (is_zone_mapped(zone_id) && local_id < total_edges_in_zone) {
             const Edge& edge = g_edge_zones[zone_id][local_id];
-            if (speed < 255) { // valid traffic data
+            if (speed < 255) {
                 g_traffic_zones[zone_id].set_speed(local_id, speed);
                 const NodeMaster& node_u = g_node_zones[zone_id][find_node_idx_for_edge(zone_id, local_id)];
-                const NodeMaster& node_v = g_node_zones[get_zone_for_id(edge.target)][edge.target - g_zone_offsets[get_zone_for_id(edge.target)]];
-                double ratio = (edge.speed_limit > 0) ? (double)speed / edge.speed_limit : 1.0;
-                segments.push_back(node_u.lat_e7 * 1e-7);
-                segments.push_back(node_u.lon_e7 * 1e-7);
-                segments.push_back(node_v.lat_e7 * 1e-7);
-                segments.push_back(node_v.lon_e7 * 1e-7);
-                segments.push_back(ratio);
+                int zone_v = get_zone_for_id(edge.target);
+                if (is_zone_mapped(zone_v)) {
+                    const NodeMaster& node_v = g_node_zones[zone_v][edge.target - g_zone_offsets[zone_v]];
+                    double ratio = (edge.speed_limit > 0) ? (double)speed / edge.speed_limit : 1.0;
+                    segments.push_back(node_u.lat_e7 * 1e-7); segments.push_back(node_u.lon_e7 * 1e-7);
+                    segments.push_back(node_v.lat_e7 * 1e-7); segments.push_back(node_v.lon_e7 * 1e-7);
+                    segments.push_back(ratio);
+                }
             }
         }
     }
-    LOGD("updateTrafficNative END: packed %u", (uint32_t)packed_square);
     env->ReleaseIntArrayElements(edge_ids, ids_ptr, JNI_ABORT); env->ReleaseByteArrayElements(speeds, speeds_ptr, JNI_ABORT);
 }
 
@@ -571,119 +655,101 @@ extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_vayunmathur_maps_util_OfflineRouter_getTrafficTileNative(JNIEnv* env, jobject thiz, jint z, jint x, jint y) {
     std::lock_guard<std::mutex> lock(g_traffic_mutex);
 
-    // 1. Calculate tile bounding box in WGS84
+    int tms_y = (1 << z) - 1 - y;
+    if (g_db) {
+        sqlite3_stmt* stmt;
+        sqlite3_prepare_v2(g_db, "SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?;", -1, &stmt, nullptr);
+        sqlite3_bind_int(stmt, 1, z);
+        sqlite3_bind_int(stmt, 2, x);
+        sqlite3_bind_int(stmt, 3, tms_y);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            const void* blob = sqlite3_column_blob(stmt, 0);
+            int size = sqlite3_column_bytes(stmt, 0);
+            jbyteArray res = env->NewByteArray(size);
+            env->SetByteArrayRegion(res, 0, size, (jbyte*)blob);
+            sqlite3_finalize(stmt);
+            return res;
+        }
+        sqlite3_finalize(stmt);
+    }
+
     double n = std::pow(2.0, z);
     double lon_min = (double)x / n * 360.0 - 180.0;
     double lon_max = (double)(x + 1) / n * 360.0 - 180.0;
     double lat_max = std::atan(std::sinh(M_PI * (1 - 2 * (double)y / n))) * 180.0 / M_PI;
     double lat_min = std::atan(std::sinh(M_PI * (1 - 2 * (double)(y + 1) / n))) * 180.0 / M_PI;
 
-    TileProj proj{n, x, (int)y};
+    TileProj proj{n, x, y};
     std::vector<uint8_t> layer_buf;
-    
-    // Layer Metadata
-    write_string(layer_buf, 1, "traffic"); // name (field 1)
-    write_tag(layer_buf, 15, 0); // version (field 15)
-    write_varint(layer_buf, 2);
-    write_tag(layer_buf, 5, 0); // extent (field 5)
-    write_varint(layer_buf, 4096);
+    write_string(layer_buf, 1, "traffic");
+    write_tag(layer_buf, 15, 0); write_varint(layer_buf, 2);
+    write_tag(layer_buf, 5, 0); write_varint(layer_buf, 4096);
 
-    // Collect squares intersecting this tile
-    int min_lat_idx = (int)std::floor(lat_min);
-    int max_lat_idx = (int)std::floor(lat_max);
-    int min_lon_idx = (int)std::floor(lon_min);
-    int max_lon_idx = (int)std::floor(lon_max);
+    int min_lat_idx = (int)std::floor(lat_min); int max_lat_idx = (int)std::floor(lat_max);
+    int min_lon_idx = (int)std::floor(lon_min); int max_lon_idx = (int)std::floor(lon_max);
 
     std::vector<std::string> keys = {"color"};
     std::vector<std::string> values;
     std::map<std::string, uint32_t> val_map;
-
     auto get_val_idx = [&](const std::string& v) {
-        if (val_map.find(v) == val_map.end()) {
-            val_map[v] = values.size();
-            values.push_back(v);
-        }
+        if (val_map.find(v) == val_map.end()) { val_map[v] = values.size(); values.push_back(v); }
         return val_map[v];
     };
 
     for (int lat_i = min_lat_idx; lat_i <= max_lat_idx; ++lat_i) {
         for (int lon_i = min_lon_idx; lon_i <= max_lon_idx; ++lon_i) {
             uint32_t square_id = ((uint32_t)(lat_i + 360) << 16) | (uint32_t)(lon_i + 720);
+            if (g_traffic_by_square.find(square_id) == g_traffic_by_square.end()) load_traffic_from_db(square_id);
             auto it = g_traffic_by_square.find(square_id);
             if (it == g_traffic_by_square.end()) continue;
 
             const auto& data = it->second;
             for (size_t i = 0; i + 4 < data.size(); i += 5) {
-                double lat1 = data[i], lon1 = data[i+1];
-                double lat2 = data[i+2], lon2 = data[i+3];
-                double speed_ratio = data[i+4];
-
+                double lat1 = data[i], lon1 = data[i+1], lat2 = data[i+2], lon2 = data[i+3], speed_ratio = data[i+4];
                 if (speed_ratio <= 0.0) continue;
-
                 int32_t px1, py1, px2, py2;
-                proj.wgs84_to_tile_px(lat1, lon1, px1, py1);
-                proj.wgs84_to_tile_px(lat2, lon2, px2, py2);
+                proj.wgs84_to_tile_px(lat1, lon1, px1, py1); proj.wgs84_to_tile_px(lat2, lon2, px2, py2);
+                if (std::max(px1, px2) < -512 || std::min(px1, px2) > 4608 || std::max(py1, py2) < -512 || std::min(py1, py2) > 4608) continue;
 
-                // Expanded clipping buffer to avoid road segments disappearing prematurely
-                if (std::max(px1, px2) < -512 || std::min(px1, px2) > 4608 ||
-                    std::max(py1, py2) < -512 || std::min(py1, py2) > 4608) continue;
-
-                // Feature (field 2)
                 std::vector<uint8_t> feat_buf;
-                write_varint(feat_buf, (3 << 3) | 0); // type (field 3) = LINESTRING (2)
-                write_varint(feat_buf, 2);
-
-                // Geometry (field 4)
+                write_varint(feat_buf, (3 << 3) | 0); write_varint(feat_buf, 2);
                 std::vector<uint8_t> geom_buf;
-                write_varint(geom_buf, mvt_command(1, 1)); // MoveTo, count 1
-                write_varint(geom_buf, zigzag(px1));
-                write_varint(geom_buf, zigzag(py1));
-                write_varint(geom_buf, mvt_command(2, 1)); // LineTo, count 1
-                write_varint(geom_buf, zigzag(px2 - px1));
-                write_varint(geom_buf, zigzag(py2 - py1));
-
-                write_tag(feat_buf, 4, 2);
-                write_varint(feat_buf, geom_buf.size());
+                write_varint(geom_buf, mvt_command(1, 1)); write_varint(geom_buf, zigzag(px1)); write_varint(geom_buf, zigzag(py1));
+                write_varint(geom_buf, mvt_command(2, 1)); write_varint(geom_buf, zigzag(px2 - px1)); write_varint(geom_buf, zigzag(py2 - py1));
+                write_tag(feat_buf, 4, 2); write_varint(feat_buf, geom_buf.size());
                 feat_buf.insert(feat_buf.end(), geom_buf.begin(), geom_buf.end());
 
-                // Tags (field 2) - [key_idx, val_idx]
-                std::string color = "#4CAF50"; // Green for good traffic
-                if (speed_ratio < 0.5) color = "#F44336"; // Red for slow traffic
-                else if (speed_ratio < 0.9) color = "#FFC107"; // Amber/Yellow for moderate traffic
-                
-                write_tag(feat_buf, 2, 2); // tags (field 2)
-                std::vector<uint8_t> tag_buf;
-                write_varint(tag_buf, 0); // "color" is at index 0
-                write_varint(tag_buf, get_val_idx(color));
-                write_varint(feat_buf, tag_buf.size());
-                feat_buf.insert(feat_buf.end(), tag_buf.begin(), tag_buf.end());
-
-                write_tag(layer_buf, 2, 2);
-                write_varint(layer_buf, feat_buf.size());
+                std::string color = "#4CAF50";
+                if (speed_ratio < 0.5) color = "#F44336"; else if (speed_ratio < 0.9) color = "#FFC107";
+                write_tag(feat_buf, 2, 2); std::vector<uint8_t> tag_buf;
+                write_varint(tag_buf, 0); write_varint(tag_buf, get_val_idx(color));
+                write_varint(feat_buf, tag_buf.size()); feat_buf.insert(feat_buf.end(), tag_buf.begin(), tag_buf.end());
+                write_tag(layer_buf, 2, 2); write_varint(layer_buf, feat_buf.size());
                 layer_buf.insert(layer_buf.end(), feat_buf.begin(), feat_buf.end());
             }
         }
     }
-
-    // Keys (field 3)
     for (const auto& k : keys) write_string(layer_buf, 3, k);
-    // Values (field 4)
     for (const auto& v : values) {
-        write_tag(layer_buf, 4, 2);
-        std::vector<uint8_t> v_buf;
-        write_string(v_buf, 1, v); // string_value (field 1)
-        write_varint(layer_buf, v_buf.size());
-        layer_buf.insert(layer_buf.end(), v_buf.begin(), v_buf.end());
+        write_tag(layer_buf, 4, 2); std::vector<uint8_t> v_buf; write_string(v_buf, 1, v);
+        write_varint(layer_buf, v_buf.size()); layer_buf.insert(layer_buf.end(), v_buf.begin(), v_buf.end());
     }
-
-    // Final Tile buffer (Tile is a collection of layers)
     std::vector<uint8_t> tile_buf;
-    write_tag(tile_buf, 3, 2); // Layer (field 3)
-    write_varint(tile_buf, layer_buf.size());
+    write_tag(tile_buf, 3, 2); write_varint(tile_buf, layer_buf.size());
     tile_buf.insert(tile_buf.end(), layer_buf.begin(), layer_buf.end());
 
-    jbyteArray res = env->NewByteArray(tile_buf.size());
-    env->SetByteArrayRegion(res, 0, tile_buf.size(), (jbyte*)tile_buf.data());
+    std::vector<uint8_t> compressed = compress_gzip(tile_buf);
+    if (g_db && !compressed.empty()) {
+        sqlite3_stmt* stmt;
+        sqlite3_prepare_v2(g_db, "INSERT OR REPLACE INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?);", -1, &stmt, nullptr);
+        sqlite3_bind_int(stmt, 1, z); sqlite3_bind_int(stmt, 2, x); sqlite3_bind_int(stmt, 3, tms_y);
+        sqlite3_bind_blob(stmt, 4, compressed.data(), compressed.size(), SQLITE_TRANSIENT);
+        sqlite3_step(stmt); sqlite3_finalize(stmt);
+    }
+
+    const auto& final_data = compressed.empty() ? tile_buf : compressed;
+    jbyteArray res = env->NewByteArray(final_data.size());
+    env->SetByteArrayRegion(res, 0, final_data.size(), (jbyte*)final_data.data());
     return res;
 }
 

@@ -49,6 +49,10 @@ fun MyMapLayers(selectedFeature: SpecificFeature?, route: RouteService.RouteType
     val trafficVersion by OfflineRouter.trafficVersion.collectAsState()
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        OfflineRouter.initialize(context)
+    }
+
     key(styleJson) {
         var routeSource by remember { mutableStateOf<GeoJsonSource?>(null) }
         var outlineSource by remember { mutableStateOf<GeoJsonSource?>(null) }
