@@ -73,4 +73,7 @@
     <string name="selected_count">已选择 %1$d 个</string>
     <string name="display">显示</string>
     <string name="show_account_labels">显示联系人账号</string>
+    <string name="search">搜索</string>
+    <string name="search_contacts">搜索联系人</string>
+    <string name="include_year">包括年份</string>
 </resources>
