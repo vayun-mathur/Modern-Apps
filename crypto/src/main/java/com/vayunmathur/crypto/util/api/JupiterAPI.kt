@@ -5,7 +5,7 @@ import org.sol4k.Keypair
 import kotlin.math.pow
 
 object JupiterAPI {
-    private const val API_KEY = "873a272b-baf7-4a7a-b0e6-e689a33430c9"
+    private val API_KEY get() = com.vayunmathur.crypto.BuildConfig.JUPITER_API_KEY
 
     suspend fun getPrices(mints: List<String>): PriceResponse {
         return mints.chunked(20).map { try {
