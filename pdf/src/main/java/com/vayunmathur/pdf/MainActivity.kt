@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.ext.SdkExtensions
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
+            val startedWithIntent = remember { intentData != null }
             var data by rememberSaveable { mutableStateOf(intentData) }
             var password: String? by rememberSaveable { mutableStateOf(null) }
             var pdfDocument by remember { mutableStateOf<EditablePdfDocument?>(null) }
@@ -106,17 +108,26 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     } else {
+                        val onBack = {
+                            if (startedWithIntent) {
+                                finish()
+                            } else {
+                                data = null
+                                pdfDocument = null
+                                password = null
+                            }
+                        }
+
                         pdfDocument?.let {
                             PdfViewerScreen(
                                 pdfDocument = it,
                                 pdfName = data?.lastPathSegment ?: "pdf",
-                                onBack = { 
-                                    data = null
-                                    pdfDocument = null
-                                    password = null
-                                }
+                                onBack = onBack
                             )
-                        } ?: Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                        } ?: run {
+                            BackHandler { onBack() }
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                        }
                     }
 
                     if (showPasswordDialog) {
