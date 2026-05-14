@@ -5,6 +5,8 @@ plugins {
 android {
     compileSdkExtension = 19
     defaultConfig {
+        versionCode = 20260513
+        versionName = "v2.4.5"
         applicationId = "com.vayunmathur.pdf"
     }
 }
