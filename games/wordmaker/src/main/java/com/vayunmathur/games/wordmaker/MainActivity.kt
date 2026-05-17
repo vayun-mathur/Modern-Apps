@@ -160,9 +160,6 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
     }
     var crosswordData by remember { mutableStateOf<CrosswordData?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    val dictionary by remember { mutableStateOf(Dictionary()) }
-    val coroutineScope = rememberCoroutineScope { Dispatchers.IO }
-
     val achievementsManager = rememberAchievementsManager(levelDataStore)
     val newAchievement by achievementsManager.newAchievement.collectAsState()
     var dictionary by remember { mutableStateOf(Dictionary.EMPTY) }

@@ -17,7 +17,7 @@ val AVAILABLE_LANGUAGES = listOf(
     LanguageConfig(
         id = "de",
         displayName = "Deutsch",
-        dictionaryFile = "dictionary_de.csv",
+        dictionaryFile = "dictionary_de.txt",
         levelsPath = "levels/de"
     ),
 )
