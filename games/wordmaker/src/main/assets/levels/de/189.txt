@@ -1,8 +1,5 @@
-       B
-       E
-       R
-   WAREN
-   A A  
-ABER B  
-   E E  
-     N  
+ L    T 
+ A LATEX
+AXT L X 
+L AXEL  
+T L X   

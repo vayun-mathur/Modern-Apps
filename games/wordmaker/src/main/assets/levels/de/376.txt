@@ -1,6 +1,7 @@
-       S
-USER R E
-   E U H
-   SCHUR
-   C E  
-   H    
+    M M 
+   MAGEN
+ENG N N 
+ A E  G 
+ MANEGE 
+ E G    
+  GEN   

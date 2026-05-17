@@ -1,5 +1,9 @@
-KODE    
-  E  D  
-  MOVE  
-  O  K  
-    MODE
+      E 
+     END
+   S  D 
+  SENDEN
+   N  N 
+ ENDE   
+ D E    
+SEE     
+ N      

@@ -1,4 +1,9 @@
-KAHN  T  
-A  A HALT
-H  H  N  
-L  TALK  
+ HAB
+   A
+HAAR
+ B  
+ARM 
+ A  
+ H  
+RAM 
+ M  

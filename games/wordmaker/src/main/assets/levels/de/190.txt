@@ -1,7 +1,10 @@
-B BARDE
-E    E 
-D    R 
-A FARBE
-R  D   
-FADE   
-   R   
+   BIRNE
+  E  I  
+BIRNEN  
+  B  N I
+I I BEIN
+RENN   N
+E  E   E
+  BIER  
+   N E  
+     N  

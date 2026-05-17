@@ -1,12 +1,9 @@
-     K K
-     A E
-     R R
-   ARTEN
-   N E  
-TANK    
-   E    
-   RATE 
-     A  
-     N  
-    AKTE
-     E  
+         P 
+ P     P R 
+ E     OPER
+EROS   S S 
+S  PROZESS 
+S  O    O  
+   ROSE SPE
+   E  R    
+      Z    

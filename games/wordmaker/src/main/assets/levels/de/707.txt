@@ -1,10 +1,7 @@
-       O 
-    DERB 
-       E 
-    BOARD
-    A B A
-    D E R
-BARDE R O
- D  R   B
- E       
- R       
+R FAD
+ADA  
+F R  
+ RAD 
+  D  
+ DAR 
+  Y  

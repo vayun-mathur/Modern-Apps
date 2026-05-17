@@ -1,7 +1,5 @@
-S  
-C  
-H B
-U U
-BUS
-  C
-  H
+JOD    
+  O  F 
+  R  O 
+  FJORD
+     D 

@@ -1,8 +1,9 @@
-    E  
-    B  
-    E  
-LEGEN  
-E E    
-B B    
-E ENGEL
-N N    
+       AKT
+       N  
+   A   K  
+   KANTE  
+   T  A   
+ A E  N   
+ KANT K   
+ N        
+KENT      

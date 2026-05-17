@@ -1,8 +1,10 @@
-   S 
-R  T 
-O  O 
-S  R 
-TOWER
-  E E
-  R S
-  T T
+  E GEL  
+LOG  N   
+  OLEG   
+   E     
+   N  O  
+ GEKLONT 
+  T   K  
+ LOK KENT
+  N   L O
+        N

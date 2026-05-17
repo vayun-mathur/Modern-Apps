@@ -1,7 +1,5 @@
-        R
-PRISE   E
-    R P S
-    SPRIT
-    T E  
-      I  
-      S  
+     P  
+ROT  O T
+ R PORTO
+ TOR T P
+   O    

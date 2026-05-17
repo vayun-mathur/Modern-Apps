@@ -1,7 +1,10 @@
-  TEST    
-    E     
-    I NEST
-  SITTE   
-  E   T   
-  I  STEIN
-EINST     
+    ATOM   
+       AMT 
+     T T   
+  T MOTTE  
+  E  M  TOM
+OMA  A  A  
+  MATTE T  
+   T E     
+TOTE       
+   M       

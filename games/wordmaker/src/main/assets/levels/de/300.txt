@@ -1,8 +1,8 @@
-FASE      
-  C       
-ACHSE     
-  A   CASH
-  FESCH   
-    A E   
-    F F   
-ASCHE     
+      GNU
+         
+ G       
+ E J     
+ NEU     
+   N     
+JUNG     
+   ENG   

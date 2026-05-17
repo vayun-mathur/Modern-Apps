@@ -1,5 +1,6 @@
-    L 
-  H O 
-  ALSO
-  L   
-ALS   
+TOT 
+  R 
+ TOR
+R T 
+ORT 
+T   

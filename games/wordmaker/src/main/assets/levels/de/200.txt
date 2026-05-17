@@ -1,7 +1,5 @@
-    S   
- PORT P 
-    A O 
-   PROSA
-   A  T 
-   R    
-ROST    
+T    
+O    
+METRO
+  O R
+  ROT

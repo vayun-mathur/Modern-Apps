@@ -1,8 +1,6 @@
-HOLD  
-   O  
-   L  
-   L  
-  HELD
-  E  O
-  L  L
-  L  L
+D   ADE
+ANDEN  
+N N N  
+N A END
+      E
+      N

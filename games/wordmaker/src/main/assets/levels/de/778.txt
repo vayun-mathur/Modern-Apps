@@ -1,9 +1,7 @@
-   A 
-C  S 
-A  C 
-S  H 
-HADES
- C  A
- H  C
- S  H
- E  E
+  P    
+  E R P
+  R U E
+ PUFFER
+ U     
+ F     
+UFER   

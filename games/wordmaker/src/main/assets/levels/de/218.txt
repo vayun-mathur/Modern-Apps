@@ -1,7 +1,11 @@
-W     
-E KERB
-R E   
-KERBE 
-  W R 
-  E B 
-    E 
+        R
+        A
+      LAN
+ALS L A  
+ E LARS  
+ A  S    
+ RASEN   
+N   R    
+ARSEN    
+S A      
+E N      

@@ -1,8 +1,10 @@
-G    
-E    
-H    
-A    
-LEGAT
-T  L 
-   T 
-LAGE 
+        M  
+        A  
+K     TANK 
+A    A   E 
+NAME K AKNE
+T  N T N T 
+ AMT E K   
+   KANTE   
+   A       
+ ATMEN     

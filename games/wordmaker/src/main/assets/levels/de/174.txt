@@ -1,9 +1,11 @@
-        S
-      C C
-      A H
-R     S A
-A   SCHAR
-S   C   F
-CRASH    
-H   A    
-    F    
+   GEN  
+   A  K 
+  KRAGEN
+    N R 
+ A  K N 
+ NAGER  
+ K  R   
+GERN    
+  A     
+  N     
+ENG     

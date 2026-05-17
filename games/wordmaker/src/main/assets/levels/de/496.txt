@@ -1,6 +1,10 @@
-      P 
-PLANE L 
-    L A 
-   PANNE
-    N E 
-      N 
+  ESS   
+    A   
+  DOSE  
+   D    
+OASE    
+   SODA 
+ DOS A  
+ E A SOS
+ S   S A
+       O
