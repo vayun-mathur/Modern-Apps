@@ -209,7 +209,9 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
                     currentLevel = currentLevel,
                     dictionary = dictionary,
                     achievementsManager = achievementsManager,
-                    onOpenGameCenter = { backStack.add(Route.GameCenter) }
+                    onOpenGameCenter = { backStack.add(Route.GameCenter) },
+                    currentLanguageId = currentLanguageId,
+                    onOpenLanguagePicker = { showLanguagePicker = true }
                 )
             }
             else -> {
@@ -221,13 +223,6 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
             AchievementNotification(it) {
                 achievementsManager.dismissNotification()
             }
-        }
-
-        androidx.compose.material3.TextButton(
-            onClick = { showLanguagePicker = true },
-            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp)
-        ) {
-            Text(currentLanguageId.uppercase())
         }
 
         if (showLanguagePicker) {
@@ -278,14 +273,16 @@ fun WordGameScreen(
     currentLevel: Int,
     dictionary: Dictionary,
     achievementsManager: AchievementsManager,
-    onOpenGameCenter: () -> Unit
+    onOpenGameCenter: () -> Unit,
+    currentLanguageId: String,
+    onOpenLanguagePicker: () -> Unit
 ) {
     val foundWords by levelDataStore.foundWords.collectAsState(initial = emptySet())
     val bonusWords by levelDataStore.bonusWords.collectAsState(initial = emptySet())
     var showBonusWordsDialog by remember(currentLevel) { mutableStateOf(false) }
     val density = LocalDensity.current
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
-    var wordWithDefinition by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+    var wordWithDefinition by remember { mutableStateOf<Pair<String, List<String>?>?>(null) }
 
     // Animation state
     val coroutineScope = rememberCoroutineScope()
@@ -372,6 +369,9 @@ fun WordGameScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.level_number, currentLevel)) },
                 actions = {
+                    IconButton(onClick = onOpenLanguagePicker) {
+                        Text(currentLanguageId.uppercase(), style = androidx.compose.material3.MaterialTheme.typography.labelLarge)
+                    }
                     IconButton(onClick = onOpenGameCenter) {
                         Icon(painterResource(id = android.R.drawable.btn_star_big_on), "Achievements")
                     }
@@ -412,9 +412,14 @@ fun WordGameScreen(
                             val word = crosswordData.getWordAt(row, col, foundWords)
                             if (word != null && word in foundWords) {
                                 coroutineScope.launch {
-                                    val definition = dictionary.getDefinition(word)
-                                    if (definition.isNotEmpty()) {
-                                        wordWithDefinition = Pair(word, definition)
+                                    wordWithDefinition = Pair(word, null)
+                                    val definition = withContext(Dispatchers.IO) {
+                                        dictionary.getDefinition(word).ifEmpty {
+                                            Dictionary.fetchRemoteDefinition(word)
+                                        }
+                                    }
+                                    if (wordWithDefinition?.first == word) {
+                                        wordWithDefinition = if (definition.isNotEmpty()) Pair(word, definition) else null
                                     }
                                 }
                             }
@@ -537,6 +542,7 @@ fun WordGameScreen(
                 }
             }
 
+
             animatedWord?.let { word ->
                 val progress = animationProgress.value
                 val currentOffset = lerp(wordBoxOffset, bonusButtonOffset, progress)
@@ -571,11 +577,17 @@ fun WordGameScreen(
 }
 
 @Composable
-fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Unit) {
+fun DefinitionDialog(word: String, definition: List<String>?, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = word.replaceFirstChar { it.uppercase() }) },
-        text = { Text(text = definition.joinToString("\n\n")) },
+        text = {
+            if (definition == null) {
+                CircularProgressIndicator()
+            } else {
+                Text(text = definition.joinToString("\n\n"))
+            }
+        },
         confirmButton = {
             Button(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
@@ -586,7 +598,8 @@ fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Un
 
 @Composable
 fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss: () -> Unit) {
-    var definitionDialog by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+    var definitionDialog by remember { mutableStateOf<Pair<String, List<String>?>?>(null) }
+    val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.bonus_words)) },
@@ -599,7 +612,17 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
                             .padding(vertical = 4.dp)
                             .fillMaxWidth()
                             .clickable {
-                                definitionDialog = Pair(word, dictionary.getDefinition(word))
+                                scope.launch {
+                                    definitionDialog = Pair(word, null)
+                                    val defs = withContext(Dispatchers.IO) {
+                                        dictionary.getDefinition(word).ifEmpty {
+                                            Dictionary.fetchRemoteDefinition(word)
+                                        }
+                                    }
+                                    if (definitionDialog?.first == word) {
+                                        definitionDialog = if (defs.isNotEmpty()) Pair(word, defs) else null
+                                    }
+                                }
                             })
                 }
             }
@@ -618,6 +641,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
         }
     }
 }
+
 
 @Composable
 fun SurfaceText(modifier: Modifier, surfaceShape: Shape, surfaceColor: Color, text: String, textModifier: Modifier, fontWeight: FontWeight? = null, fontSize: TextUnit = TextUnit.Unspecified, surfaceSize: Dp?) {
