@@ -91,6 +91,7 @@ import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.DatabaseViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.ResultEffect
+import com.vayunmathur.library.util.formatSpeed
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
@@ -612,7 +613,7 @@ fun WaypointCard(waypoint: Waypoint, users: List<User>, onSelect: () -> Unit) {
 fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
     val lastUpdatedTime = locationValue?.let { timestring(it.timestamp, false, context) } ?: stringResource(R.string.last_updated_never)
-    val speed = locationValue?.speed?.times(10)?.roundToInt()?.div(10F) ?: 0.0
+    val speedString = (locationValue?.speed ?: 0f).formatSpeed()
     val sinceTime = user.lastLocationChangeTime.toLocalDateTime(TimeZone.currentSystemDefault())
     val timeSinceEntry = Clock.System.now() - user.lastLocationChangeTime
     val sinceString = if (user.locationName == "Unnamed Location")
@@ -654,7 +655,7 @@ fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: B
                 }
             }, trailingContent = {
                 if (showSupportingContent) {
-                    Text(stringResource(R.string.speed_ms, speed.toString()))
+                    Text(speedString)
                 }
             })
     }

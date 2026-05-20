@@ -36,7 +36,6 @@
     <string name="today">今天</string>
     <string name="yesterday">昨天</string>
     <string name="user_card_status">更新于 %1$s\n%2$s\n%3$s</string>
-    <string name="speed_ms">%1$s 米/秒</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="time_just_now">刚刚</string>
     <string name="time_minutes_ago">%1$d 分钟前</string>

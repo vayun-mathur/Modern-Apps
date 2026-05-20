@@ -53,7 +53,6 @@
     <string name="notification_low_battery">%1$s aku hakkab tühjaks saama</string>
     <string name="notification_entered_waypoint">%1$s on sisenenud asukohta %2$s</string>
     <string name="notification_exited_waypoint">%1$s on väljunud asukohast %2$s</string>
-    <string name="speed_ms">%1$s m/sek</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="fab_person">Isik</string>
     <string name="fab_location">Asukoht</string>

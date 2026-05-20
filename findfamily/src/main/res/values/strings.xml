@@ -48,7 +48,6 @@
     <string name="today">today</string>
     <string name="yesterday">yesterday</string>
     <string name="user_card_status">Updated %1$s\nAt %2$s\n%3$s</string>
-    <string name="speed_ms">%1$s m/s</string>
     <string name="battery_percentage">%1$d%%</string>
 
     <!-- timestring helper -->

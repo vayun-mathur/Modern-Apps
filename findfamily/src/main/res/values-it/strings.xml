@@ -33,7 +33,6 @@
     <string name="today">oggi</string>
     <string name="yesterday">ieri</string>
     <string name="user_card_status">Aggiornato %1$s\nA %2$s\n%3$s</string>
-    <string name="speed_ms">%1$s m/s</string>
     <string name="battery_percentage">%1$d%%</string>
     <string name="time_just_now">in questo momento</string>
     <string name="time_minutes_ago">%1$d minuti fa</string>
