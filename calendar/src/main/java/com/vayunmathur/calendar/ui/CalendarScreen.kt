@@ -86,8 +86,28 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.format
 import kotlinx.datetime.todayIn
+import androidx.core.text.util.LocalePreferences
+import java.util.Locale
 import kotlin.time.Clock
 import kotlin.time.Instant
+
+private fun getFirstDayOfWeekValue(locale: Locale): Int {
+    return when (LocalePreferences.getFirstDayOfWeek(locale)) {
+        LocalePreferences.FirstDayOfWeek.MONDAY -> 1
+        LocalePreferences.FirstDayOfWeek.TUESDAY -> 2
+        LocalePreferences.FirstDayOfWeek.WEDNESDAY -> 3
+        LocalePreferences.FirstDayOfWeek.THURSDAY -> 4
+        LocalePreferences.FirstDayOfWeek.FRIDAY -> 5
+        LocalePreferences.FirstDayOfWeek.SATURDAY -> 6
+        LocalePreferences.FirstDayOfWeek.SUNDAY -> 7
+        else -> 7
+    }
+}
+
+private fun firstDayOfWeekOffset(date: LocalDate, locale: Locale): Int {
+    val firstDayOfWeek = getFirstDayOfWeekValue(locale)
+    return (date.dayOfWeek.isoDayNumber - firstDayOfWeek + 7) % 7
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -302,7 +322,10 @@ fun CalendarPagerView(
                 CalendarViewModel.CalendarLayout.Day -> pageStartDate
                 CalendarViewModel.CalendarLayout.WorkWeek, CalendarViewModel.CalendarLayout.WorkWeekSummary -> 
                     pageStartDate.minus(DatePeriod(days = (pageStartDate.dayOfWeek.isoDayNumber - 1) % 7))
-                else -> pageStartDate.minus(DatePeriod(days = pageStartDate.dayOfWeek.isoDayNumber % 7))
+                else -> {
+                    val locale = context.resources.configuration.locales[0]
+                    pageStartDate.minus(DatePeriod(days = firstDayOfWeekOffset(pageStartDate, locale)))
+                }
             }
             
             val weekDays = (0 until daysToShow).map { startDay.plus(DatePeriod(days = it)) }
@@ -454,8 +477,13 @@ fun MonthView(
         val monthDate = anchorDate.plus(DatePeriod(months = page - 5000))
         val firstOfMonth = LocalDate(monthDate.year, monthDate.month, 1)
         val lastOfMonth = firstOfMonth.plus(DatePeriod(months = 1)).minus(DatePeriod(days = 1))
-        val startDay = firstOfMonth.minus(DatePeriod(days = firstOfMonth.dayOfWeek.isoDayNumber % 7))
-        val endDay = lastOfMonth.plus(DatePeriod(days = (6 - lastOfMonth.dayOfWeek.isoDayNumber % 7)))
+        
+        val locale = context.resources.configuration.locales[0]
+        val firstDayOfWeek = getFirstDayOfWeekValue(locale)
+        val lastDayOfWeek = if (firstDayOfWeek == 1) 7 else firstDayOfWeek - 1
+        
+        val startDay = firstOfMonth.minus(DatePeriod(days = firstDayOfWeekOffset(firstOfMonth, locale)))
+        val endDay = lastOfMonth.plus(DatePeriod(days = (lastDayOfWeek - lastOfMonth.dayOfWeek.isoDayNumber + 7) % 7))
         
         val weeks = mutableListOf<LocalDate>()
         var curr = startDay
