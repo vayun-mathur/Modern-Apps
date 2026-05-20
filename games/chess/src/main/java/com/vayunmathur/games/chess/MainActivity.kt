@@ -296,7 +296,7 @@ fun ChessGame(
         }
     }
     if (uiState.board.promotionPosition != null) {
-        PawnPromotionDialog(if (uiState.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE, onPromote = onPromote)
+        PawnPromotionDialog(uiState.turn, onPromote = onPromote)
     }
 
     Scaffold(

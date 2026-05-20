@@ -69,11 +69,12 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
             if (board.isValidMove(selectedPiece, position)) {
                 val newBoard = board.movePiece(selectedPiece, position)
                 _uiState.update {
+                    val nextTurn = if (newBoard.promotionPosition != null) it.turn else (if (it.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE)
                     it.copy(
                         board = newBoard,
                         selectedPiece = null,
-                        turn = if (it.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE,
-                        gameStatus = getGameStatus(newBoard)
+                        turn = nextTurn,
+                        gameStatus = getGameStatus(newBoard, nextTurn)
                     )
                 }
                 if (_uiState.value.gameMode is GameMode.VsAI) {
@@ -95,10 +96,11 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         val promotionPosition = board.promotionPosition ?: return
         val newBoard = board.promotePawn(promotionPosition, pieceType)
         _uiState.update {
+            val nextTurn = if (it.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE
             it.copy(
                 board = newBoard,
-                turn = if (it.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE,
-                gameStatus = getGameStatus(newBoard)
+                turn = nextTurn,
+                gameStatus = getGameStatus(newBoard, nextTurn)
             )
         }
         if (_uiState.value.gameMode is GameMode.VsAI) {
@@ -115,10 +117,11 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
 
             val newBoard = board.movePiece(bestMove.start, bestMove.end, bestMove.promotedTo)
             _uiState.update {
+                val nextTurn = if (it.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE
                 it.copy(
                     board = newBoard,
-                    turn = if (it.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE,
-                    gameStatus = getGameStatus(newBoard)
+                    turn = nextTurn,
+                    gameStatus = getGameStatus(newBoard, nextTurn)
                 )
             }
         }
@@ -128,8 +131,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         return board.isCheckmate(PieceColor.WHITE) || board.isCheckmate(PieceColor.BLACK)
     }
 
-    private fun getGameStatus(board: Board): String? {
-        val turn = if (_uiState.value.turn == PieceColor.WHITE) PieceColor.BLACK else PieceColor.WHITE
+    private fun getGameStatus(board: Board, turn: PieceColor): String? {
         val ctx = getApplication<Application>()
         return when {
             board.isCheckmate(turn) -> if (turn == PieceColor.WHITE) ctx.getString(R.string.black_wins) else ctx.getString(R.string.white_wins)
