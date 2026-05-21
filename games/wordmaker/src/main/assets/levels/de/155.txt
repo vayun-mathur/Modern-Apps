@@ -1,9 +1,7 @@
-L  T      
-U  A      
-DATUM     
-  A    A  
-  LAUT MUT
-  M  ALT  
-MAUL L    
-A D       
-D         
+   R  U 
+  RUDERN
+   D  N 
+RUNE  E 
+U  REN  
+N    E  
+DEN NUR 

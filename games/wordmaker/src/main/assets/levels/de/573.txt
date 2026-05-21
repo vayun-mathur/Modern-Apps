@@ -1,11 +1,11 @@
-R        
-ELAN     
-N R      
- REAL    
-  N    L 
-  ARSENAL
-       S 
-    LASER
-    E  R 
-   ARSEN 
-    N    
+ RAN     
+         
+ G       
+ A A  N  
+ RANG ARG
+ N R  G  
+G REGNEN 
+E  G  R  
+NAGEN    
+R  N     
+E        

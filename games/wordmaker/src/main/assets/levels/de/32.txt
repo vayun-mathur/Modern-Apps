@@ -1,7 +1,6 @@
-N ASTA
-A  A  
-SAAT N
-A  A S
- SANTA
- A    
- N    
+   RUN
+N  U  
+E  N  
+URNE  
+  U   
+  REN 

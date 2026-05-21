@@ -1,11 +1,9 @@
-      B 
-  B NEIN
-  E   E 
- BIENEN 
-   I  E 
-E  NIE E
-INNE   B
-N  NEBEN
-     E E
-     I N
-  EBEN  
+    LED
+  B I I
+ BIER R
+  L E  
+  D    
+BLEI   
+E R    
+I      
+L      

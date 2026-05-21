@@ -1,5 +1,7 @@
-WOLF
-O   
-L L 
-FLOW
-S S 
+N K   
+SANK T
+A A  A
+  S  S
+ STANK
+   K  
+   T  

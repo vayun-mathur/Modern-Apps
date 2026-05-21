@@ -1,10 +1,7 @@
-        M  
-        A  
-K     TANK 
-A    A   E 
-NAME K AKNE
-T  N T N T 
- AMT E K   
-   KANTE   
-   A       
- ATMEN     
+UND   
+ E E  
+MUND  
+   M  
+   U  
+ DEN  
+   DEM

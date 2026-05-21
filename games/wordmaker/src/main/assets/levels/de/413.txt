@@ -1,10 +1,7 @@
-E     
-N E H 
-GEN E 
-  G G 
- GEHEN
- E  N 
- N    
-MENGE 
- H  H 
- M  E 
+  W   
+  E  E
+EHRE H
+ E   E
+GEWEHR
+ R  E 
+    R 

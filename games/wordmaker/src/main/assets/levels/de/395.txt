@@ -1,9 +1,6 @@
- R    S A
- ARREST R
- R A  AST
-   S  R  
-RAST  R  
-A  E S R 
-T ERST A 
-     A T 
-     REST
+T       
+O M     
+PRO P   
+  PROMPT
+POP R  O
+    T  R

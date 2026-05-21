@@ -26,7 +26,7 @@ def t(name):
 
 def load_bad_words():
     try:
-        with open(os.path.join(SCRIPT_DIR, 'bad-words.txt'), encoding='utf-8') as f:
+        with open(os.path.join(SCRIPT_DIR, 'Data', 'bad-words.txt'), encoding='utf-8') as f:
             return set(w.strip().lower() for w in f if w.strip())
     except FileNotFoundError:
         return set()
@@ -35,7 +35,7 @@ def load_bad_words():
 bad_words = load_bad_words()
 print(f"Loaded {len(bad_words)} bad words")
 
-tei_path = os.path.join(SCRIPT_DIR, 'deu-eng', 'deu-eng.tei')
+tei_path = os.path.join(SCRIPT_DIR, 'Data', 'deu-eng', 'deu-eng.tei')
 print(f"Parsing {tei_path}...")
 tree = ET.parse(tei_path)
 root = tree.getroot()

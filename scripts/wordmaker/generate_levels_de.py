@@ -264,7 +264,7 @@ def main():
     parser.add_argument('--count', type=int, default=800)
     args = parser.parse_args()
 
-    word_file = os.path.join(SCRIPT_DIR, 'common_words_de.txt')
+    word_file = os.path.join(SCRIPT_DIR, 'Data', 'common_words_de.txt')
     with open(word_file, encoding='utf-8') as f:
         raw = [w.strip().upper() for w in f if w.strip()]
         words = []

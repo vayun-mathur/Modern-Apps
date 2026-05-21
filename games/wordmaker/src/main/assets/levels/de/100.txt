@@ -1,8 +1,6 @@
-T     
-A     
-GAR   
- R    
- GRAT 
-    R 
-   RAT
-    G 
+  I S
+L D O
+O O L
+SOLID
+   S 
+  DOS

@@ -1,7 +1,6 @@
-G F  
-NEU  
-U GEN
-  E  
-GENF 
- N   
- G   
+  D  
+  A  
+DACHS
+  H A
+    C
+  SAH

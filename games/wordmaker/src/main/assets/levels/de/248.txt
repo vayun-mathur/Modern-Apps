@@ -1,9 +1,8 @@
-SUB   
- M MOB
- S U U
-ROMS S
-O O   
-M R   
-  B   
- RUM  
-  S   
+     K 
+     L 
+  K LOS
+ SOLO  
+  L K  
+  O    
+SOS    
+  S    

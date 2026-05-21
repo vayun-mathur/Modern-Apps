@@ -1,6 +1,5 @@
-T    
-O    
-ROT  
-  R  
-  ORT
-  G  
+S     
+KIOSK 
+I   O 
+    K 
+   ISO
