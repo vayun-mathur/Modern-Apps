@@ -1,7 +1,4 @@
-   P 
-   U 
-  SRI
-  I  
-  R  
-SPUR 
   P  
+PIANO
+I N P
+N   A

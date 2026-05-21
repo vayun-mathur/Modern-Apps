@@ -1,8 +1,7 @@
-L      
-ALS ALT
-S A  A 
- LOS O 
-   ALSO
-   L   
-   T   
-  LOT  
+ L     
+ O     
+IBM    
+  O    
+  B M  
+ LIMO  
+  L BIO

@@ -1,9 +1,7 @@
-    R    
-  ETAT   
-    T T  
-  A T A  
- ADRETT  
-  E  R   
-DER  E R 
-A    TRAT
-R      T 
+NIL    
+E   W  
+WEILEN 
+ I  I  
+ L  NIE
+WEN    
+ N     

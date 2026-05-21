@@ -1,6 +1,8 @@
-  U  
-  MAN
-  G  
- GANG
-  N N
-GAG U
+    S 
+    A 
+  PASS
+  I   
+PASSIV
+  A  I
+     S
+   VIA

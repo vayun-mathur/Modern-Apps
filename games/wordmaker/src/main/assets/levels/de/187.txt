@@ -1,6 +1,8 @@
-B  E 
-O  G 
-GEBOT
-  O  
-BOT  
-  E  
+    B  
+    E  
+    RUF
+    U  
+BERUFS 
+   S U 
+   E B 
+   R   

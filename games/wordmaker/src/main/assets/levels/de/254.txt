@@ -1,8 +1,6 @@
-G       
-E       
-NEW   E 
-  I WEIN
-NIE E N 
-  G N   
- GENIE  
-  N G   
+      E
+      I
+ PIEPEN
+ E  I  
+NIE N  
+ N     

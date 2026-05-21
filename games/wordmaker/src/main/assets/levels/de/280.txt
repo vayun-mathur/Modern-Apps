@@ -1,9 +1,6 @@
-   B 
-  KAP
- B C 
-PACK 
- C   
- K   
- U A 
- PUB 
-   C 
+  L SOLE
+KLO O   
+  SOCKEL
+    K  O
+    E  C
+     LOK

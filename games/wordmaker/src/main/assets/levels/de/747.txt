@@ -1,11 +1,9 @@
-     P R 
-     OPER
-  LENK N 
-     E   
- POKERN  
-   N  E  
-   O  O  
- POREN   
-L  P     
-ONKEL    
-K  L     
+B       
+I       
+CIA  BOA
+  B  A B
+  CABRIO
+    A R 
+    I A 
+        
+ BIO    

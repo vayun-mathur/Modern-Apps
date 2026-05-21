@@ -1,5 +1,6 @@
- ESS  
- R   R
- S S E
-STRESS
-   T T
+       HAT
+    B  A  
+   GEHABT 
+  A A  E  
+  BETA    
+BAT       

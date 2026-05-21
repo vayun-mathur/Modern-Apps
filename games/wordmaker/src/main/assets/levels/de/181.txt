@@ -1,9 +1,6 @@
-    P S
-    E P
- SPERRE
-  E   E
-  R   R
-  S    
-SPERR  
-P R    
-E      
+ EIN 
+   I 
+VIREN
+  E E
+  I R
+REN V

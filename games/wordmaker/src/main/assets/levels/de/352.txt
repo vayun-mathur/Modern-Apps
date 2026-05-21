@@ -1,7 +1,11 @@
-  PUT
-   N 
-  PIN
-  U  
-  TUN
-TUI  
-  N  
+ARM   R  
+ A A  E  
+ MARKEN  
+   M     
+   E     
+   NAME  
+     E  A
+     R  K
+     KRAN
+      A E
+    MAN  

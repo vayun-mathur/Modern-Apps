@@ -1,10 +1,8 @@
-EIN        
- R     N S 
-REISE  I E 
-E  E  SERIE
-I  R   R N 
-N SIRENE   
-   E       
- EINS      
- I  E      
- S  I      
+SET    E   
+E    S I   
+IST  E SIE 
+  E  I  N  
+  N  NEIN  
+  N   I EIN
+ NISTEN    
+  S   S    

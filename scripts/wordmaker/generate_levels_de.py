@@ -180,7 +180,7 @@ def grid_to_string(grid):
     )
 
 
-def generate_level(words, level):
+def generate_level(words, level, used_word_sets):
     wheel_min, wheel_max, max_total, min_distinct, min_words = difficulty_params(level)
     rows, cols = 11, 11
 
@@ -253,6 +253,10 @@ def generate_level(words, level):
             total = len(wheel)
 
             if total <= max_total and distinct >= min_distinct and total >= min_distinct:
+                word_set = frozenset(placed)
+                if word_set in used_word_sets:
+                    continue
+                used_word_sets.add(word_set)
                 return grid_to_string(grid)
 
     return None
@@ -280,9 +284,10 @@ def main():
     )
     os.makedirs(output_dir, exist_ok=True)
 
+    used_word_sets = set()
     failed = []
     for level in range(args.start, args.start + args.count):
-        result = generate_level(words, level)
+        result = generate_level(words, level, used_word_sets)
         if result:
             with open(os.path.join(output_dir, f'{level}.txt'), 'w', encoding='utf-8') as f:
                 f.write(result)

@@ -1,7 +1,5 @@
- ELF   
-   I   
- L LIEF
-FILE   
- F TIEF
- T    I
-      T
+    R I
+  FLAIR
+  A F A
+  I    
+LIRA   

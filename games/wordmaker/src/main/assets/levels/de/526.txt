@@ -1,8 +1,9 @@
-RATS   BAT 
-   T   A   
-   ABWÄRTS 
-STAR   T T 
-   BRAT BAR
-    A R  B 
-    T A    
-     ABT   
+  S G   G
+GUT A G U
+  AUSGIBT
+  U   B S
+TABU     
+A I      
+U GAB    
+   B     
+ BAT     

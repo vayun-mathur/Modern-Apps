@@ -1,7 +1,10 @@
-  LUD
-  E  
-UND  
- U   
- D   
-NEU  
- L   
+S       
+C    S  
+H   TUCH
+U    C  
+FUTSCH  
+   C    
+SUCHT   
+   U    
+   F    
+   TUSCH

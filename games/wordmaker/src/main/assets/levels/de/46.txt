@@ -1,4 +1,7 @@
- C R 
-CHROM
- O C 
- ROH 
+TOR      
+  A      
+  T  R   
+ ASTRO   
+     STAR
+     T  A
+        T

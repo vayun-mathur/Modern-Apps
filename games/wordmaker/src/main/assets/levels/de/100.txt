@@ -1,6 +1,6 @@
-  I S
-L D O
-O O L
-SOLID
-   S 
-  DOS
+    T
+    O
+TUTOR
+O O  
+T U  
+  R  

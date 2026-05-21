@@ -1,10 +1,8 @@
-A N   A  R 
-KRETA RATEN
-N K   T  N 
-E TANKER   
-  A   N    
-KARTEN     
-A          
-R  A       
-TANK       
-E  T       
+   VOR V
+     O O
+  VORHIN
+  O     
+  R     
+HIN     
+ H      
+ R      
