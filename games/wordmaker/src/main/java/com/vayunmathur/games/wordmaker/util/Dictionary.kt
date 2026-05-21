@@ -1,14 +1,6 @@
 package com.vayunmathur.games.wordmaker.util
 
 import android.content.Context
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 class Dictionary private constructor(
     private val wordSet: Set<String>,
@@ -22,47 +14,6 @@ class Dictionary private constructor(
         val EMPTY = Dictionary(emptySet(), emptyMap())
 
         private val cache = mutableMapOf<String, Dictionary>()
-        private val remoteCache = mutableMapOf<String, List<String>>()
-        private val json = Json { ignoreUnknownKeys = true }
-
-        private val httpClient by lazy { HttpClient(CIO) }
-
-        suspend fun fetchRemoteDefinition(word: String): List<String> {
-            val key = word.lowercase()
-            remoteCache[key]?.let { return it }
-            return try {
-                val text = httpClient.get(
-                    "https://en.wiktionary.org/api/rest_v1/page/definition/$key"
-                ).bodyAsText()
-                val root = json.parseToJsonElement(text).jsonObject
-                val deEntries = root["de"]?.jsonArray ?: return emptyList()
-                val result = deEntries.mapNotNull { entry ->
-                    val obj = entry.jsonObject
-                    val type = obj["type"]?.jsonPrimitive?.content
-                        ?: obj["partOfSpeech"]?.jsonPrimitive?.content
-                        ?: ""
-                    val defs = obj["definitions"]?.jsonArray?.mapNotNull { defEntry ->
-                        defEntry.jsonObject["definition"]?.jsonPrimitive?.content
-                            ?.let { stripHtml(it) }
-                            ?.takeIf { it.isNotBlank() }
-                    }.orEmpty()
-                    if (defs.isEmpty()) null
-                    else buildString {
-                        if (type.isNotBlank()) appendLine(type)
-                        append(defs.joinToString("\n"))
-                    }
-                }
-                if (result.isNotEmpty()) remoteCache[key] = result
-                result
-            } catch (_: Exception) {
-                emptyList()
-            }
-        }
-
-        private fun stripHtml(html: String) =
-            html.replace(Regex("<style[^>]*>.*?</style>", RegexOption.DOT_MATCHES_ALL), "")
-                .replace(Regex("<[^>]+>"), "")
-                .trim()
 
         fun load(context: Context, fileName: String): Dictionary {
             cache[fileName]?.let { return it }

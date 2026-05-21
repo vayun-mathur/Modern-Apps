@@ -92,12 +92,12 @@ with open(out_gen, 'w', encoding='utf-8') as f:
     f.write('\n'.join(gen_words))
 print(f"common_words_de.txt: {len(gen_words)} words")
 
-# dictionary_de.txt — for runtime bonus word validation (3+ letters, full corpus)
+# wordlist_de.txt — for runtime bonus word validation (3+ letters, full corpus)
 # Use hunspell filter here too so bonus words are valid German
 dict_words = parse_freq_list(os.path.join(SCRIPT_DIR, 'de_full.txt'), 3, 99, bad, hunspell_stems)
-out_dict = os.path.join(SCRIPT_DIR, '../../games/wordmaker/src/main/assets/dictionary_de.txt')
+out_dict = os.path.join(SCRIPT_DIR, '../../games/wordmaker/src/main/assets/wordlist_de.txt')
 out_dict = os.path.normpath(out_dict)
 os.makedirs(os.path.dirname(out_dict), exist_ok=True)
 with open(out_dict, 'w', encoding='utf-8') as f:
     f.write('\n'.join(dict_words))
-print(f"dictionary_de.txt: {len(dict_words)} words → {out_dict}")
+print(f"wordlist_de.txt: {len(dict_words)} words → {out_dict}")

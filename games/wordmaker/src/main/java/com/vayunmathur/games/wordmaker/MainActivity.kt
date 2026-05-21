@@ -163,6 +163,7 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
     val achievementsManager = rememberAchievementsManager(levelDataStore)
     val newAchievement by achievementsManager.newAchievement.collectAsState()
     var dictionary by remember { mutableStateOf(Dictionary.EMPTY) }
+    var definitionDict by remember { mutableStateOf(Dictionary.EMPTY) }
     var totalLevels by remember { mutableStateOf<Int?>(null) }
     var showLanguagePicker by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -171,9 +172,14 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
     LaunchedEffect(currentLanguageId) {
         achievementsManager.checkExistingAchievements()
         error = null
-        dictionary = withContext(Dispatchers.IO) {
-            Dictionary.load(context, languageConfig.dictionaryFile)
+        val (dict, defDict) = withContext(Dispatchers.IO) {
+            val d = Dictionary.load(context, languageConfig.dictionaryFile)
+            val dd = languageConfig.definitionsFile?.let { Dictionary.load(context, it) }
+                ?: Dictionary.EMPTY
+            d to dd
         }
+        dictionary = dict
+        definitionDict = defDict
         totalLevels = withContext(Dispatchers.IO) {
             context.assets.list(languageConfig.levelsPath)?.count { it.endsWith(".txt") }
         }
@@ -208,6 +214,7 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
                     levelDataStore = levelDataStore,
                     currentLevel = currentLevel,
                     dictionary = dictionary,
+                    definitionDict = definitionDict,
                     achievementsManager = achievementsManager,
                     onOpenGameCenter = { backStack.add(Route.GameCenter) },
                     currentLanguageId = currentLanguageId,
@@ -272,6 +279,7 @@ fun WordGameScreen(
     levelDataStore: LevelDataStore,
     currentLevel: Int,
     dictionary: Dictionary,
+    definitionDict: Dictionary,
     achievementsManager: AchievementsManager,
     onOpenGameCenter: () -> Unit,
     currentLanguageId: String,
@@ -415,7 +423,7 @@ fun WordGameScreen(
                                     wordWithDefinition = Pair(word, null)
                                     val definition = withContext(Dispatchers.IO) {
                                         dictionary.getDefinition(word).ifEmpty {
-                                            Dictionary.fetchRemoteDefinition(word)
+                                            definitionDict.getDefinition(word)
                                         }
                                     }
                                     if (wordWithDefinition?.first == word) {
@@ -531,7 +539,7 @@ fun WordGameScreen(
             }
 
             if (showBonusWordsDialog) {
-                BonusWordsDialog(bonusWords = bonusWords, dictionary) {
+                BonusWordsDialog(bonusWords = bonusWords, dictionary = dictionary, definitionDict = definitionDict) {
                     showBonusWordsDialog = false
                 }
             }
@@ -597,7 +605,7 @@ fun DefinitionDialog(word: String, definition: List<String>?, onDismiss: () -> U
 }
 
 @Composable
-fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss: () -> Unit) {
+fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, definitionDict: Dictionary, onDismiss: () -> Unit) {
     var definitionDialog by remember { mutableStateOf<Pair<String, List<String>?>?>(null) }
     val scope = rememberCoroutineScope()
     AlertDialog(
@@ -616,7 +624,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
                                     definitionDialog = Pair(word, null)
                                     val defs = withContext(Dispatchers.IO) {
                                         dictionary.getDefinition(word).ifEmpty {
-                                            Dictionary.fetchRemoteDefinition(word)
+                                            definitionDict.getDefinition(word)
                                         }
                                     }
                                     if (definitionDialog?.first == word) {

@@ -4,7 +4,8 @@ data class LanguageConfig(
     val id: String,
     val displayName: String,
     val dictionaryFile: String,
-    val levelsPath: String
+    val levelsPath: String,
+    val definitionsFile: String? = null
 )
 
 val AVAILABLE_LANGUAGES = listOf(
@@ -17,7 +18,8 @@ val AVAILABLE_LANGUAGES = listOf(
     LanguageConfig(
         id = "de",
         displayName = "Deutsch",
-        dictionaryFile = "dictionary_de.txt",
-        levelsPath = "levels/de"
+        dictionaryFile = "wordlist_de.txt",
+        levelsPath = "levels/de",
+        definitionsFile = "translations_de.csv"
     ),
 )
