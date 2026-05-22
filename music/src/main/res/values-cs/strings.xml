@@ -1,3 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Hudba</string>
+    <string name="nav_albums">Alba</string>
+    <string name="page_title_music">Hudba</string>
+    <string name="now_playing">Nyní hraje</string>
+    <string name="go_to_source">Jdi na %1$s</string>
+    <string name="content_desc_repeat">Opakovat</string>
+    <string name="content_desc_shuffle">Náhodně</string>
+    <string name="label_album">Alba</string>
+    <string name="num_songs_format">%1$d skladeb</string>
+    <string name="label_play">Přehrát</string>
+    <string name="label_shuffle">Náhodně</string>
+    <string name="label_songs">Skladby</string>
+    <string name="label_albums">Alba</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Zrušit</string>
+    <string name="dialog_rename">Přejmenovat</string>
+    <string name="content_desc_album_art">Obrázek alba</string>
+    <string name="notification_shuffle">Náhodně</string>
+    <string name="notification_repeat">Opakovat</string>
 </resources>
