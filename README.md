@@ -92,10 +92,11 @@ Officially unreleased, but the apk is available for download for testing.
 - Check Google Reviews Ratings for POIs
 - Search for nearby POIs
 - Offline routing for walking and biking
-- Online routing for driving (including traffic) and public transit (including timings)
+- On-device driving routing (including traffic)
+- Offline routing for public transit (no live schedules though)
 
 ### In progress:
-- Move away from Google APIs for routing driving and public transit (both will still require internet for traffic and GTFS respectively)
+- Use live schedules for public transit
 
 ## OpenAssistant
 A 100% offline AI app that supports text, image, and audio input using the Gemma 4 models
