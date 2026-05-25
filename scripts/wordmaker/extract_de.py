@@ -66,7 +66,7 @@ def load_hunspell_stems(dic_path):
 
 def load_first_names():
     """Load German and English first names from philipperemy name dataset."""
-    path = os.path.join(DATA_DIR, 'DE_first_names.pkl.gz')
+    path = os.path.join(DATA_DIR, 'first_names.pkl.gz')
     # Filter names ranked in Germany or major English-speaking countries
     target_countries = {'DE', 'US', 'GB', 'CA', 'AU', 'IE'}
     rank_threshold = 1000

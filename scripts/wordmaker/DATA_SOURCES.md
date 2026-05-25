@@ -26,7 +26,7 @@ Used to filter first names from the word pool. The pickle contains all countries
 
 - **Source:** https://github.com/philipperemy/name-dataset
 - Download `names_dataset/v3/first_names.pkl.gz` from the repo
-- Rename to `DE_first_names.pkl.gz` and place in `Data/`
+- Save as `Data/first_names.pkl.gz`
 
 ## GeoNames German Place Names
 
