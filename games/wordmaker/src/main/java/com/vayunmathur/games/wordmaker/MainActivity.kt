@@ -539,7 +539,21 @@ fun WordGameScreen(
             }
 
             if (showBonusWordsDialog) {
-                BonusWordsDialog(bonusWords = bonusWords, dictionary = dictionary, definitionDict = definitionDict) {
+                BonusWordsDialog(bonusWords = bonusWords, dictionary = dictionary, definitionDict = definitionDict,
+                    onWordTapped = { word ->
+                        coroutineScope.launch {
+                            wordWithDefinition = Pair(word, null)
+                            val defs = withContext(Dispatchers.IO) {
+                                dictionary.getDefinition(word).ifEmpty {
+                                    definitionDict.getDefinition(word)
+                                }
+                            }
+                            if (wordWithDefinition?.first == word) {
+                                wordWithDefinition = if (defs.isNotEmpty()) Pair(word, defs) else null
+                            }
+                        }
+                    }
+                ) {
                     showBonusWordsDialog = false
                 }
             }
@@ -605,9 +619,8 @@ fun DefinitionDialog(word: String, definition: List<String>?, onDismiss: () -> U
 }
 
 @Composable
-fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, definitionDict: Dictionary, onDismiss: () -> Unit) {
-    var definitionDialog by remember { mutableStateOf<Pair<String, List<String>?>?>(null) }
-    val scope = rememberCoroutineScope()
+fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, definitionDict: Dictionary,
+                     onWordTapped: (String) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.bonus_words)) },
@@ -619,19 +632,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, definition
                         modifier = Modifier
                             .padding(vertical = 4.dp)
                             .fillMaxWidth()
-                            .clickable {
-                                scope.launch {
-                                    definitionDialog = Pair(word, null)
-                                    val defs = withContext(Dispatchers.IO) {
-                                        dictionary.getDefinition(word).ifEmpty {
-                                            definitionDict.getDefinition(word)
-                                        }
-                                    }
-                                    if (definitionDialog?.first == word) {
-                                        definitionDialog = if (defs.isNotEmpty()) Pair(word, defs) else null
-                                    }
-                                }
-                            })
+                            .clickable { onWordTapped(word) })
                 }
             }
         },
@@ -643,11 +644,6 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, definition
             }
         }
     )
-    definitionDialog?.let { (w, d) ->
-        DefinitionDialog(word = w, definition = d) {
-            definitionDialog = null
-        }
-    }
 }
 
 
