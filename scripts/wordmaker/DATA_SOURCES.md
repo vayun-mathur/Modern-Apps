@@ -2,11 +2,13 @@
 
 All files go in `scripts/wordmaker/Data/` (gitignored). Re-download before running the extract/generate scripts.
 
+`bad-words.txt` lives in `scripts/wordmaker/` (committed to git) — edit it to manually block words that slip through the automatic filters.
+
 ## OpenSubtitles Frequency Lists
 
 German word frequency data extracted from movie/TV subtitles.
 
-- **Download:** https://opus.nlpl.eu/OpenSubtitles/v2018/freq/de.freq.gz — extract to get the frequency file
+- **Download:** https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/de — extract to get the frequency file
 - `de_50k.txt` — top 50k words (used by `extract_de.py` for level generation pool)
 - `de_full.txt` — full corpus ~1.15M words (used for runtime word validation)
 - **Format:** `word frequency` per line, most frequent first
