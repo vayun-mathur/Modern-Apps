@@ -31,7 +31,7 @@ VALID = re.compile(r'^[a-zäöü]+$')
 
 def load_bad_words():
     try:
-        with open(os.path.join(DATA_DIR, 'bad-words.txt'), encoding='utf-8') as f:
+        with open(os.path.join(SCRIPT_DIR, 'bad-words.txt'), encoding='utf-8') as f:
             return set(w.strip().lower() for w in f if w.strip())
     except FileNotFoundError:
         return set()
@@ -153,8 +153,9 @@ with open(out_gen, 'w', encoding='utf-8') as f:
 print(f"common_words_de.txt: {len(gen_words)} words")
 
 # wordlist_de.txt — for runtime bonus word validation (3+ letters, full corpus)
+# Only hunspell + bad-words here; name/place filters would reject valid words like 'vier', 'auge'
 dict_words = parse_freq_list(
-    os.path.join(DATA_DIR, 'de_full.txt'), 3, 99, bad, hunspell_stems, first_names, place_names
+    os.path.join(DATA_DIR, 'de_full.txt'), 3, 99, bad, hunspell_stems
 )
 out_dict = os.path.normpath(
     os.path.join(SCRIPT_DIR, '../../games/wordmaker/src/main/assets/wordlist_de.txt')

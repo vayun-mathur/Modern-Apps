@@ -26,7 +26,7 @@ def t(name):
 
 def load_bad_words():
     try:
-        with open(os.path.join(SCRIPT_DIR, 'Data', 'bad-words.txt'), encoding='utf-8') as f:
+        with open(os.path.join(SCRIPT_DIR, 'bad-words.txt'), encoding='utf-8') as f:
             return set(w.strip().lower() for w in f if w.strip())
     except FileNotFoundError:
         return set()

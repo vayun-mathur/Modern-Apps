@@ -1,0 +1,35 @@
+# Manual blocklist for WordMaker German level generator
+# Words that pass automatic filters but shouldn't appear in crossword levels
+
+# International city names (not in DE-only GeoNames)
+wien
+bern
+zürich
+genf
+london
+moskau
+tokio
+rio
+lima
+kairo
+athen
+oslo
+kiew
+seoul
+dubai
+genua
+
+# Mythological proper names
+hera
+zeus
+eros
+thor
+
+# Titles / honorifics (English)
+sir
+lord
+
+# Abbreviations
+aeg
+fbi
+sos
