@@ -1700,7 +1700,7 @@
           0.75
         ],
         "line-opacity": 0.5,
-        "line-color": "#a7b1b3",
+        "line-color": "#FF0000",
         "line-width": [
           "interpolate",
           [

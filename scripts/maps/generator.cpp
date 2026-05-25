@@ -63,6 +63,7 @@ struct TransitVoyage {
 };
 
 #define TRANSIT_FLAG 0x80
+#define TRANSIT_NODE_FLAG (1ULL << 63)
 
 struct NodeTemp {
     uint64_t osm_id;
@@ -403,7 +404,9 @@ int main(int argc, char* argv[]) {
     }
 
     AtomicBitset useful_nodes_mask(BITSET_SIZE);
-    atomic<uint64_t> total_useful_nodes{0};
+    AtomicBitset road_nodes_mask(BITSET_SIZE);
+    AtomicBitset transit_nodes_mask(BITSET_SIZE);
+    atomic<uint64_t> total_local_nodes{0};
     atomic<uint64_t> total_edges{0};
 
     vector<CachedWay> cached_ways;
@@ -428,10 +431,15 @@ int main(int argc, char* argv[]) {
                 for (const auto& node : buf.select<osmium::Node>()) {
                     const char* hw = node.tags().get_value_by_key("highway");
                     const char* rw = node.tags().get_value_by_key("railway");
+                    const char* pt = node.tags().get_value_by_key("public_transport");
                     if ((hw && (strcmp(hw, "bus_stop") == 0 || strcmp(hw, "bus_station") == 0 || strcmp(hw, "tram_stop") == 0)) ||
-                        (rw && (strcmp(rw, "station") == 0 || strcmp(rw, "halt") == 0 || strcmp(rw, "tram_stop") == 0))) {
-                        if (node.id() < BITSET_SIZE && useful_nodes_mask.set(node.id())) {
-                            total_useful_nodes++;
+                        (rw && (strcmp(rw, "station") == 0 || strcmp(rw, "halt") == 0 || strcmp(rw, "tram_stop") == 0 || strcmp(rw, "stop") == 0)) ||
+                        (pt && (strcmp(pt, "stop_position") == 0 || strcmp(pt, "platform") == 0 || strcmp(pt, "station") == 0))) {
+                        if (node.id() < BITSET_SIZE) {
+                            useful_nodes_mask.set(node.id());
+                            if (road_nodes_mask.set(node.id())) total_local_nodes++;
+                            // Stations/stops are transit points by definition
+                            if (transit_nodes_mask.set(node.id())) total_local_nodes++;
                         }
                     }
                 }
@@ -462,14 +470,20 @@ int main(int argc, char* argv[]) {
 
                     uint32_t topology_start = local_topology.size();
                     for (const auto& n : nodes) {
-                        if (n.ref() < BITSET_SIZE && useful_nodes_mask.set(n.ref())) {
-                            total_useful_nodes++;
+                        if (n.ref() < BITSET_SIZE) {
+                            useful_nodes_mask.set(n.ref());
+                            if (hw > 0) {
+                                if (road_nodes_mask.set(n.ref())) total_local_nodes++;
+                            }
+                            if (is_transit) {
+                                if (transit_nodes_mask.set(n.ref())) total_local_nodes++;
+                            }
                         }
                         local_topology.push_back(n.ref());
                     }
 
                     local_ways.push_back({ n_off, topology_start, (uint16_t)nodes.size(), (uint8_t)(is_transit ? (hw | TRANSIT_FLAG) : hw), speed, oneway });
-                    if (!is_transit) {
+                    if (hw > 0) {
                         total_edges += (nodes.size() - 1) * (oneway ? 1 : 2);
                     }
                 }
@@ -490,26 +504,30 @@ int main(int argc, char* argv[]) {
 
     // STEP 2: Node Collection (Pass 2 - Nodes)
     for (auto& ti : transit_inputs) {
-        if (ti.u_osm < BITSET_SIZE && useful_nodes_mask.set(ti.u_osm)) {
-            total_useful_nodes++;
+        if (ti.u_osm < BITSET_SIZE) {
+            useful_nodes_mask.set(ti.u_osm);
+            if (transit_nodes_mask.set(ti.u_osm)) total_local_nodes++;
         }
-        if (ti.v_osm < BITSET_SIZE && useful_nodes_mask.set(ti.v_osm)) {
-            total_useful_nodes++;
+        if (ti.v_osm < BITSET_SIZE) {
+            useful_nodes_mask.set(ti.v_osm);
+            if (transit_nodes_mask.set(ti.v_osm)) total_local_nodes++;
         }
     }
 
-    vector<NodeTemp> nodes_raw(total_useful_nodes);
+    vector<NodeTemp> nodes_raw(total_local_nodes);
     {
         osmium::io::Reader reader{argv[1], osmium::osm_entity_bits::node};
         uint64_t total_size = reader.file_size();
         atomic<uint64_t> idx{0};
         while (auto buf = reader.read()) {
-            pool.enqueue([&nodes_raw, &idx, &useful_nodes_mask, buf = move(buf), &pool, &name_pool, &name_pool_mtx, &name_offset, &name_out]() mutable {
+            pool.enqueue([&nodes_raw, &idx, &useful_nodes_mask, &road_nodes_mask, &transit_nodes_mask, buf = move(buf), &pool, &name_pool, &name_pool_mtx, &name_offset, &name_out]() mutable {
                 for (const auto& n : buf.select<osmium::Node>()) {
                     if (n.id() < BITSET_SIZE && useful_nodes_mask.get(n.id())) {
-                        uint64_t current_idx = idx.fetch_add(1);
                         double lat = n.location().lat();
                         double lon = n.location().lon();
+                        uint64_t spatial = latlng_to_spatial(lat, lon);
+                        int32_t lat_e7 = (int32_t)(lat * 1e7);
+                        int32_t lon_e7 = (int32_t)(lon * 1e7);
 
                         uint32_t stop_code_off = 0xFFFFFFFF;
                         uint32_t feed_name_off = 0xFFFFFFFF;
@@ -517,7 +535,8 @@ int main(int argc, char* argv[]) {
                         for (const auto& tag : n.tags()) {
                             if (strncmp(tag.key(), "gtfs:stop_code:", 15) == 0) {
                                 string feed = tag.key() + 15;
-                                string code = tag.value();
+                                const char* stop_name = n.tags().get_value_by_key("name");
+                                string code = stop_name ? stop_name : tag.value();
 
                                 lock_guard<mutex> lock(name_pool_mtx);
                                 auto it_f = name_pool.find(feed);
@@ -542,10 +561,12 @@ int main(int argc, char* argv[]) {
                         }
 
                         if (stop_code_off == 0xFFFFFFFF) {
-                            const char* hw = n.tags().get_value_by_key("highway");
-                            const char* rw = n.tags().get_value_by_key("railway");
-                            if ((hw && (strcmp(hw, "bus_stop") == 0 || strcmp(hw, "bus_station") == 0 || strcmp(hw, "tram_stop") == 0)) ||
-                                (rw && (strcmp(rw, "station") == 0 || strcmp(rw, "halt") == 0 || strcmp(rw, "tram_stop") == 0))) {
+                            const char* hw_tag = n.tags().get_value_by_key("highway");
+                            const char* rw_tag = n.tags().get_value_by_key("railway");
+                            const char* pt_tag = n.tags().get_value_by_key("public_transport");
+                            if ((hw_tag && (strcmp(hw_tag, "bus_stop") == 0 || strcmp(hw_tag, "bus_station") == 0 || strcmp(hw_tag, "tram_stop") == 0)) ||
+                                (rw_tag && (strcmp(rw_tag, "station") == 0 || strcmp(rw_tag, "halt") == 0 || strcmp(rw_tag, "tram_stop") == 0 || strcmp(rw_tag, "stop") == 0)) ||
+                                (pt_tag && (strcmp(pt_tag, "stop_position") == 0 || strcmp(pt_tag, "platform") == 0 || strcmp(pt_tag, "station") == 0))) {
                                 lock_guard<mutex> lock(name_pool_mtx);
                                 const char* name_tag = n.tags().get_value_by_key("name");
                                 string code = name_tag ? name_tag : "OSM_STOP";
@@ -560,7 +581,14 @@ int main(int argc, char* argv[]) {
                             }
                         }
 
-                        nodes_raw[current_idx] = { (uint64_t)n.id(), latlng_to_spatial(lat, lon), (int32_t)(lat * 1e7), (int32_t)(lon * 1e7), stop_code_off, feed_name_off };
+                        if (road_nodes_mask.get(n.id())) {
+                            uint64_t c_idx = idx.fetch_add(1);
+                            nodes_raw[c_idx] = { (uint64_t)n.id(), spatial, lat_e7, lon_e7, stop_code_off, feed_name_off };
+                        }
+                        if (transit_nodes_mask.get(n.id())) {
+                            uint64_t c_idx = idx.fetch_add(1);
+                            nodes_raw[c_idx] = { (uint64_t)n.id() | TRANSIT_NODE_FLAG, spatial, lat_e7, lon_e7, stop_code_off, feed_name_off };
+                        }
                     }
                 }
                 pool.notify_worker_done();
@@ -573,16 +601,16 @@ int main(int argc, char* argv[]) {
         // to avoid shifting valid nodes with spatial coordinate 0 (Null Island) values.
         uint64_t final_nodes_count = idx.load();
         nodes_raw.resize(final_nodes_count);
-        total_useful_nodes = final_nodes_count;
+        total_local_nodes = final_nodes_count;
     }
 
     cout << "Parallel Radix Sorting Nodes..." << endl;
     parallel_radix_sort(nodes_raw, 64);
-    vector<NodeMaster> node_masters(total_useful_nodes);
-    vector<IDMapping> id_to_local(total_useful_nodes);
+    vector<NodeMaster> node_masters(total_local_nodes);
+    vector<IDMapping> id_to_local(total_local_nodes);
     vector<uint32_t> zone_node_counts(NUM_ZONES, 0);
 
-    for (uint32_t i = 0; i < total_useful_nodes; ++i) {
+    for (uint32_t i = 0; i < total_local_nodes; ++i) {
         node_masters[i] = { nodes_raw[i].lat_e7, nodes_raw[i].lon_e7, nodes_raw[i].spatial_value, 0, nodes_raw[i].stop_code_off, nodes_raw[i].feed_name_off };
         id_to_local[i] = { nodes_raw[i].osm_id, i };
         zone_node_counts[(int)((nodes_raw[i].spatial_value >> 58) & 0x3F)]++;
@@ -595,6 +623,13 @@ int main(int argc, char* argv[]) {
     cout << "Parallel Radix Sorting Mapping..." << endl;
     parallel_radix_sort(id_to_local, 64);
     build_id_tile_index(id_to_local);
+
+    vector<bool> is_road_node(total_local_nodes, false);
+    for (uint32_t i = 0; i < total_local_nodes; ++i) {
+        if (!(id_to_local[i].osm_id & TRANSIT_NODE_FLAG)) {
+            is_road_node[id_to_local[i].local_id] = true;
+        }
+    }
 
     // Group transit inputs by (u, v)
     struct TransitEdgeGroup {
@@ -611,8 +646,8 @@ int main(int argc, char* argv[]) {
                 for (size_t i = 0; i < (size_t)cw.node_count - 1; ++i) {
                     uint64_t u_osm = way_nodes_topology[cw.first_node_idx + i];
                     uint64_t v_osm = way_nodes_topology[cw.first_node_idx + i + 1];
-                    uint32_t u_lid = get_local_id_by_osm(u_osm, id_to_local);
-                    uint32_t v_lid = get_local_id_by_osm(v_osm, id_to_local);
+                    uint32_t u_lid = get_local_id_by_osm(u_osm | TRANSIT_NODE_FLAG, id_to_local);
+                    uint32_t v_lid = get_local_id_by_osm(v_osm | TRANSIT_NODE_FLAG, id_to_local);
                     if (u_lid == 0xFFFFFFFF || v_lid == 0xFFFFFFFF) continue;
 
                     uint32_t dist = accurate_dist_mm(node_masters[u_lid].lat_e7, node_masters[u_lid].lon_e7,
@@ -634,8 +669,8 @@ int main(int argc, char* argv[]) {
     } else {
         lock_guard<mutex> lock(name_pool_mtx);
         for (auto& ti : transit_inputs) {
-            uint32_t u_lid = get_local_id_by_osm(ti.u_osm, id_to_local);
-            uint32_t v_lid = get_local_id_by_osm(ti.v_osm, id_to_local);
+            uint32_t u_lid = get_local_id_by_osm(ti.u_osm | TRANSIT_NODE_FLAG, id_to_local);
+            uint32_t v_lid = get_local_id_by_osm(ti.v_osm | TRANSIT_NODE_FLAG, id_to_local);
             if (u_lid != 0xFFFFFFFF && v_lid != 0xFFFFFFFF) {
                 uint32_t n_off = 0xFFFFFFFF;
                 auto it = name_pool.find(ti.line_name);
@@ -659,6 +694,7 @@ int main(int argc, char* argv[]) {
     }
 
     total_edges += transit_groups.size();
+    total_edges += total_local_nodes * 2; // Upper bound for transfer edges
 
     vector<TmpEdge> tmp_edges(total_edges);
     atomic<uint64_t> global_edge_idx{0};
@@ -674,7 +710,8 @@ int main(int argc, char* argv[]) {
                 local_buffer.reserve(10000);
                 for (size_t w = start_way; w < end_way; ++w) {
                     const auto& cw = cached_ways[w];
-                    if (cw.type & TRANSIT_FLAG) continue;
+                    // Skip ways that are dedicated transit infrastructure (no highway type)
+                    if ((cw.type & TRANSIT_FLAG) && (cw.type & 0x7F) == 0) continue;
 
                     for (size_t i = 0; i < (size_t)cw.node_count - 1; ++i) {
                         uint64_t u_osm = way_nodes_topology[cw.first_node_idx + i];
@@ -707,7 +744,22 @@ int main(int argc, char* argv[]) {
             tmp_edges[global_edge_idx.fetch_add(1)] = { u_lid, v_lid, 0, entry.second.name_off, TRANSIT_FLAG, (uint8_t)min((size_t)255, entry.second.voyages.size()) };
         }
 
-        // COMPACTION FIX: Compact edge listings to eliminate blank sorting buffers.
+        // NEW: Add transfer edges for shared stop nodes
+        for (uint32_t i = 0; i < total_local_nodes; ++i) {
+            uint64_t osm_u = id_to_local[i].osm_id;
+            if (!(osm_u & TRANSIT_NODE_FLAG)) { // it's a road node
+                uint32_t transit_lid = get_local_id_by_osm(osm_u | TRANSIT_NODE_FLAG, id_to_local);
+                if (transit_lid != 0xFFFFFFFF) {
+                    if (node_masters[i].stop_code_off != 0xFFFFFFFF) {
+                        uint32_t road_lid = i;
+                        // 15 meter transfer distance (15000mm)
+                        tmp_edges[global_edge_idx.fetch_add(1)] = { road_lid, transit_lid, 15000, 0xFFFFFFFF, 12, 5 };
+                        tmp_edges[global_edge_idx.fetch_add(1)] = { transit_lid, road_lid, 15000, 0xFFFFFFFF, 12, 5 };
+                    }
+                }
+            }
+        }
+
         tmp_edges.resize(global_edge_idx.load());
         cout << "Step 3: Graph Construction Complete. Real Edges Count: " << tmp_edges.size() << endl;
     }
@@ -722,23 +774,23 @@ int main(int argc, char* argv[]) {
     // --- Connect Isolated Bus Stops ---
     {
         cout << "Identifying Connected Components..." << endl;
-        vector<int32_t> component_id(total_useful_nodes, -1);
+        vector<int32_t> component_id(total_local_nodes, -1);
         uint32_t lcc_id = 0;
         uint32_t max_size = 0;
 
-        vector<uint32_t> node_to_edge(total_useful_nodes + 1);
+        vector<uint32_t> node_to_edge(total_local_nodes + 1);
         uint32_t cur_edge = 0;
-        for (uint32_t i = 0; i < total_useful_nodes; ++i) {
+        for (uint32_t i = 0; i < total_local_nodes; ++i) {
             node_to_edge[i] = cur_edge;
             while (cur_edge < tmp_edges.size() && tmp_edges[cur_edge].source_lid == i) cur_edge++;
         }
-        node_to_edge[total_useful_nodes] = cur_edge;
+        node_to_edge[total_local_nodes] = cur_edge;
 
         vector<uint32_t> q;
-        q.reserve(total_useful_nodes);
+        q.reserve(total_local_nodes);
 
         int32_t current_comp = 0;
-        for (uint32_t i = 0; i < total_useful_nodes; ++i) {
+        for (uint32_t i = 0; i < total_local_nodes; ++i) {
             if (component_id[i] == -1) {
                 uint32_t start_idx = q.size();
                 q.push_back(i);
@@ -762,19 +814,19 @@ int main(int argc, char* argv[]) {
                 current_comp++;
             }
         }
-        cout << "LCC ID: " << lcc_id << ", Size: " << max_size << " / " << total_useful_nodes << endl;
+        cout << "LCC ID: " << lcc_id << ", Size: " << max_size << " / " << total_local_nodes << endl;
 
         vector<TmpEdge> new_edges;
-        for (uint32_t i = 0; i < total_useful_nodes; ++i) {
-            if (node_masters[i].stop_code_off != 0xFFFFFFFF && component_id[i] != (int32_t)lcc_id) {
+        for (uint32_t i = 0; i < total_local_nodes; ++i) {
+            if (node_masters[i].stop_code_off != 0xFFFFFFFF && component_id[i] != (int32_t)lcc_id && is_road_node[i]) {
                 uint32_t best_node = 0xFFFFFFFF;
                 uint32_t best_dist = 0xFFFFFFFF;
 
                 for (int radius = 1000; radius <= 1000000; radius *= 10) {
                     int start = max(0, (int)i - radius);
-                    int end = min((int)total_useful_nodes, (int)i + radius);
+                    int end = min((int)total_local_nodes, (int)i + radius);
                     for (int j = start; j < end; ++j) {
-                        if (component_id[j] == (int32_t)lcc_id) {
+                        if (component_id[j] == (int32_t)lcc_id && is_road_node[j]) {
                             uint32_t d = accurate_dist_mm(node_masters[i].lat_e7, node_masters[i].lon_e7,
                                                           node_masters[j].lat_e7, node_masters[j].lon_e7);
                             if (d < best_dist) {
@@ -787,8 +839,8 @@ int main(int argc, char* argv[]) {
                 }
 
                 if (best_node != 0xFFFFFFFF) {
-                    new_edges.push_back({ i, best_node, best_dist, 0xFFFFFFFF, 8, 20 });
-                    new_edges.push_back({ best_node, i, best_dist, 0xFFFFFFFF, 8, 20 });
+                    new_edges.push_back({ i, (uint32_t)best_node, best_dist, 0xFFFFFFFF, 12, 5 });
+                    new_edges.push_back({ (uint32_t)best_node, i, best_dist, 0xFFFFFFFF, 12, 5 });
                 }
             }
         }

@@ -81,6 +81,9 @@
     <string name="maneuver_roundabout_unnamed">At the roundabout, continue</string>
     <string name="maneuver_unspecified">Continue onto %1$s</string>
     <string name="maneuver_unspecified_unnamed">Continue</string>
+    <string name="maneuver_wait">Wait %1$s for %2$s</string>
+    <string name="maneuver_wait_at">Wait %1$s for %2$s at %3$s</string>
+    <string name="maneuver_ride_transit">Ride %1$s from %2$s to %3$s (%4$d stops)</string>
 
     <!-- Travel Modes -->
     <string name="travel_mode_walk">Walk</string>

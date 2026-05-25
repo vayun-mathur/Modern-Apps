@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
         val ds = DataStoreUtils.getInstance(this)
         ensurePmtilesReady(this)
         Logger.setVerbosity(Logger.INFO)
-
+//
 //        runBlocking {
 //            ds.setBoolean("dbSetupComplete", false)
 //            ds.setBoolean("done_metadata.bin", false)

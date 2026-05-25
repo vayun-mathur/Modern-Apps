@@ -227,7 +227,7 @@ fun MyMapLayers(
                             LaunchedEffect(route, routeSource, styleJson) {
                                 if (route is RouteService.Route) {
                                     val features: List<Feature1> =
-                                        route.step.map {
+                                        route.step.filter { it.polyline.size >= 2 }.map {
                                             val color =
                                                 if (it.travelMode ==
                                                     RouteService.TravelMode

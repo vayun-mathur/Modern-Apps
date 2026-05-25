@@ -22,6 +22,7 @@ public:
         uint32_t p_fwd;
         uint32_t p_bwd;
         uint32_t last_name_off;
+        uint8_t last_type;
     };
 
 private:
@@ -58,13 +59,18 @@ public:
         cleanup_pages();
     }
 
-    inline Entry& get_entry(uint32_t node_id) {
-        uint32_t dir_idx = node_id >> PAGE_BITS;
-        uint32_t page_offset = node_id & ROUTING_PAGE_MASK;
+    inline Entry& get_entry(uint32_t node_id, int state = 0) {
+        uint32_t index = (node_id << 1) | (state & 1);
+        uint32_t dir_idx = index >> PAGE_BITS;
+        uint32_t page_offset = index & ROUTING_PAGE_MASK;
 
         if (__builtin_expect(m_directory[dir_idx] == nullptr, 0)) {
             Entry* new_page = (Entry*)malloc(ROUTING_PAGE_SIZE * sizeof(Entry));
             memset(new_page, 0xFF, ROUTING_PAGE_SIZE * sizeof(Entry));
+            for (uint32_t i = 0; i < ROUTING_PAGE_SIZE; i++) {
+                new_page[i].last_type = 0;
+                new_page[i].last_name_off = 0xFFFFFFFF;
+            }
             m_directory[dir_idx] = new_page;
             m_active_pages.push_back(dir_idx);
         }

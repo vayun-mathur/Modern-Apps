@@ -182,7 +182,9 @@ object OfflineRouter {
             val speedRatio: Double,
             val isTransit: Boolean,
             val gtfsFeed: String?,
-            val stopCode: String?
+            val stopCode: String?,
+            val endStopCode: String?,
+            val stopCount: Int
     )
 
     private var isInitialized = false
@@ -424,17 +426,27 @@ object OfflineRouter {
                                                         context.getString(
                                                                 R.string.maneuver_roundabout_unnamed
                                                         )
+                                        RouteService.API.Maneuver.WAIT -> {
+                                            val waitSeconds = raw.duration10ms / 100
+                                            val waitText = if (waitSeconds >= 60) "${waitSeconds / 60} min" else "$waitSeconds sec"
+                                            if (raw.stopCode != null && raw.stopCode.isNotBlank())
+                                                context.getString(R.string.maneuver_wait_at, waitText, raw.roadName, raw.stopCode)
+                                            else
+                                                context.getString(R.string.maneuver_wait, waitText, raw.roadName)
+                                        }
                                         else ->
-                                                if (hasName)
-                                                        context.getString(
-                                                                R.string.maneuver_unspecified,
-                                                                raw.roadName
-                                                        )
-                                                else
-                                                        context.getString(
-                                                                R.string
-                                                                        .maneuver_unspecified_unnamed
-                                                        )
+                                            if (raw.isTransit && raw.stopCode != null && raw.endStopCode != null)
+                                                context.getString(R.string.maneuver_ride_transit, raw.roadName, raw.stopCode, raw.endStopCode, raw.stopCount)
+                                            else if (hasName)
+                                                context.getString(
+                                                        R.string.maneuver_unspecified,
+                                                        raw.roadName
+                                                )
+                                            else
+                                                context.getString(
+                                                        R.string
+                                                                .maneuver_unspecified_unnamed
+                                                )
                                     }
 
                             RouteService.Step(
@@ -453,16 +465,16 @@ object OfflineRouter {
                                     transitDetails = if (raw.isTransit && raw.gtfsFeed != null && raw.stopCode != null) {
                                         RouteService.API.TransitDetails(
                                             headsign = "", // Not stored yet
-                                            stopCount = 0,
+                                            stopCount = raw.stopCount,
                                             transitLine = RouteService.API.TransitLine(
                                                 name = raw.roadName,
-                                                color = "#1710F1" // Default
+                                                color = raw.gtfsFeed?.let { GTFSProvider.getRouteColor(context, it, raw.roadName) } ?: "#FF0000"
                                             ),
                                             stopDetails = RouteService.API.StopDetails(
                                                 arrivalTime = "",
                                                 departureTime = "",
-                                                arrivalStop = RouteService.API.Stop(""),
-                                                departureStop = RouteService.API.Stop(raw.stopCode) // Store stop code here for now
+                                                arrivalStop = RouteService.API.Stop(raw.endStopCode ?: ""),
+                                                departureStop = RouteService.API.Stop(raw.stopCode)
                                             ),
                                             feedName = raw.gtfsFeed
                                         )
