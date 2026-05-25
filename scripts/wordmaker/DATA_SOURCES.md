@@ -28,12 +28,12 @@ Used to filter first names from the word pool. The pickle contains all countries
 - Download `names_dataset/v3/first_names.pkl.gz` from the repo
 - Save as `Data/first_names.pkl.gz`
 
-## GeoNames German Place Names
+## GeoNames Global City Names
 
-Used to filter German city, town, and village names.
+Used to filter city names worldwide from the generation pool. Population >1000 threshold covers all well-known cities without noise from tiny hamlets.
 
-- **Download:** https://download.geonames.org/export/dump/DE.zip
-- Save as `Data/DE_geonames.zip` (do not extract — the script reads it directly)
+- **Download:** https://download.geonames.org/export/dump/cities1000.zip
+- Save as `Data/cities1000.zip` (do not extract — the script reads it directly)
 - **Format:** tab-separated, column 1 = place name
 
 ## freedict deu-eng Dictionary

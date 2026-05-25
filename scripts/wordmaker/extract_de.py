@@ -87,12 +87,12 @@ def load_first_names():
 
 
 def load_place_names():
-    """Load German place names from GeoNames DE dataset (column 1 = name)."""
-    path = os.path.join(DATA_DIR, 'DE_geonames.zip')
+    """Load global city names from GeoNames cities1000 dataset (column 1 = name)."""
+    path = os.path.join(DATA_DIR, 'cities1000.zip')
     names = set()
     try:
         with zipfile.ZipFile(path) as z:
-            with z.open('DE.txt') as f:
+            with z.open('cities1000.txt') as f:
                 for line in f:
                     parts = line.decode('utf-8').split('\t')
                     if len(parts) < 2:
@@ -141,7 +141,7 @@ first_names = load_first_names()
 print(f"Loaded {len(first_names)} German first names")
 
 place_names = load_place_names()
-print(f"Loaded {len(place_names)} German place names")
+print(f"Loaded {len(place_names)} global city names")
 
 # common_words_de.txt — for level generation (3-8 letters, top 50k source)
 gen_words = parse_freq_list(

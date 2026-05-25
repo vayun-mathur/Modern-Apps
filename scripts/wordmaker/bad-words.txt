@@ -29,7 +29,17 @@ thor
 sir
 lord
 
-# Abbreviations
+# Abbreviations / org acronyms
 aeg
 fbi
 sos
+who
+cia
+nsa
+hiv
+
+# English words appearing in German subtitle corpus
+new
+tunis
+sun
+raf
