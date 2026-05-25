@@ -18,12 +18,45 @@ kiew
 seoul
 dubai
 genua
+burma
+laos
+roms
+tiber
+anden
+sao
+sri
+krim
+dhabi
+kenia
+wolga
+asien
+irak
+sudan
 
 # Mythological proper names
 hera
 zeus
 eros
 thor
+hades
+
+# Historical / political proper names
+nero
+marx
+trump
+lear
+
+# Personal names (no German meaning)
+gus
+alf
+
+# Religious proper names
+thora
+
+# Brand names
+pepsi
+audi
+fiat
 
 # Titles / honorifics (English)
 sir
@@ -37,9 +70,19 @@ who
 cia
 nsa
 hiv
+ibm
+dna
+lan
+iso
+uss
+ekg
+plo
 
 # English words appearing in German subtitle corpus
 new
 tunis
 sun
 raf
+run
+spe
+bush

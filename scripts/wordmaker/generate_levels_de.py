@@ -26,12 +26,18 @@ VOWELS = set('aeiouäöü')
 
 def difficulty_params(level):
     """Return (wheel_min, wheel_max, max_total, min_distinct, min_words)."""
-    if level <= 100:
-        return 4, 5, 5, 3, 4
-    elif level <= 400:
-        return 5, 6, 6, 4, 5
+    if level <= 30:
+        return 3, 4, 4, 2, 3   # tiny: 3-4 letter wheel, 3 words
+    elif level <= 100:
+        return 4, 5, 5, 3, 4   # small: 4-5 letter wheel, 4 words
+    elif level <= 250:
+        return 5, 5, 5, 3, 4   # medium-small: 5 letter wheel, 4 words
+    elif level <= 450:
+        return 5, 6, 6, 4, 5   # medium: 5-6 letter wheel, 5 words
+    elif level <= 650:
+        return 6, 6, 6, 4, 5   # medium-large: 6 letter wheel, 5 words
     else:
-        return 6, 7, 7, 5, 6
+        return 6, 7, 7, 5, 6   # large: 6-7 letter wheel, 6 words
 
 
 def get_wheel_letters(words):
@@ -257,15 +263,17 @@ def generate_level(words, level, used_word_sets):
                 if word_set in used_word_sets:
                     continue
                 used_word_sets.add(word_set)
-                return grid_to_string(grid)
+                return grid_to_string(grid), placed
 
-    return None
+    return None, None
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--start', type=int, default=1)
     parser.add_argument('--count', type=int, default=800)
+    parser.add_argument('--words-csv', metavar='FILE',
+                        help='write a CSV of level,word for all placed words')
     args = parser.parse_args()
 
     word_file = os.path.join(SCRIPT_DIR, 'Data', 'common_words_de.txt')
@@ -284,18 +292,28 @@ def main():
     )
     os.makedirs(output_dir, exist_ok=True)
 
+    csv_rows = []
     used_word_sets = set()
     failed = []
     for level in range(args.start, args.start + args.count):
-        result = generate_level(words, level, used_word_sets)
+        result, placed = generate_level(words, level, used_word_sets)
         if result:
             with open(os.path.join(output_dir, f'{level}.txt'), 'w', encoding='utf-8') as f:
                 f.write(result)
+            if args.words_csv:
+                for w in placed:
+                    csv_rows.append(f'{level},{w.lower()}')
             if level % 100 == 0:
                 print(f"  Generated level {level}...")
         else:
             failed.append(level)
             print(f"  WARNING: could not generate level {level}")
+
+    if args.words_csv:
+        with open(args.words_csv, 'w', encoding='utf-8') as f:
+            f.write('level,word\n')
+            f.write('\n'.join(csv_rows))
+        print(f"Words CSV written to {args.words_csv}")
 
     total = args.count - len(failed)
     print(f"\nDone. {total}/{args.count} levels generated in {output_dir}")
