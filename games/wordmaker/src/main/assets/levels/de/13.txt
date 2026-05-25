@@ -1,6 +1,4 @@
-   ARG
-    A 
-ORGAN 
-  A G 
-  R   
-RAN   
+ G  
+ AAL
+ L  
+LAG 

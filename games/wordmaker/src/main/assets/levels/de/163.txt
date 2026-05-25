@@ -1,6 +1,7 @@
- E   
- GEL 
- A A 
-KLAGE
-    K
-    G
+ M  
+NOT 
+ N  
+ A  
+ATOM
+M   
+TON 

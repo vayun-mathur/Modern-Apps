@@ -1,8 +1,6 @@
-EKELN 
- E    
- G L  
-GELENK
- L G  
-ENKEL 
-K  N  
-GEL   
+    H  
+   HANF
+    F  
+FAHNE  
+A   N  
+NAH    

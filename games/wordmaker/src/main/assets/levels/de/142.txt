@@ -1,8 +1,5 @@
- BIT    
- R     I
- E TIBER
-BIER R E
-   E I  
- BRITE  
- E B    
- I      
+  DOS  
+ I  O  
+ D  LOS
+SOLID  
+ L     

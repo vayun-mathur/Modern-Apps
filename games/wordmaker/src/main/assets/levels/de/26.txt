@@ -1,5 +1,4 @@
-S  A 
-A  R 
-CRASH
-H  C 
- SAH 
+ S  
+LOS 
+ L  
+ DOS

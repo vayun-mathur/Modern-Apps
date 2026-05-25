@@ -1,7 +1,4 @@
- BAI  
-  N N 
-  BEIN
-  E E 
-BEI   
- I    
- N    
+TAL  
+  A A
+TADEL
+  E T

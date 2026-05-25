@@ -1,9 +1,7 @@
-     RUN
-        
-GEN     
-  E U   
-  URNE  
-R   G   
-E N E   
-GNU R   
-  RUNE  
+   S  A 
+  SCHACH
+   H  H 
+   A    
+SACH    
+A       
+H       

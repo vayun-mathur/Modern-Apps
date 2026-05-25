@@ -1,6 +1,6 @@
-G BOG
-I O  
-BIC  
-  K  
- BIO 
-  G  
+    SOG 
+      N 
+  SHOGUN
+UNO     
+  H     
+ UNS    

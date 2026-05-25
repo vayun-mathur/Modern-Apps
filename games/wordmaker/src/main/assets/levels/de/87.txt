@@ -1,9 +1,7 @@
-     USER
-      P  
-  SPREU  
-  U   R  
-  P P    
- PERU    
-  R R    
-         
-PER      
+   R 
+CHROM
+H  C 
+O  H 
+ROH  
+ H   
+ ROM 

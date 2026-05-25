@@ -1,8 +1,6 @@
-  C  
-  H  
-  A  
-PATCH
-A   A
-C   T
-H    
-T    
+TRAKT  
+ A  A  
+ T  K  
+    TAT
+     K 
+     T 

@@ -1,9 +1,6 @@
-G    
-A    
-SAGEN
-  E S
-  S A
-  A  
-GANG 
-E G  
-N    
+     G
+     R
+ R G E
+GERÖLL
+ G R L
+  GEL 

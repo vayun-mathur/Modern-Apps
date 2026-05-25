@@ -1,8 +1,10 @@
-V I 
-I S 
-SET 
-I   
-T   
-EIS 
-  E 
- SIE
+       ROM
+          
+     K    
+RAM  R V  
+  A  AMOK 
+VORKAM R  
+  K       
+  O A     
+  VORM    
+    M     

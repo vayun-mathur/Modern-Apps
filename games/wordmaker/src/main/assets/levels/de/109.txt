@@ -1,7 +1,7 @@
-NIL    
-E   W  
-WEILEN 
- I  I  
- L  NIE
-WEN    
- N     
+ I    
+ D S  
+SOLID 
+ L L  
+  SOLD
+     O
+   LOS

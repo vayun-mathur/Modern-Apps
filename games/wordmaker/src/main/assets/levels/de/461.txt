@@ -1,8 +1,10 @@
-   D  WEN
-   N  A  
-  WADEN  
-  A   DEN
-E NEW    
-T D      
-WATEN    
-A E      
+      A
+    N L
+   HALT
+    H  
+ HALTE 
+ A     
+ALTEN  
+ T L   
+ E A   
+ N NAH 

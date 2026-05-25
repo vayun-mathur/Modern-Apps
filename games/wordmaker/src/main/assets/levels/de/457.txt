@@ -1,11 +1,8 @@
-   E     
-  ALT H  
-   C  A C
-   HALT H
-TAG  E  A
-  E  GALT
-  L  A A 
-CHALET G 
-  C      
-GEHALT   
-  T      
+ C IHM
+ H C  
+MICH  
+  H   
+ HEIM 
+  M   
+ EICHE
+  E   

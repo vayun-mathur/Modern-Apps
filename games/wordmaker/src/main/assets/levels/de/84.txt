@@ -1,5 +1,6 @@
-   DOS
-SODA  
-A  V  
-O  O  
-   S  
+       O
+  C KOCH
+ROH R  R
+  O O   
+  ROCH  
+    H   

@@ -1,5 +1,6 @@
-L LOG
-O O  
-SOG  
-  ISO
-  S  
+S   
+A   
+U   
+MAUS
+   A
+   U

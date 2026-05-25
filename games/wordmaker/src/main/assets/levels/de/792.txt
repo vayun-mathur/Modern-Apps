@@ -1,10 +1,11 @@
-T     
-O T   
-PORT  
-  I P 
-IMPORT
- I  O 
- T  M 
-  TRIO
-  O   
-  R   
+PUR      
+         
+  PUT    
+  H R I  
+  I I HIT
+   TURM  
+  I M    
+  H P    
+  RUHM   
+   H I   
+   R T   

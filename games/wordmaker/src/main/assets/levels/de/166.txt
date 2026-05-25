@@ -1,8 +1,5 @@
-    NIE
-NEW E  
-  ETUI 
-  I    
- UNWEIT
-   E  U
-  WIE I
-   T   
+  A B
+  B A
+  END
+DEN  
+  D  

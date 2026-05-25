@@ -1,11 +1,6 @@
-A        O
-LOT    N R
-T R  FLORA
-  A F  T L
-  FRONTAL 
-    R  R  
-  NATO    
-    A     
- FRONT    
-  A       
-OFT       
+F  F   FEHL
+ELFE E L   
+E  HELFEN  
+   L F H   
+   EHE ELF 
+   N N N   

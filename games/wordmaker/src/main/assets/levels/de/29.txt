@@ -1,6 +1,3 @@
-   T 
- SPOT
- P T 
-TOP  
- T   
- T   
+ O T
+TRIO
+ T R

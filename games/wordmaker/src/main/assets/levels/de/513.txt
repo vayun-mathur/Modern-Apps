@@ -1,8 +1,11 @@
-   B 
-   A 
-  ARG
-  I  
-B R  
-A B G
-IRA A
-  GIB
+  E    B
+DEN  O O
+  DROBEN
+   E E  
+   NORD 
+      O 
+      R 
+    BOND
+    O  E
+    R  R
+   ODER 

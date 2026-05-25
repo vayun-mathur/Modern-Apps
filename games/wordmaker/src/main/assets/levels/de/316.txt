@@ -1,6 +1,8 @@
-       HAT
-    B  A  
-   GEHABT 
-  A A  E  
-  BETA    
-BAT       
+     ABC
+      R 
+    B A 
+   BRUCH
+    A H 
+H R U   
+A A C   
+BAUCH   
