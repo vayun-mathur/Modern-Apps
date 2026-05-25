@@ -1,7 +1,7 @@
- I    
- D S  
-SOLID 
- L L  
-  SOLD
-     O
-   LOS
+ U     
+ S     
+ E SET 
+ERST   
+   REST
+   E   
+ STUR  

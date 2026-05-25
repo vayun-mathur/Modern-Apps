@@ -86,3 +86,63 @@ raf
 run
 spe
 bush
+
+# Added in convergence iteration 2
+# Offensive / racial slur (not acceptable in a word game)
+negro
+
+# English words with no German meaning
+pope
+ness
+
+# Org acronyms
+sas
+
+# Brand names
+visa
+suse
+
+# Added in convergence iteration 1
+# International place names
+iran
+kreta
+kuwait
+nepal
+ruanda
+
+# Mythological / fictional proper names
+aladin
+argus
+midas
+tarzan
+
+# Historical proper names
+brahms
+escher
+gaulle
+kepler
+lenin
+markov
+medici
+putin
+rubens
+turing
+
+# Personal names (no German meaning)
+berta
+grete
+herta
+huber
+moser
+sigi
+
+# Org acronyms
+dos
+ice
+nasa
+
+# Brand names
+android
+apple
+ebay
+wlan

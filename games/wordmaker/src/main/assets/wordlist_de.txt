@@ -4832,7 +4832,6 @@ niveau
 friede
 erlitten
 mathematik
-nasa
 matratze
 bänder
 herzustellen
@@ -5064,7 +5063,6 @@ helfer
 aufstieg
 partie
 abfall
-tarzan
 klingel
 jens
 flirten
@@ -5674,7 +5672,6 @@ erziehen
 erhoben
 norwegen
 kappe
-iran
 aufzustehen
 hebel
 urin
@@ -5946,7 +5943,6 @@ rezeption
 dreizehn
 anflug
 territorium
-pope
 portemonnaie
 improvisieren
 tanken
@@ -6298,7 +6294,6 @@ heinz
 hexerei
 astronaut
 abzugeben
-ice
 genetisch
 schilling
 kundschaft
@@ -7494,7 +7489,6 @@ aufzuräumen
 aktuell
 brocken
 schwachköpfe
-apple
 elch
 zynisch
 ausgelacht
@@ -8427,7 +8421,6 @@ anarchie
 kahl
 schöpfen
 journal
-berta
 aufrichtigkeit
 ohrfeigen
 auszusuchen
@@ -8796,7 +8789,6 @@ verschreiben
 vorgibt
 balboa
 pöbel
-ebay
 brummen
 geschlichen
 rau
@@ -9107,7 +9099,6 @@ abdrehen
 ausgerissen
 essens
 unterlassen
-visa
 interpretieren
 scharfsinnig
 ungeheuerlich
@@ -9609,7 +9600,6 @@ saddam
 zusammengebracht
 dreifach
 durchgehalten
-gaulle
 köche
 ballerina
 gekrönt
@@ -9800,7 +9790,6 @@ arkansas
 taugenichts
 jürgen
 wiederbeleben
-ness
 zugute
 befriedigend
 unterliegen
@@ -9842,7 +9831,6 @@ steward
 erhoffen
 wirtshaus
 zollen
-dos
 heide
 geritzt
 krächzen
@@ -10583,7 +10571,6 @@ herauszukommen
 homosexualität
 knirschen
 damaskus
-huber
 anschalten
 praktikant
 zugeschaut
@@ -10694,7 +10681,6 @@ erdulden
 festgenagelt
 macke
 fotzen
-wlan
 beherbergen
 verschwörer
 gestärkt
@@ -11107,7 +11093,6 @@ monument
 eingepflanzt
 pathologie
 schwelgen
-medici
 mekka
 karawane
 auszug
@@ -11168,7 +11153,6 @@ tret
 ärgernis
 mitgegeben
 zuzulassen
-lenin
 dschingis
 grübchen
 eingeschrieben
@@ -11989,7 +11973,6 @@ abgesägt
 gibraltar
 schlichten
 abzüglich
-kuwait
 umgeworfen
 unerkannt
 respektlosigkeit
@@ -12320,7 +12303,6 @@ distanzieren
 abservieren
 aftershave
 vorbeigebracht
-brahms
 knick
 hagel
 verüben
@@ -12386,7 +12368,6 @@ kommentator
 zeche
 übereifrig
 ausgepeitscht
-kreta
 garn
 mitgefahren
 westminster
@@ -12636,7 +12617,6 @@ verwahren
 planke
 verfasser
 staatlich
-nepal
 tröpfchen
 immerdar
 zusammengetan
@@ -12832,7 +12812,6 @@ schlucker
 bügel
 rundum
 stornieren
-argus
 methan
 relaxen
 androide
@@ -12873,7 +12852,6 @@ verzicht
 konfetti
 instituts
 ausdehnen
-moser
 nerz
 zusammengeflickt
 pieper
@@ -13095,7 +13073,6 @@ brennend
 script
 preisgegeben
 schüren
-negro
 einsatzfähig
 geistesgestört
 bedeutsam
@@ -14023,7 +14000,6 @@ erbauen
 abgestattet
 befangen
 platonisch
-android
 konvent
 schwerelosigkeit
 schüchternheit
@@ -14104,7 +14080,6 @@ individuell
 auftrat
 verhöhnen
 sohnemann
-grete
 klassenbeste
 dominant
 kalbfleisch
@@ -14310,7 +14285,6 @@ pantoffel
 täufer
 glitzern
 eingegrenzt
-escher
 verstopfen
 beschworen
 gefangengenommen
@@ -14366,7 +14340,6 @@ nahrhaft
 entging
 amboss
 aufzuteilen
-markov
 lamborghini
 trachten
 garaus
@@ -15392,7 +15365,6 @@ bonsai
 ausgeladen
 erdrosseln
 ernsthaftigkeit
-ruanda
 umdenken
 lidschatten
 umgesiedelt
@@ -15821,7 +15793,6 @@ operativ
 aufschneider
 fehlgeleitet
 todfeind
-midas
 knattern
 geblockt
 unmöglichkeit
@@ -16021,7 +15992,6 @@ anagramm
 namenlos
 unehrlichkeit
 brösel
-sigi
 umprogrammieren
 folgsam
 nomen
@@ -16082,7 +16052,6 @@ missbilligen
 schnappschuss
 firmament
 wiederbringen
-rubens
 halbmond
 verfälscht
 besorgniserregend
@@ -16232,7 +16201,6 @@ schlagabtausch
 gefilde
 synapse
 playback
-sas
 leckerli
 weitblick
 bohr
@@ -16517,12 +16485,10 @@ verdi
 gleichauf
 mutterseelenallein
 hisbollah
-suse
 gutartig
 beet
 harmonieren
 ausgetrieben
-herta
 basel
 weiterging
 niedergeschrieben
@@ -16686,7 +16652,6 @@ lauscher
 kabarett
 natrium
 intervenieren
-putin
 lebensbedrohlich
 aufgespart
 schlaflos
@@ -16744,7 +16709,6 @@ zusammenfällt
 kollaborateur
 vernebeln
 siezen
-turing
 idyllisch
 schrillen
 böcke
@@ -16960,7 +16924,6 @@ bäche
 riten
 bastion
 glimpflich
-aladin
 bahrain
 admiralität
 berner
@@ -17024,7 +16987,6 @@ gesetzbuch
 mosaik
 akut
 verkrampfen
-kepler
 akademisch
 anästhesist
 optisch

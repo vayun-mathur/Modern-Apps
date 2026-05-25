@@ -1,4 +1,4 @@
- S  
-LOS 
- L  
- DOS
+REG
+ R 
+EGO
+ O 

@@ -1,8 +1,7 @@
-B  MOB
-O    O
-AMBOSS
-  A  S
-  S   
- ASS  
-   A  
-   S  
+  H   
+EHER  
+H H   
+E L   
+  EHRE
+HER E 
+    H 
