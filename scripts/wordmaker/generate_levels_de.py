@@ -7,16 +7,20 @@ Mirrors the English generate_levels.py approach:
   - Words placed as an intersecting crossword on an 11x11 grid
 
 Difficulty scales with level:
-  Levels   1-100:  wheel 4-5 letters, chooser ≤5, min 4 words
-  Levels 101-400:  wheel 5-6 letters, chooser ≤6, min 5 words
-  Levels 401-800:  wheel 6-7 letters, chooser ≤7, min 6 words
+  Levels   1- 30:  wheel 3-4 letters, chooser ≤4, min 3 words
+  Levels  31-100:  wheel 4-5 letters, chooser ≤5, min 4 words
+  Levels 101-250:  wheel 5   letters, chooser ≤5, min 4 words
+  Levels 251-450:  wheel 5-6 letters, chooser ≤6, min 5 words
+  Levels 451-650:  wheel 6   letters, chooser ≤6, min 5 words
+  Levels 651-800:  wheel 6-7 letters, chooser ≤7, min 6 words
 
 Run from scripts/wordmaker/:
-    python3 generate_levels_de.py [--start N] [--count N]
+    python3 generate_levels_de.py [--start N] [--count N] [--words-csv FILE] [--fix-bad-words]
 """
 
 import argparse
 import os
+import re
 import random
 from collections import Counter
 
@@ -268,12 +272,44 @@ def generate_level(words, level, used_word_sets):
     return None, None
 
 
+def extract_words_from_grid(path):
+    """Parse a level file and return the set of words (uppercase) it contains."""
+    try:
+        with open(path, encoding='utf-8') as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        return set()
+    words = set()
+    # Horizontal runs
+    for line in lines:
+        for m in re.finditer(r'[A-ZÄÖÜa-zäöü]{3,}', line):
+            words.add(m.group().upper())
+    # Vertical runs — transpose grid to reuse horizontal logic
+    max_len = max((len(l) for l in lines), default=0)
+    cols = [''.join(l[i] if i < len(l) else ' ' for l in lines) for i in range(max_len)]
+    for col in cols:
+        for m in re.finditer(r'[A-ZÄÖÜa-zäöü]{3,}', col):
+            words.add(m.group().upper())
+    return words
+
+
+def load_bad_words_set():
+    path = os.path.join(SCRIPT_DIR, 'bad-words.txt')
+    try:
+        with open(path, encoding='utf-8') as f:
+            return {w.strip().lower() for w in f if w.strip() and not w.startswith('#')}
+    except FileNotFoundError:
+        return set()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--start', type=int, default=1)
     parser.add_argument('--count', type=int, default=800)
     parser.add_argument('--words-csv', metavar='FILE',
                         help='write a CSV of level,word for all placed words')
+    parser.add_argument('--fix-bad-words', action='store_true',
+                        help='only regenerate levels that contain a bad word')
     args = parser.parse_args()
 
     word_file = os.path.join(SCRIPT_DIR, 'Data', 'common_words_de.txt')
@@ -292,10 +328,31 @@ def main():
     )
     os.makedirs(output_dir, exist_ok=True)
 
-    csv_rows = []
+    # --fix-bad-words: determine which levels need regeneration
+    bad_words = load_bad_words_set() if args.fix_bad_words else set()
+    levels_to_regen = set()
+    if args.fix_bad_words:
+        all_levels = range(args.start, args.start + args.count)
+        for level in all_levels:
+            existing = extract_words_from_grid(os.path.join(output_dir, f'{level}.txt'))
+            if any(w.lower() in bad_words for w in existing):
+                levels_to_regen.add(level)
+        print(f"Bad words found in {len(levels_to_regen)} levels — regenerating those only.")
+
+    # Pre-populate used_word_sets from levels we're keeping unchanged
     used_word_sets = set()
+    if args.fix_bad_words:
+        for level in range(args.start, args.start + args.count):
+            if level not in levels_to_regen:
+                existing = extract_words_from_grid(os.path.join(output_dir, f'{level}.txt'))
+                if existing:
+                    used_word_sets.add(frozenset(existing))
+
+    csv_rows = []
     failed = []
     for level in range(args.start, args.start + args.count):
+        if args.fix_bad_words and level not in levels_to_regen:
+            continue
         result, placed = generate_level(words, level, used_word_sets)
         if result:
             with open(os.path.join(output_dir, f'{level}.txt'), 'w', encoding='utf-8') as f:
@@ -315,8 +372,9 @@ def main():
             f.write('\n'.join(csv_rows))
         print(f"Words CSV written to {args.words_csv}")
 
-    total = args.count - len(failed)
-    print(f"\nDone. {total}/{args.count} levels generated in {output_dir}")
+    attempted = len(levels_to_regen) if args.fix_bad_words else args.count
+    total = attempted - len(failed)
+    print(f"\nDone. {total}/{attempted} levels generated in {output_dir}")
     if failed:
         print(f"Failed: {failed}")
 
