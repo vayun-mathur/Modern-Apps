@@ -362,9 +362,10 @@ fun WordGameScreen(
     LaunchedEffect(isWon) {
         if (isWon) {
             if (currentLevel == 1) achievementsManager.onAchievementUnlocked("level_1_done")
-            if (currentLevel == 861) achievementsManager.onAchievementUnlocked("manual_levels_done")
-            
-            achievementsManager.onProgressUpdated("manual_levels_done", currentLevel)
+            if (currentLanguageId == "en") {
+                if (currentLevel == 861) achievementsManager.onAchievementUnlocked("manual_levels_done")
+                achievementsManager.onProgressUpdated("manual_levels_done", currentLevel)
+            }
             achievementsManager.onProgressUpdated("level_50", currentLevel)
             achievementsManager.onProgressUpdated("level_100", currentLevel)
             achievementsManager.onProgressUpdated("level_500", currentLevel)

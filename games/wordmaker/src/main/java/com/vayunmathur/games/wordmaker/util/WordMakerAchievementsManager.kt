@@ -15,14 +15,15 @@ class WordMakerAchievementsManager(
 ) : AchievementsManager(context, json) {
     override fun checkExistingAchievements() {
         CoroutineScope(Dispatchers.IO).launch {
+            val englishLevel = levelDataStore.englishLevel.first()
             val currentLevel = levelDataStore.currentLevel.first()
-            if (currentLevel > 1) onAchievementUnlocked("level_1_done")
-            
-            onProgressUpdated("manual_levels_done", currentLevel - 1)
-            onProgressUpdated("level_50", currentLevel)
-            onProgressUpdated("level_100", currentLevel)
-            onProgressUpdated("level_500", currentLevel)
-            
+            if (englishLevel > 1 || currentLevel > 1) onAchievementUnlocked("level_1_done")
+
+            onProgressUpdated("manual_levels_done", englishLevel - 1)
+            onProgressUpdated("level_50", englishLevel)
+            onProgressUpdated("level_100", englishLevel)
+            onProgressUpdated("level_500", englishLevel)
+
             val totalBonus = levelDataStore.totalBonusWords.first()
             onProgressUpdated("bonus_hunter", totalBonus)
         }

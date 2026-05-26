@@ -51,6 +51,10 @@ class LevelDataStore(context: Context) {
     val totalBonusWords: Flow<Int> = appContext.dataStore.data
         .map { it[TOTAL_BONUS_WORDS_KEY] ?: 0 }
 
+    val englishLevel: Flow<Int> = appContext.dataStore.data.map { prefs ->
+        prefs[levelKey("en")] ?: prefs[LEGACY_LEVEL_KEY] ?: 1
+    }
+
     suspend fun saveLanguage(languageId: String) {
         appContext.dataStore.edit { settings ->
             settings[LANGUAGE_KEY] = languageId
