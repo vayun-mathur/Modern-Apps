@@ -42,6 +42,17 @@ Rule: if the word has no German meaning and is only present due to English dialo
 ### English honorifics and titles
 `sir`, `lord`, `duke`, `earl` — not German words, appear in period drama subtitles.
 
+## Workflow: adding bad words and patching levels
+
+1. Add offending words to `bad-words.txt` (one per line, lowercase, under the appropriate category comment)
+2. From `scripts/wordmaker/`, run:
+   ```bash
+   python3 generate_levels_de.py --fix-bad-words
+   ```
+   This scans all 800 level files, identifies which contain a newly blocked word, and regenerates only those levels. Untouched levels are not modified.
+3. Spot-check a few of the regenerated levels in `../../games/wordmaker/src/main/assets/levels/de/`
+4. Repeat steps 1–3 until no bad words remain (usually converges in 1–2 passes)
+
 ## What does NOT belong
 
 - Common German words that are also foreign words (`bar`, `boot`, `arm`, `arm`) — these are valid German

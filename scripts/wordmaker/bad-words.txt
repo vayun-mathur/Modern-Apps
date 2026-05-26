@@ -1,6 +1,11 @@
 # Manual blocklist for WordMaker German level generator
 # Words that pass automatic filters but shouldn't appear in crossword levels
 
+# Manual additions
+rom
+nutte
+luder
+
 # International city names (not in DE-only GeoNames)
 wien
 bern

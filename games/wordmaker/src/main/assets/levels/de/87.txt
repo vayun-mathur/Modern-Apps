@@ -1,7 +1,7 @@
-   R 
-CHROM
-H  C 
-O  H 
-ROH  
- H   
- ROM 
+   BAT 
+       
+  ABT  
+BON O  
+  B NOT
+ BOA   
+  T    

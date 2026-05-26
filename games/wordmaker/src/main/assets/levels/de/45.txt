@@ -1,7 +1,4 @@
-LED   
-      
-  R D 
- LUDER
-  D R 
-  E   
-  LUD 
+   ARG
+GRAU  
+ A G  
+ U    

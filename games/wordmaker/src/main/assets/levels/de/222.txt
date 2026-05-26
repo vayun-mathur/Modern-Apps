@@ -1,6 +1,8 @@
-R   
-ARM 
-M A 
-  J 
- ROM
-  R 
+SET      
+  A      
+  S      
+AST      
+  ETAT   
+     E   
+     SATT
+   TAT   
