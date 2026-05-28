@@ -1,0 +1,11 @@
+  ARG  
+   E F 
+   GARN
+     A 
+     G 
+ FRAGEN
+ E    A
+GRAF  G
+ N A  E
+   R  R
+ RAN   

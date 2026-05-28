@@ -1,0 +1,6 @@
+    N   
+ZELTEN  
+ N  T   
+ T  ZELT
+LENZ   E
+       E

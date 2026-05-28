@@ -1,0 +1,6 @@
+ REG  
+  R   
+ORGEL 
+  O O 
+    R 
+   GEL

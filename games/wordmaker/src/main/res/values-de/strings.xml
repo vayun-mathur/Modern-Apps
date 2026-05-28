@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Word Maker</string>
+    <string name="all_levels_completed">Alle Level abgeschlossen</string>
+    <string name="stay_tuned_new_levels">Freue dich auf neue Level in zukünftigen Updates</string>
+    <string name="error_parse_level">Level-Daten konnten nicht gelesen werden.</string>
+    <string name="error_load_level">Level-Daten konnten nicht geladen werden: %1$s</string>
+    <string name="level_number">Level %1$d</string>
+    <string name="next_level">Nächstes Level</string>
+    <string name="close">Schließen</string>
+    <string name="bonus_words">Bonuswörter</string>
+    <string name="select_language">Sprache auswählen</string>
+</resources>

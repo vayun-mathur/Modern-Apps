@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,6 +78,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.wordmaker.data.CrosswordData
+import com.vayunmathur.games.wordmaker.data.AVAILABLE_LANGUAGES
 import com.vayunmathur.games.wordmaker.data.LevelDataStore
 import com.vayunmathur.games.wordmaker.util.AppBackupAgent
 import com.vayunmathur.games.wordmaker.util.Dictionary
@@ -93,6 +95,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -150,29 +153,52 @@ fun rememberAchievementsManager(levelDataStore: LevelDataStore): AchievementsMan
 fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDataStore) {
     val context = LocalContext.current
     val resources = LocalResources.current
+    val currentLanguageId by levelDataStore.currentLanguage.collectAsState(initial = "en")
     val currentLevel by levelDataStore.currentLevel.collectAsState(initial = 1)
+    val languageConfig = remember(currentLanguageId) {
+        AVAILABLE_LANGUAGES.find { it.id == currentLanguageId } ?: AVAILABLE_LANGUAGES.first()
+    }
     var crosswordData by remember { mutableStateOf<CrosswordData?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    val dictionary by remember { mutableStateOf(Dictionary()) }
-    val coroutineScope = rememberCoroutineScope { Dispatchers.IO }
-
     val achievementsManager = rememberAchievementsManager(levelDataStore)
     val newAchievement by achievementsManager.newAchievement.collectAsState()
+    var dictionary by remember { mutableStateOf(Dictionary.EMPTY) }
+    var definitionDict by remember { mutableStateOf(Dictionary.EMPTY) }
+    var totalLevels by remember { mutableStateOf<Int?>(null) }
+    var showLanguagePicker by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val isGameComplete = totalLevels != null && currentLevel > totalLevels!!
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentLanguageId) {
         achievementsManager.checkExistingAchievements()
-        coroutineScope.launch {
-            dictionary.init(context)
+        error = null
+        val (dict, defDict) = withContext(Dispatchers.IO) {
+            val d = Dictionary.load(context, languageConfig.dictionaryFile)
+            val dd = languageConfig.definitionsFile?.let { Dictionary.load(context, it) }
+                ?: Dictionary.EMPTY
+            d to dd
+        }
+        dictionary = dict
+        definitionDict = defDict
+        totalLevels = withContext(Dispatchers.IO) {
+            context.assets.list(languageConfig.levelsPath)?.count { it.endsWith(".txt") }
         }
     }
 
-    LaunchedEffect(currentLevel) {
+    LaunchedEffect(currentLevel, currentLanguageId) {
+        error = null
         try {
-            crosswordData = CrosswordData.fromAsset(context, "levels/$currentLevel.txt")
-            if (crosswordData == null) {
+            val data = withContext(Dispatchers.IO) {
+                CrosswordData.fromAsset(context, "${languageConfig.levelsPath}/$currentLevel.txt")
+            }
+            if (data == null) {
+                crosswordData = null
                 error = resources.getString(R.string.error_parse_level)
+            } else {
+                crosswordData = data
             }
         } catch (e: Exception) {
+            crosswordData = null
             error = resources.getString(R.string.error_load_level, e.message)
         }
     }
@@ -182,18 +208,19 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
             error != null -> {
                 Text(text = error!!, color = colorScheme.error)
             }
-
             crosswordData != null -> {
                 WordGameScreen(
                     crosswordData = crosswordData!!,
                     levelDataStore = levelDataStore,
                     currentLevel = currentLevel,
                     dictionary = dictionary,
+                    definitionDict = definitionDict,
                     achievementsManager = achievementsManager,
-                    onOpenGameCenter = { backStack.add(Route.GameCenter) }
+                    onOpenGameCenter = { backStack.add(Route.GameCenter) },
+                    currentLanguageId = currentLanguageId,
+                    onOpenLanguagePicker = { showLanguagePicker = true }
                 )
             }
-
             else -> {
                 CircularProgressIndicator()
             }
@@ -203,6 +230,35 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
             AchievementNotification(it) {
                 achievementsManager.dismissNotification()
             }
+        }
+
+        if (showLanguagePicker) {
+            AlertDialog(
+                onDismissRequest = { showLanguagePicker = false },
+                title = { Text(stringResource(R.string.select_language)) },
+                text = {
+                    androidx.compose.foundation.lazy.LazyColumn {
+                        items(AVAILABLE_LANGUAGES) { lang ->
+                            Text(
+                                text = lang.displayName,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        coroutineScope.launch { levelDataStore.saveLanguage(lang.id) }
+                                        showLanguagePicker = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                                fontWeight = if (lang.id == currentLanguageId) FontWeight.Bold else null
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showLanguagePicker = false }) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
+            )
         }
     }
 }
@@ -223,15 +279,18 @@ fun WordGameScreen(
     levelDataStore: LevelDataStore,
     currentLevel: Int,
     dictionary: Dictionary,
+    definitionDict: Dictionary,
     achievementsManager: AchievementsManager,
-    onOpenGameCenter: () -> Unit
+    onOpenGameCenter: () -> Unit,
+    currentLanguageId: String,
+    onOpenLanguagePicker: () -> Unit
 ) {
     val foundWords by levelDataStore.foundWords.collectAsState(initial = emptySet())
     val bonusWords by levelDataStore.bonusWords.collectAsState(initial = emptySet())
     var showBonusWordsDialog by remember(currentLevel) { mutableStateOf(false) }
     val density = LocalDensity.current
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
-    var wordWithDefinition by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+    var wordWithDefinition by remember { mutableStateOf<Pair<String, List<String>?>?>(null) }
 
     // Animation state
     val coroutineScope = rememberCoroutineScope()
@@ -303,9 +362,10 @@ fun WordGameScreen(
     LaunchedEffect(isWon) {
         if (isWon) {
             if (currentLevel == 1) achievementsManager.onAchievementUnlocked("level_1_done")
-            if (currentLevel == 861) achievementsManager.onAchievementUnlocked("manual_levels_done")
-            
-            achievementsManager.onProgressUpdated("manual_levels_done", currentLevel)
+            if (currentLanguageId == "en") {
+                if (currentLevel == 861) achievementsManager.onAchievementUnlocked("manual_levels_done")
+                achievementsManager.onProgressUpdated("manual_levels_done", currentLevel)
+            }
             achievementsManager.onProgressUpdated("level_50", currentLevel)
             achievementsManager.onProgressUpdated("level_100", currentLevel)
             achievementsManager.onProgressUpdated("level_500", currentLevel)
@@ -318,6 +378,9 @@ fun WordGameScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.level_number, currentLevel)) },
                 actions = {
+                    IconButton(onClick = onOpenLanguagePicker) {
+                        Text(currentLanguageId.uppercase(), style = androidx.compose.material3.MaterialTheme.typography.labelLarge)
+                    }
                     IconButton(onClick = onOpenGameCenter) {
                         Icon(painterResource(id = android.R.drawable.btn_star_big_on), "Achievements")
                     }
@@ -358,9 +421,14 @@ fun WordGameScreen(
                             val word = crosswordData.getWordAt(row, col, foundWords)
                             if (word != null && word in foundWords) {
                                 coroutineScope.launch {
-                                    val definition = dictionary.getDefinition(word)
-                                    if (definition.isNotEmpty()) {
-                                        wordWithDefinition = Pair(word, definition)
+                                    wordWithDefinition = Pair(word, null)
+                                    val definition = withContext(Dispatchers.IO) {
+                                        dictionary.getDefinition(word).ifEmpty {
+                                            definitionDict.getDefinition(word)
+                                        }
+                                    }
+                                    if (wordWithDefinition?.first == word) {
+                                        wordWithDefinition = if (definition.isNotEmpty()) Pair(word, definition) else null
                                     }
                                 }
                             }
@@ -472,7 +540,21 @@ fun WordGameScreen(
             }
 
             if (showBonusWordsDialog) {
-                BonusWordsDialog(bonusWords = bonusWords, dictionary) {
+                BonusWordsDialog(bonusWords = bonusWords, dictionary = dictionary, definitionDict = definitionDict,
+                    onWordTapped = { word ->
+                        coroutineScope.launch {
+                            wordWithDefinition = Pair(word, null)
+                            val defs = withContext(Dispatchers.IO) {
+                                dictionary.getDefinition(word).ifEmpty {
+                                    definitionDict.getDefinition(word)
+                                }
+                            }
+                            if (wordWithDefinition?.first == word) {
+                                wordWithDefinition = if (defs.isNotEmpty()) Pair(word, defs) else null
+                            }
+                        }
+                    }
+                ) {
                     showBonusWordsDialog = false
                 }
             }
@@ -482,6 +564,7 @@ fun WordGameScreen(
                     wordWithDefinition = null
                 }
             }
+
 
             animatedWord?.let { word ->
                 val progress = animationProgress.value
@@ -517,11 +600,17 @@ fun WordGameScreen(
 }
 
 @Composable
-fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Unit) {
+fun DefinitionDialog(word: String, definition: List<String>?, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = word.replaceFirstChar { it.uppercase() }) },
-        text = { Text(text = definition.joinToString("\n\n")) },
+        text = {
+            if (definition == null) {
+                CircularProgressIndicator()
+            } else {
+                Text(text = definition.joinToString("\n\n"))
+            }
+        },
         confirmButton = {
             Button(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
@@ -531,8 +620,8 @@ fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Un
 }
 
 @Composable
-fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss: () -> Unit) {
-    var definitionDialog by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
+fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, definitionDict: Dictionary,
+                     onWordTapped: (String) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.bonus_words)) },
@@ -544,9 +633,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
                         modifier = Modifier
                             .padding(vertical = 4.dp)
                             .fillMaxWidth()
-                            .clickable {
-                                definitionDialog = Pair(word, dictionary.getDefinition(word))
-                            })
+                            .clickable { onWordTapped(word) })
                 }
             }
         },
@@ -558,12 +645,8 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
             }
         }
     )
-    definitionDialog?.let { (w, d) ->
-        DefinitionDialog(word = w, definition = d) {
-            definitionDialog = null
-        }
-    }
 }
+
 
 @Composable
 fun SurfaceText(modifier: Modifier, surfaceShape: Shape, surfaceColor: Color, text: String, textModifier: Modifier, fontWeight: FontWeight? = null, fontSize: TextUnit = TextUnit.Unspecified, surfaceSize: Dp?) {

@@ -1,0 +1,6 @@
+     RAM
+    N M 
+    A M 
+  RAMMEN
+  A E   
+REN     

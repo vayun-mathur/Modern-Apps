@@ -1,0 +1,7 @@
+ M  
+NOT 
+ N  
+ A  
+ATOM
+M   
+TON 

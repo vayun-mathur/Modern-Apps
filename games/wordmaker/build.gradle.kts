@@ -6,6 +6,11 @@ android {
     defaultConfig {
         applicationId = "com.vayunmathur.games.wordmaker"
     }
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
+    }
 }
 
 dependencies {
