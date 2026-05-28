@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.work.*
 import com.vayunmathur.email.EmailManager
+import com.vayunmathur.email.widget.EmailWidget
+import androidx.glance.appwidget.updateAll
 import java.util.concurrent.TimeUnit
 
 class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
@@ -64,6 +66,8 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
                 hasErrors = true
             }
         }
+
+        EmailWidget().updateAll(applicationContext)
 
         return if (hasErrors) Result.retry() else Result.success()
     }

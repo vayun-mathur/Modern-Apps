@@ -44,11 +44,16 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
     ) { email, folder, query ->
         Triple(email, folder, query)
     }.flatMapLatest { (email, folder, query) ->
-        if (email == null) flowOf(emptyList())
-        else if (query.isEmpty()) {
-            dao.getMessagesFlow(email, folder)
+        if (email == null) {
+            // Unified Inbox
+            if (query.isEmpty()) dao.getUnifiedMessagesFlow("INBOX")
+            else dao.searchUnifiedMessagesFlow("INBOX", query)
         } else {
-            dao.searchMessagesFlow(email, folder, query)
+            if (query.isEmpty()) {
+                dao.getMessagesFlow(email, folder)
+            } else {
+                dao.searchMessagesFlow(email, folder, query)
+            }
         }
     }
 
@@ -61,7 +66,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectAccount(email: String) {
-        _selectedAccountEmail.value = email
+        _selectedAccountEmail.value = if (email.isEmpty()) null else email
         _selectedFolderName.value = "INBOX"
         _searchQuery.value = ""
     }
@@ -110,7 +115,8 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendEmail(
+    fun sendEmailFrom(
+        account: EmailAccount,
         to: String,
         subject: String,
         body: String,
@@ -121,7 +127,6 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        val account = selectedAccount.value ?: return onError("No account selected")
         viewModelScope.launch {
             try {
                 emailManager.sendMessage(

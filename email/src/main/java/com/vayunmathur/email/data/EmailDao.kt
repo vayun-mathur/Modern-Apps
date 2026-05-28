@@ -48,6 +48,16 @@ interface EmailDao {
     @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND folderName = :folderName AND (subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY id DESC")
     fun searchMessagesFlow(accountEmail: String, folderName: String, query: String): Flow<List<EmailMessage>>
 
+    // Unified Inbox
+    @Query("SELECT * FROM EmailMessage WHERE folderName = :folderName ORDER BY date DESC")
+    fun getUnifiedMessagesFlow(folderName: String): Flow<List<EmailMessage>>
+
+    @Query("SELECT * FROM EmailMessage WHERE folderName = :folderName AND (subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY date DESC")
+    fun searchUnifiedMessagesFlow(folderName: String, query: String): Flow<List<EmailMessage>>
+
+    @Query("SELECT * FROM EmailMessage WHERE folderName = 'INBOX' ORDER BY date DESC LIMIT 10")
+    suspend fun getRecentUnifiedMessages(): List<EmailMessage>
+
     // Attachments
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAttachments(attachments: List<Attachment>)

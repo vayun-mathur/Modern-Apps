@@ -17,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,7 +43,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.io.File
 import java.security.MessageDigest
 import java.security.SecureRandom
 
@@ -75,6 +76,15 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         val data = intent?.data
         val expectedScheme = "com.googleusercontent.apps.827025129169-1ihnv9r1a8nd1i3qjs98tkvluo4vjbhe"
+        
+        val accountEmail = intent?.getStringExtra("accountEmail")
+        val threadId = intent?.getStringExtra("threadId")
+        if (accountEmail != null && threadId != null) {
+            IntentState.navigationRoute = Route.MessageThread(accountEmail, threadId)
+        } else if (intent?.getBooleanExtra("compose", false) == true) {
+            IntentState.navigationRoute = Route.Composer()
+        }
+
         if (data != null && data.scheme == expectedScheme && data.path == "/oauth2redirect") {
             val code = data.getQueryParameter("code")
             if (code != null) {
@@ -85,7 +95,7 @@ class MainActivity : ComponentActivity() {
             val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT) ?: ""
             val body = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
             
-            IntentState.composerIntent = Route.Composer(to, subject, body)
+            IntentState.navigationRoute = Route.Composer(to, subject, body)
         }
     }
 
@@ -174,7 +184,7 @@ class MainActivity : ComponentActivity() {
 }
 
 object IntentState {
-    var composerIntent by mutableStateOf<Route.Composer?>(null)
+    var navigationRoute by mutableStateOf<Route?>(null)
 }
 
 object TokenState {
@@ -264,11 +274,11 @@ fun EmailApp(viewModel: EmailViewModel, onAddAccount: () -> Unit) {
     
     val backStack = rememberNavBackStack<Route>(Route.MessageList)
 
-    val composerIntent = IntentState.composerIntent
-    LaunchedEffect(composerIntent) {
-        if (composerIntent != null) {
-            backStack.add(composerIntent)
-            IntentState.composerIntent = null
+    val navigationRoute = IntentState.navigationRoute
+    LaunchedEffect(navigationRoute) {
+        if (navigationRoute != null) {
+            backStack.add(navigationRoute)
+            IntentState.navigationRoute = null
         }
     }
 
@@ -276,6 +286,21 @@ fun EmailApp(viewModel: EmailViewModel, onAddAccount: () -> Unit) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
+                Text("Unified Inbox", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+                NavigationDrawerItem(
+                    label = { Text("All Accounts") },
+                    selected = selectedAccountEmail == null,
+                    onClick = {
+                        viewModel.selectAccount("")
+                        backStack.reset(Route.MessageList)
+                        scope.launch { drawerState.close() }
+                    },
+                    icon = { IconInbox() },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+
                 Text("Accounts", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
                 accounts.forEach { account ->
                     NavigationDrawerItem(
@@ -285,6 +310,17 @@ fun EmailApp(viewModel: EmailViewModel, onAddAccount: () -> Unit) {
                             viewModel.selectAccount(account.email)
                             backStack.reset(Route.MessageList)
                             scope.launch { drawerState.close() }
+                        },
+                        icon = {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = Color(account.getColor()),
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    IconMail(modifier = Modifier.size(16.dp), tint = Color.White)
+                                }
+                            }
                         },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
@@ -300,13 +336,14 @@ fun EmailApp(viewModel: EmailViewModel, onAddAccount: () -> Unit) {
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
 
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                
-                Text("Folders", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
-                FolderList(folders, selectedFolderName ?: "INBOX") { folderName ->
-                    viewModel.selectFolder(folderName)
-                    backStack.reset(Route.MessageList)
-                    scope.launch { drawerState.close() }
+                if (selectedAccountEmail != null) {
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    Text("Folders", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+                    FolderList(folders, selectedFolderName ?: "INBOX") { folderName ->
+                        viewModel.selectFolder(folderName)
+                        backStack.reset(Route.MessageList)
+                        scope.launch { drawerState.close() }
+                    }
                 }
                 
                 Spacer(Modifier.weight(1f))
@@ -423,6 +460,7 @@ fun MessageListScreen(
     onOpenDrawer: () -> Unit
 ) {
     val messages by viewModel.messages.collectAsState(emptyList())
+    val selectedAccountEmail by viewModel.selectedAccountEmail.collectAsState()
     val selectedFolderName by viewModel.selectedFolderName.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     var isSearching by remember { mutableStateOf(false) }
@@ -440,7 +478,7 @@ fun MessageListScreen(
                         )
                     },
                     navigationIcon = {
-                        IconNavigation { 
+                        IconNavigation {
                             isSearching = false
                             viewModel.setSearchQuery("")
                         }
@@ -448,7 +486,7 @@ fun MessageListScreen(
                 )
             } else {
                 TopAppBar(
-                    title = { Text(selectedFolderName) },
+                    title = { Text(selectedFolderName ?: "Unified Inbox") },
                     navigationIcon = {
                         IconButton(onClick = onOpenDrawer) {
                             IconMenu()
@@ -479,24 +517,45 @@ fun MessageListScreen(
                 )
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     items(messages) { message ->
-                        Card(
-                            onClick = { onMessageClick(message) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = message.from, style = MaterialTheme.typography.labelMedium)
-                                Text(text = message.subject, style = MaterialTheme.typography.titleMedium)
-                                Text(text = message.date, style = MaterialTheme.typography.labelSmall)
-                                if (message.hasAttachments) {
-                                    Icon(painterResource(com.vayunmathur.library.R.drawable.outline_content_copy_24), "Attachments", modifier = Modifier.size(16.dp))
-                                }
+                        val accountColor = Color(EmailAccount(message.accountEmail, "", "").getColor())
+                        
+                        Row(modifier = Modifier.clickable { onMessageClick(message) }.height(IntrinsicSize.Min)) {
+                            if (selectedAccountEmail == null) {
+                                Surface(
+                                    modifier = Modifier.width(4.dp).fillMaxHeight(),
+                                    color = accountColor
+                                ) {}
                             }
+                            ListItem(
+                                headlineContent = {
+                                    Text(text = message.subject, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                },
+                                supportingContent = {
+                                    Column {
+                                        Text(text = message.from.substringBefore("<").trim(), style = MaterialTheme.typography.titleSmall)
+                                        Text(
+                                            text = message.body?.take(100) ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                trailingContent = {
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(text = message.date.substringBefore(" "), style = MaterialTheme.typography.labelSmall)
+                                        if (message.hasAttachments) {
+                                            IconAttachment(modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
                         }
+                        HorizontalDivider()
                     }
                 }
             }
@@ -519,15 +578,15 @@ fun MessageThreadScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Conversation") },
+                title = { Text(messages.firstOrNull()?.subject ?: "Conversation") },
                 navigationIcon = { IconNavigation(onBack) }
             )
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(messages) { msg ->
                 MessageItem(msg, viewModel, onReply, onForward)
@@ -548,32 +607,43 @@ fun MessageItem(
         attachments = viewModel.getAttachments(msg.accountEmail, msg.id)
     }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(text = "From: ${msg.from}", style = MaterialTheme.typography.titleSmall)
-                    Text(text = "To: ${msg.to ?: ""}", style = MaterialTheme.typography.labelSmall)
-                    Text(text = msg.date, style = MaterialTheme.typography.labelSmall)
-                }
-                IconButton(onClick = { onReply(msg.from, msg.subject, msg.serverId) }) {
-                    Icon(painterResource(com.vayunmathur.library.R.drawable.undo_24px), "Reply")
-                }
-                IconButton(onClick = { onForward(msg.subject, msg.body) }) {
-                    Icon(painterResource(com.vayunmathur.library.R.drawable.chevron_right_24px), "Forward")
+    Column {
+        ListItem(
+            overlineContent = {
+                Text(text = "From: ${msg.from}", style = MaterialTheme.typography.labelSmall)
+            },
+            headlineContent = {
+                Text(text = "To: ${msg.to ?: ""}", style = MaterialTheme.typography.labelSmall)
+            },
+            supportingContent = {
+                Text(text = msg.date, style = MaterialTheme.typography.labelSmall)
+            },
+            trailingContent = {
+                Row {
+                    IconButton(onClick = { onReply(msg.from, msg.subject, msg.serverId) }) {
+                        IconUndo()
+                    }
+                    IconButton(onClick = { onForward(msg.subject, msg.body) }) {
+                        IconChevronRight()
+                    }
                 }
             }
-            Text(text = msg.subject, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
-            HorizontalDivider()
-            Text(text = msg.body ?: "(No Content)", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 8.dp))
-            
-            if (attachments.isNotEmpty()) {
+        )
+        Text(
+            text = msg.body ?: "(No Content)", 
+            style = MaterialTheme.typography.bodyMedium, 
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        
+        if (attachments.isNotEmpty()) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text("Attachments:", style = MaterialTheme.typography.labelLarge)
                 attachments.forEach { att ->
                     AttachmentItem(att, viewModel)
                 }
             }
         }
+        HorizontalDivider()
     }
 }
 
@@ -598,7 +668,7 @@ fun AttachmentItem(attachment: Attachment, viewModel: EmailViewModel) {
                 }, { downloading = false })
             }, enabled = !downloading) {
                 if (downloading) CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                else Icon(painterResource(com.vayunmathur.library.R.drawable.baseline_upload_24), "Download", modifier = Modifier.size(16.dp))
+                else IconDownload(modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -615,12 +685,21 @@ fun ComposerScreen(
     references: String? = null,
     onBack: () -> Unit
 ) {
+    val accounts by viewModel.accounts.collectAsState(emptyList())
+    val selectedAccount by viewModel.selectedAccount.collectAsState()
+    
+    var fromAccount by remember(selectedAccount, accounts) { 
+        mutableStateOf(selectedAccount ?: accounts.firstOrNull()) 
+    }
+    
     var to by remember { mutableStateOf(initialTo) }
     var subject by remember { mutableStateOf(initialSubject) }
     var body by remember { mutableStateOf(initialBody) }
     var sending by remember { mutableStateOf(false) }
     var attachments by remember { mutableStateOf<List<Uri>>(emptyList()) }
     
+    var showAccountPicker by remember { mutableStateOf(false) }
+
     val attachmentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { attachments = attachments + it }
     }
@@ -632,11 +711,13 @@ fun ComposerScreen(
                 navigationIcon = { IconNavigation(onBack) },
                 actions = {
                     IconButton(onClick = { attachmentLauncher.launch("*/*") }) {
-                        Icon(painterResource(com.vayunmathur.library.R.drawable.outline_content_copy_24), "Attach")
+                        IconAttachment()
                     }
                     IconButton(onClick = {
+                        val acc = fromAccount ?: return@IconButton
                         sending = true
-                        viewModel.sendEmail(
+                        viewModel.sendEmailFrom(
+                            account = acc,
                             to = to, 
                             subject = subject, 
                             body = body, 
@@ -649,15 +730,45 @@ fun ComposerScreen(
                             }, 
                             onError = { sending = false }
                         )
-                    }, enabled = !sending) {
+                    }, enabled = !sending && fromAccount != null) {
                         if (sending) CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        else Icon(painterResource(com.vayunmathur.library.R.drawable.baseline_upload_24), "Send")
+                        else IconSend()
                     }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Account Picker
+            ListItem(
+                headlineContent = { Text(fromAccount?.email ?: "Select Account") },
+                overlineContent = { Text("From") },
+                trailingContent = { IconChevronRight() },
+                modifier = Modifier.clickable { showAccountPicker = true }
+            )
+            HorizontalDivider()
+
+            if (showAccountPicker) {
+                AlertDialog(
+                    onDismissRequest = { showAccountPicker = false },
+                    confirmButton = {},
+                    title = { Text("Select Sender") },
+                    text = {
+                        Column {
+                            accounts.forEach { acc ->
+                                ListItem(
+                                    headlineContent = { Text(acc.email) },
+                                    modifier = Modifier.clickable { 
+                                        fromAccount = acc
+                                        showAccountPicker = false 
+                                    }
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+
             OutlinedTextField(value = to, onValueChange = { to = it }, label = { Text("To") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Subject") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text("Body") }, modifier = Modifier.fillMaxWidth().weight(1f))
