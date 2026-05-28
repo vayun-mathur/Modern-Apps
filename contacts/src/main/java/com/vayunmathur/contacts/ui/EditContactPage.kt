@@ -109,8 +109,9 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
     var photo by remember { mutableStateOf(contact?.photo) }
     var birthday by remember { mutableStateOf(contact?.birthday?.startDate) }
     
-    var accountName by remember { mutableStateOf(contact?.accountName ?: "") }
-    var accountType by remember { mutableStateOf(contact?.accountType ?: "") }
+    val lastSelectedAccount by viewModel.lastSelectedAccount.collectAsState()
+    var accountName by remember { mutableStateOf(contact?.accountName ?: lastSelectedAccount?.name.orEmpty()) }
+    var accountType by remember { mutableStateOf(contact?.accountType ?: lastSelectedAccount?.type.orEmpty()) }
 
     val accounts by viewModel.accounts.collectAsState()
 
@@ -230,6 +231,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                 AccountChooser(accountName, accounts) { name, type ->
                     accountName = name
                     accountType = type
+                    viewModel.setLastSelectedAccount(name, type)
                 }
                 Spacer(Modifier.height(16.dp))
             }

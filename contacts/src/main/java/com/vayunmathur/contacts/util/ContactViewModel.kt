@@ -99,6 +99,9 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     private val _accounts = MutableStateFlow<List<ContactAccount>>(emptyList())
     val accounts: StateFlow<List<ContactAccount>> = _accounts.asStateFlow()
 
+    private val _lastSelectedAccount = MutableStateFlow<ContactAccount?>(null)
+    val lastSelectedAccount: StateFlow<ContactAccount?> = _lastSelectedAccount.asStateFlow()
+
     val isCalendarSyncEnabled: StateFlow<Boolean> = dataStore.booleanFlow("calendar_sync_enabled")
         .stateIn(viewModelScope, SharingStarted.Eagerly, dataStore.getBoolean("calendar_sync_enabled", false))
 
@@ -108,6 +111,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     init {
         syncWithSystemContacts()
         loadAccounts()
+        loadLastSelectedAccount()
     }
 
     fun setSearchQuery(query: String) {
@@ -208,6 +212,20 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             } ?: emptyList()
             
             _accounts.value = (accountSet + savedAccounts).toList().sortedBy { it.name }
+        }
+    }
+
+    fun loadLastSelectedAccount() {
+        val name = dataStore.getString("last_account_name")
+        val type = dataStore.getString("last_account_type")
+        _lastSelectedAccount.value = ContactAccount(name.orEmpty(), type.orEmpty())
+    }
+
+    fun setLastSelectedAccount(name: String, type: String) {
+        viewModelScope.launch {
+            dataStore.setString("last_account_name", name)
+            dataStore.setString("last_account_type", type)
+            _lastSelectedAccount.value = ContactAccount(name, type)
         }
     }
 
