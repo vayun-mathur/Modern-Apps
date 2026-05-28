@@ -67,4 +67,10 @@ interface EmailDao {
 
     @Query("UPDATE Attachment SET localUri = :uri WHERE accountEmail = :accountEmail AND messageId = :uid AND partId = :partId")
     suspend fun updateAttachmentLocalUri(accountEmail: String, uid: Long, partId: String, uri: String)
+
+    @Query("UPDATE EmailMessage SET isRead = :isRead WHERE accountEmail = :accountEmail AND id = :uid AND folderName = :folderName")
+    suspend fun updateReadStatus(accountEmail: String, folderName: String, uid: Long, isRead: Boolean)
+
+    @Query("UPDATE EmailMessage SET isRead = :isRead WHERE accountEmail = :accountEmail AND id IN (:uids)")
+    suspend fun updateBulkReadStatus(accountEmail: String, uids: List<Long>, isRead: Boolean)
 }

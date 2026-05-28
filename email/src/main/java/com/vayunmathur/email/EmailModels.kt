@@ -30,6 +30,7 @@ data class EmailMessage(
     val date: String,
     val body: String? = null,
     val isHtml: Boolean = false,
+    val isRead: Boolean = false,
     val references: String? = null, // References/In-Reply-To for threading
     val hasAttachments: Boolean = false
 )

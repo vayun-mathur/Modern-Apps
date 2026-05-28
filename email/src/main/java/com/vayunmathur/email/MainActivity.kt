@@ -9,7 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -463,12 +465,45 @@ fun MessageListScreen(
     val selectedAccountEmail by viewModel.selectedAccountEmail.collectAsState()
     val selectedFolderName by viewModel.selectedFolderName.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedUids by viewModel.selectedMessageUids.collectAsState()
     var isSearching by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    androidx.activity.compose.BackHandler(enabled = isSearching || selectedUids.isNotEmpty()) {
+        if (selectedUids.isNotEmpty()) {
+            viewModel.clearSelection()
+        } else {
+            isSearching = false
+            viewModel.setSearchQuery("")
+        }
+    }
+
     Scaffold(
         topBar = {
-            if (isSearching) {
+            if (selectedUids.isNotEmpty()) {
+                TopAppBar(
+                    title = { Text("${selectedUids.size} selected") },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            IconClose()
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            val account = selectedAccountEmail ?: messages.firstOrNull { it.id in selectedUids }?.accountEmail ?: return@IconButton
+                            viewModel.bulkMarkAsRead(account, selectedUids.toList(), true)
+                        }) {
+                            IconMarkRead()
+                        }
+                        IconButton(onClick = {
+                            val account = selectedAccountEmail ?: messages.firstOrNull { it.id in selectedUids }?.accountEmail ?: return@IconButton
+                            viewModel.bulkMarkAsRead(account, selectedUids.toList(), false)
+                        }) {
+                            IconMarkUnread()
+                        }
+                    }
+                )
+            } else if (isSearching) {
                 TopAppBar(
                     title = {
                         CommonSearchBar(
@@ -489,7 +524,7 @@ fun MessageListScreen(
                     title = { Text(selectedFolderName ?: "Unified Inbox") },
                     navigationIcon = {
                         IconButton(onClick = onOpenDrawer) {
-                            IconMenu()
+                            IconForward()
                         }
                     },
                     actions = {
@@ -504,8 +539,10 @@ fun MessageListScreen(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onComposeClick) {
-                IconAdd()
+            if (selectedUids.isEmpty()) {
+                FloatingActionButton(onClick = onComposeClick) {
+                    IconAdd()
+                }
             }
         }
     ) { padding ->
@@ -521,8 +558,28 @@ fun MessageListScreen(
                 ) {
                     items(messages) { message ->
                         val accountColor = Color(EmailAccount(message.accountEmail, "", "").getColor())
+                        val isSelected = message.id in selectedUids
                         
-                        Row(modifier = Modifier.clickable { onMessageClick(message) }.height(IntrinsicSize.Min)) {
+                        Row(
+                            modifier = Modifier
+                                .combinedClickable(
+                                    onClick = {
+                                        if (selectedUids.isNotEmpty()) {
+                                            viewModel.toggleMessageSelection(message.id)
+                                        } else {
+                                            if (!message.isRead) {
+                                                viewModel.markAsRead(message.accountEmail, message.folderName, message.id, true)
+                                            }
+                                            onMessageClick(message)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        viewModel.toggleMessageSelection(message.id)
+                                    }
+                                )
+                                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent)
+                                .height(IntrinsicSize.Min)
+                        ) {
                             if (selectedAccountEmail == null) {
                                 Surface(
                                     modifier = Modifier.width(4.dp).fillMaxHeight(),
@@ -531,11 +588,17 @@ fun MessageListScreen(
                             }
                             ListItem(
                                 headlineContent = {
-                                    Text(text = message.subject, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = message.subject, 
+                                        style = if (message.isRead) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
                                 },
                                 supportingContent = {
                                     Column {
-                                        Text(text = message.from.substringBefore("<").trim(), style = MaterialTheme.typography.titleSmall)
+                                        Text(
+                                            text = message.from.substringBefore("<").trim(), 
+                                            style = if (message.isRead) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                        )
                                         Text(
                                             text = (if (message.isHtml && message.body != null) {
                                                 androidx.core.text.HtmlCompat.fromHtml(message.body, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
@@ -556,7 +619,8 @@ fun MessageListScreen(
                                         }
                                     }
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                             )
                         }
                         HorizontalDivider()
@@ -593,7 +657,7 @@ fun MessageThreadScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(messages) { msg ->
-                MessageItem(msg, viewModel, onReply, onForward)
+                MessageItem(msg, viewModel, onBack, onReply, onForward)
             }
         }
     }
@@ -604,6 +668,7 @@ fun MessageThreadScreen(
 fun MessageItem(
     msg: EmailMessage, 
     viewModel: EmailViewModel,
+    onBack: () -> Unit,
     onReply: (String, String, String?) -> Unit,
     onForward: (String, String?) -> Unit
 ) {
@@ -669,8 +734,13 @@ fun MessageItem(
                 IconButton(onClick = { onReply(msg.from, msg.subject, msg.serverId) }) {
                     IconUndo()
                 }
-                IconButton(onClick = { /* More actions */ }) {
-                    Icon(painterResource(com.vayunmathur.library.R.drawable.drag_handle_24px), "More")
+                IconButton(onClick = {
+                    viewModel.markAsRead(msg.accountEmail, msg.folderName, msg.id, !msg.isRead)
+                    if (msg.isRead) { // If it was read, we just marked it as unread
+                        onBack()
+                    }
+                }) {
+                    if (msg.isRead) IconMarkUnread() else IconMarkRead()
                 }
             }
         }

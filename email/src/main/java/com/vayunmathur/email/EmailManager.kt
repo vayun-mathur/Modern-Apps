@@ -135,6 +135,7 @@ class EmailManager {
                     date = msg.sentDate?.toString() ?: "",
                     body = body,
                     isHtml = isHtml,
+                    isRead = msg.isSet(Flags.Flag.SEEN),
                     references = msg.getHeader("References")?.joinToString(" "),
                     hasAttachments = attachments.isNotEmpty() || hasAttachmentsInfo(msg)
                 ))

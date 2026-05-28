@@ -37,6 +37,9 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
+    private val _selectedMessageUids = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedMessageUids: StateFlow<Set<Long>> = _selectedMessageUids
+
     val messages: Flow<List<EmailMessage>> = combine(
         _selectedAccountEmail,
         _selectedFolderName,
@@ -78,6 +81,32 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun toggleMessageSelection(uid: Long) {
+        val current = _selectedMessageUids.value
+        if (uid in current) {
+            _selectedMessageUids.value = current - uid
+        } else {
+            _selectedMessageUids.value = current + uid
+        }
+    }
+
+    fun clearSelection() {
+        _selectedMessageUids.value = emptySet()
+    }
+
+    fun markAsRead(accountEmail: String, folderName: String, uid: Long, isRead: Boolean) {
+        viewModelScope.launch {
+            dao.updateReadStatus(accountEmail, folderName, uid, isRead)
+        }
+    }
+
+    fun bulkMarkAsRead(accountEmail: String, uids: List<Long>, isRead: Boolean) {
+        viewModelScope.launch {
+            dao.updateBulkReadStatus(accountEmail, uids, isRead)
+            clearSelection()
+        }
     }
 
     fun refresh(context: android.content.Context) {

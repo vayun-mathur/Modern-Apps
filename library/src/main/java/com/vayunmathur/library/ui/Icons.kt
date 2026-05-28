@@ -184,6 +184,16 @@ fun IconRestore(modifier: Modifier = Modifier, tint: Color = LocalContentColor.c
     Icon(painterResource(R.drawable.outline_settings_backup_restore_24), "Restore", modifier = modifier, tint = tint)
 }
 @Composable
+fun IconMarkRead(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.outline_check_24), "Mark Read", modifier = modifier, tint = tint)
+}
+
+@Composable
+fun IconMarkUnread(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.outline_mail_outline_24), "Mark Unread", modifier = modifier, tint = tint)
+}
+
+@Composable
 fun IconFavorite(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.favorite_24px), "Favorite", modifier = modifier, tint = tint)
 }
