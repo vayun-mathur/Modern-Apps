@@ -365,6 +365,15 @@ fun AccountChooser(
             }
         )
         DropdownMenu(expanded, { expanded = false }) {
+            if (accounts.none { it.name.isBlank() && it.type.isBlank() }) {
+                DropdownMenuItem(
+                    text = { Text(onDevice) },
+                    onClick = {
+                        onAccountChange("", "")
+                        expanded = false
+                    }
+                )
+            }
             accounts.forEach { account ->
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.account_display_format, account.name.ifEmpty { onDevice }, account.type)) },
