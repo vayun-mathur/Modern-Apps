@@ -63,7 +63,7 @@ fun ImportVcfDialog(
                 Text("Select account to import to:")
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.weight(1f, fill = false)) {
-                    items(accounts) { account ->
+                    items(accounts, key = { "${it.type}|${it.name}" }) { account ->
                         Row(
                             Modifier
                                 .fillMaxWidth()

@@ -142,7 +142,7 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseView
             }
 
             // Completed downloads
-            items(downloads) { downloadItem ->
+            items(downloads, key = { it.id }) { downloadItem ->
                 val isSelected = downloadItem.id in selectedIds
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {

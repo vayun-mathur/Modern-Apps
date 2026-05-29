@@ -68,7 +68,7 @@ fun GameCenterScreen(
                 .padding(padding),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(sortedStatuses) { status ->
+            items(sortedStatuses, key = { it.achievement.id }) { status ->
                 AchievementItem(status)
             }
         }

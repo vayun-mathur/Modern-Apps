@@ -62,7 +62,7 @@ fun SettingsChangeColorDialog(viewModel: CalendarViewModel, backStack: NavBackSt
             Column {
                 // swatches row
                 LazyRow {
-                    items(swatches) { c ->
+                    items(swatches, key = { it }) { c ->
                         val selected = (tempColor == c)
                         Box(
                             modifier = Modifier

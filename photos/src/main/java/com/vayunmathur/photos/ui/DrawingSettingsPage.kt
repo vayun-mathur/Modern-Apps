@@ -117,7 +117,7 @@ fun DrawingSettingsPage(
                     columns = GridCells.Fixed(7),
                     modifier = Modifier.height(100.dp)
                 ) {
-                    items(colors) { c ->
+                    items(colors, key = { it.value.toString() }) { c ->
                         val isSelected = color == c.toArgb()
                         Box(
                             modifier = Modifier

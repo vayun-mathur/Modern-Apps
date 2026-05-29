@@ -67,7 +67,7 @@ fun SettingsAddCalendarDialog(viewModel: CalendarViewModel, backStack: NavBackSt
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(stringResource(R.string.choose_color))
                 LazyRow {
-                    items(swatches) { c ->
+                    items(swatches, key = { it }) { c ->
                         val selected = (newColor == c)
                         Box(
                             modifier = Modifier

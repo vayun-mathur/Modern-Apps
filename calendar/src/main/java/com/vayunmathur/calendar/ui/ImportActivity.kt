@@ -183,7 +183,7 @@ fun ImportScreen(events: List<Event>, calendars: List<Calendar>, onImportClick: 
             }
             Spacer(Modifier.height(16.dp))
             LazyColumn {
-                items(events) { event ->
+                items(events, key = { "${it.calendarID}|${it.start}|${it.title}" }) { event ->
                     EventCard(event = event)
                 }
             }

@@ -30,7 +30,7 @@ fun HistoryPage(backStack: NavBackStack<Route>, viewModel: DatabaseViewModel) {
         TopAppBar({Text(stringResource(R.string.title_history))})
     }, bottomBar = { BottomNavBar(backStack, MAIN_BOTTOM_BAR_ITEMS, Route.History) }) {paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
-            items(history) {historyItem ->
+            items(history, key = { it.id }) {historyItem ->
                 VideoItem(backStack, viewModel, historyItem.videoItem, true)
             }
         }

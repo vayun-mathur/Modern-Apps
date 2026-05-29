@@ -451,7 +451,7 @@ fun VideoPlayer(
                     }
 
                     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
-                        items(segments) { chapter ->
+                        items(segments, key = { it.time }) { chapter ->
                             val isCurrent = currentPosition >= chapter.time &&
                                     (segments.getOrNull(segments.indexOf(chapter) + 1)?.time?.let { currentPosition < it } ?: true)
 

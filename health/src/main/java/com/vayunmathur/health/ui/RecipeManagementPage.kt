@@ -99,7 +99,7 @@ fun RecipeManagementPage(backStack: NavBackStack<Route>, viewModel: HealthViewMo
 @Composable
 fun RecipesList(recipes: List<Recipe>, viewModel: HealthViewModel, onRecipeClick: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(recipes) { recipe ->
+        items(recipes, key = { it.id }) { recipe ->
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { onRecipeClick(recipe.id) }
             ) {
@@ -148,7 +148,7 @@ fun IngredientsList(ingredients: List<Ingredient>, viewModel: HealthViewModel) {
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(ingredients) { ingredient ->
+        items(ingredients, key = { it.id }) { ingredient ->
             Card(modifier = Modifier.fillMaxWidth().clickable { editingIngredient = ingredient }) {
                 Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -265,7 +265,7 @@ fun RecipeEditorPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel,
             }
 
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(recipeIngredients) { riData ->
+                items(recipeIngredients, key = { it.ingredient.id }) { riData ->
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable {
                             editingIngredientData = riData
@@ -450,7 +450,7 @@ fun IngredientSearchDialog(
                             item {
                                 Text("Downloaded", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(8.dp))
                             }
-                            items(localResults) { ingredient ->
+                            items(localResults, key = { "local-${it.id}" }) { ingredient ->
                                 ListItem(
                                     headlineContent = { Text(ingredient.displayName) },
                                     supportingContent = { Text("Saved Locally", style = MaterialTheme.typography.bodySmall) },
@@ -466,7 +466,7 @@ fun IngredientSearchDialog(
                             item {
                                 Text("Online", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(8.dp))
                             }
-                            items(remoteResults) { result ->
+                            items(remoteResults, key = { "remote-${it.id}" }) { result ->
                                 // Skip if already in local results to avoid duplicates
                                 if (includeLocal && localResults.any { it.id == result.id.toString() }) return@items
 

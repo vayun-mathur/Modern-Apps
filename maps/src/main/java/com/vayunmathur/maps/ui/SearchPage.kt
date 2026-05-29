@@ -97,7 +97,7 @@ fun SearchPage(
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(results) { amenity ->
+                    items(results, key = { it.id }) { amenity ->
                         ListItem(
                             headlineContent = { Text(amenity.name.ifBlank { stringResource(R.string.unnamed_amenity) }) },
                             supportingContent = {

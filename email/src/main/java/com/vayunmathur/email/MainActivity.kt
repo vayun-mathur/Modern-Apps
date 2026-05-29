@@ -629,7 +629,7 @@ fun MessageListScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                    items(messages) { message ->
+                    items(messages, key = { "${it.accountEmail}|${it.folderName}|${it.id}" }) { message ->
                         val accountColor = Color(EmailAccount(message.accountEmail, "", "").getColor())
                         val isSelected = message.id in selectedUids
                         
@@ -743,7 +743,7 @@ fun MessageThreadScreen(
             contentPadding = PaddingValues(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(messages) { msg ->
+            items(messages, key = { "${it.accountEmail}|${it.folderName}|${it.id}" }) { msg ->
                 MessageItem(msg, viewModel, onBack, onReply, onForward)
             }
         }

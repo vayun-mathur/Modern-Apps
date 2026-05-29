@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -119,8 +120,9 @@ fun ItemDetailsScreen(
                     stickyHeader {
                         SectionHeader(stringResource(R.string.recipes, makeThis.size))
                     }
-                    items(makeThis.size) { index ->
-                        RecipeCard(makeThis[index], isItemDiscovered = { id -> id in itemsIds })
+                    val makeThisRecipes = makeThis
+                    items(makeThisRecipes, key = { "make-${it.inputs.joinToString(",")}->${it.outputs.joinToString(",")}" }) { recipe ->
+                        RecipeCard(recipe, isItemDiscovered = { id -> id in itemsIds })
                     }
 
                     // all recipes that have this item as an input
@@ -130,8 +132,9 @@ fun ItemDetailsScreen(
                     stickyHeader {
                         SectionHeader(stringResource(R.string.used_in, whereIHaveInput.size))
                     }
-                    items(showers.size) { index ->
-                        RecipeCard(showers[index], isItemDiscovered = { id -> id in itemsIds })
+                    val showerRecipes = showers
+                    items(showerRecipes, key = { "used-${it.inputs.joinToString(",")}->${it.outputs.joinToString(",")}" }) { recipe ->
+                        RecipeCard(recipe, isItemDiscovered = { id -> id in itemsIds })
                     }
                     if (locked > 0) {
                         item {

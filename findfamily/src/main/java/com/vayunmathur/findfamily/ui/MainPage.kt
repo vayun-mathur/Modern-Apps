@@ -230,7 +230,10 @@ fun MainPage(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = 16.dp)
                     ) {
-                        items(users.filter { it.requestStatus == RequestStatus.MUTUAL_CONNECTION || it.requestStatus == RequestStatus.AWAITING_RESPONSE }) {
+                        items(
+                            users.filter { it.requestStatus == RequestStatus.MUTUAL_CONNECTION || it.requestStatus == RequestStatus.AWAITING_RESPONSE },
+                            key = { it.id }
+                        ) {
                             UserCard(it, userPositions[it.id], true) {
                                 ffViewModel.selectUser(it.id)
                             }
@@ -243,7 +246,10 @@ fun MainPage(
                                 )
                             }
                         }
-                        items(users.filter { it.requestStatus == RequestStatus.AWAITING_REQUEST }) {
+                        items(
+                            users.filter { it.requestStatus == RequestStatus.AWAITING_REQUEST },
+                            key = { it.id }
+                        ) {
                             AwaitingRequestCard(backStack, it.id)
                         }
                         if (temporaryLinks.isNotEmpty()) {
@@ -254,7 +260,7 @@ fun MainPage(
                                 )
                             }
                         }
-                        items(temporaryLinks) {
+                        items(temporaryLinks, key = { it.id }) {
                             TemporaryLinkCard(platform, viewModel, it)
                         }
                         item {
@@ -265,7 +271,7 @@ fun MainPage(
                                 )
                             }
                         }
-                        items(waypoints) {
+                        items(waypoints, key = { it.id }) {
                             WaypointCard(it, users) {
                                 ffViewModel.beginEditWaypoint(it)
                             }

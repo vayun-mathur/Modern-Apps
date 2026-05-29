@@ -142,7 +142,7 @@ fun ImportIcsDialog(
                     Spacer(Modifier.height(16.dp))
                     
                     LazyColumn(Modifier.weight(1f, fill = false)) {
-                        items(events) { event ->
+                        items(events, key = { "${it.calendarID}|${it.start}|${it.title}" }) { event ->
                             EventCard(event = event)
                         }
                     }

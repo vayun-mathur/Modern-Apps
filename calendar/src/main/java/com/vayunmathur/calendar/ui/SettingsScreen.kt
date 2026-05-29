@@ -141,7 +141,7 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
                     item {
                         Text(text = account.ifEmpty { stringResource(R.string.no_account) }, modifier = Modifier.padding(vertical = 8.dp))
                     }
-                    items(cals) { cal ->
+                    items(cals, key = { it.id }) { cal ->
                         val isSelected = selectedCalendarId == cal.id
                         ListItem(
                             headlineContent = { Text(cal.displayName) },

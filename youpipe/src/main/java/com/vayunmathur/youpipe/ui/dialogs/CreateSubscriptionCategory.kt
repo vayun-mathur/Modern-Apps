@@ -61,7 +61,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.label_select_subscriptions))
                 LazyColumn(Modifier.weight(1f)) {
-                    items(subscriptions) {subscription ->
+                    items(subscriptions, key = { it.id }) {subscription ->
                         ListItem({
                             Text(subscription.name)
                         }, trailingContent = {

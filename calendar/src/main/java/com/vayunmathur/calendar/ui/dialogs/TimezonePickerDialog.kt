@@ -65,7 +65,7 @@ fun TimezonePickerDialog(backStack: NavBackStack<com.vayunmathur.calendar.Route>
 
                 // Scrollable list of zones with offsets
                 LazyColumn(modifier = Modifier.height(360.dp)) {
-                    items(zones) { (z, off) ->
+                    items(zones, key = { (z, _) -> z }) { (z, off) ->
                         Row(modifier = Modifier
                             .fillMaxWidth()
                             .clickable {

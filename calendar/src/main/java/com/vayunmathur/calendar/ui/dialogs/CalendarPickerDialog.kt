@@ -51,7 +51,7 @@ fun CalendarPickerDialog(backStack: NavBackStack<Route>, resultKey: String) {
                     item {
                         Text(account, modifier = Modifier.padding(8.dp))
                     }
-                    items(list) { cal ->
+                    items(list, key = { it.id }) { cal ->
                         Row(modifier = Modifier
                             .fillMaxWidth()
                             .clickable {

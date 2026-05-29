@@ -71,7 +71,7 @@ fun ImportScreen(contacts: List<Contact>, onImport: () -> Unit) {
             contentPadding = PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(contacts) { contact ->
+            items(contacts, key = { "${it.name.value}|${it.details.phoneNumbers.firstOrNull()?.number ?: ""}|${it.details.emails.firstOrNull()?.address ?: ""}" }) { contact ->
                 Card(modifier = Modifier.padding(4.dp).fillMaxSize()) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = contact.name.value, style = MaterialTheme.typography.titleMedium)

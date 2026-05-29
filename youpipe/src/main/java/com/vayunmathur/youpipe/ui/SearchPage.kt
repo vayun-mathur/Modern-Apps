@@ -67,14 +67,20 @@ fun SearchPage(
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (searchResults.isNotEmpty()) {
-                    items(searchResults) { item ->
+                    items(searchResults, key = {
+                        when (it) {
+                            is VideoInfo -> "v-${it.videoID}"
+                            is ChannelInfo -> "c-${it.channelID}"
+                            else -> it.hashCode().toString()
+                        }
+                    }) { item ->
                         if (item is VideoInfo)
                             VideoItem(backStack, viewModel, item, true)
                         else if (item is ChannelInfo)
                             ChannelItem(backStack, item)
                     }
                 } else {
-                    items(suggestions) { suggestion ->
+                    items(suggestions, key = { it }) { suggestion ->
                         Text(
                             text = suggestion,
                             modifier = Modifier

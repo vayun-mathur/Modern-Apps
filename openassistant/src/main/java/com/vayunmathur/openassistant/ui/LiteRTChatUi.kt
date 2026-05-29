@@ -215,7 +215,7 @@ fun ChatInput(
             Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
                 if (selectedImageUris.isNotEmpty()) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f, false)) {
-                        items(selectedImageUris) { uri ->
+                        items(selectedImageUris, key = { it.toString() }) { uri ->
                             Box(Modifier.size(80.dp)) {
                                 AsyncImage(uri, null, Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentScale = ContentScale.Crop)
                                 IconButton(onCancelMedia) { IconClose() }

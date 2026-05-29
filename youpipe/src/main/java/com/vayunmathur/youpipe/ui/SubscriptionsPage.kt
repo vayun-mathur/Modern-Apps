@@ -83,7 +83,7 @@ fun SubscriptionsPage(
                     backStack.add(Route.SubscriptionVideosPage(null))
                 })
             }
-            items(categories) {
+            items(categories, key = { it }) {
                 ListItem({
                     Text(it)
                 }, Modifier.clickable {
@@ -99,7 +99,7 @@ fun SubscriptionsPage(
             item {
                 ListItem({ Text(stringResource(R.string.label_channels)) })
             }
-            items(subscriptions) {
+            items(subscriptions, key = { it.id }) {
                 ListItem({
                     Text(HtmlCompat.fromHtml(it.name, HtmlCompat.FROM_HTML_MODE_LEGACY).toString())
                 }, Modifier.clickable {

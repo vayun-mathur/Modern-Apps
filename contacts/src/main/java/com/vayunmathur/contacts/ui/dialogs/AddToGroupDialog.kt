@@ -33,7 +33,7 @@ fun AddToGroupDialog(
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
                 ) {
-                    items(groups) { group ->
+                    items(groups, key = { it.id }) { group ->
                         val groupMatches = allMatches.filter { it.rightID == group.id && it.type == ContactViewModel.GROUP_MATCH_TYPE }
                         val contactsInGroupCount = contactIds.count { id -> groupMatches.any { it.leftID == id } }
                         

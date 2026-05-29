@@ -448,7 +448,7 @@ fun RelatedVideosSection(backStack: NavBackStack<Route>, viewModel: DatabaseView
 @Composable
 fun CommentsSection(comments: List<Comment>) {
     LazyColumn {
-        items(comments) {
+        items(comments, key = { "${it.author}|${it.text.hashCode()}" }) {
             CommentItem(it)
         }
     }

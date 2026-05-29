@@ -174,7 +174,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
-            items(accounts) { account ->
+            items(accounts, key = { "${it.type}|${it.name}" }) { account ->
                 val isVisible = account.name !in hiddenAccounts
                 val onDevice = stringResource(R.string.on_device)
                 ListItem(
