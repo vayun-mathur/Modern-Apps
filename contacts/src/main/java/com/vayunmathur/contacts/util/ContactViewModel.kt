@@ -61,7 +61,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     val searchQuery = _searchQuery.asStateFlow()
 
     val hiddenAccounts: StateFlow<Set<String>> = dataStore.stringSetFlow("hidden_accounts")
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val contacts: StateFlow<List<com.vayunmathur.contacts.data.Contact>> = combine(
@@ -75,7 +75,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         hiddenAccounts
     ) { entities, hidden ->
         entities.map { it.toContact() }.filter { it.accountName !in hidden }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val groups: StateFlow<List<ContactGroup>> = callbackFlow {
         val resolver = getApplication<Application>().contentResolver
@@ -87,7 +87,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         resolver.registerContentObserver(ContactsContract.Groups.CONTENT_URI, true, observer)
         send(fetchGroups())
         awaitClose { resolver.unregisterContentObserver(observer) }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun fetchGroups(): List<ContactGroup> {
         val resolver = getApplication<Application>().contentResolver
@@ -110,7 +110,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
                 ManyManyMatching(leftID = contact.id, rightID = membership.groupId, type = GROUP_MATCH_TYPE)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     companion object {
         const val GROUP_MATCH_TYPE = 101 // arbitrary type for contact-group matching
@@ -120,10 +120,10 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     val accounts: StateFlow<List<ContactAccount>> = _accounts.asStateFlow()
 
     val isCalendarSyncEnabled: StateFlow<Boolean> = dataStore.booleanFlow("calendar_sync_enabled")
-        .stateIn(viewModelScope, SharingStarted.Eagerly, dataStore.getBoolean("calendar_sync_enabled", false))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dataStore.getBoolean("calendar_sync_enabled", false))
 
     val showAccountLabels: StateFlow<Boolean> = dataStore.booleanFlow("show_account_labels")
-        .stateIn(viewModelScope, SharingStarted.Eagerly, dataStore.getBoolean("show_account_labels", true))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dataStore.getBoolean("show_account_labels", true))
 
     init {
         syncWithSystemContacts()
