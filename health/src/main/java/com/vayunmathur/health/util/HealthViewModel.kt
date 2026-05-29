@@ -275,7 +275,11 @@ class HealthViewModel(application: Application) : AndroidViewModel(application) 
     val barChartData: StateFlow<MetricDashboardData> = _barChartData.asStateFlow()
 
     fun loadBarChartData(config: HealthMetricConfig, anchorDate: LocalDate, selectedTab: Int) {
-        viewModelScope.launch {
+        // Default dispatcher: the DAO calls suspend onto Room's own pool, and the
+        // sortedBy/groupBy/Map chains in getListOfAverages/getListOfSums run on
+        // the launching coroutine. Without this, those CPU-bound chains run on
+        // Dispatchers.Main (the default for viewModelScope) and stall the frame.
+        viewModelScope.launch(Dispatchers.Default) {
             val tz = TimeZone.currentSystemDefault()
             val resources = getApplication<Application>().resources
 
