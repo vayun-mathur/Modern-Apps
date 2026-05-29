@@ -11,6 +11,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -239,63 +240,75 @@ fun ContactList(
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-            if (favorites.isNotEmpty()) {
-                item { FavoritesHeader() }
-                items(favorites, key = { it.id }) { contact ->
-                    ContactItem(
-                        contact = contact,
-                        isSelected = if (isSelectionMode) contact.id in selectedIds else selectedID == contact.id,
-                        showAccountLabels = showAccountLabels,
-                        viewModel = viewModel,
-                        onClick = {
-                            if (isSelectionMode) {
-                                if (contact.id in selectedIds) {
-                                    selectedIds.remove(contact.id)
-                                } else {
-                                    selectedIds.add(contact.id)
-                                }
-                            } else {
-                                onContactClick(contact)
-                            }
-                        },
-                        onLongClick = {
-                            if (!isSelectionMode) {
-                                selectedIds.add(contact.id)
+                if (favorites.isNotEmpty()) {
+                    item(key = "favorites-header") { FavoritesHeader() }
+                    item(key = "favorites-card") {
+                        ContactSectionCard {
+                            favorites.forEachIndexed { idx, contact ->
+                                if (idx > 0) ContactRowDivider()
+                                ContactItem(
+                                    contact = contact,
+                                    isSelected = if (isSelectionMode) contact.id in selectedIds else selectedID == contact.id,
+                                    showAccountLabels = showAccountLabels,
+                                    viewModel = viewModel,
+                                    embeddedInCard = true,
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            if (contact.id in selectedIds) {
+                                                selectedIds.remove(contact.id)
+                                            } else {
+                                                selectedIds.add(contact.id)
+                                            }
+                                        } else {
+                                            onContactClick(contact)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (!isSelectionMode) {
+                                            selectedIds.add(contact.id)
+                                        }
+                                    }
+                                )
                             }
                         }
-                    )
+                    }
                 }
-            }
 
-            groupedContacts.forEach { (letter, contactsInGroup) ->
-                item { LetterHeader(letter) }
-                items(contactsInGroup, key = { it.id }) { contact ->
-                    ContactItem(
-                        contact = contact,
-                        isSelected = if (isSelectionMode) contact.id in selectedIds else selectedID == contact.id,
-                        showAccountLabels = showAccountLabels,
-                        viewModel = viewModel,
-                        onClick = {
-                            if (isSelectionMode) {
-                                if (contact.id in selectedIds) {
-                                    selectedIds.remove(contact.id)
-                                } else {
-                                    selectedIds.add(contact.id)
-                                }
-                            } else {
-                                onContactClick(contact)
-                            }
-                        },
-                        onLongClick = {
-                            if (!isSelectionMode) {
-                                selectedIds.add(contact.id)
+                groupedContacts.forEach { (letter, contactsInGroup) ->
+                    item(key = "letter-header-$letter") { LetterHeader(letter) }
+                    item(key = "letter-card-$letter") {
+                        ContactSectionCard {
+                            contactsInGroup.forEachIndexed { idx, contact ->
+                                if (idx > 0) ContactRowDivider()
+                                ContactItem(
+                                    contact = contact,
+                                    isSelected = if (isSelectionMode) contact.id in selectedIds else selectedID == contact.id,
+                                    showAccountLabels = showAccountLabels,
+                                    viewModel = viewModel,
+                                    embeddedInCard = true,
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            if (contact.id in selectedIds) {
+                                                selectedIds.remove(contact.id)
+                                            } else {
+                                                selectedIds.add(contact.id)
+                                            }
+                                        } else {
+                                            onContactClick(contact)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (!isSelectionMode) {
+                                            selectedIds.add(contact.id)
+                                        }
+                                    }
+                                )
                             }
                         }
-                    )
+                    }
                 }
             }
         }
-    }
     }
 }
 
@@ -318,16 +331,26 @@ fun ContactListPick(mimeType: String?, contacts: List<Contact>, onClick: (Uri) -
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (favorites.isNotEmpty()) {
-                item { FavoritesHeader() }
-                items(favorites, key = { it.id }) { contact ->
-                    ContactItemPick(contact, mimeType, onClick)
+                item(key = "pick-favorites-header") { FavoritesHeader() }
+                item(key = "pick-favorites-card") {
+                    ContactSectionCard {
+                        favorites.forEachIndexed { idx, contact ->
+                            if (idx > 0) ContactRowDivider()
+                            ContactItemPick(contact, mimeType, onClick)
+                        }
+                    }
                 }
             }
 
             groupedContacts.forEach { (letter, contactsInGroup) ->
-                item { LetterHeader(letter) }
-                items(contactsInGroup, key = { it.id }) { contact ->
-                    ContactItemPick(contact, mimeType, onClick)
+                item(key = "pick-letter-header-$letter") { LetterHeader(letter) }
+                item(key = "pick-letter-card-$letter") {
+                    ContactSectionCard {
+                        contactsInGroup.forEachIndexed { idx, contact ->
+                            if (idx > 0) ContactRowDivider()
+                            ContactItemPick(contact, mimeType, onClick)
+                        }
+                    }
                 }
             }
         }
@@ -440,6 +463,35 @@ fun getAvatarColor(id: Long): Color {
     return colors[index]
 }
 
+/**
+ * Rounded surface that wraps an entire section's contacts (favorites, or one
+ * letter group) into a single visual card with internal dividers. The
+ * individual [ContactItem]s rendered inside should be passed
+ * `embeddedInCard = true` so they don't draw their own rounded background.
+ */
+@Composable
+fun ContactSectionCard(
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = containerColor,
+    ) {
+        Column { content() }
+    }
+}
+
+@Composable
+fun ContactRowDivider() {
+    androidx.compose.material3.HorizontalDivider(
+        modifier = Modifier.padding(start = 72.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+        thickness = 0.5.dp
+    )
+}
+
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -452,6 +504,7 @@ fun ContactItem(
     onLongClick: (() -> Unit)? = null,
     dropdownList: List<String>? = null,
     dropdownListClick: (Int) -> Unit = {},
+    embeddedInCard: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val combinedModifier = if (dropdownList == null) {
@@ -485,9 +538,22 @@ fun ContactItem(
         val hasDropdown = !dropdownList.isNullOrEmpty()
 
         key(showOrg, showGroups, contactGroups.size) {
+            val itemModifier = if (embeddedInCard) {
+                // Inside a ContactSectionCard the parent already clips and
+                // paints the background; the row is just a flat ListItem with
+                // a translucent selection highlight.
+                combinedModifier
+            } else {
+                combinedModifier
+                    .clip(RoundedCornerShape(16.dp, 16.dp, if(hasDropdown) 0.dp else 16.dp, if(hasDropdown) 0.dp else 16.dp))
+            }
+            val rowContainerColor = when {
+                isSelected -> MaterialTheme.colorScheme.primaryContainer
+                embeddedInCard -> Color.Transparent
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
             ListItem(
-                modifier = combinedModifier
-                    .clip(RoundedCornerShape(16.dp, 16.dp, if(hasDropdown) 0.dp else 16.dp, if(hasDropdown) 0.dp else 16.dp)),
+                modifier = itemModifier,
                 headlineContent = {
                     val nameString = if(contact.nickname.value.isNotBlank()) stringResource(R.string.name_nickname_format, contact.name.value, contact.nickname.value) else contact.name.value
                     Text(
@@ -565,11 +631,7 @@ fun ContactItem(
                 } else null,
 
                 colors = ListItemDefaults.colors(
-                    containerColor = if (isSelected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    }
+                    containerColor = rowContainerColor
                 )
             )
         }
