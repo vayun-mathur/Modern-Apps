@@ -21,7 +21,7 @@ data class LocationValue(
     val battery: Float,
     @PrimaryKey(autoGenerate = true) override val id: Long = 0
 ): DatabaseItem {
-    fun toCompatible(): LocationValueCompatible {
+    fun toCompatible(senderPlatform: String? = null): LocationValueCompatible {
         return LocationValueCompatible(
             userid = userid.toULong(),
             coord = coord,
@@ -30,7 +30,8 @@ data class LocationValue(
             timestamp = timestamp.toEpochMilliseconds(),
             battery = battery,
             sleep = false,
-            id = id.toULong()
+            id = id.toULong(),
+            senderPlatform = senderPlatform
         )
     }
 }
@@ -44,7 +45,9 @@ data class LocationValueCompatible(
     val acc: Float,
     val timestamp: Long,
     val battery: Float,
-    val sleep: Boolean? = null
+    val sleep: Boolean? = null,
+    /** Sender's platform tag (`"android"` or `"ios"`). Optional for backward compatibility. */
+    val senderPlatform: String? = null
 ) {
     fun toLocationValue(): LocationValue {
         return LocationValue(

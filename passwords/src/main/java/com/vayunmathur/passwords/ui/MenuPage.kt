@@ -22,7 +22,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.ListPage
-import com.vayunmathur.library.ui.BackupButtons
 import com.vayunmathur.library.util.tryOrDefault
 import com.vayunmathur.passwords.data.Password
 import com.vayunmathur.passwords.R
@@ -35,7 +34,6 @@ import com.vayunmathur.passwords.util.TOTP
 fun MenuPage(
     backStack: NavBackStack<Route>,
     viewModel: PasswordsViewModel,
-    passphrase: String,
 ) {
     val now by viewModel.tickerFlow.collectAsState()
     val passwords by viewModel.passwords.collectAsState()
@@ -43,12 +41,7 @@ fun MenuPage(
         Text(it.name.ifBlank {"(no name)"})
     }, {
         Text(it.userId)
-    }, { Route.PasswordPage(it) }, { Route.PasswordEditPage(0) }, Route.Settings, otherActions = {
-        BackupButtons(
-            dbConfigs = listOf("passwords-db" to passphrase),
-            extraFiles = emptyList()
-        )
-    }, trailingContent = {
+    }, { Route.PasswordPage(it) }, { Route.PasswordEditPage(0) }, Route.Settings, trailingContent = {
         if(it.totpSecret.isNullOrBlank()) return@ListPage
         val secret = it.totpSecret
         val timeBucket = now / 1000 / 30

@@ -4,6 +4,7 @@ import com.vayunmathur.findfamily.data.LocationValueCompatible
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.UserDao
+import com.vayunmathur.findfamily.uwb.UwbEnvelope
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.util.DataStoreUtils
 import dev.whyoleg.cryptography.CryptographyProvider
@@ -110,6 +111,9 @@ object Networking {
         }
     }
 
+    /** Local platform tag included in outgoing heartbeat payloads so the peer learns we're on Android. */
+    private const val PLATFORM = "android"
+
     suspend fun publishLocation(location: LocationValue, user: User): Boolean {
         val key = if(user.encryptionKey != null) {
             crypto.publicKeyDecoder(SHA512).decodeFromByteArray(RSA.PublicKey.Format.PEM,
@@ -133,20 +137,73 @@ object Networking {
 
     suspend fun receiveLocations(): List<LocationValue>? {
         val strings: List<String>? = makeRequest("/api/location/receive", "{\"userid\": $userid}")
-        return strings?.map { decryptLocation(it) }
+        return strings?.map { decryptLocation(it) }?.also { decoded ->
+            // Opportunistically update peer platform tags learned from incoming heartbeats.
+            decoded.forEach { (loc, platform) ->
+                if (platform != null) {
+                    val u = userDao.getAll().firstOrNull { it.id == loc.userid }
+                    if (u != null && u.platform != platform) {
+                        userDao.upsert(u.copy(platform = platform))
+                    }
+                }
+            }
+        }?.map { it.first }
+    }
+
+    // ----------------------------------------------------------------
+    // UWB session-setup channel
+    //
+    // Mirrors the location publish/receive flow but carries the small UWB
+    // handshake envelopes (request / ack / config / cancel) end-to-end
+    // encrypted. Each payload is at most a few hundred bytes; ranging samples
+    // themselves never touch the server.
+    // ----------------------------------------------------------------
+
+    suspend fun publishUwbMessage(envelope: UwbEnvelope, recipientUserId: Long, recipient: User? = null): Boolean {
+        val key = if (recipient?.encryptionKey != null) {
+            crypto.publicKeyDecoder(SHA512).decodeFromByteArray(
+                RSA.PublicKey.Format.PEM,
+                Base64.decode(recipient.encryptionKey)
+            )
+        } else {
+            getKey(recipientUserId) ?: return false
+        }
+        val cipher = key.encryptor()
+        val str = json.encodeToString(envelope)
+        val encryptedData = Base64.encode(cipher.encrypt(str.encodeToByteArray()))
+        return makeRequest<Boolean, LocationSharingData>(
+            "/api/uwb/publish",
+            LocationSharingData(recipientUserId.toULong(), encryptedData)
+        ) ?: false
+    }
+
+    /**
+     * Drains incoming UWB envelopes addressed to this user. The server queue
+     * is cleared on receive (same semantics as `/api/location/receive`).
+     */
+    suspend fun receiveUwbMessages(): List<UwbEnvelope>? {
+        val strings: List<String>? = makeRequest("/api/uwb/receive", "{\"userid\": $userid}")
+        val cipher = privatekey?.decryptor() ?: return null
+        return strings?.mapNotNull { b64 ->
+            runCatching {
+                val plain = cipher.decrypt(Base64.decode(b64)).decodeToString()
+                json.decodeFromString<UwbEnvelope>(plain)
+            }.getOrNull()
+        }
     }
 
     private suspend fun encryptLocation(location: LocationValue, recipientUserID: Long, key: RSA.OAEP.PublicKey): LocationSharingData {
         val cipher = key.encryptor()
-        val str = json.encodeToString(location.toCompatible())
+        val str = json.encodeToString(location.toCompatible(senderPlatform = PLATFORM))
         val encryptedData = Base64.encode(cipher.encrypt(str.encodeToByteArray()))
         return LocationSharingData(recipientUserID.toULong(), encryptedData)
     }
 
-    private suspend fun decryptLocation(encryptedLocation: String): LocationValue {
+    private suspend fun decryptLocation(encryptedLocation: String): Pair<LocationValue, String?> {
         val cipher = privatekey!!.decryptor()
         val decryptedData = cipher.decrypt(Base64.decode(encryptedLocation)).decodeToString()
-        return json.decodeFromString<LocationValueCompatible>(decryptedData).toLocationValue()
+        val compat = json.decodeFromString<LocationValueCompatible>(decryptedData)
+        return compat.toLocationValue() to compat.senderPlatform
     }
 
     suspend fun generateKeyPair(): RSA.OAEP.KeyPair {

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.passwords.R
 import androidx.compose.ui.unit.dp
+import com.vayunmathur.library.ui.BackupButtons
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.passwords.util.PasswordsViewModel
 
@@ -32,6 +33,7 @@ import com.vayunmathur.passwords.util.PasswordsViewModel
 fun SettingsPage(
     backStack: com.vayunmathur.library.util.NavBackStack<com.vayunmathur.passwords.Route>,
     passwordsViewModel: PasswordsViewModel,
+    passphrase: String,
 ) {
     val importing by passwordsViewModel.importing.collectAsState()
     val message by passwordsViewModel.importMessage.collectAsState()
@@ -41,9 +43,16 @@ fun SettingsPage(
     }
 
     Scaffold(Modifier, {
-        TopAppBar({ Text(stringResource(R.string.title_settings)) }, navigationIcon = {
-            IconNavigation(backStack)
-        })
+        TopAppBar(
+            { Text(stringResource(R.string.title_settings)) },
+            navigationIcon = { IconNavigation(backStack) },
+            actions = {
+                BackupButtons(
+                    dbConfigs = listOf("passwords-db" to passphrase),
+                    extraFiles = emptyList(),
+                )
+            },
+        )
     }) { paddingValues ->
         Column(Modifier
             .padding(paddingValues)

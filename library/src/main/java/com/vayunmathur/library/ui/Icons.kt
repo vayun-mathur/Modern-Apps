@@ -227,3 +227,8 @@ fun IconMail(modifier: Modifier = Modifier, tint: Color = LocalContentColor.curr
 fun IconDownload(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) {
     Icon(painterResource(R.drawable.outline_file_download_24), "Download", modifier = modifier, tint = tint)
 }
+
+@Composable
+fun IconNavigationArrow(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) {
+    Icon(painterResource(R.drawable.navigation_24px), "Navigation arrow", modifier = modifier, tint = tint)
+}

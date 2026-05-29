@@ -24,6 +24,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,6 +41,7 @@ import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.ui.MainPage
+import com.vayunmathur.findfamily.ui.UwbRangingScreen
 import com.vayunmathur.findfamily.ui.dialogs.AddLinkDialog
 import com.vayunmathur.findfamily.ui.dialogs.AddPersonDialog
 import com.vayunmathur.library.ui.DynamicTheme
@@ -59,6 +61,11 @@ import com.vayunmathur.findfamily.util.FindFamilyViewModelFactory
 import com.vayunmathur.findfamily.util.Platform
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        /** Extra key for launching directly into [Route.UwbRangingPage] via notification tap. */
+        const val EXTRA_UWB_PEER_ID = "com.vayunmathur.findfamily.EXTRA_UWB_PEER_ID"
+    }
+
     private lateinit var userDao: com.vayunmathur.findfamily.data.UserDao
     private lateinit var waypointDao: com.vayunmathur.findfamily.data.WaypointDao
     private lateinit var locationValueDao: com.vayunmathur.findfamily.data.LocationValueDao
@@ -101,7 +108,12 @@ class MainActivity : ComponentActivity() {
                         onBackgroundGranted = { ffViewModel.refreshPermissions() }
                     )
                 } else {
-                    Navigation(platform, ffViewModel, ffViewModel.missingFeatures)
+                    val deepLinkPeerId = remember {
+                        intent?.takeIf { it.hasExtra(EXTRA_UWB_PEER_ID) }
+                            ?.getLongExtra(EXTRA_UWB_PEER_ID, -1L)
+                            ?.takeIf { it != -1L }
+                    }
+                    Navigation(platform, ffViewModel, ffViewModel.missingFeatures, deepLinkPeerId)
                 }
             }
         }
@@ -223,6 +235,10 @@ sealed interface Route: NavKey {
 
     @Serializable
     data object MissingFeaturesDialog: Route
+
+    /** UWB Precision Finding screen for the given peer. Full screen (no DialogPage metadata). */
+    @Serializable
+    data class UwbRangingPage(val userId: Long): Route
 }
 
 @Composable
@@ -230,12 +246,19 @@ fun Navigation(
     platform: Platform,
     ffViewModel: FindFamilyViewModel,
     showMissingFeatures: Boolean,
+    deepLinkUwbPeerId: Long? = null,
 ) {
     val backStack = rememberNavBackStack<Route>(Route.MainPage())
 
     LaunchedEffect(showMissingFeatures) {
         if (showMissingFeatures) {
             backStack.add(Route.MissingFeaturesDialog)
+        }
+    }
+
+    LaunchedEffect(deepLinkUwbPeerId) {
+        if (deepLinkUwbPeerId != null) {
+            backStack.add(Route.UwbRangingPage(deepLinkUwbPeerId))
         }
     }
 
@@ -255,6 +278,9 @@ fun Navigation(
         }
         entry<Route.MissingFeaturesDialog>(metadata = DialogPage()) {
             MissingFeaturesDialog(backStack)
+        }
+        entry<Route.UwbRangingPage> {
+            UwbRangingScreen(backStack, ffViewModel, it.userId)
         }
     }
 }

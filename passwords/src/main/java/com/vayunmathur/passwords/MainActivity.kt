@@ -76,7 +76,7 @@ fun Navigation(
     val backStack = rememberNavBackStack<Route>(Route.Menu)
     MainNavigation(backStack) {
         entry<Route.Menu>(metadata = ListPage()) {
-            MenuPage(backStack, passwordsViewModel, passphrase)
+            MenuPage(backStack, passwordsViewModel)
         }
         entry<Route.PasswordPage>(metadata = ListDetailPage()) {
             PasswordPage(backStack, it.id, passwordsViewModel)
@@ -85,7 +85,7 @@ fun Navigation(
             PasswordEditPage(backStack, it.id, passwordsViewModel)
         }
         entry<Route.Settings>(metadata = ListDetailPage()) {
-            SettingsPage(backStack, passwordsViewModel)
+            SettingsPage(backStack, passwordsViewModel, passphrase)
         }
     }
 }

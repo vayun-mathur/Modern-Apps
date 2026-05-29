@@ -26,7 +26,9 @@ data class User(
     val encryptionKey: String? = null,
 
     @PrimaryKey(autoGenerate = true) override val id: Long = 0,
-    val lastWaypointId: Long? = null
+    val lastWaypointId: Long? = null,
+    /** Peer device platform (`"android"` or `"ios"`), learned from heartbeat payloads. Null until first heartbeat after both sides upgrade. */
+    val platform: String? = null
 ): DatabaseItem {
     companion object {
         val EMPTY = User(" ", null, "Unnamed Location", true, RequestStatus.MUTUAL_CONNECTION, Clock.System.now(), null)

@@ -61,6 +61,7 @@ import kotlin.time.Duration.Companion.days
  *  - cached feature-availability check (network provider + geocoder)
  *  - networking-backed writes invoked from dialogs (temporary-link creation,
  *    add/accept person)
+ *  - UWB Precision Finding session state and handshake
  *  - one-time startup work previously triggered from composables (sync job,
  *    self-user registration, week-old location cleanup)
  */
@@ -146,21 +147,10 @@ class FindFamilyViewModel(
     private val _historicalPosition = MutableStateFlow<Position?>(null)
     val historicalPosition: StateFlow<Position?> = _historicalPosition.asStateFlow()
 
-    fun setSelectedUserId(id: Long?) {
-        _selectedUserId.value = id
-    }
-
-    fun setSelectedWaypointId(id: Long?) {
-        _selectedWaypointId.value = id
-    }
-
-    fun setShowingPresent(value: Boolean) {
-        _isShowingPresent.value = value
-    }
-
-    fun setHistoricalPosition(position: Position?) {
-        _historicalPosition.value = position
-    }
+    fun setSelectedUserId(id: Long?) { _selectedUserId.value = id }
+    fun setSelectedWaypointId(id: Long?) { _selectedWaypointId.value = id }
+    fun setShowingPresent(value: Boolean) { _isShowingPresent.value = value }
+    fun setHistoricalPosition(position: Position?) { _historicalPosition.value = position }
 
     fun selectUser(userId: Long) {
         _selectedUserId.value = userId
@@ -196,17 +186,9 @@ class FindFamilyViewModel(
     private val _waypointCoord = MutableStateFlow(Coord(0.0, 0.0))
     val waypointCoord: StateFlow<Coord> = _waypointCoord.asStateFlow()
 
-    fun setWaypointName(name: String) {
-        _waypointName.value = name
-    }
-
-    fun setWaypointRange(range: String) {
-        _waypointRange.value = range
-    }
-
-    fun setWaypointCoord(coord: Coord) {
-        _waypointCoord.value = coord
-    }
+    fun setWaypointName(name: String) { _waypointName.value = name }
+    fun setWaypointRange(range: String) { _waypointRange.value = range }
+    fun setWaypointCoord(coord: Coord) { _waypointCoord.value = coord }
 
     /** Begin creating a brand-new waypoint with sensible defaults. */
     fun beginCreateWaypoint() {
@@ -328,6 +310,30 @@ class FindFamilyViewModel(
             temporaryLinkDao.upsert(newLink)
             withContext(Dispatchers.Main) { onDone() }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // UWB Precision Finding
+    //
+    // The session lifecycle is owned by the process-global UwbSessionManager
+    // (hosted by LocationTrackingService so it can auto-accept incoming
+    // requests in the background). This VM is a thin façade so the UI can
+    // observe state and trigger initiator/stop actions.
+    // ------------------------------------------------------------------
+
+    val uwbSession: StateFlow<UwbSessionManager.UwbSessionState> = UwbSessionManager.state
+
+    /** The peer this session is currently with (initiator OR responder), if any. */
+    val uwbPeerUserId: StateFlow<Long?> = UwbSessionManager.peerUserId
+
+    /** User tapped "Find with Precision" on the given peer. */
+    fun startRanging(peerUserId: Long) {
+        UwbSessionManager.startAsInitiator(peerUserId)
+    }
+
+    /** User dismissed the Precision Finding screen. */
+    fun stopRanging() {
+        UwbSessionManager.stop()
     }
 
     // ------------------------------------------------------------------

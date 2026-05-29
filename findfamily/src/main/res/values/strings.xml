@@ -117,4 +117,18 @@
 
     <!-- Settings -->
     <string name="settings">Settings</string>
+
+    <!-- UWB Precision Finding -->
+    <string name="notification_channel_uwb_request_name">Precision Find Requests</string>
+    <string name="notification_channel_uwb_request_desc">Someone is using Precision Finding to locate you</string>
+    <string name="notification_uwb_request_title">Someone is finding you</string>
+    <string name="notification_uwb_request_text">%1$s is using Precision Finding. Tap to see distance and direction.</string>
+    <string name="uwb_action_find_precision">Find with Precision</string>
+    <string name="uwb_unknown_peer_name">Someone</string>
+    <string name="uwb_status_starting">Setting up Precision Finding…</string>
+    <string name="uwb_status_waiting">Waiting for the other device…</string>
+    <string name="uwb_status_peer_disconnected">Lost the other device. Move closer.</string>
+    <string name="uwb_status_unsupported">Precision Finding isn\'t supported on this device.</string>
+    <string name="uwb_status_failed">Precision Finding failed.</string>
+    <string name="uwb_direction_unavailable_hint">Move your phone around to find a direction signal</string>
 </resources>

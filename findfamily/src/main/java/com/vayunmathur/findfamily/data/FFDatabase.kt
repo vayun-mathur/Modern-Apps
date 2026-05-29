@@ -89,7 +89,7 @@ interface TemporaryLinkDao {
     suspend fun delete(value: TemporaryLink): Int
 }
 
-@Database(entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class], version = 4)
+@Database(entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class], version = 5)
 @TypeConverters(DefaultConverters::class)
 abstract class FFDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
@@ -110,6 +110,9 @@ abstract class FFDatabase : RoomDatabase() {
             },
             androidx.room.migration.Migration(3, 4) {
                 it.execSQL("ALTER TABLE `User` ADD COLUMN `lastWaypointId` INTEGER")
+            },
+            androidx.room.migration.Migration(4, 5) {
+                it.execSQL("ALTER TABLE `User` ADD COLUMN `platform` TEXT")
             }
         )
     }

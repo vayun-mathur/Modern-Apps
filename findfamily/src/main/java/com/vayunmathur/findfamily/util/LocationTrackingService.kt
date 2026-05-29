@@ -39,6 +39,9 @@ import com.vayunmathur.findfamily.data.UserDao
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.WaypointDao
 import com.vayunmathur.findfamily.data.havershine
+import com.vayunmathur.findfamily.uwb.UwbEnvelope
+import com.vayunmathur.findfamily.uwb.UwbEnvelopeKind
+import com.vayunmathur.findfamily.uwb.UwbInbox
 import com.vayunmathur.findfamily.MainActivity
 import com.vayunmathur.findfamily.Migration_1_2
 import com.vayunmathur.findfamily.Migration_2_3
@@ -209,6 +212,20 @@ class LocationTrackingService : Service(), SensorEventListener {
                 }
                 locationValueDao.upsertAll(locations)
             }
+
+            // 4. Drain the UWB session-setup channel. Each envelope is published
+            //    onto UwbInbox so an open Precision Finding screen can react; if
+            //    the envelope is a REQUEST and the screen isn't open, post a
+            //    notification offering to launch it.
+            Networking.receiveUwbMessages()?.forEach { envelope ->
+                UwbInbox.tryEmit(envelope)
+                if (envelope.kind == UwbEnvelopeKind.REQUEST) {
+                    val senderId = envelope.sender.toLong()
+                    val senderName = currentUsers.firstOrNull { it.id == senderId }?.name
+                        ?: getString(R.string.uwb_unknown_peer_name)
+                    createUwbRequestNotification(senderName, senderId)
+                }
+            }
         }
     }
 
@@ -266,6 +283,12 @@ class LocationTrackingService : Service(), SensorEventListener {
                 locationValueDao = db.locationValueDao()
                 temporaryLinkDao = db.temporaryLinkDao()
                 Networking.init(userDao, DataStoreUtils.getInstance(this@LocationTrackingService))
+
+                // Hoist the UWB ranging session into this foreground service
+                // so we can auto-accept incoming Precision Finding requests
+                // (and keep the session alive) without the user having to
+                // bring the app to foreground first. See UwbSessionManager.
+                UwbSessionManager.init(this@LocationTrackingService, userDao)
 
                 withContext(Dispatchers.Main) {
                     registerSensors()
@@ -341,6 +364,7 @@ class LocationTrackingService : Service(), SensorEventListener {
         private const val CHANNEL_ID = "location_tracking_channel"
         private const val BATTERY_CHANNEL_ID = "battery_channel"
         private const val ENTRY_EXIT_CHANNEL_ID = "entry_exit_channel"
+        private const val UWB_REQUEST_CHANNEL_ID = "uwb_request_channel"
         private const val NOTIFICATION_ID = 101
     }
 
@@ -372,10 +396,19 @@ class LocationTrackingService : Service(), SensorEventListener {
             description = getString(R.string.notification_channel_entry_exit_desc)
         }
 
+        // 4. UWB Precision Finding Request Channel
+        val uwbChannel = NotificationChannel(
+            UWB_REQUEST_CHANNEL_ID,
+            getString(R.string.notification_channel_uwb_request_name),
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = getString(R.string.notification_channel_uwb_request_desc)
+        }
+
         // Register all channels
 
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannels(listOf(channel, batteryChannel, arrivalChannel))
+        manager.createNotificationChannels(listOf(channel, batteryChannel, arrivalChannel, uwbChannel))
 
         // 2. Create an Intent to open the app when the notification is clicked
         val pendingIntent = PendingIntent.getActivity(
@@ -414,6 +447,31 @@ class LocationTrackingService : Service(), SensorEventListener {
         // Stable per-(user, category) ID so repeat notifications replace rather than stack.
         val notificationId = "$userId::$category".hashCode()
         manager.notify(notificationId, notification)
+    }
+
+    /**
+     * Notification fired when an incoming UWB Precision Finding request arrives
+     * via the heartbeat. Tapping it opens MainActivity with a deep link to the
+     * ranging screen for the requesting user.
+     */
+    private fun createUwbRequestNotification(senderName: String, senderId: Long) {
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            putExtra(MainActivity.EXTRA_UWB_PEER_ID, senderId)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pi = PendingIntent.getActivity(
+            this, senderId.hashCode(), openIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val n = NotificationCompat.Builder(this, UWB_REQUEST_CHANNEL_ID)
+            .setContentTitle(getString(R.string.notification_uwb_request_title))
+            .setContentText(getString(R.string.notification_uwb_request_text, senderName))
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setAutoCancel(true)
+            .setContentIntent(pi)
+            .build()
+        manager.notify("$senderId::UWB_REQUEST".hashCode(), n)
     }
 
     private fun startGps() {

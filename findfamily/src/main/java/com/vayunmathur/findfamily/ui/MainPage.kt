@@ -83,6 +83,7 @@ import com.vayunmathur.library.ui.IconCopy
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.ui.IconNavigationArrow
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.NavBackStack
@@ -176,6 +177,11 @@ fun MainPage(
                     } else if (selectedUserId != null) {
                         if (selectedUserId != Networking.userid) {
                             val user by ffViewModel.userByIdState(selectedUserId!!)
+                            IconButton({
+                                backStack.add(Route.UwbRangingPage(selectedUserId!!))
+                            }) {
+                                IconNavigationArrow()
+                            }
                             IconButton({
                                 ffViewModel.deleteUser(user)
                                 ffViewModel.setSelectedUserId(null)
