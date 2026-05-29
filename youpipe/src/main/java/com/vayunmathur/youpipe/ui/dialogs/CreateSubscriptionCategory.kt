@@ -77,7 +77,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, viewModel: Databa
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(subscription.avatarURL)
-                                    .memoryCacheKey("sub-avatar-${'$'}{subscription.id}")
+                                    .memoryCacheKey("sub-avatar-${subscription.id}")
                                     .build(),
                                 contentDescription = null,
                                 Modifier.size(24.dp).clip(CircleShape)

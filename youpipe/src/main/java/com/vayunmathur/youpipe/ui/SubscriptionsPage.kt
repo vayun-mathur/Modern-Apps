@@ -110,7 +110,7 @@ fun SubscriptionsPage(
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(it.avatarURL)
-                            .memoryCacheKey("sub-avatar-${'$'}{it.id}")
+                            .memoryCacheKey("sub-avatar-${it.id}")
                             .build(),
                         contentDescription = null,
                         Modifier.size(24.dp).clip(CircleShape)

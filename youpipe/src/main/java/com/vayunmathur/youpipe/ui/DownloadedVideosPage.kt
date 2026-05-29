@@ -89,7 +89,7 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseView
     ) { paddingValues ->
         LazyColumn(Modifier.padding(paddingValues)) {
             // Active downloads
-            items(activeDownloads.toList()) { (videoID, status) ->
+            items(activeDownloads.toList(), key = { (videoID, _) -> "active-$videoID" }) { (videoID, status) ->
                 val isSelected = videoID in selectedActiveIds
                 val itemModifier = Modifier.combinedClickable(
                     onClick = {
@@ -117,7 +117,7 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, viewModel: DatabaseView
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(status.videoInfo.thumbnailURL)
-                                    .memoryCacheKey("dl-thumb-${'$'}{status.id}")
+                                    .memoryCacheKey("dl-thumb-$videoID")
                                     .build(),
                                 contentDescription = null,
                                 modifier = Modifier.size(80.dp, 45.dp).clip(RoundedCornerShape(8.dp)),

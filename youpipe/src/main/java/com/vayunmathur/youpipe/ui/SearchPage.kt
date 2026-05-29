@@ -114,7 +114,7 @@ fun ChannelItem(backStack: NavBackStack<Route>, channelInfo: ChannelInfo) {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(channelInfo.avatar)
-                .memoryCacheKey("channel-avatar-${'$'}{channelInfo.channelID}")
+                .memoryCacheKey("channel-avatar-${channelInfo.channelID}")
                 .build(),
             contentDescription = null,
             Modifier.size(50.dp).clip(CircleShape)

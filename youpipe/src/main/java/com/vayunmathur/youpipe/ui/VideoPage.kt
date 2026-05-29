@@ -383,7 +383,7 @@ fun VideoDetails(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(videoData.authorThumbnail)
-                    .memoryCacheKey("author-thumb-${'$'}{videoData.authorURL}")
+                    .memoryCacheKey("author-thumb-${videoData.authorURL}")
                     .build(),
                 contentDescription = null,
                 Modifier.size(32.dp).clip(CircleShape).clickable{

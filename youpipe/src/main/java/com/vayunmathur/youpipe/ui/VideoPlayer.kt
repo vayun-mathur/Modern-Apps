@@ -470,7 +470,7 @@ fun VideoPlayer(
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(chapter.previewURL)
-                                        .memoryCacheKey("chapter-${'$'}{chapter.time}")
+                                        .memoryCacheKey("chapter-${chapter.time}")
                                         .build(),
                                     contentDescription = null,
                                     modifier = Modifier.width(120.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(4.dp)).background(Color.DarkGray),

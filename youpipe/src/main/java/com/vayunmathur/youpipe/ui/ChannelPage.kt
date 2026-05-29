@@ -136,7 +136,7 @@ fun VideoItem(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(videoInfo.thumbnailURL)
-                        .memoryCacheKey("video-thumb-${'$'}{videoInfo.videoID}")
+                        .memoryCacheKey("video-thumb-${videoInfo.videoID}")
                         .build(),
                     contentDescription = null,
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f)
@@ -182,7 +182,7 @@ fun ChannelHeader(channelInfo: ChannelInfo) {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(channelInfo.avatar)
-                .memoryCacheKey("channel-avatar-${'$'}{channelInfo.channelID}")
+                .memoryCacheKey("channel-avatar-${channelInfo.channelID}")
                 .build(),
             contentDescription = null,
             Modifier.size(52.dp).clip(CircleShape)
