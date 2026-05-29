@@ -28,9 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,18 +43,15 @@ import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.aggregate.AggregationResult
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
 import androidx.health.connect.client.records.NutritionRecord
+import com.vayunmathur.health.util.MainPageMetrics
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.library.ui.invisibleClickable
 import com.vayunmathur.library.util.round
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
@@ -70,28 +65,9 @@ val JSON = kotlinx.serialization.json.Json {
 
 @OptIn(ExperimentalPersonalHealthRecordApi::class)
 @Composable
-fun MainPage(backStack: NavBackStack<Route>) {
+fun MainPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     val today = now.date
-
-    // Health Metrics States (Point-in-time)
-    var br by remember { mutableStateOf<Double?>(null) }
-    var spo2 by remember { mutableStateOf<Double?>(null) }
-    var hrv by remember { mutableStateOf<Double?>(null) }
-    var rhr by remember { mutableStateOf<Long?>(null) }
-    var skinTemp by remember { mutableStateOf<Double?>(null) }
-    var vo2Max by remember { mutableStateOf<Double?>(null) }
-    var bloodGlucose by remember { mutableStateOf<Double?>(null) }
-    var bloodPressure by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-    var sleepMinutes by remember { mutableStateOf<Long?>(null) }
-
-    // Body Measurement States
-    var height by remember { mutableStateOf<Double?>(null) }
-    var weight by remember { mutableStateOf<Double?>(null) }
-    var bodyFat by remember { mutableStateOf<Double?>(null) }
-    var boneMass by remember { mutableStateOf<Double?>(null) }
-    var leanBodyMass by remember { mutableStateOf<Double?>(null) }
-    var bodyWaterMass by remember { mutableStateOf<Double?>(null) }
 
     val dayRange = remember(today) {
         val start = today.atStartOfDayIn(TimeZone.currentSystemDefault())
@@ -100,70 +76,38 @@ fun MainPage(backStack: NavBackStack<Route>) {
     val dayStart = dayRange.first
     val dayEnd = dayRange.second
 
-    val totalCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesTotal, dayStart, dayEnd).let { f -> remember(f) { f.map { it.toLong() } } }.collectAsState(0L)
-    val activeCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesActive, dayStart, dayEnd).let { f -> remember(f) { f.map { it.toLong() } } }.collectAsState(0L)
-    val basalCaloriesBurnedToday by HealthAPI.sumInRange(RecordType.CaloriesBasal, dayStart, dayEnd).let { f -> remember(f) { f.map { it.toLong() } } }.collectAsState(0L)
-    val stepsToday by HealthAPI.sumInRange(RecordType.Steps, dayStart, dayEnd).let { f -> remember(f) { f.map { it.toLong() } } }.collectAsState(0L)
-    val wheelchairPushesToday by HealthAPI.sumInRange(RecordType.Wheelchair, dayStart, dayEnd).let { f -> remember(f) { f.map { it.toLong() } } }.collectAsState(0L)
-    val mindfulnessToday by HealthAPI.sumInRange(RecordType.Mindfulness, dayStart, dayEnd).let { f -> remember(f) { f.map { it.toLong() } } }.collectAsState(0L)
-    val distanceToday by HealthAPI.sumInRange(RecordType.Distance, dayStart, dayEnd).collectAsState(0.0)
-    val floorsClimbedToday by HealthAPI.sumInRange(RecordType.Floors, dayStart, dayEnd).collectAsState(0.0)
-    val elevationGainedToday by HealthAPI.sumInRange(RecordType.Elevation, dayStart, dayEnd).collectAsState(0.0)
+    val totalCaloriesBurnedToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.CaloriesTotal, dayStart, dayEnd).map { it.toLong() } }.collectAsState(0L)
+    val activeCaloriesBurnedToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.CaloriesActive, dayStart, dayEnd).map { it.toLong() } }.collectAsState(0L)
+    val basalCaloriesBurnedToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.CaloriesBasal, dayStart, dayEnd).map { it.toLong() } }.collectAsState(0L)
+    val stepsToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.Steps, dayStart, dayEnd).map { it.toLong() } }.collectAsState(0L)
+    val wheelchairPushesToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.Wheelchair, dayStart, dayEnd).map { it.toLong() } }.collectAsState(0L)
+    val mindfulnessToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.Mindfulness, dayStart, dayEnd).map { it.toLong() } }.collectAsState(0L)
+    val distanceToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.Distance, dayStart, dayEnd) }.collectAsState(0.0)
+    val floorsClimbedToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.Floors, dayStart, dayEnd) }.collectAsState(0.0)
+    val elevationGainedToday by remember(dayStart, dayEnd) { viewModel.sumInRange(RecordType.Elevation, dayStart, dayEnd) }.collectAsState(0.0)
 
-    val heartRateMaxToday by HealthAPI.maxInRange(RecordType.HeartRate, dayStart, dayEnd).let { f -> remember(f) { f.map{it?.toLong() ?: 0L} } }.collectAsState(0L)
-    val heartRateMinToday by HealthAPI.minInRange(RecordType.HeartRate, dayStart, dayEnd).let { f -> remember(f) { f.map{it?.toLong() ?: 0L} } }.collectAsState(0L)
+    val heartRateMaxToday by remember(dayStart, dayEnd) { viewModel.maxInRange(RecordType.HeartRate, dayStart, dayEnd).map { it?.toLong() ?: 0L } }.collectAsState(0L)
+    val heartRateMinToday by remember(dayStart, dayEnd) { viewModel.minInRange(RecordType.HeartRate, dayStart, dayEnd).map { it?.toLong() ?: 0L } }.collectAsState(0L)
+
+    val metrics: MainPageMetrics by viewModel.mainPageMetrics.collectAsState()
+    val br = metrics.br
+    val spo2 = metrics.spo2
+    val hrv = metrics.hrv
+    val rhr = metrics.rhr
+    val skinTemp = metrics.skinTemp
+    val vo2Max = metrics.vo2Max
+    val bloodGlucose = metrics.bloodGlucose
+    val bloodPressure = metrics.bloodPressure
+    val sleepMinutes = metrics.sleepMinutes
+    val height = metrics.height
+    val weight = metrics.weight
+    val bodyFat = metrics.bodyFat
+    val boneMass = metrics.boneMass
+    val leanBodyMass = metrics.leanBodyMass
+    val bodyWaterMass = metrics.bodyWaterMass
 
     LaunchedEffect(today) {
-        // 2. Fetch Latest Records (Point-in-time metrics) in parallel
-        withContext(Dispatchers.IO) {
-            coroutineScope {
-                val spo2D = async { HealthAPI.lastRecord(RecordType.OxygenSaturation)?.value }
-                val brD = async { HealthAPI.lastRecord(RecordType.RespiratoryRate)?.value }
-                val hrvD = async { HealthAPI.lastRecord(RecordType.HeartRateVariabilityRmssd)?.value }
-                val rhrD = async { HealthAPI.lastRecord(RecordType.RestingHeartRate)?.value?.toLong() }
-                val skinTempD = async { HealthAPI.lastRecord(RecordType.SkinTemperature)?.value }
-                val vo2MaxD = async { HealthAPI.lastRecord(RecordType.Vo2Max)?.value }
-                val bloodGlucoseD = async { HealthAPI.lastRecord(RecordType.BloodGlucose)?.value }
-                val bloodPressureD = async {
-                    HealthAPI.lastRecord(RecordType.BloodPressure)?.let {
-                        it.value to it.secondaryValue
-                    }
-                }
-                val sleepD = async {
-                    HealthAPI.lastRecord(RecordType.Sleep)?.let { record ->
-                        val endLocal = record.endTime.atZone(java.time.ZoneId.systemDefault())
-                        val todayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
-                        if (record.endTime.isAfter(todayStart.minus(java.time.Duration.ofHours(12)))) {
-                            (record.value * 60).toLong()
-                        } else {
-                            null
-                        }
-                    }
-                }
-                val heightD = async { HealthAPI.lastRecord(RecordType.Height)?.value }
-                val weightD = async { HealthAPI.lastRecord(RecordType.Weight)?.value }
-                val bodyFatD = async { HealthAPI.lastRecord(RecordType.BodyFat)?.value }
-                val boneMassD = async { HealthAPI.lastRecord(RecordType.BoneMass)?.value }
-                val leanBodyMassD = async { HealthAPI.lastRecord(RecordType.LeanBodyMass)?.value }
-                val bodyWaterMassD = async { HealthAPI.lastRecord(RecordType.BodyWaterMass)?.value }
-
-                spo2 = spo2D.await()
-                br = brD.await()
-                hrv = hrvD.await()
-                rhr = rhrD.await()
-                skinTemp = skinTempD.await()
-                vo2Max = vo2MaxD.await()
-                bloodGlucose = bloodGlucoseD.await()
-                bloodPressure = bloodPressureD.await()
-                sleepMinutes = sleepD.await()
-                height = heightD.await()
-                weight = weightD.await()
-                bodyFat = bodyFatD.await()
-                boneMass = boneMassD.await()
-                leanBodyMass = leanBodyMassD.await()
-                bodyWaterMass = bodyWaterMassD.await()
-            }
-        }
+        viewModel.loadMainPageMetrics()
     }
 
     Scaffold { paddingValues ->

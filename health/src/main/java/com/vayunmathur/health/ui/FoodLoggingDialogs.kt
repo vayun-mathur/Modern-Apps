@@ -24,21 +24,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.data.Ingredient
-import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.data.Recipe
-import com.vayunmathur.health.data.Record
-import com.vayunmathur.health.data.RecordType
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import java.time.Instant
-import java.util.UUID
-import kotlinx.coroutines.launch
 
 enum class HydrationUnit(val displayName: String, val toLiters: Double) {
     Liters("Liters", 1.0),
@@ -49,11 +43,10 @@ enum class HydrationUnit(val displayName: String, val toLiters: Double) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogHydrationDialog(initialTime: Instant? = null, onDismiss: () -> Unit) {
+fun LogHydrationDialog(viewModel: HealthViewModel, initialTime: Instant? = null, onDismiss: () -> Unit) {
     var quantityStr by remember { mutableStateOf("") }
     var selectedUnit by remember { mutableStateOf(HydrationUnit.Liters) }
     var unitExpanded by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     val quantity = quantityStr.toDoubleOrNull()
     val isValid = quantity != null && quantity > 0
@@ -113,26 +106,9 @@ fun LogHydrationDialog(initialTime: Instant? = null, onDismiss: () -> Unit) {
                         enabled = isValid,
                         onClick = {
                             if (quantity != null) {
-                                scope.launch {
-                                    val time = initialTime ?: Instant.now()
-                                    val record =
-                                            Record(
-                                                    id = UUID.randomUUID().toString(),
-                                                    index = 0,
-                                                    type = RecordType.Hydration,
-                                                    startTime = time,
-                                                    endTime = time,
-                                                    value =
-                                                            quantity *
-                                                                    selectedUnit
-                                                                            .toLiters, // Convert to
-                                                    // Liters
-                                                    metadata = "Hydration"
-                                            )
-                                    HealthAPI.db.healthDao().upsert(listOf(record))
-                                    HealthAPI.writeHealthRecord(record)
-                                    onDismiss()
-                                }
+                                val time = initialTime ?: Instant.now()
+                                viewModel.logHydration(quantity * selectedUnit.toLiters, time)
+                                onDismiss()
                             }
                         }
                 ) { Text("Save") }
@@ -158,10 +134,9 @@ sealed class Loggable {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogMealDialog(initialTime: Instant? = null, onDismiss: () -> Unit) {
-    val recipes by HealthAPI.db.healthDao().getAllRecipesFlow().collectAsState(emptyList())
-    val ingredientRecipes by
-            HealthAPI.db.healthDao().getIngredientsAsRecipesFlow().collectAsState(emptyList())
+fun LogMealDialog(viewModel: HealthViewModel, initialTime: Instant? = null, onDismiss: () -> Unit) {
+    val recipes by viewModel.allRecipes.collectAsState(emptyList())
+    val ingredientRecipes by viewModel.ingredientsAsRecipes.collectAsState(emptyList())
 
     val allLoggables =
             remember(recipes, ingredientRecipes) {
@@ -172,7 +147,6 @@ fun LogMealDialog(initialTime: Instant? = null, onDismiss: () -> Unit) {
     var selectedLoggable by remember { mutableStateOf<Loggable?>(null) }
     var quantityStr by remember { mutableStateOf("1") }
     var expanded by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     val quantity = quantityStr.toDoubleOrNull()
     val isValid = selectedLoggable != null && quantity != null && quantity > 0
@@ -245,126 +219,18 @@ fun LogMealDialog(initialTime: Instant? = null, onDismiss: () -> Unit) {
                 Button(
                         enabled = isValid,
                         onClick = {
-                            if (quantity != null && selectedLoggable != null) {
-                                scope.launch {
-                                    val time = initialTime ?: Instant.now()
-                                    val nutrition: NutritionData =
-                                            when (val loggable = selectedLoggable!!) {
-                                                is Loggable.RecipeWrapper -> {
-                                                    val ingredients =
-                                                            HealthAPI.db
-                                                                    .healthDao()
-                                                                    .getIngredientsForRecipe(
-                                                                            loggable.id
-                                                                    )
-                                                    var protein = 0.0
-                                                    var carbs = 0.0
-                                                    var fat = 0.0
-                                                    var fiber = 0.0
-                                                    var sugar = 0.0
-                                                    var sodium = 0.0
-                                                    var kcal = 0.0
-
-                                                    ingredients.forEach { ri ->
-                                                        val ing =
-                                                                HealthAPI.db
-                                                                        .healthDao()
-                                                                        .getIngredient(
-                                                                                ri.ingredientId
-                                                                        )
-                                                        if (ing != null) {
-                                                            val units =
-                                                                    HealthAPI.db
-                                                                            .healthDao()
-                                                                            .getUnitsForIngredient(
-                                                                                    ing.id
-                                                                            )
-                                                            val unit =
-                                                                    units.find {
-                                                                        it.id == ri.unitId
-                                                                    }
-                                                            val grams = unit?.grams ?: 1.0
-                                                            val totalGrams =
-                                                                    ri.quantity * grams * quantity
-
-                                                            protein +=
-                                                                    (ing.nutritionData.protein /
-                                                                            100.0) * totalGrams
-                                                            carbs +=
-                                                                    (ing.nutritionData
-                                                                            .carbohydrates /
-                                                                            100.0) * totalGrams
-                                                            fat +=
-                                                                    (ing.nutritionData.fat /
-                                                                            100.0) * totalGrams
-                                                            fiber +=
-                                                                    (ing.nutritionData.fiber /
-                                                                            100.0) * totalGrams
-                                                            sugar +=
-                                                                    (ing.nutritionData.sugar /
-                                                                            100.0) * totalGrams
-                                                            sodium +=
-                                                                    (ing.nutritionData.sodium /
-                                                                            100.0) * totalGrams
-                                                            kcal +=
-                                                                    (ing.nutritionData.calories /
-                                                                            100.0) * totalGrams
-                                                        }
-                                                    }
-                                                    NutritionData(
-                                                            protein,
-                                                            carbs,
-                                                            fat,
-                                                            fiber,
-                                                            sugar,
-                                                            sodium,
-                                                            calories = kcal
-                                                    )
-                                                }
-                                                is Loggable.IngredientWrapper -> {
-                                                    // For single ingredients marked as recipes,
-                                                    // 1 serving is treated as 100g
-                                                    val ing = loggable.ingredient
-                                                    NutritionData(
-                                                            protein =
-                                                                    ing.nutritionData.protein *
-                                                                            quantity,
-                                                            carbohydrates =
-                                                                    ing.nutritionData
-                                                                            .carbohydrates *
-                                                                            quantity,
-                                                            fat = ing.nutritionData.fat * quantity,
-                                                            fiber =
-                                                                    ing.nutritionData.fiber *
-                                                                            quantity,
-                                                            sugar =
-                                                                    ing.nutritionData.sugar *
-                                                                            quantity,
-                                                            sodium =
-                                                                    ing.nutritionData.sodium *
-                                                                            quantity,
-                                                            calories =
-                                                                    ing.nutritionData.calories *
-                                                                            quantity
-                                                    )
-                                                }
-                                            }
-
-                                    val record =
-                                            Record(
-                                                    id = UUID.randomUUID().toString(),
-                                                    index = 0,
-                                                    type = RecordType.Nutrition,
-                                                    startTime = time,
-                                                    endTime = time,
-                                                    value = nutrition.calories,
-                                                    nutritionData = nutrition,
-                                                    metadata = selectedLoggable?.name
-                                            )
-                                    HealthAPI.db.healthDao().upsert(listOf(record))
-                                    HealthAPI.writeHealthRecord(record)
-                                    onDismiss()
+                            val q = quantity
+                            val target = selectedLoggable
+                            if (q != null && target != null) {
+                                val time = initialTime ?: Instant.now()
+                                val logTarget = when (target) {
+                                    is Loggable.RecipeWrapper ->
+                                        HealthViewModel.LogMealTarget.FromRecipe(target.recipe.id, target.recipe.name)
+                                    is Loggable.IngredientWrapper ->
+                                        HealthViewModel.LogMealTarget.FromIngredient(target.ingredient)
                                 }
+                                viewModel.logMeal(logTarget, q, time)
+                                onDismiss()
                             }
                         }
                 ) { Text("Save") }

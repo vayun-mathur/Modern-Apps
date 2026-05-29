@@ -17,7 +17,7 @@ import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.data.*
 import com.vayunmathur.health.util.FoodSearchAPI
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.ui.*
 import kotlinx.coroutines.launch
@@ -25,24 +25,22 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecipeManagementPage(backStack: NavBackStack<Route>) {
+fun RecipeManagementPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
     var showIngredientSearch by remember { mutableStateOf(false) }
 
-    val recipes by HealthAPI.db.healthDao().getAllRecipesFlow().collectAsState(emptyList())
-    val ingredients by HealthAPI.db.healthDao().getAllIngredientsFlow().collectAsState(emptyList())
+    val recipes by viewModel.allRecipes.collectAsState(emptyList())
+    val ingredients by viewModel.allIngredients.collectAsState(emptyList())
 
     val isListEmpty = if (selectedTab == 0) recipes.isEmpty() else ingredients.isEmpty()
 
     if (showIngredientSearch) {
         IngredientSearchDialog(
+            viewModel = viewModel,
             onDismiss = { showIngredientSearch = false },
             onIngredientSelected = { ingredient ->
-                scope.launch {
-                    HealthAPI.db.healthDao().insertIngredient(ingredient)
-                    showIngredientSearch = false
-                }
+                viewModel.insertIngredient(ingredient)
+                showIngredientSearch = false
             }
         )
     }
@@ -89,9 +87,9 @@ fun RecipeManagementPage(backStack: NavBackStack<Route>) {
                 }
             } else {
                 if (selectedTab == 0) {
-                    RecipesList(recipes) { recipeId -> backStack.add(Route.RecipeEditor(recipeId)) }
+                    RecipesList(recipes, viewModel) { recipeId -> backStack.add(Route.RecipeEditor(recipeId)) }
                 } else {
-                    IngredientsList(ingredients)
+                    IngredientsList(ingredients, viewModel)
                 }
             }
         }
@@ -99,9 +97,7 @@ fun RecipeManagementPage(backStack: NavBackStack<Route>) {
 }
 
 @Composable
-fun RecipesList(recipes: List<Recipe>, onRecipeClick: (String) -> Unit) {
-    val scope = rememberCoroutineScope()
-
+fun RecipesList(recipes: List<Recipe>, viewModel: HealthViewModel, onRecipeClick: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(recipes) { recipe ->
             Card(
@@ -109,11 +105,7 @@ fun RecipesList(recipes: List<Recipe>, onRecipeClick: (String) -> Unit) {
             ) {
                 Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(recipe.name, style = MaterialTheme.typography.titleMedium)
-                    IconButton(onClick = {
-                        scope.launch {
-                            HealthAPI.db.healthDao().deleteRecipe(recipe)
-                        }
-                    }) {
+                    IconButton(onClick = { viewModel.deleteRecipe(recipe) }) {
                         IconDelete()
                     }
                 }
@@ -123,8 +115,7 @@ fun RecipesList(recipes: List<Recipe>, onRecipeClick: (String) -> Unit) {
 }
 
 @Composable
-fun IngredientsList(ingredients: List<Ingredient>) {
-    val scope = rememberCoroutineScope()
+fun IngredientsList(ingredients: List<Ingredient>, viewModel: HealthViewModel) {
     var editingIngredient by remember { mutableStateOf<Ingredient?>(null) }
     
     if (editingIngredient != null) {
@@ -145,11 +136,9 @@ fun IngredientsList(ingredients: List<Ingredient>) {
             },
             confirmButton = {
                 Button(onClick = {
-                    scope.launch {
-                        val newIng = editingIngredient!!.copy(customName = customName.ifBlank { null })
-                        HealthAPI.db.healthDao().updateIngredient(newIng)
-                        editingIngredient = null
-                    }
+                    val newIng = editingIngredient!!.copy(customName = customName.ifBlank { null })
+                    viewModel.updateIngredient(newIng)
+                    editingIngredient = null
                 }) { Text("Save") }
             },
             dismissButton = {
@@ -170,22 +159,11 @@ fun IngredientsList(ingredients: List<Ingredient>) {
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = {
-                            scope.launch {
-                                val newIng = ingredient.copy(isRecipe = !ingredient.isRecipe)
-                                HealthAPI.db.healthDao().updateIngredient(newIng)
-                            }
+                            viewModel.updateIngredient(ingredient.copy(isRecipe = !ingredient.isRecipe))
                         }) {
                             if (ingredient.isRecipe) IconFire() else Icon(painterResource(R.drawable.baseline_local_fire_department_24), "Mark as Recipe", tint = MaterialTheme.colorScheme.outline)
                         }
-                        IconButton(onClick = {
-                            scope.launch {
-                                try {
-                                    HealthAPI.db.healthDao().deleteIngredient(ingredient)
-                                } catch (e: Exception) {
-                                    // SQLiteConstraintException if used in recipe
-                                }
-                            }
-                        }) {
+                        IconButton(onClick = { viewModel.deleteIngredient(ingredient) }) {
                             IconDelete()
                         }
                     }
@@ -197,35 +175,27 @@ fun IngredientsList(ingredients: List<Ingredient>) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecipeEditorPage(backStack: NavBackStack<Route>, recipeId: String? = null) {
+fun RecipeEditorPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel, recipeId: String? = null) {
     var recipeName by remember { mutableStateOf("") }
     var recipeIngredients by remember { mutableStateOf(listOf<RecipeIngredientData>()) }
     var showSearch by remember { mutableStateOf(false) }
     var editingIngredientData by remember { mutableStateOf<RecipeIngredientData?>(null) }
     var isAddingNewIngredient by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     // Load existing recipe if editing
     LaunchedEffect(recipeId) {
         if (recipeId != null) {
-            val recipe = HealthAPI.db.healthDao().getRecipe(recipeId)
-            if (recipe != null) {
-                recipeName = recipe.name
-                val ingredients = HealthAPI.db.healthDao().getIngredientsForRecipe(recipeId)
-                recipeIngredients = ingredients.mapNotNull { ri ->
-                    val ing = HealthAPI.db.healthDao().getIngredient(ri.ingredientId)
-                    val units = HealthAPI.db.healthDao().getUnitsForIngredient(ri.ingredientId)
-                    val unit = units.find { it.id == ri.unitId }
-                    if (ing != null && unit != null) {
-                        RecipeIngredientData(ing, unit, ri.quantity)
-                    } else null
-                }
+            val loaded = viewModel.loadRecipeForEdit(recipeId)
+            if (loaded != null) {
+                recipeName = loaded.name
+                recipeIngredients = loaded.ingredients.map { RecipeIngredientData(it.ingredient, it.unit, it.quantity) }
             }
         }
     }
 
     if (showSearch) {
         IngredientSearchDialog(
+            viewModel = viewModel,
             includeLocal = true,
             onDismiss = { showSearch = false },
             onIngredientSelected = { ingredient ->
@@ -243,6 +213,7 @@ fun RecipeEditorPage(backStack: NavBackStack<Route>, recipeId: String? = null) {
 
     if (editingIngredientData != null) {
         IngredientQuantityDialog(
+            viewModel = viewModel,
             ingredient = editingIngredientData!!.ingredient,
             initialQuantity = editingIngredientData!!.quantity,
             initialUnit = editingIngredientData!!.unit,
@@ -318,29 +289,10 @@ fun RecipeEditorPage(backStack: NavBackStack<Route>, recipeId: String? = null) {
 
             Button(
                 onClick = {
-                    scope.launch {
-                        val id = recipeId ?: UUID.randomUUID().toString()
-                        val recipe = Recipe(id = id, name = recipeName)
-                        HealthAPI.db.healthDao().insertRecipe(recipe)
-                        
-                        // Clear old ingredients if editing
-                        if (recipeId != null) {
-                            val oldIngredients = HealthAPI.db.healthDao().getIngredientsForRecipe(recipeId)
-                            oldIngredients.forEach { HealthAPI.db.healthDao().deleteRecipeIngredient(it) }
-                        }
-
-                        recipeIngredients.forEach { riData ->
-                            HealthAPI.db.healthDao().insertIngredient(riData.ingredient)
-                            HealthAPI.db.healthDao().insertServingUnit(riData.unit)
-                            val ri = RecipeIngredient(
-                                id = UUID.randomUUID().toString(),
-                                recipeId = id,
-                                ingredientId = riData.ingredient.id,
-                                quantity = riData.quantity,
-                                unitId = riData.unit.id
-                            )
-                            HealthAPI.db.healthDao().insertRecipeIngredient(ri)
-                        }
+                    val items = recipeIngredients.map {
+                        HealthViewModel.RecipeIngredientLoad(it.ingredient, it.unit, it.quantity)
+                    }
+                    viewModel.saveRecipe(recipeId, recipeName, items) {
                         backStack.pop()
                     }
                 },
@@ -362,6 +314,7 @@ data class RecipeIngredientData(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IngredientQuantityDialog(
+    viewModel: HealthViewModel,
     ingredient: Ingredient,
     initialQuantity: Double,
     initialUnit: ServingUnit,
@@ -374,7 +327,7 @@ fun IngredientQuantityDialog(
     var availableUnits by remember { mutableStateOf(listOf<ServingUnit>()) }
 
     LaunchedEffect(ingredient.id) {
-        val units = HealthAPI.db.healthDao().getUnitsForIngredient(ingredient.id)
+        val units = viewModel.getUnitsForIngredient(ingredient.id)
         // Ensure the default unit or current unit is in the list
         val unitsWithCurrent = if (units.none { it.name == initialUnit.name }) {
             units + initialUnit
@@ -448,6 +401,7 @@ fun IngredientQuantityDialog(
 
 @Composable
 fun IngredientSearchDialog(
+    viewModel: HealthViewModel,
     includeLocal: Boolean = false,
     onDismiss: () -> Unit,
     onIngredientSelected: (Ingredient) -> Unit
@@ -475,10 +429,9 @@ fun IngredientSearchDialog(
                     Button(onClick = {
                         isSearching = true
                         scope.launch {
-                            remoteResults = FoodSearchAPI.searchIngredients(query)
-                            if (includeLocal) {
-                                localResults = HealthAPI.db.healthDao().searchIngredients(query)
-                            }
+                            val results = viewModel.searchIngredients(query, includeLocal)
+                            remoteResults = results.remote
+                            localResults = results.local
                             isSearching = false
                         }
                     }) {

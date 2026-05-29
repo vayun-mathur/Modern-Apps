@@ -1,21 +1,16 @@
 package com.vayunmathur.health.ui
 
-import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.pdf.PdfRenderer
-import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,46 +18,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
-import androidx.health.connect.client.records.MedicalResource
 import com.google.fhir.model.r4b.Observation
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconUpload
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.SecureResultReceiver
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 import androidx.core.net.toUri
-import androidx.core.graphics.createBitmap
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPersonalHealthRecordApi::class)
 @Composable
-fun LabResultsPage(backStack: NavBackStack<Route>) {
+fun LabResultsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var labResults by remember { mutableStateOf(listOf<Observation>()) }
+    val labResults by viewModel.labResults.collectAsState()
     var isProcessing by remember { mutableStateOf(false) }
     var showInstallDialog by remember { mutableStateOf(false) }
 
-    fun refresh() {
-        scope.launch {
-            withContext(Dispatchers.IO) {
-                labResults = HealthAPI.allMedicalRecords(MedicalResource.MEDICAL_RESOURCE_TYPE_LABORATORY_RESULTS).map {
-                    JSON.decodeFromString<Observation>(it.fhirResource.data)
-                }
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
-        refresh()
+        viewModel.refreshLabResults()
     }
 
     if (showInstallDialog) {
@@ -159,14 +135,7 @@ fun LabResultsPage(backStack: NavBackStack<Route>) {
             if (resultCode == 0) {
                 val jsonResult = resultData?.getString("json_result")
                 if (jsonResult != null) {
-                    scope.launch {
-                        try {
-                            HealthAPI.writeMedicalRecord(jsonResult)
-                            refresh()
-                        } catch (e: Exception) {
-                            Log.e("LabResultsPage", "Failed to write medical record", e)
-                        }
-                    }
+                    viewModel.writeLabResult(jsonResult)
                 }
             }
         }
@@ -175,33 +144,13 @@ fun LabResultsPage(backStack: NavBackStack<Route>) {
     val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             isProcessing = true
-            scope.launch {
-                try {
-                    val imagePaths = convertPdfToImages(context, uri)
-                    if (imagePaths.isNotEmpty()) {
-                        val intent = Intent().apply {
-                            setClassName("com.vayunmathur.openassistant", "com.vayunmathur.openassistant.util.InferenceService")
-                            putExtra("user_text", "Extract laboratory result details from these images.")
-                            
-                            val uris = imagePaths.map { path ->
-                                val u = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(path))
-                                context.grantUriPermission("com.vayunmathur.openassistant", u, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                u
-                            }
-
-                            putParcelableArrayListExtra("image_uris", ArrayList(uris))
-                            putExtra("schema", labSchema)
-                            putExtra("RECEIVER", resultReceiver)
-                        }
-                        context.startService(intent)
-                    } else {
-                        isProcessing = false
-                    }
-                } catch (e: Exception) {
-                    Log.e("LabResultsPage", "Error processing PDF", e)
-                    isProcessing = false
-                }
-            }
+            viewModel.extractMedicalDataFromPdf(
+                uri = uri,
+                userText = "Extract laboratory result details from these images.",
+                schema = labSchema,
+                receiver = resultReceiver,
+                onFailedToStart = { isProcessing = false }
+            )
         }
     }
 
@@ -307,42 +256,4 @@ fun ObservationCard(observation: Observation) {
             }
         }
     }
-}
-
-private fun isOpenAssistantInstalled(context: Context): Boolean {
-    return try {
-        context.packageManager.getPackageInfo("com.vayunmathur.openassistant", 0)
-        true
-    } catch (e: Exception) {
-        false
-    }
-}
-
-private fun convertPdfToImages(context: Context, uri: Uri): List<String> {
-    val imagePaths = mutableListOf<String>()
-    try {
-        context.contentResolver.openFileDescriptor(uri, "r")?.use { parcelFileDescriptor ->
-            val renderer = PdfRenderer(parcelFileDescriptor)
-            for (i in 0 until renderer.pageCount) {
-                try {
-                    Log.d("LabResultsPage", "Rendering PDF page $i")
-                    val page = renderer.openPage(i)
-                    val bitmap = createBitmap(page.width, page.height)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                    val file = File(context.cacheDir, "pdf_page_$i.png")
-                    FileOutputStream(file).use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                    }
-                    page.close()
-                    imagePaths.add(file.absolutePath)
-                } catch (e: Exception) {
-                    Log.e("LabResultsPage", "Error rendering PDF page $i", e)
-                }
-            }
-            renderer.close()
-        }
-    } catch (e: Exception) {
-        Log.e("LabResultsPage", "Error opening PDF file descriptor for URI: $uri", e)
-    }
-    return imagePaths
 }

@@ -2,13 +2,6 @@ package com.vayunmathur.health.ui
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.pdf.PdfRenderer
-import android.net.Uri
-import android.os.ParcelFileDescriptor
-import android.os.ResultReceiver
-import androidx.core.content.FileProvider
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -21,44 +14,26 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.feature.ExperimentalPersonalHealthRecordApi
-import androidx.health.connect.client.records.MedicalResource
 import com.google.fhir.model.r4b.Immunization
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconUpload
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.SecureResultReceiver
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 import androidx.core.net.toUri
-import androidx.core.graphics.createBitmap
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPersonalHealthRecordApi::class)
 @Composable
-fun ImmunizationsPage(backStack: NavBackStack<Route>) {
+fun ImmunizationsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var immunizations by remember { mutableStateOf(listOf<Immunization>()) }
+    val immunizations by viewModel.immunizations.collectAsState()
     var isProcessing by remember { mutableStateOf(false) }
     var showInstallDialog by remember { mutableStateOf(false) }
 
-    fun refresh() {
-        scope.launch {
-            withContext(Dispatchers.IO) {
-                immunizations = HealthAPI.allMedicalRecords(MedicalResource.MEDICAL_RESOURCE_TYPE_VACCINES).map {
-                    JSON.decodeFromString<Immunization>(it.fhirResource.data)
-                }
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
-        refresh()
+        viewModel.refreshImmunizations()
     }
 
     if (showInstallDialog) {
@@ -127,14 +102,7 @@ fun ImmunizationsPage(backStack: NavBackStack<Route>) {
             if (resultCode == 0) {
                 val jsonResult = resultData?.getString("json_result")
                 if (jsonResult != null) {
-                    scope.launch {
-                        try {
-                            HealthAPI.writeMedicalRecord(jsonResult)
-                            refresh()
-                        } catch (e: Exception) {
-                            Log.e("ImmunizationsPage", "Failed to write medical record", e)
-                        }
-                    }
+                    viewModel.writeImmunization(jsonResult)
                 }
             }
         }
@@ -143,33 +111,13 @@ fun ImmunizationsPage(backStack: NavBackStack<Route>) {
     val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             isProcessing = true
-            scope.launch {
-                try {
-                    val imagePaths = convertPdfToImages(context, uri)
-                    if (imagePaths.isNotEmpty()) {
-                        val intent = Intent().apply {
-                            setClassName("com.vayunmathur.openassistant", "com.vayunmathur.openassistant.util.InferenceService")
-                            putExtra("user_text", "Extract immunization details from these images.")
-                            
-                            val uris = imagePaths.map { path ->
-                                val u = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(path))
-                                context.grantUriPermission("com.vayunmathur.openassistant", u, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                u
-                            }
-
-                            putParcelableArrayListExtra("image_uris", ArrayList(uris))
-                            putExtra("schema", immunizationSchema)
-                            putExtra("RECEIVER", resultReceiver)
-                        }
-                        context.startService(intent)
-                    } else {
-                        isProcessing = false
-                    }
-                } catch (e: Exception) {
-                    Log.e("ImmunizationsPage", "Error processing PDF", e)
-                    isProcessing = false
-                }
-            }
+            viewModel.extractMedicalDataFromPdf(
+                uri = uri,
+                userText = "Extract immunization details from these images.",
+                schema = immunizationSchema,
+                receiver = resultReceiver,
+                onFailedToStart = { isProcessing = false }
+            )
         }
     }
 
@@ -269,35 +217,11 @@ fun ImmunizationCard(immunization: Immunization) {
     }
 }
 
-private fun isOpenAssistantInstalled(context: Context): Boolean {
+internal fun isOpenAssistantInstalled(context: Context): Boolean {
     return try {
         context.packageManager.getPackageInfo("com.vayunmathur.openassistant", 0)
         true
     } catch (e: Exception) {
         false
     }
-}
-
-private fun convertPdfToImages(context: Context, uri: Uri): List<String> {
-    val imagePaths = mutableListOf<String>()
-    try {
-        val parcelFileDescriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: return emptyList()
-        val renderer = PdfRenderer(parcelFileDescriptor)
-        for (i in 0 until renderer.pageCount) {
-            val page = renderer.openPage(i)
-            val bitmap = createBitmap(page.width, page.height)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            val file = File(context.cacheDir, "pdf_page_$i.png")
-            val out = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-            out.close()
-            page.close()
-            imagePaths.add(file.absolutePath)
-        }
-        renderer.close()
-        parcelFileDescriptor.close()
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-    return imagePaths
 }

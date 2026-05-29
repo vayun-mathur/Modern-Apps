@@ -26,7 +26,7 @@ import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.data.SleepData
 import com.vayunmathur.health.data.SleepStage
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.health.util.displayString
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.NavBackStack
@@ -39,7 +39,7 @@ import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SleepDetailsPage(backStack: NavBackStack<Route>) {
+fun SleepDetailsPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     val initialPage = 999
     val pagerState = rememberPagerState(initialPage = initialPage) { 1000 }
     val scope = rememberCoroutineScope()
@@ -116,7 +116,7 @@ fun SleepDetailsPage(backStack: NavBackStack<Route>) {
 
                 // Fetch records that ended during this day (most likely the sleep that ended this
                 // morning)
-                val records by HealthAPI.getAllRecordsInRange(RecordType.Sleep, searchStart, searchEnd)
+                val records by remember(searchStart, searchEnd) { viewModel.getAllRecordsInRange(RecordType.Sleep, searchStart, searchEnd) }
                     .collectAsState(emptyList())
                 val record = remember(records, day) {
                     records.filter {

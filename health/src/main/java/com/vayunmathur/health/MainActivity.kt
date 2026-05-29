@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,6 +65,7 @@ import com.vayunmathur.health.ui.RecipeEditorPage
 import com.vayunmathur.health.ui.RecipeManagementPage
 import com.vayunmathur.health.util.HealthAPI
 import com.vayunmathur.health.util.HealthSyncWorker
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.buildDatabase
@@ -111,6 +113,8 @@ val PERMISSIONS = CLASSES.map { HealthPermission.getReadPermission(it) }.toSet()
 
 
 class MainActivity : ComponentActivity() {
+    private val healthViewModel: HealthViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -136,7 +140,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         HealthSyncWorker.enqueue(this@MainActivity)
                     }
-                    Navigation()
+                    Navigation(healthViewModel)
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -180,7 +184,7 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation() {
+fun Navigation(viewModel: HealthViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.MainPage)
     MainNavigation(
         backStack = backStack,
@@ -196,28 +200,28 @@ fun Navigation() {
         }
     ) {
         entry<Route.MainPage> {
-            MainPage(backStack)
+            MainPage(backStack, viewModel)
         }
         entry<Route.Immunizations> {
-            ImmunizationsPage(backStack)
+            ImmunizationsPage(backStack, viewModel)
         }
         entry<Route.LabResults> {
-            LabResultsPage(backStack)
+            LabResultsPage(backStack, viewModel)
         }
         entry<Route.NutritionDetails> {
-            NutritionDetailsPage(backStack)
+            NutritionDetailsPage(backStack, viewModel)
         }
         entry<Route.RecipeManagement> {
-            RecipeManagementPage(backStack)
+            RecipeManagementPage(backStack, viewModel)
         }
         entry<Route.RecipeEditor> {
-            RecipeEditorPage(backStack, it.recipeId)
+            RecipeEditorPage(backStack, viewModel, it.recipeId)
         }
         entry<Route.BarChartDetails> {
-            BarChartDetails(backStack, it.healthMetric)
+            BarChartDetails(backStack, viewModel, it.healthMetric)
         }
         entry<Route.SleepDetails> {
-            com.vayunmathur.health.ui.SleepDetailsPage(backStack)
+            com.vayunmathur.health.ui.SleepDetailsPage(backStack, viewModel)
         }
     }
 }

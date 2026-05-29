@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,7 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.health.util.HealthAPI
+import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
 import com.vayunmathur.health.data.RecordType
@@ -66,17 +67,14 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.health.util.displayString
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.util.Tuple4
 import com.vayunmathur.library.util.round
 import com.vayunmathur.library.util.toStringCommas
 import com.vayunmathur.library.util.toStringDigits
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
 
@@ -291,7 +289,7 @@ data class HistoryItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BarChartDetails(
-    backStack: NavBackStack<Route>, config: HealthMetricConfig
+    backStack: NavBackStack<Route>, viewModel: HealthViewModel, config: HealthMetricConfig
 ) {
     var selectedTab by remember { mutableIntStateOf(if (config == HealthMetricConfig.HEART_RATE) 0 else 1) }
     val tabs = listOf(
@@ -302,180 +300,10 @@ fun BarChartDetails(
     )
 
     var anchorDate by remember { mutableStateOf(Clock.System.todayIn(TimeZone.currentSystemDefault())) }
-    var dataState by remember { mutableStateOf(MetricDashboardData()) }
-
-    val tz = TimeZone.currentSystemDefault()
-    val context = LocalContext.current
-    val resources = context.resources
-
-    val dayLabelFormat = stringResource(R.string.history_day_label)
-    val monthLabelFormat = stringResource(R.string.history_month_label)
+    val dataState by viewModel.barChartData.collectAsState()
 
     LaunchedEffect(selectedTab, anchorDate, config) {
-        val (startDate, endDate, periodType, periodType2) = when (selectedTab) {
-            0 -> Tuple4(
-                anchorDate,
-                anchorDate.plus(1, DateTimeUnit.DAY),
-                HealthAPI.PeriodType.Hourly,
-                HealthAPI.PeriodType.Hourly
-            )
-
-            1 -> {
-                val start =
-                    anchorDate.minus((anchorDate.dayOfWeek.ordinal + 1) % 7, DateTimeUnit.DAY)
-                Tuple4(
-                    start,
-                    start.plus(7, DateTimeUnit.DAY),
-                    HealthAPI.PeriodType.Daily,
-                    HealthAPI.PeriodType.Daily
-                )
-            }
-
-            2 -> {
-                val start = LocalDate(anchorDate.year, anchorDate.month, 1)
-                val end = start.plus(1, DateTimeUnit.MONTH)
-                Tuple4(start, end, HealthAPI.PeriodType.Daily, HealthAPI.PeriodType.Weekly)
-            }
-
-            else -> {
-                val start = LocalDate(anchorDate.year, 1, 1)
-                val end = start.plus(1, DateTimeUnit.YEAR)
-                Tuple4(start, end, HealthAPI.PeriodType.Monthly, HealthAPI.PeriodType.Monthly)
-            }
-        }
-        val startTime = startDate.atStartOfDayIn(tz)
-        val endTime = endDate.atStartOfDayIn(tz)
-
-        val endTimeNow = if (Clock.System.now() < endTime) Clock.System.now() else endTime
-
-        // Both functions now return List<Pair<Double?, Double?>>
-        val rawPairs = if (config.isLineChart) {
-            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType)
-        } else {
-            HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType)
-        }
-        val rawPairsHistory = if (config.isLineChart) {
-            HealthAPI.getListOfAverages(config.recordType, startTime, endTimeNow, periodType2)
-        } else {
-            HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType2)
-        }
-
-        val mappedChart = rawPairs.mapIndexed { i, p ->
-            val label = when (selectedTab) {
-                0 -> { // Hourly
-                    val hour = (p.first % 24).toInt()
-                    if (hour % 6 == 0) {
-                        val amPm = if (hour < 12) "AM" else "PM"
-                        val h = if (hour % 12 == 0) 12 else hour % 12
-                        resources.getString(R.string.hour_am_pm_format, h, amPm)
-                    } else ""
-                }
-
-                1 -> { // Weekly
-                    val date = LocalDate.fromEpochDays(p.first.toInt())
-                    date.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
-                }
-
-                2 -> { // Monthly
-                    val date = LocalDate.fromEpochDays(p.first.toInt())
-                    if (date.day % 7 == 1) date.day.toString() else ""
-                }
-
-                else -> { // Yearly
-                    val date = LocalDate.fromEpochDays(p.first.toInt())
-                    date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
-                }
-            }
-            label to p.second
-        }
-        val mappedSecondaryChart = if (config.isDualSeries) {
-            rawPairs.mapIndexed { i, p ->
-                val label = when (selectedTab) {
-                    0 -> { // Hourly
-                        val hour = (p.first % 24).toInt()
-                        if (hour % 6 == 0) {
-                            val amPm = if (hour < 12) "AM" else "PM"
-                            val h = if (hour % 12 == 0) 12 else hour % 12
-                            resources.getString(R.string.hour_am_pm_format, h, amPm)
-                        } else ""
-                    }
-
-                    1 -> { // Weekly
-                        val date = LocalDate.fromEpochDays(p.first.toInt())
-                        date.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
-                    }
-
-                    2 -> { // Monthly
-                        val date = LocalDate.fromEpochDays(p.first.toInt())
-                        if (date.day % 7 == 1) date.day.toString() else ""
-                    }
-
-                    else -> { // Yearly
-                        val date = LocalDate.fromEpochDays(p.first.toInt())
-                        date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
-                    }
-                }
-                label to p.third
-            }
-        } else null
-
-        val history = if (selectedTab != 0) rawPairsHistory.mapIndexed { index, triple ->
-            val label = when (selectedTab) {
-                0 -> ""
-                1 -> startTime.plus(index.toLong(), DateTimeUnit.DAY, tz)
-                    .toLocalDateTime(tz).dayOfWeek.name.lowercase()
-                    .replaceFirstChar { it.uppercase() }
-
-                2 -> {
-                    val date = startTime.plus(index.toLong(), DateTimeUnit.DAY, tz)
-                        .toLocalDateTime(tz).date
-                    resources.getString(
-                        R.string.month_year_format,
-                        date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() },
-                        date.day
-                    )
-                }
-
-                else -> {
-                    val date = startTime.plus(index.toLong(), DateTimeUnit.MONTH, tz)
-                        .toLocalDateTime(tz).date
-                    date.month.name.lowercase().replaceFirstChar { it.uppercase() }
-                }
-            }
-            HistoryItem(
-                label = label,
-                value = triple.second,
-                secondaryValue = if (config.isDualSeries) triple.third else null,
-                unit = config.unit,
-                isGoalMet = triple.second >= config.dailyGoal,
-                useDecimals = config.useDecimals
-            )
-        }.reversed() else listOf()
-
-        val nonNullPrimary =
-            if (selectedTab == 0) rawPairs.map { it.second } else history.map { it.value }
-        val nonNullSecondary = if (selectedTab == 0) {
-            if (config.isDualSeries) rawPairs.map { it.third } else emptyList()
-        } else {
-            if (config.isDualSeries) history.mapNotNull { it.secondaryValue } else emptyList()
-        }
-
-        dataState = MetricDashboardData(
-            totalValue = nonNullPrimary.sum(),
-            dailyAverage = if (nonNullPrimary.isEmpty()) 0.0 else (if (selectedTab == 0) nonNullPrimary.sum() else nonNullPrimary.average()),
-            secondaryAverage = if (nonNullSecondary.isEmpty()) null else (if (selectedTab == 0) nonNullSecondary.sum() else nonNullSecondary.average()),
-            chartData = mappedChart,
-            secondaryChartData = mappedSecondaryChart,
-            historyItems = history,
-            totalBarCount = rawPairs.size,
-            primaryRange = mappedChart.mapNotNull { it.second }.let { vals ->
-                if (vals.isEmpty()) null
-                else vals.minOrNull()!!.let { min ->
-                    vals.maxOrNull()!!.let { max ->
-                        if (min < max) min..max else if (min > max) max..min else min..min + 1.0
-                    }
-                }
-            })
+        viewModel.loadBarChartData(config, anchorDate, selectedTab)
     }
 
     Scaffold(
