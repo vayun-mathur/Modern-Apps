@@ -42,6 +42,7 @@ import androidx.core.content.ContextCompat
 import com.vayunmathur.library.util.NavBackStack
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_EXPANDED_LOWER_BOUND
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconMenu
@@ -210,6 +211,7 @@ fun ChatInput(
     onSend: () -> Unit,
     onCancelMedia: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(modifier.fillMaxWidth().padding(16.dp, 8.dp)) {
         if (selectedImageUris.isNotEmpty() || isRecording) {
             Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
@@ -217,7 +219,15 @@ fun ChatInput(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f, false)) {
                         items(selectedImageUris, key = { it.toString() }) { uri ->
                             Box(Modifier.size(80.dp)) {
-                                AsyncImage(uri, null, Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentScale = ContentScale.Crop)
+                                AsyncImage(
+                                    ImageRequest.Builder(context)
+                                        .data(uri)
+                                        .memoryCacheKey("chat-attach-$uri")
+                                        .build(),
+                                    null,
+                                    Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentScale = ContentScale.Crop
+                                )
                                 IconButton(onCancelMedia) { IconClose() }
                             }
                         }
@@ -264,7 +274,17 @@ fun ChatBubble(message: Message) {
         if (isUser) {
             Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp), modifier = Modifier.widthIn(max = 300.dp)) {
                 Column(Modifier.padding(if (message.imagePaths.isNotEmpty() || message.hasAudio) 4.dp else 12.dp)) {
-                    message.imagePaths.forEach { AsyncImage(it, null, Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop) }
+                    message.imagePaths.forEach { path ->
+                        AsyncImage(
+                            ImageRequest.Builder(context)
+                                .data(path)
+                                .memoryCacheKey("chat-msg-$path")
+                                .build(),
+                            null,
+                            Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                     if (message.hasAudio) Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(painterResource(android.R.drawable.ic_btn_speak_now), null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
                         Text(stringResource(R.string.voice_message), Modifier.padding(start = 8.dp), color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp)
