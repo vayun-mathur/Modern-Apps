@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.glance.appwidget.updateAll
 import com.sun.mail.imap.IMAPFolder
 import com.vayunmathur.email.EmailManager
 import com.vayunmathur.email.R
@@ -179,6 +180,13 @@ class ImapIdleService : Service() {
             com.vayunmathur.email.util.EmailNotifications.postForNewMessages(
                 applicationContext, accountEmail, messages,
             )
+        }
+        // Push the new rows into the home-screen widget too — otherwise it sits
+        // stale until the next 15-minute periodic sync run.
+        try {
+            com.vayunmathur.email.widget.EmailWidget().updateAll(applicationContext)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Widget update failed: ${t.message}")
         }
     }
 

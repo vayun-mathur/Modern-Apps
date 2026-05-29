@@ -20,7 +20,7 @@ import com.vayunmathur.email.OutboxEntry
         Attachment::class,
         OutboxEntry::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class EmailDatabase : RoomDatabase() {
@@ -58,6 +58,18 @@ abstract class EmailDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v5 → v6: Add `dateMillis` column for proper chronological ordering of
+         * messages (the existing `date` is a `Date.toString()` string that
+         * sorts lexically — wrong, especially in the unified inbox). Existing
+         * rows get 0; backfilled at app start from the parsed `date` string.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE EmailMessage ADD COLUMN dateMillis INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getInstance(context: Context): EmailDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -65,7 +77,7 @@ abstract class EmailDatabase : RoomDatabase() {
                     EmailDatabase::class.java,
                     "email-db"
                 )
-                    .addMigrations(MIGRATION_4_5)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
                     // Last-resort: if a schema mismatch shows up that we don't have a
                     // migration for, wipe rather than crash the app.
                     .fallbackToDestructiveMigration()

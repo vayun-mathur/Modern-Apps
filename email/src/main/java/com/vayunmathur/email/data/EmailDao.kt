@@ -28,10 +28,10 @@ interface EmailDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFolders(folders: List<EmailFolder>)
 
-    @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND folderName = :folderName ORDER BY id DESC")
+    @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND folderName = :folderName ORDER BY dateMillis DESC, id DESC")
     fun getMessagesFlow(accountEmail: String, folderName: String): Flow<List<EmailMessage>>
 
-    @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND threadId = :threadId ORDER BY id ASC")
+    @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND threadId = :threadId ORDER BY dateMillis ASC, id ASC")
     fun getThreadFlow(accountEmail: String, threadId: String): Flow<List<EmailMessage>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -58,18 +58,27 @@ interface EmailDao {
     @Query("DELETE FROM EmailMessage WHERE accountEmail = :accountEmail")
     suspend fun clearMessages(accountEmail: String)
 
-    @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND folderName = :folderName AND (subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY id DESC")
+    @Query("SELECT * FROM EmailMessage WHERE accountEmail = :accountEmail AND folderName = :folderName AND (subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY dateMillis DESC, id DESC")
     fun searchMessagesFlow(accountEmail: String, folderName: String, query: String): Flow<List<EmailMessage>>
 
     // Unified Inbox
-    @Query("SELECT * FROM EmailMessage WHERE folderName = :folderName ORDER BY date DESC")
+    @Query("SELECT * FROM EmailMessage WHERE folderName = :folderName ORDER BY dateMillis DESC, id DESC")
     fun getUnifiedMessagesFlow(folderName: String): Flow<List<EmailMessage>>
 
-    @Query("SELECT * FROM EmailMessage WHERE folderName = :folderName AND (subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY date DESC")
+    @Query("SELECT * FROM EmailMessage WHERE folderName = :folderName AND (subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY dateMillis DESC, id DESC")
     fun searchUnifiedMessagesFlow(folderName: String, query: String): Flow<List<EmailMessage>>
 
-    @Query("SELECT * FROM EmailMessage WHERE folderName = 'INBOX' ORDER BY date DESC LIMIT 10")
+    @Query("SELECT * FROM EmailMessage WHERE folderName = 'INBOX' ORDER BY dateMillis DESC, id DESC LIMIT 10")
     suspend fun getRecentUnifiedMessages(): List<EmailMessage>
+
+    // ---- One-time backfill for the dateMillis column ----
+
+    /** Rows persisted before `dateMillis` existed; their `date` string needs parsing. */
+    @Query("SELECT * FROM EmailMessage WHERE dateMillis = 0 LIMIT 1000")
+    suspend fun getRowsWithZeroDateMillis(): List<EmailMessage>
+
+    @Query("UPDATE EmailMessage SET dateMillis = :millis WHERE accountEmail = :accountEmail AND folderName = :folderName AND id = :uid")
+    suspend fun updateDateMillis(accountEmail: String, folderName: String, uid: Long, millis: Long)
 
     // Attachments
     @Insert(onConflict = OnConflictStrategy.REPLACE)

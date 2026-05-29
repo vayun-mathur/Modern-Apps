@@ -28,6 +28,11 @@ data class EmailMessage(
     val to: String? = null,
     val cc: String? = null,
     val date: String,
+    /** Date in epoch-millis. Used for chronological ordering, especially in the
+     *  cross-account unified inbox where IMAP UIDs aren't comparable. Defaults
+     *  to 0 for rows persisted before this column existed; backfilled on app
+     *  start via [EmailDao.getRowsWithZeroDateMillis]. */
+    val dateMillis: Long = 0,
     val body: String? = null,
     val isHtml: Boolean = false,
     val isRead: Boolean = false,

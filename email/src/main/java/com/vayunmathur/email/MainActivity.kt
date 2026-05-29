@@ -65,6 +65,8 @@ class MainActivity : ComponentActivity() {
         // app is in the background. The service is a no-op if there are no
         // accounts yet (it'll just stopSelf).
         com.vayunmathur.email.data.ImapIdleService.start(this)
+        // One-shot backfill for dateMillis on rows persisted before that column.
+        com.vayunmathur.email.data.DateMillisBackfill.runIfNeeded(this)
         // Android 13+: request POST_NOTIFICATIONS so new-mail alerts can be shown.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {

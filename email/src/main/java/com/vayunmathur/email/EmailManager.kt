@@ -190,6 +190,7 @@ class EmailManager {
         val serverId = msg.getHeader("Message-ID")?.firstOrNull()
         val refs = msg.getHeader("References")?.firstOrNull()
         val isRead = !msg.isSet(javax.mail.Flags.Flag.SEEN).not() && msg.isSet(javax.mail.Flags.Flag.SEEN)
+        val whenMillis = msg.sentDate?.time ?: msg.receivedDate?.time ?: 0L
         return EmailMessage(
             accountEmail = user,
             folderName = folderName,
@@ -201,6 +202,7 @@ class EmailManager {
             to = msg.getRecipients(javax.mail.Message.RecipientType.TO)?.joinToString { it.toString() },
             cc = msg.getRecipients(javax.mail.Message.RecipientType.CC)?.joinToString { it.toString() },
             date = msg.sentDate?.toString() ?: msg.receivedDate?.toString() ?: "",
+            dateMillis = whenMillis,
             body = body,
             isHtml = isHtml,
             isRead = isRead,
