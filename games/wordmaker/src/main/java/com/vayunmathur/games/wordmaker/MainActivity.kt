@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateDpAsState
@@ -48,7 +49,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,9 +65,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -79,7 +77,7 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.games.wordmaker.data.CrosswordData
 import com.vayunmathur.games.wordmaker.data.LevelDataStore
 import com.vayunmathur.games.wordmaker.util.AppBackupAgent
-import com.vayunmathur.games.wordmaker.util.Dictionary
+import com.vayunmathur.games.wordmaker.util.WordMakerViewModel
 import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.GameCenterScreen
@@ -89,7 +87,6 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -112,22 +109,22 @@ sealed interface Route : NavKey {
 data class ChooserLetter(val id: Int, val char: Char)
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: WordMakerViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             DynamicTheme {
-                val context = LocalContext.current
-                val levelDataStore = remember { LevelDataStore(context) }
                 val backStack = rememberNavBackStack<Route>(Route.Game)
                 MainNavigation(backStack) {
                     entry<Route.Game> {
-                        WordMakerGameLoader(backStack, levelDataStore)
+                        WordMakerGameLoader(backStack, viewModel)
                     }
                     entry<Route.GameCenter> {
                         GameCenterScreen(
                             backupAgent = AppBackupAgent(),
-                            manager = rememberAchievementsManager(levelDataStore),
+                            manager = rememberAchievementsManager(viewModel.levelDataStore),
                             onBack = { backStack.pop() }
                         )
                     }
@@ -139,7 +136,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun rememberAchievementsManager(levelDataStore: LevelDataStore): AchievementsManager {
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     return remember {
         val json = context.assets.open("achievements.json").bufferedReader().use { it.readText() }
         com.vayunmathur.games.wordmaker.util.WordMakerAchievementsManager(context, json, levelDataStore)
@@ -147,34 +144,16 @@ fun rememberAchievementsManager(levelDataStore: LevelDataStore): AchievementsMan
 }
 
 @Composable
-fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDataStore) {
-    val context = LocalContext.current
-    val resources = LocalResources.current
-    val currentLevel by levelDataStore.currentLevel.collectAsState(initial = 1)
-    var crosswordData by remember { mutableStateOf<CrosswordData?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val dictionary by remember { mutableStateOf(Dictionary()) }
-    val coroutineScope = rememberCoroutineScope { Dispatchers.IO }
+fun WordMakerGameLoader(backStack: NavBackStack<Route>, viewModel: WordMakerViewModel) {
+    val currentLevel by viewModel.currentLevel.collectAsState()
+    val crosswordData by viewModel.crosswordData.collectAsState()
+    val error by viewModel.error.collectAsState()
 
-    val achievementsManager = rememberAchievementsManager(levelDataStore)
+    val achievementsManager = rememberAchievementsManager(viewModel.levelDataStore)
     val newAchievement by achievementsManager.newAchievement.collectAsState()
 
     LaunchedEffect(Unit) {
         achievementsManager.checkExistingAchievements()
-        coroutineScope.launch {
-            dictionary.init(context)
-        }
-    }
-
-    LaunchedEffect(currentLevel) {
-        try {
-            crosswordData = CrosswordData.fromAsset(context, "levels/$currentLevel.txt")
-            if (crosswordData == null) {
-                error = resources.getString(R.string.error_parse_level)
-            }
-        } catch (e: Exception) {
-            error = resources.getString(R.string.error_load_level, e.message)
-        }
     }
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -186,9 +165,8 @@ fun WordMakerGameLoader(backStack: NavBackStack<Route>, levelDataStore: LevelDat
             crosswordData != null -> {
                 WordGameScreen(
                     crosswordData = crosswordData!!,
-                    levelDataStore = levelDataStore,
                     currentLevel = currentLevel,
-                    dictionary = dictionary,
+                    viewModel = viewModel,
                     achievementsManager = achievementsManager,
                     onOpenGameCenter = { backStack.add(Route.GameCenter) }
                 )
@@ -220,14 +198,13 @@ data class WordToAnimate(val word: String, val letterIds: List<Int>)
 @Composable
 fun WordGameScreen(
     crosswordData: CrosswordData,
-    levelDataStore: LevelDataStore,
     currentLevel: Int,
-    dictionary: Dictionary,
+    viewModel: WordMakerViewModel,
     achievementsManager: AchievementsManager,
     onOpenGameCenter: () -> Unit
 ) {
-    val foundWords by levelDataStore.foundWords.collectAsState(initial = emptySet())
-    val bonusWords by levelDataStore.bonusWords.collectAsState(initial = emptySet())
+    val foundWords by viewModel.foundWords.collectAsState()
+    val bonusWords by viewModel.bonusWords.collectAsState()
     var showBonusWordsDialog by remember(currentLevel) { mutableStateOf(false) }
     val density = LocalDensity.current
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
@@ -291,7 +268,7 @@ fun WordGameScreen(
                 jobs.joinAll()
 
                 // After animation
-                levelDataStore.addFoundWord(word)
+                viewModel.addFoundWord(word)
                 wordToAnimate = null
                 animatedLetters = emptyList()
             }
@@ -357,11 +334,9 @@ fun WordGameScreen(
                         onCellClicked = { row, col ->
                             val word = crosswordData.getWordAt(row, col, foundWords)
                             if (word != null && word in foundWords) {
-                                coroutineScope.launch {
-                                    val definition = dictionary.getDefinition(word)
-                                    if (definition.isNotEmpty()) {
-                                        wordWithDefinition = Pair(word, definition)
-                                    }
+                                val definition = viewModel.getDefinition(word)
+                                if (definition.isNotEmpty()) {
+                                    wordWithDefinition = Pair(word, definition)
                                 }
                             }
                         }, {
@@ -376,9 +351,7 @@ fun WordGameScreen(
                     if (isWon) {
                         Button(
                             onClick = {
-                                coroutineScope.launch {
-                                    levelDataStore.saveLevel(currentLevel + 1)
-                                }
+                                viewModel.saveLevel(currentLevel + 1)
                             }
                         ) {
                             Text(stringResource(R.string.next_level))
@@ -414,7 +387,7 @@ fun WordGameScreen(
                                     else shakeWord()
                                 } else if (word.length < 3) {
                                     shakeWord()
-                                } else if (word.lowercase() in dictionary && word !in bonusWords) {
+                                } else if (viewModel.isInDictionary(word) && word !in bonusWords) {
                                     coroutineScope.launch {
                                         animatedWord = word
                                         animationProgress.snapTo(0f)
@@ -422,11 +395,11 @@ fun WordGameScreen(
                                             1f,
                                             animationSpec = tween(durationMillis = 800)
                                         )
-                                        val newTotal = levelDataStore.addBonusWord(word)
+                                        val newTotal = viewModel.addBonusWord(word)
                                         achievementsManager.onProgressUpdated("bonus_hunter", newTotal)
                                         animatedWord = null
                                     }
-                                } else if (word.lowercase() in dictionary && word in bonusWords) {
+                                } else if (viewModel.isInDictionary(word) && word in bonusWords) {
                                     val j = launch {
                                         val offsets = listOf(-16f, 12f, -8f, 6f, -3f, 0f)
                                         // also animate bonus button concurrently across the same offsets
@@ -472,7 +445,7 @@ fun WordGameScreen(
             }
 
             if (showBonusWordsDialog) {
-                BonusWordsDialog(bonusWords = bonusWords, dictionary) {
+                BonusWordsDialog(bonusWords = bonusWords, getDefinition = viewModel::getDefinition) {
                     showBonusWordsDialog = false
                 }
             }
@@ -531,7 +504,11 @@ fun DefinitionDialog(word: String, definition: List<String>, onDismiss: () -> Un
 }
 
 @Composable
-fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss: () -> Unit) {
+fun BonusWordsDialog(
+    bonusWords: Set<String>,
+    getDefinition: (String) -> List<String>,
+    onDismiss: () -> Unit
+) {
     var definitionDialog by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -545,7 +522,7 @@ fun BonusWordsDialog(bonusWords: Set<String>, dictionary: Dictionary, onDismiss:
                             .padding(vertical = 4.dp)
                             .fillMaxWidth()
                             .clickable {
-                                definitionDialog = Pair(word, dictionary.getDefinition(word))
+                                definitionDialog = Pair(word, getDefinition(word))
                             })
                 }
             }
