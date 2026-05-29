@@ -129,9 +129,13 @@ class ImapIdleService : Service() {
                 try {
                     Log.d(TAG, "Entering IDLE for ${account.email}")
                     while (scope.coroutineContext.isActive) {
-                        folder.idle()
-                        // idle() returned. If new mail was announced via EXISTS,
-                        // fetch+persist+notify NOW on this same connection.
+                        // `idle(true)` aborts the IDLE command after the first
+                        // server response, returning control here so we can do
+                        // the inline INBOX fetch. (Plain `idle()` is `idle(false)`
+                        // which blocks until the IDLE command is externally
+                        // cancelled — the listener fires but we never get back
+                        // out of the call to process it.)
+                        folder.idle(true)
                         if (sawNewMail.getAndSet(false)) {
                             try {
                                 quickInboxFetch(folder, account.email)
