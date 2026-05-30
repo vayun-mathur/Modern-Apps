@@ -24,18 +24,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.R as LibraryR
-import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.weather.R
-import com.vayunmathur.weather.Route
 import com.vayunmathur.weather.data.SavedLocation
 import kotlinx.coroutines.launch
 
 /**
- * Direct port of WeatherMaster's `MainSearchBar` — a 56 dp `CircleShape`
- * pill `Surface` with a hamburger icon, the active location's name in the
- * middle, and a settings icon at the right. The whole surface is also
- * clickable to toggle the drawer (matching WeatherMaster's
- * tap-anywhere-to-open behavior).
+ * 56 dp `CircleShape` pill `Surface` with a hamburger icon on the left and
+ * the active location name centered. The whole surface is also clickable
+ * to toggle the drawer.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +38,6 @@ fun MainSearchBar(
     paddingValues: PaddingValues,
     drawerState: DrawerState,
     activeLocation: SavedLocation?,
-    backStack: NavBackStack<Route>,
 ) {
     val scope = rememberCoroutineScope()
     val toggleDrawer = {
@@ -98,13 +92,6 @@ fun MainSearchBar(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.width(4.dp))
-            IconButton(onClick = { backStack.add(Route.Settings) }) {
-                Icon(
-                    painter = painterResource(LibraryR.drawable.settings_24px),
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }

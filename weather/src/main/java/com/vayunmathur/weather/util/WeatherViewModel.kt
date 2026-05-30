@@ -42,14 +42,7 @@ class WeatherViewModel(
     private val dao: WeatherDao,
 ) : AndroidViewModel(application) {
 
-    private val prefs = UnitsPrefs(application)
     private val json = Json { ignoreUnknownKeys = true }
-
-    val tempUnit: StateFlow<TemperatureUnit> = prefs.tempUnit
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TemperatureUnit.Celsius)
-
-    val windUnit: StateFlow<WindUnit> = prefs.windUnit
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WindUnit.KmH)
 
     val savedLocations: StateFlow<List<SavedLocation>> = dao.observeLocations()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -57,14 +50,6 @@ class WeatherViewModel(
     /** Per-location forecast state, keyed by [SavedLocation.id]. */
     private val _forecasts = MutableStateFlow<Map<Long, ForecastUiState>>(emptyMap())
     val forecasts: StateFlow<Map<Long, ForecastUiState>> = _forecasts.asStateFlow()
-
-    fun setTempUnit(unit: TemperatureUnit) {
-        viewModelScope.launch { prefs.setTempUnit(unit) }
-    }
-
-    fun setWindUnit(unit: WindUnit) {
-        viewModelScope.launch { prefs.setWindUnit(unit) }
-    }
 
     /**
      * Ensure there's a forecast for [location] — hydrate from the on-disk

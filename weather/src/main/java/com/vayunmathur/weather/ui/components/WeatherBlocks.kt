@@ -54,7 +54,7 @@ fun WeatherBlocks(
         item { UvIndexBlock(uvIndex = today?.uvIndexMax?.firstOrNull()) }
         item { WindBlock(current = current, unit = windUnit) }
         item { PressureBlock(current = current) }
-        item { VisibilityBlock(current = current) }
+        item { VisibilityBlock(current = current, useMiles = windUnit == WindUnit.Mph) }
         item { SunBlock(sunriseEpochSec = sunriseEpochSec, sunsetEpochSec = sunsetEpochSec) }
         item { AirQualityBlock(air = air) }
         item { PollenBlock(air = air) }

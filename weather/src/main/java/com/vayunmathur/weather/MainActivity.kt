@@ -8,7 +8,6 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.DialogPage
-import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
@@ -17,7 +16,6 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.weather.data.WeatherDatabase
 import com.vayunmathur.weather.ui.HomePage
 import com.vayunmathur.weather.ui.SearchLocationPage
-import com.vayunmathur.weather.ui.SettingsPage
 import com.vayunmathur.weather.util.WeatherViewModel
 import com.vayunmathur.weather.util.WeatherViewModelFactory
 import kotlinx.serialization.Serializable
@@ -43,7 +41,6 @@ class MainActivity : ComponentActivity() {
 sealed interface Route : NavKey {
     @Serializable data object Home : Route
     @Serializable data object SearchLocation : Route
-    @Serializable data object Settings : Route
 }
 
 @Composable
@@ -52,6 +49,5 @@ fun Navigation(viewModel: WeatherViewModel) {
     MainNavigation(backStack) {
         entry<Route.Home>(metadata = ListPage()) { HomePage(backStack, viewModel) }
         entry<Route.SearchLocation>(metadata = DialogPage()) { SearchLocationPage(backStack, viewModel) }
-        entry<Route.Settings>(metadata = ListDetailPage()) { SettingsPage(backStack, viewModel) }
     }
 }

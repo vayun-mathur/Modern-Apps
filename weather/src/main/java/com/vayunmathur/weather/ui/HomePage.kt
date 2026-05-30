@@ -129,8 +129,8 @@ private fun LocationPage(
     paddingValues: androidx.compose.foundation.layout.PaddingValues,
 ) {
     val forecasts by viewModel.forecasts.collectAsState()
-    val tempUnit by viewModel.tempUnit.collectAsState()
-    val windUnit by viewModel.windUnit.collectAsState()
+    val tempUnit = com.vayunmathur.weather.util.rememberTempUnit()
+    val windUnit = com.vayunmathur.weather.util.rememberWindUnit()
 
     LaunchedEffect(location.id) { viewModel.ensureForecast(location) }
 
@@ -143,7 +143,6 @@ private fun LocationPage(
             paddingValues = paddingValues,
             drawerState = drawerState,
             activeLocation = location,
-            backStack = backStack,
         )
 
         if (forecast == null) {
