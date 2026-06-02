@@ -504,8 +504,11 @@ class YouPipeViewModel(
 
     fun setSponsorBlockEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            DataStoreUtils.getInstance(getApplication())
-                .setBoolean("sponsorblock_enabled", enabled)
+            val ds = DataStoreUtils.getInstance(getApplication())
+            ds.setBoolean("sponsorblock_enabled", enabled)
+            if (enabled && _sponsorBlockCategories.value.isEmpty()) {
+                setSponsorBlockCategories(DEFAULT_SPONSOR_CATEGORIES)
+            }
         }
     }
 
