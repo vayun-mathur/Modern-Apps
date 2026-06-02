@@ -76,4 +76,16 @@
     <string name="search">Otsi</string>
     <string name="search_contacts">Otsi kontaktide hulgast</string>
     <string name="include_year">Kaasa aasta</string>
+    <string name="system_default">Süsteemi vaikeseadistus</string>
+    <string name="signal">Signal</string>
+    <string name="whatsapp">WhatsApp</string>
+    <string name="contacts">Kontaktid</string>
+    <string name="groups">Grupid</string>
+    <string name="select_group_hint">Kontaktide vaatamiseks vali grupp</string>
+    <string name="add_to_group">Lisa gruppi</string>
+    <string name="add_group">Lisa grupp</string>
+    <string name="group_name">Grupi nimi</string>
+    <string name="enter_group_name">Sisesta grupi nimi</string>
+    <string name="delete_group_title">Kustuta grupp</string>
+    <string name="delete_group_confirm">Kas oled kindel, et soovid selle grupi kustutada? Kontaktid jäävad sel puhul alles.</string>
 </resources>
