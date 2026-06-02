@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.weather.data.SavedLocation
 import com.vayunmathur.weather.data.WeatherCache
 import com.vayunmathur.weather.data.WeatherDao
+import com.vayunmathur.weather.data.WeatherRefreshWorker
 import com.vayunmathur.weather.network.AirQualityResponse
 import com.vayunmathur.weather.network.ForecastResponse
 import com.vayunmathur.weather.network.WeatherApi
@@ -50,6 +51,10 @@ class WeatherViewModel(
     /** Per-location forecast state, keyed by [SavedLocation.id]. */
     private val _forecasts = MutableStateFlow<Map<Long, ForecastUiState>>(emptyMap())
     val forecasts: StateFlow<Map<Long, ForecastUiState>> = _forecasts.asStateFlow()
+
+    init {
+        WeatherRefreshWorker.scheduleHourlyRefresh(application)
+    }
 
     /**
      * Ensure there's a forecast for [location] — hydrate from the on-disk
