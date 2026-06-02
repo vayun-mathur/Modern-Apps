@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextClock xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_clock"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:format12Hour="h:mm"
+    android:format24Hour="H:mm"
+    android:textSize="40sp"
+    android:textStyle="bold"
+    android:textColor="?android:attr/textColorPrimary" />

@@ -31,6 +31,9 @@ import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import android.widget.RemoteViews
+import androidx.glance.appwidget.AndroidRemoteViews
+import com.vayunmathur.weather.R
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.widgets.DynamicThemeGlance
 import com.vayunmathur.weather.MainActivity
@@ -104,25 +107,53 @@ class WeatherGlanceWidget : GlanceAppWidget() {
 }
 
 /**
- * Generic intent that asks the user's default clock app to open. Falls
- * back gracefully — every Android device ships a handler for
- * [AlarmClock.ACTION_SHOW_ALARMS].
+ * Intent that opens the Clock app. Tries to open the app from this project
+ * first (com.vayunmathur.clock), falls back to the system clock app.
  */
-private fun clockIntent(): Intent = Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
-    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+private fun clockIntent(context: Context): Intent {
+    // Try to launch the clock app from this project
+    val explicitIntent = Intent().apply {
+        setClassName("com.vayunmathur.clock", "com.vayunmathur.clock.MainActivity")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    
+    // Check if the explicit intent can be resolved
+    return if (explicitIntent.resolveActivity(context.packageManager) != null) {
+        explicitIntent
+    } else {
+        // Fall back to generic alarm clock intent
+        Intent(AlarmClock.ACTION_SHOW_ALARMS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
 }
 
 /**
- * Generic intent that opens the user's default calendar app via the
- * standard [Intent.CATEGORY_APP_CALENDAR] launcher category.
+ * Intent that opens the Calendar app. Tries to open the app from this project
+ * first (com.vayunmathur.calendar), falls back to the system calendar app.
  */
-private fun calendarIntent(): Intent = Intent(Intent.ACTION_MAIN).apply {
-    addCategory(Intent.CATEGORY_APP_CALENDAR)
-    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+private fun calendarIntent(context: Context): Intent {
+    // Try to launch the calendar app from this project
+    val explicitIntent = Intent().apply {
+        setClassName("com.vayunmathur.calendar", "com.vayunmathur.calendar.MainActivity")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    
+    // Check if the explicit intent can be resolved
+    return if (explicitIntent.resolveActivity(context.packageManager) != null) {
+        explicitIntent
+    } else {
+        // Fall back to generic calendar intent
+        Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_APP_CALENDAR)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
 }
 
 @Composable
 private fun Content(weather: WidgetWeather?) {
+    val context = LocalContext.current
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     Row(
         modifier = GlanceModifier
@@ -140,12 +171,12 @@ private fun Content(weather: WidgetWeather?) {
         ) {
             Box(
                 modifier = GlanceModifier
-                    .clickable(actionStartActivity(clockIntent())),
-            ) { TimeBlock(now) }
+                    .clickable(actionStartActivity(clockIntent(context))),
+            ) { TimeBlock(context) }
             Box(
                 modifier = GlanceModifier
                     .padding(top = 2.dp)
-                    .clickable(actionStartActivity(calendarIntent())),
+                    .clickable(actionStartActivity(calendarIntent(context))),
             ) { DateBlock(now) }
         }
         // Right: large weather icon + temperature, clickable into this app.
@@ -161,18 +192,9 @@ private fun Content(weather: WidgetWeather?) {
 }
 
 @Composable
-private fun TimeBlock(now: LocalDateTime) {
-    val timeFormat = LocalDateTime.Format {
-        hour(Padding.NONE); char(':'); minute(Padding.ZERO)
-    }
-    Text(
-        text = now.format(timeFormat),
-        style = TextStyle(
-            color = GlanceTheme.colors.onSurface,
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Bold,
-        ),
-    )
+private fun TimeBlock(context: Context) {
+    val remoteViews = RemoteViews(context.packageName, R.layout.widget_text_clock)
+    AndroidRemoteViews(remoteViews)
 }
 
 @Composable
