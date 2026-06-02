@@ -1,6 +1,9 @@
 package com.vayunmathur.messages.ui
 
+import android.content.ContentUris
+import android.content.Intent
 import android.net.Uri
+import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.messages.R
@@ -138,6 +142,44 @@ fun ConversationScreen(
                     }
                 },
                 navigationIcon = { IconNavigation(backStack) },
+                actions = {
+                    val conv = conversation
+                    if (conv != null && !conv.isGroup && conv.peerPhoneE164 != null) {
+                        val ctx = LocalContext.current
+                        IconButton(onClick = {
+                            val phone = conv.peerPhoneE164
+                            val lookupUri = Uri.withAppendedPath(
+                                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                                Uri.encode(phone)
+                            )
+                            val contactId = ctx.contentResolver.query(
+                                lookupUri,
+                                arrayOf(ContactsContract.PhoneLookup._ID),
+                                null, null, null
+                            )?.use { cursor ->
+                                if (cursor.moveToFirst()) cursor.getLong(0) else null
+                            }
+                            val editIntent = if (contactId != null) {
+                                Intent(Intent.ACTION_EDIT).apply {
+                                    data = ContentUris.withAppendedId(
+                                        ContactsContract.Contacts.CONTENT_URI, contactId
+                                    )
+                                }
+                            } else {
+                                Intent(Intent.ACTION_INSERT).apply {
+                                    type = ContactsContract.Contacts.CONTENT_TYPE
+                                    putExtra(ContactsContract.Intents.Insert.PHONE, phone)
+                                    conv.peerName?.let {
+                                        putExtra(ContactsContract.Intents.Insert.NAME, it)
+                                    }
+                                }
+                            }
+                            ctx.startActivity(editIntent)
+                        }) {
+                            IconEdit()
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
