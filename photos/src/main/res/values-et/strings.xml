@@ -31,4 +31,10 @@
     <string name="disable_ocr">Lülita tehisaru põhine indekseerimine sisse</string>
     <string name="indexing_progress_details">Töödeldud fotosid: %1$d / %2$d</string>
     <string name="close">Sulge</string>
+    <string name="search_placeholder">Otsi fotosid…</string>
+    <string name="enable_ai_search_title">Kasuta tehisarupõhist otsingut</string>
+    <string name="enable_ai_search_description">Laadi alla tehisaru mudel, mis võimaldaks otsida fotosid sisu ja teksti alusel</string>
+    <string name="enable_ai_search_button">Võta kasutusele</string>
+    <string name="model_downloading_title">Tehisaru mudel on allalaadimisel</string>
+    <string name="model_downloading_description">Tehisaru mudel on allalaadimisel. Sõltuvalt sinu nutiseadme ühendusest võib selleks kuluda õige mitu minutit.</string>
 </resources>
