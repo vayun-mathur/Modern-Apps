@@ -62,7 +62,7 @@ object Provisioning {
 
             // Step 2: Emit QR code URL
             val pubKeyBase64 = Base64.encodeToString(cipher.getPublicKey().serialize(), Base64.NO_WRAP)
-            val qrUrl = "sgnl://linkdevice?uuid=${Uri.encode(provAddress.address)}&pub_key=${Uri.encode(pubKeyBase64)}"
+            val qrUrl = "sgnl://linkdevice?uuid=${Uri.encode(provAddress.address)}&pub_key=${Uri.encode(pubKeyBase64)}&capabilities=${Uri.encode("backup4,backup5")}"
             send(ProvisioningEvent.QrUrl(qrUrl))
             Log.d(TAG, "QR URL generated")
 
@@ -120,6 +120,7 @@ object Provisioning {
                     put("pniRegistrationId", pniRegistrationId)
                     put("capabilities", JSONObject().apply {
                         put("attachmentBackfill", true)
+                        put("spqr", true)
                     })
                 })
                 put("aciSignedPreKey", signedPreKeyToJson(aciSignedPreKey))
@@ -197,10 +198,6 @@ object Provisioning {
             init(SecretKeySpec(masterSecret, "HmacSHA256"))
             doFinal("auth".toByteArray())
         }
-        val cipherKey = Mac.getInstance("HmacSHA256").run {
-            init(SecretKeySpec(masterSecret, "HmacSHA256"))
-            doFinal("cipher".toByteArray())
-        }
 
         val nameBytes = name.toByteArray(Charsets.UTF_8)
         val syntheticIv = Mac.getInstance("HmacSHA256").run {
@@ -208,8 +205,17 @@ object Provisioning {
             doFinal(nameBytes)
         }.copyOfRange(0, 16)
 
+        val cipherKeyBase = Mac.getInstance("HmacSHA256").run {
+            init(SecretKeySpec(masterSecret, "HmacSHA256"))
+            doFinal("cipher".toByteArray())
+        }
+        val cipherKey = Mac.getInstance("HmacSHA256").run {
+            init(SecretKeySpec(cipherKeyBase, "HmacSHA256"))
+            doFinal(syntheticIv)
+        }
+
         val cipher = Cipher.getInstance("AES/CTR/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(cipherKey, "AES"), IvParameterSpec(syntheticIv))
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(cipherKey, "AES"), IvParameterSpec(ByteArray(16)))
         val ciphertext = cipher.doFinal(nameBytes)
 
         val deviceName = com.vayunmathur.messages.signal.proto.DeviceNameProtos.DeviceName.newBuilder()

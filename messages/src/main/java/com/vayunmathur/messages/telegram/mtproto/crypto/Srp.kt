@@ -2,8 +2,8 @@ package com.vayunmathur.messages.telegram.mtproto.crypto
 
 import java.math.BigInteger
 import java.security.MessageDigest
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 data class SrpAnswer(val a: ByteArray, val m1: ByteArray)
 
@@ -67,14 +67,32 @@ object Srp {
 
     private fun secondary(password: ByteArray, salt1: ByteArray, salt2: ByteArray): ByteArray {
         val ph1 = primary(password, salt1, salt2)
-        val spec = PBEKeySpec(
-            String(ph1, Charsets.ISO_8859_1).toCharArray(),
-            salt1,
-            100000,
-            512
-        )
-        val pbkdf2 = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512").generateSecret(spec).encoded
+        val pbkdf2 = pbkdf2Sha512(ph1, salt1, 100000, 64)
         return saltHash(pbkdf2, salt2)
+    }
+
+    private fun pbkdf2Sha512(password: ByteArray, salt: ByteArray, iterations: Int, keyLength: Int): ByteArray {
+        val mac = Mac.getInstance("HmacSHA512")
+        mac.init(SecretKeySpec(password, "HmacSHA512"))
+        val hashLen = 64
+        val blocks = (keyLength + hashLen - 1) / hashLen
+        val result = ByteArray(blocks * hashLen)
+        for (i in 1..blocks) {
+            val blockIndex = byteArrayOf(
+                (i shr 24).toByte(), (i shr 16).toByte(), (i shr 8).toByte(), i.toByte()
+            )
+            mac.reset()
+            mac.update(salt)
+            var u = mac.doFinal(blockIndex)
+            val block = u.copyOf()
+            for (j in 2..iterations) {
+                mac.reset()
+                u = mac.doFinal(u)
+                for (k in block.indices) block[k] = (block[k].toInt() xor u[k].toInt()).toByte()
+            }
+            System.arraycopy(block, 0, result, (i - 1) * hashLen, hashLen)
+        }
+        return result.copyOfRange(0, keyLength)
     }
 
     private fun pad256(v: BigInteger): ByteArray {

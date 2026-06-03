@@ -15,6 +15,7 @@ class TelegramApiClient {
 
     private var connection: MtProtoConnection? = null
     private var currentDc: Int = 2
+    val dc: Int get() = currentDc
 
     private val _updates = MutableSharedFlow<TlObject>(extraBufferCapacity = 256)
     val updates: SharedFlow<TlObject> = _updates.asSharedFlow()

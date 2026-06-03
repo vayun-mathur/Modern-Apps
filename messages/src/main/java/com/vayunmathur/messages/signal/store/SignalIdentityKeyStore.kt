@@ -35,7 +35,10 @@ class SignalIdentityKeyStore(
         direction: IdentityKeyStore.Direction,
     ): Boolean {
         val entity = runBlocking { db.identityKeyDao().get(address.name) } ?: return true
-        return entity.trusted && entity.identityKey.contentEquals(identityKey.serialize())
+        if (direction == IdentityKeyStore.Direction.SENDING) {
+            return entity.identityKey.contentEquals(identityKey.serialize())
+        }
+        return true
     }
 
     override fun getIdentity(address: SignalProtocolAddress): IdentityKey? {

@@ -27,7 +27,21 @@ data class User(
             val lastName = if (flags.has(2)) buf.string() else ""
             val username = if (flags.has(3)) buf.string() else ""
             val phone = if (flags.has(4)) buf.string() else ""
-            // Skip remaining optional fields
+            if (flags.has(5)) TlSkip.skipUserProfilePhoto(buf) // photo
+            if (flags.has(6)) TlSkip.skipUserStatus(buf) // status
+            if (flags.has(14)) buf.int32() // bot_info_version
+            if (flags.has(18)) { // restriction_reason vector
+                TlSkip.skipVectorBoxed(buf)
+            }
+            if (flags.has(19)) buf.string() // bot_inline_placeholder
+            if (flags.has(22)) buf.string() // lang_code
+            if (flags.has(30)) TlSkip.skipBoxedType(buf) // emoji_status
+            if (flags2.has(0)) { // usernames vector
+                TlSkip.skipVectorBoxed(buf)
+            }
+            if (flags2.has(5)) buf.int32() // stories_max_id
+            if (flags2.has(2)) TlSkip.skipBoxedType(buf) // color
+            if (flags2.has(3)) TlSkip.skipBoxedType(buf) // profile_color
             return User(
                 id = id,
                 accessHash = accessHash,

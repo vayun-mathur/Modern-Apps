@@ -439,7 +439,7 @@ object TelegramClient {
                 authKey = Base64.encodeToString(client.authKey, Base64.NO_WRAP),
                 authKeyId = Base64.encodeToString(client.authKeyId, Base64.NO_WRAP),
                 salt = client.salt,
-                dc = 2,
+                dc = client.dc,
                 serverAddress = null,
             ).save(appContext)
         }

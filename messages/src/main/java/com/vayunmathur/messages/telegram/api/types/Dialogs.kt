@@ -24,7 +24,11 @@ data class Dialog(
             val unreadCount = buf.int32()
             buf.int32() // unread_mentions_count
             buf.int32() // unread_reactions_count
-            // notifySettings - skip
+            TlSkip.skipPeerNotifySettings(buf) // notifySettings (mandatory)
+            if (flags.has(0)) buf.int32() // pts
+            if (flags.has(1)) TlSkip.skipBoxedType(buf) // draft
+            if (flags.has(4)) buf.int32() // folder_id
+            if (flags.has(5)) buf.int32() // ttl_period
             return Dialog(peer, topMessage, readInboxMaxId, readOutboxMaxId, unreadCount)
         }
     }

@@ -57,7 +57,7 @@ object EnvelopeDecryptor {
                     val address = SignalProtocolAddress(senderAci, senderDeviceId)
                     val cipher = SessionCipher(protocolStore, address)
                     val plaintext = cipher.decrypt(SignalMessage(envelope.content.toByteArray()))
-                    val content = SignalServiceProtos.Content.parseFrom(plaintext)
+                    val content = SignalServiceProtos.Content.parseFrom(stripPadding(plaintext))
                     DecryptionResult(senderAci, senderDeviceId, content, timestamp, serverTimestamp)
                 }
 
@@ -65,19 +65,18 @@ object EnvelopeDecryptor {
                     val address = SignalProtocolAddress(senderAci, senderDeviceId)
                     val cipher = SessionCipher(protocolStore, address)
                     val plaintext = cipher.decrypt(PreKeySignalMessage(envelope.content.toByteArray()))
-                    val content = SignalServiceProtos.Content.parseFrom(plaintext)
+                    val content = SignalServiceProtos.Content.parseFrom(stripPadding(plaintext))
                     DecryptionResult(senderAci, senderDeviceId, content, timestamp, serverTimestamp)
                 }
 
                 SignalServiceProtos.Envelope.Type.UNIDENTIFIED_SENDER -> {
-                    if (certificateValidator == null) {
-                        throw UnsupportedOperationException("Sealed sender not configured")
-                    }
                     val sealedCipher = SealedSessionCipher(
                         protocolStore, UUID.fromString(selfAci), selfAci, selfDeviceId
                     )
-                    val result = sealedCipher.decrypt(certificateValidator, envelope.content.toByteArray(), serverTimestamp)
-                    val content = SignalServiceProtos.Content.parseFrom(result.paddedMessage)
+                    val validator = certificateValidator
+                        ?: CertificateValidator(null)
+                    val result = sealedCipher.decrypt(validator, envelope.content.toByteArray(), serverTimestamp)
+                    val content = SignalServiceProtos.Content.parseFrom(stripPadding(result.paddedMessage))
                     DecryptionResult(
                         senderAci = result.senderUuid,
                         senderDeviceId = result.deviceId,
@@ -101,5 +100,12 @@ object EnvelopeDecryptor {
             Log.e(TAG, "Decryption error for type ${envelope.type}", e)
             DecryptionResult(senderAci, senderDeviceId, null, timestamp, serverTimestamp, error = e)
         }
+    }
+
+    private fun stripPadding(padded: ByteArray): ByteArray {
+        var i = padded.size - 1
+        while (i >= 0 && padded[i] == 0.toByte()) i--
+        if (i >= 0 && padded[i] == 0x80.toByte()) return padded.copyOfRange(0, i)
+        return padded
     }
 }

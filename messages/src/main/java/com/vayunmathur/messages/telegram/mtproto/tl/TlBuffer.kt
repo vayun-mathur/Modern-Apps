@@ -7,18 +7,20 @@ import java.nio.ByteOrder
 class TlBuffer {
     private var buf: ByteArray
     private var pos: Int = 0
+    private var writeStream: java.io.ByteArrayOutputStream? = null
 
     constructor() {
         buf = ByteArray(0)
+        writeStream = java.io.ByteArrayOutputStream(256)
     }
 
     constructor(data: ByteArray) {
         buf = data
     }
 
-    val raw: ByteArray get() = buf
+    val raw: ByteArray get() = writeStream?.toByteArray() ?: buf
     val remaining: Int get() = buf.size - pos
-    val length: Int get() = buf.size
+    val length: Int get() = writeStream?.size() ?: buf.size
 
     fun reset() {
         buf = ByteArray(0)
@@ -176,7 +178,12 @@ class TlBuffer {
     fun data(): ByteArray = buf.copyOfRange(pos, buf.size)
 
     private fun append(data: ByteArray) {
-        buf = buf + data
+        val ws = writeStream
+        if (ws != null) {
+            ws.write(data)
+        } else {
+            buf = buf + data
+        }
     }
 
     companion object {

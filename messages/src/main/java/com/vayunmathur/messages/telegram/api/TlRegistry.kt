@@ -40,6 +40,20 @@ object TlRegistry {
             0x215c4438.toInt() -> User.decode(buf)
             0xd3bc4b7a.toInt() -> UserEmpty.decode(buf)
 
+            // Chats
+            0x41cbf256.toInt() -> Chat.decode(buf)
+            0x94f592db.toInt() -> Channel.decode(buf)
+            0x6592a1a7.toInt() -> ChatForbidden.decode(buf)
+            0x17d493d5.toInt() -> ChannelForbidden.decode(buf)
+
+            // Response containers
+            0x15ba6c40.toInt() -> decodeMessagesDialogs(buf)
+            0x71e094f3.toInt() -> decodeMessagesDialogsSlice(buf)
+            0x8c718e87.toInt() -> decodeMessagesMessages(buf)
+            0x3a54685e.toInt() -> decodeMessagesMessagesSlice(buf)
+            0xc776ba4e.toInt() -> decodeMessagesChannelMessages(buf)
+            0xb3134d9d.toInt() -> decodeContactsFound(buf)
+
             // UpdatesState
             0xa56c2a3e.toInt() -> UpdatesState.decode(buf)
 
@@ -155,6 +169,78 @@ object TlRegistry {
         val pts = buf.int32()
         val ptsCount = buf.int32()
         return UpdateReadHistoryInbox(peer, maxId, pts)
+    }
+
+    private fun decodeDialog(buf: TlBuffer): TlObject {
+        val id = buf.int32()
+        return when (id) {
+            0xd58a08c6.toInt() -> Dialog.decode(buf)
+            else -> UnknownObject(id, buf.data())
+        }
+    }
+
+    fun decodeChat(buf: TlBuffer): TlObject {
+        val id = buf.int32()
+        return decodeById(id, buf)
+    }
+
+    fun decodeUser(buf: TlBuffer): TlObject {
+        val id = buf.int32()
+        return decodeById(id, buf)
+    }
+
+    private fun decodeMessagesDialogs(buf: TlBuffer): MessagesDialogs {
+        val dialogs = decodeVector(buf) { decodeDialog(it) }.filterIsInstance<Dialog>()
+        val messages = decodeVector(buf) { decodeMessage(it) }
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        return MessagesDialogs(dialogs, messages, chats, users)
+    }
+
+    private fun decodeMessagesDialogsSlice(buf: TlBuffer): MessagesDialogsSlice {
+        val count = buf.int32()
+        val dialogs = decodeVector(buf) { decodeDialog(it) }.filterIsInstance<Dialog>()
+        val messages = decodeVector(buf) { decodeMessage(it) }
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        return MessagesDialogsSlice(count, dialogs, messages, chats, users)
+    }
+
+    private fun decodeMessagesMessages(buf: TlBuffer): MessagesMessages {
+        val messages = decodeVector(buf) { decodeMessage(it) }
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        return MessagesMessages(messages, chats, users)
+    }
+
+    private fun decodeMessagesMessagesSlice(buf: TlBuffer): MessagesMessagesSlice {
+        val flags = Fields.decode(buf)
+        val count = buf.int32()
+        if (flags.has(1)) buf.int32() // next_rate
+        if (flags.has(2)) buf.int32() // offset_id_offset
+        val messages = decodeVector(buf) { decodeMessage(it) }
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        return MessagesMessagesSlice(count, messages, chats, users)
+    }
+
+    private fun decodeMessagesChannelMessages(buf: TlBuffer): MessagesChannelMessages {
+        val flags = Fields.decode(buf)
+        val count = buf.int32()
+        if (flags.has(2)) buf.int32() // offset_id_offset
+        val messages = decodeVector(buf) { decodeMessage(it) }
+        val topics = decodeVector(buf) { val id = it.int32(); UnknownObject(id, ByteArray(0)) } // topics vector
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        return MessagesChannelMessages(count, messages, chats, users)
+    }
+
+    private fun decodeContactsFound(buf: TlBuffer): ContactsFound {
+        val myResults = decodeVector(buf) { val id = it.int32(); decodeById(id, it) }
+        val results = decodeVector(buf) { val id = it.int32(); decodeById(id, it) }
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        return ContactsFound(myResults, results, chats, users)
     }
 }
 

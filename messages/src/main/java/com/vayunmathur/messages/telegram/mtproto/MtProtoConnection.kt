@@ -213,12 +213,11 @@ class MtProtoConnection(
     }
 
     private fun nextSeqNo(contentRelated: Boolean): Int {
-        val s = seqNo.get()
         return if (contentRelated) {
-            seqNo.addAndGet(2)
+            val s = seqNo.getAndIncrement()
             s * 2 + 1
         } else {
-            s * 2
+            seqNo.get() * 2
         }
     }
 

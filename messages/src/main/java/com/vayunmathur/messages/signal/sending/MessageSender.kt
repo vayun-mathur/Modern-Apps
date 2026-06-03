@@ -116,8 +116,8 @@ class MessageSender(
         when (response.status) {
             in 200..299 -> return
             409 -> {
-                Log.w(TAG, "Stale devices for $recipientAci, re-fetching")
-                deviceManager.refreshDevices(recipientAci)
+                Log.w(TAG, "Stale devices for $recipientAci, handling mismatched devices")
+                handleMismatchedDevices(recipientAci, response.body.toByteArray())
                 sendToRecipient(recipientAci, paddedContent, timestamp, retryCount + 1)
             }
             410 -> {
@@ -152,7 +152,10 @@ class MessageSender(
     ) {
         val sentBuilder = SignalServiceProtos.SyncMessage.Sent.newBuilder()
             .setTimestamp(timestamp)
-            .setMessage(content.dataMessage)
+
+        if (content.hasDataMessage()) {
+            sentBuilder.setMessage(content.dataMessage)
+        }
 
         if (recipientAci != null) {
             sentBuilder.setDestinationServiceId(recipientAci)
@@ -182,7 +185,7 @@ class MessageSender(
                 val payload = JSONObject().apply {
                     put("timestamp", timestamp)
                     put("online", false)
-                    put("urgent", false)
+                    put("urgent", true)
                     put("messages", messages)
                 }
                 ws.sendRequest(
@@ -209,6 +212,41 @@ class MessageSender(
             }
         } catch (e: Exception) {
             Log.w(TAG, "Error parsing gone devices response", e)
+        }
+    }
+
+    private suspend fun handleMismatchedDevices(recipientAci: String, responseBody: ByteArray?) {
+        if (responseBody == null) {
+            deviceManager.refreshDevices(recipientAci)
+            return
+        }
+        try {
+            val json = JSONObject(String(responseBody))
+            val missingDevices = json.optJSONArray("missingDevices")
+            val extraDevices = json.optJSONArray("extraDevices")
+            val staleDevices = json.optJSONArray("staleDevices")
+            if (missingDevices != null) {
+                for (i in 0 until missingDevices.length()) {
+                    deviceManager.ensureSession(recipientAci, missingDevices.getInt(i))
+                }
+            }
+            if (extraDevices != null) {
+                for (i in 0 until extraDevices.length()) {
+                    val address = SignalProtocolAddress(recipientAci, extraDevices.getInt(i))
+                    sessionStore.deleteSession(address)
+                }
+            }
+            if (staleDevices != null) {
+                for (i in 0 until staleDevices.length()) {
+                    val address = SignalProtocolAddress(recipientAci, staleDevices.getInt(i))
+                    sessionStore.deleteSession(address)
+                    deviceManager.ensureSession(recipientAci, staleDevices.getInt(i))
+                }
+            }
+            deviceManager.refreshDevices(recipientAci)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error parsing mismatched devices response", e)
+            deviceManager.refreshDevices(recipientAci)
         }
     }
 

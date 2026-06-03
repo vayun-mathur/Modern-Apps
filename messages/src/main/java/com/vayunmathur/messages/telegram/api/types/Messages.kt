@@ -26,10 +26,13 @@ data class Message(
             val fromId = if (flags.has(8)) decodePeer(buf) else null
             val peerId = decodePeer(buf)
             if (flags.has(28)) decodePeer(buf) // saved_peer_id
-            if (flags.has(2)) buf.int32() // fwd_from skipped (complex)
-            // Skip remaining complex optional fields, just grab essentials
+            if (flags.has(2)) {
+                buf.int32() // fwd_from constructor id
+                TlSkip.skipMessageFwdHeader(buf)
+            }
             if (flags.has(11)) buf.int64() // via_bot_id
-            if (flags.has(3)) { buf.int32(); buf.int32() } // reply_to (simplified)
+            if (flags.has(22)) buf.int64() // via_business_bot_id
+            if (flags.has(3)) TlSkip.skipReplyTo(buf) // reply_to
             val date = buf.int32()
             val message = buf.string()
             val mediaTypeId = if (flags.has(9)) buf.peekId() else 0

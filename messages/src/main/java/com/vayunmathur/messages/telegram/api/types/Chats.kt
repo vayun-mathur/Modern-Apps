@@ -17,8 +17,13 @@ data class Chat(
             val flags = Fields.decode(buf)
             val id = buf.int64()
             val title = buf.string()
-            // Skip photo
+            TlSkip.skipChatPhoto(buf) // photo (mandatory)
             val participantsCount = buf.int32()
+            buf.int32() // date
+            buf.int32() // version
+            if (flags.has(6)) TlSkip.skipBoxedType(buf) // migrated_to
+            if (flags.has(14)) TlSkip.skipBoxedType(buf) // admin_rights
+            if (flags.has(18)) TlSkip.skipBoxedType(buf) // default_banned_rights
             return Chat(id, title, participantsCount)
         }
     }
@@ -42,6 +47,15 @@ data class Channel(
             val accessHash = if (flags.has(13)) buf.int64() else 0L
             val title = buf.string()
             val username = if (flags.has(6)) buf.string() else ""
+            TlSkip.skipChatPhoto(buf) // photo (mandatory)
+            buf.int32() // date (mandatory)
+            if (flags.has(9)) { // restriction_reason vector
+                TlSkip.skipVectorBoxed(buf)
+            }
+            if (flags.has(14)) TlSkip.skipBoxedType(buf) // admin_rights
+            if (flags.has(15)) TlSkip.skipBoxedType(buf) // banned_rights
+            if (flags.has(18)) TlSkip.skipBoxedType(buf) // default_banned_rights
+            if (flags.has(17)) buf.int32() // participants_count
             return Channel(id, accessHash, title, username, megagroup = flags.has(8))
         }
     }

@@ -313,7 +313,7 @@ object SignalClient {
                     android.util.Base64.NO_WRAP,
                 ),
             )
-            ws.connect("wss://chat.signal.org/v1/websocket/?login=${auth.aci}.${auth.deviceId}&password=${auth.password}")
+            ws.connect("wss://chat.signal.org/v1/websocket/?login=${auth.aci}.${auth.deviceId}")
             webSocket = ws
 
             val devManager = DeviceManager(ws, sessStore, idStore, pkStore, pkStore, pkStore, skStore)

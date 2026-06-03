@@ -7,9 +7,10 @@ import com.vayunmathur.messages.signal.store.SignalGroupEntity
 import com.vayunmathur.messages.signal.store.SignalGroupStore
 import com.vayunmathur.messages.signal.web.SignalWebSocket
 import java.nio.ByteBuffer
-import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 class GroupManager(
     private val ws: SignalWebSocket,
@@ -67,8 +68,9 @@ class GroupManager(
     fun getCachedGroup(groupId: String): SignalGroup? = cache[groupId]
 
     fun deriveGroupId(masterKey: ByteArray): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(masterKey)
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(masterKey, "HmacSHA256"))
+        val hash = mac.doFinal("GV2 Derived".toByteArray())
         return Base64.encodeToString(hash, Base64.NO_WRAP)
     }
 

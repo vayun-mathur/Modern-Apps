@@ -98,7 +98,7 @@ data class MessagesDeleteHistory(val peer: TlObject, val maxId: Int = 0) : TlMet
     override val typeId = 0xb08f922a.toInt()
     override fun encode(buf: TlBuffer) {
         buf.putId(typeId)
-        buf.putInt32(1) // flags: just_clear = false, revoke = true (bit 0)
+        buf.putInt32(1 shl 1) // flags: revoke = true (bit 1)
         peer.encode(buf)
         buf.putInt32(maxId)
     }

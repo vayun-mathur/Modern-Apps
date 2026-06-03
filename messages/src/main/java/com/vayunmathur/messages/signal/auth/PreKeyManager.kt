@@ -96,6 +96,7 @@ object PreKeyManager {
             put("preKeys", preKeys)
             put("signedPreKey", signedPreKey)
             put("pqPreKeys", pqPreKeys)
+            put("identityKey", Base64.encodeToString(identityKeyPair.publicKey.serialize(), Base64.NO_WRAP))
         }
 
         val response = ws.sendRequest(

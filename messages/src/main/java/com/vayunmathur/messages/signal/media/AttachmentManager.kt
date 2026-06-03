@@ -22,10 +22,11 @@ object AttachmentManager {
     ): SignalServiceProtos.AttachmentPointer? {
         return try {
             val random = SecureRandom()
-            val key = ByteArray(32).also { random.nextBytes(it) }
+            val aesKey = ByteArray(32).also { random.nextBytes(it) }
+            val macKey = ByteArray(32).also { random.nextBytes(it) }
             val iv = ByteArray(16).also { random.nextBytes(it) }
 
-            val encrypted = encryptAttachment(data, key, iv)
+            val encrypted = encryptAttachment(data, aesKey, macKey, iv)
             val digest = MessageDigest.getInstance("SHA-256").digest(encrypted)
 
             val formResponse = SignalHttpClient.request(
@@ -50,7 +51,7 @@ object AttachmentManager {
 
             SignalServiceProtos.AttachmentPointer.newBuilder()
                 .setCdnId(cdnId)
-                .setKey(com.google.protobuf.ByteString.copyFrom(key + iv))
+                .setKey(com.google.protobuf.ByteString.copyFrom(aesKey + macKey))
                 .setDigest(com.google.protobuf.ByteString.copyFrom(digest))
                 .setSize(data.size)
                 .setContentType(contentType)
@@ -62,15 +63,15 @@ object AttachmentManager {
         }
     }
 
-    private fun encryptAttachment(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
+    private fun encryptAttachment(data: ByteArray, aesKey: ByteArray, macKey: ByteArray, iv: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        val keySpec = SecretKeySpec(key, "AES")
+        val keySpec = SecretKeySpec(aesKey, "AES")
         val ivSpec = IvParameterSpec(iv)
         cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec)
         val ciphertext = cipher.doFinal(data)
 
         val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(key, "HmacSHA256"))
+        mac.init(SecretKeySpec(macKey, "HmacSHA256"))
         mac.update(iv)
         mac.update(ciphertext)
         val hmac = mac.doFinal()

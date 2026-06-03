@@ -13,9 +13,16 @@ data class AuthSentCode(
     companion object {
         fun decode(buf: TlBuffer): AuthSentCode {
             val flags = Fields.decode(buf)
-            // type - sent code type
-            buf.int32() // type constructor id
-            if (true) buf.int32() // length for most types
+            val typeId = buf.int32() // type constructor id
+            // Only some code types have a length field
+            when (typeId) {
+                0x3dbb5986.toInt(), // sentCodeTypeApp
+                0xc000bba2.toInt(), // sentCodeTypeSms
+                0x5353e5a7.toInt(), // sentCodeTypeCall
+                -> buf.int32() // length
+                0xab03c6d9.toInt(), // sentCodeTypeFlashCall
+                -> buf.string() // pattern
+            }
             val phoneCodeHash = buf.string()
             return AuthSentCode(phoneCodeHash)
         }
@@ -29,8 +36,9 @@ data class AuthAuthorization(val user: User) : TlObject {
     companion object {
         fun decode(buf: TlBuffer): AuthAuthorization {
             val flags = Fields.decode(buf)
-            if (flags.has(1)) buf.int32() // tmp_sessions
-            if (flags.has(2)) buf.bytes() // future_auth_token
+            if (flags.has(0)) buf.int32() // tmp_sessions (flags.0)
+            if (flags.has(1)) buf.int32() // otherwise_relogin_days (flags.1)
+            if (flags.has(2)) buf.bytes() // future_auth_token (flags.2)
             val userTypeId = buf.int32()
             val user = User.decode(buf)
             return AuthAuthorization(user)

@@ -218,7 +218,16 @@ class SignalWebSocket(
             while (true) {
                 delay(PING_INTERVAL_MS)
                 if (isConnected) {
-                    webSocket?.send(ByteString.EMPTY)
+                    val keepAlive = WebSocketMessage.newBuilder()
+                        .setType(WebSocketMessage.Type.REQUEST)
+                        .setRequest(
+                            WebSocketRequestMessage.newBuilder()
+                                .setId(requestId.getAndIncrement())
+                                .setVerb("GET")
+                                .setPath("/v1/keepalive")
+                                .build()
+                        ).build()
+                    webSocket?.send(keepAlive.toByteArray().toByteString())
                 }
             }
         }
