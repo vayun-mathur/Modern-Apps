@@ -47,13 +47,16 @@ object MessagesSessionManager {
     private lateinit var appContext: Context
     private lateinit var db: MessagesDatabase
 
-    /** Per-source unified connection state. */
+/** Per-source unified connection state. */
     private val _connectionStates = MutableStateFlow<Map<MessageSource, SourceConnectionState>>(
         mapOf(
             MessageSource.MESSAGES_WEB to SourceConnectionState.Idle,
             MessageSource.VOICE to SourceConnectionState.Idle,
             MessageSource.TELEGRAM to SourceConnectionState.Idle,
             MessageSource.SIGNAL to SourceConnectionState.Idle,
+            MessageSource.WHATSAPP to SourceConnectionState.Idle,
+            MessageSource.MESSENGER to SourceConnectionState.Idle,
+            MessageSource.INSTAGRAM to SourceConnectionState.Idle,
         )
     )
     val connectionStates: StateFlow<Map<MessageSource, SourceConnectionState>> =
@@ -72,6 +75,9 @@ object MessagesSessionManager {
         MessageSource.VOICE to false,
         MessageSource.TELEGRAM to false,
         MessageSource.SIGNAL to false,
+        MessageSource.WHATSAPP to false,
+        MessageSource.MESSENGER to false,
+        MessageSource.INSTAGRAM to false,
     )
 
     fun init(context: Context) {
@@ -82,6 +88,9 @@ object MessagesSessionManager {
         GVoiceClient.init(appContext)
         TelegramClient.init(appContext)
         SignalClient.init(appContext)
+        com.vayunmathur.messages.whatsapp.WhatsAppClient.init(appContext)
+        com.vayunmathur.messages.meta.MetaClient.init(appContext)
+        com.vayunmathur.messages.meta.InstagramClient.init(appContext)
         Log.i(TAG, "init")
         wireCollectors()
     }
@@ -94,6 +103,9 @@ object MessagesSessionManager {
         GVoiceClient.start()
         TelegramClient.start()
         SignalClient.start()
+        com.vayunmathur.messages.whatsapp.WhatsAppClient.start()
+        com.vayunmathur.messages.meta.MetaClient.start()
+        com.vayunmathur.messages.meta.InstagramClient.start()
     }
 
     fun stop() {
@@ -101,10 +113,16 @@ object MessagesSessionManager {
         GVoiceClient.stop()
         TelegramClient.stop()
         SignalClient.stop()
+        com.vayunmathur.messages.whatsapp.WhatsAppClient.stop()
+        com.vayunmathur.messages.meta.MetaClient.stop()
+        com.vayunmathur.messages.meta.InstagramClient.stop()
         backfillComplete[MessageSource.MESSAGES_WEB] = false
         backfillComplete[MessageSource.VOICE] = false
         backfillComplete[MessageSource.TELEGRAM] = false
         backfillComplete[MessageSource.SIGNAL] = false
+        backfillComplete[MessageSource.WHATSAPP] = false
+        backfillComplete[MessageSource.MESSENGER] = false
+        backfillComplete[MessageSource.INSTAGRAM] = false
     }
 
     /** Stop one source independently — used from the per-source
@@ -115,6 +133,9 @@ object MessagesSessionManager {
             MessageSource.VOICE -> GVoiceClient.stop()
             MessageSource.TELEGRAM -> TelegramClient.stop()
             MessageSource.SIGNAL -> SignalClient.stop()
+            MessageSource.WHATSAPP -> com.vayunmathur.messages.whatsapp.WhatsAppClient.stop()
+            MessageSource.MESSENGER -> com.vayunmathur.messages.meta.MetaClient.stop()
+            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.stop()
         }
         backfillComplete[source] = false
     }
@@ -140,6 +161,9 @@ object MessagesSessionManager {
             MessageSource.VOICE -> GVoiceClient.sendMessage(conversationId, body)
             MessageSource.TELEGRAM -> TelegramClient.sendMessage(conversationId, body)
             MessageSource.SIGNAL -> SignalClient.sendMessage(conversationId, body)
+            MessageSource.WHATSAPP -> com.vayunmathur.messages.whatsapp.WhatsAppClient.sendMessage(conversationId, body)
+            MessageSource.MESSENGER -> com.vayunmathur.messages.meta.MetaClient.sendMessage(conversationId, body)
+            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.sendMessage(conversationId, body)
         }
         db.messageDao().updateState(
             pendingId,
@@ -204,6 +228,24 @@ object MessagesSessionManager {
                 fileName = fileName,
                 caption = caption,
             )
+            MessageSource.WHATSAPP -> com.vayunmathur.messages.whatsapp.WhatsAppClient.sendMedia(
+                conversationId = conversationId,
+                bytes = bytes,
+                mimeType = mime,
+                fileName = fileName
+            )
+            MessageSource.MESSENGER -> com.vayunmathur.messages.meta.MetaClient.sendMedia(
+                conversationId = conversationId,
+                bytes = bytes,
+                mimeType = mime,
+                fileName = fileName
+            )
+            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.sendMedia(
+                conversationId = conversationId,
+                bytes = bytes,
+                mimeType = mime,
+                fileName = fileName
+            )
         }
         db.messageDao().updateState(
             pendingId,
@@ -237,6 +279,15 @@ object MessagesSessionManager {
             }
             MessageSource.SIGNAL -> {
                 SignalClient.markRead(conversationId)
+            }
+            MessageSource.WHATSAPP -> {
+                com.vayunmathur.messages.whatsapp.WhatsAppClient.markRead(conversationId)
+            }
+            MessageSource.MESSENGER -> {
+                com.vayunmathur.messages.meta.MetaClient.markRead(conversationId)
+            }
+            MessageSource.INSTAGRAM -> {
+                com.vayunmathur.messages.meta.InstagramClient.markRead(conversationId)
             }
         }
     }
@@ -301,6 +352,30 @@ object MessagesSessionManager {
                 emoji = emoji,
                 add = action == ReactionAction.ADD || action == ReactionAction.SWITCH,
             )
+            MessageSource.WHATSAPP -> {
+                com.vayunmathur.messages.whatsapp.WhatsAppClient.sendReaction(
+                    msg.conversationId,
+                    messageId,
+                    emoji
+                )
+                true
+            }
+            MessageSource.MESSENGER -> {
+                com.vayunmathur.messages.meta.MetaClient.sendReaction(
+                    msg.conversationId,
+                    messageId,
+                    emoji
+                )
+                true
+            }
+            MessageSource.INSTAGRAM -> {
+                com.vayunmathur.messages.meta.InstagramClient.sendReaction(
+                    msg.conversationId,
+                    messageId,
+                    emoji
+                )
+                true
+            }
         }
     }
 
@@ -664,6 +739,9 @@ object MessagesSessionManager {
         conversationId.startsWith("${MessageSource.VOICE.idPrefix}:") -> MessageSource.VOICE
         conversationId.startsWith("${MessageSource.TELEGRAM.idPrefix}:") -> MessageSource.TELEGRAM
         conversationId.startsWith("${MessageSource.SIGNAL.idPrefix}:") -> MessageSource.SIGNAL
+        conversationId.startsWith("${MessageSource.WHATSAPP.idPrefix}:") -> MessageSource.WHATSAPP
+        conversationId.startsWith("${MessageSource.MESSENGER.idPrefix}:") -> MessageSource.MESSENGER
+        conversationId.startsWith("${MessageSource.INSTAGRAM.idPrefix}:") -> MessageSource.INSTAGRAM
         else -> null
     }
 

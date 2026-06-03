@@ -21,7 +21,16 @@ enum class MessageSource {
     TELEGRAM,
 
     /** Conversations on Signal, accessed via libsignal + WebSocket. */
-    SIGNAL;
+    SIGNAL,
+
+    /** Conversations on WhatsApp, accessed via WhatsApp Web protocol. */
+    WHATSAPP,
+
+    /** Conversations on Facebook Messenger, accessed via MQTT. */
+    MESSENGER,
+
+    /** Conversations on Instagram Direct, accessed via MQTT. */
+    INSTAGRAM;
 
     /** Prefix for compound primary keys (e.g. "msgs:<thread_id>"). */
     val idPrefix: String get() = when (this) {
@@ -29,6 +38,9 @@ enum class MessageSource {
         VOICE -> "voice"
         TELEGRAM -> "tg"
         SIGNAL -> "sig"
+        WHATSAPP -> "wa"
+        MESSENGER -> "fb"
+        INSTAGRAM -> "ig"
     }
 }
 

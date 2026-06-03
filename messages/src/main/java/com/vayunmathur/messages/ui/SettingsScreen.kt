@@ -103,6 +103,30 @@ fun SettingsScreen(
                 onConfigure = { backStack.add(Route.LoginSignal) },
                 onDisconnect = { MessagesSessionManager.stop(MessageSource.SIGNAL) },
             )
+            Spacer(Modifier.height(8.dp))
+            SourceCard(
+                title = "WhatsApp",
+                icon = { tint -> IconSend(Modifier.size(28.dp), tint) },
+                state = states[MessageSource.WHATSAPP] ?: SourceConnectionState.Idle,
+                onConfigure = { backStack.add(Route.LoginWhatsApp) },
+                onDisconnect = { MessagesSessionManager.stop(MessageSource.WHATSAPP) },
+            )
+            Spacer(Modifier.height(8.dp))
+            SourceCard(
+                title = "Messenger",
+                icon = { tint -> IconMail(Modifier.size(28.dp), tint) },
+                state = states[MessageSource.MESSENGER] ?: SourceConnectionState.Idle,
+                onConfigure = { backStack.add(Route.LoginMessenger) },
+                onDisconnect = { MessagesSessionManager.stop(MessageSource.MESSENGER) },
+            )
+            Spacer(Modifier.height(8.dp))
+            SourceCard(
+                title = "Instagram",
+                icon = { tint -> IconInbox(Modifier.size(28.dp), tint) },
+                state = states[MessageSource.INSTAGRAM] ?: SourceConnectionState.Idle,
+                onConfigure = { backStack.add(Route.LoginInstagram) },
+                onDisconnect = { MessagesSessionManager.stop(MessageSource.INSTAGRAM) },
+            )
             Spacer(Modifier.height(16.dp))
             OutlinedButton(
                 onClick = { vm.forceResync() },

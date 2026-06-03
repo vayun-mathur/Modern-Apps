@@ -91,6 +91,9 @@ sealed interface Route : NavKey {
     @Serializable data object LoginVoice : Route
     @Serializable data object LoginTelegram : Route
     @Serializable data object LoginSignal : Route
+    @Serializable data object LoginWhatsApp : Route
+    @Serializable data object LoginMessenger : Route
+    @Serializable data object LoginInstagram : Route
 
     /**
      * "Compose new" screen — recipient picker + body + media preview.
@@ -153,6 +156,15 @@ private fun Navigation(
         }
         entry<Route.LoginSignal> {
             SignalLoginScreen(backStack)
+        }
+        entry<Route.LoginWhatsApp> {
+            com.vayunmathur.messages.ui.setup.WhatsAppLoginScreen(backStack)
+        }
+        entry<Route.LoginMessenger> {
+            com.vayunmathur.messages.ui.setup.MetaLoginScreen(backStack)
+        }
+        entry<Route.LoginInstagram> {
+            com.vayunmathur.messages.ui.setup.InstagramLoginScreen(backStack)
         }
         entry<Route.Compose> { route ->
             ComposeScreen(
