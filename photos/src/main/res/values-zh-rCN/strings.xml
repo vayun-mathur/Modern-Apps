@@ -31,4 +31,10 @@
     <string name="disable_ocr">禁用 AI 索引</string>
     <string name="indexing_progress_details">已处理 %1$d 张照片（共 %2$d 张）</string>
     <string name="close">关闭</string>
+    <string name="search_placeholder">搜索照片…</string>
+    <string name="enable_ai_search_title">启用 AI 搜索</string>
+    <string name="enable_ai_search_description">下载 AI 模型，按内容和文本搜索照片</string>
+    <string name="enable_ai_search_button">启用</string>
+    <string name="model_downloading_title">正在下载 AI 模型</string>
+    <string name="model_downloading_description">AI 模型正在下载中。这可能需要几分钟，具体取决于您的连接情况。</string>
 </resources>
