@@ -52,6 +52,9 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         versionCode = appVersionCode
         versionName = appVersionName
         targetSdk = 37
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -76,6 +79,7 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            isCrunchPngs = true
             signingConfig = if (signingConfigs.findByName("release") != null) {
                 signingConfigs.getByName("release")
             } else {
@@ -84,11 +88,6 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), proguardFile.absolutePath,
             )
-
-            // This applies ONLY to your release APK/Bundle
-            ndk {
-                abiFilters.add("arm64-v8a")
-            }
         }
         create("dev") {
             initWith(getByName("release"))
