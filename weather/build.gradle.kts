@@ -5,6 +5,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260604
+        versionName = "v2.5.2"
         applicationId = "com.vayunmathur.weather"
     }
 }
