@@ -1,4 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Male</string>
+    <string name="start_new_game">Alusta uut mängu</string>
+    <string name="play_as">"Mängi    "</string>
+    <string name="color_white">Valgetega</string>
+    <string name="color_black">Mustadega</string>
+    <string name="difficulty_easy">Lihtne</string>
+    <string name="difficulty_medium">Keskmine</string>
+    <string name="difficulty_hard">Raske</string>
+    <string name="difficulty_master">Meistrite tase</string>
+    <string name="start_game">Alusta mängu</string>
+    <string name="new_game">Uus mäng</string>
+    <string name="two_player_local">Kahe mängijaga kohalik mäng</string>
+    <string name="human_vs_ai">Inimene tehisaru vastu</string>
+    <string name="check">Tuli!</string>
+    <string name="checkmate_wins">Matt! %1$s võitis.</string>
+    <string name="white_wins">Matt! Valged võitsid.</string>
+    <string name="black_wins">Matt! Mustad võitsid.</string>
+    <string name="piece_white_king">Valge kuningas</string>
+    <string name="piece_white_rook">Valge vanker</string>
+    <string name="piece_white_queen">Valge lipp</string>
+    <string name="piece_white_knight">Valge ratsu</string>
+    <string name="piece_white_pawn">Valge ettur</string>
+    <string name="piece_black_king">Must kuningas</string>
+    <string name="piece_black_queen">Must lipp</string>
+    <string name="piece_black_rook">Must vanker</string>
+    <string name="piece_black_bishop">Must oda</string>
+    <string name="piece_black_pawn">Must ettur</string>
+    <string name="piece_white_bishop">Valge oda</string>
+    <string name="piece_black_knight">Must ratsu</string>
+    <string name="promote_pawn">Etturi muundamine</string>
 </resources>
