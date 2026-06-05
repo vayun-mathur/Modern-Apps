@@ -11,6 +11,7 @@ import androidx.pdf.PdfPasswordException
 import androidx.pdf.SandboxedPdfLoader
 import com.vayunmathur.pdf.R
 import com.vayunmathur.pdf.model.CapturedImage
+import com.vayunmathur.pdf.model.Quadrilateral
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -68,7 +69,16 @@ class PdfViewModel(application: Application) : AndroidViewModel(application) {
         val current = _capturedImages.value
         if (index !in current.indices) return
         _capturedImages.value = current.toMutableList().also {
-            it[index] = it[index].copy(cropRect = crop)
+            it[index] = it[index].copy(cropRect = crop, quadrilateral = Quadrilateral.fromRect(crop))
+        }
+    }
+    
+    /** Updates the committed quadrilateral for the image at [index]. */
+    fun updateQuadrilateral(index: Int, quadrilateral: Quadrilateral) {
+        val current = _capturedImages.value
+        if (index !in current.indices) return
+        _capturedImages.value = current.toMutableList().also {
+            it[index] = it[index].copy(quadrilateral = quadrilateral, cropRect = quadrilateral.toBoundingRect())
         }
     }
 

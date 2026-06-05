@@ -136,9 +136,9 @@ fun CapturePdfScreen(
         val currentImage = images[currentSelected]
         CropScreen(
             uri = currentImage.uri,
-            initialCrop = currentImage.cropRect,
-            onCropDone = { newRect ->
-                viewModel.updateCrop(currentSelected, newRect)
+            initialQuadrilateral = currentImage.quadrilateral,
+            onCropDone = { newQuadrilateral ->
+                viewModel.updateQuadrilateral(currentSelected, newQuadrilateral)
                 isCropping = false
             },
             onBack = { isCropping = false }

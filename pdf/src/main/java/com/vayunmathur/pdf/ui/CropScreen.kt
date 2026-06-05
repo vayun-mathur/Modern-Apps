@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +46,7 @@ import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.pdf.R
+import com.vayunmathur.pdf.model.Quadrilateral
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -53,21 +55,35 @@ import kotlin.math.roundToInt
 @Composable
 fun CropScreen(
     uri: Uri,
-    initialCrop: Rect?,
-    onCropDone: (Rect) -> Unit,
+    initialQuadrilateral: Quadrilateral?,
+    onCropDone: (Quadrilateral) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var crop by remember { mutableStateOf(initialCrop ?: Rect(0f, 0f, 1f, 1f)) }
+    var quadrilateral by remember {
+        mutableStateOf(initialQuadrilateral ?: Quadrilateral.default())
+    }
     var originalSize by remember { mutableStateOf<IntSize?>(null) }
 
     LaunchedEffect(uri) {
         withContext(Dispatchers.IO) {
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.contentResolver.openInputStream(uri)?.use { 
-                BitmapFactory.decodeStream(it, null, options)
+            try {
+                // Use ImageDecoder which respects EXIF orientation
+                val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                val bitmap = android.graphics.ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                    decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+                    decoder.isMutableRequired = false
+                }
+                originalSize = IntSize(bitmap.width, bitmap.height)
+                bitmap.recycle()
+            } catch (e: Exception) {
+                // Fallback to BitmapFactory if ImageDecoder fails
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, options)
+                }
+                originalSize = IntSize(options.outWidth, options.outHeight)
             }
-            originalSize = IntSize(options.outWidth, options.outHeight)
         }
     }
 
@@ -82,7 +98,7 @@ fun CropScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { onCropDone(crop) },
+                onClick = { onCropDone(quadrilateral) },
                 text = { Text(stringResource(R.string.continue_label)) },
                 icon = { IconSave() }
             )
@@ -99,24 +115,43 @@ fun CropScreen(
         ) {
             val maxWidth = constraints.maxWidth.toFloat()
             val maxHeight = constraints.maxHeight.toFloat()
-            
+
             originalSize?.let { size ->
                 val photoRatio = size.width.toFloat() / size.height.toFloat()
                 val containerRatio = maxWidth / maxHeight
+                // Calculate size to fit within container while maintaining aspect ratio
+                // Use maximum available space
                 val (viewportWidth, viewportHeight) = if (photoRatio > containerRatio) {
+                    // Photo is wider than container - fit to width
                     maxWidth to (maxWidth / photoRatio)
                 } else {
+                    // Photo is taller than container - fit to height
                     (maxHeight * photoRatio) to maxHeight
                 }
 
-                Box(Modifier.size(with(LocalDensity.current) { viewportWidth.toDp() }, with(LocalDensity.current) { viewportHeight.toDp() })) {
-                    AsyncImage(
-                        model = uri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.FillBounds
-                    )
-                    CropOverlay(cropRect = crop, onCropRectChange = { crop = it })
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Single box with exact size containing both image and overlay
+                    // This ensures they are perfectly aligned
+                    Box(
+                        Modifier.size(
+                            with(LocalDensity.current) { viewportWidth.toDp() },
+                            with(LocalDensity.current) { viewportHeight.toDp() }
+                        )
+                    ) {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.FillBounds
+                        )
+                        CropOverlay(
+                            quadrilateral = quadrilateral,
+                            onQuadrilateralChange = { quadrilateral = it }
+                        )
+                    }
                 }
             } ?: AsyncImage(
                 model = uri,
@@ -129,57 +164,63 @@ fun CropScreen(
 }
 
 @Composable
-fun CropOverlay(cropRect: Rect, onCropRectChange: (Rect) -> Unit) {
+fun CropOverlay(quadrilateral: Quadrilateral, onQuadrilateralChange: (Quadrilateral) -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val width = constraints.maxWidth.toFloat()
         val height = constraints.maxHeight.toFloat()
+
+        // Convert normalized coordinates to screen coordinates
+        val topLeft = Offset(quadrilateral.topLeft.x * width, quadrilateral.topLeft.y * height)
+        val topRight = Offset(quadrilateral.topRight.x * width, quadrilateral.topRight.y * height)
+        val bottomRight = Offset(quadrilateral.bottomRight.x * width, quadrilateral.bottomRight.y * height)
+        val bottomLeft = Offset(quadrilateral.bottomLeft.x * width, quadrilateral.bottomLeft.y * height)
+
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val rect = Rect(cropRect.left * width, cropRect.top * height, cropRect.right * width, cropRect.bottom * height)
+            // Draw dark overlay with quadrilateral cutout
             val path = Path().apply {
+                // Outer rectangle (full screen)
                 addRect(Rect(0f, 0f, width, height))
-                addRect(rect)
+                // Inner quadrilateral (the crop area) - using EvenOdd to create a hole
+                moveTo(topLeft.x, topLeft.y)
+                lineTo(topRight.x, topRight.y)
+                lineTo(bottomRight.x, bottomRight.y)
+                lineTo(bottomLeft.x, bottomLeft.y)
+                close()
                 fillType = PathFillType.EvenOdd
             }
             drawPath(path, Color.Black.copy(alpha = 0.5f))
-            drawRect(color = Color.White, topLeft = Offset(rect.left, rect.top), size = androidx.compose.ui.geometry.Size(rect.width, rect.height), style = Stroke(width = 2.dp.toPx()))
-        }
-        
-        // Draggable area for moving the whole crop
-        Box(modifier = Modifier
-            .offset { IntOffset((cropRect.left * width).roundToInt(), (cropRect.top * height).roundToInt()) }
-            .size(width = with(LocalDensity.current) { (cropRect.width * width).toDp() }, height = with(LocalDensity.current) { (cropRect.height * height).toDp() })
-            .pointerInput(cropRect) {
-                detectDragGestures { change, dragAmount ->
-                    change.consume()
-                    val dx = dragAmount.x / width
-                    val dy = dragAmount.y / height
-                    val newLeft = (cropRect.left + dx).coerceIn(0f, 1f - cropRect.width)
-                    val newTop = (cropRect.top + dy).coerceIn(0f, 1f - cropRect.height)
-                    onCropRectChange(Rect(left = newLeft, top = newTop, right = newLeft + cropRect.width, bottom = newTop + cropRect.height))
-                }
-            }
-        )
 
-        // Corner handles
-        CropHandle(offset = Offset(cropRect.left * width, cropRect.top * height)) { delta ->
-            val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.05f)
-            val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.05f)
-            onCropRectChange(cropRect.copy(left = newLeft, top = newTop))
+            // Draw quadrilateral border
+            val borderPath = Path().apply {
+                moveTo(topLeft.x, topLeft.y)
+                lineTo(topRight.x, topRight.y)
+                lineTo(bottomRight.x, bottomRight.y)
+                lineTo(bottomLeft.x, bottomLeft.y)
+                close()
+            }
+            drawPath(borderPath, Color.White, style = Stroke(width = 2.dp.toPx()))
         }
-        CropHandle(offset = Offset(cropRect.right * width, cropRect.top * height)) { delta ->
-            val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.05f, 1f)
-            val newTop = (cropRect.top + delta.y / height).coerceIn(0f, cropRect.bottom - 0.05f)
-            onCropRectChange(cropRect.copy(right = newRight, top = newTop))
+
+        // Corner handles - each can be dragged independently
+        CropHandle(offset = topLeft) { delta ->
+            val newX = (quadrilateral.topLeft.x + delta.x / width).coerceIn(0f, 1f)
+            val newY = (quadrilateral.topLeft.y + delta.y / height).coerceIn(0f, 1f)
+            onQuadrilateralChange(quadrilateral.copy(topLeft = Offset(newX, newY)))
         }
-        CropHandle(offset = Offset(cropRect.left * width, cropRect.bottom * height)) { delta ->
-            val newLeft = (cropRect.left + delta.x / width).coerceIn(0f, cropRect.right - 0.05f)
-            val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.05f, 1f)
-            onCropRectChange(cropRect.copy(left = newLeft, bottom = newBottom))
+        CropHandle(offset = topRight) { delta ->
+            val newX = (quadrilateral.topRight.x + delta.x / width).coerceIn(0f, 1f)
+            val newY = (quadrilateral.topRight.y + delta.y / height).coerceIn(0f, 1f)
+            onQuadrilateralChange(quadrilateral.copy(topRight = Offset(newX, newY)))
         }
-        CropHandle(offset = Offset(cropRect.right * width, cropRect.bottom * height)) { delta ->
-            val newRight = (cropRect.right + delta.x / width).coerceIn(cropRect.left + 0.05f, 1f)
-            val newBottom = (cropRect.bottom + delta.y / height).coerceIn(cropRect.top + 0.05f, 1f)
-            onCropRectChange(cropRect.copy(right = newRight, bottom = newBottom))
+        CropHandle(offset = bottomRight) { delta ->
+            val newX = (quadrilateral.bottomRight.x + delta.x / width).coerceIn(0f, 1f)
+            val newY = (quadrilateral.bottomRight.y + delta.y / height).coerceIn(0f, 1f)
+            onQuadrilateralChange(quadrilateral.copy(bottomRight = Offset(newX, newY)))
+        }
+        CropHandle(offset = bottomLeft) { delta ->
+            val newX = (quadrilateral.bottomLeft.x + delta.x / width).coerceIn(0f, 1f)
+            val newY = (quadrilateral.bottomLeft.y + delta.y / height).coerceIn(0f, 1f)
+            onQuadrilateralChange(quadrilateral.copy(bottomLeft = Offset(newX, newY)))
         }
     }
 }
