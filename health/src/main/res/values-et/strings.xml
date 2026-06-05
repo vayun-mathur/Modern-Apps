@@ -10,4 +10,23 @@
     <string name="nav_next">Järgmine</string>
     <string name="week_range">%1$s - %2$s</string>
     <string name="no_data_available">Selle ajavahemiku kohta ei leidu andmeid</string>
+    <string name="k_format">%1$sk</string>
+    <string name="value_unit_space_format">%1$s %2$s</string>
+    <string name="unit_only_format">" %1$s"</string>
+    <string name="unit_per_day_avg_format">%1$s päevas (keskmiselt)</string>
+    <string name="hour_am_pm_format">%1$d %2$s</string>
+    <string name="month_year_format">%1$s %2$d</string>
+    <string name="cancel">Katkesta</string>
+    <string name="metric_energy_burned">Kulutatud energia</string>
+    <string name="metric_active_calories">Aktiivseid kaloreid</string>
+    <string name="metric_oxygen_saturation">Hapnikusisaldus</string>
+    <string name="metric_heart_rate_variability">Pulsi varieeruvus</string>
+    <string name="metric_heart_rate">Pulss</string>
+    <string name="metric_height">Pikkus</string>
+    <string name="metric_weight">Kaal</string>
+    <string name="metric_body_fat">Keharasvu</string>
+    <string name="section_last_night">Eile õhtul</string>
+    <string name="section_quick_stats">Kiirstatistika</string>
+    <string name="section_today_activity">Täna</string>
+    <string name="section_this_week">Sel nädalal</string>
 </resources>
