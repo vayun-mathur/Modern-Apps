@@ -56,4 +56,25 @@
     <string name="choose_timezone">Wybierz strefę czasową</string>
     <string name="delete_calendar_name_confirm">Czy na pewno chcesz usunąć „%1$s”? Spowoduje to usunięcie wszystkich wydarzeń w kalendarzu.</string>
     <string name="open_location_in_navigation">Otwórz lokalizację</string>
+    <string name="delete_this_event">Usuń to wydarzenie</string>
+    <string name="delete_all_events">Usuń wszystkie wydarzenia</string>
+    <string name="by_month_day_label">Według miesiąca i dnia (1-31, -1 do -31)</string>
+    <string name="by_month_day_placeholder">np. 1,15,-1</string>
+    <string name="by_month_label">Według miesiąca (1-12)</string>
+    <string name="by_month_placeholder">np. 1,6,12</string>
+    <string name="by_set_pos_label">Według ustawionej pozycji (1-366, -1 do -366)</string>
+    <string name="by_set_pos_placeholder">np. 1,-1,2</string>
+    <string name="by_year_day_label">Według roku i dnia (1-366, -1 do -366)</string>
+    <string name="by_year_day_placeholder">np. 1100,-1</string>
+    <string name="by_week_no_label">Według numeru tygodnia (1-53, -1 do -53)</string>
+    <string name="by_week_no_placeholder">np. 1,26,52</string>
+    <string name="week_start_label">Początek tygodnia</string>
+    <string name="new_local_calendar_title">Nowy kalendarz lokalny</string>
+    <string name="calendar_name_label">Nazwa kalendarza</string>
+    <string name="loading_events">Ładowanie wydarzeń…</string>
+    <string name="import_events_title">Importuj wydarzenia</string>
+    <string name="select_calendar_to_import">Wybierz kalendarz, do którego chcesz zaimportować:</string>
+    <string name="create_new_calendar">+ Utwórz nowy kalendarz</string>
+    <string name="import_button">Importuj</string>
+    <string name="default_layout">Domyślny układ</string>
 </resources>
