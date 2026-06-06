@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Email</string>
+    <string name="all_accounts">Wszystkie konta</string>
+    <string name="add_account">Dodaj konto</string>
+    <string name="logout_current_account">Wyloguj się z bieżącego konta</string>
+    <string name="selected_count">%1$d wybrano</string>
+    <string name="reply">Odpowiedz</string>
+    <string name="forward">Do przodu</string>
 </resources>
