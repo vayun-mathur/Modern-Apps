@@ -352,7 +352,7 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: SolitaireViewModel, mo
                 when (mode) {
                     GameMode.KLONDIKE -> uiState.klondike?.let {
                         KlondikeBoard(it, viewModel, Modifier.fillMaxWidth())
-                        if (!it.isWon && it.stock.isEmpty() && it.waste.isEmpty() && it.tableauPiles.none { p -> p.faceDown.isNotEmpty() }) {
+                        if (!it.isWon && it.tableauPiles.none { p -> p.faceDown.isNotEmpty() }) {
                             Button(
                                 onClick = { viewModel.klondikeAutoComplete() },
                                 Modifier.align(Alignment.CenterHorizontally)

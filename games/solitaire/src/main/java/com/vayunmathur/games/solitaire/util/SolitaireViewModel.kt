@@ -205,11 +205,19 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     fun klondikeAutoComplete() {
         val state = _uiState.value.klondike ?: return
         if (state.isWon) return
-        if (state.stock.isNotEmpty() || state.tableauPiles.any { it.faceDown.isNotEmpty() }) return
+        if (state.tableauPiles.any { it.faceDown.isNotEmpty() }) return
         var current = state
         var moved = true
         while (moved) {
             moved = false
+            // If stock has cards, draw them to waste first
+            if (current.stock.isNotEmpty()) {
+                val drawn = current.stock.last()
+                current = current.copy(
+                    stock = current.stock.dropLast(1),
+                    waste = current.waste + drawn
+                )
+            }
             val sources = mutableListOf<Card>()
             val sourceInfo = mutableListOf<String>()
             if (current.waste.isNotEmpty()) {
