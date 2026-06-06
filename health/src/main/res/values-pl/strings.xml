@@ -127,4 +127,19 @@
     <string name="section_quick_stats">Krótkie statystyki</string>
     <string name="section_today_activity">Dzisiaj</string>
     <string name="section_this_week">W tym tygodniu</string>
+    <string name="nutrition_breakdown">Podział składników odżywczych</string>
+    <string name="recipes">Przepisy</string>
+    <string name="ingredients">Składniki</string>
+    <string name="rename_ingredient">Zmień nazwę składnika</string>
+    <string name="custom_name">Nazwa niestandardowa</string>
+    <string name="save">Zapisz</string>
+    <string name="recipe_name">Nazwa przepisu</string>
+    <string name="add">Dodaj</string>
+    <string name="save_recipe">Zapisz przepis</string>
+    <string name="set_quantity_for_format">Ustaw ilość dla %1$s</string>
+    <string name="quantity">Ilość</string>
+    <string name="unit">Jednostka</string>
+    <string name="confirm">Potwierdź</string>
+    <string name="search_ingredient">Wyszukaj składnik</string>
+    <string name="search">Szukaj</string>
 </resources>
