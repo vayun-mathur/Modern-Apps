@@ -42,4 +42,8 @@
     <string name="label_import_newpipe">导入 NewPipe 订阅</string>
     <string name="label_import_youtube">从 YouTube (Takeout) 导入</string>
     <string name="label_export_youpipe">导出订阅</string>
+    <string name="video_quality_codec">%1$s（%2$s）</string>
+    <string name="video_quality_fps_codec">%1$s（%2$dfps）%3$s</string>
+    <string name="audio_bitrate_codec">%1$dkbps（%2$s）</string>
+    <string name="empty_recommendations">观看一些视频以获得个性化推荐</string>
 </resources>
