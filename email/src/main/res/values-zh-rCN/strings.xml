@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Email</string>
+    <string name="all_accounts">所有账号</string>
+    <string name="add_account">添加账号</string>
+    <string name="logout_current_account">退出登录当前账号</string>
+    <string name="selected_count">已选择 %1$d 项</string>
+    <string name="reply">回复</string>
+    <string name="forward">转发</string>
+    <string name="compose">撰写</string>
+    <string name="from_label">发件人</string>
+    <string name="select_account">选择账号</string>
+    <string name="select_sender">选择发件人</string>
+    <string name="to_label">收件人</string>
+    <string name="subject_label">主题</string>
+    <string name="body_label">正文</string>
+    <string name="outbox">发件箱</string>
+    <string name="outbox_with_count">发件箱（%1$d）</string>
+    <string name="send_now">立即发送</string>
+    <string name="email_address">电子邮件地址</string>
+    <string name="testing_connection">正在测试连接…</string>
+    <string name="test_connection_and_save">测试连接并保存</string>
+    <string name="open_app_password_help">打开 %1$s 应用密码帮助</string>
+    <string name="host_label">主机</string>
+    <string name="port_label">端口</string>
+    <string name="ssl_tls">SSL/TLS</string>
+    <string name="starttls">STARTTLS</string>
+    <string name="listening_for_new_mail">正在监听新邮件</string>
 </resources>
