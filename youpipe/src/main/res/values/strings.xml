@@ -36,6 +36,8 @@
     <string name="title_settings">Settings</string>
     <string name="label_sponsorblock">Enable SponsorBlock</string>
     <string name="label_sponsorblock_description">Select parts from list below to skip them in videos</string>
+    <string name="label_dearrow">Enable DeArrow</string>
+    <string name="label_dearrow_description">Replace clickbait titles and thumbnails with community-submitted alternatives</string>
     <string name="label_backup_restore">Backup &amp; Restore</string>
     <string name="label_restore_youpipe">Restore from YouPipe</string>
     <string name="label_import_newpipe">Import NewPipe subscriptions</string>

@@ -329,6 +329,8 @@ class YouPipeViewModel(
         val comments: List<Comment> = emptyList(),
         val relatedVideos: List<VideoInfo> = emptyList(),
         val sponsorSegments: List<SponsorSegment> = emptyList(),
+        val deArrowTitle: String? = null,
+        val deArrowThumbnail: String? = null,
         val error: Boolean = false,
     )
 
@@ -336,16 +338,32 @@ class YouPipeViewModel(
     val videoState: StateFlow<VideoState> = _videoState.asStateFlow()
     private var videoJob: Job? = null
     private var sponsorJob: Job? = null
+    private var deArrowJob: Job? = null
 
     fun loadVideo(videoID: Long, downloadedVideo: DownloadedVideo?) {
         videoJob?.cancel()
         sponsorJob?.cancel()
+        deArrowJob?.cancel()
         _videoState.value = VideoState()
 
         // Sponsor segments load in parallel.
         sponsorJob = viewModelScope.launch(Dispatchers.IO) {
             val segs = getSponsorSegments(videoID)
             _videoState.update { it.copy(sponsorSegments = segs) }
+        }
+
+        deArrowJob = viewModelScope.launch(Dispatchers.IO) {
+            if (_deArrowEnabled.value) {
+                val branding = getDeArrowBranding(videoID)
+                if (branding != null) {
+                    _videoState.update {
+                        it.copy(
+                            deArrowTitle = branding.trustedTitle(),
+                            deArrowThumbnail = branding.trustedThumbnailUrl(videoID)
+                        )
+                    }
+                }
+            }
         }
 
         videoJob = viewModelScope.launch {
@@ -588,11 +606,23 @@ class YouPipeViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val sponsorBlockEnabled: StateFlow<Boolean> = _sponsorBlockEnabled
 
+    private val _deArrowEnabled: StateFlow<Boolean> = DataStoreUtils
+        .getInstance(application)
+        .booleanFlow("dearrow_enabled")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val deArrowEnabled: StateFlow<Boolean> = _deArrowEnabled
+
     private val _sponsorBlockCategories: StateFlow<Set<String>> = DataStoreUtils
         .getInstance(application)
         .stringSetFlow("sponsorblock_categories")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_SPONSOR_CATEGORIES)
     val sponsorBlockCategories: StateFlow<Set<String>> = _sponsorBlockCategories
+
+    fun setDeArrowEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            DataStoreUtils.getInstance(getApplication()).setBoolean("dearrow_enabled", enabled)
+        }
+    }
 
     fun setSponsorBlockEnabled(enabled: Boolean) {
         viewModelScope.launch {

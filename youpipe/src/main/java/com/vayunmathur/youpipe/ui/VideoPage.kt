@@ -118,7 +118,12 @@ fun VideoPage(
         downloadedVideo?.let { ypvm.applyDownloadedStreams(it) }
     }
 
-    val videoData = videoState.data
+    val videoData = videoState.data?.let { data ->
+        data.copy(
+            title = videoState.deArrowTitle ?: data.title,
+            thumbnailURL = videoState.deArrowThumbnail ?: data.thumbnailURL
+        )
+    }
     val videoStreams = videoState.videoStreams
     val audioStreams = videoState.audioStreams
     val segments = videoState.segments

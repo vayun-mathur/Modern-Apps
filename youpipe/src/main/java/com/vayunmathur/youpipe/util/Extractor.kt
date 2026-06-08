@@ -111,6 +111,56 @@ suspend fun getChannelInfoFromURL(url: String): ChannelInfo = coroutineScope {
     )
 }
 
+@Serializable
+data class DeArrowTitle(
+    val title: String,
+    val original: Boolean,
+    val votes: Int,
+    val locked: Boolean,
+    val UUID: String,
+)
+
+@Serializable
+data class DeArrowThumbnail(
+    val timestamp: Double? = null,
+    val original: Boolean,
+    val votes: Int,
+    val locked: Boolean,
+    val UUID: String,
+)
+
+@Serializable
+data class DeArrowBranding(
+    val titles: List<DeArrowTitle>,
+    val thumbnails: List<DeArrowThumbnail>,
+    val randomTime: Double,
+    val videoDuration: Double? = null,
+)
+
+suspend fun getDeArrowBranding(videoId: Long): DeArrowBranding? {
+    val idString = decodeVideoID(videoId)
+    return try {
+        NetworkClient.getJson<DeArrowBranding>("https://sponsor.ajay.app/api/branding?videoID=$idString")
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun DeArrowBranding.trustedTitle(): String? {
+    val title = titles.firstOrNull() ?: return null
+    if (title.original) return null
+    if (!title.locked && title.votes < 0) return null
+    return title.title.replace(">", "").trim()
+}
+
+fun DeArrowBranding.trustedThumbnailUrl(videoId: Long): String? {
+    val thumb = thumbnails.firstOrNull() ?: return null
+    if (thumb.original) return null
+    if (!thumb.locked && thumb.votes < 0) return null
+    val timestamp = thumb.timestamp ?: return null
+    return "https://dearrow-thumb.ajay.app/api/v1/getThumbnail?videoID=${decodeVideoID(videoId)}&time=$timestamp"
+}
+
 suspend fun getSponsorSegments(videoId: Long): List<SponsorSegment> {
     val idString = decodeVideoID(videoId)
     return try {

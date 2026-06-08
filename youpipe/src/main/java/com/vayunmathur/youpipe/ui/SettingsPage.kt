@@ -39,6 +39,7 @@ fun SettingsPage(
 ) {
     val sponsorBlockEnabled by ypvm.sponsorBlockEnabled.collectAsState()
     val sponsorBlockCategories by ypvm.sponsorBlockCategories.collectAsState()
+    val deArrowEnabled by ypvm.deArrowEnabled.collectAsState()
     val isLoading by ypvm.isImporting.collectAsState()
     val progress by ypvm.importProgress.collectAsState()
 
@@ -93,6 +94,18 @@ fun SettingsPage(
                             )
                         }
                     }
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.label_dearrow)) },
+                        supportingContent = { Text(stringResource(R.string.label_dearrow_description)) },
+                        trailingContent = {
+                            Switch(
+                                checked = deArrowEnabled,
+                                onCheckedChange = { ypvm.setDeArrowEnabled(it) }
+                            )
+                        }
+                    )
                 }
                 item {
                     ListItem(

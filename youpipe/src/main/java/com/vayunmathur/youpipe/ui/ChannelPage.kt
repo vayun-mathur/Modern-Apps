@@ -36,6 +36,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.vayunmathur.library.util.NavBackStack
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -44,6 +46,12 @@ import com.vayunmathur.youpipe.R
 import com.vayunmathur.youpipe.Route
 import com.vayunmathur.youpipe.data.Subscription
 import com.vayunmathur.youpipe.util.YouPipeViewModel
+import com.vayunmathur.youpipe.util.decodeVideoID
+import com.vayunmathur.youpipe.util.getDeArrowBranding
+import com.vayunmathur.youpipe.util.trustedThumbnailUrl
+import com.vayunmathur.youpipe.util.trustedTitle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
@@ -120,6 +128,26 @@ fun VideoItem(
     val historyItem by historyFlow.collectAsState(initial = null)
     val timeWatched = historyItem?.progress ?: 0
     val percentWatched = timeWatched.toDouble() / videoInfo.duration.toDouble()
+
+    val deArrowEnabled by youPipeViewModel.deArrowEnabled.collectAsState()
+    var deArrowTitle by remember(videoInfo.videoID) { mutableStateOf<String?>(null) }
+    var deArrowThumbnail by remember(videoInfo.videoID) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(videoInfo.videoID, deArrowEnabled) {
+        if (deArrowEnabled) {
+            val branding = withContext(Dispatchers.IO) { getDeArrowBranding(videoInfo.videoID) }
+            if (branding != null) {
+                deArrowTitle = branding.trustedTitle()
+                deArrowThumbnail = branding.trustedThumbnailUrl(videoInfo.videoID)
+            }
+        } else {
+            deArrowTitle = null
+            deArrowThumbnail = null
+        }
+    }
+
+    val displayTitle = deArrowTitle ?: videoInfo.name
+    val displayThumbnail = deArrowThumbnail ?: videoInfo.thumbnailURL
     
     val itemModifier = if (onClick != null) {
         modifier.clickable(onClick = onClick)
@@ -136,8 +164,8 @@ fun VideoItem(
             Box(Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp).clip(RoundedCornerShape(12.dp))) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
-                        .data(videoInfo.thumbnailURL)
-                        .memoryCacheKey("video-thumb-${videoInfo.videoID}")
+                        .data(displayThumbnail)
+                        .memoryCacheKey("video-thumb-${videoInfo.videoID}-${if (deArrowThumbnail != null) "da" else "yt"}")
                         .build(),
                     contentDescription = null,
                     Modifier.fillMaxWidth().aspectRatio(16f / 9f)
@@ -152,7 +180,7 @@ fun VideoItem(
         }
         Box(Modifier.weight(1.5f)) {
             ListItem({
-                Text(HtmlCompat.fromHtml(videoInfo.name, HtmlCompat.FROM_HTML_MODE_LEGACY).toString(), style = MaterialTheme.typography.titleMedium)
+                Text(HtmlCompat.fromHtml(displayTitle, HtmlCompat.FROM_HTML_MODE_LEGACY).toString(), style = MaterialTheme.typography.titleMedium)
             }, Modifier, {
 
             }, {
