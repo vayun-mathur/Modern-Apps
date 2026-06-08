@@ -394,6 +394,8 @@ fun MessageListScreen(
     val selectedUids by viewModel.selectedMessageUids.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val syncProgress by viewModel.syncProgress.collectAsState()
+    val aiSummary by viewModel.aiSummary.collectAsState()
+    val aiSummaryLoading by viewModel.aiSummaryLoading.collectAsState()
     var isSearching by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -401,11 +403,18 @@ fun MessageListScreen(
         if (selectedUids.isNotEmpty()) {
             viewModel.clearSelection()
         } else if (searchQuery.isNotEmpty()) {
-            // Non-empty search bar: first back press just clears the text.
             viewModel.setSearchQuery("")
         } else {
-            // Already empty: collapse the search bar.
             isSearching = false
+        }
+    }
+
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotEmpty()) {
+            kotlinx.coroutines.delay(1500)
+            if (messages.isNotEmpty()) {
+                viewModel.requestAiSummary(messages)
+            }
         }
     }
 
@@ -502,6 +511,28 @@ fun MessageListScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
+                    if (searchQuery.isNotEmpty() && (aiSummaryLoading || aiSummary != null)) {
+                        item(key = "ai_summary") {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text("AI Summary", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Spacer(Modifier.height(8.dp))
+                                    if (aiSummaryLoading) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("Generating summary…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        }
+                                    } else {
+                                        Text(aiSummary ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     items(messages, key = { "${it.accountEmail}|${it.folderName}|${it.id}" }) { message ->
                         val accountColor = Color(EmailAccount(message.accountEmail).getColor())
                         val isSelected = message.id in selectedUids

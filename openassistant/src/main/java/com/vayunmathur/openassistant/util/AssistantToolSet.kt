@@ -14,6 +14,8 @@ import com.vayunmathur.library.intents.contacts.ContactData
 import com.vayunmathur.library.intents.findfamily.FamilyMemberData
 import com.vayunmathur.library.intents.music.MusicSearchResult
 import com.vayunmathur.library.intents.music.PlayMusicData
+import com.vayunmathur.library.intents.email.EmailData
+import com.vayunmathur.library.intents.email.EmailSearchQuery
 import com.vayunmathur.library.intents.weather.WeatherData
 import com.vayunmathur.openassistant.MainActivity
 import com.vayunmathur.library.intents.notes.NoteData
@@ -203,6 +205,7 @@ class AssistantToolSet(
                 "com.vayunmathur.calendar" -> "Calendar"
                 "com.vayunmathur.findfamily" -> "FindFamily"
                 "com.vayunmathur.music" -> "Music"
+                "com.vayunmathur.email" -> "Email"
                 "com.vayunmathur.weather" -> "Weather"
                 else -> packageName
             }
@@ -351,6 +354,34 @@ class AssistantToolSet(
             "Success: Playing music"
         } catch (e: MissingAppException) { handleMissingApp(e.packageName) }
         catch (e: Exception) { "Error: ${e.message}" }
+    }
+
+    @Tool(description = "Search emails by keyword")
+    fun search_emails(query: String): String = runBlocking {
+        try {
+            val result: List<EmailData> = launchIntent(
+                context,
+                "com.vayunmathur.email",
+                "com.vayunmathur.email.intents.SearchIntent",
+                EmailSearchQuery(query)
+            )
+            result.toString()
+        } catch (e: MissingAppException) { handleMissingApp(e.packageName) }
+        catch (e: Exception) { Log.e("AssistantToolSet", "search_emails failed", e); "Error: ${e.message}" }
+    }
+
+    @Tool(description = "Get recent emails from the inbox")
+    fun get_recent_emails(): String = runBlocking {
+        try {
+            val result: List<EmailData> = launchIntent(
+                context,
+                "com.vayunmathur.email",
+                "com.vayunmathur.email.intents.GetRecentIntent",
+                Unit
+            )
+            result.toString()
+        } catch (e: MissingAppException) { handleMissingApp(e.packageName) }
+        catch (e: Exception) { Log.e("AssistantToolSet", "get_recent_emails failed", e); "Error: ${e.message}" }
     }
 
     @Tool(description = "Get the current date and time in the local timezone")

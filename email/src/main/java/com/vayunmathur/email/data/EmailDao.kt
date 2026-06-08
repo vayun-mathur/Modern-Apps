@@ -74,6 +74,12 @@ interface EmailDao {
     @Query("SELECT * FROM EmailMessage WHERE folderName = 'INBOX' ORDER BY dateMillis DESC, id DESC LIMIT 10")
     suspend fun getRecentUnifiedMessages(): List<EmailMessage>
 
+    @Query("SELECT * FROM EmailMessage WHERE folderName = 'INBOX' ORDER BY dateMillis DESC, id DESC LIMIT 30")
+    suspend fun getRecentInboxMessages(): List<EmailMessage>
+
+    @Query("SELECT * FROM EmailMessage WHERE subject LIKE '%' || :query || '%' OR `from` LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%' ORDER BY dateMillis DESC, id DESC LIMIT 30")
+    suspend fun searchMessages(query: String): List<EmailMessage>
+
     @Query("SELECT * FROM EmailMessage WHERE folderName = 'INBOX' ORDER BY dateMillis DESC, id DESC LIMIT 10")
     fun getRecentUnifiedMessagesFlow(): Flow<List<EmailMessage>>
 

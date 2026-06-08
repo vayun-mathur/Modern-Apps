@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <permission
+        android:name="com.vayunmathur.email.permissions.ACCESS_EMAIL"
+        android:protectionLevel="signature" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -54,6 +58,18 @@
             android:name=".data.ImapIdleService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <activity
+            android:name=".intents.SearchIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.email.permissions.ACCESS_EMAIL" />
+
+        <activity
+            android:name=".intents.GetRecentIntent"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:permission="com.vayunmathur.email.permissions.ACCESS_EMAIL" />
     </application>
 
 </manifest>

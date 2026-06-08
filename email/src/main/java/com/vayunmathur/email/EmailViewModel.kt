@@ -1,7 +1,13 @@
 package com.vayunmathur.email
 
 import android.app.Application
+import android.content.ComponentName
+import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import androidx.core.text.HtmlCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.email.data.EmailDatabase
@@ -10,10 +16,14 @@ import com.vayunmathur.email.data.EmailSyncWorker
 import com.vayunmathur.email.data.OutboxManager
 import com.vayunmathur.email.data.OutboxSendWorker
 import com.vayunmathur.email.widget.EmailWidget
+import com.vayunmathur.library.util.SecureResultReceiver
 import com.vayunmathur.library.widgets.updateWidget
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -29,6 +39,12 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
     val syncProgress: StateFlow<Float> = EmailSyncState.progress
 
     val outbox: Flow<List<OutboxEntry>> = dao.getOutboxFlow()
+
+    private val _aiSummary = MutableStateFlow<String?>(null)
+    val aiSummary: StateFlow<String?> = _aiSummary
+
+    private val _aiSummaryLoading = MutableStateFlow(false)
+    val aiSummaryLoading: StateFlow<Boolean> = _aiSummaryLoading
     
     private val _selectedAccountEmail = MutableStateFlow<String?>(null)
     val selectedAccountEmail: StateFlow<String?> = _selectedAccountEmail
@@ -93,6 +109,60 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+        if (query.isEmpty()) {
+            _aiSummary.value = null
+            _aiSummaryLoading.value = false
+        }
+    }
+
+    fun requestAiSummary(messages: List<EmailMessage>) {
+        if (_aiSummaryLoading.value) return
+
+        val pm = appContext.packageManager
+        try {
+            pm.getPackageInfo(OA_PACKAGE, 0)
+        } catch (_: Exception) {
+            return
+        }
+
+        _aiSummaryLoading.value = true
+        _aiSummary.value = null
+
+        val emailSnippets = messages.take(5).joinToString("\n---\n") { msg ->
+            val plainBody = msg.body?.let { body ->
+                if (msg.isHtml) HtmlCompat.fromHtml(body, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                else body
+            }?.take(150) ?: ""
+            "Subject: ${msg.subject}\nFrom: ${msg.from.substringBefore("<").trim()}\n$plainBody"
+        }
+        val prompt = "Summarize these emails in 1-2 sentences:\n\n$emailSnippets"
+        val schema = """{"type":"object","properties":{"summary":{"type":"string"}},"required":["summary"]}"""
+
+        val receiver = SecureResultReceiver(Handler(Looper.getMainLooper())) { code, data ->
+            if (code == 0) {
+                val json = data?.getString("json_result")
+                if (json != null) {
+                    try {
+                        val obj = Json.parseToJsonElement(json).jsonObject
+                        _aiSummary.value = obj["summary"]?.jsonPrimitive?.content
+                    } catch (_: Exception) { }
+                }
+            }
+            _aiSummaryLoading.value = false
+        }
+
+        val intent = Intent().apply {
+            component = ComponentName(OA_PACKAGE, OA_SERVICE)
+            putExtra("user_text", prompt)
+            putExtra("schema", schema)
+            putExtra("RECEIVER", receiver as android.os.ResultReceiver)
+        }
+
+        try {
+            appContext.startForegroundService(intent)
+        } catch (_: Exception) {
+            _aiSummaryLoading.value = false
+        }
     }
 
     fun toggleMessageSelection(uid: Long) {
@@ -302,5 +372,10 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                 onError(e.message ?: "Unknown error")
             }
         }
+    }
+
+    companion object {
+        private const val OA_PACKAGE = "com.vayunmathur.openassistant"
+        private const val OA_SERVICE = "$OA_PACKAGE.util.InferenceService"
     }
 }

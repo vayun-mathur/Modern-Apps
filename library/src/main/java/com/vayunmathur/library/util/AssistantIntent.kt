@@ -2,6 +2,7 @@ package com.vayunmathur.library.util
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.util.Log
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -109,6 +110,7 @@ class IntentLauncher(activity: ComponentActivity) {
         try {
             launcher.launch(intent)
         } catch (e: Exception) {
+            Log.e("IntentLauncher", "Failed to launch $className in $packageName", e)
             continuation = null
             cont.resume("package $packageName doesn't exist")
         }
