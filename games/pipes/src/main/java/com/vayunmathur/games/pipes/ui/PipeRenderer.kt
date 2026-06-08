@@ -1,10 +1,10 @@
 package com.vayunmathur.games.pipes.ui
 
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 
@@ -24,110 +24,90 @@ fun DrawScope.drawEmptyCell(cellRect: Rect) {
     )
 }
 
-fun DrawScope.drawBridgeCell(cellRect: Rect) {
-    drawEmptyCell(cellRect)
-    val cx = cellRect.center.x
-    val cy = cellRect.center.y
-    val arm = cellRect.size.width * 0.18f
-    val strokeW = cellRect.size.width * 0.06f
-    val markerColor = Color(0xFF5A5A5A)
-    drawLine(markerColor, Offset(cx - arm, cy - arm), Offset(cx + arm, cy + arm), strokeW)
-    drawLine(markerColor, Offset(cx + arm, cy - arm), Offset(cx - arm, cy + arm), strokeW)
-}
-
 fun DrawScope.drawPipeSegment(
     cellRect: Rect,
     connections: Set<Direction>,
-    pipeColor: PipeColor
+    color: Color
 ) {
-    val inset = cellRect.size.width * 0.15f
-    val pipeWidth = cellRect.size.width - inset * 2
+    if (connections.isEmpty()) return
+    val w = cellRect.width * 0.5f
 
-    for (dir in connections) {
-        drawPipeArm(cellRect, dir, pipeColor, pipeWidth, inset)
-    }
-
-    if (connections.isNotEmpty()) {
-        val centerRect = Rect(
-            cellRect.left + inset,
-            cellRect.top + inset,
-            cellRect.right - inset,
-            cellRect.bottom - inset
-        )
-        drawRoundRect(
-            brush = createMetallicBrush(centerRect, pipeColor),
-            topLeft = centerRect.topLeft,
-            size = centerRect.size,
-            cornerRadius = CornerRadius(pipeWidth * 0.15f)
-        )
+    when (connections.size) {
+        1 -> {
+            drawArm(cellRect, connections.first(), color, w)
+            drawCircle(color = color, radius = w / 2, center = cellRect.center)
+        }
+        2 -> {
+            val dirs = connections.toList()
+            if (areOpposite(dirs[0], dirs[1])) {
+                drawStraightPipe(cellRect, dirs[0], color, w)
+            } else {
+                drawCornerPipe(cellRect, dirs[0], dirs[1], color, w)
+            }
+        }
+        else -> {
+            for (dir in connections) drawArm(cellRect, dir, color, w)
+            val hw = w / 2
+            drawRect(color, Offset(cellRect.center.x - hw, cellRect.center.y - hw), Size(w, w))
+        }
     }
 }
 
-fun DrawScope.drawEndpointBall(cellRect: Rect, pipeColor: PipeColor) {
-    val inset = cellRect.size.width * 0.15f
-    val pipeWidth = cellRect.size.width - inset * 2
-    val center = cellRect.center
-    val radius = pipeWidth * 0.45f
-
-    drawCircle(
-        color = pipeColor.dark,
-        radius = radius + 2f,
-        center = center
-    )
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(pipeColor.light, pipeColor.main, pipeColor.dark),
-            center = Offset(center.x - radius * 0.2f, center.y - radius * 0.2f),
-            radius = radius
-        ),
-        radius = radius,
-        center = center
-    )
+fun DrawScope.drawEndpointBall(cellRect: Rect, color: Color) {
+    drawCircle(color = color, radius = cellRect.width * 0.35f, center = cellRect.center)
 }
 
-private fun DrawScope.drawPipeArm(
-    cellRect: Rect,
-    direction: Direction,
-    pipeColor: PipeColor,
-    pipeWidth: Float,
-    inset: Float
-) {
-    val armRect = when (direction) {
-        Direction.UP -> Rect(
-            cellRect.left + inset, cellRect.top,
-            cellRect.right - inset, cellRect.top + inset + pipeWidth * 0.3f
-        )
-        Direction.DOWN -> Rect(
-            cellRect.left + inset, cellRect.bottom - inset - pipeWidth * 0.3f,
-            cellRect.right - inset, cellRect.bottom
-        )
-        Direction.LEFT -> Rect(
-            cellRect.left, cellRect.top + inset,
-            cellRect.left + inset + pipeWidth * 0.3f, cellRect.bottom - inset
-        )
-        Direction.RIGHT -> Rect(
-            cellRect.right - inset - pipeWidth * 0.3f, cellRect.top + inset,
-            cellRect.right, cellRect.bottom - inset
-        )
+private fun areOpposite(a: Direction, b: Direction): Boolean =
+    (a == Direction.UP && b == Direction.DOWN) || (a == Direction.DOWN && b == Direction.UP) ||
+    (a == Direction.LEFT && b == Direction.RIGHT) || (a == Direction.RIGHT && b == Direction.LEFT)
+
+private fun DrawScope.drawStraightPipe(cellRect: Rect, dir: Direction, color: Color, pipeWidth: Float) {
+    val cx = cellRect.center.x
+    val cy = cellRect.center.y
+    val hw = pipeWidth / 2
+    if (dir == Direction.UP || dir == Direction.DOWN) {
+        drawRect(color, Offset(cx - hw, cellRect.top), Size(pipeWidth, cellRect.height))
+    } else {
+        drawRect(color, Offset(cellRect.left, cy - hw), Size(cellRect.width, pipeWidth))
+    }
+}
+
+private fun DrawScope.drawCornerPipe(cellRect: Rect, dir1: Direction, dir2: Direction, color: Color, pipeWidth: Float) {
+    val s = cellRect.width
+    val r = s / 2
+
+    val hasUp = dir1 == Direction.UP || dir2 == Direction.UP
+    val hasDown = dir1 == Direction.DOWN || dir2 == Direction.DOWN
+    val hasLeft = dir1 == Direction.LEFT || dir2 == Direction.LEFT
+    val hasRight = dir1 == Direction.RIGHT || dir2 == Direction.RIGHT
+
+    val (arcCx, arcCy, startAngle) = when {
+        hasUp && hasRight -> Triple(cellRect.right, cellRect.top, 90f)
+        hasUp && hasLeft -> Triple(cellRect.left, cellRect.top, 0f)
+        hasDown && hasRight -> Triple(cellRect.right, cellRect.bottom, 180f)
+        hasDown && hasLeft -> Triple(cellRect.left, cellRect.bottom, 270f)
+        else -> return
     }
 
-    drawRect(
-        brush = createMetallicBrush(armRect, pipeColor),
-        topLeft = armRect.topLeft,
-        size = armRect.size
+    drawArc(
+        color = color,
+        startAngle = startAngle,
+        sweepAngle = 90f,
+        useCenter = false,
+        topLeft = Offset(arcCx - r, arcCy - r),
+        size = Size(2 * r, 2 * r),
+        style = Stroke(width = pipeWidth, cap = StrokeCap.Butt)
     )
 }
 
-private fun createMetallicBrush(rect: Rect, pipeColor: PipeColor): Brush {
-    return Brush.linearGradient(
-        colorStops = arrayOf(
-            0f to pipeColor.dark,
-            0.2f to pipeColor.main,
-            0.45f to pipeColor.light,
-            0.8f to pipeColor.main,
-            1f to pipeColor.dark
-        ),
-        start = Offset(rect.left, rect.top),
-        end = Offset(rect.right, rect.bottom)
-    )
+private fun DrawScope.drawArm(cellRect: Rect, dir: Direction, color: Color, pipeWidth: Float) {
+    val cx = cellRect.center.x
+    val cy = cellRect.center.y
+    val hw = pipeWidth / 2
+    when (dir) {
+        Direction.UP -> drawRect(color, Offset(cx - hw, cellRect.top), Size(pipeWidth, cy - cellRect.top))
+        Direction.DOWN -> drawRect(color, Offset(cx - hw, cy), Size(pipeWidth, cellRect.bottom - cy))
+        Direction.LEFT -> drawRect(color, Offset(cellRect.left, cy - hw), Size(cx - cellRect.left, pipeWidth))
+        Direction.RIGHT -> drawRect(color, Offset(cx, cy - hw), Size(cellRect.right - cx, pipeWidth))
+    }
 }

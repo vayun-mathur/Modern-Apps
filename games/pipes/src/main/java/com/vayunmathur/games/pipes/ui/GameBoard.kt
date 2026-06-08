@@ -1,21 +1,12 @@
 package com.vayunmathur.games.pipes.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -60,14 +51,6 @@ fun GameBoard(
         }
     }
 
-    val shimmerTransition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerOffset by shimmerTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart),
-        label = "shimmerOffset"
-    )
-
     fun hitTest(offset: Offset): CellPos? {
         return cellRects.entries.firstOrNull { (_, rect) ->
             rect.contains(offset)
@@ -106,11 +89,7 @@ fun GameBoard(
 
         for (cell in levelData.cells) {
             val rect = cellRects[cell] ?: continue
-            if (cell in levelData.bridges) {
-                drawBridgeCell(rect)
-            } else {
-                drawEmptyCell(rect)
-            }
+            drawEmptyCell(rect)
         }
 
         val displayPaths = if (activeColor != null) {
@@ -123,7 +102,7 @@ fun GameBoard(
 
         for ((colorIndex, path) in displayPaths) {
             if (path.isEmpty()) continue
-            val pipeColor = PIPE_COLORS[colorIndex % PIPE_COLORS.size]
+            val color = PIPE_COLORS[colorIndex % PIPE_COLORS.size]
 
             for (i in path.indices) {
                 val cell = path[i]
@@ -139,31 +118,16 @@ fun GameBoard(
                     directionBetween(cell, next)?.let { connections.add(it) }
                 }
 
-                drawPipeSegment(rect, connections, pipeColor)
+                drawPipeSegment(rect, connections, color)
             }
         }
 
         for (ep in levelData.endpoints) {
-            val pipeColor = PIPE_COLORS[ep.colorIndex % PIPE_COLORS.size]
+            val color = PIPE_COLORS[ep.colorIndex % PIPE_COLORS.size]
             for (cell in ep.cells) {
                 val rect = cellRects[cell] ?: continue
-                drawEndpointBall(rect, pipeColor)
+                drawEndpointBall(rect, color)
             }
-        }
-
-        if (isLevelWon) {
-            val shimmerBrush = Brush.linearGradient(
-                colorStops = arrayOf(
-                    0f to Color.Transparent,
-                    0.4f to Color.White.copy(alpha = 0.3f),
-                    0.5f to Color.White.copy(alpha = 0.5f),
-                    0.6f to Color.White.copy(alpha = 0.3f),
-                    1f to Color.Transparent
-                ),
-                start = Offset(boardSizePx * (shimmerOffset - 0.3f), 0f),
-                end = Offset(boardSizePx * (shimmerOffset + 0.3f), boardSizePx)
-            )
-            drawRect(shimmerBrush, Offset.Zero, Size(boardSizePx, boardSizePx), blendMode = BlendMode.SrcOver)
         }
     }
 }

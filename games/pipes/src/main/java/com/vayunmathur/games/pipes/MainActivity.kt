@@ -48,7 +48,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.games.pipes.data.LevelPack
 import com.vayunmathur.games.pipes.ui.GameBoard
-import com.vayunmathur.games.pipes.ui.PIPE_COLORS
 import com.vayunmathur.games.pipes.ui.PipesTheme
 import com.vayunmathur.games.pipes.util.AppBackupAgent
 import com.vayunmathur.games.pipes.util.PipesViewModel
