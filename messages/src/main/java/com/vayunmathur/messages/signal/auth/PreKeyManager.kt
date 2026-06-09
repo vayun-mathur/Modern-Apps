@@ -2,7 +2,7 @@ package com.vayunmathur.messages.signal.auth
 
 import android.util.Base64
 import android.util.Log
-import com.vayunmathur.messages.signal.store.SignalDeviceData
+import com.vayunmathur.messages.signal.store.SignalPreKeyStore
 import com.vayunmathur.messages.signal.web.SignalWebSocket
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,6 +12,9 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey
 import org.signal.libsignal.protocol.ecc.ECPrivateKey
 import org.signal.libsignal.protocol.kem.KEMKeyPair
 import org.signal.libsignal.protocol.kem.KEMKeyType
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord
+import org.signal.libsignal.protocol.state.PreKeyRecord
+import org.signal.libsignal.protocol.state.SignedPreKeyRecord
 import java.io.IOException
 import java.security.SecureRandom
 
@@ -22,18 +25,18 @@ object PreKeyManager {
 
     suspend fun generateAndUploadPreKeys(
         ws: SignalWebSocket,
-        deviceData: SignalDeviceData,
+        preKeyStore: SignalPreKeyStore,
         aciIdentityKeyPair: IdentityKeyPair,
         pniIdentityKeyPair: IdentityKeyPair,
     ) {
-        uploadKeysForIdentity(ws, "aci", aciIdentityKeyPair)
-        uploadKeysForIdentity(ws, "pni", pniIdentityKeyPair)
+        uploadKeysForIdentity(ws, preKeyStore, "aci", aciIdentityKeyPair)
+        uploadKeysForIdentity(ws, preKeyStore, "pni", pniIdentityKeyPair)
         Log.d(TAG, "Pre-keys uploaded for both identities")
     }
 
     suspend fun checkAndRefreshIfNeeded(
         ws: SignalWebSocket,
-        deviceData: SignalDeviceData,
+        preKeyStore: SignalPreKeyStore,
         aciIdentityKeyPair: IdentityKeyPair,
         pniIdentityKeyPair: IdentityKeyPair,
     ) {
@@ -42,10 +45,10 @@ object PreKeyManager {
         Log.d(TAG, "Pre-key counts: aci=$aciCount, pni=$pniCount")
 
         if (aciCount < MIN_KEY_COUNT) {
-            uploadKeysForIdentity(ws, "aci", aciIdentityKeyPair)
+            uploadKeysForIdentity(ws, preKeyStore, "aci", aciIdentityKeyPair)
         }
         if (pniCount < MIN_KEY_COUNT) {
-            uploadKeysForIdentity(ws, "pni", pniIdentityKeyPair)
+            uploadKeysForIdentity(ws, preKeyStore, "pni", pniIdentityKeyPair)
         }
     }
 
@@ -57,6 +60,7 @@ object PreKeyManager {
 
     private suspend fun uploadKeysForIdentity(
         ws: SignalWebSocket,
+        preKeyStore: SignalPreKeyStore,
         identity: String,
         identityKeyPair: IdentityKeyPair,
     ) {
@@ -67,17 +71,23 @@ object PreKeyManager {
         val preKeys = JSONArray().apply {
             for (i in 0 until BATCH_SIZE) {
                 val kp = ECKeyPair.generate()
+                val id = preKeyBase + i
+                val record = PreKeyRecord(id, kp)
+                preKeyStore.storePreKey(id, record)
                 put(JSONObject().apply {
-                    put("keyId", preKeyBase + i)
+                    put("keyId", id)
                     put("publicKey", Base64.encodeToString(kp.publicKey.serialize(), Base64.NO_WRAP))
                 })
             }
         }
 
+        val spkId = random.nextInt(Int.MAX_VALUE)
         val spkKeyPair = ECKeyPair.generate()
         val spkSignature = identityKeyPair.privateKey.calculateSignature(spkKeyPair.publicKey.serialize())
+        val spkRecord = SignedPreKeyRecord(spkId, System.currentTimeMillis(), spkKeyPair, spkSignature)
+        preKeyStore.storeSignedPreKey(spkId, spkRecord)
         val signedPreKey = JSONObject().apply {
-            put("keyId", random.nextInt(Int.MAX_VALUE))
+            put("keyId", spkId)
             put("publicKey", Base64.encodeToString(spkKeyPair.publicKey.serialize(), Base64.NO_WRAP))
             put("signature", Base64.encodeToString(spkSignature, Base64.NO_WRAP))
         }
@@ -86,8 +96,11 @@ object PreKeyManager {
             for (i in 0 until BATCH_SIZE) {
                 val kemKp = KEMKeyPair.generate(KEMKeyType.KYBER_1024)
                 val sig = identityKeyPair.privateKey.calculateSignature(kemKp.publicKey.serialize())
+                val id = pqKeyBase + i
+                val record = KyberPreKeyRecord(id, System.currentTimeMillis(), kemKp, sig)
+                preKeyStore.storeKyberPreKey(id, record)
                 put(JSONObject().apply {
-                    put("keyId", pqKeyBase + i)
+                    put("keyId", id)
                     put("publicKey", Base64.encodeToString(kemKp.publicKey.serialize(), Base64.NO_WRAP))
                     put("signature", Base64.encodeToString(sig, Base64.NO_WRAP))
                 })

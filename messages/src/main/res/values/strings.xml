@@ -74,6 +74,21 @@
     <string name="inbox_setup_signal_action">Link device</string>
     <string name="source_signal">Signal</string>
 
+    <!-- WhatsApp setup -->
+    <string name="inbox_setup_whatsapp_title">Link WhatsApp</string>
+    <string name="inbox_setup_whatsapp_desc">Link your WhatsApp account to see your messages here.</string>
+    <string name="inbox_setup_whatsapp_action">Link device</string>
+
+    <!-- Messenger setup -->
+    <string name="inbox_setup_messenger_title">Sign in to Messenger</string>
+    <string name="inbox_setup_messenger_desc">Sign in to your Facebook account to see Messenger chats here.</string>
+    <string name="inbox_setup_messenger_action">Sign in</string>
+
+    <!-- Instagram setup -->
+    <string name="inbox_setup_instagram_title">Sign in to Instagram</string>
+    <string name="inbox_setup_instagram_desc">Sign in to your Instagram account to see your DMs here.</string>
+    <string name="inbox_setup_instagram_action">Sign in</string>
+
     <!-- Notifications -->
     <string name="channel_sync_name">Background sync</string>
     <string name="channel_sync_desc">Keeps the connection to your phone and Voice active</string>

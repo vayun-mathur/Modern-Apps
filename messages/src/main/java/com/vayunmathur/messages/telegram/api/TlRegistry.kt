@@ -54,8 +54,12 @@ object TlRegistry {
             0xc776ba4e.toInt() -> decodeMessagesChannelMessages(buf)
             0xb3134d9d.toInt() -> decodeContactsFound(buf)
 
-            // UpdatesState
+            // UpdatesState / UpdatesDifference
             0xa56c2a3e.toInt() -> UpdatesState.decode(buf)
+            0x00f49d37 -> decodeUpdatesDifference(buf)
+
+            // Auth export/import
+            0xb434e2b8.toInt() -> AuthExportedAuthorization.decode(buf)
 
             else -> {
                 Log.w(TAG, "Unknown type: 0x${typeId.toUInt().toString(16)}")
@@ -241,6 +245,17 @@ object TlRegistry {
         val chats = decodeVector(buf) { decodeChat(it) }
         val users = decodeVector(buf) { decodeUser(it) }
         return ContactsFound(myResults, results, chats, users)
+    }
+
+    private fun decodeUpdatesDifference(buf: TlBuffer): UpdatesDifference {
+        val newMessages = decodeVector(buf) { decodeMessage(it) }
+        val newEncryptedMessages = decodeVector(buf) { val id = it.int32(); decodeById(id, it) }
+        val otherUpdates = decodeVector(buf) { val id = it.int32(); decodeById(id, it) }
+        val chats = decodeVector(buf) { decodeChat(it) }
+        val users = decodeVector(buf) { decodeUser(it) }
+        val stateId = buf.int32() // UpdatesState constructor
+        val state = UpdatesState.decode(buf)
+        return UpdatesDifference(newMessages, newEncryptedMessages, otherUpdates, chats, users, state)
     }
 }
 

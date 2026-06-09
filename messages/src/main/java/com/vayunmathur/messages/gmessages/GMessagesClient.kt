@@ -48,7 +48,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import rpc.Rpc.ActionType
 import rpc.Rpc.MessageType
 import java.util.concurrent.atomic.AtomicBoolean
@@ -105,6 +106,7 @@ object GMessagesClient {
     private lateinit var appContext: Context
     private val rpc = RpcClient()
     @Volatile private var auth: AuthData = AuthData.generateInitial()
+    private val authMutex = Mutex()
     private val sessionHandler = SessionHandler(rpc) { auth }
     private val media = Media { auth }
     private val longPoll = LongPoll(
@@ -127,14 +129,14 @@ object GMessagesClient {
         if (!initialized.compareAndSet(false, true)) return
         appContext = context.applicationContext
         Log.i(TAG, "init")
-        runBlocking {
+        scope.launch {
             AuthData.load(appContext)?.let { auth = it }
-        }
-        if (auth.isPaired()) {
-            Log.i(TAG, "found persisted pair, resuming long-poll")
-            longPoll.start(scope)
-            _state.value = State.Connected
-            scope.launch { postConnect() }
+            if (auth.isPaired()) {
+                Log.i(TAG, "found persisted pair, resuming long-poll")
+                longPoll.start(scope)
+                _state.value = State.Connected
+                postConnect()
+            }
         }
     }
 
@@ -152,26 +154,40 @@ object GMessagesClient {
         backfillJob?.cancel()
         longPoll.stop()
         sessionHandler.cancelAll()
-        auth = AuthData.generateInitial()
-        scope.launch { auth.save(appContext) }
+        val freshAuth = AuthData.generateInitial()
+        auth = freshAuth
+        scope.launch { freshAuth.save(appContext) }
+        outgoingIds.clear()
+        conversationsFetchedOnce = false
+        rpc.close()
+        media.close()
         _state.value = State.Idle
     }
 
     suspend fun startPair(): String {
-        // Fresh keys for a fresh pair.
-        auth = AuthData.generateInitial()
-        val result = PairFlow.registerAndBuildQrUrl(rpc, auth)
-        val ttlUs = result.tachyonTtlUs.let { if (it == 0L) DEFAULT_TTL_US else it }
-        auth = auth.copy(
-            tachyonAuthTokenB64 = android.util.Base64.encodeToString(result.tachyonToken, android.util.Base64.NO_WRAP),
-            tachyonTtlUs = ttlUs,
-            tachyonExpiryMs = System.currentTimeMillis() + (ttlUs / 1000),
-        )
-        // Open the long-poll now so we receive the Paired event when the
-        // user finishes scanning.
-        longPoll.start(scope)
-        _state.value = State.Pairing(result.qrUrl)
-        return result.qrUrl
+        try {
+            val qrUrl = authMutex.withLock {
+                // Fresh keys for a fresh pair.
+                auth = AuthData.generateInitial()
+                val result = PairFlow.registerAndBuildQrUrl(rpc, auth)
+                val ttlUs = result.tachyonTtlUs.let { if (it == 0L) DEFAULT_TTL_US else it }
+                auth = auth.copy(
+                    tachyonAuthTokenB64 = android.util.Base64.encodeToString(result.tachyonToken, android.util.Base64.NO_WRAP),
+                    tachyonTtlUs = ttlUs,
+                    tachyonExpiryMs = System.currentTimeMillis() + (ttlUs / 1000),
+                )
+                result.qrUrl
+            }
+            // Open the long-poll now so we receive the Paired event when the
+            // user finishes scanning.
+            longPoll.start(scope)
+            _state.value = State.Pairing(qrUrl)
+            return qrUrl
+        } catch (t: Throwable) {
+            Log.e(TAG, "startPair failed", t)
+            _state.value = State.Disconnected("Pair failed: ${t.message}")
+            throw t
+        }
     }
 
     /**
@@ -624,12 +640,14 @@ object GMessagesClient {
             if (newTtlUs == 0L) {
                 newTtlUs = DEFAULT_TTL_US
             }
-            auth = currentAuth.copy(
-                tachyonAuthTokenB64 = Base64.encodeToString(newToken.toByteArray(), Base64.NO_WRAP),
-                tachyonTtlUs = newTtlUs,
-                tachyonExpiryMs = System.currentTimeMillis() + (newTtlUs / 1000)
-            )
-            auth.save(appContext)
+            authMutex.withLock {
+                auth = currentAuth.copy(
+                    tachyonAuthTokenB64 = Base64.encodeToString(newToken.toByteArray(), Base64.NO_WRAP),
+                    tachyonTtlUs = newTtlUs,
+                    tachyonExpiryMs = System.currentTimeMillis() + (newTtlUs / 1000)
+                )
+                auth.save(appContext)
+            }
             Log.i(TAG, "Auth token refreshed successfully, new expiry in ${newTtlUs / 1000 / 1000}s")
 
         } catch (e: Exception) {
@@ -660,14 +678,16 @@ object GMessagesClient {
     private suspend fun handlePaired(p: LongPollEvent.Paired) {
         Log.i(TAG, "received Paired event — switching to Connected (ttlUs=${p.tachyonTtlUs})")
         val ttlUs = p.tachyonTtlUs.let { if (it == 0L) DEFAULT_TTL_US else it }
-        auth = auth.copy(
-            mobileDeviceB64 = p.mobileDeviceB64,
-            browserDeviceB64 = p.browserDeviceB64,
-            tachyonAuthTokenB64 = p.tachyonTokenB64,
-            tachyonTtlUs = ttlUs,
-            tachyonExpiryMs = System.currentTimeMillis() + (ttlUs / 1000),
-        )
-        auth.save(appContext)
+        authMutex.withLock {
+            auth = auth.copy(
+                mobileDeviceB64 = p.mobileDeviceB64,
+                browserDeviceB64 = p.browserDeviceB64,
+                tachyonAuthTokenB64 = p.tachyonTokenB64,
+                tachyonTtlUs = ttlUs,
+                tachyonExpiryMs = System.currentTimeMillis() + (ttlUs / 1000),
+            )
+            auth.save(appContext)
+        }
         _state.value = State.Connected
 
         // CRITICAL: the long-poll that received this Paired event is

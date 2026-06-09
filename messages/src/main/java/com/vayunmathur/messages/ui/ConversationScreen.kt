@@ -195,7 +195,12 @@ fun ConversationScreen(
                     // Fire a typing notification on each edit (gmessages
                     // only — voice has no typing endpoint). Cheap: it's
                     // a fire-and-forget on a coroutine.
-                    if (conversation?.source == MessageSource.MESSAGES_WEB) {
+                    if (conversation?.source in setOf(
+                            MessageSource.MESSAGES_WEB,
+                            MessageSource.TELEGRAM,
+                            MessageSource.SIGNAL,
+                        )
+                    ) {
                         vm.sendTyping(conversationId)
                     }
                 },
@@ -243,7 +248,14 @@ fun ConversationScreen(
             // we feed it the chronological list REVERSED: newest first.
             val items = remember(messages) { buildItems(messages).asReversed() }
             val isGroup = conversation?.isGroup == true
-            val canReact = conversation?.source == MessageSource.MESSAGES_WEB
+            val canReact = conversation?.source in setOf(
+                MessageSource.MESSAGES_WEB,
+                MessageSource.TELEGRAM,
+                MessageSource.SIGNAL,
+                MessageSource.WHATSAPP,
+                MessageSource.MESSENGER,
+                MessageSource.INSTAGRAM,
+            )
             LazyColumn(
                 state = listState,
                 reverseLayout = true,

@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -79,7 +78,7 @@ object TelegramClient {
         if (!initialized.compareAndSet(false, true)) return
         appContext = context.applicationContext
         Log.i(TAG, "init")
-        runBlocking {
+        scope.launch {
             val auth = TelegramAuthData.load(appContext)
             if (auth?.loggedIn == true && auth.authKey != null) {
                 Log.i(TAG, "resuming from persisted session")
@@ -106,9 +105,9 @@ object TelegramClient {
         updateJob?.cancel()
         scope.launch {
             runCatching { apiClient?.invoke(AuthLogOut) { TlRegistry.decode(it) } }
+            apiClient?.disconnect()
+            apiClient = null
         }
-        apiClient?.disconnect()
-        apiClient = null
         pendingPhone = null
         phoneCodeHash = null
         peerCache.clear()
@@ -399,6 +398,7 @@ object TelegramClient {
     private suspend fun ensureClient(): TelegramApiClient {
         apiClient?.let { if (it.isConnected) return it }
         val client = TelegramApiClient()
+        client.onDisconnected = { handleDisconnect() }
         client.connect()
         apiClient = client
         startUpdateListener(client)
@@ -419,6 +419,7 @@ object TelegramClient {
                 existingSessionId = null,
             )
             apiClient = client
+            client.onDisconnected = { handleDisconnect() }
             _state.value = State.Connected
             startUpdateListener(client)
             kickoffBackfill()
@@ -452,6 +453,23 @@ object TelegramClient {
         updateJob = scope.launch {
             client.updates.collect { update ->
                 handleUpdate(update)
+            }
+        }
+    }
+
+    private fun handleDisconnect() {
+        if (_state.value !is State.Connected) return
+        _state.value = State.Disconnected("Connection lost")
+        scope.launch {
+            val client = apiClient ?: return@launch
+            try {
+                client.reconnect()
+                _state.value = State.Connected
+                startUpdateListener(client)
+                kickoffBackfill()
+            } catch (e: Exception) {
+                Log.e(TAG, "Auto-reconnect failed: ${e.message}")
+                _state.value = State.Disconnected("Reconnect failed: ${e.message}")
             }
         }
     }
@@ -517,7 +535,7 @@ object TelegramClient {
             }
             is UpdateDeleteMessages -> {
                 for (id in update.messages) {
-                    _events.emit(GMEvent.MessageDeleted(source, "_$id"))
+                    _events.emit(GMEvent.MessageDeleted(source, id.toString()))
                 }
                 currentPts = update.pts
             }
@@ -681,7 +699,10 @@ object TelegramClient {
                 peerCache[peer.chatId] = InputPeerChat(peer.chatId)
             }
             is PeerChannel -> {
-                // Needs access hash from channel, try cache
+                val cached = peerCache[peer.channelId]
+                if (cached is InputPeerChannel) {
+                    peerCache[peer.channelId] = cached
+                }
             }
         }
     }

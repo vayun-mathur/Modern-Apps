@@ -110,6 +110,9 @@ fun InboxScreen(
                 onSetupVoice = { backStack.add(Route.LoginVoice) },
                 onSetupTelegram = { backStack.add(Route.LoginTelegram) },
                 onSetupSignal = { backStack.add(Route.LoginSignal) },
+                onSetupWhatsApp = { backStack.add(Route.LoginWhatsApp) },
+                onSetupMessenger = { backStack.add(Route.LoginMessenger) },
+                onSetupInstagram = { backStack.add(Route.LoginInstagram) },
             )
 
             if (conversations.isEmpty()) {
@@ -157,6 +160,18 @@ fun InboxScreen(
                         showSourcePicker = false
                         backStack.add(Route.Compose(initialSource = MessageSource.SIGNAL.name))
                     }, modifier = Modifier.fillMaxWidth()) { Text("Signal") }
+                    androidx.compose.material3.TextButton(onClick = {
+                        showSourcePicker = false
+                        backStack.add(Route.Compose(initialSource = MessageSource.WHATSAPP.name))
+                    }, modifier = Modifier.fillMaxWidth()) { Text("WhatsApp") }
+                    androidx.compose.material3.TextButton(onClick = {
+                        showSourcePicker = false
+                        backStack.add(Route.Compose(initialSource = MessageSource.MESSENGER.name))
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Messenger") }
+                    androidx.compose.material3.TextButton(onClick = {
+                        showSourcePicker = false
+                        backStack.add(Route.Compose(initialSource = MessageSource.INSTAGRAM.name))
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Instagram") }
                 }
             },
             confirmButton = {},
@@ -202,6 +217,9 @@ private fun SetupPrompts(
     onSetupVoice: () -> Unit,
     onSetupTelegram: () -> Unit,
     onSetupSignal: () -> Unit,
+    onSetupWhatsApp: () -> Unit,
+    onSetupMessenger: () -> Unit,
+    onSetupInstagram: () -> Unit,
 ) {
     val msgsState = states[MessageSource.MESSAGES_WEB]
     if (msgsState is SourceConnectionState.NeedsSetup || msgsState is SourceConnectionState.Disconnected) {
@@ -237,6 +255,33 @@ private fun SetupPrompts(
             description = stringResource(R.string.inbox_setup_signal_desc),
             actionLabel = stringResource(R.string.inbox_setup_signal_action),
             onAction = onSetupSignal,
+        )
+    }
+    val whatsappState = states[MessageSource.WHATSAPP]
+    if (whatsappState is SourceConnectionState.NeedsSetup || whatsappState is SourceConnectionState.Disconnected) {
+        SetupCard(
+            title = stringResource(R.string.inbox_setup_whatsapp_title),
+            description = stringResource(R.string.inbox_setup_whatsapp_desc),
+            actionLabel = stringResource(R.string.inbox_setup_whatsapp_action),
+            onAction = onSetupWhatsApp,
+        )
+    }
+    val messengerState = states[MessageSource.MESSENGER]
+    if (messengerState is SourceConnectionState.NeedsSetup || messengerState is SourceConnectionState.Disconnected) {
+        SetupCard(
+            title = stringResource(R.string.inbox_setup_messenger_title),
+            description = stringResource(R.string.inbox_setup_messenger_desc),
+            actionLabel = stringResource(R.string.inbox_setup_messenger_action),
+            onAction = onSetupMessenger,
+        )
+    }
+    val instagramState = states[MessageSource.INSTAGRAM]
+    if (instagramState is SourceConnectionState.NeedsSetup || instagramState is SourceConnectionState.Disconnected) {
+        SetupCard(
+            title = stringResource(R.string.inbox_setup_instagram_title),
+            description = stringResource(R.string.inbox_setup_instagram_desc),
+            actionLabel = stringResource(R.string.inbox_setup_instagram_action),
+            onAction = onSetupInstagram,
         )
     }
 }

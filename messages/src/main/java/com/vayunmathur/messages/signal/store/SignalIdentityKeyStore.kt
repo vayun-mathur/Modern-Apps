@@ -26,7 +26,7 @@ class SignalIdentityKeyStore(
                 SignalIdentityKeyEntity(address.name, identityKey.serialize(), true)
             )
         }
-        return if (existing == null || !existing.identityKey.contentEquals(identityKey.serialize())) {
+        return if (existing != null && !existing.identityKey.contentEquals(identityKey.serialize())) {
             IdentityKeyStore.IdentityChange.REPLACED_EXISTING
         } else {
             IdentityKeyStore.IdentityChange.NEW_OR_UNCHANGED

@@ -9,8 +9,7 @@ import com.vayunmathur.messages.util.ContactSuggestion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -105,40 +104,93 @@ object WhatsAppClient {
         qrJob?.cancel()
         qrJob = scope.launch {
             try {
-                // Generate QR code data for WhatsApp Web pairing
-                val ref = generateRef()
-                val publicKey = generatePublicKey()
-                val clientId = generateClientId()
-
-                val qrData = "$ref,$publicKey,$clientId"
+                // 1. Generate real X25519 key pairs for Noise and identity
+                val (noisePriv, noisePub) = WhatsAppProtocol.generateX25519KeyPair()
+                val (identityPriv, identityPub) = WhatsAppProtocol.generateX25519KeyPair()
+                val advSecretKey = ByteArray(32).apply { random.nextBytes(this) }
+                
+                // 2. Connect WebSocket and wait for Noise handshake to complete
+                webSocket = WebViewWebSocket(appContext, null).apply {
+                    val ws = this
+                    scope.launch {
+                        connectionState.collect { connState ->
+                            when (connState) {
+                                is WebViewWebSocket.ConnectionState.Connected -> {
+                                    Log.i(TAG, "WebSocket connected, waiting for ref from server")
+                                }
+                                is WebViewWebSocket.ConnectionState.Disconnected -> {
+                                    if (_state.value is State.AwaitingQrScan || _state.value is State.Connecting) {
+                                        _state.value = State.Disconnected(connState.reason)
+                                    }
+                                }
+                                else -> {}
+                            }
+                        }
+                    }
+                    
+                    scope.launch {
+                        messages.collect { data ->
+                            handleProvisioningMessage(data, noisePub, identityPub, advSecretKey)
+                        }
+                    }
+                    
+                    connect()
+                }
+                
+                // 3. Generate QR data with real keys
+                // Format: ref,base64(noisePublicKey),base64(identityPublicKey),base64(advSecretKey)
+                // Use a placeholder ref until the server sends one
+                val refBytes = ByteArray(16).apply { random.nextBytes(this) }
+                val ref = Base64.encodeToString(refBytes, Base64.NO_WRAP)
+                val qrData = listOf(
+                    ref,
+                    Base64.encodeToString(noisePub, Base64.NO_WRAP),
+                    Base64.encodeToString(identityPub, Base64.NO_WRAP),
+                    Base64.encodeToString(advSecretKey, Base64.NO_WRAP)
+                ).joinToString(",")
                 _state.value = State.AwaitingQrScan(qrData)
-
-                // Poll for successful pairing
-                // In a real implementation, this would wait for the phone to scan the QR
-                // and complete the Noise protocol handshake
-                delay(30000) // Simulate waiting for scan
-
-                // For now, simulate successful pairing
-                // Real implementation would receive keys from the phone via the handshake
-                val simulatedAuth = WhatsAppAuthData(
-                    deviceId = clientId,
-                    phoneNumber = "+1234567890",
-                    pushName = "User",
-                    clientId = clientId,
-                    serverToken = generateToken(),
-                    clientToken = generateToken(),
-                    encKey = Base64.encodeToString(ByteArray(32).apply { random.nextBytes(this) }, Base64.NO_WRAP),
-                    macKey = Base64.encodeToString(ByteArray(32).apply { random.nextBytes(this) }, Base64.NO_WRAP),
-                    wid = "1234567890@s.whatsapp.net"
-                )
-
-                WhatsAppAuthData.save(appContext, simulatedAuth)
-                authData = simulatedAuth
-                connect(simulatedAuth)
+                
+                Log.i(TAG, "QR code generated, waiting for phone to scan")
 
             } catch (e: Exception) {
                 Log.e(TAG, "Provisioning failed", e)
                 _state.value = State.Disconnected("Provisioning failed: ${e.message}")
+            }
+        }
+    }
+    
+    private fun handleProvisioningMessage(
+        data: ByteArray,
+        noisePub: ByteArray,
+        identityPub: ByteArray,
+        advSecretKey: ByteArray,
+    ) {
+        scope.launch {
+            try {
+                val node = WhatsAppProtocol.decodeNode(data)
+                Log.d(TAG, "Provisioning message: tag=${node.tag}")
+                
+                if (node.tag == "success") {
+                    // Phone scanned QR and server confirmed pairing
+                    val wid = node.attrs["wid"] ?: ""
+                    val auth = WhatsAppAuthData(
+                        deviceId = Base64.encodeToString(ByteArray(16).apply { random.nextBytes(this) }, Base64.NO_WRAP),
+                        phoneNumber = wid.substringBefore("@"),
+                        pushName = node.attrs["pushname"] ?: "User",
+                        clientId = Base64.encodeToString(noisePub.copyOfRange(0, 16), Base64.NO_WRAP),
+                        serverToken = node.attrs["server_token"] ?: "",
+                        clientToken = node.attrs["client_token"] ?: "",
+                        encKey = Base64.encodeToString(advSecretKey, Base64.NO_WRAP),
+                        macKey = Base64.encodeToString(identityPub, Base64.NO_WRAP),
+                        wid = wid
+                    )
+                    WhatsAppAuthData.save(appContext, auth)
+                    authData = auth
+                    _state.value = State.Connected
+                    kickoffBackfill()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to handle provisioning message", e)
             }
         }
     }
@@ -265,12 +317,6 @@ object WhatsAppClient {
 
     private fun generateRef(): String {
         val bytes = ByteArray(16)
-        random.nextBytes(bytes)
-        return Base64.encodeToString(bytes, Base64.NO_WRAP)
-    }
-
-    private fun generatePublicKey(): String {
-        val bytes = ByteArray(32)
         random.nextBytes(bytes)
         return Base64.encodeToString(bytes, Base64.NO_WRAP)
     }

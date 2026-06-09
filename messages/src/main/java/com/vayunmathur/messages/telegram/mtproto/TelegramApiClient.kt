@@ -1,6 +1,10 @@
 package com.vayunmathur.messages.telegram.mtproto
 
 import android.util.Log
+import com.vayunmathur.messages.telegram.api.TlRegistry
+import com.vayunmathur.messages.telegram.api.functions.AuthExportAuthorization
+import com.vayunmathur.messages.telegram.api.functions.AuthImportAuthorization
+import com.vayunmathur.messages.telegram.api.types.AuthExportedAuthorization
 import com.vayunmathur.messages.telegram.mtproto.rpc.RpcException
 import com.vayunmathur.messages.telegram.mtproto.tl.TlBuffer
 import com.vayunmathur.messages.telegram.mtproto.tl.TlMethod
@@ -9,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import java.security.SecureRandom
 
 class TelegramApiClient {
     private val TAG = "TelegramApiClient"
@@ -30,6 +35,8 @@ class TelegramApiClient {
         private set
     val isConnected: Boolean get() = connection?.connected == true
 
+    var onDisconnected: (suspend () -> Unit)? = null
+
     companion object {
         val DC_ADDRESSES = mapOf(
             1 to ("149.154.175.53" to 443),
@@ -44,12 +51,15 @@ class TelegramApiClient {
         currentDc = dc
         val (address, port) = DC_ADDRESSES[dc] ?: throw IllegalArgumentException("Unknown DC: $dc")
 
-        val conn = MtProtoConnection(address, port, dc) { update ->
+        val conn = MtProtoConnection(address, port, dc, { update ->
             _updates.emit(update)
-        }
+        }, {
+            onDisconnected?.invoke()
+        })
 
-        if (existingAuthKey != null && existingAuthKeyId != null && existingSalt != null && existingSessionId != null) {
-            conn.setAuthData(existingAuthKey, existingAuthKeyId, existingSalt, existingSessionId)
+        if (existingAuthKey != null && existingAuthKeyId != null && existingSalt != null) {
+            val sid = existingSessionId ?: SecureRandom().nextLong()
+            conn.setAuthData(existingAuthKey, existingAuthKeyId, existingSalt, sid)
         }
 
         conn.connect()
@@ -68,8 +78,38 @@ class TelegramApiClient {
             if (isMigrateError(e.message)) {
                 val newDc = extractMigrateDc(e.message)
                 Log.i(TAG, "Migrating to DC $newDc")
+                // Export auth from current DC before migrating
+                var exportedAuth: AuthExportedAuthorization? = null
+                try {
+                    exportedAuth = conn.rpcEngine.execute(
+                        AuthExportAuthorization(newDc),
+                        { data, _ -> conn.send(data, true) },
+                        { TlRegistry.decode(it) }
+                    ) as? AuthExportedAuthorization
+                } catch (ex: Exception) {
+                    Log.w(TAG, "Auth export failed: ${ex.message}")
+                }
                 disconnect()
                 connect(newDc)
+                // Import auth into new DC
+                if (exportedAuth != null) {
+                    try {
+                        val newConn = connection ?: throw IllegalStateException("Not connected after migration")
+                        newConn.rpcEngine.execute(
+                            AuthImportAuthorization(exportedAuth.id, exportedAuth.bytes),
+                            { data, _ -> newConn.send(data, true) },
+                            { TlRegistry.decode(it) }
+                        )
+                    } catch (ex: Exception) {
+                        Log.w(TAG, "Auth import failed: ${ex.message}")
+                    }
+                }
+                return invoke(method, decoder)
+            }
+            if (isFloodWait(e.message)) {
+                val waitSeconds = extractFloodWaitDelay(e.message)
+                Log.w(TAG, "FLOOD_WAIT: waiting ${waitSeconds}s")
+                delay(waitSeconds * 1000L)
                 return invoke(method, decoder)
             }
             throw e
@@ -89,7 +129,7 @@ class TelegramApiClient {
         var backoff = 1000L
         for (attempt in 1..10) {
             try {
-                connect(currentDc, key, keyId, s, null)
+                connect(currentDc, key, keyId, s)
                 Log.i(TAG, "Reconnected on attempt $attempt")
                 return
             } catch (e: Exception) {
@@ -107,5 +147,13 @@ class TelegramApiClient {
     private fun extractMigrateDc(msg: String): Int {
         val regex = Regex("_(\\d+)$")
         return regex.find(msg)?.groupValues?.get(1)?.toIntOrNull() ?: currentDc
+    }
+
+    private fun isFloodWait(msg: String): Boolean =
+        msg.contains("FLOOD_WAIT_") || msg.contains("FLOOD_PREMIUM_WAIT_")
+
+    private fun extractFloodWaitDelay(msg: String): Int {
+        val regex = Regex("FLOOD_(?:PREMIUM_)?WAIT_(\\d+)")
+        return regex.find(msg)?.groupValues?.get(1)?.toIntOrNull() ?: 5
     }
 }

@@ -24,6 +24,7 @@ class RpcEngine {
         val deferred = CompletableDeferred<TlBuffer>()
         val msgId = sendFn(buf.raw, 0)
         pending[msgId] = deferred
+        payloads[msgId] = buf.raw
 
         return try {
             val result = withTimeout(30_000) { deferred.await() }
@@ -35,6 +36,7 @@ class RpcEngine {
     }
 
     fun notifyResult(msgId: Long, buffer: TlBuffer) {
+        payloads.remove(msgId)
         val deferred = pending.remove(msgId)
         if (deferred != null) {
             deferred.complete(buffer)
@@ -44,6 +46,7 @@ class RpcEngine {
     }
 
     fun notifyError(msgId: Long, code: Int, message: String) {
+        payloads.remove(msgId)
         val deferred = pending.remove(msgId)
         if (deferred != null) {
             deferred.completeExceptionally(RpcException(code, message))
@@ -57,10 +60,19 @@ class RpcEngine {
     fun dropAll(error: Exception) {
         val entries = pending.entries.toList()
         pending.clear()
+        payloads.clear()
         for ((_, deferred) in entries) {
             deferred.completeExceptionally(error)
         }
     }
 
     fun hasPending(msgId: Long): Boolean = pending.containsKey(msgId)
+
+    private val payloads = ConcurrentHashMap<Long, ByteArray>()
+
+    fun storePayload(msgId: Long, data: ByteArray) {
+        payloads[msgId] = data
+    }
+
+    fun getPendingPayload(msgId: Long): ByteArray? = payloads.remove(msgId)
 }

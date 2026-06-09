@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 import requests.Requests
 import responses.Responses
 import threads.Threads
@@ -63,7 +63,7 @@ object GVoiceClient {
         if (!initialized.compareAndSet(false, true)) return
         appContext = context.applicationContext
         Log.i(TAG, "init")
-        runBlocking {
+        scope.launch {
             val auth = VoiceAuthData.load(appContext)
             if (auth?.hasRequired() == true) {
                 Log.i(TAG, "resuming from persisted cookies")
@@ -516,7 +516,7 @@ object GVoiceClient {
             if (!resp.hasThread()) return@launch
             val thread = resp.thread
             for (i in 0 until thread.messagesCount) {
-                emitMessage(thread.getID(), thread.getMessages(i))
+                emitMessage(thread.getID(), thread.getMessages(i), fromBackfill = true)
             }
         }
     }
@@ -530,6 +530,7 @@ object GVoiceClient {
         client.updateCookies(auth.cookies)
         rpc = client
 
+        _state.value = State.Connecting
         _state.value = State.Connected
         realtime?.stop()
         realtime = RealtimeChannel(client) { evt ->
@@ -537,49 +538,58 @@ object GVoiceClient {
                 RealtimeEvent.Connected -> Log.i(TAG, "realtime connected")
                 is RealtimeEvent.Data -> handleRealtimeData(evt.event)
             }
-        }.also { it.start(scope) }
+        }.also { ch ->
+            val rtJob = ch.start(scope)
+            rtJob.invokeOnCompletion { cause ->
+                if (!rtJob.isCancelled) {
+                    _state.value = State.Disconnected("realtime connection lost")
+                }
+            }
+        }
         kickoffBackfill()
     }
 
     private fun kickoffBackfill() {
         backfillJob?.cancel()
-        backfillJob = scope.launch {
-            val client = rpc ?: return@launch
-            Log.i(TAG, "ListThreads (TEXT_THREADS)")
-            val req = Requests.ReqListThreads.newBuilder()
-                .setFolder(Threads.ThreadFolder.TEXT_THREADS)
-                // libgv hard-codes these "unknown" fields — 20 on the
-                // first call (10 on subsequent), 15 for the second.
-                // Without them the server returns 0 threads even though
-                // the account has real conversations.
-                .setUnknownInt2(20)
-                .setUnknownInt3(15)
-                .build()
-            val resp = try {
-                client.postPbLite(
-                    url = VoiceEndpoints.EndpointListThreads,
-                    body = req,
-                    responseTemplate = Responses.RespListThreads.getDefaultInstance(),
-                )
-            } catch (t: Throwable) {
-                Log.w(TAG, "ListThreads failed: ${t.message}")
-                _state.value = State.Disconnected(t.message ?: "ListThreads failed")
-                return@launch
-            }
-            Log.i(TAG, "ListThreads: ${resp.threadsCount} threads")
-            for (i in 0 until resp.threadsCount) {
-                emitConversation(resp.getThreads(i))
-            }
+        backfillJob = scope.launch { doBackfill() }
+    }
+
+    private suspend fun doBackfill() {
+        val client = rpc ?: return
+        Log.i(TAG, "ListThreads (TEXT_THREADS)")
+        val req = Requests.ReqListThreads.newBuilder()
+            .setFolder(Threads.ThreadFolder.TEXT_THREADS)
+            // libgv hard-codes these "unknown" fields — 20 on the
+            // first call (10 on subsequent), 15 for the second.
+            // Without them the server returns 0 threads even though
+            // the account has real conversations.
+            .setUnknownInt2(20)
+            .setUnknownInt3(15)
+            .build()
+        val resp = try {
+            client.postPbLite(
+                url = VoiceEndpoints.EndpointListThreads,
+                body = req,
+                responseTemplate = Responses.RespListThreads.getDefaultInstance(),
+            )
+        } catch (t: Throwable) {
+            Log.w(TAG, "ListThreads failed: ${t.message}")
+            _state.value = State.Disconnected(t.message ?: "ListThreads failed")
+            return
+        }
+        Log.i(TAG, "ListThreads: ${resp.threadsCount} threads")
+        for (i in 0 until resp.threadsCount) {
+            emitConversation(resp.getThreads(i))
         }
     }
 
-    private suspend fun handleRealtimeData(evt: webchannel.Webchannel.WebChannelEvent) {
-        // Each realtime event can carry thread updates / new message
-        // notifications. The shape is deeply nested; for v1 just
-        // re-trigger the backfill on any event — it's cheap and
-        // guarantees consistency until we wire per-event decoding.
+    private fun handleRealtimeData(evt: webchannel.Webchannel.WebChannelEvent) {
         Log.d(TAG, "realtime event arrayID=${evt.arrayID} wrappers=${evt.dataWrapperCount}")
-        kickoffBackfill()
+        backfillJob?.cancel()
+        backfillJob = scope.launch {
+            delay(2000)
+            doBackfill()
+        }
     }
 
     private suspend fun emitConversation(t: Threads.Thread) {
@@ -637,7 +647,7 @@ object GVoiceClient {
         )
     }
 
-    private suspend fun emitMessage(threadId: String, m: Threads.Message) {
+    private suspend fun emitMessage(threadId: String, m: Threads.Message, fromBackfill: Boolean = false) {
         // Skip non-text messages (calls / voicemail / etc.) for v1.
         if (m.text.isBlank()) return
         val outgoing = m.type == Threads.Message.Type.SMS_OUT
@@ -654,7 +664,7 @@ object GVoiceClient {
                 senderName = if (m.hasContact()) m.contact.name.takeIf { it.isNotBlank() } else null,
             )
         )
-        if (!outgoing) {
+        if (!outgoing && !fromBackfill) {
             _events.emit(
                 GMEvent.IncomingMessage(
                     source = source,

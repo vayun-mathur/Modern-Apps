@@ -2,8 +2,11 @@ package com.vayunmathur.messages.util
 
 import com.vayunmathur.messages.gmessages.GMessagesClient
 import com.vayunmathur.messages.gvoice.GVoiceClient
+import com.vayunmathur.messages.meta.InstagramClient
+import com.vayunmathur.messages.meta.MetaClient
 import com.vayunmathur.messages.signal.SignalClient
 import com.vayunmathur.messages.telegram.TelegramClient
+import com.vayunmathur.messages.whatsapp.WhatsAppClient
 
 /**
  * Source-agnostic connection state.
@@ -59,4 +62,29 @@ fun SignalClient.State.toUnified(): SourceConnectionState = when (this) {
     SignalClient.State.Connecting -> SourceConnectionState.Connecting
     SignalClient.State.Connected -> SourceConnectionState.Connected
     is SignalClient.State.Disconnected -> SourceConnectionState.Disconnected(reason)
+}
+
+fun WhatsAppClient.State.toUnified(): SourceConnectionState = when (this) {
+    WhatsAppClient.State.Idle -> SourceConnectionState.Idle
+    WhatsAppClient.State.NeedsSetup -> SourceConnectionState.NeedsSetup("Link device")
+    is WhatsAppClient.State.AwaitingQrScan -> SourceConnectionState.Pairing(qrData)
+    WhatsAppClient.State.Connecting -> SourceConnectionState.Connecting
+    WhatsAppClient.State.Connected -> SourceConnectionState.Connected
+    is WhatsAppClient.State.Disconnected -> SourceConnectionState.Disconnected(reason)
+}
+
+fun MetaClient.State.toUnified(): SourceConnectionState = when (this) {
+    MetaClient.State.Idle -> SourceConnectionState.Idle
+    MetaClient.State.NeedsSetup -> SourceConnectionState.NeedsSetup("Sign in")
+    MetaClient.State.Connecting -> SourceConnectionState.Connecting
+    MetaClient.State.Connected -> SourceConnectionState.Connected
+    is MetaClient.State.Disconnected -> SourceConnectionState.Disconnected(reason)
+}
+
+fun InstagramClient.State.toUnified(): SourceConnectionState = when (this) {
+    InstagramClient.State.Idle -> SourceConnectionState.Idle
+    InstagramClient.State.NeedsSetup -> SourceConnectionState.NeedsSetup("Sign in")
+    InstagramClient.State.Connecting -> SourceConnectionState.Connecting
+    InstagramClient.State.Connected -> SourceConnectionState.Connected
+    is InstagramClient.State.Disconnected -> SourceConnectionState.Disconnected(reason)
 }

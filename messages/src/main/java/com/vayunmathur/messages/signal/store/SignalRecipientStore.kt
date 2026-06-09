@@ -19,6 +19,6 @@ class SignalRecipientStore(private val db: SignalDatabase) {
     }
 
     suspend fun getAllRecipients(): List<SignalRecipientEntity> {
-        return db.recipientDao().search("")
+        return db.recipientDao().getAll()
     }
 }

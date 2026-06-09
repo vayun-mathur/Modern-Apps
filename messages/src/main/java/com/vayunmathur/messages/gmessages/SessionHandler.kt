@@ -187,7 +187,8 @@ class SessionHandler(
             .setAuth(
                 OutgoingRPCMessage.Auth.newBuilder()
                     .setRequestID(requestId)
-                    .setTachyonAuthToken(auth.tachyonToken()!!.toByteString())
+                    .setTachyonAuthToken((auth.tachyonToken()
+                        ?: error("tachyon token is null — not paired or token expired")).toByteString())
                     .setConfigVersion(PairFlow.ConfigVersion)
             )
 

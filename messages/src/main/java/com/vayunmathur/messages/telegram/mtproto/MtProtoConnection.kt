@@ -22,6 +22,7 @@ class MtProtoConnection(
     private val port: Int,
     private val dc: Int,
     private val onUpdate: suspend (TlObject) -> Unit,
+    private val onDisconnected: (suspend () -> Unit)? = null,
 ) {
     private val TAG = "MtProtoConn"
     private val transport = TcpTransport()
@@ -105,6 +106,7 @@ class MtProtoConnection(
                 Log.e(TAG, "Read loop error: ${e.message}")
                 connected = false
                 rpcEngine.dropAll(e)
+                onDisconnected?.let { scope?.launch { it() } }
             }
         }
     }
@@ -159,8 +161,14 @@ class MtProtoConnection(
                 buf.int32()
                 val bss = MessageFraming.parseBadServerSalt(buf)
                 salt = bss.newSalt
-                Log.d(TAG, "Updated server salt")
-                // Re-send the failed message is handled at RPC level
+                Log.d(TAG, "Updated server salt, re-sending msgId=${bss.badMsgId}")
+                rpcEngine.getPendingPayload(bss.badMsgId)?.let { payload ->
+                    try {
+                        send(payload, true)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Re-send after salt update failed: ${e.message}")
+                    }
+                }
             }
             MessageFraming.TYPE_NEW_SESSION -> {
                 buf.int32()

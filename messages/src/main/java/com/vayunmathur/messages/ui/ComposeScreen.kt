@@ -195,7 +195,7 @@ fun ComposeScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(24.dp),
                 )
-                LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+                LazyColumn(modifier = Modifier.weight(1f)) {
                     items(suggestions, key = { (it.phoneE164 ?: it.displayName) + "|" + (it.source?.name ?: "device") }) { sug ->
                         SuggestionRow(sug) {
                             selectedRecipient = sug
@@ -217,64 +217,66 @@ fun ComposeScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            if (selectedRecipient != null) {
+                Spacer(Modifier.weight(1f))
 
-            // Compose row reuses the conversation-screen pattern.
-            ComposeRow(
-                draft = draft,
-                onDraftChange = { draft = it },
-                sending = sending,
-                onSend = {
-                    val source = chosenSource
-                    val recipient = selectedRecipient?.phoneE164 ?: query.trim().takeIf { it.isNotEmpty() }
-                    when {
-                        recipient == null -> scope.launch {
-                            snackbar.showSnackbar("Pick a recipient first")
-                        }
-                        source == null -> scope.launch {
-                            snackbar.showSnackbar("Choose a source (Voice or Messages)")
-                        }
-                        // Voice supports image MMS only. Anything else
-                        // (video / audio / file) goes through gmessages
-                        // only. We check the first attachment's mime to
-                        // decide; mixed attachments are out of scope.
-                        else -> scope.launch {
-                            val mediaPart = media.firstOrNull()?.let { vm.readUri(it) }
-                            if (source == MessageSource.VOICE &&
-                                mediaPart != null &&
-                                !mediaPart.mime.startsWith("image/")
-                            ) {
-                                snackbar.showSnackbar(
-                                    "Voice supports image MMS only — pick Messages, or remove the attachment."
-                                )
-                                return@launch
+                // Compose row reuses the conversation-screen pattern.
+                ComposeRow(
+                    draft = draft,
+                    onDraftChange = { draft = it },
+                    sending = sending,
+                    onSend = {
+                        val source = chosenSource
+                        val recipient = selectedRecipient?.phoneE164 ?: query.trim().takeIf { it.isNotEmpty() }
+                        when {
+                            recipient == null -> scope.launch {
+                                snackbar.showSnackbar("Pick a recipient first")
                             }
-                            sending = true
-                            vm.sendNewMessage(
-                                source = source,
-                                recipients = listOf(recipient),
-                                body = draft.trim().takeIf { it.isNotEmpty() },
-                                media = mediaPart,
-                            ) { newConvId ->
-                                sending = false
-                                if (newConvId == null) {
-                                    scope.launch { snackbar.showSnackbar("Send failed") }
-                                } else {
-                                    backStack.pop()
-                                    backStack.add(Route.Conversation(newConvId))
+                            source == null -> scope.launch {
+                                snackbar.showSnackbar("Choose a source (Voice or Messages)")
+                            }
+                            // Voice supports image MMS only. Anything else
+                            // (video / audio / file) goes through gmessages
+                            // only. We check the first attachment's mime to
+                            // decide; mixed attachments are out of scope.
+                            else -> scope.launch {
+                                val mediaPart = media.firstOrNull()?.let { vm.readUri(it) }
+                                if (source == MessageSource.VOICE &&
+                                    mediaPart != null &&
+                                    !mediaPart.mime.startsWith("image/")
+                                ) {
+                                    snackbar.showSnackbar(
+                                        "Voice supports image MMS only — pick Messages, or remove the attachment."
+                                    )
+                                    return@launch
+                                }
+                                sending = true
+                                vm.sendNewMessage(
+                                    source = source,
+                                    recipients = listOf(recipient),
+                                    body = draft.trim().takeIf { it.isNotEmpty() },
+                                    media = mediaPart,
+                                ) { newConvId ->
+                                    sending = false
+                                    if (newConvId == null) {
+                                        scope.launch { snackbar.showSnackbar("Send failed") }
+                                    } else {
+                                        backStack.pop()
+                                        backStack.add(Route.Conversation(newConvId))
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                onAttach = {
-                    pickImage.launch(
-                        PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                    },
+                    onAttach = {
+                        pickImage.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                            )
                         )
-                    )
-                },
-            )
+                    },
+                )
+            }
         }
     }
 }

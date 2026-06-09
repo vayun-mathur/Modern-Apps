@@ -37,9 +37,10 @@ class RealtimeChannel(
 ) {
     private var job: Job? = null
 
-    fun start(scope: CoroutineScope) {
-        if (job?.isActive == true) return
+    fun start(scope: CoroutineScope): Job {
+        if (job?.isActive == true) return job!!
         job = scope.launch { runLoop() }
+        return job!!
     }
 
     fun stop() {

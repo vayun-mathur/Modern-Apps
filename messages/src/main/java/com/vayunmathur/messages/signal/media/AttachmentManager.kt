@@ -43,7 +43,7 @@ object AttachmentManager {
             val uploadResponse = SignalHttpClient.request(
                 host = uploadUrl.substringAfter("://").substringBefore("/"),
                 method = "PUT",
-                path = uploadUrl.substringAfter(uploadUrl.substringBefore("/", "/")),
+                path = "/" + uploadUrl.substringAfter("://").substringAfter("/"),
                 body = encrypted,
                 contentType = contentType,
             )

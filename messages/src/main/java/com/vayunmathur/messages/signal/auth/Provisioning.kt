@@ -6,7 +6,9 @@ import android.util.Base64
 import android.util.Log
 import com.vayunmathur.messages.signal.proto.ProvisioningProtos
 import com.vayunmathur.messages.signal.proto.SignalServiceProtos
+import com.vayunmathur.messages.signal.store.SignalDatabase
 import com.vayunmathur.messages.signal.store.SignalDeviceData
+import com.vayunmathur.messages.signal.store.SignalPreKeyStore
 import com.vayunmathur.messages.signal.web.SignalHttpClient
 import com.vayunmathur.messages.signal.web.SignalWebSocket
 import kotlinx.coroutines.channels.Channel
@@ -110,6 +112,14 @@ object Provisioning {
             val pniSignedPreKey = generateSignedPreKey(1, pniIdentityKeyPair)
             val aciPqLastResort = generateKyberPreKey(1, aciIdentityKeyPair)
             val pniPqLastResort = generateKyberPreKey(1, pniIdentityKeyPair)
+
+            // Store generated keys in the local protocol stores
+            val database = SignalDatabase.getInstance(context)
+            val preKeyStore = SignalPreKeyStore(database)
+            preKeyStore.storeSignedPreKey(aciSignedPreKey.id, aciSignedPreKey)
+            preKeyStore.storeSignedPreKey(pniSignedPreKey.id, pniSignedPreKey)
+            preKeyStore.storeLastResortKyberPreKey(aciPqLastResort.id, aciPqLastResort)
+            preKeyStore.storeLastResortKyberPreKey(pniPqLastResort.id, pniPqLastResort)
 
             // Step 8: Encrypt device name
             val encryptedName = encryptDeviceName("Android", aciIdentityKeyPair.publicKey.publicKey)

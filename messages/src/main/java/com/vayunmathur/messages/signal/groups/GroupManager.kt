@@ -15,6 +15,8 @@ import javax.crypto.spec.SecretKeySpec
 class GroupManager(
     private val ws: SignalWebSocket,
     private val groupStore: SignalGroupStore,
+    private val aci: String,
+    private val password: String,
 ) {
     data class SignalGroup(
         val groupId: String,
@@ -28,7 +30,11 @@ class GroupManager(
 
     suspend fun fetchGroup(groupId: String, masterKey: ByteArray): SignalGroup? {
         return try {
-            val response = ws.sendRequest("GET", "/v1/groups/")
+            val authHeader = GroupAuth.authHeader(aci, password)
+            val response = ws.sendRequest(
+                "GET", "/v1/groups",
+                headers = mapOf("Authorization" to authHeader),
+            )
             if (response.status !in 200..299) return null
 
             val groupProto = Group.parseFrom(response.body)

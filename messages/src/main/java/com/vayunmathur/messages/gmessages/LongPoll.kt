@@ -9,6 +9,7 @@ import com.google.protobuf.InvalidProtocolBufferException
 import events.Events.RPCPairData
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.readAvailable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -60,6 +61,8 @@ class LongPoll(
             }
             val ok = try {
                 openAndRead()
+            } catch (e: CancellationException) {
+                throw e
             } catch (t: Throwable) {
                 Log.w(TAG, "long-poll error: ${t.message}")
                 false

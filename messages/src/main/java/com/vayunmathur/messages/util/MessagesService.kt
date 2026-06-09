@@ -169,17 +169,23 @@ class MessagesService : Service() {
     }
 
     private fun describeStates(states: Map<MessageSource, SourceConnectionState>): String {
-        val msgsConnected = states[MessageSource.MESSAGES_WEB] is SourceConnectionState.Connected
-        val voiceConnected = states[MessageSource.VOICE] is SourceConnectionState.Connected
-        return when {
-            msgsConnected && voiceConnected ->
-                getString(R.string.notification_sync_text_both)
-            msgsConnected ->
-                getString(R.string.notification_sync_text_messages)
-            voiceConnected ->
-                getString(R.string.notification_sync_text_voice)
-            else ->
-                getString(R.string.notification_sync_text_none)
+        val connected = states.entries
+            .filter { it.value is SourceConnectionState.Connected }
+            .map {
+                when (it.key) {
+                    MessageSource.MESSAGES_WEB -> "Phone"
+                    MessageSource.VOICE -> "Voice"
+                    MessageSource.TELEGRAM -> "Telegram"
+                    MessageSource.SIGNAL -> "Signal"
+                    MessageSource.WHATSAPP -> "WhatsApp"
+                    MessageSource.MESSENGER -> "Messenger"
+                    MessageSource.INSTAGRAM -> "Instagram"
+                }
+            }
+        return if (connected.isEmpty()) {
+            getString(R.string.notification_sync_text_none)
+        } else {
+            "Connected to ${connected.joinToString(" + ")}"
         }
     }
 

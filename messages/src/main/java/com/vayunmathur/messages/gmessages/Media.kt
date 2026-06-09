@@ -86,7 +86,10 @@ class Media(private val authProvider: () -> AuthData) {
                 AuthMessage.newBuilder()
                     .setRequestID(java.util.UUID.randomUUID().toString())
                     .setTachyonAuthToken(
-                        com.google.protobuf.ByteString.copyFrom(auth.tachyonToken()!!)
+                        com.google.protobuf.ByteString.copyFrom(
+                            auth.tachyonToken()
+                                ?: error("tachyon token is null — not paired or token expired")
+                        )
                     )
                     .setNetwork(PairFlow.QrNetwork)
                     .setConfigVersion(PairFlow.ConfigVersion)
@@ -141,9 +144,12 @@ class Media(private val authProvider: () -> AuthData) {
             error("finalize-upload HTTP ${resp.status.value}")
         }
         var bodyBytes = resp.bodyAsBytes()
-        // Sometimes the response is base64-encoded protobuf, sometimes
-        // raw protobuf. Detect by attempting standard base64 parsing.
-        if (isLikelyBase64(bodyBytes)) {
+        // The response may be base64-encoded protobuf or raw protobuf.
+        // Use Content-Type to decide rather than inspecting the bytes.
+        val isBinaryContent = resp.contentType()?.let { ct ->
+            ct.contentType == "application"
+        } ?: false
+        if (!isBinaryContent) {
             bodyBytes = runCatching {
                 Base64.decode(bodyBytes, Base64.NO_WRAP)
             }.getOrDefault(bodyBytes)
@@ -155,16 +161,7 @@ class Media(private val authProvider: () -> AuthData) {
         )
     }
 
-    private fun isLikelyBase64(b: ByteArray): Boolean {
-        if (b.isEmpty() || b.size % 4 != 0) return false
-        return b.all { c ->
-            val ch = c.toInt() and 0xFF
-            (ch in 'A'.code..'Z'.code) || (ch in 'a'.code..'z'.code) ||
-                (ch in '0'.code..'9'.code) || ch == '+'.code || ch == '/'.code || ch == '='.code
-        }
-    }
-
-    /**
+    companion object {
      * Apply the upload header bundle (port of util/func.go.NewMediaUploadHeaders).
      * The relay's anti-abuse layer inspects these alongside the URL +
      * Origin to decide whether the request looks like a real browser.

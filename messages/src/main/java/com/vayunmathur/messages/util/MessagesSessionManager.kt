@@ -12,8 +12,11 @@ import com.vayunmathur.messages.data.buildMessagesDatabase
 import com.vayunmathur.messages.gmessages.GMEvent
 import com.vayunmathur.messages.gmessages.GMessagesClient
 import com.vayunmathur.messages.gvoice.GVoiceClient
+import com.vayunmathur.messages.meta.InstagramClient
+import com.vayunmathur.messages.meta.MetaClient
 import com.vayunmathur.messages.signal.SignalClient
 import com.vayunmathur.messages.telegram.TelegramClient
+import com.vayunmathur.messages.whatsapp.WhatsAppClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -670,6 +673,33 @@ object MessagesSessionManager {
         }
         collectorJobs += scope.launch {
             SignalClient.events.collect { handleEvent(it) }
+        }
+        collectorJobs += scope.launch {
+            WhatsAppClient.state.collect { s ->
+                _connectionStates.value =
+                    _connectionStates.value + (MessageSource.WHATSAPP to s.toUnified())
+            }
+        }
+        collectorJobs += scope.launch {
+            MetaClient.state.collect { s ->
+                _connectionStates.value =
+                    _connectionStates.value + (MessageSource.MESSENGER to s.toUnified())
+            }
+        }
+        collectorJobs += scope.launch {
+            InstagramClient.state.collect { s ->
+                _connectionStates.value =
+                    _connectionStates.value + (MessageSource.INSTAGRAM to s.toUnified())
+            }
+        }
+        collectorJobs += scope.launch {
+            WhatsAppClient.events.collect { handleEvent(it) }
+        }
+        collectorJobs += scope.launch {
+            MetaClient.events.collect { handleEvent(it) }
+        }
+        collectorJobs += scope.launch {
+            InstagramClient.events.collect { handleEvent(it) }
         }
     }
 

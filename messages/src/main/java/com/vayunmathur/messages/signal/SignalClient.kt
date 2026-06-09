@@ -31,6 +31,7 @@ import com.vayunmathur.messages.signal.web.SignalHttpClient
 import com.vayunmathur.messages.signal.web.SignalWebSocket
 import com.vayunmathur.messages.signal.proto.SignalServiceProtos
 import com.vayunmathur.messages.signal.proto.WebSocketProtos
+import com.vayunmathur.messages.data.buildMessagesDatabase
 import com.vayunmathur.messages.util.ContactSuggestion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +45,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.signal.libsignal.protocol.IdentityKeyPair
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -97,7 +98,7 @@ object SignalClient {
         if (!initialized.compareAndSet(false, true)) return
         appContext = context.applicationContext
         Log.i(TAG, "init")
-        runBlocking {
+        scope.launch {
             val auth = SignalAuthData.load(appContext)
             if (auth != null) {
                 authData = auth
@@ -228,7 +229,10 @@ object SignalClient {
         val sender = messageSender ?: return false
         val recipientAci = resolveRecipient(extractAci(conversationId) ?: return false) ?: return false
         return try {
-            val content = ContentBuilders.readReceipt(listOf(System.currentTimeMillis()))
+            val messagesDb = buildMessagesDatabase(appContext)
+            val messages = messagesDb.messageDao().observeForConversation(conversationId).first()
+            val timestamps = messages.map { it.timestamp }.takeIf { it.isNotEmpty() } ?: return true
+            val content = ContentBuilders.readReceipt(timestamps)
             sender.sendMessage(recipientAci, content, System.currentTimeMillis())
             true
         } catch (t: Throwable) {
@@ -238,6 +242,7 @@ object SignalClient {
     }
 
     suspend fun deleteThread(conversationId: String): Boolean {
+        _events.emit(GMEvent.ConversationDeleted(source, conversationId))
         return true
     }
 
@@ -328,7 +333,7 @@ object SignalClient {
             contactManager = ContactManager(recipientStore)
             contactDiscovery = ContactDiscovery(recipientStore, auth.aci, auth.deviceId, auth.password, appContext)
             profileManager = ProfileManager(ws, recipientStore)
-            groupManager = GroupManager(ws, SignalGroupStore(database))
+            groupManager = GroupManager(ws, SignalGroupStore(database), auth.aci, auth.password)
 
             ws.incomingRequestHandler = { request ->
                 handleIncomingRequest(request, auth, sessStore, idStore, pkStore, skStore)
@@ -336,6 +341,17 @@ object SignalClient {
 
             _state.value = State.Connected
             Log.i(TAG, "Connected to Signal")
+
+            scope.launch {
+                try {
+                    val aciKeyPair = IdentityKeyPair(Base64.decode(auth.aciIdentityKeyPair, Base64.NO_WRAP))
+                    val pniKeyPair = IdentityKeyPair(Base64.decode(auth.pniIdentityKeyPair, Base64.NO_WRAP))
+                    PreKeyManager.generateAndUploadPreKeys(ws, pkStore, aciKeyPair, pniKeyPair)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Initial pre-key upload failed: ${t.message}")
+                }
+            }
+
             kickoffBackfill()
 
             scope.launch {
@@ -354,6 +370,8 @@ object SignalClient {
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "bootSession failed", e)
             _state.value = State.Disconnected("Boot failed: ${e.message}")
@@ -430,6 +448,12 @@ object SignalClient {
                 if (syncContent is MessageContent.TextMessage) {
                     val msgId = "${destAci}_${content.timestamp}"
                     _events.emit(GMEvent.MessageUpdate(source, destAci, msgId, syncContent.body, true, content.timestamp, null))
+                    _events.emit(GMEvent.ConversationUpdate(
+                        source = source, conversationId = destAci,
+                        peerName = resolveDisplayName(destAci), peerPhone = null, avatarUrl = null,
+                        lastPreview = syncContent.body, lastTimestamp = content.timestamp,
+                        unreadCount = 0, conversationType = "Signal",
+                    ))
                 }
             }
             is MessageContent.Typing -> {}
@@ -463,6 +487,24 @@ object SignalClient {
                 peerName = null, peerPhone = null, avatarUrl = null,
                 lastPreview = null, lastTimestamp = 0, unreadCount = 0,
             ))
+
+            val sender = messageSender ?: return@launch
+            try {
+                val syncRequest = SignalServiceProtos.SyncMessage.Request.newBuilder()
+                    .setType(SignalServiceProtos.SyncMessage.Request.Type.CONTACTS)
+                    .build()
+                val syncMessage = SignalServiceProtos.SyncMessage.newBuilder()
+                    .setRequest(syncRequest)
+                    .build()
+                val content = SignalServiceProtos.Content.newBuilder()
+                    .setSyncMessage(syncMessage)
+                    .build()
+                val auth = authData ?: return@launch
+                sender.sendMessage(auth.aci, content, System.currentTimeMillis())
+                Log.d(TAG, "Sent contacts sync request to primary device")
+            } catch (t: Throwable) {
+                Log.w(TAG, "Contacts sync request failed: ${t.message}")
+            }
         }
     }
 

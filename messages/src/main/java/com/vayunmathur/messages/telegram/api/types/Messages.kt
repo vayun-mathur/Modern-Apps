@@ -31,11 +31,26 @@ data class Message(
                 TlSkip.skipMessageFwdHeader(buf)
             }
             if (flags.has(11)) buf.int64() // via_bot_id
-            if (flags.has(22)) buf.int64() // via_business_bot_id
+            if (flags2.has(0)) buf.int64() // via_business_bot_id
             if (flags.has(3)) TlSkip.skipReplyTo(buf) // reply_to
             val date = buf.int32()
             val message = buf.string()
             val mediaTypeId = if (flags.has(9)) buf.peekId() else 0
+            // Consume media and all remaining optional fields
+            if (flags.has(9)) TlSkip.skipBoxedType(buf) // media
+            if (flags.has(6)) TlSkip.skipReplyMarkup(buf) // reply_markup
+            if (flags.has(7)) TlSkip.skipVector(buf) { TlSkip.skipMessageEntity(it) } // entities
+            if (flags.has(10)) { buf.int32(); buf.int32() } // views, forwards
+            if (flags.has(23)) TlSkip.skipMessageReplies(buf) // replies
+            if (flags.has(15)) buf.int32() // edit_date
+            if (flags.has(16)) buf.string() // post_author
+            if (flags.has(17)) buf.int64() // grouped_id
+            if (flags.has(20)) TlSkip.skipReactions(buf) // reactions
+            if (flags.has(22)) TlSkip.skipVector(buf) { TlSkip.skipRestrictionReason(it) } // restriction_reason
+            if (flags.has(25)) buf.int32() // ttl_period
+            if (flags.has(30)) buf.int32() // quick_reply_shortcut_id
+            if (flags2.has(2)) buf.int64() // effect
+            if (flags2.has(3)) TlSkip.skipFactCheck(buf) // factcheck
             return Message(id, fromId, peerId, date, message, out, mediaTypeId)
         }
     }
@@ -67,8 +82,10 @@ data class MessageService(
             val id = buf.int32()
             val fromId = if (flags.has(8)) decodePeer(buf) else null
             val peerId = decodePeer(buf)
-            if (flags.has(3)) { buf.int32(); buf.int32() }
+            if (flags.has(3)) TlSkip.skipReplyTo(buf) // reply_to
             val date = buf.int32()
+            TlSkip.skipMessageAction(buf) // action (mandatory)
+            if (flags.has(25)) buf.int32() // ttl_period
             return MessageService(id, peerId, date, out)
         }
     }

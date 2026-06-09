@@ -183,6 +183,9 @@ interface SignalRecipientDao {
 
     @Query("SELECT * FROM signal_recipients WHERE profileName LIKE '%' || :query || '%' OR e164 LIKE '%' || :query || '%'")
     suspend fun search(query: String): List<SignalRecipientEntity>
+
+    @Query("SELECT * FROM signal_recipients")
+    suspend fun getAll(): List<SignalRecipientEntity>
 }
 
 @Dao
