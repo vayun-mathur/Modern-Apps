@@ -78,7 +78,7 @@ fun SelectTimeZonesDialog(backStack: NavBackStack<Route>, ds: DataStoreUtils, cl
                 Spacer(Modifier.height(8.dp))
 
                 LazyColumn(Modifier.weight(1f)) {
-                    items(filteredOptions, key = { (_, id) -> id }) { (city, id) ->
+                    items(filteredOptions, key = { (city, _) -> city }) { (city, id) ->
                         val isSelected = city in selectedTimeZones
                         ListItem(
                             headlineContent = { Text(city) },
