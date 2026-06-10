@@ -35,7 +35,7 @@
     <string name="label_description">Kirjeldus</string>
     <string name="label_loading_subscriptions">Viimased tellimused on laadimisel</string>
     <string name="title_settings">Seadistused</string>
-    <string name="label_sponsorblock">Võta SponsorBlock kasutusele</string>
+    <string name="label_sponsorblock">SponsorBlocki kategooriad</string>
     <string name="label_sponsorblock_description">Vali järgnevast loendist lõikude liigid, mida sa tahad videotes vahele jätta</string>
     <string name="label_backup_restore">Varundus ja taastamine</string>
     <string name="label_restore_youpipe">Taasta YouPipe\'i varukoopiast</string>
@@ -46,4 +46,6 @@
     <string name="video_quality_fps_codec">%1$s (%2$d kaadrit sekundis) %3$s</string>
     <string name="audio_bitrate_codec">%1$d kbps (%2$s)</string>
     <string name="empty_recommendations">Kui tahad näha sulle mõeldud soovitusi, siis vaata natuke videoid</string>
+    <string name="label_dearrow">Pisipiltide kuvamiseks kasuta DeArrow teenust</string>
+    <string name="label_dearrow_description">Asenda liiga klikialtid pealkirjad ja pisipildid kogukonna loodud alterantiivisega</string>
 </resources>
