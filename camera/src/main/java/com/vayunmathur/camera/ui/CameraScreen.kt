@@ -4,15 +4,18 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapShader
+import android.graphics.Matrix
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.RenderEffect
+import android.graphics.RuntimeShader
+import android.graphics.Shader
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Patterns
 import android.view.MotionEvent
-import android.graphics.BitmapShader
-import android.graphics.Matrix
-import android.graphics.RenderEffect
-import android.graphics.RuntimeShader
-import android.graphics.Shader
+import android.view.OrientationEventListener
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.SurfaceOrientedMeteringPointFactory
@@ -22,9 +25,13 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,8 +40,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -43,6 +53,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +62,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,10 +71,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -126,6 +145,11 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
     val zoomRatio by viewModel.zoomRatio.collectAsState()
     val timerDuration by viewModel.timerDuration.collectAsState()
     val isCapturing by viewModel.isCapturing.collectAsState()
+    val lastCaptureUri by viewModel.lastCaptureUri.collectAsState()
+    val gridEnabled by viewModel.gridEnabled.collectAsState()
+    val exposureComp by viewModel.exposureCompensation.collectAsState()
+    val warmth by viewModel.warmth.collectAsState()
+    val shadows by viewModel.shadows.collectAsState()
 
     var maskBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     val isPhotoType = cameraMode in listOf(CameraMode.PHOTO, CameraMode.PORTRAIT, CameraMode.PANORAMA)
@@ -141,7 +165,40 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
         animationSpec = tween(durationMillis = 300)
     )
 
+    // Orientation tracking
+    var deviceRotation by remember { mutableIntStateOf(0) }
+    val animatedRotation by animateFloatAsState(
+        targetValue = deviceRotation.toFloat(),
+        animationSpec = tween(durationMillis = 300)
+    )
+
+    DisposableEffect(Unit) {
+        val listener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                deviceRotation = when {
+                    orientation in 45..134 -> 270
+                    orientation in 135..224 -> 180
+                    orientation in 225..314 -> 90
+                    else -> 0
+                }
+            }
+        }
+        listener.enable()
+        onDispose { listener.disable() }
+    }
+
     val controller = remember { LifecycleCameraController(context) }
+
+    // Gallery thumbnail
+    val galleryBitmap = remember(lastCaptureUri) {
+        lastCaptureUri?.let { uri ->
+            try {
+                val size = android.util.Size(96, 96)
+                context.contentResolver.loadThumbnail(uri, size, null)
+            } catch (_: Exception) { null }
+        }
+    }
 
     LaunchedEffect(lensFacing) {
         controller.cameraSelector = CameraSelector.Builder()
@@ -151,6 +208,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
 
     LaunchedEffect(Unit) {
         viewModel.updateLocation()
+        controller.isPinchToZoomEnabled = false
     }
 
     LaunchedEffect(flashMode) {
@@ -164,6 +222,16 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
             controller.setZoomRatio(clamped)
         } else {
             controller.setZoomRatio(animatedZoom)
+        }
+    }
+
+    // Exposure compensation
+    LaunchedEffect(exposureComp) {
+        val camera = controller.cameraInfo
+        if (camera != null) {
+            val range = camera.exposureState.exposureCompensationRange
+            val index = (exposureComp * range.upper).toInt().coerceIn(range.lower, range.upper)
+            controller.cameraControl?.setExposureCompensationIndex(index)
         }
     }
 
@@ -220,6 +288,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 TopBar(
                     flashMode = flashMode,
+                    gridEnabled = gridEnabled,
                     onFlashToggle = {
                         val next = when (flashMode) {
                             FlashMode.OFF -> FlashMode.ON
@@ -227,7 +296,9 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                             FlashMode.AUTO -> FlashMode.OFF
                         }
                         viewModel.setFlashMode(next)
-                    }
+                    },
+                    onGridToggle = { viewModel.toggleGrid() },
+                    iconRotation = animatedRotation
                 )
 
                 Box(
@@ -250,23 +321,61 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                             .aspectRatio(previewAspectRatio)
                             .clip(RoundedCornerShape(12.dp))
                             .then(
-                                if (cameraMode == CameraMode.PORTRAIT && maskBitmap != null) {
-                                    Modifier.graphicsLayer {
-                                        val mask = maskBitmap!!
-                                        val shader = bokehShader.value
-                                        val maskShader = BitmapShader(mask, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-                                        val matrix = Matrix()
-                                        matrix.setScale(size.width / mask.width, size.height / mask.height)
-                                        maskShader.setLocalMatrix(matrix)
-                                        shader.setInputShader("alphaMask", maskShader)
-                                        renderEffect = RenderEffect
-                                            .createRuntimeShaderEffect(shader, "cameraInput")
-                                            .asComposeRenderEffect()
+                                run {
+                                    val hasColorAdj = warmth != 0f || shadows != 0f
+                                    val hasBokeh = cameraMode == CameraMode.PORTRAIT && maskBitmap != null
+                                    if (hasBokeh || hasColorAdj) {
+                                        Modifier.graphicsLayer {
+                                            var effect: RenderEffect? = null
+
+                                            if (hasBokeh) {
+                                                val mask = maskBitmap!!
+                                                val shader = bokehShader.value
+                                                val maskShader = BitmapShader(mask, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+                                                val matrix = Matrix()
+                                                matrix.setScale(size.width / mask.width, size.height / mask.height)
+                                                maskShader.setLocalMatrix(matrix)
+                                                shader.setInputShader("alphaMask", maskShader)
+                                                effect = RenderEffect.createRuntimeShaderEffect(shader, "cameraInput")
+                                            }
+
+                                            if (hasColorAdj) {
+                                                val cm = ColorMatrix()
+                                                cm.set(floatArrayOf(
+                                                    1f + warmth * 0.15f, 0f, 0f, 0f, shadows * 40f,
+                                                    0f, 1f + warmth * 0.05f, 0f, 0f, shadows * 40f,
+                                                    0f, 0f, 1f - warmth * 0.15f, 0f, shadows * 40f,
+                                                    0f, 0f, 0f, 1f, 0f
+                                                ))
+                                                val colorEffect = RenderEffect.createColorFilterEffect(
+                                                    ColorMatrixColorFilter(cm)
+                                                )
+                                                effect = if (effect != null) {
+                                                    RenderEffect.createChainEffect(colorEffect, effect)
+                                                } else {
+                                                    colorEffect
+                                                }
+                                            }
+
+                                            renderEffect = effect?.asComposeRenderEffect()
+                                        }
+                                    } else {
+                                        Modifier.graphicsLayer { renderEffect = null }
                                     }
-                                } else {
-                                    Modifier.graphicsLayer { renderEffect = null }
                                 }
                             )
+                            .pointerInput(Unit) {
+                                detectTransformGestures { _, _, zoom, _ ->
+                                    val newZoom = (viewModel.zoomRatio.value * zoom)
+                                    val zoomState = controller.zoomState.value
+                                    val clamped = if (zoomState != null) {
+                                        newZoom.coerceIn(zoomState.minZoomRatio, zoomState.maxZoomRatio)
+                                    } else {
+                                        newZoom.coerceIn(0.5f, 10f)
+                                    }
+                                    viewModel.setZoomRatio(clamped)
+                                }
+                            }
                             .pointerInteropFilter { event ->
                                 if (event.action == MotionEvent.ACTION_UP) {
                                     val factory = SurfaceOrientedMeteringPointFactory(
@@ -280,6 +389,14 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                             }
                     )
 
+                    if (gridEnabled) {
+                        GridOverlay(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(previewAspectRatio)
+                        )
+                    }
+
                     if (timerCountdown > 0) {
                         Text(
                             text = "$timerCountdown",
@@ -288,6 +405,19 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                             textAlign = TextAlign.Center
                         )
                     }
+
+                    // Adjustment sliders on the right edge
+                    AdjustmentPanel(
+                        exposure = exposureComp,
+                        warmth = warmth,
+                        shadows = shadows,
+                        onExposureChange = { viewModel.setExposureCompensation(it) },
+                        onWarmthChange = { viewModel.setWarmth(it) },
+                        onShadowsChange = { viewModel.setShadows(it) },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .matchParentSize()
+                    )
 
                     ZoomBar(
                         currentZoom = zoomRatio,
@@ -300,6 +430,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                     cameraMode = cameraMode,
                     isRecording = isRecording,
                     isCapturing = isCapturing,
+                    galleryBitmap = galleryBitmap,
                     onCapture = {
                         when {
                             cameraMode == CameraMode.PANORAMA -> {
@@ -315,7 +446,8 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                         context.startActivity(
                             Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
                         )
-                    }
+                    },
+                    iconRotation = animatedRotation
                 )
 
                 ModeSelector(
@@ -375,7 +507,10 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
 @Composable
 private fun TopBar(
     flashMode: FlashMode,
-    onFlashToggle: () -> Unit
+    gridEnabled: Boolean,
+    onFlashToggle: () -> Unit,
+    onGridToggle: () -> Unit,
+    iconRotation: Float
 ) {
     Row(
         modifier = Modifier
@@ -404,8 +539,147 @@ private fun TopBar(
                 ),
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(22.dp).rotate(iconRotation)
             )
+        }
+
+        Spacer(Modifier.width(4.dp))
+
+        val gridBg = if (gridEnabled) Color(0xFF3C3C3C) else Color.Transparent
+        IconButton(
+            onClick = onGridToggle,
+            modifier = Modifier
+                .size(40.dp)
+                .background(gridBg, CircleShape)
+        ) {
+            Icon(
+                painterResource(R.drawable.grid_on_24px),
+                contentDescription = "Grid",
+                tint = Color.White,
+                modifier = Modifier.size(22.dp).rotate(iconRotation)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GridOverlay(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val strokeWidth = 1.dp.toPx()
+        val color = Color.White.copy(alpha = 0.3f)
+        val thirdW = size.width / 3f
+        val thirdH = size.height / 3f
+
+        for (i in 1..2) {
+            drawLine(color, Offset(thirdW * i, 0f), Offset(thirdW * i, size.height), strokeWidth)
+            drawLine(color, Offset(0f, thirdH * i), Offset(size.width, thirdH * i), strokeWidth)
+        }
+    }
+}
+
+@Composable
+private fun AdjustmentPanel(
+    exposure: Float,
+    warmth: Float,
+    shadows: Float,
+    onExposureChange: (Float) -> Unit,
+    onWarmthChange: (Float) -> Unit,
+    onShadowsChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.width(36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        VerticalSlider(
+            value = exposure,
+            onValueChange = onExposureChange,
+            iconRes = R.drawable.wb_sunny_24px,
+            label = "Brightness",
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        )
+        VerticalSlider(
+            value = shadows,
+            onValueChange = onShadowsChange,
+            iconRes = R.drawable.contrast_24px,
+            label = "Shadows",
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        )
+        VerticalSlider(
+            value = warmth,
+            onValueChange = onWarmthChange,
+            iconRes = R.drawable.warmth_24px,
+            label = "Warmth",
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun VerticalSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    iconRes: Int,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            painterResource(iconRes),
+            contentDescription = label,
+            tint = if (value != 0f) Color.White else Color(0xFF888888),
+            modifier = Modifier.size(14.dp).padding(top = 2.dp)
+        )
+        Canvas(
+            modifier = Modifier
+                .weight(1f)
+                .width(36.dp)
+                .padding(vertical = 8.dp)
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { change, _ ->
+                        change.consume()
+                        val trackHeight = size.height.toFloat()
+                        val fraction = (change.position.y / trackHeight).coerceIn(0f, 1f)
+                        val newValue = 1f - fraction * 2f // top=1, middle=0, bottom=-1
+                        onValueChange(newValue.coerceIn(-1f, 1f))
+                    }
+                }
+        ) {
+            val trackWidth = 4.dp.toPx()
+            val thumbRadius = 8.dp.toPx()
+            val trackX = size.width / 2f
+            val trackTop = thumbRadius
+            val trackBottom = size.height - thumbRadius
+            val trackHeight = trackBottom - trackTop
+            val midY = (trackTop + trackBottom) / 2f
+            val thumbY = trackTop + trackHeight * (1f - (value + 1f) / 2f)
+
+            // Inactive track
+            drawLine(
+                Color(0xFF666666),
+                Offset(trackX, trackTop),
+                Offset(trackX, trackBottom),
+                strokeWidth = trackWidth
+            )
+            // Active track (from center to thumb)
+            drawLine(
+                Color.White,
+                Offset(trackX, midY),
+                Offset(trackX, thumbY),
+                strokeWidth = trackWidth
+            )
+            // Center tick
+            drawLine(
+                Color(0xFFAAAAAA),
+                Offset(trackX - 6.dp.toPx(), midY),
+                Offset(trackX + 6.dp.toPx(), midY),
+                strokeWidth = 1.5.dp.toPx()
+            )
+            // Thumb
+            drawCircle(Color.White, thumbRadius, Offset(trackX, thumbY))
         }
     }
 }
@@ -448,9 +722,11 @@ private fun ShutterRow(
     cameraMode: CameraMode,
     isRecording: Boolean,
     isCapturing: Boolean,
+    galleryBitmap: android.graphics.Bitmap?,
     onCapture: () -> Unit,
     onFlipCamera: () -> Unit,
-    onGallery: () -> Unit
+    onGallery: () -> Unit,
+    iconRotation: Float
 ) {
     val shutterScale by animateFloatAsState(
         targetValue = if (isCapturing) 0.8f else 1f,
@@ -472,12 +748,21 @@ private fun ShutterRow(
                 .clickable(onClick = onGallery),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                painterResource(R.drawable.ic_photo_library),
-                contentDescription = stringResource(R.string.open_gallery),
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
+            if (galleryBitmap != null) {
+                Image(
+                    bitmap = galleryBitmap.asImageBitmap(),
+                    contentDescription = stringResource(R.string.open_gallery),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                )
+            } else {
+                Icon(
+                    painterResource(R.drawable.ic_photo_library),
+                    contentDescription = stringResource(R.string.open_gallery),
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
 
         Box(
@@ -505,7 +790,7 @@ private fun ShutterRow(
                 painterResource(R.drawable.flip_camera_android_24px),
                 contentDescription = stringResource(R.string.flip_camera),
                 tint = Color.White,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp).rotate(iconRotation)
             )
         }
     }
@@ -662,7 +947,6 @@ private fun BottomBar(
                 }
             }
         } else {
-            // Invisible spacer to maintain layout
             Spacer(Modifier.size(44.dp))
         }
     }

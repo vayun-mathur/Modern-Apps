@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.location.Location
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.camera.core.CameraSelector
@@ -68,6 +69,21 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _locationEnabled = MutableStateFlow(false)
     val locationEnabled = _locationEnabled.asStateFlow()
 
+    private val _lastCaptureUri = MutableStateFlow<Uri?>(null)
+    val lastCaptureUri = _lastCaptureUri.asStateFlow()
+
+    private val _gridEnabled = MutableStateFlow(false)
+    val gridEnabled = _gridEnabled.asStateFlow()
+
+    private val _exposureCompensation = MutableStateFlow(0f)
+    val exposureCompensation = _exposureCompensation.asStateFlow()
+
+    private val _warmth = MutableStateFlow(0f)
+    val warmth = _warmth.asStateFlow()
+
+    private val _shadows = MutableStateFlow(0f)
+    val shadows = _shadows.asStateFlow()
+
     private var lastLocation: Location? = null
     private var currentRecording: Recording? = null
 
@@ -82,6 +98,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         ds.getString("camera_timer")?.let { _timerDuration.value = TimerDuration.valueOf(it) }
         ds.getString("camera_aspect_ratio")?.let { _aspectRatio.value = AspectRatioOption.valueOf(it) }
         ds.getString("camera_location")?.let { _locationEnabled.value = it.toBoolean() }
+        ds.getString("camera_last_capture")?.let { _lastCaptureUri.value = Uri.parse(it) }
+        ds.getString("camera_grid")?.let { _gridEnabled.value = it.toBoolean() }
     }
 
     fun setFlashMode(mode: FlashMode) {
@@ -102,6 +120,28 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setLocationEnabled(enabled: Boolean) {
         _locationEnabled.value = enabled
         viewModelScope.launch { ds.setString("camera_location", enabled.toString()) }
+    }
+
+    fun toggleGrid() {
+        _gridEnabled.value = !_gridEnabled.value
+        viewModelScope.launch { ds.setString("camera_grid", _gridEnabled.value.toString()) }
+    }
+
+    fun setExposureCompensation(value: Float) {
+        _exposureCompensation.value = value
+    }
+
+    fun setWarmth(value: Float) {
+        _warmth.value = value
+    }
+
+    fun setShadows(value: Float) {
+        _shadows.value = value
+    }
+
+    private fun setLastCaptureUri(uri: Uri?) {
+        _lastCaptureUri.value = uri
+        viewModelScope.launch { ds.setString("camera_last_capture", uri?.toString() ?: "") }
     }
 
     fun setCameraMode(mode: CameraMode) {
@@ -174,6 +214,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     _isCapturing.value = false
+                    setLastCaptureUri(outputFileResults.savedUri)
                 }
                 override fun onError(exception: ImageCaptureException) {
                     _isCapturing.value = false
@@ -238,6 +279,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                         app.contentResolver.openOutputStream(it)?.use { os ->
                             fileToSave.inputStream().use { input -> input.copyTo(os) }
                         }
+                        setLastCaptureUri(it)
                     }
                     fileToSave.delete()
                 }
