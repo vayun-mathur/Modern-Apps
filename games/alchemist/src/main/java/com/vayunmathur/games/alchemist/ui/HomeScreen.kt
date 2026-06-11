@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -153,6 +154,8 @@ fun HomeScreen(
                         }, onLongClick = {
                             contextMenuElementId = item.id
                             contextMenuExpanded = true
+                        }, onDoubleTap = {
+                            viewModel.duplicateElement(item.key)
                         })
                     }
                 }
@@ -400,7 +403,8 @@ fun DraggableElement(
     item: PlacedItem,
     onDragStart: () -> Unit,
     onDragEnd: (Offset) -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onDoubleTap: () -> Unit
 ) {
     var currentOffset by remember(item.key) { mutableStateOf(item.offset) }
 
@@ -411,6 +415,9 @@ fun DraggableElement(
             }
             .size(72.dp)
             .combinedClickable(onLongClick = onLongClick, onClick = {})
+            .pointerInput(item.key) {
+                detectTapGestures(onDoubleTap = { onDoubleTap() })
+            }
             .pointerInput(item.key) {
                 detectDragGestures(
                     onDragStart = { _ -> onDragStart() },

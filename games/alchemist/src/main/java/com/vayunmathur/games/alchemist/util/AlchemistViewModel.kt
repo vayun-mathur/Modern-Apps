@@ -119,6 +119,17 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
         _placedElements.update { list -> list.filterNot { it.key == key } }
     }
 
+    /** Duplicate a placed element at a slightly offset position. */
+    fun duplicateElement(key: Long) {
+        val current = _placedElements.value
+        val elementToDuplicate = current.find { it.key == key } ?: return
+        val duplicatedItem = PlacedItem(
+            id = elementToDuplicate.id,
+            offset = elementToDuplicate.offset + Offset(25f, 25f)
+        )
+        _placedElements.update { it + duplicatedItem }
+    }
+
     /**
      * Test the moved element against the other placed elements for a recipe match.
      * If found, removes the two inputs, adds the outputs at the target's position,
