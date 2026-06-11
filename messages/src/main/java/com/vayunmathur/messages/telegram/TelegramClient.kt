@@ -68,6 +68,7 @@ object TelegramClient {
 
     private val peerCache = ConcurrentHashMap<Long, TlObject>()
     private val userNameCache = ConcurrentHashMap<Long, String>()
+    private var reconnectAttempt = 0
 
     private var currentPts = 0
     private var currentQts = 0
@@ -222,6 +223,19 @@ object TelegramClient {
             true
         } catch (t: Throwable) {
             Log.w(TAG, "sendMessage failed: ${t.message}")
+            false
+        }
+    }
+
+    suspend fun editMessage(conversationId: String, messageId: Int, newText: String): Boolean {
+        if (_state.value !is State.Connected) return false
+        val client = apiClient ?: return false
+        val peer = resolvePeer(conversationId) ?: return false
+        return try {
+            client.invoke(MessagesEditMessage(peer, messageId, newText)) { TlRegistry.decode(it) }
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "editMessage failed: ${t.message}")
             false
         }
     }
@@ -423,6 +437,7 @@ object TelegramClient {
             )
             apiClient = client
             client.onDisconnected = { handleDisconnect() }
+            reconnectAttempt = 0
             _state.value = State.Connected
             startUpdateListener(client)
             kickoffBackfill()
@@ -435,6 +450,7 @@ object TelegramClient {
 
     private fun onAuthorized(user: User) {
         _state.value = State.Connected
+        reconnectAttempt = 0
         val client = apiClient ?: return
         scope.launch {
             TelegramAuthData(
@@ -465,14 +481,26 @@ object TelegramClient {
         _state.value = State.Disconnected("Connection lost")
         scope.launch {
             val client = apiClient ?: return@launch
-            try {
-                client.reconnect()
-                _state.value = State.Connected
-                startUpdateListener(client)
-                kickoffBackfill()
-            } catch (e: Exception) {
-                Log.e(TAG, "Auto-reconnect failed: ${e.message}")
-                _state.value = State.Disconnected("Reconnect failed: ${e.message}")
+            val maxDelay = 60_000L
+            val baseDelay = 1_000L
+            while (true) {
+                val delayMs = minOf(baseDelay * (1L shl minOf(reconnectAttempt, 20)), maxDelay)
+                reconnectAttempt++
+                Log.i(TAG, "Reconnect attempt $reconnectAttempt, delay ${delayMs}ms")
+                delay(delayMs)
+                try {
+                    client.reconnect()
+                    reconnectAttempt = 0
+                    _state.value = State.Connected
+                    startUpdateListener(client)
+                    kickoffBackfill()
+                    return@launch
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "Reconnect attempt $reconnectAttempt failed: ${e.message}")
+                    _state.value = State.Disconnected("Reconnect failed: ${e.message}")
+                }
             }
         }
     }

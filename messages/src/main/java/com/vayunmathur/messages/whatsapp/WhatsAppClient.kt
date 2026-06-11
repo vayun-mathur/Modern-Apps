@@ -18,8 +18,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 object WhatsAppClient {
@@ -58,6 +64,14 @@ object WhatsAppClient {
     private var qrJob: Job? = null
 
     private val nameCache = ConcurrentHashMap<String, String>()
+
+    private val httpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     fun init(context: Context) {
         if (!initialized.compareAndSet(false, true)) return
@@ -272,6 +286,7 @@ object WhatsAppClient {
                     _events.emit(GMEvent.TypingIndicator(
                         source = MessageSource.WHATSAPP,
                         conversationId = "wa:$from",
+                        senderId = from,
                         isTyping = composing,
                     ))
                     return@launch
@@ -351,6 +366,37 @@ object WhatsAppClient {
         return ws.send(data)
     }
 
+    private data class MediaUploadResult(
+        val url: String,
+        val directPath: String,
+    )
+
+    private suspend fun uploadMedia(
+        encryptedData: ByteArray,
+        mediaType: String,
+        token: String,
+    ): MediaUploadResult = withContext(Dispatchers.IO) {
+        val uploadUrl = "https://mmg.whatsapp.net/mms/$mediaType/$token"
+        val requestBody = encryptedData.toRequestBody(null)
+        val request = Request.Builder()
+            .url(uploadUrl)
+            .put(requestBody)
+            .header("Origin", "https://web.whatsapp.com")
+            .header("Referer", "https://web.whatsapp.com/")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
+            .build()
+
+        val response = httpClient.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw Exception("Media upload failed: HTTP ${response.code}")
+        }
+        val json = JSONObject(response.body?.string() ?: throw Exception("Empty upload response"))
+        MediaUploadResult(
+            url = json.getString("url"),
+            directPath = json.getString("direct_path"),
+        )
+    }
+
     suspend fun sendMedia(
         conversationId: String,
         bytes: ByteArray,
@@ -378,9 +424,9 @@ object WhatsAppClient {
         return try {
             val enc = WhatsAppProtocol.encryptMedia(bytes, mediaKeyStr)
             val token = Base64.encodeToString(enc.fileEncSha256, Base64.URL_SAFE or Base64.NO_WRAP)
-            val directPath = "/mms/$mediaType/$token"
+            val upload = uploadMedia(enc.encryptedData, mediaType, token)
             val node = WhatsAppProtocol.buildMediaMessage(
-                to, id, "https://mmg.whatsapp.net$directPath", directPath,
+                to, id, upload.url, upload.directPath,
                 enc.mediaKey, enc.fileSha256, enc.fileEncSha256, enc.fileLength,
                 mimeType, fileName, mediaType
             )
@@ -458,6 +504,23 @@ object WhatsAppClient {
 
         val node = WhatsAppProtocol.buildRevokeMessage(chatJid, senderJid, targetMessageId, ownJid, id)
         return ws.send(WhatsAppProtocol.encodeNode(node))
+    }
+
+    suspend fun sendNewThread(recipientJid: String, body: String): String? {
+        if (_state.value !is State.Connected) return null
+        val ws = webSocket ?: return null
+        val jid = if (recipientJid.contains("@")) recipientJid else "$recipientJid@s.whatsapp.net"
+        val id = WhatsAppProtocol.generateMessageId(authData?.wid)
+        val node = WhatsAppProtocol.buildTextMessage(jid, id, body)
+        val sent = ws.send(WhatsAppProtocol.encodeNode(node))
+        return if (sent) "wa:$jid" else null
+    }
+
+    suspend fun deleteThread(conversationId: String): Boolean {
+        val jid = extractJid(conversationId) ?: return false
+        db?.conversationDao()?.delete(jid)
+        _events.emit(GMEvent.ConversationDeleted(source, conversationId))
+        return true
     }
 
     fun isLoggedIn(): Boolean {

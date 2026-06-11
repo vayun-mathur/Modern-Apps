@@ -72,9 +72,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *  5. [stop] cancels everything and clears the persisted auth.
  *
  * For v1 we LIST_CONVERSATIONS on connect (for backfill / inbox
- * population). [sendMessage] is wired through but stubbed — building
- * the full `SendMessageRequest` payload structure requires more proto
- * coverage than what's needed for receiving and is deferred.
+ * population). Outbound messaging uses [sendMessage] (text) and
+ * [sendMedia] (media upload + caption) via the session handler.
  */
 object GMessagesClient {
 
@@ -904,7 +903,11 @@ object GMessagesClient {
         val body = (0 until m.messageInfoCount)
             .mapNotNull { idx ->
                 val info = m.getMessageInfo(idx)
-                if (info.hasMessageContent()) info.messageContent.content else null
+                when {
+                    info.hasMessageContent() -> info.messageContent.content
+                    info.hasMediaContent() -> mediaLabel(info.mediaContent)
+                    else -> null
+                }
             }
             .joinToString("\n")
         val outgoing = m.hasSenderParticipant() && m.senderParticipant.isMe
@@ -935,6 +938,18 @@ object GMessagesClient {
      */
     private fun toMillis(usec: Long): Long = usec / 1000
 
+    private fun mediaLabel(mc: conversations.Conversations.MediaContent): String {
+        val type = mc.mimeType.substringBefore('/').lowercase()
+        val name = mc.mediaName.takeIf { it.isNotBlank() }
+        return when {
+            name != null -> "\uD83D\uDCCE $name"
+            type == "image" -> "\uD83D\uDDBC\uFE0F [image]"
+            type == "video" -> "\uD83C\uDFA5 [video]"
+            type == "audio" -> "\uD83C\uDFA7 [audio]"
+            else -> "\uD83D\uDCCE [attachment]"
+        }
+    }
+
     /** Roll up the per-emoji reaction entries on a Message into the
      *  [count: Int] aggregate we store. */
     private fun extractReactionsJson(m: conversations.Conversations.Message): String? {
@@ -957,13 +972,14 @@ object GMessagesClient {
     }
 
     private suspend fun emitMessage(m: conversations.Conversations.Message) {
-        // Concatenate all text-bearing MessageInfo parts. Most messages
-        // have exactly one; RCS / MMS can have multiple parts (e.g. a
-        // caption + an attachment we don't render yet).
         val body = (0 until m.messageInfoCount)
             .mapNotNull { idx ->
                 val info = m.getMessageInfo(idx)
-                if (info.hasMessageContent()) info.messageContent.content else null
+                when {
+                    info.hasMessageContent() -> info.messageContent.content
+                    info.hasMediaContent() -> mediaLabel(info.mediaContent)
+                    else -> null
+                }
             }
             .joinToString("\n")
             .ifBlank { "" }

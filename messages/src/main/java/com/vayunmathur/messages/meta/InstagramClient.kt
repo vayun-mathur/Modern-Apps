@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.util.concurrent.atomic.AtomicBoolean
 
 object InstagramClient {
@@ -118,6 +121,9 @@ object InstagramClient {
                         is MetaMqttClient.ConnectionState.Disconnected -> {
                             _state.value = State.Disconnected(state.reason)
                         }
+                        is MetaMqttClient.ConnectionState.Connecting -> {
+                            _state.value = State.Connecting
+                        }
                         else -> {}
                     }
                 }
@@ -157,6 +163,24 @@ object InstagramClient {
                         )
                         _events.emit(event)
                     }
+
+                    MetaProtocol.TOPIC_THREAD_TYPING,
+                    MetaProtocol.TOPIC_ORCA_TYPING_NOTIFICATIONS -> {
+                        val json = Json { ignoreUnknownKeys = true }
+                        val payload = String(mqttMessage.payload, Charsets.UTF_8)
+                        val obj = json.parseToJsonElement(payload).jsonObject
+                        val senderId = obj["sender_fbid"]?.jsonPrimitive?.content ?: return@launch
+                        val state = obj["state"]?.jsonPrimitive?.content?.toIntOrNull() ?: return@launch
+                        val threadId = obj["thread"]?.jsonPrimitive?.content ?: senderId
+                        _events.emit(
+                            GMEvent.TypingIndicator(
+                                source = MessageSource.INSTAGRAM,
+                                conversationId = "ig:$threadId",
+                                senderId = senderId,
+                                isTyping = state == 1,
+                            )
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to handle incoming message", e)
@@ -168,6 +192,16 @@ object InstagramClient {
         backfillJob?.cancel()
         backfillJob = scope.launch {
             Log.i(TAG, "Backfill: syncing thread list via Lightspeed")
+            val client = mqttClient ?: return@launch
+            try {
+                val payload = MetaProtocol.buildFetchThreadsPayload(client.versionId)
+                client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK)
+
+                val payloadSG95 = MetaProtocol.buildFetchThreadsPayload(client.versionId, syncGroup = 95)
+                client.makeLSRequest(payloadSG95, MetaProtocol.LS_REQUEST_TYPE_TASK)
+            } catch (e: Exception) {
+                Log.e(TAG, "Backfill failed", e)
+            }
         }
     }
 
@@ -213,6 +247,53 @@ object InstagramClient {
             versionId = client.versionId,
         )
         client.makeLSRequest(payload, 3)
+    }
+
+    suspend fun deleteMessage(conversationId: String, messageId: String): Boolean {
+        val client = mqttClient ?: return false
+        val payload = MetaProtocol.buildDeleteMessagePayload(messageId, client.versionId)
+        return client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) != null
+    }
+
+    suspend fun deleteMessageMeOnly(conversationId: String, messageId: String): Boolean {
+        val threadId = extractThreadId(conversationId)?.toLongOrNull() ?: return false
+        val client = mqttClient ?: return false
+        val payload = MetaProtocol.buildDeleteMessageMeOnlyPayload(threadId, messageId, client.versionId)
+        return client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) != null
+    }
+
+    suspend fun editMessage(conversationId: String, messageId: String, text: String): Boolean {
+        val client = mqttClient ?: return false
+        val payload = MetaProtocol.buildEditMessagePayload(messageId, text, client.versionId)
+        return client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) != null
+    }
+
+    suspend fun deleteThread(conversationId: String): Boolean {
+        val threadId = extractThreadId(conversationId)?.toLongOrNull() ?: return false
+        val client = mqttClient ?: return false
+        val payload = MetaProtocol.buildDeleteThreadPayload(threadId, client.versionId)
+        return client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) != null
+    }
+
+    suspend fun muteThread(conversationId: String, muteExpireTimeMs: Long): Boolean {
+        val threadId = extractThreadId(conversationId)?.toLongOrNull() ?: return false
+        val client = mqttClient ?: return false
+        val payload = MetaProtocol.buildMuteThreadPayload(threadId, muteExpireTimeMs, client.versionId)
+        return client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) != null
+    }
+
+    suspend fun renameThread(conversationId: String, threadName: String): Boolean {
+        val threadId = extractThreadId(conversationId)?.toLongOrNull() ?: return false
+        val client = mqttClient ?: return false
+        val payload = MetaProtocol.buildRenameThreadPayload(threadId, threadName, client.versionId)
+        return client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) != null
+    }
+
+    suspend fun fetchMessages(conversationId: String, referenceTimestampMs: Long, referenceMessageId: String) {
+        val threadId = extractThreadId(conversationId)?.toLongOrNull() ?: return
+        val client = mqttClient ?: return
+        val payload = MetaProtocol.buildFetchMessagesPayload(threadId, referenceTimestampMs, referenceMessageId, client.versionId)
+        client.makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK)
     }
 
     private fun extractThreadId(conversationId: String): String? {

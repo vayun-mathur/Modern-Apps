@@ -370,15 +370,17 @@ object MetaProtocol {
                     val messageId = args.getOrNull(2)?.toString() ?: continue
                     val timestamp = (args.getOrNull(3) as? Long) ?: System.currentTimeMillis()
                     val senderId = args.getOrNull(4)?.toString() ?: ""
+                    val senderName = args.getOrNull(5)?.toString()?.takeIf { it.isNotBlank() }
+                    val isGroup = (threadId.toLongOrNull() ?: 0) < 0
 
                     return MetaMessage(
                         messageId = messageId,
                         threadId = threadId,
                         senderId = senderId,
-                        senderName = null,
+                        senderName = senderName,
                         text = text,
                         timestamp = timestamp,
-                        isGroup = false,
+                        isGroup = isGroup,
                     )
                 }
             }

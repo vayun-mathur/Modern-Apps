@@ -60,11 +60,38 @@ sealed interface GMEvent {
     data class MessageDeleted(
         override val source: MessageSource,
         val messageId: String,
+        val conversationId: String? = null,
+        val timestamp: Long = 0L,
+    ) : GMEvent
+
+    /** A message was edited on the remote side. */
+    data class MessageEdited(
+        override val source: MessageSource,
+        val conversationId: String,
+        val messageId: String,
+        val newBody: String,
+        val timestamp: Long,
+    ) : GMEvent
+
+    /** A read receipt was received. */
+    data class ReadReceipt(
+        override val source: MessageSource,
+        val conversationId: String,
+        val messageId: String,
+        val timestamp: Long,
     ) : GMEvent
 
     /** A conversation was deleted on the remote side. */
     data class ConversationDeleted(
         override val source: MessageSource,
         val conversationId: String,
+    ) : GMEvent
+
+    /** A remote user started or stopped typing. */
+    data class TypingIndicator(
+        override val source: MessageSource,
+        val conversationId: String,
+        val senderId: String,
+        val isTyping: Boolean,
     ) : GMEvent
 }

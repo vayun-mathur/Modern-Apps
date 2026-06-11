@@ -56,7 +56,10 @@ class MetaMqttClient(
 
     private var previouslyConnected = false
     var versionId: Long = 0L
-    var appId: String = ""
+    var appId: String = when (authData.platform) {
+        MetaAuthData.Platform.INSTAGRAM -> "936619743392459"
+        MetaAuthData.Platform.MESSENGER -> "219994525426954"
+    }
 
     private val _messages = MutableSharedFlow<MetaProtocol.MqttMessage>(extraBufferCapacity = 256)
     val messages: SharedFlow<MetaProtocol.MqttMessage> = _messages.asSharedFlow()
@@ -228,11 +231,9 @@ class MetaMqttClient(
         }
 
         // Send app settings (from messagix/events.go handleReadyEvent)
-        if (versionId > 0) {
-            val appSettingsJson = MetaProtocol.buildAppSettingsJson(versionId)
-            val packetId = safePacketId()
-            sendPublishPacket(MetaProtocol.TOPIC_LS_APP_SETTINGS, appSettingsJson, packetId)
-        }
+        val appSettingsJson = MetaProtocol.buildAppSettingsJson(versionId)
+        val packetId = safePacketId()
+        sendPublishPacket(MetaProtocol.TOPIC_LS_APP_SETTINGS, appSettingsJson, packetId)
 
         // Subscribe to required topics (from messagix/events.go handleReadyEvent)
         sendSubscribePacket(MetaProtocol.TOPIC_LS_FOREGROUND_STATE, MqttPackets.QOS_LEVEL_0)
@@ -242,33 +243,17 @@ class MetaMqttClient(
         startPing()
 
         // Fetch threads for SyncGroup 1 and SyncGroup 95 (from messagix/events.go)
-        if (versionId > 0) {
-            val fetchPayloadSG1 = MetaProtocol.buildFetchThreadsPayload(versionId)
-            makeLSRequest(fetchPayloadSG1, MetaProtocol.LS_REQUEST_TYPE_TASK)
+        val fetchPayloadSG1 = MetaProtocol.buildFetchThreadsPayload(versionId)
+        makeLSRequest(fetchPayloadSG1, MetaProtocol.LS_REQUEST_TYPE_TASK)
 
-            val fetchPayloadSG95 = MetaProtocol.buildFetchThreadsPayload(versionId, syncGroup = 95)
-            makeLSRequest(fetchPayloadSG95, MetaProtocol.LS_REQUEST_TYPE_TASK)
+        val fetchPayloadSG95 = MetaProtocol.buildFetchThreadsPayload(versionId, syncGroup = 95)
+        makeLSRequest(fetchPayloadSG95, MetaProtocol.LS_REQUEST_TYPE_TASK)
 
-            // Report app state as FOREGROUND (from messagix/events.go)
-            val reportPayload = MetaProtocol.buildReportAppStatePayload(versionId)
-            makeLSRequest(reportPayload, MetaProtocol.LS_REQUEST_TYPE_TASK)
-        }
+        // Report app state as FOREGROUND (from messagix/events.go)
+        val reportPayload = MetaProtocol.buildReportAppStatePayload(versionId)
+        makeLSRequest(reportPayload, MetaProtocol.LS_REQUEST_TYPE_TASK)
 
         previouslyConnected = true
-    }
-
-    private suspend fun syncDatabase(databaseId: Long, cursor: String? = null) {
-        val queryPayload = MetaProtocol.buildDatabaseQueryPayload(databaseId, versionId, cursor)
-        val requestId = safePacketId()
-        val type = if (cursor != null) MetaProtocol.LS_REQUEST_TYPE_DB_QUERY_CURSOR
-            else MetaProtocol.LS_REQUEST_TYPE_DB_QUERY
-        val lsRequestJson = MetaProtocol.buildLSRequestJson(
-            appId = appId,
-            payload = queryPayload,
-            requestId = requestId,
-            type = type,
-        )
-        sendPublishPacket(MetaProtocol.TOPIC_LS_REQ, lsRequestJson, requestId)
     }
 
     private fun handlePubAck(pubAck: MqttFraming.MqttResponse.PubAck) {
