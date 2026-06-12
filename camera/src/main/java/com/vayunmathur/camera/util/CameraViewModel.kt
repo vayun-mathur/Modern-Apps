@@ -183,6 +183,30 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         _cameraMode.value = mode
     }
 
+    fun switchCameraMode(
+        newMode: CameraMode,
+        lifecycleOwner: LifecycleOwner,
+        surfaceProvider: Preview.SurfaceProvider,
+        controller: LifecycleCameraController
+    ) {
+        viewModelScope.launch {
+            val oldMode = _cameraMode.value
+            if (oldMode == CameraMode.SLOW_MO && newMode != CameraMode.SLOW_MO) {
+                teardownHighSpeedSession()
+                delay(250)
+            }
+
+            _cameraMode.value = newMode
+
+            if (newMode == CameraMode.SLOW_MO) {
+                controller.unbind()
+                setupHighSpeedSession(lifecycleOwner, surfaceProvider)
+            } else if (oldMode == CameraMode.SLOW_MO) {
+                controller.bindToLifecycle(lifecycleOwner)
+            }
+        }
+    }
+
     fun flipCamera() {
         _lensFacing.value = if (_lensFacing.value == CameraSelector.LENS_FACING_BACK)
             CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK

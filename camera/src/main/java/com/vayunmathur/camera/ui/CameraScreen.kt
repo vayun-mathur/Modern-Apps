@@ -327,41 +327,17 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
         }
     }
 
-    LaunchedEffect(isSloMo, lensFacing) {
+    // Initial binding on first composition and lens facing changes
+    LaunchedEffect(lensFacing) {
         if (isSloMo) {
             controller.unbind()
-            val success = viewModel.setupHighSpeedSession(
+            viewModel.teardownHighSpeedSession()
+            delay(250)
+            viewModel.setupHighSpeedSession(
                 lifecycleOwner,
                 highSpeedPreviewView.surfaceProvider
             )
-            if (!success) {
-                android.util.Log.d("SloMo", "High-speed not available, falling back to CameraX")
-                controller.bindToLifecycle(lifecycleOwner)
-                val cameraControl = controller.cameraControl ?: return@LaunchedEffect
-                val cam2Control = androidx.camera.camera2.interop.Camera2CameraControl.from(cameraControl)
-                val cameraInfo = controller.cameraInfo ?: return@LaunchedEffect
-                val cam2Info = androidx.camera.camera2.interop.Camera2CameraInfo.from(cameraInfo)
-                val normalRanges = cam2Info.getCameraCharacteristic(
-                    android.hardware.camera2.CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
-                )
-                val bestRange = normalRanges?.toList()?.filter { it.upper > 30 }?.maxByOrNull { it.upper }
-                    ?: android.util.Range(30, 30)
-                viewModel.setSloMoFps(bestRange.upper)
-                controller.videoCaptureQualitySelector =
-                    androidx.camera.video.QualitySelector.from(androidx.camera.video.Quality.HD)
-                cam2Control.setCaptureRequestOptions(
-                    androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
-                        .setCaptureRequestOption(
-                            android.hardware.camera2.CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
-                            bestRange
-                        )
-                        .build()
-                )
-                android.util.Log.d("SloMo", "Fallback: using ${bestRange.upper}fps via CameraX")
-            }
         } else {
-            viewModel.teardownHighSpeedSession()
-            delay(200)
             controller.bindToLifecycle(lifecycleOwner)
         }
     }
@@ -544,7 +520,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                 ModeSelector(
                     cameraMode = cameraMode,
                     isPhotoType = isPhotoType,
-                    onModeSelected = { viewModel.setCameraMode(it) }
+                    onModeSelected = { viewModel.switchCameraMode(it, lifecycleOwner, highSpeedPreviewView.surfaceProvider, controller) }
                 )
 
                 BottomBar(
@@ -554,9 +530,9 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                     iconRotation = animatedRotation,
                     onPickerChanged = { photo ->
                         if (photo) {
-                            viewModel.setCameraMode(CameraMode.PHOTO)
+                            viewModel.switchCameraMode(CameraMode.PHOTO, lifecycleOwner, highSpeedPreviewView.surfaceProvider, controller)
                         } else {
-                            viewModel.setCameraMode(CameraMode.VIDEO)
+                            viewModel.switchCameraMode(CameraMode.VIDEO, lifecycleOwner, highSpeedPreviewView.surfaceProvider, controller)
                         }
                     },
                     onSettingsClick = { backStack.add(Route.Settings) },
