@@ -5,6 +5,8 @@ plugins {
 android {
     namespace = "com.vayunmathur.email"
     defaultConfig {
+        versionCode = 20260612
+        versionName = "v2.5.3"
         applicationId = "com.vayunmathur.email"
     }
 
