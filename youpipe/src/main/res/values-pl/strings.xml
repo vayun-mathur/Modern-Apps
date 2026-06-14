@@ -35,7 +35,7 @@
     <string name="video_stat_format">%1$s wyświetleń | %2$s</string>
     <string name="label_loading_subscriptions">Ładowanie najnowszych subskrypcji</string>
     <string name="title_settings">Ustawienia</string>
-    <string name="label_sponsorblock">Włącz SponsorBlock</string>
+    <string name="label_sponsorblock">Kategorie SponsorBlock</string>
     <string name="label_sponsorblock_description">Wybierz elementy z poniższej listy, aby pominąć je w filmach</string>
     <string name="label_backup_restore">Kopie zapasowe i przywracanie danych</string>
     <string name="label_restore_youpipe">Przywróć z YouPipe</string>
@@ -46,4 +46,6 @@
     <string name="video_quality_fps_codec">%1$s (%2$dfps) %3$s</string>
     <string name="audio_bitrate_codec">%1$dkbps (%2$s)</string>
     <string name="empty_recommendations">Obejrzyj kilka filmów, aby otrzymać spersonalizowane rekomendacje</string>
+    <string name="label_dearrow">Włącz DeArrow</string>
+    <string name="label_dearrow_description">Zastąp clickbait\'owe tytuły i miniaturki alternatywnymi dostarczonymi przez społeczność</string>
 </resources>
