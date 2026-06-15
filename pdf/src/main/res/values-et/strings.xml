@@ -20,4 +20,5 @@
     <string name="unsupported_version">See rakendus eeldab, et sinu nutiseadmes kas on vähemalt Androidi versioon 15 või Google Play teenused oma uuendatud kujul. Kui kumbki pole võimalik, siis sinu nutiseade pole hetkel toetatud.</string>
     <string name="crop_image">Kadreeri pilti</string>
     <string name="continue_label">Jätka</string>
+    <string name="auto_detect">Tuvasta automatselt</string>
 </resources>
