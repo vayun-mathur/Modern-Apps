@@ -300,6 +300,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
     LaunchedEffect(cameraMode) {
         if (cameraMode == CameraMode.SLOW_MO) {
             maskBitmap = null
+            controller.setEnabledUseCases(0)
             controller.clearImageAnalysisAnalyzer()
             viewModel.setQrResult(null)
     } else if (cameraMode == CameraMode.PHOTO || cameraMode == CameraMode.PORTRAIT || cameraMode == CameraMode.PANORAMA || cameraMode == CameraMode.PHOTOSPHERE) {
@@ -344,17 +345,24 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
         }
     }
 
-    // Initial binding on first composition and lens facing changes
-    LaunchedEffect(lensFacing) {
+    val regularPreviewView = remember {
+        PreviewView(context).apply {
+            this.controller = controller
+            scaleType = PreviewView.ScaleType.FIT_CENTER
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
+    }
+
+    LaunchedEffect(lensFacing, isSloMo) {
         if (isSloMo) {
             controller.unbind()
             viewModel.teardownHighSpeedSession()
             delay(250)
             viewModel.setupHighSpeedSession(
-                lifecycleOwner,
                 highSpeedPreviewView.surfaceProvider
             )
         } else {
+            viewModel.teardownHighSpeedSession()
             controller.bindToLifecycle(lifecycleOwner)
         }
     }
@@ -460,13 +468,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                         )
                     } else {
                         AndroidView(
-                            factory = { ctx ->
-                                PreviewView(ctx).apply {
-                                    this.controller = controller
-                                    scaleType = PreviewView.ScaleType.FIT_CENTER
-                                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                                }
-                            },
+                            factory = { regularPreviewView },
                             modifier = previewModifier
                         )
                     }
@@ -555,7 +557,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                 ModeSelector(
                     cameraMode = cameraMode,
                     isPhotoType = isPhotoType,
-                    onModeSelected = { viewModel.switchCameraMode(it, lifecycleOwner, highSpeedPreviewView.surfaceProvider, controller) }
+                    onModeSelected = { viewModel.switchCameraMode(it) }
                 )
 
                 BottomBar(
@@ -565,9 +567,9 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                     iconRotation = animatedRotation,
                     onPickerChanged = { photo ->
                         if (photo) {
-                            viewModel.switchCameraMode(CameraMode.PHOTO, lifecycleOwner, highSpeedPreviewView.surfaceProvider, controller)
+                            viewModel.switchCameraMode(CameraMode.PHOTO)
                         } else {
-                            viewModel.switchCameraMode(CameraMode.VIDEO, lifecycleOwner, highSpeedPreviewView.surfaceProvider, controller)
+                            viewModel.switchCameraMode(CameraMode.VIDEO)
                         }
                     },
                     onSettingsClick = { backStack.add(Route.Settings) },

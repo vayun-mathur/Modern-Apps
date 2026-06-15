@@ -116,6 +116,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private var highSpeedVideoCapture: VideoCapture<Recorder>? = null
     private var highSpeedRecording: Recording? = null
     private var highSpeedCamera: androidx.camera.core.Camera? = null
+    private var highSpeedLifecycleOwner: HighSpeedLifecycleOwner? = null
 
     private val _highSpeedActive = MutableStateFlow(false)
     val highSpeedActive = _highSpeedActive.asStateFlow()
@@ -183,28 +184,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         _cameraMode.value = mode
     }
 
-    fun switchCameraMode(
-        newMode: CameraMode,
-        lifecycleOwner: LifecycleOwner,
-        surfaceProvider: Preview.SurfaceProvider,
-        controller: LifecycleCameraController
-    ) {
-        viewModelScope.launch {
-            val oldMode = _cameraMode.value
-            if (oldMode == CameraMode.SLOW_MO && newMode != CameraMode.SLOW_MO) {
-                teardownHighSpeedSession()
-                delay(250)
-            }
-
-            _cameraMode.value = newMode
-
-            if (newMode == CameraMode.SLOW_MO) {
-                controller.unbind()
-                setupHighSpeedSession(lifecycleOwner, surfaceProvider)
-            } else if (oldMode == CameraMode.SLOW_MO) {
-                controller.bindToLifecycle(lifecycleOwner)
-            }
-        }
+    fun switchCameraMode(newMode: CameraMode) {
+        _cameraMode.value = newMode
     }
 
     fun flipCamera() {
@@ -252,7 +233,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     // --- High-speed session management ---
 
     suspend fun setupHighSpeedSession(
-        lifecycleOwner: LifecycleOwner,
         surfaceProvider: Preview.SurfaceProvider
     ): Boolean {
         return try {
@@ -300,7 +280,10 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             sloMoFps = bestRange.upper
             Log.d("SloMo", "High-speed session configured at ${bestRange.upper}fps, slow-mo baked in")
 
-            highSpeedCamera = provider.bindToLifecycle(lifecycleOwner, selector, configBuilder.build())
+            val hsOwner = HighSpeedLifecycleOwner()
+            hsOwner.start()
+            highSpeedLifecycleOwner = hsOwner
+            highSpeedCamera = provider.bindToLifecycle(hsOwner, selector, configBuilder.build())
 
             // Set anti-banding to reduce flicker under artificial light
             try {
@@ -331,6 +314,20 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     fun teardownHighSpeedSession() {
         highSpeedRecording?.stop()
         highSpeedRecording = null
+        highSpeedLifecycleOwner?.destroy()
+        highSpeedLifecycleOwner = null
+        cameraProvider?.unbindAll()
+        highSpeedVideoCapture = null
+        highSpeedCamera = null
+        cameraProvider = null
+        _highSpeedActive.value = false
+    }
+
+    fun clearHighSpeedState() {
+        highSpeedRecording?.stop()
+        highSpeedRecording = null
+        highSpeedLifecycleOwner?.destroy()
+        highSpeedLifecycleOwner = null
         cameraProvider?.unbindAll()
         highSpeedVideoCapture = null
         highSpeedCamera = null
@@ -576,5 +573,18 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         FlashMode.ON -> ImageCapture.FLASH_MODE_ON
         FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
         FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+    }
+}
+
+private class HighSpeedLifecycleOwner : LifecycleOwner {
+    private val registry = androidx.lifecycle.LifecycleRegistry(this)
+    override val lifecycle: androidx.lifecycle.Lifecycle get() = registry
+
+    fun start() {
+        registry.currentState = androidx.lifecycle.Lifecycle.State.RESUMED
+    }
+
+    fun destroy() {
+        registry.currentState = androidx.lifecycle.Lifecycle.State.DESTROYED
     }
 }
