@@ -9,4 +9,10 @@
     <string name="level_number">关卡 %1$d</string>
     <string name="next_level">下一关</string>
     <string name="bonus_words">奖励单词</string>
+    <string name="settings">设置</string>
+    <string name="tap_to_spell">点按拼写</string>
+    <string name="tap_to_spell_description">点按字母拼写单词，而非拖动</string>
+    <string name="hint_confirmation">确定要使用提示吗？</string>
+    <string name="yes">是</string>
+    <string name="no">否</string>
 </resources>
