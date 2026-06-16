@@ -144,4 +144,10 @@
     <string name="search_ingredient">搜索配料</string>
     <string name="log_hydration">记录饮水量</string>
     <string name="log_meal">记录用餐</string>
+    <string name="metric_exercise_duration">锻炼</string>
+    <string name="label_exercise">锻炼</string>
+    <string name="label_workouts">训练</string>
+    <string name="section_workouts">训练</string>
+    <string name="label_total_exercise">总锻炼</string>
+    <string name="no_workouts">未记录任何训练</string>
 </resources>
