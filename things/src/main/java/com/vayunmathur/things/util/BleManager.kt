@@ -13,8 +13,6 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.os.ParcelUuid
 import com.vayunmathur.things.MainActivity
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @SuppressLint("MissingPermission")
@@ -104,10 +102,10 @@ class BleManager(private val activity: MainActivity) {
             char: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            val message = value.decodeToString()
-            val timestamp = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+            // Firmware sends a single number: the mL consumed in one drink.
+            val ml = value.decodeToString().trim().toIntOrNull() ?: return
             activity.runOnUiThread {
-                activity.messages.add(0, "[$timestamp] $message")
+                activity.onDrinkReceived(ml)
             }
         }
     }
