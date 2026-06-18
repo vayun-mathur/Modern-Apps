@@ -19,6 +19,27 @@
 # LiteRT Core - prevent R8 from deleting LiteRT classes used via reflection
 -keep class com.google.ai.edge.litert.** { *; }
 
+# Protobuf Lite - the generated runtime schema accesses message fields (e.g.
+# platform_) reflectively, so R8 must not strip them. Without this you get
+# "Field platform_ for ...SystemInfo not found" at runtime in release builds.
+-keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+
+# MediaPipe (tasks-vision) - relies on the protobuf classes above and JNI
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
+
+# Flogger (FluentLogger) - MediaPipe logs through it. forEnclosingClass() walks
+# the call stack to find the caller; R8 optimization merges/inlines Flogger's
+# internal classes which breaks the walk ("no caller found on the stack for ...
+# FluentLogger"). Keep Flogger intact so the stack-walk works.
+-keep class com.google.common.flogger.** { *; }
+-keep class com.google.common.flogger.backend.** { *; }
+-keep class com.google.common.flogger.backend.system.** { *; }
+-dontwarn com.google.common.flogger.**
+
 -keepclasseswithmembernames class * {
     native <methods>;
 }
