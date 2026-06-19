@@ -144,7 +144,7 @@ fun parseMarkdown(
         }
 
         // 2. Lists
-        val listRegex = Regex("(?m)^(\\s*)([•*+-]|\\d+[.)])\\s+(?:\\[([ xX])]\\s+)?(.*(?:\\R|$))")
+        val listRegex = Regex("(?m)^(\\s*)([•*+-]|\\d+[.)])[^\\S\\r\\n]+(?:\\[([ xX])][^\\S\\r\\n]+)?(.*(?:\\R|$))")
         listRegex.findAll(finalText).forEach { match ->
             val start = match.range.first
             val end = match.range.last + 1
