@@ -387,6 +387,8 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                 TopBar(
                     flashMode = flashMode,
                     gridEnabled = gridEnabled,
+                    isPhotoType = isPhotoType,
+                    timerDuration = timerDuration,
                     onFlashToggle = {
                         val next = when (flashMode) {
                             FlashMode.OFF -> FlashMode.ON
@@ -396,6 +398,15 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                         viewModel.setFlashMode(next)
                     },
                     onGridToggle = { viewModel.toggleGrid() },
+                    onTimerCycle = {
+                        val next = when (timerDuration) {
+                            TimerDuration.NONE -> TimerDuration.THREE
+                            TimerDuration.THREE -> TimerDuration.FIVE
+                            TimerDuration.FIVE -> TimerDuration.TEN
+                            TimerDuration.TEN -> TimerDuration.NONE
+                        }
+                        viewModel.setTimerDuration(next)
+                    },
                     iconRotation = animatedRotation
                 )
 
@@ -600,7 +611,6 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                 BottomBar(
                     cameraMode = cameraMode,
                     isPhotoType = isPhotoType,
-                    timerDuration = timerDuration,
                     iconRotation = animatedRotation,
                     onPickerChanged = { photo ->
                         if (photo) {
@@ -609,16 +619,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                             viewModel.switchCameraMode(CameraMode.VIDEO)
                         }
                     },
-                    onSettingsClick = { backStack.add(Route.Settings) },
-                    onTimerCycle = {
-                        val next = when (timerDuration) {
-                            TimerDuration.NONE -> TimerDuration.THREE
-                            TimerDuration.THREE -> TimerDuration.FIVE
-                            TimerDuration.FIVE -> TimerDuration.TEN
-                            TimerDuration.TEN -> TimerDuration.NONE
-                        }
-                        viewModel.setTimerDuration(next)
-                    }
+                    onSettingsClick = { backStack.add(Route.Settings) }
                 )
             }
 
@@ -647,8 +648,11 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
 private fun TopBar(
     flashMode: FlashMode,
     gridEnabled: Boolean,
+    isPhotoType: Boolean,
+    timerDuration: TimerDuration,
     onFlashToggle: () -> Unit,
     onGridToggle: () -> Unit,
+    onTimerCycle: () -> Unit,
     iconRotation: Float
 ) {
     Row(
@@ -693,6 +697,43 @@ private fun TopBar(
                 tint = Color.White,
                 modifier = Modifier.size(22.dp).rotate(iconRotation)
             )
+        }
+
+        if (isPhotoType) {
+            Spacer(Modifier.width(4.dp))
+
+            val timerBg = if (timerDuration != TimerDuration.NONE) Color(0xFF3C3C3C) else Color.Transparent
+            IconButton(
+                onClick = onTimerCycle,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(timerBg, CircleShape)
+            ) {
+                if (timerDuration == TimerDuration.NONE) {
+                    Icon(
+                        painterResource(R.drawable.ic_timer),
+                        contentDescription = stringResource(R.string.settings_timer),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp).rotate(iconRotation)
+                    )
+                } else {
+                    val timerLabel = when (timerDuration) {
+                        TimerDuration.NONE -> ""
+                        TimerDuration.THREE -> "3"
+                        TimerDuration.FIVE -> "5"
+                        TimerDuration.TEN -> "10"
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            painterResource(R.drawable.ic_timer),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp).rotate(iconRotation)
+                        )
+                        Text(timerLabel, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, lineHeight = 10.sp)
+                    }
+                }
+            }
         }
     }
 }
@@ -988,11 +1029,9 @@ private fun ModeSelector(
 private fun BottomBar(
     cameraMode: CameraMode,
     isPhotoType: Boolean,
-    timerDuration: TimerDuration,
     iconRotation: Float,
     onPickerChanged: (Boolean) -> Unit,
-    onSettingsClick: () -> Unit,
-    onTimerCycle: () -> Unit
+    onSettingsClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -1058,43 +1097,7 @@ private fun BottomBar(
             }
         }
 
-        if (isPhotoType) {
-            val timerLabel = when (timerDuration) {
-                TimerDuration.NONE -> ""
-                TimerDuration.THREE -> "3"
-                TimerDuration.FIVE -> "5"
-                TimerDuration.TEN -> "10"
-            }
-            val timerBg = if (timerDuration != TimerDuration.NONE) MaterialTheme.colorScheme.primary else Color(0xFF3C3C3C)
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(timerBg, CircleShape)
-                    .clickable(onClick = onTimerCycle),
-                contentAlignment = Alignment.Center
-            ) {
-                if (timerDuration == TimerDuration.NONE) {
-                    Icon(
-                        painterResource(R.drawable.ic_timer),
-                        contentDescription = stringResource(R.string.settings_timer),
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp).rotate(iconRotation)
-                    )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            painterResource(R.drawable.ic_timer),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp).rotate(iconRotation)
-                        )
-                        Text(timerLabel, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, lineHeight = 10.sp)
-                    }
-                }
-            }
-        } else {
-            Spacer(Modifier.size(44.dp))
-        }
+        Spacer(Modifier.size(44.dp))
     }
 }
 
