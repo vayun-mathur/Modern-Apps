@@ -90,6 +90,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -177,6 +178,7 @@ private enum class CameraSetting {
 fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val view = LocalView.current
 
     val cameraMode by viewModel.cameraMode.collectAsState()
     val lensFacing by viewModel.lensFacing.collectAsState()
@@ -565,6 +567,7 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                     isCapturing = isCapturing,
                     galleryBitmap = galleryBitmap,
                     onCapture = {
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
                         if (longExposureProgress <= 0f) when {
                             cameraMode == CameraMode.PHOTOSPHERE -> {
                                 if (panoSweeping) viewModel.stopPhotosphere()
@@ -906,6 +909,10 @@ private fun ShutterRow(
         ) {
             Box(
                 modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = shutterScale
+                        scaleY = shutterScale
+                    }
                     .size(animatedSize.dp)
                     .clip(RoundedCornerShape(recordingCornerRadius.dp))
                     .background(
