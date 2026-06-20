@@ -40,6 +40,9 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
         .map { set -> set.map { it.toLong() }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    val usedRecipes: StateFlow<Set<String>> = ds.stringSetFlow("used_recipes")
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     val availableItems: StateFlow<List<AlchemyItem>> =
         combine(_allItems, itemIds) { items, ids ->
             items.filter { it.id in ids }.sortedBy { it.name }
@@ -115,6 +118,9 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
         val combined = listOf(movedItem.id, target.id).sorted()
         val recipe = _recipes.value.find { it.inputs.sorted() == combined } ?: return
 
+        // Record this recipe as used
+        ds.addStringToSet("used_recipes", recipeKey(recipe))
+
         val toRemoveKeys = setOf(movedItem.key, target.key)
         val toAdd = recipe.outputs.map { PlacedItem(it, target.offset) }
         _placedElements.update { list ->
@@ -160,3 +166,6 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 }
+
+fun recipeKey(recipe: AlchemyRecipe): String =
+    "${recipe.inputs.sorted().joinToString(",")}->${recipe.outputs.sorted().joinToString(",")}"

@@ -68,6 +68,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     backStack: NavBackStack<Route>,
     viewModel: AlchemistViewModel,
+    onOpenCollection: () -> Unit,
     onOpenGameCenter: () -> Unit
 ) {
     val availableItems by viewModel.availableItems.collectAsState()
@@ -98,6 +99,11 @@ fun HomeScreen(
                             painterResource(id = android.R.drawable.ic_menu_close_clear_cancel), "Clear"
                         )
                     }
+                }
+                IconButton(onClick = onOpenCollection) {
+                    Icon(
+                        painterResource(id = android.R.drawable.ic_menu_sort_by_size), "Collection"
+                    )
                 }
                 IconButton(onClick = onOpenGameCenter) {
                     Icon(

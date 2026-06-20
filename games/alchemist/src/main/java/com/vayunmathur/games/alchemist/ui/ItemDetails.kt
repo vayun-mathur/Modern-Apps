@@ -34,6 +34,7 @@ import com.vayunmathur.games.alchemist.R
 import com.vayunmathur.games.alchemist.Route
 import com.vayunmathur.games.alchemist.data.AlchemyRecipe
 import com.vayunmathur.games.alchemist.util.AlchemistViewModel
+import com.vayunmathur.games.alchemist.util.recipeKey
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.util.NavBackStack
 
@@ -47,6 +48,7 @@ fun ItemDetailsScreen(
     val allItems by viewModel.allItems.collectAsState()
     val recipes by viewModel.recipes.collectAsState()
     val itemsIds by viewModel.itemIds.collectAsState()
+    val usedRecipes by viewModel.usedRecipes.collectAsState()
 
     val item = remember(allItems, itemId) { allItems.firstOrNull { it.id == itemId.toLong() } }
 
@@ -113,19 +115,30 @@ fun ItemDetailsScreen(
                     modifier = Modifier.padding(8.dp, 0.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // all recipes that have this item as an output
+                    // all recipes that have this item as an output — only show used ones
                     val makeThis = recipes.filter { item.id in it.outputs }
+                    val knownMakeThis = makeThis.filter { recipeKey(it) in usedRecipes }
+                    val lockedMakeThis = makeThis.size - knownMakeThis.size
                     stickyHeader {
-                        SectionHeader(stringResource(R.string.recipes, makeThis.size))
+                        SectionHeader(stringResource(R.string.recipes, knownMakeThis.size))
                     }
-                    items(makeThis, key = { "make-${it.inputs.joinToString(",")}->${it.outputs.joinToString(",")}" }) { recipe ->
+                    items(knownMakeThis, key = { "make-${it.inputs.joinToString(",")}->${it.outputs.joinToString(",")}" }) { recipe ->
                         RecipeCard(recipe, isItemDiscovered = { id -> id in itemsIds })
                     }
+                    if (lockedMakeThis > 0) {
+                        item {
+                            RecipeCard(
+                                AlchemyRecipe(emptyList(), emptyList()),
+                                { false },
+                                lockedCount = lockedMakeThis
+                            )
+                        }
+                    }
 
-                    // all recipes that have this item as an input
+                    // all recipes that have this item as an input — only show used ones
                     val whereIHaveInput = recipes.filter { item.id in it.inputs }
-                    val discovered = whereIHaveInput.filter { r -> r.outputs.all { it in itemsIds } }
-                    val locked = whereIHaveInput.count { r -> r.outputs.all { it !in itemsIds } }
+                    val discovered = whereIHaveInput.filter { recipeKey(it) in usedRecipes }
+                    val locked = whereIHaveInput.size - discovered.size
                     stickyHeader {
                         SectionHeader(stringResource(R.string.used_in, whereIHaveInput.size))
                     }
@@ -199,18 +212,11 @@ fun RecipeCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (lockedCount > 0) {
-                Column {
-                    Text(
-                        stringResource(R.string.locked, lockedCount),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        stringResource(R.string.locked_description),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                    )
-                }
+                Text(
+                    stringResource(R.string.locked, lockedCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 return@Card
             }
 

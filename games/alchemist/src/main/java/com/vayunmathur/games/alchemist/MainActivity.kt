@@ -18,6 +18,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.games.alchemist.data.AlchemyItem
+import com.vayunmathur.games.alchemist.ui.CollectionScreen
 import com.vayunmathur.games.alchemist.ui.HomeScreen
 import com.vayunmathur.games.alchemist.ui.ItemDetailsScreen
 import com.vayunmathur.games.alchemist.ui.UnlockNotification
@@ -59,6 +60,8 @@ sealed interface Route: NavKey {
     @Serializable
     data class ItemDetails(val item: Int): Route
     @Serializable
+    data object Collection: Route
+    @Serializable
     data object GameCenter: Route
 }
 
@@ -89,7 +92,15 @@ fun Navigation(viewModel: AlchemistViewModel) {
     Box(Modifier.fillMaxSize()) {
         MainNavigation(backStack) {
             entry<Route.Home> {
-                HomeScreen(backStack, viewModel, onOpenGameCenter = { backStack.add(Route.GameCenter) })
+                HomeScreen(
+                    backStack,
+                    viewModel,
+                    onOpenCollection = { backStack.add(Route.Collection) },
+                    onOpenGameCenter = { backStack.add(Route.GameCenter) }
+                )
+            }
+            entry<Route.Collection> {
+                CollectionScreen(backStack, viewModel)
             }
             entry<Route.ItemDetails> {
                 ItemDetailsScreen(backStack, viewModel, it.item)
