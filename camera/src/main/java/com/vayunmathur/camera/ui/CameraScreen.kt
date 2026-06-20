@@ -114,6 +114,7 @@ import com.vayunmathur.camera.util.TimerDuration
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 
 private const val BOKEH_SHADER = """
@@ -190,6 +191,9 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
     val exposureComp by viewModel.exposureCompensation.collectAsState()
     val warmth by viewModel.warmth.collectAsState()
     val shadows by viewModel.shadows.collectAsState()
+    val exposureTimeIndex by viewModel.exposureTimeIndex.collectAsState()
+    val longExposureProgress by viewModel.longExposureProgress.collectAsState()
+    val longExposureRemaining by viewModel.longExposureRemaining.collectAsState()
 
     var maskBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     val isPhotoType = cameraMode in listOf(CameraMode.PHOTO, CameraMode.PORTRAIT, CameraMode.PANORAMA, CameraMode.PHOTOSPHERE)
@@ -485,6 +489,13 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                         )
                     }
 
+                    if (longExposureProgress > 0f) {
+                        LongExposureOverlay(
+                            progress = longExposureProgress,
+                            remainingText = longExposureRemaining
+                        )
+                    }
+
                     // Adjustment sliders on the right edge
                     AdjustmentPanel(
                         exposure = exposureComp,
@@ -520,13 +531,18 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                     }
                 }
 
+                ExposureTimeBar(
+                    selectedIndex = exposureTimeIndex,
+                    onIndexChange = { viewModel.setExposureTimeIndex(it) }
+                )
+
                 ShutterRow(
                     cameraMode = cameraMode,
                     isRecording = isRecording,
                     isCapturing = isCapturing,
                     galleryBitmap = galleryBitmap,
                     onCapture = {
-                        when {
+                        if (longExposureProgress <= 0f) when {
                             cameraMode == CameraMode.PHOTOSPHERE -> {
                                 if (panoSweeping) viewModel.stopPhotosphere()
                                 else viewModel.startPhotosphere()
@@ -1138,6 +1154,88 @@ private fun RecordingIndicator(durationSec: Long, modifier: Modifier = Modifier)
             color = Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun LongExposureOverlay(
+    progress: Float,
+    remainingText: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(80.dp),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.2f),
+                strokeWidth = 4.dp
+            )
+            Text(
+                text = remainingText,
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExposureTimeBar(
+    selectedIndex: Int,
+    onIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val stops = CameraViewModel.EXPOSURE_TIME_STOPS
+    val isManual = selectedIndex > 0
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (isManual) Color(0xFF3C3C3C) else Color.Transparent,
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_timer),
+                contentDescription = "Exposure time",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Slider(
+            value = selectedIndex.toFloat(),
+            onValueChange = { onIndexChange(it.roundToInt()) },
+            valueRange = 0f..(stops.size - 1).toFloat(),
+            steps = stops.size - 2,
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color(0xFF666666)
+            )
+        )
+        Text(
+            text = stops[selectedIndex].label,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(64.dp),
+            textAlign = TextAlign.End
         )
     }
 }

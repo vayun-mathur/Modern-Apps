@@ -47,7 +47,30 @@ enum class FlashMode { ON, OFF, AUTO }
 enum class TimerDuration(val seconds: Int) { NONE(0), THREE(3), FIVE(5), TEN(10) }
 enum class AspectRatioOption(val label: String) { RATIO_16_9("16:9"), RATIO_4_3("4:3"), RATIO_1_1("1:1") }
 
+data class ExposureTimeStop(val label: String, val nanos: Long?)
+
 class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
+    companion object {
+        val EXPOSURE_TIME_STOPS = listOf(
+            ExposureTimeStop("Auto", null),
+            ExposureTimeStop("1/4000s", 250_000L),
+            ExposureTimeStop("1/2000s", 500_000L),
+            ExposureTimeStop("1/1000s", 1_000_000L),
+            ExposureTimeStop("1/500s", 2_000_000L),
+            ExposureTimeStop("1/250s", 4_000_000L),
+            ExposureTimeStop("1/125s", 8_000_000L),
+            ExposureTimeStop("1/60s", 16_666_667L),
+            ExposureTimeStop("1/30s", 33_333_333L),
+            ExposureTimeStop("1/15s", 66_666_667L),
+            ExposureTimeStop("1/8s", 125_000_000L),
+            ExposureTimeStop("1/4s", 250_000_000L),
+            ExposureTimeStop("1/2s", 500_000_000L),
+            ExposureTimeStop("1s", 1_000_000_000L),
+            ExposureTimeStop("2s", 2_000_000_000L),
+            ExposureTimeStop("4s", 4_000_000_000L),
+        )
+    }
+
     private val ds = DataStoreUtils.getInstance(app)
 
     private val _cameraMode = MutableStateFlow(CameraMode.PHOTO)
@@ -104,6 +127,17 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _shadows = MutableStateFlow(0f)
     val shadows = _shadows.asStateFlow()
+
+    private val _exposureTimeIndex = MutableStateFlow(0)
+    val exposureTimeIndex = _exposureTimeIndex.asStateFlow()
+
+    private val _longExposureProgress = MutableStateFlow(0f)
+    val longExposureProgress = _longExposureProgress.asStateFlow()
+
+    private val _longExposureRemaining = MutableStateFlow("")
+    val longExposureRemaining = _longExposureRemaining.asStateFlow()
+
+    private var longExposureTimerJob: kotlinx.coroutines.Job? = null
 
     private var lastLocation: Location? = null
     private var currentRecording: Recording? = null
@@ -173,6 +207,10 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun setShadows(value: Float) {
         _shadows.value = value
+    }
+
+    fun setExposureTimeIndex(index: Int) {
+        _exposureTimeIndex.value = index.coerceIn(0, EXPOSURE_TIME_STOPS.lastIndex)
     }
 
     private fun setLastCaptureUri(uri: Uri?) {
@@ -415,19 +453,99 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             contentValues
         ).setMetadata(metadata).build()
 
-        controller.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(app),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    _isCapturing.value = false
-                    setLastCaptureUri(outputFileResults.savedUri)
-                }
-                override fun onError(exception: ImageCaptureException) {
-                    _isCapturing.value = false
-                }
+        val stop = EXPOSURE_TIME_STOPS[_exposureTimeIndex.value]
+        val cam2Control = try {
+            controller.cameraControl?.let {
+                androidx.camera.camera2.interop.Camera2CameraControl.from(it)
             }
-        )
+        } catch (_: Exception) { null }
+
+        fun restoreAutoExposure() {
+            if (stop.nanos != null && cam2Control != null) {
+                try {
+                    cam2Control.setCaptureRequestOptions(
+                        androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+                            .clearCaptureRequestOption(android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME)
+                            .clearCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE)
+                            .build()
+                    )
+                } catch (_: Exception) { }
+            }
+        }
+
+        fun doCapture() {
+            if (stop.nanos != null && stop.nanos >= 250_000_000L) {
+                startLongExposureCountdown(stop.nanos)
+            }
+            controller.takePicture(
+                outputOptions,
+                ContextCompat.getMainExecutor(app),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        _isCapturing.value = false
+                        stopLongExposureCountdown()
+                        restoreAutoExposure()
+                        setLastCaptureUri(outputFileResults.savedUri)
+                    }
+                    override fun onError(exception: ImageCaptureException) {
+                        _isCapturing.value = false
+                        stopLongExposureCountdown()
+                        restoreAutoExposure()
+                    }
+                }
+            )
+        }
+
+        if (stop.nanos != null && cam2Control != null) {
+            try {
+                cam2Control.setCaptureRequestOptions(
+                    androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+                        .setCaptureRequestOption(
+                            android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
+                            android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
+                        )
+                        .setCaptureRequestOption(
+                            android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME,
+                            stop.nanos
+                        )
+                        .build()
+                ).addListener({ doCapture() }, ContextCompat.getMainExecutor(app))
+            } catch (_: Exception) {
+                doCapture()
+            }
+        } else {
+            doCapture()
+        }
+    }
+
+    private fun startLongExposureCountdown(nanos: Long) {
+        val durationMs = nanos / 1_000_000
+        _longExposureProgress.value = 1f
+        _longExposureRemaining.value = formatExposureRemaining(durationMs)
+        longExposureTimerJob?.cancel()
+        longExposureTimerJob = viewModelScope.launch {
+            val start = System.currentTimeMillis()
+            while (true) {
+                val elapsed = System.currentTimeMillis() - start
+                val remaining = (durationMs - elapsed).coerceAtLeast(0)
+                _longExposureProgress.value = remaining.toFloat() / durationMs
+                _longExposureRemaining.value = formatExposureRemaining(remaining)
+                if (remaining <= 0) break
+                delay(50)
+            }
+        }
+    }
+
+    private fun stopLongExposureCountdown() {
+        longExposureTimerJob?.cancel()
+        longExposureTimerJob = null
+        _longExposureProgress.value = 0f
+        _longExposureRemaining.value = ""
+    }
+
+    private fun formatExposureRemaining(ms: Long): String {
+        val seconds = ms / 1000f
+        return "%.1fs".format(seconds)
     }
 
     @android.annotation.SuppressLint("MissingPermission")
