@@ -235,32 +235,6 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .onGloballyPositioned {
                                                 itemPosInWindow = it.positionInWindow()
-                                            }
-                                            .pointerInput(item.id) {
-                                                detectDragGestures(onDragStart = { startOffset ->
-                                                    draggingInventoryId = item.id
-                                                    val fingerInWindow =
-                                                        itemPosInWindow + startOffset
-                                                    draggingInventoryOffset = Offset(
-                                                        x = fingerInWindow.x - playAreaOffsetInWindow.x - 100f,
-                                                        y = fingerInWindow.y - playAreaOffsetInWindow.y - 100f
-                                                    )
-                                                }, onDrag = { change, dragAmount ->
-                                                    change.consume()
-                                                    draggingInventoryOffset += dragAmount
-                                                }, onDragEnd = {
-                                                    // Final Check: Drop it if it's clear of the bottom bar
-                                                    val limitY =
-                                                        bottomBarTopInWindow - playAreaOffsetInWindow.y - 48f
-                                                    if (draggingInventoryOffset.y < limitY) {
-                                                        viewModel.placeElement(
-                                                            item.id, draggingInventoryOffset
-                                                        )
-                                                    }
-                                                    draggingInventoryId = null
-                                                }, onDragCancel = {
-                                                    draggingInventoryId = null
-                                                })
                                             }) {
                                         Box(
                                             Modifier
@@ -270,6 +244,31 @@ fun HomeScreen(
                                                     contextMenuElementId = item.id
                                                     contextMenuExpanded = true
                                                 }, onClick = {})
+                                                .pointerInput(item.id) {
+                                                    detectDragGestures(onDragStart = { startOffset ->
+                                                        draggingInventoryId = item.id
+                                                        val fingerInWindow =
+                                                            itemPosInWindow + startOffset
+                                                        draggingInventoryOffset = Offset(
+                                                            x = fingerInWindow.x - playAreaOffsetInWindow.x - 100f,
+                                                            y = fingerInWindow.y - playAreaOffsetInWindow.y - 100f
+                                                        )
+                                                    }, onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        draggingInventoryOffset += dragAmount
+                                                    }, onDragEnd = {
+                                                        val limitY =
+                                                            bottomBarTopInWindow - playAreaOffsetInWindow.y - 48f
+                                                        if (draggingInventoryOffset.y < limitY) {
+                                                            viewModel.placeElement(
+                                                                item.id, draggingInventoryOffset
+                                                            )
+                                                        }
+                                                        draggingInventoryId = null
+                                                    }, onDragCancel = {
+                                                        draggingInventoryId = null
+                                                    })
+                                                }
                                         ) {
                                             DynamicAlchemyIcon(item.id)
                                             if (item.final) {
