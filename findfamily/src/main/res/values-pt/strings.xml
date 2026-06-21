@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings">Configurações</string>
+    <string name="app_name">Encontrar familia</string>
+    <string name="notification_channel_location_tracking_name">Rastreamento de Localização</string>
+    <string name="notification_tracking_text">Partilhando localização com os teus contactos selecionados</string>
+    <string name="notification_low_battery">%1$s tem bateria baixa</string>
+    <string name="notification_entered_waypoint">%1$s entrou %2$s</string>
+    <string name="notification_exited_waypoint">%1$s saiu %2$s</string>
+    <string name="permission_fine_location_granted">✅ Localização Precisa</string>
+    <string name="fab_link">Link</string>
 </resources>
