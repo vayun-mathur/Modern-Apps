@@ -21,4 +21,6 @@
     <string name="continue_label">Continua</string>
     <string name="unsupported_version">Questa app richiede Android 15 o l\'aggiornamento completo di Google Play Services. Se non puoi procedere con nessuno dei due, purtroppo il tuo dispositivo non è supportato.</string>
     <string name="auto_detect">Rilevamento automatico</string>
+    <string name="pdf_save">Salva</string>
+    <string name="pdf_save_as_copy">Salva come copia</string>
 </resources>
