@@ -113,10 +113,12 @@ private fun getLinePrefix(line: String): String {
 }
 
 private fun getSelectedLines(text: String, selection: TextRange): Pair<Int, Int> {
-    val blockStart = text.lastIndexOf('\n', (selection.start - 1).coerceAtLeast(0)) + 1
-    val effectiveEnd = if (!selection.collapsed && selection.end > selection.start && selection.end > 0 && text.getOrNull(selection.end - 1) == '\n') selection.end - 1 else selection.end
+    val start = minOf(selection.start, selection.end).coerceIn(0, text.length)
+    val end = maxOf(selection.start, selection.end).coerceIn(0, text.length)
+    val blockStart = text.lastIndexOf('\n', start - 1) + 1
+    val effectiveEnd = if (start != end && end > 0 && text.getOrNull(end - 1) == '\n') end - 1 else end
     val blockEnd = text.indexOf('\n', effectiveEnd).let { if (it == -1) text.length else it }
-    return blockStart to blockEnd
+    return blockStart to blockEnd.coerceAtLeast(blockStart)
 }
 
 private fun matchesPrefix(line: String, prefix: String): Boolean = when {
