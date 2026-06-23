@@ -51,7 +51,7 @@ import com.vayunmathur.findfamily.MainActivity
 import com.vayunmathur.findfamily.R
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.buildDatabase
-import com.vayunmathur.library.util.startRepeatedTask
+import com.vayunmathur.library.work.startRepeatedTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

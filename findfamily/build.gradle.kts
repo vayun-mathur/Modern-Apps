@@ -18,6 +18,7 @@ dependencies {
     implementRoom(libs)
 
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(project(":library:work"))
 
     implementation(libs.coil.compose)
 

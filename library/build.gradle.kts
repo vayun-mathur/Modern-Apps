@@ -4,9 +4,6 @@ plugins {
 }
 
 dependencies {
-    // work
-    implementation(libs.androidx.work.runtime.ktx)
-
     // navigation 3
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)

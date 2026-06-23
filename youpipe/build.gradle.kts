@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.androidx.media3.datasource.okhttp)
 
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(project(":library:work"))
     implementation(libs.androidx.compose.runtime.livedata)
 
     implementation(project(":library:network"))

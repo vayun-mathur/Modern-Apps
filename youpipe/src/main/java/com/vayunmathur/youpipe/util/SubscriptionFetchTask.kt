@@ -6,7 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.vayunmathur.library.util.buildDatabase
-import com.vayunmathur.library.util.startRepeatedTask
+import com.vayunmathur.library.work.startRepeatedTask
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.data.SubscriptionVideo
 import kotlin.time.Duration.Companion.minutes
