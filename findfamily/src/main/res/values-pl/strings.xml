@@ -45,7 +45,6 @@
     <string name="time_in_minutes">za %1$d minut</string>
     <string name="time_in_hours">za %1$d godzin</string>
     <string name="time_in_days">za %1$d dni</string>
-    <string name="share_your_location">Udostępni twoją lokalizację</string>
     <string name="change_connected_contact">Zmień powiązany kontakt</string>
     <string name="history_button">Historia</string>
     <string name="hide_button">Ukryj</string>

@@ -61,7 +61,6 @@
     <string name="time_in_minutes">%1$d 分钟后</string>
     <string name="time_in_hours">%1$d 小时后</string>
     <string name="time_in_days">%1$d 天后</string>
-    <string name="share_your_location">分享您的位置</string>
     <string name="change_connected_contact">更改已连接的联系人</string>
     <string name="history_button">历史记录</string>
     <string name="hide_button">隐藏</string>

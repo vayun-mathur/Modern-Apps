@@ -61,7 +61,7 @@
     <string name="time_in_days">in %1$d days</string>
 
     <!-- UserPage -->
-    <string name="share_your_location">Share your location</string>
+    <string name="share_your_location">Share your location with this person</string>
     <string name="change_connected_contact">Change connected contact</string>
     <string name="history_button">History</string>
     <string name="hide_button">Hide</string>

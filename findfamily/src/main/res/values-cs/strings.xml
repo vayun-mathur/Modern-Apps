@@ -32,7 +32,6 @@
     <string name="time_in_minutes">za %1$d minut</string>
     <string name="time_in_hours">za %1$d hodin</string>
     <string name="time_in_days">za %1$d dní</string>
-    <string name="share_your_location">Sdílet mou polohu</string>
     <string name="change_connected_contact">Změnit připojený kontakt</string>
     <string name="history_button">Historie</string>
     <string name="hide_button">Skrýt</string>

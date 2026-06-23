@@ -45,7 +45,6 @@
     <string name="time_in_minutes">in %1$d Minuten</string>
     <string name="time_in_hours">in %1$d Stunden</string>
     <string name="time_in_days">in %1$d Tagen</string>
-    <string name="share_your_location">Teile deinen Standort</string>
     <string name="change_connected_contact">Verbundenen Kontakt ändern</string>
     <string name="history_button">Verlauf</string>
     <string name="hide_button">Verstecken</string>

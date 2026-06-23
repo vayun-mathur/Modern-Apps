@@ -9,7 +9,6 @@
     <string name="time_in_minutes">%1$d minuti pärast</string>
     <string name="time_in_hours">%1$d tunni pärast</string>
     <string name="time_in_days">%1$d päeva pärast</string>
-    <string name="share_your_location">Jaga oma asukohta</string>
     <string name="change_connected_contact">Muuda ühendatud kasutajakontot</string>
     <string name="history_button">Ajalugu</string>
     <string name="hide_button">Peida</string>

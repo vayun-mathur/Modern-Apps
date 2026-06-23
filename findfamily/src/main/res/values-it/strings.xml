@@ -42,7 +42,6 @@
     <string name="time_in_minutes">in %1$d minuti</string>
     <string name="time_in_hours">in %1$d ore</string>
     <string name="time_in_days">in %1$d giorni</string>
-    <string name="share_your_location">Condividi la posizione</string>
     <string name="change_connected_contact">Cambia il contatto connesso</string>
     <string name="history_button">Cronologia</string>
     <string name="hide_button">Nascondi</string>
