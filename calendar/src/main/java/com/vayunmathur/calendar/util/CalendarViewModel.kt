@@ -175,6 +175,18 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         updateWidgets()
     }
 
+    /** Reload calendars and events from the provider (e.g. after holiday calendars change). */
+    fun reloadAll() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val loaded = Calendar.getAllCalendars(app)
+            _calendars.value = loaded
+            _calendarVisibility.value = loaded.associate { it.id to it.visible }
+            _events.value = Event.getAllEvents(app)
+            updateWidgets()
+        }
+    }
+
     fun setCalendarVisibility(calendarId: Long, visible: Boolean) {
         val app = getApplication<Application>()
         // write to the provider's Calendars.VISIBLE field for that calendar

@@ -137,6 +137,18 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
                     HorizontalDivider()
                 }
 
+                item {
+                    ListItem(
+                        headlineContent = { Text("Holiday calendars") },
+                        supportingContent = { Text("Add public holidays for countries") },
+                        modifier = Modifier.clickable { backStack.add(Route.Settings.HolidayCalendars) },
+                        trailingContent = {
+                            Icon(painterResource(R.drawable.arrow_drop_down_24px), null)
+                        },
+                    )
+                    HorizontalDivider()
+                }
+
                 grouped.forEach { (account, cals) ->
                     item {
                         Text(text = account.ifEmpty { stringResource(R.string.no_account) }, modifier = Modifier.padding(vertical = 8.dp))

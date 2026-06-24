@@ -159,6 +159,9 @@ sealed interface Route: NavKey {
 
         @Serializable
         data class DeleteCalendar(val id: Long): Route
+
+        @Serializable
+        data object HolidayCalendars: Route
     }
 
     @Serializable
@@ -210,6 +213,9 @@ fun Navigation(viewModel: CalendarViewModel, initialRoute: Route?) {
         }
         entry<Route.Settings> {
             SettingsScreen(viewModel, backStack)
+        }
+        entry<Route.Settings.HolidayCalendars> {
+            HolidayCalendarsScreen(viewModel, backStack)
         }
         entry<Route.EditEvent> { key ->
             EditEventScreen(viewModel, key, backStack)
