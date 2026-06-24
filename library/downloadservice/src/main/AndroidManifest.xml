@@ -1,25 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- DownloadManager performs the transfer in the system process; the app
+         only needs INTERNET to enqueue requests. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <application>
-        <service
-            android:name="com.vayunmathur.library.downloadservice.DownloadService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
-
-        <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
-            xmlns:tools="http://schemas.android.com/tools"
-            tools:node="merge" />
-    </application>
 
 </manifest>
