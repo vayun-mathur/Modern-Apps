@@ -35,6 +35,11 @@ public final class HolidayGen {
             try {
                 HolidayManager manager = HolidayManager.getInstance(ManagerParameters.create(hc));
                 String code = hc.getId(); // ISO 3166-1 alpha-2, lower-case
+                // Skip non-country calendars (stock exchanges like NYSE/LME/TARGET):
+                // real country codes are exactly two letters.
+                if (code == null || code.length() != 2 || !code.chars().allMatch(Character::isLetter)) {
+                    continue;
+                }
                 String name = manager.getCalendarHierarchy().getDescription(Locale.ENGLISH);
 
                 List<String[]> holidays = new ArrayList<>(); // {date, name}
