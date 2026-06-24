@@ -1,3 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="cancel">Скасувати</string>
+    <string name="close">Закрити</string>
+    <string name="delete">Видалити</string>
+    <string name="rename">Перейменувати</string>
+    <string name="create">Створити</string>
+    <string name="remove">Вилучити</string>
+    <string name="search">Пошук</string>
+    <string name="month_year_format">%1$s %2$d</string>
+    <string name="date_range_format">%1$s - %2$s</string>
+    <string name="date_time_range_format">%1$s • %2$s - %3$s</string>
+    <string name="full_date_time_range_format">%1$s, %2$s - %3$s, %4$s</string>
+    <string name="label_title">Заголовок</string>
+    <string name="label_description">Опис</string>
+    <string name="label_location">Місцезнаходження</string>
+    <string name="select_calendar">Вибрати календар</string>
+    <string name="repeats">Повторюється</string>
+    <string name="settings">Параметри</string>
+    <string name="calendar_id_label">ІД: %1$d</string>
+    <string name="choose_calendar">Обрати календар</string>
+    <string name="dropdown_freq_format">%1$s ▼</string>
+    <string name="monthly_nth_day_format">%1$s %2$s</string>
+    <string name="end">Кінець</string>
+    <string name="never">Ніколи</string>
+    <string name="count">Кількість</string>
+    <string name="new_local_calendar">Новий локальний календар</string>
+    <string name="calendar_name">Назва календаря</string>
+    <string name="change_color_for">Змінити колір для цього календаря</string>
+    <string name="change_color">Змінити колір</string>
+    <string name="delete_calendar">Видалити календар</string>
+    <string name="rename_calendar">Перейменувати календар</string>
+    <string name="new_name">Нова назва</string>
+    <string name="create_a_calendar">Створити календар</string>
+    <string name="open_location_in_navigation">Відкрити місцезнаходження</string>
+    <string name="delete_this_event">Видалити цю подію</string>
+    <string name="delete_all_events">Видалити всі події</string>
+    <string name="new_local_calendar_title">Новий локальний календар</string>
+    <string name="calendar_name_label">Назва календаря</string>
+    <string name="loading_events">Завантаження подій…</string>
+    <string name="create_new_calendar">+ Створити новий календар</string>
+    <string name="import_button">Імпортувати</string>
 </resources>
