@@ -118,63 +118,74 @@ private fun LocationPage(
     val pressureUnit = com.vayunmathur.weather.util.rememberPressureUnit()
     val use24Hour = com.vayunmathur.weather.util.rememberUse24Hour()
 
-    LaunchedEffect(location.id) { viewModel.ensureForecast(location) }
+    LaunchedEffect(location.id) {
+        while (true) {
+            viewModel.ensureForecast(location)
+            kotlinx.coroutines.delay(60_000)
+        }
+    }
 
     val state = forecasts[location.id]
     val forecast = state?.forecast
     val scrollState = rememberScrollState()
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
-        MainSearchBar(
-            paddingValues = paddingValues,
-            drawerState = drawerState,
-            activeLocation = location,
-        )
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = state?.refreshing == true,
+        onRefresh = { viewModel.ensureForecast(location, force = true) },
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
+            MainSearchBar(
+                paddingValues = paddingValues,
+                drawerState = drawerState,
+                activeLocation = location,
+            )
 
-        if (forecast == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(top = 64.dp), contentAlignment = Alignment.TopCenter) {
-                if (state?.error != null) {
-                    Text(state.error, color = MaterialTheme.colorScheme.error)
-                } else {
-                    CircularProgressIndicator()
+            if (forecast == null) {
+                Box(modifier = Modifier.fillMaxSize().padding(top = 64.dp), contentAlignment = Alignment.TopCenter) {
+                    if (state?.error != null) {
+                        Text(state.error, color = MaterialTheme.colorScheme.error)
+                    } else {
+                        CircularProgressIndicator()
+                    }
                 }
+                return@Column
             }
-            return
-        }
 
-        val current = forecast.current
-        val daily = forecast.daily
-        val sunriseEpoch = daily?.sunrise?.firstOrNull()?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) }
-        val sunsetEpoch = daily?.sunset?.firstOrNull()?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) }
+            val current = forecast.current
+            val daily = forecast.daily
+            val sunriseEpoch = daily?.sunrise?.firstOrNull()?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) }
+            val sunsetEpoch = daily?.sunset?.firstOrNull()?.let { parseLocalIsoToEpochSec(it, forecast.utcOffsetSeconds) }
 
-        if (current != null) {
-            CurrentWeatherCard(current = current, today = daily, tempUnit = tempUnit)
-        }
-        Column(
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            SummaryCard(forecast = forecast, tempUnit = tempUnit)
-            if (forecast.hourly != null) {
-                HourlyCard(hourly = forecast.hourly, tempUnit = tempUnit, utcOffsetSeconds = forecast.utcOffsetSeconds, use24Hour = use24Hour)
-            }
-            if (daily != null) {
-                DailyCard(daily = daily, tempUnit = tempUnit)
-            }
             if (current != null) {
-                WeatherBlocks(
-                    current = current,
-                    today = daily,
-                    air = state.airQuality?.current,
-                    sunriseEpochSec = sunriseEpoch,
-                    sunsetEpochSec = sunsetEpoch,
-                    tempUnit = tempUnit,
-                    windUnit = windUnit,
-                    pressureUnit = pressureUnit,
-                    use24Hour = use24Hour,
-                )
+                CurrentWeatherCard(current = current, today = daily, tempUnit = tempUnit)
             }
+            Column(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                SummaryCard(forecast = forecast, tempUnit = tempUnit)
+                if (forecast.hourly != null) {
+                    HourlyCard(hourly = forecast.hourly, tempUnit = tempUnit, utcOffsetSeconds = forecast.utcOffsetSeconds, use24Hour = use24Hour)
+                }
+                if (daily != null) {
+                    DailyCard(daily = daily, tempUnit = tempUnit)
+                }
+                if (current != null) {
+                    WeatherBlocks(
+                        current = current,
+                        today = daily,
+                        air = state.airQuality?.current,
+                        sunriseEpochSec = sunriseEpoch,
+                        sunsetEpochSec = sunsetEpoch,
+                        tempUnit = tempUnit,
+                        windUnit = windUnit,
+                        pressureUnit = pressureUnit,
+                        use24Hour = use24Hour,
+                    )
+                }
 
+            }
         }
     }
 }

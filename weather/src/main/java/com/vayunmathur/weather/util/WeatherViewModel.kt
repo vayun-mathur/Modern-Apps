@@ -56,14 +56,21 @@ class WeatherViewModel(
     }
 
     /**
-     * Ensure there's a forecast for [location] — hydrate from the on-disk
-     * cache first so the UI gets something immediately, then kick off a
-     * background refresh. Repeated calls while a refresh is in flight are
-     * no-ops.
+     * Ensure there's a fresh-enough forecast for [location].
+     *
+     * The 15-minute staleness decision lives here, so callers can poll
+     * freely: hydrate from the on-disk cache first so the UI gets something
+     * immediately, then kick off a background refresh only when the data is
+     * missing/stale or [force] is set. Repeated calls while a refresh is in
+     * flight are no-ops.
      */
-    fun ensureForecast(location: SavedLocation) {
+    fun ensureForecast(location: SavedLocation, force: Boolean = false) {
         val existing = _forecasts.value[location.id]
         if (existing != null && existing.refreshing) return
+
+        val isStale = existing?.forecast == null ||
+            (System.currentTimeMillis() - existing.fetchedAtEpochMs) >= STALE_THRESHOLD_MS
+        if (!force && !isStale) return
 
         viewModelScope.launch {
             // 1. Hydrate from cache if we don't have anything in memory yet.
@@ -177,6 +184,11 @@ class WeatherViewModel(
                 )
             )
         }
+    }
+
+    companion object {
+        /** Forecasts older than this are refreshed on the next poll. */
+        const val STALE_THRESHOLD_MS = 15 * 60 * 1000L
     }
 
 }
