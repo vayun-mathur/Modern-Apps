@@ -508,6 +508,16 @@ fun MessageListScreen(
                     )
                 }
             }
+            // Quick filters over the loaded messages.
+            var msgFilter by remember { mutableStateOf(0) } // 0=All, 1=Unread, 2=Attachments
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                androidx.compose.material3.FilterChip(selected = msgFilter == 0, onClick = { msgFilter = 0 }, label = { Text("All") })
+                androidx.compose.material3.FilterChip(selected = msgFilter == 1, onClick = { msgFilter = 1 }, label = { Text("Unread") })
+                androidx.compose.material3.FilterChip(selected = msgFilter == 2, onClick = { msgFilter = 2 }, label = { Text("Attachments") })
+            }
             androidx.compose.material3.pulltorefresh.PullToRefreshBox(
                 isRefreshing = isSyncing,
                 onRefresh = { viewModel.refresh(context) },
@@ -546,7 +556,14 @@ fun MessageListScreen(
                             }
                         }
                     }
-                    items(messages, key = { "${it.accountEmail}|${it.folderName}|${it.id}" }) { message ->
+                    items(
+                        when (msgFilter) {
+                            1 -> messages.filter { !it.isRead }
+                            2 -> messages.filter { it.hasAttachments }
+                            else -> messages
+                        },
+                        key = { "${it.accountEmail}|${it.folderName}|${it.id}" }
+                    ) { message ->
                         val accountColor = Color(EmailAccount(message.accountEmail).getColor())
                         val isSelected = message.id in selectedUids
                         
