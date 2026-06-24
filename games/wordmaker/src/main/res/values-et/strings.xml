@@ -15,4 +15,15 @@
     <string name="no">Ei</string>
     <string name="tap_to_spell_description">Kasuta sõnade koostamiseks lohistamise asemel klõpsamist</string>
     <string name="tap_to_spell">Tähtede klõpsamine</string>
+    <string name="difficulty_easy">Lihtne</string>
+    <string name="difficulty_medium">Keskmine</string>
+    <string name="difficulty_hard">Raske</string>
+    <string name="competitive_score">Punktiskoor: %1$d</string>
+    <string name="competitive_start">Alusta</string>
+    <string name="competitive_difficulty">Raskusaste</string>
+    <string name="competitive_time_limit">%1$d sekundit taseme kohta</string>
+    <string name="competitive_solved">Lahendatud! +%1$d punkti</string>
+    <string name="competitive_timed_out">Aeg on täis! %1$d punkti</string>
+    <string name="mode_casual">Lihtsustatud</string>
+    <string name="mode_competitive">Konkurentsitihe</string>
 </resources>
