@@ -7,24 +7,34 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Generates the calendar app's bundled holiday data from Thunderbird's public
- * holiday calendars (https://www.thunderbird.net/en-US/calendar/holidays/).
+ * Generates the calendar app's bundled holiday data from Google's public
+ * iCal holiday feeds (en.&lt;slug&gt;#holiday@group.v.calendar.google.com).
  *
- * Downloads the index page, picks one .ics per country (preferring the English
- * variant), parses each into date-sorted {"d","n"} entries, and writes
- * assets/holidays/&lt;code&gt;.json plus index.json. No app-side dependency and
- * no network at runtime.
+ * Downloads each feed (host-side), derives the country name from X-WR-CALNAME,
+ * parses VEVENTs into date-sorted {"d","n"} entries, and writes
+ * assets/holidays/&lt;code&gt;.json plus index.json. Feeds that don't resolve
+ * (non-200) or are empty are skipped. No app-side dependency, no runtime network.
  */
 public final class HolidayGen {
-    private static final String BASE = "https://www.thunderbird.net";
-    private static final String INDEX = BASE + "/en-US/calendar/holidays/";
+    private static final String URL_TEMPLATE =
+        "https://calendar.google.com/calendar/ical/en.%s%%23holiday%%40group.v.calendar.google.com/public/basic.ics";
+
+    // Verified Google holiday-feed slugs (the part after "en."). Probed for
+    // HTTP 200; names come from each feed so this is just the id list.
+    private static final String[] SLUGS = {
+        "usa", "uk", "canadian", "australian", "indian", "irish", "french", "german",
+        "italian", "spain", "portuguese", "dutch", "danish", "finnish", "norwegian",
+        "swedish", "polish", "russian", "ukrainian", "austrian", "bulgarian", "croatian",
+        "czech", "greek", "hungarian", "latvian", "lithuanian", "romanian", "slovak",
+        "slovenian", "turkish", "japanese", "china", "taiwan", "hong_kong", "south_korea",
+        "singapore", "indonesian", "malaysia", "philippines", "vietnamese", "brazilian",
+        "mexican", "new_zealand", "jewish",
+    };
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
@@ -33,7 +43,6 @@ public final class HolidayGen {
 
     public static void main(String[] args) throws Exception {
         File outDir = new File("calendar/src/main/assets/holidays");
-        // Start clean so removed countries don't leave stale files.
         if (outDir.exists()) {
             File[] old = outDir.listFiles((d, n) -> n.endsWith(".json"));
             if (old != null) for (File f : old) f.delete();
@@ -41,37 +50,22 @@ public final class HolidayGen {
             throw new IllegalStateException("Could not create " + outDir.getAbsolutePath());
         }
 
-        String html = get(INDEX);
-        // Map base-country-name -> chosen href (prefer the English variant).
-        Map<String, String> chosen = new LinkedHashMap<>();
-        Matcher m = Pattern.compile(
-            "<a[^>]*href=\"(/media/caldata/autogen/[^\"]+\\.ics)\"[^>]*>(.*?)</a>",
-            Pattern.DOTALL).matcher(html);
-        while (m.find()) {
-            String href = m.group(1);
-            String label = m.group(2).replaceAll("<[^>]+>", "").trim();
-            String base = label.replaceAll("\\s*\\(.*?\\)\\s*", "").trim(); // drop "(English)" etc.
-            boolean english = label.toLowerCase().contains("english");
-            if (!chosen.containsKey(base) || english) {
-                chosen.put(base, href);
-            }
-        }
-
         List<String[]> index = new ArrayList<>(); // {code, name}
-        for (Map.Entry<String, String> e : chosen.entrySet()) {
-            String name = e.getKey();
-            String code = name.replaceAll("[^A-Za-z0-9]", "");
+        for (String slug : SLUGS) {
             try {
-                String ics = get(BASE + e.getValue());
-                List<String[]> holidays = parseIcs(ics); // {date, summary}
-                if (holidays.isEmpty()) {
-                    System.out.println("Skipping " + name + " (no events)");
-                    continue;
-                }
+                String ics = get(String.format(URL_TEMPLATE, slug));
+                List<String> lines = unfold(ics);
+                String name = calendarName(lines);
+                if (name == null) { System.err.println("No name for " + slug); continue; }
+                String code = name.replaceAll("[^A-Za-z0-9]", "");
+
+                List<String[]> holidays = parseEvents(lines); // {date, summary}
+                if (holidays.isEmpty()) { System.out.println("Skipping " + name + " (no events)"); continue; }
                 holidays.sort((a, b) -> {
                     int c = a[0].compareTo(b[0]);
                     return c != 0 ? c : a[1].compareToIgnoreCase(b[1]);
                 });
+
                 StringBuilder sb = new StringBuilder("[");
                 for (int i = 0; i < holidays.size(); i++) {
                     if (i > 0) sb.append(',');
@@ -84,7 +78,7 @@ public final class HolidayGen {
                 index.add(new String[]{code, name});
                 System.out.println(name + " (" + holidays.size() + " entries)");
             } catch (Exception ex) {
-                System.err.println("Skipping " + name + ": " + ex.getMessage());
+                System.err.println("Skipping " + slug + ": " + ex.getMessage());
             }
         }
 
@@ -102,17 +96,24 @@ public final class HolidayGen {
         System.out.println("Wrote " + index.size() + " countries to " + outDir.getAbsolutePath());
     }
 
-    /** Parse VEVENTs into {isoDate, summary}. Handles line folding and all-day DATE values. */
-    private static List<String[]> parseIcs(String ics) {
-        List<String> lines = unfold(ics);
+    private static String calendarName(List<String> lines) {
+        for (String line : lines) {
+            if (line.startsWith("X-WR-CALNAME:")) {
+                return line.substring("X-WR-CALNAME:".length())
+                    .replaceFirst("^Holidays and Observances in ", "")
+                    .replaceFirst("^Holidays in ", "")
+                    .trim();
+            }
+        }
+        return null;
+    }
+
+    private static List<String[]> parseEvents(List<String> lines) {
         List<String[]> out = new ArrayList<>();
         boolean inEvent = false;
-        String summary = null;
-        String date = null;
+        String summary = null, date = null;
         for (String line : lines) {
-            if (line.equals("BEGIN:VEVENT")) {
-                inEvent = true; summary = null; date = null; continue;
-            }
+            if (line.equals("BEGIN:VEVENT")) { inEvent = true; summary = null; date = null; continue; }
             if (line.equals("END:VEVENT")) {
                 if (summary != null && date != null) out.add(new String[]{date, summary});
                 inEvent = false; continue;
@@ -132,7 +133,6 @@ public final class HolidayGen {
         return out;
     }
 
-    /** Unfold RFC 5545 folded lines (continuations begin with space or tab). */
     private static List<String> unfold(String ics) {
         List<String> out = new ArrayList<>();
         for (String raw : ics.split("\\r?\\n")) {
@@ -172,7 +172,7 @@ public final class HolidayGen {
             .GET().build();
         HttpResponse<String> resp = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (resp.statusCode() / 100 != 2) {
-            throw new IllegalStateException("HTTP " + resp.statusCode() + " for " + url);
+            throw new IllegalStateException("HTTP " + resp.statusCode());
         }
         return resp.body();
     }
