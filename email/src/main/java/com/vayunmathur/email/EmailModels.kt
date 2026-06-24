@@ -154,6 +154,7 @@ data class OutboxEntry(
     val accountEmail: String,
     val to: String,
     val cc: String? = null,
+    val bcc: String? = null,
     val subject: String,
     val body: String,
     val attachmentLocalPaths: String = "[]",

@@ -313,6 +313,7 @@ class EmailManager {
         subject: String,
         body: String,
         cc: String? = null,
+        bcc: String? = null,
         attachments: List<Uri> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
@@ -324,6 +325,9 @@ class EmailManager {
         message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to))
         if (!cc.isNullOrBlank()) {
             message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(cc))
+        }
+        if (!bcc.isNullOrBlank()) {
+            message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(bcc))
         }
         message.subject = subject
         

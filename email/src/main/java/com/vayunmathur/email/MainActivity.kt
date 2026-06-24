@@ -929,6 +929,9 @@ fun ComposerScreen(
     }
     
     var to by remember { mutableStateOf(initialTo) }
+    var cc by remember { mutableStateOf("") }
+    var bcc by remember { mutableStateOf("") }
+    var showCcBcc by remember { mutableStateOf(false) }
     var subject by remember { mutableStateOf(initialSubject) }
     var body by remember { mutableStateOf(initialBody) }
     var sending by remember { mutableStateOf(false) }
@@ -971,6 +974,8 @@ fun ComposerScreen(
                             to = to, 
                             subject = subject, 
                             body = body, 
+                            cc = cc.ifBlank { null },
+                            bcc = bcc.ifBlank { null },
                             attachments = attachments,
                             inReplyTo = inReplyTo, 
                             references = references, 
@@ -1026,7 +1031,14 @@ fun ComposerScreen(
                 )
             }
 
-            OutlinedTextField(value = to, onValueChange = { to = it }, label = { Text(stringResource(R.string.to_label)) }, modifier = Modifier.fillMaxWidth())
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(value = to, onValueChange = { to = it }, label = { Text(stringResource(R.string.to_label)) }, modifier = Modifier.weight(1f))
+                TextButton(onClick = { showCcBcc = !showCcBcc }) { Text("Cc/Bcc") }
+            }
+            if (showCcBcc) {
+                OutlinedTextField(value = cc, onValueChange = { cc = it }, label = { Text("Cc") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = bcc, onValueChange = { bcc = it }, label = { Text("Bcc") }, modifier = Modifier.fillMaxWidth())
+            }
             OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text(stringResource(R.string.subject_label)) }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text(stringResource(R.string.body_label)) }, modifier = Modifier.fillMaxWidth().weight(1f))
             

@@ -19,7 +19,7 @@ import com.vayunmathur.email.OutboxEntry
         Attachment::class,
         OutboxEntry::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class EmailDatabase : RoomDatabase() {
@@ -77,6 +77,10 @@ abstract class EmailDatabase : RoomDatabase() {
             it.execSQL("ALTER TABLE EmailAccount ADD COLUMN signature TEXT NOT NULL DEFAULT ''")
         }
 
+        private val MIGRATION_9_10 = Migration(9, 10) {
+            it.execSQL("ALTER TABLE OutboxEntry ADD COLUMN bcc TEXT")
+        }
+
         fun getInstance(context: Context): EmailDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -84,7 +88,7 @@ abstract class EmailDatabase : RoomDatabase() {
                     EmailDatabase::class.java,
                     "email-db"
                 )
-                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .build().also { instance = it }
             }
         }
