@@ -595,8 +595,13 @@ fun CameraScreen(backStack: NavBackStack<Route>, viewModel: CameraViewModel) {
                     },
                     onFlipCamera = { viewModel.flipCamera() },
                     onGallery = {
-                        val viewImages = Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-                        context.startActivity(Intent.createChooser(viewImages, null))
+                        val intent = lastCaptureUri?.let { uri ->
+                            Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, context.contentResolver.getType(uri) ?: "image/*")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                        } ?: Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                        context.startActivity(Intent.createChooser(intent, null))
                     },
                     iconRotation = animatedRotation
                 )
