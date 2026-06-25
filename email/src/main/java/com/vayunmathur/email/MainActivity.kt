@@ -861,6 +861,10 @@ fun MessageItem(
 
         if (msg.isHtml && msg.body != null) {
             var loadImages by remember(msg.id) { mutableStateOf(false) }
+            var showQuotes by remember(msg.id) { mutableStateOf(false) }
+            val hasQuotes = remember(msg.body) {
+                listOf("gmail_quote", "yahoo_quoted", "moz-cite-prefix", "<blockquote").any { msg.body.contains(it, ignoreCase = true) }
+            }
             if (!loadImages) {
                 Row(
                     modifier = Modifier
@@ -880,16 +884,31 @@ fun MessageItem(
             HtmlText(
                 html = msg.body,
                 blockRemoteImages = !loadImages,
+                hideQuotes = hasQuotes && !showQuotes,
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
                     .fillMaxWidth()
             )
+            if (hasQuotes) {
+                TextButton(
+                    onClick = { showQuotes = !showQuotes },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) { Text(if (showQuotes) "Hide quoted text" else "Show quoted text") }
+            }
         } else {
+            var showQuotes by remember(msg.id) { mutableStateOf(false) }
+            val (mainText, quotedText) = remember(msg.body) { splitQuotedText(msg.body ?: "(No Content)") }
             Text(
-                text = msg.body ?: "(No Content)", 
-                style = MaterialTheme.typography.bodyMedium, 
+                text = if (showQuotes || quotedText.isEmpty()) (msg.body ?: "(No Content)") else mainText,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
+            if (quotedText.isNotEmpty()) {
+                TextButton(
+                    onClick = { showQuotes = !showQuotes },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) { Text(if (showQuotes) "Hide quoted text" else "Show quoted text") }
+            }
         }
         
         if (attachments.isNotEmpty()) {
@@ -1534,3 +1553,24 @@ private fun contactEmail(context: android.content.Context, uri: android.net.Uri)
             null, null, null,
         )?.use { if (it.moveToFirst()) it.getString(0) else null }
     }.getOrNull()
+
+/**
+ * Split a plain-text body into (visibleText, quotedText). Quoted text starts at
+ * the first reply boundary ("On … wrote:", "-----Original Message-----") or a
+ * run of '>'-prefixed lines. Returns empty quotedText when nothing is quoted.
+ */
+private fun splitQuotedText(body: String): Pair<String, String> {
+    val lines = body.split("\n")
+    val onWrote = Regex("^On .+ wrote:\\s*$")
+    val origMsg = Regex("^-{2,}\\s*Original Message\\s*-{2,}\\s*$", RegexOption.IGNORE_CASE)
+    for (i in lines.indices) {
+        val line = lines[i].trim()
+        val isBoundary = onWrote.matches(line) || origMsg.matches(line) || line.startsWith(">")
+        if (isBoundary && i > 0) {
+            val main = lines.subList(0, i).joinToString("\n").trimEnd()
+            val quoted = lines.subList(i, lines.size).joinToString("\n")
+            return main to quoted
+        }
+    }
+    return body to ""
+}

@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 
 @Composable
-fun HtmlText(html: String, modifier: Modifier = Modifier, blockRemoteImages: Boolean = true) {
+fun HtmlText(html: String, modifier: Modifier = Modifier, blockRemoteImages: Boolean = true, hideQuotes: Boolean = false) {
     val backgroundColor = MaterialTheme.colorScheme.surface
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val isDark = isSystemInDarkTheme()
@@ -17,6 +17,9 @@ fun HtmlText(html: String, modifier: Modifier = Modifier, blockRemoteImages: Boo
     // Convert colors to hex strings for CSS
     val backgroundHex = String.format("#%06X", 0xFFFFFF and backgroundColor.toArgb())
     val textHex = String.format("#%06X", 0xFFFFFF and onSurfaceColor.toArgb())
+    val quoteCss = if (hideQuotes) {
+        "blockquote, .gmail_quote, .yahoo_quoted, .moz-cite-prefix, .gmail_extra { display: none !important; }"
+    } else ""
     
     AndroidView(
         modifier = modifier,
@@ -69,6 +72,7 @@ fun HtmlText(html: String, modifier: Modifier = Modifier, blockRemoteImages: Boo
                                 max-width: 100%;
                                 height: auto;
                             }
+                            $quoteCss
                         </style>
                     </head>
                     <body>$html</body>
@@ -91,6 +95,7 @@ fun HtmlText(html: String, modifier: Modifier = Modifier, blockRemoteImages: Boo
                                 line-height: 1.5;
                             }
                             img { max-width: 100%; height: auto; }
+                            $quoteCss
                         </style>
                     </head>
                     <body>$html</body>
