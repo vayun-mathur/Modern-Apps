@@ -1042,6 +1042,30 @@ fun ComposerScreen(
     var showAccountPicker by remember { mutableStateOf(false) }
     var showSchedule by remember { mutableStateOf(false) }
 
+    // Pick a recipient from the system contact picker (no READ_CONTACTS needed —
+    // the picker grants temporary read access to the chosen email row).
+    var pickTarget by remember { mutableStateOf(0) } // 0=to, 1=cc, 2=bcc
+    val contactPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val email = result.data?.data?.let { contactEmail(context, it) }
+            if (!email.isNullOrBlank()) {
+                when (pickTarget) {
+                    0 -> to = appendRecipient(to, email)
+                    1 -> cc = appendRecipient(cc, email)
+                    2 -> bcc = appendRecipient(bcc, email)
+                }
+            }
+        }
+    }
+    val pickContact = { target: Int ->
+        pickTarget = target
+        contactPicker.launch(
+            Intent(Intent.ACTION_PICK, android.provider.ContactsContract.CommonDataKinds.Email.CONTENT_URI)
+        )
+    }
+
     // Draft auto-save / resume state.
     var currentDraftId by remember { mutableStateOf(draftId) }
     var draftLoaded by remember { mutableStateOf(draftId == null) }
@@ -1193,12 +1217,25 @@ fun ComposerScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(value = to, onValueChange = { to = it }, label = { Text(stringResource(R.string.to_label)) }, modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = to, onValueChange = { to = it },
+                    label = { Text(stringResource(R.string.to_label)) },
+                    trailingIcon = { IconButton(onClick = { pickContact(0) }) { com.vayunmathur.library.ui.IconAdd() } },
+                    modifier = Modifier.weight(1f),
+                )
                 TextButton(onClick = { showCcBcc = !showCcBcc }) { Text("Cc/Bcc") }
             }
             if (showCcBcc) {
-                OutlinedTextField(value = cc, onValueChange = { cc = it }, label = { Text("Cc") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = bcc, onValueChange = { bcc = it }, label = { Text("Bcc") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = cc, onValueChange = { cc = it }, label = { Text("Cc") },
+                    trailingIcon = { IconButton(onClick = { pickContact(1) }) { com.vayunmathur.library.ui.IconAdd() } },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = bcc, onValueChange = { bcc = it }, label = { Text("Bcc") },
+                    trailingIcon = { IconButton(onClick = { pickContact(2) }) { com.vayunmathur.library.ui.IconAdd() } },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text(stringResource(R.string.subject_label)) }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text(stringResource(R.string.body_label)) }, modifier = Modifier.fillMaxWidth().weight(1f))
@@ -1480,3 +1517,20 @@ private fun scheduleTime(hour: Int, sameDay: Boolean): Long {
     }
     return c.timeInMillis
 }
+
+/** Append an email to a comma-separated recipient field, avoiding duplicates. */
+private fun appendRecipient(field: String, email: String): String {
+    val existing = field.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    if (existing.any { it.equals(email, ignoreCase = true) }) return field
+    return if (existing.isEmpty()) email else existing.joinToString(", ") + ", " + email
+}
+
+/** Read the email address from a contact-picker result URI (granted per-item, no permission needed). */
+private fun contactEmail(context: android.content.Context, uri: android.net.Uri): String? =
+    runCatching {
+        context.contentResolver.query(
+            uri,
+            arrayOf(android.provider.ContactsContract.CommonDataKinds.Email.ADDRESS),
+            null, null, null,
+        )?.use { if (it.moveToFirst()) it.getString(0) else null }
+    }.getOrNull()
