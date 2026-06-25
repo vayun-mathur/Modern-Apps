@@ -7,7 +7,7 @@
     <string name="counter">%1$d / %2$d</string>
     <string name="recipes">配方（%1$d）</string>
     <string name="used_in">用于（%1$d）</string>
-    <string name="locked">+ %1$d 个未查看配方</string>
+    <string name="locked">+ %1$d 个已锁定配方。</string>
     <string name="locked_description">解锁这些配方的所有产出即可查看。</string>
     <string name="collection">收藏</string>
     <string name="discovered_counter">%1$d / %2$d 已发现</string>
