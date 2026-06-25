@@ -978,6 +978,7 @@ fun ComposerScreen(
     var attachments by remember { mutableStateOf<List<Uri>>(emptyList()) }
     
     var showAccountPicker by remember { mutableStateOf(false) }
+    var showSchedule by remember { mutableStateOf(false) }
 
     // Draft auto-save / resume state.
     var currentDraftId by remember { mutableStateOf(draftId) }
@@ -1039,6 +1040,29 @@ fun ComposerScreen(
                 actions = {
                     IconButton(onClick = { attachmentLauncher.launch("*/*") }) {
                         IconAttachment()
+                    }
+                    Box {
+                        TextButton(onClick = { showSchedule = true }, enabled = fromAccount != null) {
+                            Text("Later")
+                        }
+                        DropdownMenu(expanded = showSchedule, onDismissRequest = { showSchedule = false }) {
+                            val schedule = { at: Long ->
+                                showSchedule = false
+                                fromAccount?.let { acc ->
+                                    viewModel.scheduleSend(
+                                        account = acc, to = to, subject = subject, body = body,
+                                        cc = cc.ifBlank { null }, bcc = bcc.ifBlank { null },
+                                        attachments = attachments, inReplyTo = inReplyTo,
+                                        references = references, scheduledAt = at,
+                                    ) { currentDraftId?.let { viewModel.deleteDraft(it) } }
+                                    android.widget.Toast.makeText(context, "Scheduled", android.widget.Toast.LENGTH_SHORT).show()
+                                    onBack()
+                                }
+                            }
+                            DropdownMenuItem(text = { Text("In 1 hour") }, onClick = { schedule(System.currentTimeMillis() + 3_600_000L) })
+                            DropdownMenuItem(text = { Text("This evening (6 PM)") }, onClick = { schedule(scheduleTime(18, sameDay = true)) })
+                            DropdownMenuItem(text = { Text("Tomorrow (8 AM)") }, onClick = { schedule(scheduleTime(8, sameDay = false)) })
+                        }
                     }
                     IconButton(onClick = {
                         val acc = fromAccount ?: return@IconButton
@@ -1380,4 +1404,17 @@ private fun formatBytes(bytes: Long): String = when {
     bytes >= 1024L * 1024 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1048576.0)
     bytes >= 1024L -> String.format(java.util.Locale.US, "%.0f KB", bytes / 1024.0)
     else -> "$bytes B"
+}
+
+/** Epoch millis for [hour]:00 today (or tomorrow if that time already passed, or sameDay=false forces next day). */
+private fun scheduleTime(hour: Int, sameDay: Boolean): Long {
+    val c = java.util.Calendar.getInstance()
+    c.set(java.util.Calendar.HOUR_OF_DAY, hour)
+    c.set(java.util.Calendar.MINUTE, 0)
+    c.set(java.util.Calendar.SECOND, 0)
+    c.set(java.util.Calendar.MILLISECOND, 0)
+    if (!sameDay || c.timeInMillis <= System.currentTimeMillis()) {
+        c.add(java.util.Calendar.DAY_OF_YEAR, 1)
+    }
+    return c.timeInMillis
 }

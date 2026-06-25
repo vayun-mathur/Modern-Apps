@@ -68,6 +68,33 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { dao.deleteDraftById(id) }
     }
 
+    /** Queue a message to send at [scheduledAt] (epoch millis) via the outbox. */
+    fun scheduleSend(
+        account: EmailAccount,
+        to: String,
+        subject: String,
+        body: String,
+        cc: String? = null,
+        bcc: String? = null,
+        attachments: List<Uri> = emptyList(),
+        inReplyTo: String? = null,
+        references: String? = null,
+        scheduledAt: Long,
+        onDone: () -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            OutboxManager.enqueue(
+                context = getApplication(),
+                accountEmail = account.email,
+                to = to, subject = subject, body = body,
+                cc = cc, bcc = bcc, attachments = attachments,
+                inReplyTo = inReplyTo, references = references,
+                scheduledAt = scheduledAt,
+            )
+            onDone()
+        }
+    }
+
     private val _aiSummary = MutableStateFlow<String?>(null)
     val aiSummary: StateFlow<String?> = _aiSummary
 

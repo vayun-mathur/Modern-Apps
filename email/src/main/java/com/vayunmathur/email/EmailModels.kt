@@ -163,7 +163,8 @@ data class OutboxEntry(
     val createdAt: Long = System.currentTimeMillis(),
     val lastError: String? = null,
     val attemptCount: Int = 0,
-    val lastAttemptAt: Long = 0
+    val lastAttemptAt: Long = 0,
+    val scheduledAt: Long = 0
 )
 
 @Entity
