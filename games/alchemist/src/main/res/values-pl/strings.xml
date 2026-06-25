@@ -7,7 +7,7 @@
     <string name="counter">%1$d / %2$d</string>
     <string name="recipes">Receptury (%1$d)</string>
     <string name="used_in">Używane w (%1$d)</string>
-    <string name="locked">+ %1$d niewidzianych przepisów</string>
+    <string name="locked">+ %1$d niewidzianych przepisów.</string>
     <string name="locked_description">Odblokuj wszystkie wyniki tych przepisów, aby je wyświetlić.</string>
     <string name="collection">Kolekcja</string>
     <string name="discovered_counter">Odkryto %1$d / %2$d</string>
