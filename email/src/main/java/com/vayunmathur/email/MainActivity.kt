@@ -1027,8 +1027,8 @@ fun ComposerScreen(
             }
     }
 
-    val attachmentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { attachments = attachments + it }
+    val attachmentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        if (uris.isNotEmpty()) attachments = attachments + uris
     }
 
     Scaffold(
@@ -1118,9 +1118,33 @@ fun ComposerScreen(
             OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text(stringResource(R.string.body_label)) }, modifier = Modifier.fillMaxWidth().weight(1f))
             
             if (attachments.isNotEmpty()) {
-                Text("Attachments:", style = MaterialTheme.typography.labelLarge)
+                val totalBytes = remember(attachments) { attachments.sumOf { uriSize(context, it) } }
+                Text("Attachments (${formatBytes(totalBytes)})", style = MaterialTheme.typography.labelLarge)
+                if (totalBytes > 25L * 1024 * 1024) {
+                    Text(
+                        "Total attachment size exceeds 25 MB; many providers will reject it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 attachments.forEach { uri ->
-                    Text(uri.toString(), style = MaterialTheme.typography.bodySmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconAttachment(modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "${uriName(context, uri)} · ${formatBytes(uriSize(context, uri))}",
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { attachments = attachments - uri }) {
+                            com.vayunmathur.library.ui.IconClose(modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
             }
         }
@@ -1336,4 +1360,24 @@ fun DraftsScreen(
             }
         }
     }
+}
+
+private fun uriName(context: android.content.Context, uri: android.net.Uri): String =
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+            if (it.moveToFirst()) it.getString(0) else null
+        }
+    }.getOrNull() ?: uri.lastPathSegment ?: "attachment"
+
+private fun uriSize(context: android.content.Context, uri: android.net.Uri): Long =
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)?.use {
+            if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L
+        }
+    }.getOrNull() ?: 0L
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1024L * 1024 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1048576.0)
+    bytes >= 1024L -> String.format(java.util.Locale.US, "%.0f KB", bytes / 1024.0)
+    else -> "$bytes B"
 }
