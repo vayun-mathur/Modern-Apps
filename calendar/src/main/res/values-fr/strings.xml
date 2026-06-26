@@ -77,4 +77,5 @@
     <string name="by_week_no_label">Par numéro de semaine (1-53, de -1 à -53)</string>
     <string name="by_week_no_placeholder">p. ex. 1,26,52</string>
     <string name="week_start_label">Premier jour de la semaine</string>
+    <string name="add_reminder">Définir un rappel</string>
 </resources>
