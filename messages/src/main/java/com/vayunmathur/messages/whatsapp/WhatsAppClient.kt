@@ -68,6 +68,9 @@ object WhatsAppClient {
     // WhatsApp blocks non-browser TLS fingerprints (JA3). WebView uses Chromium's
     // network stack which is indistinguishable from Chrome browser.
     private var webSocket: WebViewWebSocket? = null
+    // Collector jobs for the current socket; cancelled on teardown so old (zombie) sockets
+    // don't keep running keepalives or trigger reconnects, which causes self-conflicts.
+    private var socketCollectorJobs: MutableList<Job> = mutableListOf()
     private var db: WhatsAppDatabase? = null
     private var e2e: WhatsAppE2E? = null
     private var backfillJob: Job? = null
@@ -208,7 +211,8 @@ object WhatsAppClient {
 
                 // 2. Connect the provisioning socket. The server will send a pair-device IQ
                 //    carrying the QR ref once the Noise handshake completes.
-                webSocket = WebViewWebSocket(
+                teardownSocket()
+                val ws = WebViewWebSocket(
                     appContext,
                     null,
                     WebViewWebSocket.RegistrationData(
@@ -220,9 +224,11 @@ object WhatsAppClient {
                         signedPreKeyPublic = spkPub,
                         signedPreKeySignature = signedPreKeySig,
                     ),
-                ).apply {
+                )
+                webSocket = ws
+                socketCollectorJobs.add(
                     scope.launch {
-                        connectionState.collect { connState ->
+                        ws.connectionState.collect { connState ->
                             when (connState) {
                                 is WebViewWebSocket.ConnectionState.Connecting ->
                                     WhatsAppDiag.log(TAG, "provisioning socket: Connecting")
@@ -234,7 +240,7 @@ object WhatsAppClient {
                                     if (pairedAuth != null) {
                                         // Pairing completed: the server drops the provisioning
                                         // socket; reconnect as the registered device (login payload).
-                                        Log.i(TAG, "Provisioning socket closed post-pair; reconnecting as registered device")
+                                        WhatsAppDiag.log(TAG, "Provisioning closed post-pair; reconnecting as registered device")
                                         connect(pairedAuth)
                                     } else if (_state.value is State.AwaitingQrScan || _state.value is State.Connecting) {
                                         _state.value = State.Disconnected(connState.reason)
@@ -244,11 +250,13 @@ object WhatsAppClient {
                             }
                         }
                     }
+                )
+                socketCollectorJobs.add(
                     scope.launch {
-                        messages.collect { data -> handleProvisioningMessage(data) }
+                        ws.messages.collect { data -> handleProvisioningMessage(data) }
                     }
-                    connect()
-                }
+                )
+                ws.connect()
             } catch (e: Exception) {
                 Log.e(TAG, "Provisioning failed", e)
                 _state.value = State.Disconnected("Provisioning failed: ${e.message}")
@@ -381,6 +389,20 @@ object WhatsAppClient {
             val deviceSignature = org.signal.libsignal.protocol.ecc.ECPrivateKey(keys.identityPriv)
                 .calculateSignature(deviceMsg)
 
+            // Self-verify our own device signature against the identity pubkey we advertised.
+            // If our OWN library can't verify it, the phone can't either → "couldn't link device".
+            val devSelfOk = try {
+                org.signal.libsignal.protocol.ecc.ECPublicKey.fromPublicKeyBytes(keys.identityPub)
+                    .verifySignature(deviceMsg, deviceSignature)
+            } catch (e: Exception) { false }
+            // Also re-verify the signed-prekey signature we generated at provisioning time.
+            val spkMsg = ByteArray(33).also { it[0] = 0x05; System.arraycopy(keys.signedPreKeyPub, 0, it, 1, 32) }
+            val spkSelfOk = try {
+                org.signal.libsignal.protocol.ecc.ECPublicKey.fromPublicKeyBytes(keys.identityPub)
+                    .verifySignature(spkMsg, keys.signedPreKeySig)
+            } catch (e: Exception) { false }
+            WhatsAppDiag.log(TAG, "self-verify: deviceSig=$devSelfOk signedPreKeySig=$spkSelfOk (identityPub=${keys.identityPub.size}B priv=${keys.identityPriv.size}B)")
+
             val signedIdentity = deviceIdentity.toBuilder()
                 .setDeviceSignature(com.google.protobuf.ByteString.copyFrom(deviceSignature))
                 .build()
@@ -512,9 +534,11 @@ object WhatsAppClient {
         val database = db ?: return
         val count = try { database.e2ePreKeyDao().getCount() } catch (e: Exception) { return }
         val unuploaded = try { database.e2ePreKeyDao().getUnuploaded().size } catch (e: Exception) { 0 }
+        WhatsAppDiag.log(TAG, "prekeys: local count=$count unuploaded=$unuploaded")
         when {
             count == 0 -> uploadPreKeys(initialUpload = true)
             unuploaded > 0 -> uploadPreKeys(initialUpload = false)
+            else -> WhatsAppDiag.log(TAG, "prekeys: nothing to upload")
         }
     }
 
@@ -536,12 +560,13 @@ object WhatsAppClient {
             ),
             content = content,
         )
+        WhatsAppDiag.log(TAG, "prekeys: uploading (initial=$initialUpload, ${content.size} nodes)…")
         val resp = sendIqAndWait(iq)
         if (resp != null && resp.attrs["type"] != "error") {
             crypto.markPreKeysUploaded()
-            Log.i(TAG, "Uploaded prekeys (initial=$initialUpload)")
+            WhatsAppDiag.log(TAG, "prekeys: upload OK (initial=$initialUpload)")
         } else {
-            Log.w(TAG, "Prekey upload failed or timed out")
+            WhatsAppDiag.log(TAG, "prekeys: upload FAILED/timeout (resp=${resp?.attrs?.get("type") ?: "null"})")
         }
     }
 
@@ -676,20 +701,28 @@ object WhatsAppClient {
         return encs to includeIdentity
     }
 
+    /** Cancel the current socket's collectors and disconnect it, so only one socket is ever live. */
+    private fun teardownSocket() {
+        socketCollectorJobs.forEach { it.cancel() }
+        socketCollectorJobs.clear()
+        webSocket?.disconnect()
+        webSocket = null
+    }
+
     private suspend fun connect(auth: WhatsAppAuthData) {
         _state.value = State.Connecting
+        // Ensure no previous socket (provisioning or a prior login attempt) is still alive,
+        // otherwise overlapping sessions make the server reject us with <stream:error><conflict>.
+        teardownSocket()
 
         // Use WebView-based WebSocket to bypass TLS fingerprinting
-        webSocket = WebViewWebSocket(appContext, auth).apply {
+        val ws = WebViewWebSocket(appContext, auth)
+        webSocket = ws
+        socketCollectorJobs.add(
             scope.launch {
-                connectionState.collect { state ->
+                ws.connectionState.collect { state ->
                     when (state) {
                         is WebViewWebSocket.ConnectionState.Connected -> {
-                            // Noise transport is up, but the server still must send <success>
-                            // before we are authenticated. Do NOT mark State.Connected or reset
-                            // the reconnect backoff here, or a login the server rejects right
-                            // after the handshake produces a tight reconnect loop. Both happen
-                            // in handleConnectSuccess on the real <success> stanza.
                             WhatsAppDiag.log(TAG, "login socket: Noise connected, awaiting <success>")
                             ensureE2E(auth)
                         }
@@ -705,15 +738,15 @@ object WhatsAppClient {
                     }
                 }
             }
-
+        )
+        socketCollectorJobs.add(
             scope.launch {
-                messages.collect { data ->
+                ws.messages.collect { data ->
                     handleIncomingMessage(data)
                 }
             }
-
-            connect()
-        }
+        )
+        ws.connect()
     }
 
     private fun handleIncomingMessage(data: ByteArray) {
@@ -1751,8 +1784,9 @@ object WhatsAppClient {
             authData = updated
             WhatsAppAuthData.save(appContext, updated)
         }
-        setPassiveActive()
         scope.launch { maybeUploadPreKeys() }
+        val pas = setPassiveActive()
+        WhatsAppDiag.log(TAG, "post-success: SetPassive(active) ${if (pas) "OK" else "FAILED"}")
         sendUnavailablePresence()
         kickoffBackfill()
     }
@@ -1763,7 +1797,7 @@ object WhatsAppClient {
      * <iq xmlns="passive" type="set"><active/></iq>. Login sends passive=true, so this is
      * required after <success> or the companion never receives messages.
      */
-    private suspend fun setPassiveActive() {
+    private suspend fun setPassiveActive(): Boolean {
         val node = WhatsAppProtocol.Node(
             tag = "iq",
             attrs = mapOf(
@@ -1774,7 +1808,8 @@ object WhatsAppClient {
             ),
             content = listOf(WhatsAppProtocol.Node(tag = "active")),
         )
-        sendIqAndWait(node, timeoutMs = 10_000)
+        val resp = sendIqAndWait(node, timeoutMs = 10_000)
+        return resp != null && resp.attrs["type"] != "error"
     }
 
     /**

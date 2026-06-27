@@ -555,13 +555,14 @@ class WebViewWebSocket(
                 val encoded = WhatsAppProtocol.encodeNode(keepaliveNode)
                 val sent = send(encoded)
                 if (!sent) {
-                    Log.w(TAG, "Failed to send keepalive")
+                    WhatsAppDiag.log(TAG, "keepalive send FAILED ($id)")
                     if (System.currentTimeMillis() - lastKeepaliveSuccess > KEEPALIVE_MAX_FAIL_MS) {
-                        Log.w(TAG, "Keepalive failed for too long, forcing reconnect")
+                        WhatsAppDiag.log(TAG, "keepalive failed >${KEEPALIVE_MAX_FAIL_MS}ms, forcing reconnect")
                         disconnect()
                         return@launch
                     }
                 } else {
+                    WhatsAppDiag.log(TAG, "keepalive sent ($id)")
                     lastKeepaliveSuccess = System.currentTimeMillis()
                 }
             }
