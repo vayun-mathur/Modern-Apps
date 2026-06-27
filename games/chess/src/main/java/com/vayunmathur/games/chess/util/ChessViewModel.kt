@@ -20,12 +20,22 @@ sealed class GameMode {
     data class VsAI(val playerColor: PieceColor, val difficulty: StockfishEngine.Difficulty) : GameMode()
 }
 
+/** Terminal outcome of a game, or null while it is still in progress. */
+sealed class GameResult {
+    data class Checkmate(val winner: PieceColor) : GameResult()
+    data object Stalemate : GameResult()
+    data object InsufficientMaterial : GameResult()
+
+    val isGameOver: Boolean get() = true
+}
+
 data class ChessUiState(
     val board: Board = Board.initialState,
     val selectedPiece: Position? = null,
     val gameMode: GameMode = GameMode.TwoPlayer,
     val turn: PieceColor = PieceColor.WHITE,
     val gameStatus: String? = null,
+    val gameResult: GameResult? = null,
     val isBoardFlipped: Boolean = false
 )
 
@@ -49,7 +59,7 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         val board = state.board
         val pieceAtPosition = board.pieces[position.row][position.col]
 
-        if (isGameOver(board)) return
+        if (state.gameResult != null) return
 
         val mode = state.gameMode
         if (mode is GameMode.VsAI && state.turn != mode.playerColor) return
@@ -62,16 +72,18 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             if (board.isValidMove(selectedPiece, position)) {
                 val newBoard = board.movePiece(selectedPiece, position)
+                val nextTurn = if (newBoard.promotionPosition != null) state.turn else state.turn.opposite
+                val (result, status) = statusFor(newBoard, nextTurn)
                 _uiState.update {
-                    val nextTurn = if (newBoard.promotionPosition != null) it.turn else it.turn.opposite
                     it.copy(
                         board = newBoard,
                         selectedPiece = null,
                         turn = nextTurn,
-                        gameStatus = getGameStatus(newBoard, nextTurn)
+                        gameStatus = status,
+                        gameResult = result
                     )
                 }
-                if (mode is GameMode.VsAI && !isGameOver(newBoard) && newBoard.promotionPosition == null) {
+                if (mode is GameMode.VsAI && result == null && newBoard.promotionPosition == null) {
                     viewModelScope.launch {
                         delay(500)
                         makeAiMove()
@@ -87,15 +99,12 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
         val board = _uiState.value.board
         val promotionPosition = board.promotionPosition ?: return
         val newBoard = board.promotePawn(promotionPosition, pieceType)
+        val nextTurn = _uiState.value.turn.opposite
+        val (result, status) = statusFor(newBoard, nextTurn)
         _uiState.update {
-            val nextTurn = it.turn.opposite
-            it.copy(
-                board = newBoard,
-                turn = nextTurn,
-                gameStatus = getGameStatus(newBoard, nextTurn)
-            )
+            it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
         }
-        if (_uiState.value.gameMode is GameMode.VsAI && !isGameOver(newBoard)) {
+        if (_uiState.value.gameMode is GameMode.VsAI && result == null) {
             makeAiMove()
         }
     }
@@ -103,28 +112,38 @@ class ChessViewModel(application: Application) : AndroidViewModel(application) {
     private fun makeAiMove() {
         viewModelScope.launch {
             val board = _uiState.value.board
-            val bestMove = chessApi.getBestMove(board)
+            // Returns null when the engine has no move to make (mate/stalemate against the AI);
+            // without this guard the "bestmove (none)" reply would be parsed as a coordinate and crash.
+            val bestMove = chessApi.getBestMove(board) ?: return@launch
             val newBoard = board.movePiece(bestMove.start, bestMove.end, bestMove.promotedTo)
+            val nextTurn = _uiState.value.turn.opposite
+            val (result, status) = statusFor(newBoard, nextTurn)
             _uiState.update {
-                val nextTurn = it.turn.opposite
-                it.copy(
-                    board = newBoard,
-                    turn = nextTurn,
-                    gameStatus = getGameStatus(newBoard, nextTurn)
-                )
+                it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
             }
         }
     }
 
-    private fun isGameOver(board: Board): Boolean =
-        board.isCheckmate(PieceColor.WHITE) || board.isCheckmate(PieceColor.BLACK)
+    /** Terminal result for [board] when it is [turn]'s move, or null if play continues. */
+    private fun resultFor(board: Board, turn: PieceColor): GameResult? = when {
+        board.isCheckmate(turn) -> GameResult.Checkmate(turn.opposite)
+        board.isInsufficientMaterial() -> GameResult.InsufficientMaterial
+        board.isStalemate(turn) -> GameResult.Stalemate
+        else -> null
+    }
 
-    private fun getGameStatus(board: Board, turn: PieceColor): String? {
+    /** Computes the result plus the localized status line (terminal result, or "check", or none). */
+    private fun statusFor(board: Board, turn: PieceColor): Pair<GameResult?, String?> {
+        val result = resultFor(board, turn)
         val ctx = getApplication<Application>()
-        return when {
-            board.isCheckmate(turn) -> if (turn == PieceColor.WHITE) ctx.getString(R.string.black_wins) else ctx.getString(R.string.white_wins)
-            board.isKingInCheck(turn) -> ctx.getString(R.string.check)
-            else -> null
+        val text = when (result) {
+            is GameResult.Checkmate ->
+                if (result.winner == PieceColor.WHITE) ctx.getString(R.string.white_wins)
+                else ctx.getString(R.string.black_wins)
+            GameResult.Stalemate -> ctx.getString(R.string.stalemate)
+            GameResult.InsufficientMaterial -> ctx.getString(R.string.draw_insufficient_material)
+            null -> if (board.isKingInCheck(turn)) ctx.getString(R.string.check) else null
         }
+        return result to text
     }
 }

@@ -17,6 +17,8 @@
     <string name="checkmate_wins">Checkmate! %1$s wins.</string>
     <string name="white_wins">Checkmate! White wins.</string>
     <string name="black_wins">Checkmate! Black wins.</string>
+    <string name="stalemate">Stalemate! It\'s a draw.</string>
+    <string name="draw_insufficient_material">Draw — insufficient material.</string>
 
     <string name="piece_white_king">White King</string>
     <string name="piece_white_queen">White Queen</string>

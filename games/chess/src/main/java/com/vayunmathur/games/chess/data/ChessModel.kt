@@ -201,14 +201,45 @@ data class Board(
         }.any { isValidMoveIgnoringCheck(it, kingPos) }
     }
 
-    fun isCheckmate(kingColor: PieceColor): Boolean {
-        if (!isKingInCheck(kingColor)) return false
+    /** True if [color] has at least one legal move (move that doesn't leave its own king in check). */
+    fun hasLegalMoves(color: PieceColor): Boolean {
         return pieces.flatMapIndexed { row, cols ->
             cols.mapIndexedNotNull { col, piece ->
-                if (piece != null && piece.color == kingColor) Position(row, col) else null
+                if (piece != null && piece.color == color) Position(row, col) else null
             }
-        }.none { pos ->
+        }.any { pos ->
             (0..7).any { i -> (0..7).any { j -> isValidMove(pos, Position(i, j)) } }
+        }
+    }
+
+    fun isCheckmate(kingColor: PieceColor): Boolean =
+        isKingInCheck(kingColor) && !hasLegalMoves(kingColor)
+
+    /** Side to move ([color]) is not in check but has no legal move → draw by stalemate. */
+    fun isStalemate(color: PieceColor): Boolean =
+        !isKingInCheck(color) && !hasLegalMoves(color)
+
+    /**
+     * Draw by insufficient mating material: K vs K, K+minor vs K, and K+B vs K+B with the
+     * bishops on same-colour squares. Anything with a pawn/rook/queen, or that could still
+     * force mate (e.g. two bishops, bishop+knight), is not auto-drawn.
+     */
+    fun isInsufficientMaterial(): Boolean {
+        val all = pieces.flatten().filterNotNull()
+        if (all.any { it.type == PieceType.PAWN || it.type == PieceType.ROOK || it.type == PieceType.QUEEN }) {
+            return false
+        }
+        val minors = all.filter { it.type == PieceType.BISHOP || it.type == PieceType.KNIGHT }
+        return when (minors.size) {
+            0, 1 -> true // K vs K, or K + single minor vs K
+            else -> {
+                if (minors.any { it.type == PieceType.KNIGHT }) return false
+                // only bishops left: drawn iff every bishop sits on the same square colour
+                val squareColors = pieces.flatMapIndexed { r, cols ->
+                    cols.mapIndexedNotNull { c, p -> if (p?.type == PieceType.BISHOP) (r + c) % 2 else null }
+                }.toSet()
+                squareColors.size == 1
+            }
         }
     }
 
