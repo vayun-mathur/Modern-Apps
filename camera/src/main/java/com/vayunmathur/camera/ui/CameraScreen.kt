@@ -112,6 +112,7 @@ import com.vayunmathur.camera.util.CameraViewModel
 import com.vayunmathur.camera.util.GuideDot
 import com.vayunmathur.camera.util.GuideDotState
 import com.vayunmathur.camera.util.FlashMode
+import com.vayunmathur.camera.util.formatZoomLabel
 import com.vayunmathur.camera.util.QrAnalyzer
 import com.vayunmathur.camera.util.TimerDuration
 import com.vayunmathur.library.util.NavBackStack
@@ -895,6 +896,18 @@ private fun ZoomBar(
     onZoomSelected: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Insert the live zoom ratio between the two fixed levels it falls between,
+    // unless it already matches one of the listed options.
+    val displayLevels = remember(zoomLevels, currentZoom) {
+        if (zoomLevels.any { kotlin.math.abs(it.second - currentZoom) < 0.05f }) {
+            zoomLevels
+        } else {
+            val entry = formatZoomLabel(currentZoom) to currentZoom
+            val insertAt = zoomLevels.indexOfFirst { it.second > currentZoom }
+            if (insertAt < 0) zoomLevels + entry
+            else zoomLevels.toMutableList().apply { add(insertAt, entry) }
+        }
+    }
     Row(
         modifier = modifier
             .background(Color(0x99000000), RoundedCornerShape(24.dp))
@@ -902,7 +915,7 @@ private fun ZoomBar(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        zoomLevels.forEach { (label, ratio) ->
+        displayLevels.forEach { (label, ratio) ->
             val isSelected = kotlin.math.abs(currentZoom - ratio) < 0.05f
             Box(
                 modifier = Modifier
