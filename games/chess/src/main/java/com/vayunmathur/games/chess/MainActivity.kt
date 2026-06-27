@@ -60,6 +60,7 @@ import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.games.chess.util.ChessViewModel
 import com.vayunmathur.games.chess.util.ChessUiState
 import com.vayunmathur.games.chess.util.GameMode
+import com.vayunmathur.games.chess.util.GameResult
 import com.vayunmathur.games.chess.util.StockfishEngine
 import com.vayunmathur.games.chess.data.Piece
 import com.vayunmathur.games.chess.data.PieceColor
@@ -254,13 +255,14 @@ fun ChessGame(
         }
     }
 
-    LaunchedEffect(uiState.gameStatus) {
-        val status = uiState.gameStatus ?: return@LaunchedEffect
+    LaunchedEffect(uiState.gameResult) {
+        // Drive achievements off the typed game result, not the localized status text, so they
+        // work in every locale. Only a checkmate counts as a "win"; draws unlock nothing here.
+        val result = uiState.gameResult as? GameResult.Checkmate ?: return@LaunchedEffect
         val mode = uiState.gameMode
-        val playerWins = if (mode is GameMode.VsAI) {
-            if (mode.playerColor == PieceColor.WHITE) status.contains("White wins") else status.contains("Black wins")
-        } else {
-            status.contains("wins")
+        val playerWins = when (mode) {
+            is GameMode.VsAI -> result.winner == mode.playerColor
+            GameMode.TwoPlayer -> true // local play: the side that delivered mate is "the player"
         }
 
         if (playerWins) {
