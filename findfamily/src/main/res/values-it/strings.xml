@@ -97,4 +97,11 @@
     <string name="uwb_status_unsupported">Trova nelle vicinanze (UWB) non è supportata su questo dispositivo.</string>
     <string name="uwb_status_failed">Ricerca nelle vicinanze (UWB) non riuscita.</string>
     <string name="uwb_direction_unavailable_hint">Muovi il telefono per trovare il segnale della direzione</string>
+    <string name="permission_approximate_only_explanation">FindFamily funziona unicamente con la posizione esatta. Hai concesso solo la posizione approssimativa: aggiorna alla posizione esatta per continuare.</string>
+    <string name="permission_reopen_upgrade_prompt">Aggiorna alla posizione esatta</string>
+    <string name="permission_upgrade_dialog_title">Posizione esatta necessaria</string>
+    <string name="permission_upgrade_dialog_message">FindFamily richiede la posizione esatta per condividere la tua posizione precisa. Concedi la posizione esatta.</string>
+    <string name="permission_upgrade_dialog_confirm">Concedi posizione esatta</string>
+    <string name="permission_upgrade_dialog_dismiss">Non ora</string>
+    <string name="share_your_location">Condividi la tua posizione con questa persona</string>
 </resources>
