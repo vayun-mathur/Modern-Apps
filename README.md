@@ -30,6 +30,8 @@ The v2.x.x versions of these apps are all to be considered beta versions. Lots o
 
 Every released and planned app is listed here:
 
+Though some apps may have exceptions, generally a 64-bit device running at least Android 12 is required.
+
 | App Name | F-Droid | Obtainium |
 | :--- | :---: | :---: |
 | **Calendar** | [![F-Droid](https://img.shields.io/badge/F--Droid-Download-blue?logo=f-droid&style=flat-square)](https://f-droid.org/packages/com.vayunmathur.calendar) | [![Obtainium](https://img.shields.io/badge/Obtainium-Download-purple?style=flat-square)](https://api.vayunmathur.com/obtainium-link?name=Calendar&packageName=com.vayunmathur.calendar&apk=calendar-release.apk) |
