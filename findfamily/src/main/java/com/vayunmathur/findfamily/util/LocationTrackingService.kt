@@ -167,7 +167,11 @@ class LocationTrackingService : Service(), SensorEventListener {
 
             val latestMap = locationValueDao.getLatest().first().associateBy { it.userid }
             currentUsers.forEach { user ->
-                val lastLoc = locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp } ?: return@forEach
+                // Self never receives its own published location, so fall back to the fix we
+                // just recorded this heartbeat; otherwise "me" never gets its waypoint recomputed.
+                val lastLoc = if (user.id == Networking.userid) locationValue
+                    else locations.filter { it.userid == user.id }.maxByOrNull { it.timestamp }
+                lastLoc ?: return@forEach
                 val lastSavedLoc = latestMap[user.id]
 
                 if (lastLoc.battery <= 15f && (lastSavedLoc?.battery ?: 100f) > 15f) {
