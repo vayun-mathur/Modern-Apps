@@ -15,8 +15,8 @@ android {
     // instead of shipping a prebuilt binary.
     externalNativeBuild {
         cmake {
-            path = file("src/main/cpp/Stockfish-Library/CMakeLists.txt")
-            version = "3.22.1"
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "4.1.2"
         }
     }
 }
