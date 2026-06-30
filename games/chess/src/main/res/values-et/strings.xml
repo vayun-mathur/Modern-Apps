@@ -30,4 +30,6 @@
     <string name="piece_white_bishop">Valge oda</string>
     <string name="piece_black_knight">Must ratsu</string>
     <string name="promote_pawn">Etturi muundamine</string>
+    <string name="stalemate">Patiseis! Mäng lõppes viigiga.</string>
+    <string name="draw_insufficient_material">Viik - malendeid pole piisavalt.</string>
 </resources>
