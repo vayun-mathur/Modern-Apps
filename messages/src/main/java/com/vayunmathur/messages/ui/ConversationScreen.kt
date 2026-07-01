@@ -1,12 +1,15 @@
 package com.vayunmathur.messages.ui
 
+import android.Manifest
 import android.content.ContentUris
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +48,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
+import com.vayunmathur.library.util.LocalSnackbarHostState
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.messages.R
 import com.vayunmathur.messages.Route
@@ -69,8 +74,13 @@ import com.vayunmathur.messages.data.MessageSource
 import com.vayunmathur.messages.data.MessageState
 import com.vayunmathur.messages.data.MessagesDatabase
 import com.vayunmathur.messages.data.Reaction
+import com.vayunmathur.messages.util.CameraCapture
+import com.vayunmathur.messages.util.FindFamilyLocation
 import com.vayunmathur.messages.util.MessagesViewModel
 import com.vayunmathur.messages.util.ReactionAction
+import com.vayunmathur.messages.util.isMessageRequest
+import com.vayunmathur.messages.util.mediaCapabilities
+import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.text.DateFormat
@@ -116,6 +126,83 @@ fun ConversationScreen(
                 sending = false
                 draft = ""
             }
+        }
+    }
+
+    val context = LocalContext.current
+    val caps = remember(conversation?.source) {
+        conversation?.source?.mediaCapabilities() ?: emptySet()
+    }
+    var showAttachSheet by remember { mutableStateOf(false) }
+    var showPollDialog by remember { mutableStateOf(false) }
+    var showLocationDialog by remember { mutableStateOf(false) }
+    var showCameraFallback by remember { mutableStateOf(false) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    val snackbar = LocalSnackbarHostState.current
+    val scope = rememberCoroutineScope()
+
+    // Read a picked/captured URI and send it as media, carrying the
+    // current draft as the caption (then clear it). Shared by the photo
+    // picker, file picker, and both camera paths.
+    fun sendUri(uri: Uri) {
+        sending = true
+        vm.sendMedia(
+            conversationId = conversationId,
+            uri = uri,
+            caption = draft.trim().takeIf { it.isNotEmpty() },
+        ) { _ ->
+            sending = false
+            draft = ""
+        }
+    }
+
+    val pickFile = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri: Uri? -> if (uri != null) sendUri(uri) }
+
+    val takePhoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+    ) { success: Boolean ->
+        val uri = pendingCameraUri
+        if (success && uri != null) sendUri(uri)
+        pendingCameraUri = null
+    }
+
+    fun startCamera() {
+        if (CameraCapture.hasCameraApp(context)) {
+            val file = CameraCapture.newPhotoFile(context)
+            val uri = CameraCapture.uriFor(context, file)
+            pendingCameraUri = uri
+            takePhoto.launch(uri)
+        } else {
+            // No camera app handles ACTION_IMAGE_CAPTURE — fall back to
+            // the built-in CameraX capture screen.
+            showCameraFallback = true
+        }
+    }
+
+    val cameraPermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted: Boolean ->
+        if (granted) startCamera()
+        else scope.launch { snackbar?.showSnackbar("Camera permission denied") }
+    }
+
+    fun requestCamera() {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) startCamera() else cameraPermission.launch(Manifest.permission.CAMERA)
+    }
+
+    val locationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val url = FindFamilyLocation.parseResult(result.data)
+        if (url != null) {
+            sending = true
+            vm.sendLocation(conversationId, url) { _ -> sending = false }
+        } else {
+            scope.launch { snackbar?.showSnackbar("Couldn't create location link") }
         }
     }
 
@@ -188,7 +275,23 @@ fun ConversationScreen(
             )
         },
         bottomBar = {
-            ComposeRow(
+            Column {
+                if (conversation?.isMessageRequest() == true) {
+                    MessageRequestBar(
+                        onAccept = { vm.acceptMessageRequest(conversationId) },
+                        onBlock = {
+                            vm.blockConversation(conversationId) { ok ->
+                                if (ok) backStack.pop()
+                            }
+                        },
+                        onDelete = {
+                            vm.deleteConversation(conversationId) { ok ->
+                                if (ok) backStack.pop()
+                            }
+                        },
+                    )
+                }
+                ComposeRow(
                 draft = draft,
                 onDraftChange = { newDraft ->
                     draft = newDraft
@@ -213,13 +316,10 @@ fun ConversationScreen(
                     draft = ""
                 },
                 onAttach = {
-                    pickImage.launch(
-                        androidx.activity.result.PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
+                    showAttachSheet = true
                 },
-            )
+                )
+            }
         },
     ) { padding ->
         if (messages.isEmpty()) {
@@ -298,6 +398,75 @@ fun ConversationScreen(
                 reactingTo = null
             },
             onDismiss = { reactingTo = null },
+        )
+    }
+
+    if (showAttachSheet) {
+        AttachmentSheet(
+            capabilities = caps,
+            onPhoto = {
+                showAttachSheet = false
+                pickImage.launch(
+                    androidx.activity.result.PickVisualMediaRequest(
+                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                    )
+                )
+            },
+            onCamera = {
+                showAttachSheet = false
+                requestCamera()
+            },
+            onFile = {
+                showAttachSheet = false
+                pickFile.launch(arrayOf("*/*"))
+            },
+            onPoll = {
+                showAttachSheet = false
+                showPollDialog = true
+            },
+            onLocation = {
+                showAttachSheet = false
+                showLocationDialog = true
+            },
+            onDismiss = { showAttachSheet = false },
+        )
+    }
+
+    if (showPollDialog) {
+        PollDialog(
+            onCreate = { question, options, allowMultiple ->
+                showPollDialog = false
+                sending = true
+                vm.sendPoll(conversationId, question, options, allowMultiple) { _ ->
+                    sending = false
+                }
+            },
+            onDismiss = { showPollDialog = false },
+        )
+    }
+
+    if (showLocationDialog) {
+        LocationDurationDialog(
+            defaultName = conversation?.peerName ?: "Shared location",
+            onConfirm = { name, expiryMillis ->
+                showLocationDialog = false
+                if (FindFamilyLocation.isAvailable(context)) {
+                    locationLauncher.launch(FindFamilyLocation.buildIntent(name, expiryMillis))
+                } else {
+                    scope.launch { snackbar?.showSnackbar("Location sharing unavailable") }
+                }
+            },
+            onDismiss = { showLocationDialog = false },
+        )
+    }
+
+    if (showCameraFallback) {
+        CameraCaptureScreen(
+            onCaptured = { uri ->
+                showCameraFallback = false
+                sendUri(uri)
+            },
+            onDismiss = { showCameraFallback = false },
         )
     }
 }
@@ -472,6 +641,39 @@ private fun MessageBubble(
  * ANGRY / DISLIKE) but we send them as raw unicode — the relay
  * normalizes to the EmojiType enum server-side.
  */
+@Composable
+private fun MessageRequestBar(
+    onAccept: () -> Unit,
+    onBlock: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Surface(
+        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(
+                "This sender isn't in your contacts.",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                TextButton(onClick = onBlock) { Text("Block") }
+                TextButton(onClick = onDelete) { Text("Delete") }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onAccept) {
+                    Text("Accept", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ReactionPickerDialog(
     onPick: (String) -> Unit,

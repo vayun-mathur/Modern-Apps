@@ -154,6 +154,13 @@ dependencies {
     // conversation-row avatars in InboxScreen / ConversationScreen.
     implementation(libs.coil.compose)
 
+    // CameraX — built-in capture fallback when no system camera app
+    // handles ACTION_IMAGE_CAPTURE (see ui/CameraCaptureScreen.kt).
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+
     // OkHttp — WebSocket transport for Signal
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 

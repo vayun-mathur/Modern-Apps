@@ -15,6 +15,21 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- For resolving inbound phone numbers to a contact name. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Camera capture (built-in CameraX fallback + ACTION_IMAGE_CAPTURE). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Signature permission to mint location-sharing links via the
+         FindFamily app's CreateLinkIntent (location-share feature). -->
+    <uses-permission android:name="com.vayunmathur.findfamily.permissions.ACCESS_FAMILY" />
+
+    <!-- Package visibility (Android 11+): we resolve/launch the FindFamily
+         link-creation activity and the system camera app explicitly. -->
+    <queries>
+        <package android:name="com.vayunmathur.findfamily" />
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -81,6 +96,19 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Maintains a persistent connection to messaging services (WhatsApp, Signal, Telegram, etc.) to receive messages and deliver notifications in real time." />
         </service>
+
+        <!-- Shares captured-photo temp files (cache/camera) with the
+             system camera app via ACTION_IMAGE_CAPTURE, and back to our
+             own send path. Authority matches CameraCapture.AUTHORITY. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <receiver
             android:name=".util.MessagesQuickReplyReceiver"

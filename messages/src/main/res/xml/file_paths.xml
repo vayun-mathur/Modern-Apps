@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Captured photos are written under cacheDir/camera (see CameraCapture). -->
+    <cache-path name="camera" path="camera/" />
+</paths>
