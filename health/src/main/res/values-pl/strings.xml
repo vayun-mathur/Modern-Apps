@@ -144,4 +144,10 @@
     <string name="search">Szukaj</string>
     <string name="log_hydration">Zarejestruj nawodnienie</string>
     <string name="log_meal">Zarejestruj posiłek</string>
+    <string name="metric_exercise_duration">Ćwiczenia</string>
+    <string name="label_exercise">Ćwiczenia</string>
+    <string name="label_workouts">Treningi</string>
+    <string name="section_workouts">Treningi</string>
+    <string name="label_total_exercise">Całkowity wysiłek fizyczny</string>
+    <string name="no_workouts">Brak zarejestrowanych treningów</string>
 </resources>
