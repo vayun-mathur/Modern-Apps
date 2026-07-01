@@ -67,6 +67,11 @@ object MetaBootstrap {
         Regex("""\["DTSGInitData",\[\],\{"token":"([^"]+)""")
     private val jazoestPattern = Regex("""jazoest=(\d+)""")
     private val parentThreadKeyPattern = Regex("""["']parent_thread_key["']\s*:\s*(-?\d+)""")
+    // "version":123... inside the LSPlatformGraphQLLightspeedRequest preloader payload (the primary
+    // schema-version source on the inbox page). Values may be JSON-in-JSON escaped ("version":...
+    // or \"version\":...), so allow an optional backslash before the quotes.
+    private val lightspeedVersionPattern =
+        Regex("""\\?"version\\?"\s*:\s*(\d{6,})""")
     private val syncParamsPattern =
         Regex("""["']?(mailbox|contact|e2ee)["']?\s*:\s*"((?:\\.|[^"\\])*)""")
 
@@ -80,13 +85,23 @@ object MetaBootstrap {
         httpClient: OkHttpClient,
     ): MetaConfig = withContext(Dispatchers.IO) {
         try {
+            // Bootstrap must load the MESSAGES/INBOX page (the one that embeds the Lightspeed
+            // bundle + LSVersion), not the site root. Instagram's root (instagram.com/) is the
+            // feed and does NOT carry the messaging LS bundle → versionId parses as 0 → every
+            // FetchThreads LS request is invalid and times out (zero conversations). Mirror the Go
+            // bridge, which loads the platform "messages" endpoint (IG = /direct/inbox/).
             val baseUrl = when (authData.platform) {
                 MetaAuthData.Platform.MESSENGER -> MetaProtocol.MESSENGER_BASE_URL + "/"
-                MetaAuthData.Platform.INSTAGRAM -> MetaProtocol.INSTAGRAM_BASE_URL + "/"
+                MetaAuthData.Platform.INSTAGRAM -> MetaProtocol.INSTAGRAM_BASE_URL + "/direct/inbox/"
             }
             val html = fetch(baseUrl, authData, httpClient) ?: return@withContext MetaConfig()
 
-            var versionId = versionPattern.find(html)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+            // Primary source: the SSJS-preloaded LSPlatformGraphQLLightspeedRequest carries the
+            // schema "version" inline on the inbox page (ref modules.go handleRequire). Fall back to
+            // the __d("LSVersion") module (inline, then crawled JS bundles).
+            var versionId = parseLightspeedVersion(html)
+                ?: versionPattern.find(html)?.groupValues?.get(1)?.toLongOrNull()
+                ?: 0L
 
             // The page sometimes preloads the JS instead of inlining LSVersion.
             // Crawl a bounded number of linked script files looking for it.
@@ -183,6 +198,18 @@ object MetaBootstrap {
             }
         }
         return 0L
+    }
+
+    /**
+     * Extract the Lightspeed schema version from the inbox page's SSJS-preloaded
+     * LSPlatformGraphQLLightspeedRequest payload (the primary source; ref Go modules.go
+     * handleRequire). Anchors on the preloader id so we don't pick up an unrelated "version".
+     */
+    private fun parseLightspeedVersion(html: String): Long? {
+        val idx = html.indexOf("LSPlatformGraphQLLightspeedRequest")
+        if (idx < 0) return null
+        val region = html.substring(idx, minOf(idx + 8000, html.length))
+        return lightspeedVersionPattern.find(region)?.groupValues?.get(1)?.toLongOrNull()
     }
 
     private fun parseSyncParams(html: String): Triple<String, String, String> {

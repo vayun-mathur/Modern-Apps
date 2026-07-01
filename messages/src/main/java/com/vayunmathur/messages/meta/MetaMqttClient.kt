@@ -38,9 +38,13 @@ class MetaMqttClient(
         const val ACK_TIMEOUT_MS = 30000L
         const val ERROR_24_COOLDOWN_MS = 10 * 60 * 1000L
 
-        // Thread sync groups to page through on initial backfill: 1 = primary inbox (MailBox),
+        // Thread sync groups to fetch on initial backfill: 1 = primary inbox (MailBox),
         // 95 = general/other. Mirrors the Go bridge ready-event FetchThreadsTask fan-out.
         val THREAD_SYNC_GROUPS = listOf(1, 95)
+
+        // Initial FetchThreads cursor "newest" sentinel (reference_activity_timestamp) — matches
+        // the Go bridge ready-event fetch (max ms timestamp).
+        const val INITIAL_ACTIVITY_TIMESTAMP = 9999999999999L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -424,56 +428,96 @@ class MetaMqttClient(
     }
 
     /**
-     * Fetch the FULL DM thread list after connect, following pagination so every conversation
-     * (not just the first page) syncs into the DB. Mirrors the Go bridge's ready-event
-     * FetchThreadsTask fan-out (events.go) + StartThreadBackfill/FetchMoreThreads
-     * (threadbackfill.go): for each parent thread key and each thread sync group (1 = primary
-     * inbox, 95 = general/other), page backwards using the LSUpsertSyncGroupThreadsRange cursor
-     * (minThreadKey / minLastActivityTimestampMs) until hasMoreBefore is false or the cursor stops
-     * advancing. Each response is re-injected via [emitForProcessing] so its threads + messages go
-     * through the normal event → DB path.
+     * Fetch the DM thread list after connect.
      *
-     * NOTE: Instagram message-requests ("pending" folder) are served by a separate GraphQL query
-     * (IGListMessageRequests) in the Go bridge, not a socket task, so they are not covered here —
-     * see the task #26 report for that follow-up.
+     * Phase 1 (blocking, fast): the exact previously-working fetch — sync groups 1 (primary inbox)
+     * and 95 (general), parentThreadKey=-1, initial cursor — each response emitted immediately via
+     * [emitForProcessing] so the inbox loads right away. This is independent of pagination: a paging
+     * failure/timeout can never prevent the initial threads from appearing.
+     *
+     * Phase 2 (background, best-effort): page sync group 1 backwards using the server-returned
+     * LSUpsertSyncGroupThreadsRange cursor (parentThreadKey / minThreadKey / minLastActivityTimestampMs),
+     * emitting each page as it arrives so older threads fill in incrementally. Bails on
+     * timeout/null, missing range, hasMoreBefore=false, a non-advancing cursor, or the page cap.
+     * Mirrors the Go bridge: events.go ready fan-out (sg1+sg95 @ -1) then threadbackfill.go
+     * FetchMoreThreads (sg1 only, cursor from the range/keystore — NOT scraped parent keys, which was
+     * the #26→#30 regression: iterating bogus scraped parent_thread_keys stacked 30s LS timeouts
+     * ahead of the working -1 fetch, so zero threads surfaced).
+     *
+     * NOTE: Instagram message-requests ("pending" folder) use a separate GraphQL query
+     * (IGListMessageRequests) in the Go bridge, not a socket task — tracked as a follow-up.
      */
-    suspend fun backfillThreads(maxPagesPerGroup: Int = 30) {
-        val parentKeys = config.parentThreadKeys.ifEmpty { listOf(-1L) }
+    suspend fun backfillThreads(maxBackfillPages: Int = 30) {
+        // Phase 1 — known-good initial fetch. Must emit regardless of pagination outcome.
+        var sg1Range: MetaProtocol.SyncGroupRange? = null
         for (syncGroup in THREAD_SYNC_GROUPS) {
-            for (parentThreadKey in parentKeys) {
-                paginateThreadGroup(syncGroup, parentThreadKey, maxPagesPerGroup)
-            }
+            val page = fetchThreadsPage(
+                syncGroup = syncGroup,
+                parentThreadKey = -1L,
+                referenceThreadKey = 0L,
+                referenceActivityTimestamp = INITIAL_ACTIVITY_TIMESTAMP,
+            ) ?: continue
+            emitForProcessing(page.message)
+            if (syncGroup == 1) sg1Range = page.range
         }
+
+        // Phase 2 — background pagination of sync group 1. Detached so it never blocks the caller
+        // or the initial inbox; each page is emitted as it arrives.
+        scope.launch { paginateThreadsInBackground(sg1Range, maxBackfillPages) }
     }
 
-    private suspend fun paginateThreadGroup(syncGroup: Int, parentThreadKey: Long, maxPages: Int) {
-        var referenceThreadKey = 0L
-        var referenceActivityTimestamp = 9999999999999L
+    private data class ThreadPage(
+        val message: MetaProtocol.MqttMessage,
+        val range: MetaProtocol.SyncGroupRange?,
+    )
+
+    /** One FetchThreadsTask round-trip; returns the raw response plus the decoded range for [syncGroup]. */
+    private suspend fun fetchThreadsPage(
+        syncGroup: Int,
+        parentThreadKey: Long,
+        referenceThreadKey: Long,
+        referenceActivityTimestamp: Long,
+    ): ThreadPage? {
+        val payload = MetaProtocol.buildFetchThreadsPayload(
+            versionId = versionId,
+            syncGroup = syncGroup,
+            parentThreadKey = parentThreadKey,
+            referenceThreadKey = referenceThreadKey,
+            referenceActivityTimestamp = referenceActivityTimestamp,
+        )
+        // makeLSRequest already bounds the wait (ACK_TIMEOUT_MS) and returns null on timeout/error.
+        val response = makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) ?: return null
+        val responseData = MetaProtocol.parsePublishResponse(response.payload)
+        val range = if (responseData != null) {
+            val events = LightspeedDecoder.decodePublishResponse(responseData.payload, responseData.sp)
+            MetaProtocol.parseSyncGroupRanges(events).firstOrNull { it.syncGroup == syncGroup.toLong() }
+        } else {
+            null
+        }
+        return ThreadPage(response, range)
+    }
+
+    private suspend fun paginateThreadsInBackground(
+        initialRange: MetaProtocol.SyncGroupRange?,
+        maxPages: Int,
+    ) {
+        var range = initialRange ?: return
         var prevMinThreadKey = Long.MIN_VALUE
         var page = 0
         while (page++ < maxPages) {
-            val payload = MetaProtocol.buildFetchThreadsPayload(
-                versionId = versionId,
-                syncGroup = syncGroup,
-                parentThreadKey = parentThreadKey,
-                referenceThreadKey = referenceThreadKey,
-                referenceActivityTimestamp = referenceActivityTimestamp,
-            )
-            val response = makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK) ?: break
-            emitForProcessing(response)
-
-            // Decode the same response to read the pagination cursor for this sync group.
-            val responseData = MetaProtocol.parsePublishResponse(response.payload) ?: break
-            val events = LightspeedDecoder.decodePublishResponse(responseData.payload, responseData.sp)
-            val range = MetaProtocol.parseSyncGroupRanges(events)
-                .firstOrNull { it.syncGroup == syncGroup.toLong() } ?: break
-
-            if (!range.hasMoreBefore) break
-            // Guard against a stuck cursor (hasMoreBefore may never flip false on the server).
-            if (range.minThreadKey == prevMinThreadKey) break
+            if (!range.hasMoreBefore) return
+            // Guard against a stuck cursor (server may never flip hasMoreBefore to false).
+            if (range.minThreadKey == prevMinThreadKey) return
             prevMinThreadKey = range.minThreadKey
-            referenceThreadKey = range.minThreadKey
-            referenceActivityTimestamp = range.minLastActivityTimestampMs
+
+            val next = fetchThreadsPage(
+                syncGroup = 1,
+                parentThreadKey = range.parentThreadKey,
+                referenceThreadKey = range.minThreadKey,
+                referenceActivityTimestamp = range.minLastActivityTimestampMs,
+            ) ?: return // timeout/error → stop; never hang or spin.
+            emitForProcessing(next.message)
+            range = next.range ?: return
         }
     }
 
