@@ -30,6 +30,13 @@ tasks.named<ShadowJar>("shadowJar") {
     // protobuf 4.x on the :messages classpath. libsignal's own generated
     // classes are rewritten to the relocated package by Shadow.
     relocate("com.google.protobuf", "com.vayunmathur.messages.shadedproto")
+    // Drop protobuf's descriptor resources (google/protobuf/*.proto). The
+    // runtime classes are relocated, so these are dead weight — and if left
+    // in they collide with the app's protobuf-java at
+    // :messages:mergeDevJavaResource ("2 files found with path
+    // 'google/protobuf/type.proto'").
+    exclude("google/protobuf/**")
+    exclude("**/*.proto")
 }
 
 // Consumable configuration :messages depends on by name.
