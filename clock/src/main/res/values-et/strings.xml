@@ -40,4 +40,6 @@
     <string name="set_an_alarm">Seadista äratus</string>
     <string name="set_a_timer">Seadista taimer</string>
     <string name="field_hours">Tunnid</string>
+    <string name="analog_clock_widget_label">Sihverplaadiga kell</string>
+    <string name="analog_clock_widget_description">Material You kujunduskeelega sihverplaadiga kell - avamiseks klõpsa</string>
 </resources>
