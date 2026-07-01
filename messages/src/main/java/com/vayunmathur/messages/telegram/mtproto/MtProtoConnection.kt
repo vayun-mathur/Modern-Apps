@@ -227,23 +227,18 @@ class MtProtoConnection(
                         continue
                     }
                     val serverMsgId = decrypted.messageId
-                    // A server msg_id encodes SERVER time and is authoritative. Never drop a
-                    // valid server message against our own (possibly skewed) clock — sync the
-                    // GLOBAL time offset FROM it (same offset used for outgoing generation, so
-                    // the two can't diverge). Covers reconnect-with-persisted-authkey (handshake
-                    // skipped), large clock skew, drift, and multiple connections. Only sync
-                    // from genuine server-typed ids (never from a stray local-timed msg), and
-                    // only reject truly malformed ids.
+                    // Reject only genuinely malformed ids (wrong type bits) and duplicates.
+                    // We do NOT time-window-reject inbound messages, and we do NOT derive
+                    // the time offset from arbitrary inbound ids: a msg_container / msgs_ack /
+                    // service message can carry a msg_id near the LOCAL clock, which would
+                    // (a) get wrongly rejected against our offset, or (b) clobber the correct
+                    // offset back to ~0. The offset is sourced ONLY from authoritative
+                    // server-time sources — the handshake and new_session_created (and
+                    // bad_msg 16/17) — matching gotd/tdesktop. Replay is prevented by
+                    // consume(); authenticity by the auth key + session id.
                     if (!MessageId.isServerType(serverMsgId)) {
                         Log.w(TAG, "Rejecting non-server msg_id 0x${serverMsgId.toULong().toString(16)}")
                         continue
-                    }
-                    val localNow = System.currentTimeMillis() / 1000
-                    if (!MessageId.isOffsetInitialized() ||
-                        !MessageId.checkMessageId(localNow + MessageId.timeOffsetSeconds(), serverMsgId)
-                    ) {
-                        MessageId.setTimeOffsetSeconds(MessageId.timeSeconds(serverMsgId) - localNow)
-                        Log.d(TAG, "Synced server time offset from inbound msg: ${MessageId.timeOffsetSeconds()}s")
                     }
                     if (!MessageId.consume(serverMsgId)) {
                         Log.w(TAG, "Duplicate message ID detected, rejecting")
