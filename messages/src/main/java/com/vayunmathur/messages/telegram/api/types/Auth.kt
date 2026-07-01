@@ -146,3 +146,37 @@ data class AuthExportedAuthorization(val id: Long, val bytes: ByteArray) : TlObj
         fun decode(buf: TlBuffer) = AuthExportedAuthorization(buf.int64(), buf.bytes())
     }
 }
+
+// ---- QR login (auth.LoginToken) ----
+
+sealed interface AuthLoginToken : TlObject
+
+// auth.loginToken#629f1980 expires:int token:bytes
+data class AuthLoginTokenResult(val expires: Int, val token: ByteArray) : AuthLoginToken {
+    override val typeId = 0x629f1980.toInt()
+    override fun encode(buf: TlBuffer) {}
+    companion object {
+        fun decode(buf: TlBuffer) = AuthLoginTokenResult(buf.int32(), buf.bytes())
+    }
+}
+
+// auth.loginTokenMigrateTo#068e9916 dc_id:int token:bytes — re-import on dc_id.
+data class AuthLoginTokenMigrateTo(val dcId: Int, val token: ByteArray) : AuthLoginToken {
+    override val typeId = 0x068e9916
+    override fun encode(buf: TlBuffer) {}
+    companion object {
+        fun decode(buf: TlBuffer) = AuthLoginTokenMigrateTo(buf.int32(), buf.bytes())
+    }
+}
+
+// auth.loginTokenSuccess#390d5c5e authorization:auth.Authorization
+data class AuthLoginTokenSuccess(val authorization: TlObject) : AuthLoginToken {
+    override val typeId = 0x390d5c5e.toInt()
+    override fun encode(buf: TlBuffer) {}
+}
+
+// auth.authorizationSignUpRequired#44747e9a — account has no user yet (must sign up).
+object AuthAuthorizationSignUpRequired : TlObject {
+    override val typeId = 0x44747e9a.toInt()
+    override fun encode(buf: TlBuffer) {}
+}

@@ -76,6 +76,12 @@ data class UpdateChannel(val channelId: Long) : TlObject {
     override fun encode(buf: TlBuffer) {}
 }
 
+// updateLoginToken#564fe691 — server signals a QR token was scanned; re-export.
+object UpdateLoginToken : TlObject {
+    override val typeId = 0x564fe691.toInt()
+    override fun encode(buf: TlBuffer) {}
+}
+
 data class UpdateUserTyping(val userId: Long, val actionTypeId: Int) : TlObject {
     override val typeId = 0x2a17bf5c.toInt()
     override fun encode(buf: TlBuffer) {}

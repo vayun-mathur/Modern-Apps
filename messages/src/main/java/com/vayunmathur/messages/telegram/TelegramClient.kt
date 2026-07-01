@@ -11,6 +11,7 @@ import com.vayunmathur.messages.telegram.api.types.*
 import com.vayunmathur.messages.telegram.mtproto.TelegramApiClient
 import com.vayunmathur.messages.telegram.mtproto.crypto.Srp
 import com.vayunmathur.messages.telegram.mtproto.tl.TlObject
+import com.vayunmathur.messages.telegram.mtproto.tl.TlMethod
 import com.vayunmathur.messages.util.ContactSuggestion
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -33,6 +34,7 @@ object TelegramClient {
         data object Connecting : State
         data object Connected : State
         data class AwaitingCode(val phone: String) : State
+        data class AwaitingQrScan(val qrUrl: String) : State
         data class AwaitingPassword(val phone: String, val hint: String) : State
         data class Disconnected(val reason: String) : State
     }
@@ -53,6 +55,7 @@ object TelegramClient {
     private var apiClient: TelegramApiClient? = null
     private var backfillJob: Job? = null
     private var updateJob: Job? = null
+    private var qrRefreshJob: Job? = null
     private var pendingPhone: String? = null
     private var phoneCodeHash: String? = null
 
@@ -116,6 +119,7 @@ object TelegramClient {
         Log.i(TAG, "stop — clearing Telegram session")
         backfillJob?.cancel()
         updateJob?.cancel()
+        qrRefreshJob?.cancel()
         scope.launch {
             runCatching { apiClient?.invoke(AuthLogOut) { TlRegistry.decode(it) } }
             apiClient?.disconnect()
@@ -196,7 +200,7 @@ object TelegramClient {
     }
 
     fun submitPassword(password: String) {
-        val phone = pendingPhone ?: return
+        val phone = pendingPhone ?: ""
         scope.launch {
             try {
                 val client = apiClient ?: return@launch
@@ -215,6 +219,134 @@ object TelegramClient {
                 _state.value = State.AwaitingPassword(phone, "")
             }
         }
+    }
+
+    // ----------------------------------------------------------------
+    // QR-code login (auth.exportLoginToken / importLoginToken)
+    // Mirrors tdesktop intro_qr.cpp + gotd exportLoginToken handling.
+    // Enables logging in by scanning a QR with another Telegram device,
+    // which (unlike SMS login) authorizes secret/encrypted chats.
+    // ----------------------------------------------------------------
+
+    /**
+     * Begin the QR login flow: connect, request a login token, and surface the
+     * `tg://login?token=…` URL via [State.AwaitingQrScan] for the UI to render as
+     * a QR bitmap. The phone-number flow (submitPhoneNumber/…) remains available
+     * as a fallback.
+     */
+    fun startQrLogin() {
+        if (!initialized.get()) return
+        _state.value = State.Connecting
+        scope.launch {
+            try {
+                val client = ensureClient()
+                exportLoginToken(client, firstCall = true)
+            } catch (e: Exception) {
+                Log.e(TAG, "startQrLogin failed", e)
+                _state.value = State.Disconnected("QR login failed: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun exportLoginToken(client: TelegramApiClient, firstCall: Boolean) {
+        val export = AuthExportLoginToken(API_ID, API_HASH)
+        // The first request on a fresh connection must carry initConnection/invokeWithLayer.
+        val method: TlMethod<TlObject> = if (firstCall) InitConnection(
+            apiId = API_ID,
+            deviceModel = "Android",
+            systemVersion = "14",
+            appVersion = "1.0",
+            systemLangCode = "en",
+            langPack = "",
+            langCode = "en",
+            inner = export,
+        ) else export
+        try {
+            val result = client.invoke(method) { TlRegistry.decode(it) }
+            handleLoginToken(result)
+        } catch (t: Throwable) {
+            handleQrError(t)
+        }
+    }
+
+    private suspend fun refreshLoginToken() {
+        val client = apiClient ?: return
+        if (_state.value !is State.AwaitingQrScan) return
+        exportLoginToken(client, firstCall = false)
+    }
+
+    private suspend fun handleLoginToken(result: TlObject) {
+        when (result) {
+            is AuthLoginTokenResult -> {
+                val encoded = Base64.encodeToString(result.token, Base64.URL_SAFE or Base64.NO_WRAP)
+                _state.value = State.AwaitingQrScan("tg://login?token=$encoded")
+                scheduleQrRefresh(result.expires)
+            }
+            is AuthLoginTokenMigrateTo -> migrateAndImport(result.dcId, result.token)
+            is AuthLoginTokenSuccess -> {
+                qrRefreshJob?.cancel()
+                when (val auth = result.authorization) {
+                    is AuthAuthorization -> onAuthorized(auth.user)
+                    else -> {
+                        Log.w(TAG, "QR login returned ${auth::class.simpleName}; sign-up required")
+                        _state.value = State.Disconnected("This account needs to be set up in an official Telegram app first")
+                    }
+                }
+            }
+            else -> {
+                Log.w(TAG, "Unexpected login-token result: ${result::class.simpleName}")
+                _state.value = State.Disconnected("QR login failed: unexpected response")
+            }
+        }
+    }
+
+    /**
+     * Re-import the login token on the DC named by loginTokenMigrateTo. A fresh
+     * connection there performs its own key exchange (each DC has a distinct
+     * auth key); importLoginToken then yields loginTokenSuccess.
+     */
+    private suspend fun migrateAndImport(dcId: Int, token: ByteArray) {
+        Log.i(TAG, "QR login migrating to DC $dcId")
+        qrRefreshJob?.cancel()
+        try {
+            apiClient?.disconnect()
+            val client = TelegramApiClient()
+            client.onDisconnected = { handleDisconnect() }
+            client.connect(dcId)
+            apiClient = client
+            startUpdateListener(client)
+            val result = client.invoke(AuthImportLoginToken(token)) { TlRegistry.decode(it) }
+            handleLoginToken(result)
+        } catch (t: Throwable) {
+            handleQrError(t)
+        }
+    }
+
+    private fun scheduleQrRefresh(expires: Int) {
+        qrRefreshJob?.cancel()
+        qrRefreshJob = scope.launch {
+            val nowSec = System.currentTimeMillis() / 1000
+            val delaySec = (expires - nowSec).coerceIn(1, 60)
+            delay(delaySec * 1000)
+            if (_state.value is State.AwaitingQrScan) {
+                runCatching { refreshLoginToken() }
+            }
+        }
+    }
+
+    private suspend fun handleQrError(t: Throwable) {
+        // Account is 2FA-protected: fall back to the existing SRP password flow.
+        if (t.message?.contains("SESSION_PASSWORD_NEEDED") == true) {
+            qrRefreshJob?.cancel()
+            val hint = runCatching {
+                val pwd = apiClient?.invoke(AccountGetPassword) { TlRegistry.decode(it) }
+                if (pwd is AuthPassword) pwd.hint else ""
+            }.getOrDefault("")
+            _state.value = State.AwaitingPassword(pendingPhone ?: "", hint)
+            return
+        }
+        Log.w(TAG, "QR login error: ${humanizeError(t)}")
+        _state.value = State.Disconnected("QR login failed: ${humanizeError(t)}")
     }
 
     fun forceResync() {
@@ -352,6 +484,40 @@ object TelegramClient {
             true
         } catch (t: Throwable) {
             Log.w(TAG, "sendMedia failed: ${humanizeError(t)}")
+            false
+        }
+    }
+
+    /**
+     * Send a native Telegram poll via inputMediaPoll (contract §2b). Telegram
+     * requires 2–10 non-blank options; out-of-range inputs are rejected
+     * client-side. [allowMultiple] maps to Poll.multipleChoice. Returns false on
+     * any failure.
+     */
+    suspend fun sendPoll(
+        conversationId: String,
+        question: String,
+        options: List<String>,
+        allowMultiple: Boolean,
+    ): Boolean {
+        if (_state.value !is State.Connected) return false
+        val client = apiClient ?: return false
+        val peer = resolvePeer(conversationId) ?: return false
+        val cleanOptions = options.map { it.trim() }.filter { it.isNotBlank() }
+        if (question.isBlank() || cleanOptions.size < 2 || cleanOptions.size > 10) {
+            Log.w(TAG, "sendPoll rejected: question/options out of range (options=${cleanOptions.size})")
+            return false
+        }
+        return try {
+            val answers = cleanOptions.mapIndexed { i, opt ->
+                PollAnswer(opt, byteArrayOf(i.toByte()))
+            }
+            val poll = Poll(question = question.trim(), answers = answers, multipleChoice = allowMultiple)
+            val media = InputMediaPoll(poll)
+            client.invoke(MessagesSendMedia(peer, media, "", random.nextLong())) { TlRegistry.decode(it) }
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "sendPoll failed: ${humanizeError(t)}")
             false
         }
     }
@@ -681,10 +847,13 @@ object TelegramClient {
         isPremium = user.premium
         _state.value = State.Connected
         reconnectAttempt = 0
+        qrRefreshJob?.cancel()
         val client = apiClient ?: return
         scope.launch {
             TelegramAuthData(
-                phoneNumber = pendingPhone ?: "",
+                phoneNumber = pendingPhone?.takeIf { it.isNotBlank() }
+                    ?: user.phone.takeIf { it.isNotBlank() }?.let { "+${it.trimStart('+')}" }
+                    ?: "",
                 loggedIn = true,
                 authKey = Base64.encodeToString(client.authKey, Base64.NO_WRAP),
                 authKeyId = Base64.encodeToString(client.authKeyId, Base64.NO_WRAP),
@@ -831,6 +1000,14 @@ object TelegramClient {
 
     private suspend fun handleSingleUpdate(update: TlObject, fromDiff: Boolean = false) {
         when (update) {
+            is UpdateLoginToken -> {
+                // The QR was scanned/accepted on another device — re-export to
+                // pick up the loginTokenMigrateTo / loginTokenSuccess result.
+                if (_state.value is State.AwaitingQrScan) {
+                    qrRefreshJob?.cancel()
+                    scope.launch { runCatching { refreshLoginToken() } }
+                }
+            }
             is UpdateNewMessage -> {
                 when (if (fromDiff) PtsAction.APPLY else checkCommonPts(update.pts, update.ptsCount)) {
                     PtsAction.SKIP -> {}

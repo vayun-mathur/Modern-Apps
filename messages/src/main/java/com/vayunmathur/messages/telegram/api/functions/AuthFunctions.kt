@@ -61,6 +61,28 @@ data class AuthImportAuthorization(val id: Long, val bytes: ByteArray) : TlMetho
     override fun encode(buf: TlBuffer) { buf.putId(typeId); buf.putInt64(id); buf.putBytes(bytes) }
 }
 
+// auth.exportLoginToken — request a QR-login token on the current DC.
+data class AuthExportLoginToken(
+    val apiId: Int,
+    val apiHash: String,
+    val exceptIds: List<Long> = emptyList(),
+) : TlMethod<TlObject> {
+    override val typeId = 0xb7e085fe.toInt()
+    override fun encode(buf: TlBuffer) {
+        buf.putId(typeId)
+        buf.putInt32(apiId)
+        buf.putString(apiHash)
+        buf.putVectorHeader(exceptIds.size)
+        for (id in exceptIds) buf.putInt64(id)
+    }
+}
+
+// auth.importLoginToken — finish QR login on the DC named by loginTokenMigrateTo.
+data class AuthImportLoginToken(val token: ByteArray) : TlMethod<TlObject> {
+    override val typeId = 0x95ac5ce4.toInt()
+    override fun encode(buf: TlBuffer) { buf.putId(typeId); buf.putBytes(token) }
+}
+
 // account.getPassword
 object AccountGetPassword : TlMethod<TlObject> {
     override val typeId = 0x548a30f5.toInt()

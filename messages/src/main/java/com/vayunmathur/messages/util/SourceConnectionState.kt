@@ -51,6 +51,7 @@ fun TelegramClient.State.toUnified(): SourceConnectionState = when (this) {
     TelegramClient.State.Idle -> SourceConnectionState.Idle
     TelegramClient.State.NeedsSetup -> SourceConnectionState.NeedsSetup("Sign in")
     is TelegramClient.State.AwaitingCode -> SourceConnectionState.Connecting
+    is TelegramClient.State.AwaitingQrScan -> SourceConnectionState.Pairing(qrUrl)
     is TelegramClient.State.AwaitingPassword -> SourceConnectionState.Connecting
     TelegramClient.State.Connecting -> SourceConnectionState.Connecting
     TelegramClient.State.Connected -> SourceConnectionState.Connected

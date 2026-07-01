@@ -41,6 +41,13 @@ object TlRegistry {
             0x2ea2c0d4.toInt() -> AuthAuthorization.decode(buf)
             0x957b50fb.toInt() -> AuthPassword.decode(buf)
 
+            // QR login (auth.LoginToken)
+            0x629f1980.toInt() -> AuthLoginTokenResult.decode(buf)
+            0x068e9916 -> AuthLoginTokenMigrateTo.decode(buf)
+            0x390d5c5e.toInt() -> AuthLoginTokenSuccess(decode(buf)) // inner auth.Authorization
+            0x44747e9a.toInt() -> AuthAuthorizationSignUpRequired
+            0x564fe691.toInt() -> UpdateLoginToken
+
             // Users
             0x31774388.toInt() -> User.decode(buf)
             0xd3bc4b7a.toInt() -> UserEmpty.decode(buf)
