@@ -1,3 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="cancel">ביטול</string>
+    <string name="search">חיפוש</string>
+    <string name="app_name">בריאות</string>
+    <string name="grant_permissions">הענקת הרשאות</string>
+    <string name="tab_day">יום</string>
+    <string name="tab_week">שבוע</string>
+    <string name="tab_month">חודש</string>
+    <string name="tab_year">שנה</string>
+    <string name="nav_prev">הקודם</string>
+    <string name="nav_next">הבא</string>
+    <string name="metric_steps">צעדים</string>
+    <string name="metric_distance">מרחק</string>
+    <string name="metric_hydration">לחץ דם</string>
+    <string name="metric_blood_glucose">גלוקוז בדם</string>
+    <string name="metric_breathing_rate">קצב נשימה</string>
+    <string name="metric_resting_heart_rate">קצב לב במנוחה</string>
+    <string name="metric_heart_rate">קצב לב</string>
+    <string name="metric_height">גובה</string>
+    <string name="metric_weight">משקל</string>
+    <string name="metric_bone_mass">מסת עצם</string>
+    <string name="metric_sleep">שינה</string>
+    <string name="metric_exercise_duration">אימון</string>
+    <string name="label_awake">ערות</string>
+    <string name="label_deep">עמוקה</string>
+    <string name="section_activity">פעילות</string>
+    <string name="section_nutrition_today">תזונה (היום)</string>
+    <string name="label_today">היום</string>
+    <string name="label_energy">אנרגיה</string>
+    <string name="unit_kcal_format">%1$s ק׳ ק״ל</string>
+    <string name="label_distance">מרחק</string>
+    <string name="label_heart_rate">קצב לב</string>
+    <string name="label_sleep">שינה</string>
+    <string name="label_nutrition">תזונה</string>
+    <string name="label_blood_pressure">לחץ דם</string>
+    <string name="save">שמירה</string>
+    <string name="add">הוספה</string>
 </resources>
