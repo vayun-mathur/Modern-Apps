@@ -60,6 +60,24 @@ data class MetaAuthData(
             }
             prefs.edit { remove(key) }
         }
+
+        /**
+         * Parse a "k=v; k=v" Cookie header (as returned by [android.webkit.CookieManager.getCookie])
+         * into a map. Inverse of [toCookieHeader].
+         */
+        fun parseCookieHeader(header: String?): Map<String, String> {
+            if (header.isNullOrBlank()) return emptyMap()
+            return header.split(";")
+                .mapNotNull { pair ->
+                    val parts = pair.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        val k = parts[0].trim()
+                        val v = parts[1].trim()
+                        if (k.isNotEmpty()) k to v else null
+                    } else null
+                }
+                .toMap()
+        }
     }
 
     /**
