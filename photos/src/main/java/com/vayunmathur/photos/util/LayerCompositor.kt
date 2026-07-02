@@ -114,6 +114,26 @@ class LayerCompositor {
 
     // --- internal rendering ---------------------------------------------------
 
+    /**
+     * Splits [0,total) across CPU cores and runs [body] on each sub-range in
+     * parallel. Callers must write disjoint indices per range (the blend loops
+     * do: each pixel index is touched by exactly one range), so this is safe.
+     */
+    private inline fun parallelFor(total: Int, crossinline body: (start: Int, end: Int) -> Unit) {
+        val cores = Runtime.getRuntime().availableProcessors().coerceIn(1, 8)
+        if (cores <= 1 || total < 120_000) { body(0, total); return }
+        val chunk = (total + cores - 1) / cores
+        val threads = ArrayList<Thread>(cores)
+        var start = 0
+        while (start < total) {
+            val s = start
+            val e = minOf(s + chunk, total)
+            Thread { body(s, e) }.also { threads.add(it); it.start() }
+            start = e
+        }
+        threads.forEach { it.join() }
+    }
+
     private fun renderLayersInto(
         backdrop: IntArray,
         layers: List<Layer>,
@@ -136,7 +156,9 @@ class LayerCompositor {
                     val op = group?.opacity ?: 1f
                     val mode = group?.blendMode ?: LayerBlendMode.Normal
                     if (op > 0f) {
-                        for (k in backdrop.indices) backdrop[k] = mode.blendPixel(backdrop[k], sub[k], op)
+                        parallelFor(backdrop.size) { s, e ->
+                            for (k in s until e) backdrop[k] = mode.blendPixel(backdrop[k], sub[k], op)
+                        }
                     }
                 }
                 i = j
@@ -176,11 +198,13 @@ class LayerCompositor {
         }
         val mode = layer.blendMode
         val opacity = layer.opacity
-        for (i in backdrop.indices) {
-            var extra = opacity * (mask?.get(i) ?: 1f)
-            if (clip != null) extra *= clip[i]
-            if (extra <= 0f) continue
-            backdrop[i] = mode.blendPixel(backdrop[i], src[i], extra)
+        parallelFor(backdrop.size) { s, e ->
+            for (i in s until e) {
+                var extra = opacity * (mask?.get(i) ?: 1f)
+                if (clip != null) extra *= clip[i]
+                if (extra <= 0f) continue
+                backdrop[i] = mode.blendPixel(backdrop[i], src[i], extra)
+            }
         }
     }
 

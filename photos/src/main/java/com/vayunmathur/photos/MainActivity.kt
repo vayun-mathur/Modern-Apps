@@ -57,11 +57,13 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
+import com.vayunmathur.photos.data.FaceDao
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDao
 import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.ui.GalleryPage
 import com.vayunmathur.photos.ui.MapPage
+import com.vayunmathur.photos.ui.PeoplePage
 import com.vayunmathur.photos.ui.PhotoPage
 import com.vayunmathur.photos.ui.SecureFolderPage
 import com.vayunmathur.photos.ui.TrashPage
@@ -85,9 +87,10 @@ val LocalColumnCount = staticCompositionLocalOf<MutableFloatState> {
 
 class MainActivity : FragmentActivity() {
     private lateinit var photoDao: PhotoDao
+    private lateinit var faceDao: FaceDao
 
     private val galleryViewModel: GalleryViewModel by viewModels {
-        GalleryViewModelFactory(application, photoDao)
+        GalleryViewModelFactory(application, photoDao, faceDao)
     }
     private val photoMapViewModel: PhotoMapViewModel by viewModels {
         PhotoMapViewModelFactory(application)
@@ -101,6 +104,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         val db = buildDatabase<PhotoDatabase>()
         photoDao = db.photoDao()
+        faceDao = db.faceDao()
         ImageLoader.init(this)
         val dataStore = DataStoreUtils.getInstance(applicationContext)
         setContent {
@@ -222,6 +226,9 @@ sealed interface Route: NavKey {
     data object Map: Route
 
     @Serializable
+    data object People: Route
+
+    @Serializable
     data object Trash: Route
 
     @Serializable
@@ -257,6 +264,10 @@ fun Navigation(
 
         entry<Route.Map> {
             MapPage(backStack, galleryViewModel, photoMapViewModel)
+        }
+
+        entry<Route.People> {
+            PeoplePage(backStack, galleryViewModel)
         }
 
         entry<Route.PhotoPage> {
@@ -300,6 +311,7 @@ private fun SecureFolderEntry(
 private enum class MainRoute(val route: Route, @StringRes val titleRes: Int, val icon: Int) {
     Gallery(Route.Gallery, R.string.label_gallery, R.drawable.gallery_thumbnail_24px),
     Map(Route.Map, R.string.label_map, R.drawable.map_24px),
+    People(Route.People, R.string.label_people, R.drawable.people_24px),
     Trash(Route.Trash, R.string.label_trash, LibraryR.drawable.delete_24px),
     SecureFolder(Route.SecureFolder, R.string.label_secure_folder, R.drawable.lock_24px)
 }

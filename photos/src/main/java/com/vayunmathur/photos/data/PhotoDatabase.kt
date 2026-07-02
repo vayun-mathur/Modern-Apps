@@ -46,14 +46,21 @@ interface PhotoDao {
 
     @Query("SELECT count(*) FROM Photo WHERE isTrashed = 0 AND duration IS NULL")
     fun getOCRTargetCountFlow(): Flow<Int>
+
+    @Query("SELECT * FROM Photo WHERE faceScanned = 0 AND isTrashed = 0 AND duration IS NULL")
+    suspend fun getUnscannedForFaces(): List<Photo>
+
+    @Query("UPDATE Photo SET faceScanned = 0")
+    suspend fun resetFaceScanned()
 }
 
-@Database(entities = [Photo::class, PhotoOCR::class], version = 6, exportSchema = false)
+@Database(entities = [Photo::class, PhotoOCR::class, ContactFace::class, PhotoFace::class], version = 7, exportSchema = false)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
+    abstract fun faceDao(): FaceDao
 
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
     }
 }
 
@@ -79,4 +86,14 @@ val MIGRATION_5_6 = Migration(5, 6) {
     it.execSQL("INSERT INTO PhotoOCR_new(rowid, ocrText, description) SELECT rowid, ocrText, '' FROM PhotoOCR")
     it.execSQL("DROP TABLE PhotoOCR")
     it.execSQL("ALTER TABLE PhotoOCR_new RENAME TO PhotoOCR")
+}
+
+val MIGRATION_6_7 = Migration(6, 7) {
+    // Optional on-device face recognition: track scanned photos and store face
+    // templates for contacts and library photos. SQL mirrors Room's generated
+    // schema exactly so schema validation passes.
+    it.execSQL("ALTER TABLE Photo ADD COLUMN faceScanned INTEGER NOT NULL DEFAULT 0")
+    it.execSQL("CREATE TABLE IF NOT EXISTS `ContactFace` (`contactKey` TEXT NOT NULL, `name` TEXT NOT NULL, `embedding` BLOB NOT NULL, `photoUri` TEXT NOT NULL, PRIMARY KEY(`contactKey`))")
+    it.execSQL("CREATE TABLE IF NOT EXISTS `PhotoFace` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `photoId` INTEGER NOT NULL, `embedding` BLOB NOT NULL, `contactKey` TEXT, `contactName` TEXT)")
+    it.execSQL("CREATE INDEX IF NOT EXISTS `index_PhotoFace_photoId` ON `PhotoFace` (`photoId`)")
 }

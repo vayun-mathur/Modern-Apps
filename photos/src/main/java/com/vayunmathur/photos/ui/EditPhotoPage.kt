@@ -158,6 +158,8 @@ import com.vayunmathur.photos.data.SelectiveMask
 import com.vayunmathur.photos.data.SmudgeStroke
 import com.vayunmathur.photos.data.SmudgeStrokes
 import com.vayunmathur.photos.data.TextElement
+import com.vayunmathur.photos.data.TextLayer
+import com.vayunmathur.photos.data.DrawingLayer
 import com.vayunmathur.photos.data.ThresholdAdj
 import com.vayunmathur.photos.data.VibranceAdj
 import com.vayunmathur.photos.data.applyToBitmap
@@ -166,6 +168,7 @@ import com.vayunmathur.photos.data.toColorMatrix
 import com.vayunmathur.photos.util.PhotoEditViewModel
 import com.vayunmathur.library.util.ResultEffect
 import com.vayunmathur.library.util.serialize
+import com.vayunmathur.library.util.deserialize
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -189,7 +192,7 @@ private enum class EditorMode {
     FreeTransform,
     Layers,
     MaskPaint,
-    Fill, GradientTool, ShapeRect, ShapeEllipse, ShapeLine,
+    Fill, GradientTool, ShapeRect, ShapeEllipse, ShapeLine, Eyedropper,
 }
 
 private data class ToolEntry(val mode: EditorMode, val label: String)
@@ -246,6 +249,7 @@ private val categoryTools: Map<ToolCategory, List<ToolEntry>> = mapOf(
         ToolEntry(EditorMode.ShapeRect, "Rectangle"),
         ToolEntry(EditorMode.ShapeEllipse, "Ellipse"),
         ToolEntry(EditorMode.ShapeLine, "Line"),
+        ToolEntry(EditorMode.Eyedropper, "Eyedropper"),
     ),
 )
 
@@ -294,6 +298,7 @@ private fun EditorMode.description(): String = when (this) {
     EditorMode.ShapeRect -> "Drag to draw a filled rectangle."
     EditorMode.ShapeEllipse -> "Drag to draw a filled ellipse."
     EditorMode.ShapeLine -> "Drag to draw a line."
+    EditorMode.Eyedropper -> "Tap the image to pick a color."
     EditorMode.None -> ""
 }
 
@@ -396,6 +401,7 @@ fun EditPhotoPage(
 
     // Paint (fill / gradient / shapes)
     var paintColor by remember { mutableStateOf(Color.Red) }
+    val recentColors = remember { mutableStateListOf<Color>() }
     var fillTolerance by remember { mutableFloatStateOf(0.2f) }
     var shapeStrokeWidth by remember { mutableFloatStateOf(0.01f) }
     var paintDragStart by remember { mutableStateOf<Offset?>(null) }
@@ -409,6 +415,7 @@ fun EditPhotoPage(
 
     // Drawing
     val inkStrokes = remember { mutableStateListOf<InkStroke>() }
+    val redoStrokes = remember { mutableStateListOf<InkStroke>() }
     var activeTool by remember { mutableStateOf(DrawingTool.Pointer) }
     var penColor by remember { mutableStateOf(Color.Red) }
     var penSize by remember { mutableFloatStateOf(10f) }
@@ -454,13 +461,20 @@ fun EditPhotoPage(
         }
     }
 
+    fun useColor(c: Color) {
+        paintColor = c
+        recentColors.remove(c)
+        recentColors.add(0, c)
+        while (recentColors.size > 8) recentColors.removeAt(recentColors.size - 1)
+    }
+
     fun commitOverlays() {
         if (inkStrokes.isNotEmpty() || texts.isNotEmpty()) {
             vm.commitOverlaysToLayers(
                 inkStrokes.map { it.serialize() }, texts.toList(),
                 currentViewportWidth, currentViewportHeight,
             )
-            inkStrokes.clear(); texts.clear()
+            inkStrokes.clear(); texts.clear(); redoStrokes.clear()
             selectedStrokeIndex = null; selectedTextIndex = null; selectedTextId = null
         }
     }
@@ -664,8 +678,22 @@ fun EditPhotoPage(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { vm.undo() }, enabled = canUndo) { IconUndo() }
-                    IconButton(onClick = { vm.redo() }, enabled = canRedo) {
+                    val strokeUndo = isDrawing && inkStrokes.isNotEmpty()
+                    val strokeRedo = isDrawing && redoStrokes.isNotEmpty()
+                    IconButton(
+                        onClick = {
+                            if (strokeUndo) redoStrokes.add(inkStrokes.removeAt(inkStrokes.size - 1))
+                            else vm.undo()
+                        },
+                        enabled = strokeUndo || canUndo,
+                    ) { IconUndo() }
+                    IconButton(
+                        onClick = {
+                            if (strokeRedo) inkStrokes.add(redoStrokes.removeAt(redoStrokes.size - 1))
+                            else vm.redo()
+                        },
+                        enabled = strokeRedo || canRedo,
+                    ) {
                         Text("↻", fontSize = 20.sp)
                     }
                     Box {
@@ -761,6 +789,7 @@ fun EditPhotoPage(
                                     CanvasTextElement(
                                         text = te.text, x = te.x * currentViewportWidth, y = te.y * currentViewportHeight,
                                         rotation = te.rotation, color = te.color, fontSize = te.fontSize,
+                                        fontFamily = te.fontFamily, bold = te.bold, italic = te.italic, align = te.align,
                                     )
                                 }
                             }
@@ -769,7 +798,7 @@ fun EditPhotoPage(
                         InkCanvasView(
                             currentBrush = currentBrush,
                             finishedStrokes = inkStrokes.toList(),
-                            onStrokeFinished = { inkStrokes.add(it) },
+                            onStrokeFinished = { inkStrokes.add(it); redoStrokes.clear() },
                             onStrokeErased = { inkStrokes.remove(it) },
                             eraserMode = activeTool == DrawingTool.Eraser,
                             enabled = isDrawing && activeTool != DrawingTool.Pointer && activeTool != DrawingTool.Text,
@@ -1017,6 +1046,18 @@ fun EditPhotoPage(
                                     },
                                 )
                             }
+                            if (editorMode == EditorMode.Eyedropper) {
+                                Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
+                                    detectTapGestures { o ->
+                                        val bmp = preview ?: baseBitmap
+                                        if (bmp != null) {
+                                            val sx = ((o.x / size.width) * bmp.width).toInt().coerceIn(0, bmp.width - 1)
+                                            val sy = ((o.y / size.height) * bmp.height).toInt().coerceIn(0, bmp.height - 1)
+                                            useColor(Color(bmp.getPixel(sx, sy)))
+                                        }
+                                    }
+                                })
+                            }
                         }
 
                         if (isCropping) {
@@ -1258,11 +1299,35 @@ fun EditPhotoPage(
                         maskBrushSize = maskBrushSize,
                         onMaskBrushSize = { maskBrushSize = it },
                         paintColor = paintColor,
-                        onPaintColor = { paintColor = it },
+                        onPaintColor = { useColor(it) },
+                        recentColors = recentColors,
                         fillTolerance = fillTolerance,
                         onFillTolerance = { fillTolerance = it },
                         shapeStrokeWidth = shapeStrokeWidth,
                         onShapeStrokeWidth = { shapeStrokeWidth = it },
+                        onEditTextLayer = { idx ->
+                            (document.layers.getOrNull(idx) as? TextLayer)?.let { tl ->
+                                texts.add(tl.textElement)
+                                vm.removeLayer(idx)
+                                textToEdit = tl.textElement
+                                selectedTextId = tl.textElement.id
+                                openCategory(ToolCategory.Draw)
+                            }
+                        },
+                        onResumeDrawingLayer = { idx ->
+                            (document.layers.getOrNull(idx) as? DrawingLayer)?.let { dl ->
+                                dl.strokes.forEach { inkStrokes.add(it.deserialize()) }
+                                vm.removeLayer(idx)
+                                openCategory(ToolCategory.Draw)
+                            }
+                        },
+                        onSelectSubject = {
+                            baseBitmap?.let { bmp ->
+                                com.vayunmathur.photos.util.segmentSubject(context, bmp) { sel ->
+                                    if (sel != null) { selectionBase = sel; reapplyFeather() }
+                                }
+                            }
+                        },
                     )
                     }
                 }
@@ -1573,10 +1638,14 @@ private fun ActivePanel(
     onMaskBrushSize: (Float) -> Unit,
     paintColor: Color,
     onPaintColor: (Color) -> Unit,
+    recentColors: List<Color>,
     fillTolerance: Float,
     onFillTolerance: (Float) -> Unit,
     shapeStrokeWidth: Float,
     onShapeStrokeWidth: (Float) -> Unit,
+    onEditTextLayer: (Int) -> Unit,
+    onResumeDrawingLayer: (Int) -> Unit,
+    onSelectSubject: () -> Unit,
 ) {
     when (editorMode) {
         EditorMode.Adjust -> {
@@ -1662,7 +1731,7 @@ private fun ActivePanel(
                 },
             )
         }
-        EditorMode.FilterFx -> FiltersPanel { transform -> vm.applyToActivePixelLayer(transform) }
+        EditorMode.FilterFx -> FiltersPanel { adj -> vm.addAdjustmentLayer(adj) }
         EditorMode.Liquify -> LiquifyPanel(liquifyTool, onLiquifyTool, liquifyStrength, onLiquifyStrength, liquifyRadius, onLiquifyRadius)
         EditorMode.Healing -> HealingPanel(healingBrushSize, isSettingHealingSource, onHealingBrushSize, onSetHealingSource)
         EditorMode.RedEye -> SimpleBrushPanel("Tap each eye. Brush", brushSize, onBrushSize)
@@ -1680,6 +1749,7 @@ private fun ActivePanel(
             onClear = onSelectionClear,
             onDelete = onSelectionDelete,
             onContentAwareFill = { vm.contentAwareFillSelection() },
+            onSelectSubject = onSelectSubject,
         )
         EditorMode.Layers -> LayersPanel(
             document = document,
@@ -1702,15 +1772,19 @@ private fun ActivePanel(
             onGroupActive = { vm.groupActiveWithBelow() },
             onUngroup = { vm.ungroupActive() },
             onUpdateGroup = { vm.updateGroup(it) },
+            onMoveLayer = { from, to -> vm.moveLayer(from, to) },
+            onEditText = onEditTextLayer,
+            onResumeDrawing = onResumeDrawingLayer,
         )
         EditorMode.MaskPaint -> MaskPaintPanel(
             reveal = maskPaintReveal, onReveal = onMaskPaintReveal,
             brushSize = maskBrushSize, onBrushSize = onMaskBrushSize,
         )
         EditorMode.Fill, EditorMode.GradientTool, EditorMode.ShapeRect,
-        EditorMode.ShapeEllipse, EditorMode.ShapeLine -> PaintPanel(
+        EditorMode.ShapeEllipse, EditorMode.ShapeLine, EditorMode.Eyedropper -> PaintPanel(
             mode = editorMode,
             color = paintColor, onColor = onPaintColor,
+            recentColors = recentColors,
             fillTolerance = fillTolerance, onFillTolerance = onFillTolerance,
             strokeWidth = shapeStrokeWidth, onStrokeWidth = onShapeStrokeWidth,
         )
@@ -1745,6 +1819,7 @@ private fun PaintPanel(
     mode: EditorMode,
     color: Color,
     onColor: (Color) -> Unit,
+    recentColors: List<Color>,
     fillTolerance: Float,
     onFillTolerance: (Float) -> Unit,
     strokeWidth: Float,
@@ -1756,10 +1831,16 @@ private fun PaintPanel(
         Color.White, Color.Black,
     )
     PanelContainer(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (mode == EditorMode.Eyedropper) {
+            Text("Tap the image to pick a color.", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Current color
+            Box(modifier = Modifier.size(28.dp).background(color, CircleShape).border(2.dp, MaterialTheme.colorScheme.primary, CircleShape))
             swatches.forEach { sw ->
                 Box(
                     modifier = Modifier
@@ -1768,6 +1849,21 @@ private fun PaintPanel(
                         .border(if (sw == color) 3.dp else 1.dp, if (sw == color) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape)
                         .clickable { onColor(sw) },
                 )
+            }
+        }
+        if (recentColors.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Recent", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                recentColors.forEach { rc ->
+                    Box(
+                        modifier = Modifier.size(24.dp).background(rc, CircleShape)
+                            .border(1.dp, Color.Gray, CircleShape).clickable { onColor(rc) },
+                    )
+                }
             }
         }
         if (mode == EditorMode.Fill) {
@@ -1908,6 +2004,7 @@ private fun SelectionPanel(
     onClear: () -> Unit,
     onDelete: () -> Unit,
     onContentAwareFill: () -> Unit,
+    onSelectSubject: () -> Unit,
 ) {
     PanelContainer(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1948,6 +2045,10 @@ private fun SelectionPanel(
             SmallButton("Invert", hasSelection, onInvert)
             SmallButton("Delete area", hasSelection, onDelete)
             SmallButton("Clear", hasSelection, onClear)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            SmallButton("Select subject", true, onSelectSubject)
+            InfoHint("Auto-selects the main foreground subject on-device (no cloud). Works best when the subject stands out from its background; refine with Add/Subtract or the wand afterward.")
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             SmallButton("Remove (content-aware)", hasSelection, onContentAwareFill)

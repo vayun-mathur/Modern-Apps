@@ -88,6 +88,7 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
     val photos = overridePhotosList ?: photosAll.filter { !it.isTrashed }
     val context = LocalContext.current
     val photosSorted = remember(photos) { photos.sortedByDescending { it.date } }
+    val matchedNames by galleryViewModel.matchedNamesByPhoto.collectAsState()
 
     val initialIndex =
             remember(photosSorted, id) {
@@ -137,6 +138,7 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
                         isSettled = pagerState.settledPage == pageIndex,
                         isMetadataVisible = isMetadataVisible,
                         currentZoom = zoomState,
+                        matchedPeople = matchedNames[photo.id].orEmpty(),
                         onZoomUpdate = { newState -> zoomStates[photo.id] = newState },
                         onToggleMetadata = { isMetadataVisible = !isMetadataVisible },
                         refreshKey = refreshKey,
@@ -163,6 +165,7 @@ fun PhotoDetailView(
         isSettled: Boolean,
         isMetadataVisible: Boolean,
         currentZoom: ZoomState,
+        matchedPeople: List<String> = emptyList(),
         onZoomUpdate: (ZoomState) -> Unit,
         onToggleMetadata: () -> Unit,
         refreshKey: Int = 0,
@@ -364,6 +367,12 @@ fun PhotoDetailView(
                         text = stringResource(R.string.resolution, photo.width, photo.height),
                         color = Color.LightGray
                 )
+                if (matchedPeople.isNotEmpty()) {
+                    Text(
+                            text = stringResource(R.string.people_label, matchedPeople.joinToString(", ")),
+                            color = Color.LightGray
+                    )
+                }
 
                 Row(
                         modifier = Modifier.align(Alignment.End),

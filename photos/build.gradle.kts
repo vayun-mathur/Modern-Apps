@@ -7,6 +7,9 @@ android {
     defaultConfig {
         applicationId = "com.vayunmathur.photos"
     }
+    androidResources {
+        noCompress += "tflite"
+    }
     packaging {
         jniLibs {
             pickFirsts.add("**/libc++_shared.so")
@@ -22,6 +25,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
     implementation(libs.androidx.exifinterface)
+    implementation(libs.mediapipe.tasks.vision)
 
     implementRoom(libs)
 

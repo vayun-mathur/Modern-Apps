@@ -111,6 +111,9 @@ fun LayersPanel(
     onGroupActive: () -> Unit,
     onUngroup: () -> Unit,
     onUpdateGroup: (GroupInfo) -> Unit,
+    onMoveLayer: (Int, Int) -> Unit,
+    onEditText: (Int) -> Unit,
+    onResumeDrawing: (Int) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -183,6 +186,14 @@ fun LayersPanel(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                val ai = document.activeLayerIndex
+                if (ai < document.layers.size - 1) ActionChip("Move ↑") { onMoveLayer(ai, ai + 1) }
+                if (ai > 0) ActionChip("Move ↓") { onMoveLayer(ai, ai - 1) }
+                when (active) {
+                    is TextLayer -> ActionChip("Edit Text") { onEditText(ai) }
+                    is DrawingLayer -> ActionChip("Edit Strokes") { onResumeDrawing(ai) }
+                    else -> {}
+                }
                 if (active.mask == null) {
                     ActionChip("Add Mask", enabled = hasSelection) {
                         if (hasSelection) onAddMaskFromSelection(document.activeLayerIndex)

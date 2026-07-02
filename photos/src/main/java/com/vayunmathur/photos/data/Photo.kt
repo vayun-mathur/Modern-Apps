@@ -26,4 +26,7 @@ data class Photo(
     @Embedded
     val videoData: VideoData?,
     val isTrashed: Boolean = false,
+    // True once this photo has been scanned for faces (mirrors [exifSet]); keeps
+    // the face indexer from re-processing the same photo on every sync.
+    val faceScanned: Boolean = false,
 ) : DatabaseItem

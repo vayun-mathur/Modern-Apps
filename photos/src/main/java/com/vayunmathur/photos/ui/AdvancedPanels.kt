@@ -213,7 +213,7 @@ fun GradientMapPanel(onSelect: (List<com.vayunmathur.photos.data.GradientStop>) 
  * hands it to [onApply], which runs it on a background thread in the view model.
  */
 @Composable
-fun FiltersPanel(onApply: ((android.graphics.Bitmap) -> android.graphics.Bitmap) -> Unit) = PanelColumn {
+fun FiltersPanel(onAddFx: (com.vayunmathur.photos.data.LayerAdjustment) -> Unit) = PanelColumn {
     var tool by remember { mutableStateOf("Sharpen") }
     var amount by remember { mutableFloatStateOf(50f) }
     var radius by remember { mutableFloatStateOf(2f) }
@@ -240,14 +240,14 @@ fun FiltersPanel(onApply: ((android.graphics.Bitmap) -> android.graphics.Bitmap)
     ApplyButton {
         val a = amount; val r = radius; val ang = angle
         when (tool) {
-            "Sharpen" -> onApply { UnsharpMask(amount = a, radius = r).applyToBitmap(it) }
-            "Gaussian" -> onApply { FilterBlur(FilterBlurMode.Gaussian, amount = a).applyToBitmap(it) }
-            "Motion" -> onApply { FilterBlur(FilterBlurMode.Motion, amount = a, angle = ang).applyToBitmap(it) }
-            "Radial" -> onApply { FilterBlur(FilterBlurMode.Radial, amount = a).applyToBitmap(it) }
-            "Spin" -> onApply { FilterBlur(FilterBlurMode.Spin, amount = a).applyToBitmap(it) }
-            "Noise" -> onApply { NoiseParams(amount = a).applyToBitmap(it) }
-            "Find Edges" -> onApply { StylizeParams(StylizeMode.FindEdges).applyToBitmap(it) }
-            "Emboss" -> onApply { StylizeParams(StylizeMode.Emboss).applyToBitmap(it) }
+            "Sharpen" -> onAddFx(com.vayunmathur.photos.data.UnsharpAdj(UnsharpMask(amount = a, radius = r)))
+            "Gaussian" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Gaussian, amount = a)))
+            "Motion" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Motion, amount = a, angle = ang)))
+            "Radial" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Radial, amount = a)))
+            "Spin" -> onAddFx(com.vayunmathur.photos.data.FilterBlurAdj(FilterBlur(FilterBlurMode.Spin, amount = a)))
+            "Noise" -> onAddFx(com.vayunmathur.photos.data.NoiseAdj(NoiseParams(amount = a)))
+            "Find Edges" -> onAddFx(com.vayunmathur.photos.data.StylizeAdj(StylizeParams(StylizeMode.FindEdges)))
+            "Emboss" -> onAddFx(com.vayunmathur.photos.data.StylizeAdj(StylizeParams(StylizeMode.Emboss)))
         }
     }
 }

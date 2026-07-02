@@ -6,6 +6,7 @@
     <string name="action_undo">Undo</string>
     <string name="label_gallery">Gallery</string>
     <string name="label_map">Map</string>
+    <string name="label_people">People</string>
     <string name="label_trash">Trash</string>
     <string name="label_secure_folder">Secure Folder</string>
     <string name="action_move_to_secure">Move to Secure Folder</string>
@@ -36,4 +37,11 @@
     <string name="enable_ai_search_button">Enable</string>
     <string name="model_downloading_title">Downloading AI Model</string>
     <string name="model_downloading_description">The AI model is being downloaded. This may take a few minutes depending on your connection.</string>
+    <!-- Optional on-device face matching -->
+    <string name="match_faces_title">Match faces to contacts</string>
+    <string name="match_faces_description">Optionally find your contacts in your photos. Faces are detected and matched to your contact photos entirely on your device — nothing is uploaded. This needs permission to read your contacts.</string>
+    <string name="match_faces_enable">Turn on</string>
+    <string name="people_empty">No people found yet. Scanning happens in the background — check back after your photos have been indexed.</string>
+    <string name="people_photo_count">%1$d photos</string>
+    <string name="people_label">People: %1$s</string>
 </resources>

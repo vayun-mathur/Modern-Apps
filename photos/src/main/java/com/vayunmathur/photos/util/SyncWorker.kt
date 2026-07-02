@@ -27,9 +27,12 @@ import androidx.work.ListenableWorker.Result as WorkResult
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.buildDatabase
 import com.vayunmathur.photos.data.Photo
+import com.vayunmathur.photos.data.PhotoFace
 import com.vayunmathur.photos.data.PhotoOCR
 import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.data.VideoData
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -62,6 +65,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         
         if (dataStore.getBoolean("image_understanding_enabled", false)) {
             OCRWorker.enqueue(applicationContext)
+        }
+
+        if (dataStore.getBoolean("face_match_enabled", false)) {
+            FaceWorker.enqueue(applicationContext)
         }
         
         dataStore.setLong("last_photos_generation", currentGeneration)
@@ -240,7 +247,7 @@ suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri
 
                 val existing = existingPhotos[id]
                 if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData || existing.width != width || existing.height != height || existing.dateModified != dateModified || existing.isTrashed != isTrashed) {
-                    newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, dateModified, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData, isTrashed)
+                    newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, dateModified, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData, isTrashed, faceScanned = existing?.faceScanned ?: false)
                 }
             } catch (e: Exception) {
                 Log.e("SyncWorker", "Error processing photo/video from cursor", e)
@@ -379,3 +386,111 @@ suspend fun runOCR(photos: List<Photo>, database: PhotoDatabase, context: Contex
 }
 
 private const val OCR_INTER_ITEM_DELAY_MS = 30_000L
+
+class FaceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): WorkResult = withContext(Dispatchers.IO) {
+        val dataStore = DataStoreUtils.getInstance(applicationContext)
+        if (!dataStore.getBoolean("face_match_enabled", false)) {
+            return@withContext WorkResult.success()
+        }
+        faceMutex.withLock {
+            setForeground(createForegroundInfo())
+            val database = applicationContext.buildDatabase<PhotoDatabase>()
+            runFaceIndexing(database, applicationContext)
+            WorkResult.success()
+        }
+    }
+
+    private fun createForegroundInfo(): ForegroundInfo = applicationContext.syncForegroundInfo(
+        notificationId = 103,
+        channelId = "face_worker",
+        channelName = "People Indexing",
+        title = "Finding People",
+        text = "Matching faces to your contacts on-device...",
+    )
+
+    companion object {
+        private const val WORK_NAME = "FaceWorker"
+        private val faceMutex = Mutex()
+
+        fun enqueue(context: Context) {
+            val request = OneTimeWorkRequestBuilder<FaceWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                request,
+            )
+        }
+    }
+}
+
+/**
+ * Index contact faces (once, when empty) then scan any not-yet-scanned library
+ * photos for faces and match them to contacts. All on-device.
+ */
+suspend fun runFaceIndexing(database: PhotoDatabase, context: Context) {
+    val photoDao = database.photoDao()
+    val faceDao = database.faceDao()
+    val dataStore = DataStoreUtils.getInstance(context)
+
+    // 1. Make sure contact face templates exist. Cheap no-op once populated.
+    val existingKeys = faceDao.getContactFaces().map { it.contactKey }.toSet()
+    val newContactFaces = ContactFaceIndexer(context).index(existingKeys)
+    if (newContactFaces.isNotEmpty()) faceDao.upsertContactFaces(newContactFaces)
+
+    val contacts = faceDao.getContactFaces()
+        .map { it.contactKey to FaceRecognizer.bytesToFloats(it.embedding) }
+    val nameByKey = faceDao.getContactFaces().associate { it.contactKey to it.name }
+
+    // 2. Scan library photos that haven't been scanned yet.
+    val photos = photoDao.getUnscannedForFaces().sortedByDescending { it.date }
+    for (photo in photos) {
+        if (!dataStore.getBoolean("face_match_enabled", false)) return
+
+        try {
+            val bitmap = loadBitmapForFaces(context, photo.uri.toUri())
+            if (bitmap != null) {
+                val templates = FaceRecognizer.detectFaces(bitmap)
+                bitmap.recycle()
+                val faces = templates.map { template ->
+                    val key = FaceRecognizer.bestMatch(template, contacts)
+                    PhotoFace(
+                        photoId = photo.id,
+                        embedding = FaceRecognizer.floatsToBytes(template),
+                        contactKey = key,
+                        contactName = key?.let { nameByKey[it] },
+                    )
+                }
+                if (faces.isNotEmpty()) faceDao.insertPhotoFaces(faces)
+            }
+        } catch (e: Exception) {
+            Log.e("FaceWorker", "Error scanning faces for photo ${photo.id}", e)
+        }
+
+        // Mark scanned regardless of outcome so we don't retry forever.
+        photoDao.upsertAll(listOf(photo.copy(faceScanned = true)))
+    }
+}
+
+private fun loadBitmapForFaces(context: Context, uri: Uri): Bitmap? {
+    return try {
+        val source = ImageDecoder.createSource(context.contentResolver, uri)
+        ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            decoder.isMutableRequired = false
+            val maxDim = maxOf(info.size.width, info.size.height)
+            val target = 720
+            if (maxDim > target) {
+                val scale = target.toFloat() / maxDim
+                decoder.setTargetSize(
+                    (info.size.width * scale).toInt().coerceAtLeast(1),
+                    (info.size.height * scale).toInt().coerceAtLeast(1),
+                )
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("FaceWorker", "Failed to decode $uri for faces", e)
+        null
+    }
+}

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.photos.data.FaceDao
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDao
 import com.vayunmathur.photos.data.PhotoDatabase
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
@@ -44,6 +46,7 @@ import androidx.work.WorkManager
 class GalleryViewModel(
     application: Application,
     val photoDao: PhotoDao,
+    val faceDao: FaceDao,
 ) : AndroidViewModel(application) {
 
     private val dataStore: DataStoreUtils = DataStoreUtils.getInstance(application)
@@ -78,6 +81,34 @@ class GalleryViewModel(
             SharingStarted.WhileSubscribed(5_000),
             false,
         )
+
+    /** Whether the optional "match faces to contacts" feature is on (off by default). */
+    val faceMatchEnabled: StateFlow<Boolean> = dataStore.booleanFlow("face_match_enabled")
+        .onStart { emit(dataStore.getBoolean("face_match_enabled", false)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Photos grouped by matched contact, for the People view. */
+    val people: StateFlow<List<PersonGroup>> =
+        combine(photoDao.getAllFlow(), faceDao.matchedFacesFlow()) { allPhotos, faces ->
+            val byId = allPhotos.filter { !it.isTrashed }.associateBy { it.id }
+            faces.groupBy { it.contactName!! }
+                .mapNotNull { (name, facesForPerson) ->
+                    val personPhotos = facesForPerson
+                        .mapNotNull { byId[it.photoId] }
+                        .distinctBy { it.id }
+                        .sortedByDescending { it.date }
+                    if (personPhotos.isEmpty()) null
+                    else PersonGroup(name, personPhotos.first(), personPhotos)
+                }
+                .sortedByDescending { it.photos.size }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Matched contact names keyed by photo id, for the photo detail overlay. */
+    val matchedNamesByPhoto: StateFlow<Map<Long, List<String>>> =
+        faceDao.matchedFacesFlow().map { faces ->
+            faces.groupBy { it.photoId }
+                .mapValues { (_, list) -> list.mapNotNull { it.contactName }.distinct() }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     init {
         // Debounced search: re-query whenever the query string changes.
@@ -118,6 +149,18 @@ class GalleryViewModel(
     fun setFeatureEnabled(enabled: Boolean) {
         viewModelScope.launch {
             dataStore.setBoolean("image_understanding_enabled", enabled)
+        }
+    }
+
+    /**
+     * Turn the face/contact matching feature on or off. When turning on, kick a
+     * one-off background pass to index contacts and scan photos. Callers must
+     * ensure the READ_CONTACTS permission is granted before enabling.
+     */
+    fun setFaceMatchEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.setBoolean("face_match_enabled", enabled)
+            if (enabled) FaceWorker.enqueue(getApplication())
         }
     }
 
@@ -163,6 +206,14 @@ class GalleryViewModel(
 fun GalleryViewModelFactory(
     application: Application,
     photoDao: PhotoDao,
+    faceDao: FaceDao,
 ): ViewModelProvider.Factory = viewModelFactory {
-    initializer { GalleryViewModel(application, photoDao) }
+    initializer { GalleryViewModel(application, photoDao, faceDao) }
 }
+
+/** A contact and the library photos they were matched in. */
+data class PersonGroup(
+    val name: String,
+    val coverPhoto: Photo,
+    val photos: List<Photo>,
+)
