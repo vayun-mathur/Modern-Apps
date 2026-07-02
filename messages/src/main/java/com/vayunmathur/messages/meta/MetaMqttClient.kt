@@ -539,18 +539,26 @@ class MetaMqttClient(
     suspend fun backfillRecentMessages(snapshotPayload: String, sp: List<String>, maxThreads: Int = 20) {
         val events = LightspeedDecoder.decodePublishResponse(snapshotPayload, sp)
         val incoming = MetaProtocol.parseAllEvents(events)
-        val lastMsgIdByThread = incoming
+        // The reference for FetchMessages (direction=older) must be a SINGLE real message's
+        // matched (timestamp, id) pair — the server returns nothing if the timestamp and id
+        // don't correspond. Pick the newest snapshot message per thread and use ITS timestamp
+        // + id together (not the thread-level lastActivityTimestampMs, which need not match the
+        // message id). Mirrors Go backfill.go requestMoreHistory using a message's min ts+id.
+        val lastMsgByThread = incoming
             .filterIsInstance<MetaProtocol.IncomingEvent.MessageReceived>()
-            .associate { it.message.threadId to it.message.messageId }
+            .groupBy { it.message.threadId }
+            .mapValues { (_, msgs) -> msgs.maxByOrNull { it.message.timestamp }!!.message }
         val threads = incoming
             .filterIsInstance<MetaProtocol.IncomingEvent.ThreadSynced>()
             .distinctBy { it.threadId }
             .take(maxThreads)
         for (t in threads) {
             val threadKey = t.threadId.toLongOrNull() ?: continue
-            val refTs = if (t.lastActivityTimestampMs > 0L) t.lastActivityTimestampMs else System.currentTimeMillis()
-            val refId = lastMsgIdByThread[t.threadId] ?: ""
-            val payload = MetaProtocol.buildFetchMessagesPayload(threadKey, refTs, refId, versionId)
+            // Skip threads with no anchor message — FetchMessages needs a real (ts,id) pair.
+            val refMsg = lastMsgByThread[t.threadId] ?: continue
+            val payload = MetaProtocol.buildFetchMessagesPayload(
+                threadKey, refMsg.timestamp, refMsg.messageId, versionId,
+            )
             makeLSRequest(payload, MetaProtocol.LS_REQUEST_TYPE_TASK)?.let { emitForProcessing(it) }
         }
     }
