@@ -39,11 +39,17 @@ interface NoteDao {
     suspend fun upsertAll(t: List<Note>)
 }
 
-@Database(entities = [Note::class], version = 1)
+@Database(entities = [Note::class], version = 2, exportSchema = false)
 abstract class NoteDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
 
     companion object : DatabaseMigrations {
-        override val migrations = emptyList<Migration>()
+        // v2 adds the nullable `blocks` column (JSON list of NoteBlock). Existing
+        // rows keep blocks = NULL and are read as a single text block.
+        override val migrations = listOf(
+            Migration(1, 2) {
+                it.execSQL("ALTER TABLE Note ADD COLUMN blocks TEXT")
+            },
+        )
     }
 }
