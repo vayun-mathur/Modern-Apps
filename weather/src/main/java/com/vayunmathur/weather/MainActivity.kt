@@ -16,6 +16,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.weather.data.WeatherDatabase
 import com.vayunmathur.weather.ui.HomePage
 import com.vayunmathur.weather.ui.SearchLocationPage
+import com.vayunmathur.weather.ui.WeatherMapPage
 import com.vayunmathur.weather.util.WeatherViewModel
 import com.vayunmathur.weather.util.WeatherViewModelFactory
 import kotlinx.serialization.Serializable
@@ -41,6 +42,13 @@ class MainActivity : ComponentActivity() {
 sealed interface Route : NavKey {
     @Serializable data object Home : Route
     @Serializable data object SearchLocation : Route
+    @Serializable data class WeatherMap(
+        val latitude: Double,
+        val longitude: Double,
+        val name: String,
+        val isoTime: String? = null,
+        val metric: String,
+    ) : Route
 }
 
 @Composable
@@ -49,5 +57,8 @@ fun Navigation(viewModel: WeatherViewModel) {
     MainNavigation(backStack) {
         entry<Route.Home>(metadata = ListPage()) { HomePage(backStack, viewModel) }
         entry<Route.SearchLocation>(metadata = DialogPage()) { SearchLocationPage(backStack, viewModel) }
+        entry<Route.WeatherMap>(metadata = ListPage()) {
+            WeatherMapPage(backStack, it.latitude, it.longitude, it.name, it.isoTime, it.metric)
+        }
     }
 }

@@ -53,17 +53,10 @@ import com.vayunmathur.weather.util.PressureUnit
 import com.vayunmathur.weather.util.TemperatureUnit
 import com.vayunmathur.weather.util.WeatherMetric
 import com.vayunmathur.weather.util.WeatherViewModel
-import com.vayunmathur.weather.util.WindUnit
 import com.vayunmathur.weather.util.formatHourAxisLabel
-import com.vayunmathur.weather.util.formatPressure
-import com.vayunmathur.weather.util.formatTemperatureCompact
-import com.vayunmathur.weather.util.formatWind
-import com.vayunmathur.weather.util.mmToInches
-import com.vayunmathur.weather.util.metersToMiles
+import com.vayunmathur.weather.util.metricValueFormatter
 import com.vayunmathur.weather.util.parseLocalIsoToEpochSec
 import com.vayunmathur.weather.util.resolveConditions
-import java.util.Locale
-import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -273,35 +266,32 @@ private fun LocationPage(
                 points = com.vayunmathur.weather.util.metricSeries(forecast, gm, selected),
                 valueLabel = metricValueFormatter(gm, tempUnit, windUnit, pressureUnit),
                 timeLabel = { epoch -> formatHourAxisLabel(epoch, use24Hour) },
+                onOpenMap = {
+                    val iso = when (val s = selected) {
+                        is com.vayunmathur.weather.util.SelectedDateOrTime.Time -> s.isoTime
+                        is com.vayunmathur.weather.util.SelectedDateOrTime.Day -> "${s.isoDate}T00:00"
+                        null -> null
+                    }
+                    backStack.add(
+                        Route.WeatherMap(
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            name = location.name,
+                            isoTime = iso,
+                            metric = gm.name,
+                        )
+                    )
+                    graphMetric = null
+                },
                 onDismiss = { graphMetric = null },
             )
         }
     }
 }
 
-/** Per-metric display formatter for graph value labels. */
-private fun metricValueFormatter(
-    metric: WeatherMetric,
-    tempUnit: TemperatureUnit,
-    windUnit: WindUnit,
-    pressureUnit: PressureUnit,
-): (Double) -> String = when (metric) {
-    WeatherMetric.Temperature, WeatherMetric.FeelsLike, WeatherMetric.DewPoint ->
-        { v -> formatTemperatureCompact(v, tempUnit) }
-    WeatherMetric.Humidity, WeatherMetric.CloudCover ->
-        { v -> "${v.roundToInt()}%" }
-    WeatherMetric.Precipitation ->
-        { v -> if (windUnit == WindUnit.Mph) String.format(Locale.US, "%.2f in", mmToInches(v)) else String.format(Locale.US, "%.1f mm", v) }
-    WeatherMetric.WindSpeed, WeatherMetric.WindGusts ->
-        { v -> formatWind(v, windUnit) }
-    WeatherMetric.Pressure ->
-        { v -> formatPressure(v, pressureUnit) }
-    WeatherMetric.Visibility ->
-        { v -> if (windUnit == WindUnit.Mph) "${metersToMiles(v).roundToInt()} mi" else "${(v / 1000).roundToInt()} km" }
-    WeatherMetric.UvIndex ->
-        { v -> v.roundToInt().toString() }
-}
-
+/**
+ * Per-metric display formatter for graph value labels.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmptyHome(viewModel: WeatherViewModel, onAddLocation: () -> Unit) {

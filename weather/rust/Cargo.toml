@@ -1,0 +1,22 @@
+[package]
+name = "weather_om"
+version = "0.1.0"
+edition = "2021"
+description = "Native .om decoder for the Weather app map, exposed to Kotlin via JNI"
+license = "GPL-2.0-only"
+
+[lib]
+name = "weather_om"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+omfiles = { git = "https://github.com/open-meteo/rust-omfiles" }
+ureq = "2.12"
+jni = "0.21"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -5,4 +5,10 @@
     <string name="city_name_hint">City name</string>
     <string name="weather_title">Weather</string>
     <string name="add_location">Add a location</string>
+    <string name="open_map">Open map</string>
+    <string name="weather_map_title">Weather map</string>
+    <string name="map_measure">Measure</string>
+    <string name="map_time">Time</string>
+    <string name="map_back">Back</string>
+    <string name="map_attribution">© OpenStreetMap · © CARTO</string>
 </resources>
