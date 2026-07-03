@@ -23,6 +23,13 @@ class E2eeIdentity internal constructor(
     /** Decrypts data that was encrypted to this identity's public key (see [E2ee.encryptTo]). */
     suspend fun decrypt(ciphertext: ByteArray): ByteArray = privateKey.decryptor().decrypt(ciphertext)
 
+    /** Reverses [E2ee.sealTo]: unwraps the AES key with the private key, then AES-decrypts. */
+    suspend fun unseal(data: ByteArray): ByteArray {
+        val (wrapped, ct) = E2ee.splitSealed(data)
+        val cek = decrypt(wrapped)
+        return E2ee.aesDecrypt(cek, ct)
+    }
+
     companion object {
         private val provider get() = CryptographyProvider.Default.get(RSA.OAEP)
 

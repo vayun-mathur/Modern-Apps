@@ -75,4 +75,29 @@ object E2ee {
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(GCM_TAG_BITS, iv))
         return cipher.doFinal(ct)
     }
+
+    // --- Hybrid encryption (arbitrary-length payloads to a public key) ---
+
+    /**
+     * Seals an **arbitrary-length** payload to a recipient's public key: a fresh AES key encrypts
+     * the payload, and only that 32-byte key is RSA-wrapped (so the RSA-OAEP size limit never
+     * applies to the payload). Layout: `[2-byte wrappedKeyLen][wrappedKey][aes(iv||ct)]`.
+     */
+    suspend fun sealTo(recipientPublicKeyPem: ByteArray, plaintext: ByteArray): ByteArray {
+        val cek = newContentKey()
+        val wrapped = encryptTo(recipientPublicKeyPem, cek)
+        val ct = aesEncrypt(cek, plaintext)
+        val out = ByteArray(2 + wrapped.size + ct.size)
+        out[0] = ((wrapped.size ushr 8) and 0xFF).toByte()
+        out[1] = (wrapped.size and 0xFF).toByte()
+        wrapped.copyInto(out, 2)
+        ct.copyInto(out, 2 + wrapped.size)
+        return out
+    }
+
+    /** Splits a [sealTo] blob into its wrapped-key and ciphertext parts. */
+    internal fun splitSealed(data: ByteArray): Pair<ByteArray, ByteArray> {
+        val len = ((data[0].toInt() and 0xFF) shl 8) or (data[1].toInt() and 0xFF)
+        return data.copyOfRange(2, 2 + len) to data.copyOfRange(2 + len, data.size)
+    }
 }
