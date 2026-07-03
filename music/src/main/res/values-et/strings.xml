@@ -45,4 +45,5 @@
     <string name="dialog_create_playlist">Koosta esitusloend</string>
     <string name="dialog_create">Koosta</string>
     <string name="playlist_name_hint">Esitusloendi nimi</string>
+    <string name="show_lyrics_on_lock_screen">Näita laulusõnu lukustusvaates</string>
 </resources>
