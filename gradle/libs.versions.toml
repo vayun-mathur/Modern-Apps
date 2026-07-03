@@ -61,6 +61,7 @@ ink = "1.0.0"
 protobuf = "4.35.0"
 keepassJava2 = "2.2.4"
 zxing = "3.5.4"
+bouncycastle = "1.82"
 litert = "1.4.2"
 onnxruntimeAndroid = "1.19.2"
 
@@ -183,6 +184,7 @@ androidx-ink-geometry = { group = "androidx.ink", name = "ink-geometry", version
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 keepassjava2-dom = { module = "org.linguafranca.pwdb:KeePassJava2-dom", version.ref = "keepassJava2" }
+bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

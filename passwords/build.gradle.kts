@@ -20,4 +20,8 @@ dependencies {
     implementation(libs.androidx.credentials.lib)
     implementation(libs.androidx.autofill)
     implementation(libs.keepassjava2.dom)
+    implementation(libs.bouncycastle)
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.bouncycastle)
 }

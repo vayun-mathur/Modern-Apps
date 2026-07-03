@@ -9,6 +9,7 @@ object Cbor {
     private const val TYPE_MAP = 0x05
 
     fun encode(data: Any): ByteArray = when (data) {
+        is Boolean -> byteArrayOf((if (data) 0xF5 else 0xF4).toByte())
         is Number -> {
             val value = data.toLong()
             if (value >= 0) createArg(TYPE_UNSIGNED_INT, value)
