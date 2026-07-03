@@ -29,4 +29,5 @@
     <string name="settings">Seadistused</string>
     <string name="drafts">Kavandid</string>
     <string name="save">Salvesta</string>
+    <string name="cancel">Katkesta</string>
 </resources>
