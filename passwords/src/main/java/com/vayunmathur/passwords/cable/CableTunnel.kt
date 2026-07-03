@@ -24,8 +24,10 @@ import java.io.IOException
  *
  * WebSocket subprotocol is [SUBPROTOCOL] (`fido.cable`).
  *
- * ⚠️ UNVERIFIED: how the routing id is returned (assumed the [ROUTING_ID_HEADER] response header)
- * and whether tunnel frames carry an extra type prefix — confirm against Chromium / a live server.
+ * Verified against Chromium (2024): the "new" URL path, the `fido.cable` subprotocol, and the
+ * routing-id response header ([ROUTING_ID_HEADER]) all match `tunnelserver::GetNewTunnelURL`,
+ * `kCableWebSocketProtocol`, and `kCableRoutingIdHeader`. (Live tunnel-server behaviour still can't
+ * be exercised offline.)
  */
 class CableTunnel private constructor(
     private val client: HttpClient,
