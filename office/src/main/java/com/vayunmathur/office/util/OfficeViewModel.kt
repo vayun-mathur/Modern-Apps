@@ -2149,9 +2149,10 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
      * Shares the current document with [recipientId]. If it isn't online yet, it is first copied
      * into the online folder (new doc id + content key + CRDT upload), then the invite is sent.
      */
-    fun shareCurrentDocument(recipientId: String, role: String = OfficeRoles.EDITOR, onResult: (Boolean) -> Unit = {}) {
+    /** Shares with a recipient. onResult receives null on success, or a human-readable error reason. */
+    fun shareCurrentDocument(recipientId: String, role: String = OfficeRoles.EDITOR, onResult: (String?) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = runCatching {
+            val error: String? = try {
                 OfficeSync.init(getApplication())
                 val ds = DataStoreUtils.getInstance(getApplication())
                 val doc = (_state.value as? ViewState.Loaded)?.document
@@ -2160,34 +2161,41 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                 val firstShare = currentDocId == null
                 val docId = currentDocId ?: OfficeSync.newDocumentId()
                 val key = currentDocKey ?: OfficeSync.newDocumentKey()
-                currentDocId = docId
-                currentDocKey = key
-                currentCharMode = charMode
-                // The sharer is the owner. Only the owner may share (client-enforced everywhere).
                 if (firstShare) {
                     currentRole = OfficeRoles.OWNER
                     currentOwnerKey = OfficeSync.publicKeyPem
                     currentMembers[OfficeSync.deviceId] = OfficeRoles.OWNER
                 }
-                if (currentRole != OfficeRoles.OWNER) return@runCatching false
-                val ownerKeyB64 = Base64.encode(OfficeSync.publicKeyPem)
-                syncDoc(docId, key)
-                indexMutex.withLock {
-                    val index = loadIndex(ds).associateBy { it.docId }.toMutableMap()
-                    if (!index.containsKey(docId)) {
-                        index[docId] = OfficeDocMeta(docId, title, Base64.encode(key), owner = true, charMode = charMode, role = OfficeRoles.OWNER, ownerKeyB64 = ownerKeyB64)
-                        saveIndex(ds, index.values.toList())
+                when {
+                    currentRole != OfficeRoles.OWNER -> "Only the owner can share this document."
+                    OfficeSync.getKey(recipientId) == null ->
+                        "That device id isn't registered yet. Ask them to open Office once (Online tab), then try again."
+                    else -> {
+                        currentDocId = docId
+                        currentDocKey = key
+                        currentCharMode = charMode
+                        val ownerKeyB64 = Base64.encode(OfficeSync.publicKeyPem)
+                        syncDoc(docId, key)
+                        indexMutex.withLock {
+                            val index = loadIndex(ds).associateBy { it.docId }.toMutableMap()
+                            if (!index.containsKey(docId)) {
+                                index[docId] = OfficeDocMeta(docId, title, Base64.encode(key), owner = true, charMode = charMode, role = OfficeRoles.OWNER, ownerKeyB64 = ownerKeyB64)
+                                saveIndex(ds, index.values.toList())
+                            }
+                        }
+                        startLive(docId, key)
+                        recordMembers(docId, key, listOf(
+                            OfficeMember(OfficeSync.deviceId, myName(), OfficeRoles.OWNER),
+                            OfficeMember(recipientId, "", role),
+                        ))
+                        if (OfficeSync.sendInvite(recipientId, docId, key, title, charMode, role, ownerKeyB64)) null
+                        else "Couldn't deliver the invite — check your connection."
                     }
                 }
-                startLive(docId, key)
-                // Owner-signed roster: record self (owner) and the new member with their role.
-                recordMembers(docId, key, listOf(
-                    OfficeMember(OfficeSync.deviceId, myName(), OfficeRoles.OWNER),
-                    OfficeMember(recipientId, "", role),
-                ))
-                OfficeSync.sendInvite(recipientId, docId, key, title, charMode, role, ownerKeyB64)
-            }.getOrDefault(false)
-            withContext(Dispatchers.Main) { onResult(ok) }
+            } catch (e: Exception) {
+                "Error: ${e.message ?: e.javaClass.simpleName}"
+            }
+            withContext(Dispatchers.Main) { onResult(error) }
         }
     }
 

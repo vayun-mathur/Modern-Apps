@@ -232,7 +232,7 @@ fun ShareOnlineDialog(
     isOwner: Boolean,
     myRole: String,
     members: List<com.vayunmathur.office.util.OfficeMember>,
-    onShare: (String, String, (Boolean) -> Unit) -> Unit,
+    onShare: (String, String, (String?) -> Unit) -> Unit,
     onSetRole: (String, String) -> Unit,
     onComputeCode: (String, (String?) -> Unit) -> Unit,
     onDismiss: () -> Unit
@@ -318,10 +318,10 @@ fun ShareOnlineDialog(
                 enabled = recipient.isNotBlank() && !sharing,
                 onClick = {
                     sharing = true; status = null
-                    onShare(recipient.trim(), addRole) { ok ->
+                    onShare(recipient.trim(), addRole) { err ->
                         sharing = false
-                        status = if (ok) "Added ✓" else "Couldn't share — check your connection and the server."
-                        if (ok) recipient = ""
+                        status = err ?: "Added ✓"
+                        if (err == null) recipient = ""
                     }
                 }
             ) { Text(if (sharing) "Adding…" else "Add") }
@@ -880,9 +880,9 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
             myRole = viewModel.currentDocRole(),
             members = members,
             onShare = { recipientId, role, cb ->
-                viewModel.shareCurrentDocument(recipientId, role) { ok ->
-                    if (ok) viewModel.documentMembers { members = it } // refresh roster after sharing
-                    cb(ok)
+                viewModel.shareCurrentDocument(recipientId, role) { err ->
+                    if (err == null) viewModel.documentMembers { members = it } // refresh roster on success
+                    cb(err)
                 }
             },
             onSetRole = { memberId, role ->
