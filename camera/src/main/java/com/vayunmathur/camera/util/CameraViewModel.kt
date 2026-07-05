@@ -24,6 +24,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.MirrorMode
 import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -368,6 +369,13 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
     }
 
+    /**
+     * Whether captures should be horizontally mirrored to match the preview. CameraX mirrors the
+     * front-camera preview but saves un-mirrored by default, so selfies otherwise come out flipped.
+     */
+    private val mirrorCaptures: Boolean
+        get() = _lensFacing.value == CameraSelector.LENS_FACING_FRONT
+
     fun setQrResult(text: String?) {
         _qrResult.value = text
     }
@@ -432,7 +440,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             preview.setSurfaceProvider { request -> _surfaceRequest.value = request }
 
             val recorder = Recorder.Builder().build()
-            val videoCapture = VideoCapture.withOutput(recorder)
+            val videoCapture = VideoCapture.Builder(recorder)
+                .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
+                .build()
             videoCapture.targetRotation = targetRotation
             highSpeedVideoCapture = videoCapture
 
@@ -580,7 +590,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 val recorderBuilder = Recorder.Builder()
                 if (av1) recorderBuilder.setVideoMimeType(MediaFormat.MIMETYPE_VIDEO_AV1)
                 if (opus) recorderBuilder.setAudioMimeType(MediaFormat.MIMETYPE_AUDIO_OPUS)
-                val capture = VideoCapture.withOutput(recorderBuilder.build())
+                val capture = VideoCapture.Builder(recorderBuilder.build())
+                    .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
+                    .build()
                 capture.targetRotation = targetRotation
                 videoCapture = capture
                 recordingWithAv1 = av1
@@ -754,6 +766,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
         val metadata = ImageCapture.Metadata().apply {
             if (_locationEnabled.value) location = lastLocation
+            isReversedHorizontal = mirrorCaptures
         }
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(
@@ -797,6 +810,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
             val warmth = _warmth.value
             val shadows = _shadows.value
+            val mirror = mirrorCaptures
             if (warmth != 0f || shadows != 0f) {
                 // The warmth/shadows adjustment only lives in the preview RenderEffect, so bake
                 // it into the pixels here: capture in-memory, apply the same color matrix, then
@@ -817,7 +831,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                             viewModelScope.launch {
                                 val uri = withContext(Dispatchers.IO) {
                                     val decoded = BitmapFactory.decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
-                                    val adjusted = applyColorAdjustments(decoded, warmth, shadows)
+                                    val adjusted = applyColorAdjustments(decoded, warmth, shadows, mirror)
                                     val values = MediaStoreSaver.imageValues("IMG_${MediaStoreSaver.timestamp()}.jpg")
                                     MediaStoreSaver.saveBitmap(app.contentResolver, values, adjusted)
                                         ?.also { writeCaptureExif(it, sourceJpeg, degrees) }
@@ -895,7 +909,10 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 _isCapturing.value = false
                 return onError()
             }
-            val outputOptions = ImageCapture.OutputFileOptions.Builder(outputStream).build()
+            val metadata = ImageCapture.Metadata().apply { isReversedHorizontal = mirrorCaptures }
+            val outputOptions = ImageCapture.OutputFileOptions.Builder(outputStream)
+                .setMetadata(metadata)
+                .build()
             capture.takePicture(outputOptions, executor, object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     _isCapturing.value = false
@@ -911,8 +928,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             capture.takePicture(executor, object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
                     _isCapturing.value = false
+                    val mirror = mirrorCaptures
                     val thumbnail = try {
-                        downscaledThumbnail(image)
+                        downscaledThumbnail(image, mirror)
                     } finally {
                         image.close()
                     }
@@ -927,10 +945,13 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Rotates the captured frame upright and scales it down for the result "data" thumbnail. */
-    private fun downscaledThumbnail(image: ImageProxy): Bitmap {
+    /** Rotates the captured frame upright (mirroring for the front camera) and scales it down for the result "data" thumbnail. */
+    private fun downscaledThumbnail(image: ImageProxy, mirror: Boolean): Bitmap {
         val raw = image.toBitmap()
-        val matrix = Matrix().apply { postRotate(image.imageInfo.rotationDegrees.toFloat()) }
+        val matrix = Matrix().apply {
+            postRotate(image.imageInfo.rotationDegrees.toFloat())
+            if (mirror) postScale(-1f, 1f)
+        }
         val upright = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
         val maxSide = 512
         val scale = maxSide.toFloat() / maxOf(upright.width, upright.height)
@@ -944,16 +965,19 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Bakes the warmth/shadows color matrix into [src], returning a new bitmap and recycling
+     * Bakes the warmth/shadows color matrix into [src] (and horizontally mirrors it when [mirror]
+     * is set, for front-camera parity with the preview), returning a new bitmap and recycling
      * [src]. Rotation is intentionally left to the EXIF orientation tag (see [writeCaptureExif]),
      * mirroring how the normal ImageCapture path stores orientation without rotating pixels.
      */
-    private fun applyColorAdjustments(src: Bitmap, warmth: Float, shadows: Float): Bitmap {
+    private fun applyColorAdjustments(src: Bitmap, warmth: Float, shadows: Float, mirror: Boolean): Bitmap {
         val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
         val paint = Paint().apply {
             colorFilter = ColorMatrixColorFilter(buildColorAdjustmentMatrix(warmth, shadows))
         }
-        Canvas(out).drawBitmap(src, 0f, 0f, paint)
+        val canvas = Canvas(out)
+        if (mirror) canvas.scale(-1f, 1f, src.width / 2f, src.height / 2f)
+        canvas.drawBitmap(src, 0f, 0f, paint)
         src.recycle()
         return out
     }
