@@ -6,4 +6,10 @@
     <string name="city_name_hint">Nazwa miasta</string>
     <string name="weather_title">Pogoda</string>
     <string name="add_location">Dodaj lokalizację</string>
+    <string name="open_map">Otwórz mapę</string>
+    <string name="weather_map_title">Mapa pogody</string>
+    <string name="map_attribution">© OpenStreetMap · © CARTO</string>
+    <string name="map_time">Czas</string>
+    <string name="map_back">Wróć</string>
+    <string name="map_measure">Pomiar</string>
 </resources>
