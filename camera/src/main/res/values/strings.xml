@@ -37,5 +37,6 @@
 
     <string name="qr_result">QR Code</string>
     <string name="open_url">Open URL</string>
+    <string name="no_app_to_open_url">No app can open this link</string>
     <string name="copy_text">Copy</string>
 </resources>

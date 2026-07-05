@@ -3,10 +3,10 @@ package com.vayunmathur.camera.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.BitmapShader
 import android.graphics.Matrix
-import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
@@ -14,7 +14,9 @@ import android.graphics.Shader
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Patterns
+import android.widget.Toast
 import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
@@ -98,6 +100,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.Route
 import com.vayunmathur.camera.util.AspectRatioOption
@@ -107,10 +112,12 @@ import com.vayunmathur.camera.util.CameraViewModel
 import com.vayunmathur.camera.util.GuideDot
 import com.vayunmathur.camera.util.GuideDotState
 import com.vayunmathur.camera.util.FlashMode
+import com.vayunmathur.camera.util.buildColorAdjustmentMatrix
 import com.vayunmathur.camera.util.formatZoomLabel
 import com.vayunmathur.camera.util.QrAnalyzer
 import com.vayunmathur.camera.util.TimerDuration
 import com.vayunmathur.library.util.NavBackStack
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -255,6 +262,16 @@ fun CameraScreen(
                     orientation in 225..314 -> 90
                     else -> 0
                 }
+                // Feed the physical orientation to ImageCapture so landscape shots are saved
+                // with the right orientation even though the activity is locked to portrait.
+                viewModel.setTargetRotation(
+                    when {
+                        orientation in 45..134 -> Surface.ROTATION_270
+                        orientation in 135..224 -> Surface.ROTATION_180
+                        orientation in 225..314 -> Surface.ROTATION_90
+                        else -> Surface.ROTATION_0
+                    }
+                )
             }
         }
         listener.enable()
@@ -334,14 +351,24 @@ fun CameraScreen(
         }
     }
 
-    // Unified session binding: tear down the previous session, then bind the one for this mode.
-    LaunchedEffect(lensFacing, sessionKind) {
-        viewModel.teardownSession()
-        delay(250)
-        when (sessionKind) {
-            SessionKind.HIGH_SPEED -> viewModel.setupHighSpeedSession()
-            SessionKind.VIDEO -> viewModel.setupVideoSession()
-            SessionKind.PHOTO -> viewModel.setupPhotoSession()
+    // Unified session binding, made lifecycle-aware so the camera is released when the app is
+    // backgrounded and rebound on resume. Without this the ManualLifecycleOwner stays RESUMED,
+    // the OS reclaims the camera while we're away, and the preview comes back frozen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lensFacing, sessionKind, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.teardownSession()
+            delay(250)
+            when (sessionKind) {
+                SessionKind.HIGH_SPEED -> viewModel.setupHighSpeedSession()
+                SessionKind.VIDEO -> viewModel.setupVideoSession()
+                SessionKind.PHOTO -> viewModel.setupPhotoSession()
+            }
+            try {
+                awaitCancellation()
+            } finally {
+                viewModel.teardownSession()
+            }
         }
     }
 
@@ -419,15 +446,10 @@ fun CameraScreen(
                                             }
 
                                             if (hasColorAdj) {
-                                                val cm = ColorMatrix()
-                                                cm.set(floatArrayOf(
-                                                    1f + warmth * 0.15f, 0f, 0f, 0f, shadows * 40f,
-                                                    0f, 1f + warmth * 0.05f, 0f, 0f, shadows * 40f,
-                                                    0f, 0f, 1f - warmth * 0.15f, 0f, shadows * 40f,
-                                                    0f, 0f, 0f, 1f, 0f
-                                                ))
                                                 val colorEffect = RenderEffect.createColorFilterEffect(
-                                                    ColorMatrixColorFilter(cm)
+                                                    ColorMatrixColorFilter(
+                                                        buildColorAdjustmentMatrix(warmth, shadows)
+                                                    )
                                                 )
                                                 effect = if (effect != null) {
                                                     RenderEffect.createChainEffect(colorEffect, effect)
@@ -1132,13 +1154,19 @@ private fun QrResultOverlay(text: String, onDismiss: () -> Unit, context: Contex
             modifier = Modifier.padding(vertical = 8.dp)
         )
         // Passkey (FIDO hybrid/caBLE) QR codes decode to a "FIDO:/..." URI. Treat it as an
-        // openable URL (scheme is case-insensitive) alongside normal web links.
+        // openable URL alongside normal web links. Intent-filter scheme matching is case-SENSITIVE,
+        // so the "FIDO" scheme must be lowercased (normalizeScheme) or nothing will handle it.
         val isFidoUri = text.startsWith("FIDO:", ignoreCase = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (isFidoUri || Patterns.WEB_URL.matcher(text).matches()) {
                 Button(onClick = {
                     val url = if (!isFidoUri && !text.startsWith("http")) "https://$text" else text
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    val uri = Uri.parse(url).normalizeScheme()
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(context, R.string.no_app_to_open_url, Toast.LENGTH_SHORT).show()
+                    }
                 }) {
                     Text(stringResource(R.string.open_url))
                 }

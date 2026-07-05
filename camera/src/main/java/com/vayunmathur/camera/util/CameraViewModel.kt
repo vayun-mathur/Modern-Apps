@@ -3,7 +3,11 @@ package com.vayunmathur.camera.util
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
+import android.graphics.Paint
 import android.location.Location
 import android.location.LocationManager
 import android.media.MediaFormat
@@ -11,6 +15,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
+import android.view.Surface
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Camera
 import androidx.camera.core.FocusMeteringAction
@@ -60,6 +65,19 @@ fun formatZoomLabel(ratio: Float): String = when {
 }
 
 data class ExposureTimeStop(val label: String, val nanos: Long?)
+
+/**
+ * Builds the warmth/shadows color matrix shared by the live preview and the
+ * saved capture, so a photo looks the same as what the viewfinder showed.
+ */
+fun buildColorAdjustmentMatrix(warmth: Float, shadows: Float): ColorMatrix = ColorMatrix(
+    floatArrayOf(
+        1f + warmth * 0.15f, 0f, 0f, 0f, shadows * 40f,
+        0f, 1f + warmth * 0.05f, 0f, 0f, shadows * 40f,
+        0f, 0f, 1f - warmth * 0.15f, 0f, shadows * 40f,
+        0f, 0f, 0f, 1f, 0f,
+    )
+)
 
 class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     companion object {
@@ -193,6 +211,11 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private var boundCamera: Camera? = null
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
+
+    // Latest device orientation as a Surface.ROTATION_* constant. Driven by the UI's
+    // OrientationEventListener and applied to ImageCapture so landscape shots save
+    // with the correct orientation even while the activity stays locked to portrait.
+    private var targetRotation: Int = Surface.ROTATION_0
 
     /** True once the photo session's use cases (incl. ImageAnalysis) are bound. */
     private val _photoSessionActive = MutableStateFlow(false)
@@ -459,6 +482,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 val capture = ImageCapture.Builder()
                     .setResolutionSelector(selectorBuilder.build())
                     .setFlashMode(getImageCaptureFlashMode())
+                    .setTargetRotation(targetRotation)
                     .build()
                 imageCapture = capture
                 val analysis = ImageAnalysis.Builder()
@@ -594,6 +618,12 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         imageCapture?.flashMode = getImageCaptureFlashMode()
     }
 
+    /** Updates the capture orientation from the device's physical rotation (Surface.ROTATION_*). */
+    fun setTargetRotation(rotation: Int) {
+        targetRotation = rotation
+        imageCapture?.targetRotation = rotation
+    }
+
     /** Swaps the analyzer on the bound ImageAnalysis without rebinding. */
     fun setImageAnalyzer(analyzer: ImageAnalysis.Analyzer?) {
         val analysis = imageAnalysis ?: return
@@ -714,20 +744,53 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             if (stop.nanos != null && stop.nanos >= 250_000_000L) {
                 startLongExposureCountdown(stop.nanos)
             }
+            fun finishCapture(uri: Uri?) {
+                _isCapturing.value = false
+                stopLongExposureCountdown()
+                restoreAutoExposure()
+                if (uri != null) setLastCaptureUri(uri)
+            }
+
+            val warmth = _warmth.value
+            val shadows = _shadows.value
+            if (warmth != 0f || shadows != 0f) {
+                // The warmth/shadows adjustment only lives in the preview RenderEffect, so bake
+                // it into the pixels here: capture in-memory, apply the same color matrix (and the
+                // upright rotation CameraX would have written as EXIF), then save the JPEG.
+                capture.takePicture(
+                    ContextCompat.getMainExecutor(app),
+                    object : ImageCapture.OnImageCapturedCallback() {
+                        override fun onCaptureSuccess(image: ImageProxy) {
+                            val degrees = image.imageInfo.rotationDegrees
+                            val raw = try { image.toBitmap() } finally { image.close() }
+                            viewModelScope.launch {
+                                val uri = withContext(Dispatchers.IO) {
+                                    val adjusted = applyColorAdjustments(raw, degrees, warmth, shadows)
+                                    val values = MediaStoreSaver.imageValues("IMG_${MediaStoreSaver.timestamp()}.jpg")
+                                    MediaStoreSaver.saveBitmap(app.contentResolver, values, adjusted)
+                                        .also { adjusted.recycle() }
+                                }
+                                finishCapture(uri)
+                            }
+                        }
+                        override fun onError(exception: ImageCaptureException) {
+                            Log.e("CameraViewModel", "Adjusted capture failed", exception)
+                            finishCapture(null)
+                        }
+                    }
+                )
+                return
+            }
+
             capture.takePicture(
                 outputOptions,
                 ContextCompat.getMainExecutor(app),
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                        _isCapturing.value = false
-                        stopLongExposureCountdown()
-                        restoreAutoExposure()
-                        setLastCaptureUri(outputFileResults.savedUri)
+                        finishCapture(outputFileResults.savedUri)
                     }
                     override fun onError(exception: ImageCaptureException) {
-                        _isCapturing.value = false
-                        stopLongExposureCountdown()
-                        restoreAutoExposure()
+                        finishCapture(null)
                     }
                 }
             )
@@ -825,6 +888,27 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             (upright.height * scale).roundToInt(),
             true
         )
+    }
+
+    /**
+     * Rotates [raw] upright by [degrees] and bakes the warmth/shadows color matrix into the
+     * pixels, returning a new bitmap. Recycles the intermediates but not the returned bitmap.
+     */
+    private fun applyColorAdjustments(raw: Bitmap, degrees: Int, warmth: Float, shadows: Float): Bitmap {
+        val upright = if (degrees == 0) {
+            raw
+        } else {
+            val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+            Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
+        }
+        val out = Bitmap.createBitmap(upright.width, upright.height, Bitmap.Config.ARGB_8888)
+        val paint = Paint().apply {
+            colorFilter = ColorMatrixColorFilter(buildColorAdjustmentMatrix(warmth, shadows))
+        }
+        Canvas(out).drawBitmap(upright, 0f, 0f, paint)
+        if (upright !== raw) upright.recycle()
+        raw.recycle()
+        return out
     }
 
     private fun startLongExposureCountdown(nanos: Long) {
