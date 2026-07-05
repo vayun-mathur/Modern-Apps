@@ -3,6 +3,7 @@ package com.vayunmathur.camera.util
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
@@ -36,6 +37,7 @@ import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
+import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewModelScope
@@ -47,6 +49,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.camera.lifecycle.awaitInstance
+import java.io.ByteArrayInputStream
 import kotlin.math.roundToInt
 
 enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, TIMELAPSE }
@@ -107,6 +110,43 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             ExposureTimeStop("1s", 1_000_000_000L),
             ExposureTimeStop("2s", 2_000_000_000L),
             ExposureTimeStop("4s", 4_000_000_000L),
+        )
+
+        /**
+         * EXIF tags copied from the original frame onto an adjusted capture. Orientation and GPS
+         * are set separately (see writeCaptureExif); dimension tags are omitted so they aren't
+         * left inconsistent with the re-encoded JPEG.
+         */
+        private val EXIF_TAGS_TO_COPY = listOf(
+            ExifInterface.TAG_DATETIME,
+            ExifInterface.TAG_DATETIME_ORIGINAL,
+            ExifInterface.TAG_DATETIME_DIGITIZED,
+            ExifInterface.TAG_OFFSET_TIME,
+            ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
+            ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
+            ExifInterface.TAG_SUBSEC_TIME,
+            ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
+            ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
+            ExifInterface.TAG_MAKE,
+            ExifInterface.TAG_MODEL,
+            ExifInterface.TAG_SOFTWARE,
+            ExifInterface.TAG_F_NUMBER,
+            ExifInterface.TAG_EXPOSURE_TIME,
+            ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
+            ExifInterface.TAG_FOCAL_LENGTH,
+            ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
+            ExifInterface.TAG_APERTURE_VALUE,
+            ExifInterface.TAG_SHUTTER_SPEED_VALUE,
+            ExifInterface.TAG_EXPOSURE_BIAS_VALUE,
+            ExifInterface.TAG_MAX_APERTURE_VALUE,
+            ExifInterface.TAG_METERING_MODE,
+            ExifInterface.TAG_EXPOSURE_PROGRAM,
+            ExifInterface.TAG_EXPOSURE_MODE,
+            ExifInterface.TAG_WHITE_BALANCE,
+            ExifInterface.TAG_LIGHT_SOURCE,
+            ExifInterface.TAG_FLASH,
+            ExifInterface.TAG_SCENE_CAPTURE_TYPE,
+            ExifInterface.TAG_DIGITAL_ZOOM_RATIO,
         )
     }
 
@@ -755,19 +795,28 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             val shadows = _shadows.value
             if (warmth != 0f || shadows != 0f) {
                 // The warmth/shadows adjustment only lives in the preview RenderEffect, so bake
-                // it into the pixels here: capture in-memory, apply the same color matrix (and the
-                // upright rotation CameraX would have written as EXIF), then save the JPEG.
+                // it into the pixels here: capture in-memory, apply the same color matrix, then
+                // re-encode. Re-encoding drops the JPEG's EXIF, so we copy it back from the
+                // original frame (plus GPS and the orientation tag) to match the normal path.
                 capture.takePicture(
                     ContextCompat.getMainExecutor(app),
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
                             val degrees = image.imageInfo.rotationDegrees
-                            val raw = try { image.toBitmap() } finally { image.close() }
+                            val sourceJpeg = try {
+                                image.planes[0].buffer.let { buf ->
+                                    ByteArray(buf.remaining()).also { buf.get(it) }
+                                }
+                            } finally {
+                                image.close()
+                            }
                             viewModelScope.launch {
                                 val uri = withContext(Dispatchers.IO) {
-                                    val adjusted = applyColorAdjustments(raw, degrees, warmth, shadows)
+                                    val decoded = BitmapFactory.decodeByteArray(sourceJpeg, 0, sourceJpeg.size)
+                                    val adjusted = applyColorAdjustments(decoded, warmth, shadows)
                                     val values = MediaStoreSaver.imageValues("IMG_${MediaStoreSaver.timestamp()}.jpg")
                                     MediaStoreSaver.saveBitmap(app.contentResolver, values, adjusted)
+                                        ?.also { writeCaptureExif(it, sourceJpeg, degrees) }
                                         .also { adjusted.recycle() }
                                 }
                                 finishCapture(uri)
@@ -891,24 +940,48 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Rotates [raw] upright by [degrees] and bakes the warmth/shadows color matrix into the
-     * pixels, returning a new bitmap. Recycles the intermediates but not the returned bitmap.
+     * Bakes the warmth/shadows color matrix into [src], returning a new bitmap and recycling
+     * [src]. Rotation is intentionally left to the EXIF orientation tag (see [writeCaptureExif]),
+     * mirroring how the normal ImageCapture path stores orientation without rotating pixels.
      */
-    private fun applyColorAdjustments(raw: Bitmap, degrees: Int, warmth: Float, shadows: Float): Bitmap {
-        val upright = if (degrees == 0) {
-            raw
-        } else {
-            val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
-            Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
-        }
-        val out = Bitmap.createBitmap(upright.width, upright.height, Bitmap.Config.ARGB_8888)
+    private fun applyColorAdjustments(src: Bitmap, warmth: Float, shadows: Float): Bitmap {
+        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
         val paint = Paint().apply {
             colorFilter = ColorMatrixColorFilter(buildColorAdjustmentMatrix(warmth, shadows))
         }
-        Canvas(out).drawBitmap(upright, 0f, 0f, paint)
-        if (upright !== raw) upright.recycle()
-        raw.recycle()
+        Canvas(out).drawBitmap(src, 0f, 0f, paint)
+        src.recycle()
         return out
+    }
+
+    /**
+     * Restores the EXIF that re-encoding the adjusted bitmap dropped: copies the original frame's
+     * metadata tags, writes the orientation for [rotationDegrees], and stamps GPS when location is
+     * enabled — so an adjusted photo carries the same EXIF as an unadjusted one.
+     */
+    private fun writeCaptureExif(uri: Uri, sourceJpeg: ByteArray, rotationDegrees: Int) {
+        try {
+            val source = ExifInterface(ByteArrayInputStream(sourceJpeg))
+            app.contentResolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                val dest = ExifInterface(pfd.fileDescriptor)
+                EXIF_TAGS_TO_COPY.forEach { tag ->
+                    source.getAttribute(tag)?.let { dest.setAttribute(tag, it) }
+                }
+                dest.setAttribute(
+                    ExifInterface.TAG_ORIENTATION,
+                    when (rotationDegrees) {
+                        90 -> ExifInterface.ORIENTATION_ROTATE_90
+                        180 -> ExifInterface.ORIENTATION_ROTATE_180
+                        270 -> ExifInterface.ORIENTATION_ROTATE_270
+                        else -> ExifInterface.ORIENTATION_NORMAL
+                    }.toString()
+                )
+                if (_locationEnabled.value) lastLocation?.let { dest.setGpsInfo(it) }
+                dest.saveAttributes()
+            }
+        } catch (e: Exception) {
+            Log.w("CameraViewModel", "Failed to write EXIF for adjusted capture", e)
+        }
     }
 
     private fun startLongExposureCountdown(nanos: Long) {
