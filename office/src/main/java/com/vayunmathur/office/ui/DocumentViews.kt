@@ -543,6 +543,7 @@ fun TextDocumentView(
     onRunEnter: (Int, Int, Int) -> Int? = { _, _, _ -> null },
     onRunBackspace: (Int, Int, Int) -> Int? = { _, _, _ -> null },
     onToggleCheckbox: (Int) -> Unit = {},
+    onDeletePrevBlock: (Int) -> Unit = {},
     onCellTextChange: (Int, Int, Int, String) -> Unit = { _, _, _, _ -> },
     onCellFocus: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onChartClick: (Int) -> Unit = {},
@@ -570,6 +571,7 @@ fun TextDocumentView(
                     onEnter = { gPos -> onRunEnter(seg.start, seg.endInclusive, gPos) },
                     onBackspace = { gPos -> onRunBackspace(seg.start, seg.endInclusive, gPos) },
                     onToggleCheckbox = onToggleCheckbox,
+                    onDeletePrevBlock = { onDeletePrevBlock(seg.start) },
                     remoteCarets = remoteCarets,
                 )
                 is DocSegment.Block -> when (val block = doc.content[seg.index]) {

@@ -658,8 +658,28 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
         updateDocument(doc.insertHorizontalLine(blockIndex))
     }
 
-    /** Generates a Table of Contents from headings and inserts it at the top (B21). */
-    fun insertTableOfContents() {
+    /**
+     * Deletes the block immediately before [runStart] if it's a non-paragraph object (image, page
+     * break, chart, table of contents, formula, table…). Lets Backspace at the very start of a run
+     * remove the object above it. Returns true if something was deleted.
+     */
+    fun deleteBlockBefore(runStart: Int): Boolean {
+        val doc = (_state.value as? ViewState.Loaded)?.document as? OdfDocument.TextDocument ?: return false
+        val idx = runStart - 1
+        val block = doc.content.getOrNull(idx) ?: return false
+        if (block is OdfContentBlock.Paragraph) return false // ordinary text merge is handled by the editor
+        val content = doc.content.toMutableList()
+        content.removeAt(idx)
+        // Drop an image's binary data too so it isn't left orphaned in the package.
+        val newDoc = if (block is OdfContentBlock.Image)
+            doc.copy(content = content, images = doc.images - block.image.path)
+        else doc.copy(content = content)
+        updateDocument(newDoc)
+        return true
+    }
+
+    /** Generates a Table of Contents from headings and inserts it at [blockIndex] (the cursor). */
+    fun insertTableOfContents(blockIndex: Int) {
         val doc = (_state.value as? ViewState.Loaded)?.document as? OdfDocument.TextDocument ?: return
         val headingStyles = setOf(ParagraphStyle.HEADING1, ParagraphStyle.HEADING2, ParagraphStyle.HEADING3, ParagraphStyle.HEADING4)
         val entries = mutableListOf<OdfParagraph>()
@@ -673,7 +693,10 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (entries.isEmpty()) return
         val toc = OdfContentBlock.TableOfContents("Table of Contents", entries)
-        val content = listOf(toc, OdfContentBlock.PageBreak) + doc.content
+        val content = doc.content.toMutableList()
+        val at = (blockIndex + 1).coerceIn(0, content.size)
+        content.add(at, OdfContentBlock.PageBreak)
+        content.add(at, toc)
         updateDocument(doc.copy(content = content))
     }
 

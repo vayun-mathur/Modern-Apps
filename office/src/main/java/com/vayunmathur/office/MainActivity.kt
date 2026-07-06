@@ -556,7 +556,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                 val bytes = context.contentResolver.openInputStream(it)?.use { s -> s.readBytes() } ?: return@let
                 val name = it.lastPathSegment?.substringAfterLast('/') ?: "image.png"
                 when (document) {
-                    is OdfDocument.TextDocument -> viewModel.insertImage(maxOf(0, focusedPara), name, bytes)
+                    is OdfDocument.TextDocument -> if (focusedPara >= 0) viewModel.insertImage(focusedPara, name, bytes)
                     is OdfDocument.Presentation -> viewModel.insertImageIntoSlide(activeSlide, name, bytes)
                     is OdfDocument.Spreadsheet -> viewModel.insertImageIntoSheet(activeCell?.first ?: 0, name, bytes)
                     else -> {}
@@ -733,23 +733,23 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                             if (isTextDoc) Box {
                                 TextButton(onClick = { insertMenu = true }) { Text("Insert") }
                                 DropdownMenu(expanded = insertMenu, onDismissRequest = { insertMenu = false }) {
-                                    DropdownMenuItem(text = { Text("Image…") }, onClick = { insertMenu = false; imagePickerLauncher.launch("image/*") })
-                                    DropdownMenuItem(text = { Text("Chart") }, onClick = { insertMenu = false; editingChartBlock = -1; showChartEditor = true })
-                                    DropdownMenuItem(text = { Text("Special character…") }, onClick = { insertMenu = false; showSpecialChars = true })
-                                    DropdownMenuItem(text = { Text("Date (field)") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "date", viewModel.fieldDisplayValue("date")) })
-                                    DropdownMenuItem(text = { Text("Time (field)") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "time", viewModel.fieldDisplayValue("time")) })
-                                    DropdownMenuItem(text = { Text("Page number") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "page-number", viewModel.fieldDisplayValue("page-number")) })
-                                    DropdownMenuItem(text = { Text("Page count") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "page-count", viewModel.fieldDisplayValue("page-count")) })
-                                    DropdownMenuItem(text = { Text("File name") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "file-name", viewModel.fieldDisplayValue("file-name")) })
-                                    DropdownMenuItem(text = { Text("Author") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "author-name", viewModel.fieldDisplayValue("author-name")) })
-                                    DropdownMenuItem(text = { Text("Title (field)") }, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "title", viewModel.fieldDisplayValue("title")) })
-                                    DropdownMenuItem(text = { Text("Bookmark") }, onClick = { insertMenu = false; showAddBookmark = true })
-                                    DropdownMenuItem(text = { Text("Footnote…") }, onClick = { insertMenu = false; showFootnote = true })
+                                    DropdownMenuItem(text = { Text("Image…") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; imagePickerLauncher.launch("image/*") })
+                                    DropdownMenuItem(text = { Text("Chart") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; editingChartBlock = -1; showChartEditor = true })
+                                    DropdownMenuItem(text = { Text("Special character…") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; showSpecialChars = true })
+                                    DropdownMenuItem(text = { Text("Date (field)") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "date", viewModel.fieldDisplayValue("date")) })
+                                    DropdownMenuItem(text = { Text("Time (field)") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "time", viewModel.fieldDisplayValue("time")) })
+                                    DropdownMenuItem(text = { Text("Page number") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "page-number", viewModel.fieldDisplayValue("page-number")) })
+                                    DropdownMenuItem(text = { Text("Page count") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "page-count", viewModel.fieldDisplayValue("page-count")) })
+                                    DropdownMenuItem(text = { Text("File name") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "file-name", viewModel.fieldDisplayValue("file-name")) })
+                                    DropdownMenuItem(text = { Text("Author") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "author-name", viewModel.fieldDisplayValue("author-name")) })
+                                    DropdownMenuItem(text = { Text("Title (field)") }, enabled = activeRunStart >= 0, onClick = { insertMenu = false; if (activeRunStart >= 0) viewModel.insertFieldInRun(activeRunStart, activeRunEnd, selStart, "title", viewModel.fieldDisplayValue("title")) })
+                                    DropdownMenuItem(text = { Text("Bookmark") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; showAddBookmark = true })
+                                    DropdownMenuItem(text = { Text("Footnote…") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; showFootnote = true })
                                     DropdownMenuItem(text = { Text("Comment…") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; showComment = true })
-                                    DropdownMenuItem(text = { Text("Table of contents") }, onClick = { insertMenu = false; viewModel.insertTableOfContents() })
+                                    DropdownMenuItem(text = { Text("Table of contents") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; viewModel.insertTableOfContents(focusedPara) })
                                     DropdownMenuItem(text = { Text("Header & footer…") }, onClick = { insertMenu = false; showHeaderFooter = true })
-                                    DropdownMenuItem(text = { Text("Horizontal line") }, onClick = { insertMenu = false; viewModel.insertHorizontalLine(maxOf(0, focusedPara)) })
-                                    DropdownMenuItem(text = { Text("Page break") }, onClick = { insertMenu = false; viewModel.insertPageBreak(maxOf(0, focusedPara)) })
+                                    DropdownMenuItem(text = { Text("Horizontal line") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; viewModel.insertHorizontalLine(focusedPara) })
+                                    DropdownMenuItem(text = { Text("Page break") }, enabled = focusedPara >= 0, onClick = { insertMenu = false; viewModel.insertPageBreak(focusedPara) })
                                 }
                             }
                             // Format menu removed: font size, clear formatting, and list level/restart moved to the bottom bar's ⋮ menu.
@@ -915,6 +915,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                             val p = (document.content.getOrNull(idx) as? OdfContentBlock.Paragraph)?.paragraph
                             if (p != null) viewModel.setCheckboxChecked(idx, !p.listChecked)
                         },
+                        onDeletePrevBlock = { runStart -> viewModel.deleteBlockBefore(runStart) },
                         onCellTextChange = { bi, r, c, text -> viewModel.updateTextTableCell(bi, r, c, text) },
                         onCellFocus = { bi, r, c -> activeTableBlock = bi; activeTableRow = r; activeTableCol = c },
                         onChartClick = { bi -> editingChartBlock = bi; showChartEditor = true },
@@ -1232,7 +1233,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                     chartForSlide -> viewModel.insertChartIntoSlide(activeSlide, ch)
                     chartForSheet -> viewModel.insertChartIntoSheet(activeCell?.first ?: 0, ch)
                     editingChartBlock >= 0 -> viewModel.updateChart(editingChartBlock, ch)
-                    else -> viewModel.insertChart(maxOf(0, focusedPara), ch)
+                    else -> if (focusedPara >= 0) viewModel.insertChart(focusedPara, ch)
                 }
             },
             onDismiss = { showChartEditor = false; editingChartBlock = -1; chartForSlide = false; chartForSheet = false }

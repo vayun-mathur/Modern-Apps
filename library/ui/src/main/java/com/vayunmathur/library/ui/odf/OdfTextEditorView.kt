@@ -15,6 +15,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
@@ -178,6 +183,7 @@ fun ContinuousParagraphEditor(
     onBackspace: (gPos: Int) -> Int? = { null },
     onToggleCheckbox: ((globalParaIndex: Int) -> Unit)? = null,
     onFocusChangedCb: (Boolean) -> Unit = {},
+    onDeletePrevBlock: () -> Unit = {},
     remoteCarets: List<RemoteCaret> = emptyList(),
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
@@ -245,7 +251,15 @@ fun ContinuousParagraphEditor(
             visualTransformation = transformation,
             onTextLayout = { layout = it },
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChangedCb(it.isFocused) }
+            modifier = Modifier.fillMaxWidth()
+                .onPreviewKeyEvent { ev ->
+                    // Backspace at the very start of this run deletes the object (image, page break,
+                    // table of contents, chart…) sitting just above it.
+                    if (ev.type == KeyEventType.KeyDown && ev.key == Key.Backspace &&
+                        tfv.selection.collapsed && tfv.selection.start == 0 && start > 0
+                    ) { onDeletePrevBlock(); true } else false
+                }
+                .onFocusChanged { onFocusChangedCb(it.isFocused) }
         )
         // Tappable overlays over each checkbox glyph so tapping toggles its checked state.
         val lay = layout
