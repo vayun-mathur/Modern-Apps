@@ -95,6 +95,15 @@ data class SignedTitle(val title: String, val sig: String)
 @Serializable
 data class KeyEpoch(val epoch: Int, val wraps: Map<String, String>, val sig: String)
 
+/**
+ * An ownership handoff, signed by the *current* owner: names the new owner's device id + public
+ * bundle. Members follow the signed chain (each transfer signed by the then-current owner) from the
+ * original owner key to determine the current owner. Whoever's bundle is the resolved owner key acts
+ * as owner (can share, rename, change roles, revoke).
+ */
+@Serializable
+data class OwnerTransfer(val newOwnerId: String, val newOwnerKey: String, val sig: String)
+
 /** An author-signed CRDT op batch: author id, signature over [ops], and the ops JSON. */
 @Serializable
 data class SignedOp(val author: String, val sig: String, val ops: String)
@@ -2385,6 +2394,11 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                 currentOwnerKey = meta.ownerKeyB64.takeIf { it.isNotBlank() }?.let { Base64.decode(it) }
                 currentBaseKey = inviteKey
                 currentMembers.clear()
+                // Follow any ownership transfers; whoever holds the resolved owner key acts as owner.
+                runCatching { fetchOwnerKey(meta.docId, meta.ownerKeyB64) }.getOrNull()?.let { resolved ->
+                    currentOwnerKey = resolved
+                    if (resolved.contentEquals(OfficeSync.publicBundle)) currentRole = OfficeRoles.OWNER
+                }
                 // Resolve the current content key (honors key rotations / read-revocation).
                 val (epoch, key) = fetchCurrentKey(meta.docId, inviteKey, currentOwnerKey)
                 currentEpoch = epoch
@@ -2581,6 +2595,54 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun titleSigningBytes(docId: String, title: String): ByteArray = "$docId|title|$title".encodeToByteArray()
+
+    private fun ownerSigningBytes(docId: String, newOwnerId: String, newOwnerKeyB64: String): ByteArray =
+        "$docId|owner|$newOwnerId|$newOwnerKeyB64".encodeToByteArray()
+
+    /** Follows the signed ownership-transfer chain from [baseOwnerKeyB64] to the current owner key. */
+    private suspend fun fetchOwnerKey(docId: String, baseOwnerKeyB64: String): ByteArray? {
+        var ownerKey = baseOwnerKeyB64.takeIf { it.isNotBlank() }?.let { runCatching { Base64.decode(it) }.getOrNull() } ?: return null
+        val transfers = runCatching { OfficeSync.pullRaw("owner:$docId", 0) }.getOrDefault(emptyList())
+            .mapNotNull { runCatching { syncJson.decodeFromString<OwnerTransfer>(Base64.decode(it).decodeToString()) }.getOrNull() }
+        val used = HashSet<Int>()
+        var advanced = true
+        while (advanced) {
+            advanced = false
+            for ((idx, t) in transfers.withIndex()) {
+                if (idx in used) continue
+                if (OfficeSync.verify(ownerKey, ownerSigningBytes(docId, t.newOwnerId, t.newOwnerKey), Base64.decode(t.sig))) {
+                    ownerKey = runCatching { Base64.decode(t.newOwnerKey) }.getOrNull() ?: continue
+                    used.add(idx); advanced = true
+                }
+            }
+        }
+        return ownerKey
+    }
+
+    /** Transfers ownership of the open document to [memberId] (owner only). */
+    fun transferOwnership(memberId: String, onResult: (Boolean) -> Unit = {}) {
+        val docId = currentDocId; val key = currentDocKey
+        if (docId == null || key == null || currentRole != OfficeRoles.OWNER) { onResult(false); return }
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = runCatching {
+                OfficeSync.init(getApplication())
+                val newBundle = memberKey(memberId) ?: return@runCatching false
+                val newKeyB64 = Base64.encode(newBundle)
+                // Last owner-signed roster change: promote the new owner, demote self to editor.
+                recordMembers(docId, key, listOf(
+                    OfficeMember(memberId, "", OfficeRoles.OWNER),
+                    OfficeMember(OfficeSync.deviceId, myName(), OfficeRoles.EDITOR),
+                ))
+                val sig = Base64.encode(OfficeSync.sign(ownerSigningBytes(docId, memberId, newKeyB64)))
+                OfficeSync.appendRaw("owner:$docId", listOf(Base64.encode(syncJson.encodeToString(OwnerTransfer(memberId, newKeyB64, sig)).encodeToByteArray())))
+                // We are no longer the owner.
+                currentOwnerKey = newBundle
+                currentRole = OfficeRoles.EDITOR
+                true
+            }.getOrDefault(false)
+            withContext(Dispatchers.Main) { onResult(ok) }
+        }
+    }
 
     /** Reads the latest owner-signed document title, if the owner ever renamed it. */
     private suspend fun fetchTitle(docId: String, key: ByteArray, ownerKey: ByteArray?): String? {

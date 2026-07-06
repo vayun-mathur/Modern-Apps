@@ -285,6 +285,7 @@ fun ShareOnlineDialog(
     members: List<com.vayunmathur.office.util.OfficeMember>,
     onShare: (String, String, String, (String?) -> Unit) -> Unit,
     onSetRole: (String, String) -> Unit,
+    onTransferOwner: (String) -> Unit,
     onRename: (String) -> Unit,
     onComputeCode: (String, (String?) -> Unit) -> Unit,
     onDismiss: () -> Unit
@@ -297,6 +298,7 @@ fun ShareOnlineDialog(
     var computing by remember { mutableStateOf(false) }
     var sharing by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
+    var memberMenu by remember { mutableStateOf<String?>(null) }
     val clipboard = LocalClipboardManager.current
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -310,11 +312,17 @@ fun ShareOnlineDialog(
                             val label = (if (m.name.isNotBlank()) m.name else m.id.take(8)) + if (m.id == deviceId) " (you)" else ""
                             Text("• $label — ${m.role}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                             if (isOwner && m.id != deviceId) {
-                                if (m.role == com.vayunmathur.office.util.OfficeRoles.EDITOR)
-                                    TextButton(onClick = { onSetRole(m.id, com.vayunmathur.office.util.OfficeRoles.VIEWER) }) { Text("Make viewer") }
-                                else
-                                    TextButton(onClick = { onSetRole(m.id, com.vayunmathur.office.util.OfficeRoles.EDITOR) }) { Text("Make editor") }
-                                TextButton(onClick = { onSetRole(m.id, com.vayunmathur.office.util.OfficeRoles.REVOKED) }) { Text("Remove") }
+                                Box {
+                                    TextButton(onClick = { memberMenu = m.id }) { Text("Manage") }
+                                    DropdownMenu(expanded = memberMenu == m.id, onDismissRequest = { memberMenu = null }) {
+                                        if (m.role == com.vayunmathur.office.util.OfficeRoles.EDITOR)
+                                            DropdownMenuItem(text = { Text("Make viewer") }, onClick = { memberMenu = null; onSetRole(m.id, com.vayunmathur.office.util.OfficeRoles.VIEWER) })
+                                        else
+                                            DropdownMenuItem(text = { Text("Make editor") }, onClick = { memberMenu = null; onSetRole(m.id, com.vayunmathur.office.util.OfficeRoles.EDITOR) })
+                                        DropdownMenuItem(text = { Text("Make owner") }, onClick = { memberMenu = null; onTransferOwner(m.id) })
+                                        DropdownMenuItem(text = { Text("Remove") }, onClick = { memberMenu = null; onSetRole(m.id, com.vayunmathur.office.util.OfficeRoles.REVOKED) })
+                                    }
+                                }
                             }
                         }
                     }
@@ -990,6 +998,9 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                 }
             },
             onRename = { name -> viewModel.renameDocument(name) },
+            onTransferOwner = { memberId ->
+                viewModel.transferOwnership(memberId) { viewModel.documentMembers { members = it } }
+            },
             onComputeCode = { id, cb -> viewModel.securityCodeWith(id, cb) },
             onDismiss = { showShareDialog = false }
         )
