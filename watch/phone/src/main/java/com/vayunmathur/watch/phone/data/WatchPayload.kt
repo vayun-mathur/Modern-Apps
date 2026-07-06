@@ -10,6 +10,7 @@ data class WatchRecord(
     val timestamp: Long,
     val value: Double,
     val delta: Double,
+    val stationary: Boolean = false,
 )
 
 @Serializable

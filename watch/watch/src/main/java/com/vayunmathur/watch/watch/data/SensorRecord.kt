@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 enum class MetricType {
     HeartRate,
     Steps,
+    Pressure,
+    Motion,
 }
 
 @Entity
@@ -22,9 +24,12 @@ data class SensorRecord(
     val type: MetricType,
     val timestamp: Long,
     // For HeartRate: the bpm reading. For Steps: cumulative counter value.
+    // For Pressure: hPa. For Motion: 1.0 = stationary, 0.0 = moving.
     val value: Double,
-    // For Steps: increment since the previous reading. For HeartRate: 0.
+    // For Steps: increment since the previous reading. Otherwise 0.
     val delta: Double = 0.0,
+    // For HeartRate: whether the wearer was stationary when sampled.
+    val stationary: Boolean = false,
 )
 
 @Dao

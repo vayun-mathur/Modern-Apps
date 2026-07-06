@@ -33,6 +33,7 @@ private data class WireRecord(
     val timestamp: Long,
     val value: Double,
     val delta: Double,
+    val stationary: Boolean = false,
 )
 
 @Serializable
@@ -229,7 +230,7 @@ class GattServerManager(
         scope.launch(Dispatchers.IO) {
             val rows: List<SensorRecord> = dao.getAll()
             val batch = WireBatch(rows.map {
-                WireRecord(it.id, it.type.name, it.timestamp, it.value, it.delta)
+                WireRecord(it.id, it.type.name, it.timestamp, it.value, it.delta, it.stationary)
             })
             pendingAck[device.address] = rows.map { it.id }
 

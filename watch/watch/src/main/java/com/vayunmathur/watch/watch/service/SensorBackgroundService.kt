@@ -10,6 +10,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.hardware.TriggerEvent
+import android.hardware.TriggerEventListener
 import android.os.IBinder
 import android.util.Log
 import com.vayunmathur.watch.watch.R
@@ -38,6 +40,9 @@ class SensorBackgroundService : Service(), SensorEventListener {
     private var lastHeartRateAt = 0L
     // The step counter reports a cumulative count since boot; we store deltas.
     private var lastStepCount = -1.0
+    private var lastPressureAt = 0L
+    // Current motion state, maintained via the one-shot trigger sensors.
+    @Volatile private var isStationary = false
 
     override fun onCreate() {
         super.onCreate()
@@ -60,6 +65,42 @@ class SensorBackgroundService : Service(), SensorEventListener {
         sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
+        sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+        // Arm the stationary detector; the two trigger sensors re-arm each other.
+        armStationaryDetect()
+    }
+
+    private fun armStationaryDetect() {
+        sensorManager.getDefaultSensor(Sensor.TYPE_STATIONARY_DETECT)?.let {
+            sensorManager.requestTriggerSensor(triggerListener, it)
+        }
+    }
+
+    private fun armMotionDetect() {
+        sensorManager.getDefaultSensor(Sensor.TYPE_MOTION_DETECT)?.let {
+            sensorManager.requestTriggerSensor(triggerListener, it)
+        }
+    }
+
+    private val triggerListener = object : TriggerEventListener() {
+        override fun onTrigger(event: TriggerEvent) {
+            val now = System.currentTimeMillis()
+            when (event.sensor.type) {
+                Sensor.TYPE_STATIONARY_DETECT -> {
+                    isStationary = true
+                    persist(SensorRecord(type = MetricType.Motion, timestamp = now, value = 1.0))
+                    // Trigger sensors are one-shot; arm the opposite one.
+                    armMotionDetect()
+                }
+                Sensor.TYPE_MOTION_DETECT -> {
+                    isStationary = false
+                    persist(SensorRecord(type = MetricType.Motion, timestamp = now, value = 0.0))
+                    armStationaryDetect()
+                }
+            }
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -71,7 +112,14 @@ class SensorBackgroundService : Service(), SensorEventListener {
                 // Sample roughly once per minute to conserve battery.
                 if (now - lastHeartRateAt < HEART_RATE_INTERVAL_MS) return
                 lastHeartRateAt = now
-                persist(SensorRecord(type = MetricType.HeartRate, timestamp = now, value = bpm))
+                persist(
+                    SensorRecord(
+                        type = MetricType.HeartRate,
+                        timestamp = now,
+                        value = bpm,
+                        stationary = isStationary,
+                    ),
+                )
             }
             Sensor.TYPE_STEP_COUNTER -> {
                 val cumulative = event.values.firstOrNull()?.toDouble() ?: return
@@ -90,6 +138,13 @@ class SensorBackgroundService : Service(), SensorEventListener {
                         delta = delta,
                     ),
                 )
+            }
+            Sensor.TYPE_PRESSURE -> {
+                val hpa = event.values.firstOrNull()?.toDouble() ?: return
+                if (hpa <= 0.0) return
+                if (now - lastPressureAt < PRESSURE_INTERVAL_MS) return
+                lastPressureAt = now
+                persist(SensorRecord(type = MetricType.Pressure, timestamp = now, value = hpa))
             }
         }
     }
@@ -125,6 +180,14 @@ class SensorBackgroundService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         sensorManager.unregisterListener(this)
+        sensorManager.cancelTriggerSensor(
+            triggerListener,
+            sensorManager.getDefaultSensor(Sensor.TYPE_STATIONARY_DETECT),
+        )
+        sensorManager.cancelTriggerSensor(
+            triggerListener,
+            sensorManager.getDefaultSensor(Sensor.TYPE_MOTION_DETECT),
+        )
         gattServer.stop()
         scope.cancel()
         super.onDestroy()
@@ -137,6 +200,7 @@ class SensorBackgroundService : Service(), SensorEventListener {
         private const val CHANNEL_ID = "sensor_collection"
         private const val NOTIFICATION_ID = 1
         private const val HEART_RATE_INTERVAL_MS = 60_000L
+        private const val PRESSURE_INTERVAL_MS = 30_000L
 
         fun start(context: Context) {
             val intent = Intent(context, SensorBackgroundService::class.java)
