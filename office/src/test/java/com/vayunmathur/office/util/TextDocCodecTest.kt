@@ -19,6 +19,42 @@ class TextDocCodecTest {
         doc.content.mapNotNull { (it as? OdfContentBlock.Paragraph)?.paragraph?.spans?.joinToString("") { s -> s.text } }
 
     @Test
+    fun roundtrip_preserves_full_formatting() {
+        val doc = OdfDocument.TextDocument(
+            title = "t",
+            content = listOf(
+                OdfContentBlock.Paragraph(OdfParagraph(
+                    spans = listOf(OdfSpan("styled", italic = true, fontFamily = "Times", backgroundColor = 0xFFFFFF00L, color = 0xFF0000FFL)),
+                    alignment = androidx.compose.ui.text.style.TextAlign.Center,
+                    marginLeft = 24f, textIndent = 12f,
+                    style = com.vayunmathur.library.ui.odf.ParagraphStyle.LIST_ITEM,
+                    listLevel = 2, listType = com.vayunmathur.library.ui.odf.ListType.NUMBERED, listChecked = true,
+                ))
+            )
+        )
+        val p = (TextDocCodec.fromCells(TextDocCodec.toCells(doc), doc).content[0] as OdfContentBlock.Paragraph).paragraph
+        assertEquals(androidx.compose.ui.text.style.TextAlign.Center, p.alignment)
+        assertEquals(24f, p.marginLeft)
+        assertEquals(12f, p.textIndent)
+        assertEquals(2, p.listLevel)
+        assertEquals(com.vayunmathur.library.ui.odf.ListType.NUMBERED, p.listType)
+        assertTrue(p.listChecked)
+        val s = p.spans.first()
+        assertTrue(s.italic); assertEquals("Times", s.fontFamily)
+        assertEquals(0xFFFFFF00L, s.backgroundColor); assertEquals(0xFF0000FFL, s.color)
+    }
+
+    @Test
+    fun ineligible_when_special_content_present() {
+        // A doc with a footnote must NOT be char-level (would drop the footnote) — use line-level.
+        val withFootnote = textDoc("body").copy(
+            footnotes = listOf(com.vayunmathur.library.ui.odf.OdfFootnote(citation = "1", body = emptyList()))
+        )
+        assertTrue(!TextDocCodec.isEligible(withFootnote))
+        assertTrue(TextDocCodec.isEligible(textDoc("plain")))
+    }
+
+    @Test
     fun roundtrip_preserves_paragraphs_and_bold() {
         val doc = OdfDocument.TextDocument(
             title = "t",
