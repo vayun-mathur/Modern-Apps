@@ -2070,7 +2070,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                         val index = loadIndex(ds).associateBy { it.docId }.toMutableMap()
                         for (inv in res.invites) {
                             if (!index.containsKey(inv.docId)) {
-                                index[inv.docId] = OfficeDocMeta(inv.docId, inv.title, inv.key, owner = false, charMode = inv.charMode)
+                                index[inv.docId] = OfficeDocMeta(inv.docId, inv.title, inv.key, owner = false, charMode = inv.charMode, role = inv.role, ownerKeyB64 = inv.ownerKey)
                             }
                         }
                         saveIndex(ds, index.values.toList())
