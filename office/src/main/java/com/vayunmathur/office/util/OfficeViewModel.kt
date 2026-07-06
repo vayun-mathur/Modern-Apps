@@ -2228,12 +2228,21 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 ds.setLong("crdtCursor:${meta.docId}", pulled.seq.toLong())
                 saveCrdt(ds, meta.docId, crdt)
+                val cells = crdt.render()
+                if (cells.isEmpty()) {
+                    // No accepted content — usually ops from an older crypto version that no longer
+                    // verify. Surface a clear message instead of a misleading ODF parse error.
+                    withContext(Dispatchers.Main) {
+                        _state.value = ViewState.Error("This shared document has no readable content. It was likely created with an older version — ask the owner to re-share a new copy.")
+                    }
+                    return@runCatching
+                }
                 val flat = if (meta.charMode) {
                     val base = OdfDocument.TextDocument(title = meta.title, content = emptyList())
-                    val doc = runCatching { TextDocCodec.fromCells(crdt.render(), base) }.getOrNull() ?: base
+                    val doc = runCatching { TextDocCodec.fromCells(cells, base) }.getOrNull() ?: base
                     OdfSerializer.serializeFlat(doc)
                 } else {
-                    OfficeCrdtCodec.fromLines(crdt.render())
+                    OfficeCrdtCodec.fromLines(cells)
                 }
                 val ctx: Context = getApplication()
                 val safeTitle = meta.title.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "document" }
