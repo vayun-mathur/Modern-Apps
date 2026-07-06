@@ -12,7 +12,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,7 +30,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
-import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
@@ -156,16 +154,25 @@ class MainActivity : ComponentActivity() {
             verticalArrangement = Arrangement.Center,
         ) {
             if (!hasCollectorPerms) {
-                Button(onClick = onGrantCollector) {
-                    Text(stringResource(R.string.grant_permissions))
-                }
+                Chip(
+                    label = { Text(stringResource(R.string.grant_permissions)) },
+                    onClick = onGrantCollector,
+                    colors = ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 return@Column
             }
 
             val onOff = if (collecting) stringResource(R.string.on) else stringResource(R.string.off)
             Text(stringResource(R.string.status_collecting, onOff))
             Text(stringResource(R.string.status_rows, rowCount))
-            Button(
+            Chip(
+                label = {
+                    Text(
+                        if (collecting) stringResource(R.string.action_stop)
+                        else stringResource(R.string.action_start),
+                    )
+                },
                 onClick = {
                     collecting = if (collecting) {
                         SensorBackgroundService.stop(context)
@@ -175,16 +182,15 @@ class MainActivity : ComponentActivity() {
                         true
                     }
                 },
-                modifier = Modifier.padding(top = 8.dp),
-            ) {
-                Text(
-                    if (collecting) stringResource(R.string.action_stop)
-                    else stringResource(R.string.action_start),
-                )
-            }
-            Button(onClick = onOpenPicker, modifier = Modifier.padding(top = 8.dp)) {
-                Text(stringResource(R.string.exercise_start_workout))
-            }
+                colors = ChipDefaults.secondaryChipColors(),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
+            Chip(
+                label = { Text(stringResource(R.string.exercise_start_workout)) },
+                onClick = onOpenPicker,
+                colors = ChipDefaults.primaryChipColors(),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
 
             val notificationManager = remember {
                 context.getSystemService(NotificationManager::class.java)
@@ -193,19 +199,15 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(notificationManager.isNotificationPolicyAccessGranted)
             }
             if (!hasDndAccess) {
-                Button(
+                Chip(
+                    label = { Text(stringResource(R.string.grant_dnd_access)) },
                     onClick = {
-                        runCatching {
-                            context.startActivity(
-                                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
-                            )
-                        }
+                        openDndAccessSettings()
                         hasDndAccess = notificationManager.isNotificationPolicyAccessGranted
                     },
-                    modifier = Modifier.padding(top = 8.dp),
-                ) {
-                    Text(stringResource(R.string.grant_dnd_access))
-                }
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
             }
         }
     }
@@ -272,23 +274,45 @@ class MainActivity : ComponentActivity() {
             availability?.let { Text(it) }
             message?.let { Text(it) }
 
-            Row(
-                modifier = Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (state == ExerciseService.UiState.Paused) {
-                    Button(onClick = onResume) { Text(stringResource(R.string.exercise_resume)) }
-                } else {
-                    Button(onClick = onPause) { Text(stringResource(R.string.exercise_pause)) }
-                }
-                Button(onClick = onStop) { Text(stringResource(R.string.exercise_stop)) }
+            if (state == ExerciseService.UiState.Paused) {
+                Chip(
+                    label = { Text(stringResource(R.string.exercise_resume)) },
+                    onClick = onResume,
+                    colors = ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
+            } else {
+                Chip(
+                    label = { Text(stringResource(R.string.exercise_pause)) },
+                    onClick = onPause,
+                    colors = ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                )
             }
+            Chip(
+                label = { Text(stringResource(R.string.exercise_stop)) },
+                onClick = onStop,
+                colors = ChipDefaults.secondaryChipColors(),
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
         }
     }
 
     private fun formatDuration(ms: Long): String {
         val totalSeconds = ms / 1000
         return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+    }
+
+    // Wear OS has no dedicated notification-policy-access screen, so try that
+    // action first and fall back to the general Settings app.
+    private fun openDndAccessSettings() {
+        val actions = listOf(
+            Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS,
+            Settings.ACTION_SETTINGS,
+        )
+        for (action in actions) {
+            if (runCatching { startActivity(Intent(action)) }.isSuccess) return
+        }
     }
 
     private fun granted(permission: String): Boolean =
@@ -298,7 +322,7 @@ class MainActivity : ComponentActivity() {
         val perms = mutableListOf(
             Manifest.permission.BLUETOOTH_ADVERTISE,
             Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.BODY_SENSORS,
+            heartRatePermission(),
             Manifest.permission.ACTIVITY_RECOGNITION,
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -311,7 +335,7 @@ class MainActivity : ComponentActivity() {
     // for outdoor GPS routes, fine location.
     private fun exercisePermissions(): Array<String> {
         val perms = mutableListOf(
-            Manifest.permission.BODY_SENSORS,
+            heartRatePermission(),
             Manifest.permission.ACTIVITY_RECOGNITION,
             Manifest.permission.ACCESS_FINE_LOCATION,
         )
@@ -320,6 +344,15 @@ class MainActivity : ComponentActivity() {
         }
         return perms.toTypedArray()
     }
+
+    // Android 16 (API 36) removed BODY_SENSORS for apps targeting 36+; heart-rate
+    // sensor access moved to the granular health permission.
+    private fun heartRatePermission(): String =
+        if (Build.VERSION.SDK_INT >= 36) {
+            "android.permission.health.READ_HEART_RATE"
+        } else {
+            Manifest.permission.BODY_SENSORS
+        }
 
     companion object {
         const val EXTRA_OPEN_PICKER = "open_picker"
