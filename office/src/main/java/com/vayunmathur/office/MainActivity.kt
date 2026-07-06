@@ -9,6 +9,12 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import com.vayunmathur.library.util.BottomBarItem
+import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.MainNavigation
+import com.vayunmathur.library.util.NavKey
+import com.vayunmathur.library.util.rememberNavBackStack
+import kotlinx.serialization.Serializable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -108,6 +114,14 @@ private fun OfficeLightTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = colorScheme, typography = Typography(), content = content)
 }
 
+/** Top-level navigation routes for the Office app (shared nav framework). */
+@Serializable
+sealed interface OfficeRoute : NavKey {
+    @Serializable data object Offline : OfficeRoute
+    @Serializable data object Online : OfficeRoute
+    @Serializable data object Editor : OfficeRoute
+}
+
 class MainActivity : ComponentActivity() {
     private val viewModel: OfficeViewModel by viewModels()
 
@@ -122,6 +136,11 @@ class MainActivity : ComponentActivity() {
             val startedWithIntent = intentUri != null
             var documentUri by rememberSaveable { mutableStateOf(intentUri) }
             val state by viewModel.state.collectAsState()
+            val backStack = rememberNavBackStack<OfficeRoute>(
+                if (intentUri != null) OfficeRoute.Editor else OfficeRoute.Offline
+            )
+
+            LaunchedEffect(Unit) { viewModel.initSync() }
 
             if (documentUri != null && state is OfficeViewModel.ViewState.Empty) {
                 viewModel.loadDocument(documentUri!!, documentUri?.lastPathSegment ?: "document")
@@ -145,27 +164,62 @@ class MainActivity : ComponentActivity() {
             )
 
             val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-                uri?.let { documentUri = it; viewModel.loadDocument(it, it.lastPathSegment ?: "document") }
+                uri?.let {
+                    documentUri = it
+                    viewModel.loadDocument(it, it.lastPathSegment ?: "document")
+                    backStack.add(OfficeRoute.Editor)
+                }
+            }
+
+            val pages: List<BottomBarItem<out OfficeRoute>> = listOf(
+                BottomBarItem("Offline", OfficeRoute.Offline, com.vayunmathur.library.R.drawable.home_24px),
+                BottomBarItem("Online", OfficeRoute.Online, com.vayunmathur.library.R.drawable.outline_file_download_24)
+            )
+
+            fun leaveEditor() {
+                if (startedWithIntent) finish()
+                else {
+                    documentUri = null
+                    viewModel.clear()
+                    if (backStack.backStack.size > 1) backStack.pop()
+                }
             }
 
             OfficeLightTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    when (val s = state) {
-                        is OfficeViewModel.ViewState.Empty -> HomeScreen(
+                MainNavigation(
+                    backStack,
+                    bottomBar = {
+                        val cur = backStack.last()
+                        if (cur is OfficeRoute.Offline || cur is OfficeRoute.Online) BottomNavBar(backStack, pages, cur)
+                    }
+                ) {
+                    entry<OfficeRoute.Offline> {
+                        InitialScreen(
                             viewModel = viewModel,
-                            onOpenDocument = { filePickerLauncher.launch(odfMimeTypes) }
+                            onOpenDocument = { filePickerLauncher.launch(odfMimeTypes) },
+                            onNavigateEditor = { backStack.add(OfficeRoute.Editor) }
                         )
-                        is OfficeViewModel.ViewState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                        is OfficeViewModel.ViewState.Loaded -> DocumentScreen(
-                            document = s.document, viewModel = viewModel, activity = this@MainActivity,
-                            onBack = { if (startedWithIntent) finish() else { documentUri = null; viewModel.clear() } }
-                        )
-                        is OfficeViewModel.ViewState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(stringResource(R.string.error_loading), style = MaterialTheme.typography.titleMedium)
-                                Text(s.message, Modifier.padding(16.dp))
-                                Button(onClick = { documentUri = null; viewModel.clear() }) { Text(stringResource(R.string.open_document)) }
+                    }
+                    entry<OfficeRoute.Online> {
+                        OnlineTab(viewModel = viewModel, onOpenDoc = { meta ->
+                            viewModel.openOnlineDocument(meta)
+                            backStack.add(OfficeRoute.Editor)
+                        })
+                    }
+                    entry<OfficeRoute.Editor> {
+                        when (val s = state) {
+                            is OfficeViewModel.ViewState.Loaded -> DocumentScreen(
+                                document = s.document, viewModel = viewModel, activity = this@MainActivity,
+                                onBack = { leaveEditor() }
+                            )
+                            is OfficeViewModel.ViewState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(stringResource(R.string.error_loading), style = MaterialTheme.typography.titleMedium)
+                                    Text(s.message, Modifier.padding(16.dp))
+                                    Button(onClick = { leaveEditor() }) { Text(stringResource(R.string.open_document)) }
+                                }
                             }
+                            else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                         }
                     }
                 }
@@ -175,7 +229,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun InitialScreen(viewModel: OfficeViewModel, onOpenDocument: () -> Unit) {
+fun InitialScreen(viewModel: OfficeViewModel, onOpenDocument: () -> Unit, onNavigateEditor: () -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(48.dp))
         Text("Office", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
@@ -190,39 +244,18 @@ fun InitialScreen(viewModel: OfficeViewModel, onOpenDocument: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { viewModel.createNewTextDocument() }, Modifier.weight(1f)) { Text("New Doc") }
-            OutlinedButton(onClick = { viewModel.createNewSpreadsheet() }, Modifier.weight(1f)) { Text("New Sheet") }
-            OutlinedButton(onClick = { viewModel.createNewPresentation() }, Modifier.weight(1f)) { Text("New Slides") }
+            OutlinedButton(onClick = { viewModel.createNewTextDocument(); onNavigateEditor() }, Modifier.weight(1f)) { Text("New Doc") }
+            OutlinedButton(onClick = { viewModel.createNewSpreadsheet(); onNavigateEditor() }, Modifier.weight(1f)) { Text("New Sheet") }
+            OutlinedButton(onClick = { viewModel.createNewPresentation(); onNavigateEditor() }, Modifier.weight(1f)) { Text("New Slides") }
         }
     }
 }
 
-/** Home with a bottom nav: Offline (local files + new docs) and Online (E2EE shared documents). */
+/** Initializes online sync once when the Online tab first appears. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: OfficeViewModel, onOpenDocument: () -> Unit) {
-    var tab by rememberSaveable { mutableStateOf(0) }
+private fun OnlineInit(viewModel: OfficeViewModel) {
     LaunchedEffect(Unit) { viewModel.initSync() }
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = tab == 0, onClick = { tab = 0 },
-                    icon = { Icon(painterResource(com.vayunmathur.library.R.drawable.home_24px), null) },
-                    label = { Text("Offline") }
-                )
-                NavigationBarItem(
-                    selected = tab == 1, onClick = { tab = 1 },
-                    icon = { Icon(painterResource(com.vayunmathur.library.R.drawable.outline_file_download_24), null) },
-                    label = { Text("Online") }
-                )
-            }
-        }
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            if (tab == 0) InitialScreen(viewModel, onOpenDocument) else OnlineTab(viewModel)
-        }
-    }
 }
 
 /** Dialog to copy the current document into the online folder and share it with a device id. */
@@ -334,7 +367,8 @@ fun ShareOnlineDialog(
 /** Lists documents shared by you or with you; tap to pull + open. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OnlineTab(viewModel: OfficeViewModel) {
+fun OnlineTab(viewModel: OfficeViewModel, onOpenDoc: (com.vayunmathur.office.util.OfficeDocMeta) -> Unit) {
+    OnlineInit(viewModel)
     val docs by viewModel.onlineDocs.collectAsState()
     val deviceId = viewModel.syncDeviceId
     val clipboard = LocalClipboardManager.current
@@ -358,7 +392,7 @@ fun OnlineTab(viewModel: OfficeViewModel) {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(docs) { meta ->
-                    Card(Modifier.fillMaxWidth().clickable { viewModel.openOnlineDocument(meta) }) {
+                    Card(Modifier.fillMaxWidth().clickable { onOpenDoc(meta) }) {
                         ListItem(
                             headlineContent = { Text(meta.title) },
                             supportingContent = { Text(if (meta.owner) "Shared by you" else "Shared with you") }
@@ -596,7 +630,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                         expandedHeight = 56.dp,
                         title = { Text(document.title, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium) },
                         navigationIcon = {
-                            IconButton(onClick = { if (hasUnsavedChanges) showUnsavedDialog = true else onBack() }) {
+                            IconButton(onClick = { if (!isOnline && hasUnsavedChanges) showUnsavedDialog = true else onBack() }) {
                                 Icon(painterResource(com.vayunmathur.library.R.drawable.arrow_back_24px), contentDescription = "Back")
                             }
                         },
