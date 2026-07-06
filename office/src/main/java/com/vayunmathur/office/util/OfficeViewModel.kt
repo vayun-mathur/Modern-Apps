@@ -2285,7 +2285,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
             currentCharKind == "text" && doc is OdfDocument.TextDocument -> TextDocCodec.toCells(doc)
             currentCharKind == "sheet" && doc is OdfDocument.Spreadsheet -> SheetDocCodec.toCells(doc)
             currentCharKind == "slide" && doc is OdfDocument.Presentation -> SlideDocCodec.toCells(doc)
-            else -> OfficeCrdtCodec.toLines(exportFlat())
+            else -> FlatXmlCharCodec.toCells(exportFlat()) // universal char-level (text within any flat ODF)
         }
     }
 
@@ -2303,7 +2303,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
             currentCharKind == "slide" -> runCatching {
                 SlideDocCodec.fromCells(cells, base as? OdfDocument.Presentation ?: OdfDocument.Presentation(title, emptyList()))
             }.getOrNull()
-            else -> parseFlat(OfficeCrdtCodec.fromLines(cells))
+            else -> parseFlat(FlatXmlCharCodec.fromCells(cells))
         }
     }
 
@@ -2482,7 +2482,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                         val base = OdfDocument.Presentation(title = title, slides = emptyList())
                         flat = OdfSerializer.serializeFlat(runCatching { SlideDocCodec.fromCells(cells, base) }.getOrNull() ?: base); ext = "fodp"
                     }
-                    else -> { flat = OfficeCrdtCodec.fromLines(cells); ext = "fodt" }
+                    else -> { flat = FlatXmlCharCodec.fromCells(cells); ext = "fodt" }
                 }
                 val ctx: Context = getApplication()
                 val safeTitle = title.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "document" }
