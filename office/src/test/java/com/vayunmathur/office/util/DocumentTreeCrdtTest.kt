@@ -15,6 +15,26 @@ class DocumentTreeCrdtTest {
     }
 
     @Test
+    fun xml_declaration_and_full_document_roundtrip() {
+        // Mirrors real serializeFlat output: an <?xml?> declaration then the document element.
+        val xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><office:document office:version=\"1.3\">" +
+            "<office:body><office:text><text:p>Hi</text:p></office:text></office:body></office:document>"
+        val a = DocumentTreeCrdt("A")
+        a.update(xml)
+        assertEquals(xml, a.render())
+        // And a concurrent edit still merges + keeps the declaration + valid structure.
+        val b = DocumentTreeCrdt("B"); b.apply(a.toState().nodes)
+        val opsA = a.update(xml.replace("<text:p>Hi</text:p>", "<text:p>Hi there</text:p>"))
+        val opsB = b.update(xml.replace("<text:p>Hi</text:p>", "<text:p>Oh Hi</text:p>"))
+        a.apply(opsB); b.apply(opsA)
+        assertEquals(a.render(), b.render())
+        val r = a.render()
+        assertTrue(r.startsWith("<?xml"))
+        assertTrue(r.contains("there")); assertTrue(r.contains("Oh"))
+        assertEquals(1, Regex("<office:document ").findAll(r).count())
+    }
+
+    @Test
     fun roundtrip_render_equals_input() {
         val a = DocumentTreeCrdt("A")
         val xml = "<office:text><text:p>Hello &amp; world</text:p><draw:frame svg:width=\"1>2\"/></office:text>"

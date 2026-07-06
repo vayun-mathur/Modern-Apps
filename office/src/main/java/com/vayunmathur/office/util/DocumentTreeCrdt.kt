@@ -208,6 +208,8 @@ class DocumentTreeCrdt(private val device: String) {
                 val tag = xml.substring(i, minOf(j + 1, n))
                 when {
                     tag.startsWith("</") -> { if (stack.size > 1) stack.removeLast(); if (tag.startsWith("</office:binary-data")) inBinary = false }
+                    // XML declaration, processing instructions, comments, doctype: opaque leaves (no close tag).
+                    tag.startsWith("<?") || tag.startsWith("<!") -> stack.last().children.add(Desired.El(tag, true))
                     tag.endsWith("/>") -> stack.last().children.add(Desired.El(tag, true))
                     else -> {
                         val el = Desired.El(tag, false); stack.last().children.add(el); stack.addLast(el)
