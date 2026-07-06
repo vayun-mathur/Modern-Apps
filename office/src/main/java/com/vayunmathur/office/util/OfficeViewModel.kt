@@ -2255,21 +2255,27 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
      * into the online folder (new doc id + content key + CRDT upload), then the invite is sent.
      */
     /** Shares with a recipient. onResult receives null on success, or a human-readable error reason. */
-    fun shareCurrentDocument(recipientId: String, role: String = OfficeRoles.EDITOR, onResult: (String?) -> Unit = {}) {
+    fun shareCurrentDocument(recipientId: String, role: String = OfficeRoles.EDITOR, docName: String = "", onResult: (String?) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val error: String? = try {
                 OfficeSync.init(getApplication())
                 val ds = DataStoreUtils.getInstance(getApplication())
                 val doc = (_state.value as? ViewState.Loaded)?.document
-                val title = doc?.title ?: "Document"
-                val charMode = doc != null && TextDocCodec.isEligible(doc)
                 val firstShare = currentDocId == null
+                // The owner names the document when it first goes online; later shares keep that name.
+                val title = if (firstShare) docName.trim().ifBlank { doc?.title ?: "Document" }
+                    else (currentOnlineTitle() ?: doc?.title ?: "Document")
+                val charMode = doc != null && TextDocCodec.isEligible(doc)
                 val docId = currentDocId ?: OfficeSync.newDocumentId()
                 val key = currentDocKey ?: OfficeSync.newDocumentKey()
                 if (firstShare) {
                     currentRole = OfficeRoles.OWNER
                     currentOwnerKey = OfficeSync.publicBundle
                     currentMembers[OfficeSync.deviceId] = OfficeRoles.OWNER
+                    // Reflect the chosen name in the open editor so its title matches the online doc.
+                    if (doc != null) withContext(Dispatchers.Main) {
+                        (_state.value as? ViewState.Loaded)?.document?.let { _state.value = ViewState.Loaded(withTitle(it, title)) }
+                    }
                 }
                 when {
                     currentRole != OfficeRoles.OWNER -> "Only the owner can share this document."
@@ -2382,6 +2388,18 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
 
     /** The open document's online id, or null if it isn't a cloud document. */
     fun currentOnlineDocId(): String? = currentDocId
+
+    /** The stored online title of the open document, if any. */
+    private fun currentOnlineTitle(): String? =
+        currentDocId?.let { id -> _onlineDocs.value.firstOrNull { it.docId == id }?.title }
+
+    /** Returns a copy of [doc] with a new [title] (works across all document types). */
+    private fun withTitle(doc: OdfDocument, title: String): OdfDocument = when (doc) {
+        is OdfDocument.TextDocument -> doc.copy(title = title)
+        is OdfDocument.Spreadsheet -> doc.copy(title = title)
+        is OdfDocument.Presentation -> doc.copy(title = title)
+        is OdfDocument.Drawing -> doc.copy(title = title)
+    }
 
     /** True if the local user may edit the open document. */
     fun canEditCurrent(): Boolean = currentDocId == null || OfficeRoles.canEdit(currentRole)

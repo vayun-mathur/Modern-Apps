@@ -270,14 +270,17 @@ private fun OnlineInit(viewModel: OfficeViewModel) {
 fun ShareOnlineDialog(
     deviceId: String,
     isOwner: Boolean,
+    isOnline: Boolean,
+    initialName: String,
     myRole: String,
     members: List<com.vayunmathur.office.util.OfficeMember>,
-    onShare: (String, String, (String?) -> Unit) -> Unit,
+    onShare: (String, String, String, (String?) -> Unit) -> Unit,
     onSetRole: (String, String) -> Unit,
     onComputeCode: (String, (String?) -> Unit) -> Unit,
     onDismiss: () -> Unit
 ) {
     var recipient by remember { mutableStateOf("") }
+    var docName by remember { mutableStateOf(initialName) }
     var addRole by remember { mutableStateOf(com.vayunmathur.office.util.OfficeRoles.EDITOR) }
     var roleMenu by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf<String?>(null) }
@@ -316,6 +319,17 @@ fun ShareOnlineDialog(
                         TextButton(onClick = { if (deviceId.isNotEmpty()) clipboard.setText(AnnotatedString(deviceId)) }) { Text("Copy") }
                     }
                 } else {
+                    if (!isOnline) {
+                        // Owner names the document before it first goes online.
+                        OutlinedTextField(
+                            value = docName, onValueChange = { docName = it },
+                            label = { Text("Document name") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    } else {
+                        Text("Document: ${docName.ifBlank { "Untitled" }}", style = MaterialTheme.typography.titleSmall)
+                        Spacer(Modifier.height(8.dp))
+                    }
                     Text("Add someone by device id (copies this document into your online folder, end-to-end encrypted):")
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
@@ -355,10 +369,10 @@ fun ShareOnlineDialog(
         },
         confirmButton = {
             if (isOwner) TextButton(
-                enabled = recipient.isNotBlank() && !sharing,
+                enabled = recipient.isNotBlank() && (isOnline || docName.isNotBlank()) && !sharing,
                 onClick = {
                     sharing = true; status = null
-                    onShare(recipient.trim(), addRole) { err ->
+                    onShare(recipient.trim(), addRole, docName.trim()) { err ->
                         sharing = false
                         status = err ?: "Added ✓"
                         if (err == null) recipient = ""
@@ -929,10 +943,12 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
         ShareOnlineDialog(
             deviceId = viewModel.syncDeviceId,
             isOwner = viewModel.currentDocRole() == com.vayunmathur.office.util.OfficeRoles.OWNER,
+            isOnline = isOnline,
+            initialName = document.title,
             myRole = viewModel.currentDocRole(),
             members = members,
-            onShare = { recipientId, role, cb ->
-                viewModel.shareCurrentDocument(recipientId, role) { err ->
+            onShare = { recipientId, role, name, cb ->
+                viewModel.shareCurrentDocument(recipientId, role, name) { err ->
                     if (err == null) {
                         viewModel.documentMembers { members = it } // refresh roster on success
                         viewModel.currentOnlineDocId()?.let { onBecameOnline(it) } // now a cloud doc
