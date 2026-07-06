@@ -911,7 +911,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                         modifier = Modifier.align(Alignment.TopCenter).zIndex(1f).fillMaxWidth()
                     ) {
                         Text(
-                            presence.joinToString(", ") { it.name + if (it.typing) " (typing…)" else "" }
+                            presence.joinToString(", ") { it.name + (it.loc?.let { l -> " · $l" } ?: "") + if (it.typing) " (typing…)" else "" }
                                 .let { "Online: $it" },
                             style = MaterialTheme.typography.labelSmall,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -945,7 +945,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                         onCellAlignment = { s, r, c, a -> viewModel.setCellAlignment(s, r, c, a) },
                         onMergeCells = { s, sr, sc, er, ec -> viewModel.mergeCells(s, sr, sc, er, ec) }, onUnmergeCells = { s, r, c -> viewModel.unmergeCells(s, r, c) },
                         onSort = { s, col, asc -> viewModel.sortRows(s, col, asc) },
-                        onCellSelected = { s, r, c -> activeCell = Triple(s, r, c) },
+                        onCellSelected = { s, r, c -> activeCell = Triple(s, r, c); viewModel.setLocalLocation("Sheet ${s + 1} · ${('A' + c)}${r + 1}") },
                         onFloatingBoundsChange = { s, e, x, y, w, h -> viewModel.setSheetElementBounds(s, e, x, y, w, h) },
                         onFloatingTextChange = { s, e, t -> viewModel.updateSheetElementText(s, e, t) },
                         onFloatingDelete = { s, e -> viewModel.deleteSheetElement(s, e) },
@@ -958,7 +958,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                         onElementBoundsChange = { s, e, x, y, w, h -> viewModel.setSlideElementBounds(s, e, x, y, w, h) },
                         onDeleteElement = { s, e -> viewModel.deleteSlideElement(s, e) },
                         selectedElement = activeSlideEl,
-                        onSlideChange = { activeSlide = it },
+                        onSlideChange = { activeSlide = it; viewModel.setLocalLocation("Slide ${it + 1}") },
                         onElementSelected = { s, e -> activeSlide = s; activeSlideEl = e },
                         onCropImage = { s, e -> cropSlideTarget = s to e })
                     is OdfDocument.Drawing -> DrawingView(document)

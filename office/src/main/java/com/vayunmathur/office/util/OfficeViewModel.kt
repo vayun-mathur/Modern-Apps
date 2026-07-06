@@ -69,6 +69,8 @@ data class OfficePresence(
     val typing: Boolean,
     val ts: Long,
     val caret: Int? = null,
+    /** Non-text location label for sheets/slides, e.g. "Sheet 1 · B3" or "Slide 2". */
+    val loc: String? = null,
     /** Local-only: when this peer was last seen typing (drives the "typing…" auto-clear). */
     val typingTs: Long = 0,
 )
@@ -2039,11 +2041,22 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
     private var livePollJob: Job? = null
     private var presenceTickJob: Job? = null
     private var localCaret = 0
+    private var localLoc: String? = null
     private var caretPresenceJob: Job? = null
 
     /** Called by the editor when the local caret/selection moves, to broadcast presence. */
     fun setLocalCaret(offset: Int) {
         localCaret = offset
+        broadcastPresence(typing = false)
+    }
+
+    /** Called by sheet/slide views when the focused cell/slide changes (location awareness). */
+    fun setLocalLocation(loc: String?) {
+        localLoc = loc
+        broadcastPresence(typing = false)
+    }
+
+    private fun broadcastPresence(typing: Boolean) {
         val docId = currentDocId ?: return
         val key = currentDocKey ?: return
         caretPresenceJob?.cancel()
@@ -2051,7 +2064,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
             delay(120)
             runCatching {
                 OfficeSync.sendPresence(docId, key, syncJson.encodeToString(
-                    OfficePresence(OfficeSync.deviceId, myName(), typing = false, ts = System.currentTimeMillis(), caret = localCaret)
+                    OfficePresence(OfficeSync.deviceId, myName(), typing = typing, ts = System.currentTimeMillis(), caret = localCaret, loc = localLoc)
                 ))
             }
         }
@@ -2068,7 +2081,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 OfficeSync.sendPresence(docId, key, syncJson.encodeToString(
-                    OfficePresence(OfficeSync.deviceId, myName(), typing = true, ts = System.currentTimeMillis(), caret = localCaret)
+                    OfficePresence(OfficeSync.deviceId, myName(), typing = true, ts = System.currentTimeMillis(), caret = localCaret, loc = localLoc)
                 ))
             }
         }
