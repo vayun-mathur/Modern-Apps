@@ -2163,7 +2163,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                 val key = currentDocKey ?: OfficeSync.newDocumentKey()
                 if (firstShare) {
                     currentRole = OfficeRoles.OWNER
-                    currentOwnerKey = OfficeSync.publicKeyPem
+                    currentOwnerKey = OfficeSync.publicBundle
                     currentMembers[OfficeSync.deviceId] = OfficeRoles.OWNER
                 }
                 when {
@@ -2174,7 +2174,7 @@ class OfficeViewModel(application: Application) : AndroidViewModel(application) 
                         currentDocId = docId
                         currentDocKey = key
                         currentCharMode = charMode
-                        val ownerKeyB64 = Base64.encode(OfficeSync.publicKeyPem)
+                        val ownerKeyB64 = Base64.encode(OfficeSync.publicBundle)
                         syncDoc(docId, key)
                         indexMutex.withLock {
                             val index = loadIndex(ds).associateBy { it.docId }.toMutableMap()

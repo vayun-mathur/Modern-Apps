@@ -43,3 +43,6 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+# BouncyCastle (post-quantum crypto for Office): keep providers/algorithms found via reflection.
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**

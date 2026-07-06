@@ -2,7 +2,6 @@ package com.vayunmathur.e2ee
 
 import dev.whyoleg.cryptography.CryptographyProvider
 import dev.whyoleg.cryptography.algorithms.RSA
-import dev.whyoleg.cryptography.algorithms.SHA256
 import dev.whyoleg.cryptography.algorithms.SHA512
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -34,20 +33,30 @@ object E2ee {
     suspend fun canonicalDer(pem: ByteArray): ByteArray =
         decodePublicKeyPem(pem).encodeToByteArray(RSA.PublicKey.Format.DER)
 
-    // --- Signatures (RSA-PSS over the same identity key) ---
-    private val pss get() = CryptographyProvider.Default.get(RSA.PSS)
+    // --- Signatures (SHA256withRSA / PKCS#1 v1.5 — available on Android, unlike RSASSA-PSS) ---
+
+    private fun pemToDer(pem: ByteArray): ByteArray {
+        val body = pem.decodeToString().lineSequence().filterNot { it.startsWith("-----") }.joinToString("").trim()
+        return java.util.Base64.getDecoder().decode(body)
+    }
 
     /** Signs [data] with a private key (PEM). Used to authenticate op authorship / owner roster changes. */
-    suspend fun sign(privateKeyPem: ByteArray, data: ByteArray): ByteArray =
-        pss.privateKeyDecoder(SHA256).decodeFromByteArray(RSA.PrivateKey.Format.PEM, privateKeyPem)
-            .signatureGenerator().generateSignature(data)
+    fun sign(privateKeyPem: ByteArray, data: ByteArray): ByteArray {
+        val key = java.security.KeyFactory.getInstance("RSA")
+            .generatePrivate(java.security.spec.PKCS8EncodedKeySpec(pemToDer(privateKeyPem)))
+        return java.security.Signature.getInstance("SHA256withRSA").run {
+            initSign(key); update(data); sign()
+        }
+    }
 
     /** Verifies a signature produced by [sign] against a public key (PEM). */
-    suspend fun verify(publicKeyPem: ByteArray, data: ByteArray, signature: ByteArray): Boolean =
-        runCatching {
-            pss.publicKeyDecoder(SHA256).decodeFromByteArray(RSA.PublicKey.Format.PEM, publicKeyPem)
-                .signatureVerifier().tryVerifySignature(data, signature)
-        }.getOrDefault(false)
+    fun verify(publicKeyPem: ByteArray, data: ByteArray, signature: ByteArray): Boolean = runCatching {
+        val key = java.security.KeyFactory.getInstance("RSA")
+            .generatePublic(java.security.spec.X509EncodedKeySpec(pemToDer(publicKeyPem)))
+        java.security.Signature.getInstance("SHA256withRSA").run {
+            initVerify(key); update(data); verify(signature)
+        }
+    }.getOrDefault(false)
 
     /**
      * Verification security code between this device and a peer, from their PEM public keys.
