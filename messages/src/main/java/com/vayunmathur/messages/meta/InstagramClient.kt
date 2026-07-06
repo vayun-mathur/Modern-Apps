@@ -503,7 +503,11 @@ object InstagramClient {
         val threadId = extractThreadId(conversationId)?.toLongOrNull() ?: return false
         val client = mqttClient ?: return false
         if (!readReceiptsEnabled) return true
-        val watermark = (lastMessageId?.let { MetaProtocol.parseMessageId(it) })
+        // The stored id is source-prefixed ("ig:mid.$…"); strip the prefix so parseMessageId
+        // (which expects a bare "mid.$…") can read the embedded timestamp instead of failing
+        // and silently falling back to the row timestamp.
+        val rawMessageId = lastMessageId?.substringAfter(':', lastMessageId)
+        val watermark = (rawMessageId?.let { MetaProtocol.parseMessageId(it) })
             ?: lastTimestamp.takeIf { it > 0 }
             ?: System.currentTimeMillis()
         val payload = MetaProtocol.buildMarkReadPayload(threadId, client.versionId, watermark)
@@ -680,6 +684,10 @@ object InstagramClient {
     }
 
     private fun extractThreadId(conversationId: String): String? {
-        return conversationId.removePrefix("ig:")
+        // Conversation rows are source-prefixed, and Instagram emits its own
+        // "ig:" prefix which handleEvent prefixes again ("ig:ig:<threadId>").
+        // Take the final segment so we get the bare numeric thread id whether
+        // the id is singly or doubly prefixed.
+        return conversationId.substringAfterLast(':')
     }
 }

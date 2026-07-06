@@ -522,7 +522,10 @@ object MetaClient {
         if (!readReceiptsEnabled) return true
         // Watermark is the last-read message timestamp in ms (Go: fbMessageToReadTS.UnixMilli()).
         // Prefer the message id's embedded timestamp, fall back to the row timestamp, then now.
-        val watermark = (lastMessageId?.let { MetaProtocol.parseMessageId(it) })
+        // The stored id is source-prefixed ("fb:mid.$…"); strip the prefix so parseMessageId
+        // (which expects a bare "mid.$…") can read the embedded timestamp instead of failing.
+        val rawMessageId = lastMessageId?.substringAfter(':', lastMessageId)
+        val watermark = (rawMessageId?.let { MetaProtocol.parseMessageId(it) })
             ?: lastTimestamp.takeIf { it > 0 }
             ?: System.currentTimeMillis()
         val payload = MetaProtocol.buildMarkReadPayload(threadId, client.versionId, watermark)
@@ -706,6 +709,10 @@ object MetaClient {
     }
 
     private fun extractThreadId(conversationId: String): String? {
-        return conversationId.removePrefix("fb:")
+        // Conversation rows are source-prefixed, and Messenger emits its own
+        // "fb:" prefix which handleEvent prefixes again ("fb:fb:<threadId>").
+        // Take the final segment so we get the bare numeric thread id whether
+        // the id is singly or doubly prefixed.
+        return conversationId.substringAfterLast(':')
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -114,12 +115,16 @@ fun InboxScreen(
                     )
                 }
             } else {
-                LazyColumn {
-                    items(conversations, key = { it.id }) { conv ->
+                LazyColumn(
+                    // Room for the FAB so it doesn't cover the last row.
+                    contentPadding = PaddingValues(bottom = 88.dp),
+                ) {
+                    items(conversations, key = { it.conversation.id }) { conv ->
                         ConversationRow(
-                            conversation = conv,
-                            onClick = { backStack.add(Route.Conversation(conv.id)) },
-                            onLongPress = { pendingDelete = conv },
+                            conversation = conv.conversation,
+                            lastMessageTimestamp = conv.lastMessageTimestamp,
+                            onClick = { backStack.add(Route.Conversation(conv.conversation.id)) },
+                            onLongPress = { pendingDelete = conv.conversation },
                         )
                         HorizontalDivider(Modifier.padding(horizontal = 16.dp))
                     }
@@ -313,6 +318,7 @@ private fun sourceLabel(source: MessageSource): String = when (source) {
 @Composable
 private fun ConversationRow(
     conversation: Conversation,
+    lastMessageTimestamp: Long,
     onClick: () -> Unit,
     onLongPress: () -> Unit = {},
 ) {
@@ -343,10 +349,12 @@ private fun ConversationRow(
         },
         trailingContent = {
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    formatTimestamp(conversation.lastMessageTimestamp),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                if (lastMessageTimestamp > 0L) {
+                    Text(
+                        formatTimestamp(lastMessageTimestamp),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
                 if (conversation.unreadCount > 0) {
                     Spacer(Modifier.height(4.dp))
                     UnreadBadge(conversation.unreadCount)

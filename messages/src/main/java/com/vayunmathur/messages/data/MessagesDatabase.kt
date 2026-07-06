@@ -1,6 +1,8 @@
 package com.vayunmathur.messages.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.TypeConverter
@@ -16,8 +18,16 @@ interface ConversationDao {
     @Upsert
     suspend fun upsertAll(conversations: List<Conversation>)
 
-    @Query("SELECT * FROM conversations ORDER BY last_ts DESC")
-    fun observeAll(): Flow<List<Conversation>>
+    @Query(
+        """
+        SELECT c.*, COALESCE(MAX(m.timestamp), 0) AS last_ts
+        FROM conversations c
+        LEFT JOIN messages m ON m.conversation_id = c.id
+        GROUP BY c.id
+        ORDER BY last_ts DESC
+        """
+    )
+    fun observeAll(): Flow<List<ConversationWithLastMessage>>
 
     @Query("SELECT * FROM conversations WHERE id = :id LIMIT 1")
     fun observe(id: String): Flow<Conversation?>
@@ -63,6 +73,17 @@ interface MessageDao {
 }
 
 /**
+ * A [Conversation] plus the timestamp (epoch-ms) of its most recent
+ * message, derived at query time from the messages table rather than
+ * stored on the conversation row. `last_ts` is 0 when the thread has no
+ * messages yet.
+ */
+data class ConversationWithLastMessage(
+    @Embedded val conversation: Conversation,
+    @ColumnInfo(name = "last_ts") val lastMessageTimestamp: Long,
+)
+
+/**
  * Room can store our enums as their `.name` strings via a single
  * generic-style converter pair. Keeps migrations stable if enum order
  * ever changes (don't store ordinal).
@@ -86,7 +107,7 @@ class MessagesConverters {
 
 @androidx.room.Database(
     entities = [Conversation::class, Message::class],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(MessagesConverters::class)

@@ -24,8 +24,6 @@ data class Conversation(
     @ColumnInfo(name = "peer_phone_e164") val peerPhoneE164: String?,
     @ColumnInfo(name = "avatar_url") val avatarUrl: String?,
     @ColumnInfo(name = "last_preview") val lastMessagePreview: String?,
-    /** Timestamp of the last message in the thread, epoch-ms. */
-    @ColumnInfo(name = "last_ts") val lastMessageTimestamp: Long,
     @ColumnInfo(name = "unread_count") val unreadCount: Int,
     /** Whether this thread has > 2 participants. Drives both the avatar
      *  treatment (group glyph vs single photo) and the row title format. */

@@ -167,7 +167,7 @@ object MessagesSessionManager {
                 senderName = null,
             )
         )
-        touchConversationOutgoing(conversationId, body, now)
+        touchConversationOutgoing(conversationId, body)
         val ok = when (source) {
             MessageSource.MESSAGES_WEB -> GMessagesClient.sendMessage(conversationId, body)
             MessageSource.VOICE -> GVoiceClient.sendMessage(conversationId, body)
@@ -212,7 +212,7 @@ object MessagesSessionManager {
                 senderName = null,
             )
         )
-        touchConversationOutgoing(conversationId, previewBody, now)
+        touchConversationOutgoing(conversationId, previewBody)
         val ok = when (source) {
             MessageSource.MESSAGES_WEB -> GMessagesClient.sendMedia(
                 conversationId = conversationId,
@@ -292,7 +292,7 @@ object MessagesSessionManager {
                 senderName = null,
             )
         )
-        touchConversationOutgoing(conversationId, "📊 $question", System.currentTimeMillis())
+        touchConversationOutgoing(conversationId, "📊 $question")
         val ok = when (source) {
             MessageSource.MESSAGES_WEB -> GMessagesClient.sendPoll(conversationId, question, options, allowMultiple)
             MessageSource.VOICE -> GVoiceClient.sendPoll(conversationId, question, options, allowMultiple)
@@ -608,6 +608,7 @@ object MessagesSessionManager {
         val needle = normalizePhone(phoneE164)
         val all = db.conversationDao().observeAll().firstOrNull().orEmpty()
         return all.asSequence()
+            .map { it.conversation }
             .filter { !it.isGroup && it.peerPhoneE164 != null }
             .filter { normalizePhone(it.peerPhoneE164!!) == needle }
             .map { it.source }
@@ -807,14 +808,6 @@ object MessagesSessionManager {
             is GMEvent.ConversationUpdate -> {
                 val id = "${event.source.idPrefix}:${event.conversationId}"
                 val existing = db.conversationDao().get(id)
-                // One-shot guard: rows persisted before the gmessages
-                // microseconds→milliseconds fix have last_ts > 1e14
-                // (≈ year 5138 in ms). Treat those as "no existing
-                // timestamp" so the first refresh after the fix lands
-                // immediately re-anchors to the correct scale rather
-                // than holding the stale huge value via maxOf.
-                val priorTs = existing?.lastMessageTimestamp
-                    ?.takeIf { it < STALE_MICROSECOND_THRESHOLD_MS } ?: 0L
                 // Persist the message-request flag into serviceData JSON
                 // (no schema bump). Sources that signal via serviceData
                 // directly (Signal) already carry it; honor the dedicated
@@ -835,7 +828,6 @@ object MessagesSessionManager {
                     peerPhoneE164 = event.peerPhone ?: existing?.peerPhoneE164,
                     avatarUrl = event.avatarUrl ?: existing?.avatarUrl,
                     lastMessagePreview = event.lastPreview ?: existing?.lastMessagePreview,
-                    lastMessageTimestamp = maxOf(toEpochMillis(event.lastTimestamp), priorTs),
                     unreadCount = event.unreadCount,
                     isGroup = event.isGroup,
                     participantCount = event.participantCount,
@@ -892,7 +884,6 @@ object MessagesSessionManager {
                         peerPhoneE164 = event.peerPhone ?: existing?.peerPhoneE164,
                         avatarUrl = existing?.avatarUrl,
                         lastMessagePreview = event.body,
-                        lastMessageTimestamp = maxOf(toEpochMillis(event.timestamp), existing?.lastMessageTimestamp ?: 0L),
                         // Don't re-count a message we've already seen — otherwise a
                         // history re-sync inflates the unread badge on every reconnect.
                         unreadCount = (existing?.unreadCount ?: 0) + if (alreadySeen) 0 else 1,
@@ -941,6 +932,18 @@ object MessagesSessionManager {
                     )
                 }
             }
+            is GMEvent.ReadReceipt -> {
+                // A "self" read receipt means the thread was read on another of
+                // the user's own devices (e.g. Meta LSMarkThreadRead) — clear
+                // the local unread badge to match. Peer read receipts (senderId
+                // is a contact) are "Seen" indicators for our OUTGOING messages
+                // and must not touch our own unread count. The convId is built
+                // exactly as the other handlers store it.
+                if (event.senderId == "self") {
+                    db.conversationDao()
+                        .markRead("${event.source.idPrefix}:${event.conversationId}")
+                }
+            }
             else -> Unit
         }
     }
@@ -960,16 +963,11 @@ object MessagesSessionManager {
         if (attachments.isEmpty()) null
         else Json.encodeToString(ListSerializer(MessageAttachment.serializer()), attachments)
 
-    /** ≈ year 5138 in epoch-ms. Any persisted `last_ts` larger than this
-     *  is almost certainly a stale microsecond value from before the
-     *  gmessages timestamp fix; treat it as missing. */
-    private const val STALE_MICROSECOND_THRESHOLD_MS = 100_000_000_000_000L
-
     /**
      * Coerce any platform timestamp to epoch-MILLISECONDS. The inbox is
-     * sorted purely by `last_ts DESC`, so every persisted timestamp must
-     * share one scale or the ordering interleaves and stops being
-     * newest-first. Platforms currently normalize at emission (Telegram/
+     * sorted by each thread's most recent message timestamp, so every
+     * persisted message timestamp must share one scale or the ordering
+     * interleaves and stops being newest-first. Platforms currently
      * WhatsApp `*1000`, gmessages `µs/1000`, Signal/Meta/GVoice native
      * ms), but this is the single choke point that guarantees it — and
      * protects against a future source that forgets. Scales down from
@@ -984,17 +982,16 @@ object MessagesSessionManager {
     }
 
     /**
-     * Bump a conversation's last-message time + preview when the LOCAL
-     * user sends. Outgoing sends otherwise only insert a message row and
-     * never touch `last_ts`, so a thread you just replied in wouldn't
-     * re-sort to the top of the inbox. Forward-only via maxOf.
+     * Refresh a conversation's preview when the LOCAL user sends. The
+     * inbox's sort order and displayed time now derive from the message
+     * rows themselves (the outgoing row is inserted with the send time),
+     * so we only need to keep the preview text in sync here.
      */
-    private suspend fun touchConversationOutgoing(conversationId: String, preview: String, nowMs: Long) {
+    private suspend fun touchConversationOutgoing(conversationId: String, preview: String) {
         val existing = db.conversationDao().get(conversationId) ?: return
         db.conversationDao().upsert(
             existing.copy(
                 lastMessagePreview = preview,
-                lastMessageTimestamp = maxOf(existing.lastMessageTimestamp, nowMs),
             )
         )
     }
