@@ -13,20 +13,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +32,6 @@ import androidx.health.connect.client.PermissionController
 import com.vayunmathur.watch.phone.ble.ConnectionState
 import com.vayunmathur.watch.phone.health.HealthConnectManager
 import com.vayunmathur.watch.phone.sync.SyncForegroundService
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -55,7 +50,6 @@ class MainActivity : ComponentActivity() {
     private fun SyncScreen(modifier: Modifier) {
         val context = this
         val health = remember { HealthConnectManager(context) }
-        val coroutineScope = rememberCoroutineScope()
 
         val connection by SyncForegroundService.connectionStateFlow.collectAsState()
         val synced by SyncForegroundService.syncedCountFlow.collectAsState()
@@ -63,7 +57,6 @@ class MainActivity : ComponentActivity() {
         var hasBlePerms by remember { mutableStateOf(false) }
         var hasHcPerms by remember { mutableStateOf(false) }
         var hcAvailable by remember { mutableStateOf(true) }
-        var needsWeight by remember { mutableStateOf(false) }
 
         val blePermsLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -81,24 +74,6 @@ class MainActivity : ComponentActivity() {
             }
             hcAvailable = health.isAvailable()
             if (hcAvailable) hasHcPerms = health.hasAllPermissions()
-        }
-
-        // Once HC permissions are granted, prompt for weight if none is recorded.
-        LaunchedEffect(hasHcPerms) {
-            if (hasHcPerms) {
-                needsWeight = health.latestWeightKg() == null
-            }
-        }
-
-        if (needsWeight) {
-            WeightPromptDialog(
-                onSubmit = { kg ->
-                    coroutineScope.launch {
-                        health.writeWeight(kg)
-                        needsWeight = false
-                    }
-                },
-            )
         }
 
         Column(
@@ -129,35 +104,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    @Composable
-    private fun WeightPromptDialog(onSubmit: (Double) -> Unit) {
-        var text by remember { mutableStateOf("") }
-        val kg = text.toDoubleOrNull()
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text(stringResource(R.string.weight_prompt_title)) },
-            text = {
-                Column {
-                    Text(stringResource(R.string.weight_prompt_body))
-                    OutlinedTextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        label = { Text(stringResource(R.string.weight_prompt_hint)) },
-                        singleLine = true,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { kg?.let(onSubmit) },
-                    enabled = kg != null && kg > 0.0,
-                ) {
-                    Text(stringResource(R.string.weight_prompt_save))
-                }
-            },
-        )
     }
 
     @Composable

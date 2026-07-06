@@ -13,10 +13,6 @@
     <string name="state_connected">Connected</string>
     <string name="rationale_title">Health Connect Permissions</string>
     <string name="rationale_body">This app writes heart rate and step data collected from your watch into Health Connect.</string>
-    <string name="weight_prompt_title">Enter your weight</string>
-    <string name="weight_prompt_body">Your weight is used to estimate active calories from your watch data. It is saved to Health Connect.</string>
-    <string name="weight_prompt_hint">Weight (kg)</string>
-    <string name="weight_prompt_save">Save</string>
     <string name="notification_channel_name">Watch Sync</string>
     <string name="notification_title">Syncing watch health data</string>
     <string name="notification_text">Maintaining BLE link and writing to Health Connect</string>

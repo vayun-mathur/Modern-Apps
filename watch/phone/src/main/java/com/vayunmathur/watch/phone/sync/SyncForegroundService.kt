@@ -37,10 +37,6 @@ class SyncForegroundService : Service() {
     private lateinit var buffer: ReceivedDatabase
     private val derivations = HealthDerivations()
 
-    // Cached body metrics from Health Connect, refreshed on each batch.
-    @Volatile private var weightKg: Double? = null
-    @Volatile private var heightMeters: Double? = null
-
     override fun onCreate() {
         super.onCreate()
         client = GattClientManager(this)
@@ -66,7 +62,7 @@ class SyncForegroundService : Service() {
     }
 
     private suspend fun processBatch(records: List<WatchRecord>) {
-        // 1. Write raw HR/Steps directly (existing behavior).
+        // 1. Write raw HR/Steps and the direct daily totals to Health Connect.
         health.insert(records)
 
         // 2. Persist the batch into the rolling phone-side buffer.
@@ -83,17 +79,13 @@ class SyncForegroundService : Service() {
             },
         )
 
-        // 3. Refresh cached body metrics for the estimators.
-        weightKg = health.latestWeightKg() ?: weightKg
-        heightMeters = health.latestHeightMeters() ?: heightMeters
-
-        // 4. Run derivations over the buffered window and upsert into HC.
+        // 3. Run resting-HR + sleep derivations over the buffered window.
         val cutoff = System.currentTimeMillis() - BUFFER_WINDOW_MS
         val buffered = buffer.receivedDao().getInRange(cutoff, Long.MAX_VALUE)
-        val derived = derivations.derive(buffered, weightKg, heightMeters)
+        val derived = derivations.derive(buffered)
         health.insertDerived(derived)
 
-        // 5. Prune buffer rows outside the rolling window.
+        // 4. Prune buffer rows outside the rolling window.
         buffer.receivedDao().deleteOlderThan(cutoff)
     }
 
