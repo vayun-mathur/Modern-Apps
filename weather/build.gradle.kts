@@ -44,8 +44,14 @@ fun resolveSdkDir(): String =
 val cargoBin = "${System.getProperty("user.home")}/.cargo/bin"
 val ndkRoot = "${resolveSdkDir()}/ndk/$ndkVersionForRust"
 // The NDK ships an x86_64 host toolchain (runs under Rosetta on Apple Silicon).
-val ndkBin = "$ndkRoot/toolchains/llvm/prebuilt/darwin-x86_64/bin"
-val ndkSysroot = "$ndkRoot/toolchains/llvm/prebuilt/darwin-x86_64/sysroot"
+val hostTag = when {
+    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "darwin-x86_64"
+    org.gradle.internal.os.OperatingSystem.current().isLinux -> "linux-x86_64"
+    org.gradle.internal.os.OperatingSystem.current().isWindows -> "windows-x86_64"
+    else -> error("Unsupported host OS for NDK toolchain")
+}
+val ndkBin = "$ndkRoot/toolchains/llvm/prebuilt/$hostTag/bin"
+val ndkSysroot = "$ndkRoot/toolchains/llvm/prebuilt/$hostTag/sysroot"
 
 // (jniLibs ABI dir, Rust target triple)
 // Only arm64-v8a: the dev build type inherits the convention's

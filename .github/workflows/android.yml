@@ -123,6 +123,9 @@ jobs:
           git commit -m "chore: prepare release $VERSION_NAME" || echo "No changes to commit"
           git tag "$VERSION_NAME"
 
+      - name: Install Android Rust Target
+        run: rustup target add aarch64-linux-android
+
       - name: Build and Sign APKs
         run: |
           ./gradlew assembleRelease \
