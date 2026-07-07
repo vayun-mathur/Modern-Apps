@@ -1,5 +1,8 @@
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.accessors.dm.LibrariesForLibs
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.services.BuildService
+import org.gradle.api.services.BuildServiceParameters
 
 // Wires up on-device app-store screenshot generation.
 //
@@ -12,8 +15,40 @@ import org.gradle.accessors.dm.LibrariesForLibs
 // emulator/device, runs it, and pulls the resulting PNGs into
 // `metadata_data/photos/<module-key>/` (where release.sh picks them up).
 //
+// Apps that need permissions/appops granted before launch (so first-run system
+// prompts don't hijack the screenshots) declare them in their build.gradle.kts:
+//
+//     metadataScreenshots {
+//         permissions.add("android.permission.POST_NOTIFICATIONS")
+//         appops.addAll("SCHEDULE_EXACT_ALARM", "USE_FULL_SCREEN_INTENT")
+//     }
+//
 // Modules without a `src/androidTest` screenshot generator simply won't produce
 // any images, so applying this plugin is harmless.
+
+interface MetadataScreenshotsExtension {
+    /** Runtime permissions to `pm grant` before launch (e.g. "android.permission.READ_CONTACTS"). */
+    val permissions: ListProperty<String>
+    /** App-ops to `appops set <op> allow` before launch (e.g. "MANAGE_MEDIA"). */
+    val appops: ListProperty<String>
+}
+
+// A shared, build-wide service capped at one concurrent use. The metadata task
+// declares it so that `./gradlew :a:metadata :b:metadata` never runs two on the
+// single connected emulator at once (they contend for the device and the global
+// `cmd uimode night` setting), even though org.gradle.parallel=true.
+abstract class MetadataScreenshotLock : BuildService<BuildServiceParameters.None>
+
+val metadataLock = gradle.sharedServices.registerIfAbsent(
+    "metadataScreenshotLock", MetadataScreenshotLock::class.java
+) {
+    maxParallelUsages.set(1)
+}
+
+val metadataExt = extensions.create("metadataScreenshots", MetadataScreenshotsExtension::class.java).apply {
+    permissions.convention(emptyList())
+    appops.convention(emptyList())
+}
 
 val libs = the<LibrariesForLibs>()
 
@@ -51,6 +86,8 @@ val metadataTask = tasks.register<Exec>("metadata") {
     group = "metadata"
     description = "Generate Play/F-Droid screenshots on a connected emulator and copy them into metadata_data/photos/$moduleKey"
     dependsOn("installDebug", "installDebugAndroidTest")
+    // Serialize across modules: only one metadata run touches the emulator at a time.
+    usesService(metadataLock)
     // Placeholder; the real command is assembled in afterEvaluate below, once the
     // applicationId is known, so the task only holds plain serializable strings
     // (required for the configuration cache).
@@ -70,25 +107,27 @@ afterEvaluate {
     val deviceDir = "/sdcard/Android/data/$appId/files/metadata_screenshots"
     val out = screenshotsOut.absolutePath
 
-    // Pre-grant the permissions/appops that MainActivity would otherwise bounce
-    // the user to system settings for on first launch (so those settings screens
-    // don't hijack the screenshots), and switch the device to night mode so the
-    // app's DynamicTheme renders dark. The device is restored to light after.
-    val script = """
-        set -e
-        "$adb" shell pm clear $appId || true
-        "$adb" shell pm grant $appId android.permission.POST_NOTIFICATIONS || true
-        "$adb" shell appops set $appId SCHEDULE_EXACT_ALARM allow || true
-        "$adb" shell appops set $appId USE_FULL_SCREEN_INTENT allow || true
-        "$adb" shell cmd uimode night yes || true
-        "$adb" shell rm -rf "$deviceDir" || true
-        "$adb" shell am instrument -w "$runner"
-        rm -rf "$out"
-        mkdir -p "$out"
-        "$adb" pull "$deviceDir/." "$out"
-        "$adb" shell cmd uimode night no || true
-        echo "Metadata screenshots written to $out"
-    """.trimIndent()
+    // Grant the declared permissions/appops before launch (so first-run system
+    // prompts don't hijack the screenshots), switch the device to night mode so
+    // the app's DynamicTheme renders dark, run the generator, pull the PNGs, then
+    // restore the device to light. pm clear gives every run a clean slate.
+    val lines = mutableListOf("set -e")
+    lines += """"$adb" shell pm clear $appId || true"""
+    metadataExt.permissions.get().forEach {
+        lines += """"$adb" shell pm grant $appId $it || true"""
+    }
+    metadataExt.appops.get().forEach {
+        lines += """"$adb" shell appops set $appId $it allow || true"""
+    }
+    lines += """"$adb" shell cmd uimode night yes || true"""
+    lines += """"$adb" shell rm -rf "$deviceDir" || true"""
+    lines += """"$adb" shell am instrument -w "$runner""""
+    lines += """rm -rf "$out""""
+    lines += """mkdir -p "$out""""
+    lines += """"$adb" pull "$deviceDir/." "$out""""
+    lines += """"$adb" shell cmd uimode night no || true"""
+    lines += """echo "Metadata screenshots written to $out""""
+    val script = lines.joinToString("\n")
 
     metadataTask.configure {
         commandLine("bash", "-c", script)
