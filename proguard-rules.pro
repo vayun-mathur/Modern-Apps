@@ -46,3 +46,10 @@
 # BouncyCastle (post-quantum crypto for Office): keep providers/algorithms found via reflection.
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**
+
+# logback-classic (transitive via KeePassJava2-dom, used by :passwords) is a
+# server-side SLF4J backend that references the Servlet API. javax.servlet.*
+# doesn't exist on Android, so R8 flags the dangling reference. logback's
+# servlet integration is never used on Android; suppress the missing refs.
+-dontwarn javax.servlet.**
+-dontwarn ch.qos.logback.classic.servlet.**
