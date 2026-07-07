@@ -1,5 +1,6 @@
 plugins {
     id("common-conventions-app")
+    id("common-conventions-metadata")
 }
 
 android {
