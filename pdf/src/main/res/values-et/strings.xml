@@ -23,11 +23,4 @@
     <string name="auto_detect">Tuvasta automatselt</string>
     <string name="pdf_save">Salvesta</string>
     <string name="pdf_save_as_copy">Salvesta koopiana</string>
-    <string name="ocr_extract_text">Eralda tekst</string>
-    <string name="ocr_dialog_title">Eraldatud tekst</string>
-    <string name="ocr_running">Eraldan teksti…</string>
-    <string name="ocr_no_text">Sellel lehele ei leidunud teksti.</string>
-    <string name="ocr_copy">Kopeeri</string>
-    <string name="ocr_copied">Tekst on kopeeritud</string>
-    <string name="ocr_close">Sulge</string>
 </resources>

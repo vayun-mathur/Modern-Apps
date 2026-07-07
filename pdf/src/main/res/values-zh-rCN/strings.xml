@@ -23,11 +23,4 @@
     <string name="auto_detect">自动检测</string>
     <string name="pdf_save">保存</string>
     <string name="pdf_save_as_copy">另存为副本</string>
-    <string name="ocr_extract_text">提取文本</string>
-    <string name="ocr_dialog_title">已提取的文本</string>
-    <string name="ocr_running">正在提取文本…</string>
-    <string name="ocr_no_text">此页面上未找到任何文本。</string>
-    <string name="ocr_copy">复制</string>
-    <string name="ocr_copied">文本已复制</string>
-    <string name="ocr_close">关闭</string>
 </resources>
