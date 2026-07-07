@@ -7,7 +7,11 @@ import android.provider.CalendarContract
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -19,8 +23,12 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
- * Screenshot generator driven by `:calendar:metadata`. Seeds a local calendar with a few
- * events into the system CalendarProvider before launch, then captures the month view.
+ * Screenshot generator driven by `:calendar:metadata`. Seeds a local calendar with events
+ * into the system CalendarProvider before launch, then captures the month view, an event
+ * detail page, and the settings page.
+ *
+ * `pm clear` does NOT wipe the system CalendarProvider, so we delete previously-seeded local
+ * calendars (which cascade-deletes their events) at the start of every run to stay idempotent.
  */
 @RunWith(AndroidJUnit4::class)
 class MetadataScreenshots {
@@ -38,6 +46,7 @@ class MetadataScreenshots {
     }
 
     private fun snap(index: Int) {
+        composeRule.waitForIdle()
         val image = composeRule.onRoot().captureToImage()
         File(outDir, "$index.png").outputStream().use { out ->
             image.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
@@ -50,7 +59,18 @@ class MetadataScreenshots {
         .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
         .build()
 
+    /** Deletes local calendars (and their events) left over from a previous run. */
+    private fun clearExisting() {
+        ctx.contentResolver.delete(
+            syncAdapterUri(CalendarContract.Calendars.CONTENT_URI),
+            "${CalendarContract.Calendars.ACCOUNT_TYPE} = ?",
+            arrayOf(CalendarContract.ACCOUNT_TYPE_LOCAL)
+        )
+    }
+
     private fun seedCalendar() {
+        clearExisting()
+
         val resolver = ctx.contentResolver
         val calValues = ContentValues().apply {
             put(CalendarContract.Calendars.ACCOUNT_NAME, "Personal")
@@ -102,7 +122,46 @@ class MetadataScreenshots {
     fun generateStoreScreenshots() {
         seedCalendar()
         ActivityScenario.launch(MainActivity::class.java).use {
-            Thread.sleep(4000)
+            // Let the ViewModel load events from the provider.
+            Thread.sleep(3000)
+
+            // Switch from the default Full Week view to Agenda, where seeded events render
+            // as tappable list rows (the "W7" text is the layout switcher button).
+            composeRule.onNodeWithText("W7").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("Agenda").performClick()
+            composeRule.waitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithText("Team standup").fetchSemanticsNodes().isNotEmpty()
+            }
+
+            // 2: event detail page.
+            composeRule.onNodeWithText("Team standup").performClick()
+            composeRule.waitForIdle()
+            Thread.sleep(1500)
+            snap(2)
+
+            // Back to the calendar, then open Settings.
+            composeRule.onNodeWithContentDescription("Back").performClick()
+            composeRule.waitForIdle()
+
+            // 3: settings page.
+            composeRule.onNodeWithContentDescription("Settings").performClick()
+            composeRule.waitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithText("Default Layout").fetchSemanticsNodes().isNotEmpty()
+            }
+            Thread.sleep(1000)
+            snap(3)
+
+            // Back to the calendar, switch to Month for the lead screenshot.
+            composeRule.onNodeWithContentDescription("Back").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("A").performClick()
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("Month").performClick()
+            composeRule.waitForIdle()
+            Thread.sleep(1500)
+
+            // 1: month view with events (lead).
             snap(1)
         }
     }
