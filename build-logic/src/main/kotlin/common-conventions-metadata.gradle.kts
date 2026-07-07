@@ -56,6 +56,9 @@ configure<ApplicationExtension> {
     defaultConfig {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    // Shared androidTest source: PlaystoreIconRenderer, which renders each app's
+    // adaptive launcher icon to a 512x512 Play Store PNG during the metadata run.
+    sourceSets.getByName("androidTest").kotlin.srcDir(File(rootDir, "build-logic/metadataIconTest"))
 }
 
 dependencies {
@@ -105,7 +108,9 @@ afterEvaluate {
     val adb = resolveAdb()
     val runner = "$appId.test/androidx.test.runner.AndroidJUnitRunner"
     val deviceDir = "/sdcard/Android/data/$appId/files/metadata_screenshots"
+    val iconDeviceFile = "/sdcard/Android/data/$appId/files/metadata_icon/ic_launcher-playstore.png"
     val out = screenshotsOut.absolutePath
+    val srcMainIcon = File(projectDir, "src/main/ic_launcher-playstore.png").absolutePath
 
     // Grant the declared permissions/appops before launch (so first-run system
     // prompts don't hijack the screenshots), switch the device to night mode so
@@ -125,6 +130,8 @@ afterEvaluate {
     lines += """rm -rf "$out""""
     lines += """mkdir -p "$out""""
     lines += """"$adb" pull "$deviceDir/." "$out""""
+    // Also pull the rendered 512x512 Play Store icon into the module's src/main.
+    lines += """"$adb" pull "$iconDeviceFile" "$srcMainIcon" || true"""
     lines += """"$adb" shell cmd uimode night no || true"""
     lines += """echo "Metadata screenshots written to $out""""
     val script = lines.joinToString("\n")
