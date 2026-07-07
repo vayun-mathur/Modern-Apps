@@ -6,6 +6,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260706
+        versionName = "v2.5.7"
         applicationId = "com.vayunmathur.maps"
     }
 

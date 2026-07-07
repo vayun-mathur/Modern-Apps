@@ -8,6 +8,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260706
+        versionName = "v2.5.7"
         applicationId = "com.vayunmathur.weather"
     }
     // The Rust build drops <abi>/libweather_om.so under this dir; register it as

@@ -5,6 +5,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260706
+        versionName = "v2.5.7"
         applicationId = "com.vayunmathur.games.chess"
         // Build Stockfish from source for arm64 only (matches the prior prebuilt .so).
         ndk {

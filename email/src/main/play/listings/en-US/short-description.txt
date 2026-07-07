@@ -1,0 +1,1 @@
+A modern, open-source email client with a unified inbox
