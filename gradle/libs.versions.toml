@@ -71,7 +71,7 @@ protobuf = "4.35.0"
 keepassJava2 = "2.2.4"
 zxing = "3.5.4"
 bouncycastle = "1.82"
-litert = "1.4.2"
+litert = "1.2.0"
 onnxruntimeAndroid = "1.19.2"
 
 [libraries]
