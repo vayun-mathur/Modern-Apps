@@ -5,6 +5,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260707
+        versionName = "v2.5.7b"
         applicationId = "com.vayunmathur.office"
     }
     // Ship the real sample documents (metadata_data/assets) inside the instrumented

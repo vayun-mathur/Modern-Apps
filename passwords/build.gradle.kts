@@ -6,6 +6,8 @@ plugins {
 
 android {
     defaultConfig {
+        versionCode = 20260707
+        versionName = "v2.5.7b"
         minSdk = 35
         applicationId = "com.vayunmathur.passwords"
     }
