@@ -43,6 +43,17 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+
+# ONNX Runtime (com.microsoft.onnxruntime:onnxruntime-android) — the native .so
+# creates Java objects and calls their constructors/methods/fields via JNI (e.g.
+# ai.onnxruntime.TensorInfo). R8 can't see those JNI uses, so in minified release
+# builds it strips the JNI-only members, causing crashes like
+# "NoSuchMethodError: no non-static method Lai/onnxruntime/TensorInfo;.<init>([J[Ljava/lang/String;I)V".
+# Keep the whole ORT API surface (classes + all members) so nothing it needs is removed.
+-keep class ai.onnxruntime.** { *; }
+-keep interface ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+
 # BouncyCastle (post-quantum crypto for Office): keep providers/algorithms found via reflection.
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**

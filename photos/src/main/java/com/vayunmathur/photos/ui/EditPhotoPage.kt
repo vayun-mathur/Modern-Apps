@@ -20,9 +20,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -72,6 +75,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -721,11 +725,22 @@ fun EditPhotoPage(
             )
         },
     ) { paddingValues ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).background(Color.Black),
+        val layoutDirection = LocalLayoutDirection.current
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = paddingValues.calculateStartPadding(layoutDirection),
+                    end = paddingValues.calculateEndPadding(layoutDirection),
+                )
+                .background(Color.Black),
         ) {
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize().padding(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(top = paddingValues.calculateTopPadding())
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 val maxW = constraints.maxWidth.toFloat()
@@ -753,6 +768,9 @@ fun EditPhotoPage(
                                 scaleX = scale; scaleY = scale
                                 translationX = offset.x; translationY = offset.y; clip = false
                             }
+                            // Always-visible thin outline of the photo so its edges are
+                            // distinguishable from the black background (tracks zoom/pan).
+                            .border(1.dp, MaterialTheme.colorScheme.primary)
                             .then(
                                 if (activeTool == DrawingTool.Text && isDrawing) Modifier.pointerInput(activeTool) {
                                     detectTapGestures { tapOffset ->
@@ -1064,9 +1082,23 @@ fun EditPhotoPage(
                             CropOverlay(
                                 cx = cropCx, cy = cropCy, hx = cropHx, hy = cropHy, angleDeg = cropAngle,
                                 onChange = { ncx, ncy, nhx, nhy ->
-                                    cropCx = ncx; cropCy = ncy; cropHx = nhx; cropHy = nhy; cropAspect = null
+                                    // Reject the drag in real time if it would pull any crop corner
+                                    // off the photo, so the box snaps back instead of going outside.
+                                    val w = document.canvasWidth.coerceAtLeast(1).toFloat()
+                                    val h = document.canvasHeight.coerceAtLeast(1).toFloat()
+                                    if (cropWithinImage(ncx, ncy, nhx, nhy, cropAngle, w, h)) {
+                                        cropCx = ncx; cropCy = ncy; cropHx = nhx; cropHy = nhy; cropAspect = null
+                                    }
                                 },
-                                onAngle = { cropAngle = it },
+                                onAngle = { newAngle ->
+                                    // Only accept the rotation if the crop still fits inside the
+                                    // photo at that angle; otherwise ignore it (user must shrink first).
+                                    val w = document.canvasWidth.coerceAtLeast(1).toFloat()
+                                    val h = document.canvasHeight.coerceAtLeast(1).toFloat()
+                                    if (cropWithinImage(cropCx, cropCy, cropHx, cropHy, newAngle, w, h)) {
+                                        cropAngle = newAngle
+                                    }
+                                },
                             )
                         }
                         if (editorMode == EditorMode.FreeTransform) {
@@ -1125,13 +1157,16 @@ fun EditPhotoPage(
                 }
             }
 
-            // Bottom controls: Home (category bar) or a tool screen. Overlaid at
-            // the bottom so opening a panel doesn't resize/reflow the image.
+            // Bottom controls: Home (category bar) or a tool screen. Placed below the image in a
+            // Column so opening a panel shrinks the image instead of covering it. The Surface fills
+            // to the screen bottom (covering the navigation-bar area) while its content is inset above
+            // the nav bar via navigationBarsPadding, so there is no gap and no tools under the bar.
             val cat = activeCategory
             Surface(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface,
             ) {
+                Box(modifier = Modifier.navigationBarsPadding()) {
                 when (cat) {
                 null -> CategoryBar(onSelect = { openCategory(it) })
                 ToolCategory.Draw -> {
@@ -1188,15 +1223,19 @@ fun EditPhotoPage(
                                 // Quarter-turn: keep the crop center, swap the box's
                                 // pixel dimensions, and rotate 90°. Swapping extents +
                                 // the 90° turn preserves the selected footprint (and
-                                // two turns return exactly to the original box).
+                                // two turns return exactly to the original box). Only apply
+                                // it if the result still fits inside the photo.
                                 val w = document.canvasWidth.coerceAtLeast(1).toFloat()
                                 val h = document.canvasHeight.coerceAtLeast(1).toFloat()
                                 val newHx = cropHy * h / w
                                 val newHy = cropHx * w / h
-                                cropHx = newHx
-                                cropHy = newHy
-                                cropAngle = (cropAngle + 90f) % 360f
-                                cropAspect = null
+                                val newAngle = (cropAngle + 90f) % 360f
+                                if (cropWithinImage(cropCx, cropCy, newHx, newHy, newAngle, w, h)) {
+                                    cropHx = newHx
+                                    cropHy = newHy
+                                    cropAngle = newAngle
+                                    cropAspect = null
+                                }
                             },
                             selectedAspect = cropAspect,
                             onAspect = { ar ->
@@ -1330,6 +1369,7 @@ fun EditPhotoPage(
                         },
                     )
                     }
+                }
                 }
                 }
             }
@@ -2204,6 +2244,39 @@ private fun ToolIcon(active: Boolean, onClick: () -> Unit, content: @Composable 
             contentAlignment = Alignment.Center,
         ) { content() }
     }
+}
+
+/**
+ * True if the crop rectangle — center [cx,cy] and half-extents [hx,hy] (all normalized to the image),
+ * rotated by [angleDeg] around its center — lies entirely within the image bounds [0,w]×[0,h].
+ * Used to reject a rotation (or 90° turn) that would pull a crop corner off the photo; the user must
+ * shrink the crop first so it fits at the new angle.
+ */
+private fun cropWithinImage(
+    cx: Float,
+    cy: Float,
+    hx: Float,
+    hy: Float,
+    angleDeg: Float,
+    w: Float,
+    h: Float,
+): Boolean {
+    val a = Math.toRadians(angleDeg.toDouble())
+    val ca = cos(a)
+    val sa = sin(a)
+    val cpx = cx * w
+    val cpy = cy * h
+    val phx = hx * w
+    val phy = hy * h
+    val eps = 0.5 // sub-pixel tolerance so touching the edge exactly still counts as inside
+    for (sx in intArrayOf(-1, 1)) {
+        for (sy in intArrayOf(-1, 1)) {
+            val x = cpx + (sx * phx * ca - sy * phy * sa)
+            val y = cpy + (sx * phx * sa + sy * phy * ca)
+            if (x < -eps || x > w + eps || y < -eps || y > h + eps) return false
+        }
+    }
+    return true
 }
 
 @Composable
