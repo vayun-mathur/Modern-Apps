@@ -5,7 +5,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -69,5 +71,16 @@ class MetadataScreenshots {
             composeRule.onAllNodesWithText(samples[0].first).fetchSemanticsNodes().isNotEmpty()
         }
         snap(1) // populated notes list
+
+        // Open a note's detail/editor page. We click the list row (headline), NOT a
+        // text field, so the editor never auto-focuses — otherwise the soft keyboard
+        // would slide up and cover the note's content in the shot.
+        composeRule.onAllNodesWithText(samples[0].first).onFirst().performClick()
+        // Wait for the detail page: the note's body text is now rendered in the editor.
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithText("farmers market", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        snap(2) // note detail with title + content, keyboard hidden
     }
 }
