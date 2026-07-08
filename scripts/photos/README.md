@@ -1,18 +1,26 @@
 # Photos model assets
 
-`prepare_models.py` regenerates the on-device ML binary the Photos app ships in
-`photos/src/main/assets/`. Run it whenever you want to refresh or re-quantize the
-model; the app loads whatever is on disk and is otherwise inert (no crash) if the
-asset is missing.
+`prepare_models.py` regenerates the on-device ML binaries the Photos app ships in
+`photos/src/main/assets/`. Run it whenever you want to refresh the models; the app
+loads whatever is on disk and is otherwise inert (no crash) if an asset is missing.
 
 ## What it produces
 
 | Asset | Source | Format | ~Size |
 | --- | --- | --- | --- |
-| `edgeface.onnx` | EdgeFace `edgeface-s-gamma-05` (anjith2006/edgeface, transformers mirror) | INT8 dynamic | 4 MB |
+| `blazeface.onnx` | BlazeFace ONNX (garavv/blazeface-onnx, `blaze.onnx`) | fp32, decode+NMS in-graph | ~0.5 MB |
+| `u2netp.onnx` | U²-Net portable (BritishWerewolf/U-2-Netp) | fp32 salient-object | ~4.6 MB |
+| `edgeface.onnx` | EdgeFace `edgeface-s-gamma-05` (anjith2006/edgeface, transformers mirror) | fp32 | ~16 MB |
 
-MediaPipe's `face_detector.tflite` and the editor's `deeplab_v3.tflite` are
-unrelated and stay as-is.
+> **Not INT8-quantized on purpose.** EdgeFace is a CNN; `quantize_dynamic` turns
+> its Conv layers into `ConvInteger`, which the ONNX Runtime **Android** package
+> can't run (`ORT_NOT_IMPLEMENTED: ConvInteger`) — it loads on desktop but fails
+> on-device, silently disabling face grouping. Use *static* quantization
+> (calibration images → supported `QLinearConv`) if you need the size back.
+
+Everything runs on ONNX Runtime now: face **detection** (BlazeFace), face
+**embedding** (EdgeFace), and subject **segmentation** (U²-Net). The app no longer
+depends on MediaPipe at all.
 
 ### Semantic (CLIP) search moved to OpenAssistant
 

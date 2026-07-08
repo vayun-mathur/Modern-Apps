@@ -284,10 +284,13 @@ def main():
 
     categories = []
     total_levels = 0
+    stage_id = 1
     for cat_key, stage_keys in CATEGORIES:
         stages = []
         for sk in stage_keys:
             stage = parse_stage(os.path.join(stage_dir, f"{sk}.ts"), sk, learn, site)
+            stage = {"id": stage_id, **stage}
+            stage_id += 1
             stages.append(stage)
             total_levels += len(stage["levels"])
         categories.append({"key": cat_key, "name": learn.get(cat_key, cat_key), "stages": stages})

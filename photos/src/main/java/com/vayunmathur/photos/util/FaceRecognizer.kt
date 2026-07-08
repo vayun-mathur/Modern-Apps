@@ -6,19 +6,14 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
-import android.graphics.RectF
 import android.util.Log
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-import com.google.mediapipe.tasks.components.containers.Detection
-import com.google.mediapipe.tasks.core.BaseOptions
-import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.facedetector.FaceDetector
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.nio.LongBuffer
 import kotlin.math.sqrt
 
 /**
@@ -26,9 +21,12 @@ import kotlin.math.sqrt
  * Play Services and no cloud (F-Droid clean).
  *
  * Pipeline:
- *  1. Detection — MediaPipe BlazeFace ([DETECTOR_ASSET]) finds faces and returns
- *     6 keypoints per face (eyes, nose, mouth, ears).
- *  2. Alignment — we take the two eye keypoints and compute a similarity
+ *  1. Detection — a **BlazeFace** ONNX model ([DETECTOR_ASSET]) run on ONNX
+ *     Runtime finds faces and returns a bounding box + 6 landmarks per face
+ *     (eyes, nose, mouth, cheeks). Anchor decoding and NMS are baked into the
+ *     graph, so we just feed a 128x128 image (plus conf/iou/max-detection
+ *     scalars) and read back the selected boxes. No MediaPipe / Play Services.
+ *  2. Alignment — we take the two eye landmarks and compute a similarity
  *     transform (rotate + uniform scale + translate) that maps them onto a fixed
  *     canonical position inside a [INPUT_SIZE]x[INPUT_SIZE] crop. Aligning faces
  *     to a canonical pose is what makes same-person matching reliable.
@@ -36,16 +34,22 @@ import kotlin.math.sqrt
  *     **EdgeFace**) runs on the aligned crop via an ONNX Runtime [OrtSession]
  *     (`com.microsoft.onnxruntime`, MIT — no LiteRT/TensorFlow-Lite dependency
  *     is needed here). EdgeFace is an
- *     ArcFace-trained transformer-CNN hybrid; the shipped export is INT8
- *     weight-quantized (a few MB). Pixels are packed **NCHW** planar and
+ *     ArcFace-trained transformer-CNN hybrid; the shipped export is fp32
+ *     (a few MB). Pixels are packed **NCHW** planar and
  *     normalised as (px - 127.5) / 127.5, the ArcFace convention.
  *  4. Matching — embeddings are L2-normalised and compared with cosine
  *     similarity to cluster faces of the same person (see [CLUSTER_THRESHOLD]).
  *
  * ## Required model assets (in `photos/src/main/assets/`)
  *
- *  - [DETECTOR_ASSET] — MediaPipe BlazeFace short-range (Apache-2.0):
- *    https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite
+ *  - [DETECTOR_ASSET] — a **BlazeFace** face detector in ONNX format (short
+ *    range, 128x128 input, decode+NMS in-graph). Sourced from
+ *    `garavv/blazeface-onnx` (`blaze.onnx`); `prepare_models.py` downloads it to
+ *    `photos/src/main/assets/blazeface.onnx`. Input NCHW `[1,3,128,128]` RGB in
+ *    [0,1] (plain /255); output `[1,N,16]` per-face rows of normalised
+ *    `[top_y, top_x, bot_y, bot_x, leftEyeX, leftEyeY, rightEyeX, rightEyeY,
+ *    noseX, noseY, mouthX, mouthY, leftCheekX, leftCheekY, rightCheekX,
+ *    rightCheekY]`.
  *
  *  - [EMBEDDER_ASSET] — an **EdgeFace** face-recognition embedder in ONNX
  *    format. Expected input: NCHW `[1,3,`[INPUT_SIZE]`,`[INPUT_SIZE]`]` RGB,
@@ -53,9 +57,11 @@ import kotlin.math.sqrt
  *    dimension is read from the model at run time). The code L2-normalises the
  *    output itself.
  *
- *    Generate it with `scripts/photos/prepare_models.py`, which fetches the
- *    EdgeFace weights, exports to ONNX and applies INT8 dynamic quantization,
- *    writing `photos/src/main/assets/edgeface.onnx`. NOTE: EdgeFace ships under a
+    Generate it with `scripts/photos/prepare_models.py`, which fetches the
+ *    EdgeFace weights and exports to **fp32** ONNX, writing
+ *    `photos/src/main/assets/edgeface.onnx`. (It is intentionally not INT8
+ *    quantized: dynamic quant emits `ConvInteger`, which the ONNX Runtime
+ *    Android package cannot run.) NOTE: EdgeFace ships under a
  *    **non-commercial** research licence — this project uses it deliberately;
  *    swap the asset if you need a permissive licence. If the input size differs
  *    from 112, update [INPUT_SIZE]; if the normalisation differs, update [embed].
@@ -66,8 +72,16 @@ import kotlin.math.sqrt
  * [modelsAvailable], which the UI checks before enabling.
  */
 object FaceRecognizer {
-    const val DETECTOR_ASSET = "face_detector.tflite"
+    const val DETECTOR_ASSET = "blazeface.onnx"
     const val EMBEDDER_ASSET = "edgeface.onnx"
+
+    /** Square input side (px) the BlazeFace detector expects. */
+    private const val DETECT_SIZE = 128
+
+    /** Detector thresholds (fed as graph inputs; decode + NMS run in-graph). */
+    private const val DETECT_CONF = 0.5f
+    private const val DETECT_IOU = 0.3f
+    private const val DETECT_MAX = 25L
 
     /** Square input side (px) the embedder expects. EdgeFace/ArcFace is 112. */
     const val INPUT_SIZE = 112
@@ -77,9 +91,11 @@ object FaceRecognizer {
      * worker compares it against a stored value and, on mismatch, clears existing
      * clusters and re-scans so photos are re-grouped with the new embeddings.
      * (v1 = old MobileNetV3 general embedder; v2 = MobileFaceNet + alignment;
-     * v3 = EdgeFace INT8 on ONNX Runtime.)
+     * v3 = EdgeFace INT8 on ONNX Runtime; v4 = EdgeFace fp32 — INT8 dynamic
+     * quant emits ConvInteger, which ORT-Android can't run; v5 = BlazeFace ONNX
+     * detector replacing MediaPipe, which shifts alignment/embeddings slightly.)
      */
-    const val EMBEDDER_VERSION = 3
+    const val EMBEDDER_VERSION = 5
 
     /**
      * Minimum cosine similarity for a face to join an existing cluster instead of
@@ -123,7 +139,7 @@ object FaceRecognizer {
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
     private val lock = Any()
 
-    @Volatile private var detector: FaceDetector? = null
+    @Volatile private var detector: OrtSession? = null
     @Volatile private var embedder: OrtSession? = null
     @Volatile private var initFailed = false
 
@@ -144,25 +160,21 @@ object FaceRecognizer {
         if (initFailed) return false
         return try {
             val app = context.applicationContext
-            detector = FaceDetector.createFromOptions(
-                app,
-                FaceDetector.FaceDetectorOptions.builder()
-                    .setBaseOptions(BaseOptions.builder().setModelAssetPath(DETECTOR_ASSET).build())
-                    .setRunningMode(RunningMode.IMAGE)
-                    .setMinDetectionConfidence(0.5f)
-                    .build(),
-            )
-            val modelBytes = readAsset(app, EMBEDDER_ASSET)
-                ?: throw IllegalStateException("Missing $EMBEDDER_ASSET")
             val opts = OrtSession.SessionOptions().apply {
                 // Single-threaded keeps sustained CPU/battery use low.
                 setIntraOpNumThreads(1)
                 setInterOpNumThreads(1)
             }
+            val detBytes = readAsset(app, DETECTOR_ASSET)
+                ?: throw IllegalStateException("Missing $DETECTOR_ASSET")
+            detector = env.createSession(detBytes, opts)
+            val modelBytes = readAsset(app, EMBEDDER_ASSET)
+                ?: throw IllegalStateException("Missing $EMBEDDER_ASSET")
             embedder = env.createSession(modelBytes, opts)
             true
         } catch (e: Throwable) {
-            Log.e(TAG, "Face models unavailable — drop $DETECTOR_ASSET and an EdgeFace $EMBEDDER_ASSET into photos assets (see FaceRecognizer docs).", e)
+            Log.e(TAG, "Face models unavailable — drop a BlazeFace $DETECTOR_ASSET and an EdgeFace $EMBEDDER_ASSET into photos assets (see FaceRecognizer docs).", e)
+            try { detector?.close() } catch (_: Exception) {}
             detector = null
             try { embedder?.close() } catch (_: Exception) {}
             embedder = null
@@ -187,16 +199,16 @@ object FaceRecognizer {
         else bitmap.copy(Bitmap.Config.ARGB_8888, false)
 
         val detections = try {
-            det.detect(BitmapImageBuilder(argb).build()).detections()
+            runDetector(det, argb)
         } catch (e: Exception) {
             Log.e(TAG, "Face detection failed", e)
             return emptyList()
         }
 
         val out = ArrayList<DetectedFace>(detections.size)
-        for (detection in detections) {
-            val rect = faceRect(detection.boundingBox(), argb.width, argb.height) ?: continue
-            val aligned = alignFace(argb, detection, rect) ?: continue
+        for (d in detections) {
+            val rect = faceRect(d, argb.width, argb.height) ?: continue
+            val aligned = alignFace(argb, d, rect) ?: continue
             try {
                 val embedding = l2Normalize(embed(emb, aligned))
                 out += DetectedFace(
@@ -215,22 +227,99 @@ object FaceRecognizer {
         return out
     }
 
+    /** One raw BlazeFace detection: bbox + eye landmarks, all normalised 0..1. */
+    private class RawDetection(
+        val top: Float,
+        val left: Float,
+        val bottom: Float,
+        val right: Float,
+        val leftEyeX: Float,
+        val leftEyeY: Float,
+        val rightEyeX: Float,
+        val rightEyeY: Float,
+    )
+
     /**
-     * Warp the source image so the two eye keypoints land on fixed canonical
+     * Run BlazeFace on [bmp] (plain-resized to [DETECT_SIZE]²) and return the
+     * selected detections. Anchor decode + NMS run in-graph; the output is
+     * `[1,N,16]` of normalised `[top_y, top_x, bot_y, bot_x, leftEyeX, leftEyeY,
+     * rightEyeX, rightEyeY, ...]` — only the first 8 columns are used here.
+     * Coords are normalised to the (stretched) input, which maps directly back to
+     * the source image since the resize is a full stretch.
+     */
+    private fun runDetector(session: OrtSession, bmp: Bitmap): List<RawDetection> {
+        val scaled = Bitmap.createScaledBitmap(bmp, DETECT_SIZE, DETECT_SIZE, true)
+        val px = IntArray(DETECT_SIZE * DETECT_SIZE)
+        scaled.getPixels(px, 0, DETECT_SIZE, 0, 0, DETECT_SIZE, DETECT_SIZE)
+        if (scaled != bmp) scaled.recycle()
+
+        val area = DETECT_SIZE * DETECT_SIZE
+        val input = FloatArray(3 * area)
+        for (i in 0 until area) {
+            val p = px[i]
+            input[i] = ((p shr 16) and 0xFF) / 255f            // R plane
+            input[area + i] = ((p shr 8) and 0xFF) / 255f       // G plane
+            input[2 * area + i] = (p and 0xFF) / 255f           // B plane
+        }
+
+        synchronized(lock) {
+            val tensors = HashMap<String, OnnxTensor>()
+            try {
+                tensors["image"] = OnnxTensor.createTensor(
+                    env, FloatBuffer.wrap(input),
+                    longArrayOf(1, 3, DETECT_SIZE.toLong(), DETECT_SIZE.toLong()),
+                )
+                tensors["conf_threshold"] = OnnxTensor.createTensor(
+                    env, FloatBuffer.wrap(floatArrayOf(DETECT_CONF)), longArrayOf(1),
+                )
+                tensors["max_detections"] = OnnxTensor.createTensor(
+                    env, LongBuffer.wrap(longArrayOf(DETECT_MAX)), longArrayOf(1),
+                )
+                tensors["iou_threshold"] = OnnxTensor.createTensor(
+                    env, FloatBuffer.wrap(floatArrayOf(DETECT_IOU)), longArrayOf(1),
+                )
+                session.run(tensors).use { result ->
+                    val outTensor = result.get(0) as OnnxTensor
+                    val shape = outTensor.info.shape // [1, N, 16]
+                    val n = if (shape.size >= 2) shape[1].toInt() else 0
+                    if (n <= 0) return emptyList()
+                    val buf = FloatArray(n * 16)
+                    outTensor.floatBuffer.get(buf)
+                    val list = ArrayList<RawDetection>(n)
+                    for (k in 0 until n) {
+                        val o = k * 16
+                        // Skip zero-padded / degenerate rows.
+                        if (buf[o + 2] - buf[o] <= 0f || buf[o + 3] - buf[o + 1] <= 0f) continue
+                        list += RawDetection(
+                            top = buf[o], left = buf[o + 1], bottom = buf[o + 2], right = buf[o + 3],
+                            leftEyeX = buf[o + 4], leftEyeY = buf[o + 5],
+                            rightEyeX = buf[o + 6], rightEyeY = buf[o + 7],
+                        )
+                    }
+                    return list
+                }
+            } finally {
+                tensors.values.forEach { it.close() }
+            }
+        }
+    }
+
+    /**
+     * Warp the source image so the two eye landmarks land on fixed canonical
      * positions in an [INPUT_SIZE] crop (a similarity transform: rotation +
      * uniform scale + translation). Falls back to a plain resized box crop when
-     * eye keypoints are unavailable.
+     * eye landmarks are unavailable.
      */
-    private fun alignFace(src: Bitmap, detection: Detection, box: Rect): Bitmap? {
-        val keypoints = detection.keypoints().orElse(null)
-        if (keypoints != null && keypoints.size >= 2) {
+    private fun alignFace(src: Bitmap, d: RawDetection, box: Rect): Bitmap? {
+        val hasEyes = d.leftEyeX != 0f || d.leftEyeY != 0f || d.rightEyeX != 0f || d.rightEyeY != 0f
+        if (hasEyes) {
             // Sort the two eyes by x so the left-most maps to the left canonical
             // eye — keeps the face upright and never mirrored.
-            val eyes = listOf(keypoints[0], keypoints[1]).sortedBy { it.x() }
-            val srcPts = floatArrayOf(
-                eyes[0].x() * src.width, eyes[0].y() * src.height,
-                eyes[1].x() * src.width, eyes[1].y() * src.height,
-            )
+            val eyes = listOf(
+                floatArrayOf(d.leftEyeX * src.width, d.leftEyeY * src.height),
+                floatArrayOf(d.rightEyeX * src.width, d.rightEyeY * src.height),
+            ).sortedBy { it[0] }
+            val srcPts = floatArrayOf(eyes[0][0], eyes[0][1], eyes[1][0], eyes[1][1])
             val dstPts = floatArrayOf(
                 LEFT_EYE_X * INPUT_SIZE, EYE_Y * INPUT_SIZE,
                 RIGHT_EYE_X * INPUT_SIZE, EYE_Y * INPUT_SIZE,
@@ -246,7 +335,7 @@ object FaceRecognizer {
                 }
             }
         }
-        // Fallback: no usable keypoints — scale the axis-aligned box to the input.
+        // Fallback: no usable landmarks — scale the axis-aligned box to the input.
         return try {
             val crop = Bitmap.createBitmap(src, box.left, box.top, box.width(), box.height())
             val scaled = Bitmap.createScaledBitmap(crop, INPUT_SIZE, INPUT_SIZE, true)
@@ -290,14 +379,16 @@ object FaceRecognizer {
         }
     }
 
-    /** Expand the detector box by a small margin and clamp it to the image. */
-    private fun faceRect(box: RectF, w: Int, h: Int): Rect? {
-        val marginX = box.width() * 0.15f
-        val marginY = box.height() * 0.15f
-        val left = (box.left - marginX).toInt().coerceIn(0, w - 1)
-        val top = (box.top - marginY).toInt().coerceIn(0, h - 1)
-        val right = (box.right + marginX).toInt().coerceIn(left + 1, w)
-        val bottom = (box.bottom + marginY).toInt().coerceIn(top + 1, h)
+    /** Expand the normalised detector box by a small margin and clamp to pixels. */
+    private fun faceRect(d: RawDetection, w: Int, h: Int): Rect? {
+        val bw = (d.right - d.left) * w
+        val bh = (d.bottom - d.top) * h
+        val marginX = bw * 0.15f
+        val marginY = bh * 0.15f
+        val left = (d.left * w - marginX).toInt().coerceIn(0, w - 1)
+        val top = (d.top * h - marginY).toInt().coerceIn(0, h - 1)
+        val right = (d.right * w + marginX).toInt().coerceIn(left + 1, w)
+        val bottom = (d.bottom * h + marginY).toInt().coerceIn(top + 1, h)
         if (right - left < 8 || bottom - top < 8) return null
         return Rect(left, top, right, bottom)
     }

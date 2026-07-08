@@ -43,6 +43,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
@@ -334,6 +335,25 @@ suspend fun setExifData(photos: List<Photo>, database: PhotoDatabase, context: C
     }
 }
 
+/**
+ * Sustained on-device AI indexing (OCR, CLIP, face models) heats the phone.
+ * On top of the short per-item pauses, each indexing loop takes a longer
+ * "cooling break" every [BATCH_COOLDOWN_EVERY] items it actually ran inference
+ * on, idling for [BATCH_COOLDOWN_MS] so the device can shed heat before the next
+ * batch. [processed] is the running count of AI-processed items in this run.
+ */
+private suspend fun coolDownBetweenBatches(processed: Int, tag: String) {
+    if (processed > 0 && processed % BATCH_COOLDOWN_EVERY == 0) {
+        Log.i(tag, "Cooling break after $processed items: pausing ${BATCH_COOLDOWN_MS}ms to let the device cool")
+        delay(BATCH_COOLDOWN_MS)
+    }
+}
+
+// Number of AI-processed items between cooling breaks, and how long each break
+// lasts. Kept modest so indexing still makes steady progress in the background.
+private const val BATCH_COOLDOWN_EVERY = 20
+private const val BATCH_COOLDOWN_MS = 5_000L
+
 suspend fun runOCR(database: PhotoDatabase, context: Context) = coroutineScope {
     val photoDao = database.photoDao()
     val photos = photoDao.getUnscannedForOCR().sortedByDescending { it.date }
@@ -346,6 +366,7 @@ suspend fun runOCR(database: PhotoDatabase, context: Context) = coroutineScope {
         return@coroutineScope
     }
 
+    var processed = 0
     try {
         for (photo in photos) {
             ensureActive()
@@ -379,6 +400,9 @@ suspend fun runOCR(database: PhotoDatabase, context: Context) = coroutineScope {
 
             // Short pause between images keeps sustained CPU/battery use low.
             delay(OCR_INTER_ITEM_DELAY_MS)
+            // Longer cooling break every batch so the device can shed heat.
+            processed++
+            coolDownBetweenBatches(processed, "OCRWorker")
         }
     } finally {
         ocrEngine.close()
@@ -500,6 +524,7 @@ suspend fun runClipIndexing(database: PhotoDatabase, context: Context) = corouti
     val photos = photoDao.getUnscannedForClip().sortedByDescending { it.date }
     if (photos.isEmpty()) return@coroutineScope
 
+    var processed = 0
     for (photo in photos) {
         ensureActive()
 
@@ -535,6 +560,9 @@ suspend fun runClipIndexing(database: PhotoDatabase, context: Context) = corouti
 
         // Short pause between images keeps sustained CPU/battery use low.
         delay(CLIP_INTER_ITEM_DELAY_MS)
+        // Longer cooling break every batch so the device can shed heat.
+        processed++
+        coolDownBetweenBatches(processed, "ClipWorker")
     }
 }
 
@@ -615,12 +643,25 @@ suspend fun runFaceIndexing(database: PhotoDatabase, context: Context) {
         .toMutableList()
 
     val photos = photoDao.getUnscannedForFaces().sortedByDescending { it.date }
+    Log.i("FaceWorker", "Face indexing start: ${photos.size} photos to scan, ${clusters.size} existing clusters")
+    var facesTotal = 0
+    var photosWithFaces = 0
+    var decoded = 0
     for (photo in photos) {
+        currentCoroutineContext().ensureActive()
+
+        var didInference = false
         try {
             val bitmap = loadBitmapForFaces(context, photo.uri.toUri())
             if (bitmap != null) {
+                decoded++
+                didInference = true
                 val faces = FaceRecognizer.detectAndEmbed(context, bitmap)
                 bitmap.recycle()
+                if (faces.isNotEmpty()) {
+                    photosWithFaces++; facesTotal += faces.size
+                    Log.i("FaceWorker", "photo ${photo.id}: ${faces.size} face(s) (running total: $facesTotal)")
+                }
                 val rows = faces.map { face ->
                     val clusterId = assignToCluster(face, photo, clusters, faceDao)
                     PhotoFace(
@@ -637,7 +678,16 @@ suspend fun runFaceIndexing(database: PhotoDatabase, context: Context) {
 
         // Mark scanned regardless of outcome so we don't retry forever.
         photoDao.upsertAll(listOf(photo.copy(faceScanned = true)))
+
+        // Face indexing runs two ONNX models per photo (detector + embedder), so
+        // pace it like OCR/CLIP: a short pause after each photo we actually ran
+        // inference on, plus a longer cooling break every batch.
+        if (didInference) {
+            delay(FACE_INTER_ITEM_DELAY_MS)
+            coolDownBetweenBatches(decoded, "FaceWorker")
+        }
     }
+    Log.i("FaceWorker", "Face indexing done: decoded=$decoded/${photos.size}, $facesTotal faces in $photosWithFaces photos, ${faceDao.getPersons().size} clusters")
 
     // Second pass: fold together clusters whose centroids ended up very close,
     // which trims duplicate person-groups created early in the scan.
@@ -646,6 +696,8 @@ suspend fun runFaceIndexing(database: PhotoDatabase, context: Context) {
 
 /** A cluster held in memory during a scan: its [Person] row plus cached centroid. */
 private class Cluster(var person: Person, var centroid: FloatArray)
+
+private const val FACE_INTER_ITEM_DELAY_MS = 250L
 
 /**
  * Put [face] in the nearest cluster above [FaceRecognizer.CLUSTER_THRESHOLD],

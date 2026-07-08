@@ -39,10 +39,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.video)
     implementation(libs.androidx.exifinterface)
-    implementation(libs.mediapipe.tasks.vision)
-    // Face + semantic image search both run on ONNX Runtime (MIT, FOSS, no Play
-    // Services / no ML Kit). The native .so already ships via :library:ocr, but
-    // this module needs its own compile dependency to call the ORT API directly.
+    // Face detection (BlazeFace), face embedding (EdgeFace), and subject
+    // segmentation (U²-Net) all run on ONNX Runtime (MIT, FOSS, no Play
+    // Services / no MediaPipe). The native .so ships via :library:ocr, but this
+    // module needs its own compile dependency to call the ORT API directly.
     implementation(libs.onnxruntime.android)
 
     implementRoom(libs)
