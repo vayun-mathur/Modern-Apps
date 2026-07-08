@@ -62,6 +62,7 @@ import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.util.GalleryViewModel
 import com.vayunmathur.photos.util.ImageLoader
+import com.vayunmathur.photos.util.SearchAiState
 import com.vayunmathur.photos.util.SecureFolderViewModel
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -101,6 +102,7 @@ fun GalleryPage(
 
     val searchQuery by galleryViewModel.searchQuery.collectAsState()
     val searchResults by galleryViewModel.searchResults.collectAsState()
+    val searchAiState by galleryViewModel.searchAiState.collectAsState()
     val ocrCount by galleryViewModel.ocrCount.collectAsState()
     val ocrTargetCount by galleryViewModel.ocrTargetCount.collectAsState()
     val clipCount by galleryViewModel.clipCount.collectAsState()
@@ -234,6 +236,21 @@ fun GalleryPage(
                     ) {
                         // Search bar expanded content
                         if (searchQuery.isNotEmpty()) {
+                            // Semantic search is served by OpenAssistant; if it's
+                            // unavailable, tell the user (OCR/filename results, if
+                            // any, still show below).
+                            val aiMessage = when (searchAiState) {
+                                SearchAiState.NOT_INSTALLED -> stringResource(R.string.openassistant_not_found)
+                                SearchAiState.NEEDS_UPDATE -> stringResource(R.string.openassistant_needs_update)
+                                SearchAiState.DOWNLOADING -> stringResource(R.string.model_downloading_description)
+                                SearchAiState.READY -> null
+                            }
+                            if (aiMessage != null) {
+                                ListItem(
+                                    headlineContent = { Text(aiMessage) },
+                                    leadingContent = { IconSearch() },
+                                )
+                            }
                             // Show search results as a photo grid
                             LazyVerticalGrid(
                                 GridCells.Fixed(3),

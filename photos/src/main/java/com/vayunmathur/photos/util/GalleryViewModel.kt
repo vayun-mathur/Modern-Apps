@@ -13,6 +13,9 @@ import com.vayunmathur.photos.data.FaceDao
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDao
 import com.vayunmathur.photos.data.PhotoDatabase
+import com.vayunmathur.sdk.openassistant.AssistantNotInstalledException
+import com.vayunmathur.sdk.openassistant.EmbeddingModelDownloadingException
+import com.vayunmathur.sdk.openassistant.EmbeddingUnsupportedException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +60,14 @@ class GalleryViewModel(
     private val _searchResults = MutableStateFlow<List<Photo>>(emptyList())
     val searchResults: StateFlow<List<Photo>> = _searchResults.asStateFlow()
 
+    /**
+     * Availability of the OpenAssistant-backed semantic search, updated on each
+     * search so the UI can prompt the user to install/update OpenAssistant or
+     * show that its models are downloading. OCR/filename search is unaffected.
+     */
+    private val _searchAiState = MutableStateFlow(SearchAiState.READY)
+    val searchAiState: StateFlow<SearchAiState> = _searchAiState.asStateFlow()
+
     private val _selectedIds = MutableStateFlow<Set<Long>>(emptySet())
     val selectedIds: StateFlow<Set<Long>> = _selectedIds.asStateFlow()
 
@@ -71,7 +82,7 @@ class GalleryViewModel(
     val ocrTargetCount: StateFlow<Int> = photoDao.getOCRTargetCountFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    /** Photos already embedded by MobileCLIP for semantic search (progress numerator). */
+    /** Photos already embedded (via OpenAssistant/SigLIP2) for semantic search (progress numerator). */
     val clipCount: StateFlow<Int> = photoDao.getClipCountFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
@@ -148,19 +159,22 @@ class GalleryViewModel(
     }
 
     /**
-     * Combine the two on-device search signals into one result set for the search
-     * menu:
+     * Combine the two on-device search signals, then order the result set
+     * chronologically for the search menu — the query acts as a *filter*, not a
+     * ranking:
      *  - OCR/name search: the existing case-insensitive LIKE over recognised text
      *    and file name.
-     *  - Semantic search: encode the query with the MobileCLIP text encoder and
+     *  - Semantic search: embed the query via OpenAssistant (SigLIP2) and
      *    cosine-compare it against stored image embeddings (see [ClipEmbedder]);
      *    keep matches at/above [SEMANTIC_THRESHOLD], capped to the top
      *    [MAX_SEMANTIC_RESULTS].
      *
-     * Results are de-duplicated by photo id and ranked by a combined score:
-     * the semantic cosine similarity plus a fixed [OCR_MATCH_BOOST] when the
-     * photo is also a literal text/name hit. So exact-text matches surface first,
-     * then the most visually-relevant photos, with photos that match both on top.
+     * The semantic cosine similarity, the [SEMANTIC_THRESHOLD]/[MAX_SEMANTIC_RESULTS]
+     * cap and the [OCR_MATCH_BOOST] still decide **membership** (which photos are
+     * relevant enough to include). Once that set is chosen, matches are
+     * de-duplicated by photo id and displayed **most-recent-first**, like the
+     * main grid — so the search bar reads as a chronological filter rather than a
+     * relevance-ranked list.
      */
     private suspend fun combinedSearch(query: String): List<Photo> {
         // (a) OCR + filename LIKE search (existing behaviour).
@@ -172,21 +186,28 @@ class GalleryViewModel(
         }
         val ocrIds = ocrHits.map { it.id }.toSet()
 
-        // (b) Semantic search: one fast text-encoder run, then cosine vs stored
-        // image embeddings. Inert (empty) if the CLIP models aren't available.
+        // (b) Semantic search: one embed request to OpenAssistant, then cosine
+        // vs stored image embeddings. Inert (empty) if OA is unavailable; the
+        // AI-state flow is updated so the UI can explain why.
         val semanticById: Map<Long, Float> = try {
             val textEmb = ClipEmbedder.textEmbedding(getApplication(), query)
-            if (textEmb == null) {
-                emptyMap()
-            } else {
-                photoDao.getClipEmbeddings()
-                    .asSequence()
-                    .map { it.id to ClipEmbedder.cosine(textEmb, ClipEmbedder.bytesToFloats(it.clipEmbedding)) }
-                    .filter { it.second >= SEMANTIC_THRESHOLD }
-                    .sortedByDescending { it.second }
-                    .take(MAX_SEMANTIC_RESULTS)
-                    .toMap()
-            }
+            _searchAiState.value = SearchAiState.READY
+            photoDao.getClipEmbeddings()
+                .asSequence()
+                .map { it.id to ClipEmbedder.cosine(textEmb, ClipEmbedder.bytesToFloats(it.clipEmbedding)) }
+                .filter { it.second >= SEMANTIC_THRESHOLD }
+                .sortedByDescending { it.second }
+                .take(MAX_SEMANTIC_RESULTS)
+                .toMap()
+        } catch (e: EmbeddingModelDownloadingException) {
+            _searchAiState.value = SearchAiState.DOWNLOADING
+            emptyMap()
+        } catch (e: AssistantNotInstalledException) {
+            _searchAiState.value = SearchAiState.NOT_INSTALLED
+            emptyMap()
+        } catch (e: EmbeddingUnsupportedException) {
+            _searchAiState.value = SearchAiState.NEEDS_UPDATE
+            emptyMap()
         } catch (e: Exception) {
             Log.e(TAG, "semantic search failed", e)
             emptyMap()
@@ -202,10 +223,8 @@ class GalleryViewModel(
         return ids.mapNotNull { id ->
             val photo = photoById[id] ?: return@mapNotNull null
             if (photo.isTrashed) return@mapNotNull null
-            val semScore = semanticById[id] ?: 0f
-            val ocrBoost = if (id in ocrIds) OCR_MATCH_BOOST else 0f
-            photo to (semScore + ocrBoost)
-        }.sortedByDescending { it.second }.map { it.first }
+            photo
+        }.sortedByDescending { it.date }
     }
 
     fun setSearchQuery(query: String) {
@@ -257,26 +276,17 @@ class GalleryViewModel(
         private const val TAG = "GalleryViewModel"
 
         /**
-         * Minimum MobileCLIP cosine similarity for a photo to count as a semantic
-         * match. Single most-important tunable knob. MobileCLIP-S0 packs cosines
-         * into a compressed range — measured on real photos, unrelated pairs sit
-         * around ~0.10 while genuine matches land ~0.12–0.21 — so this floor just
-         * clears the noise; results are then ranked and capped, so the best
-         * matches surface first regardless. Higher = stricter/fewer, lower =
-         * looser/more. Retune if you swap the model.
+         * Minimum cosine similarity for a photo to count as a semantic match.
+         * Single most-important tunable knob. SigLIP2 is sigmoid-trained and
+         * 768-d, so its cosine distribution differs from the old MobileCLIP-S0
+         * (512-d) space — **retune this against real photos** after the move to
+         * OpenAssistant. Higher = stricter/fewer, lower = looser/more; results
+         * are ranked and capped so the best matches still surface first.
          */
-        private const val SEMANTIC_THRESHOLD = 0.12f
+        private const val SEMANTIC_THRESHOLD = 0.15f
 
         /** Cap on semantic matches merged into results (keeps the grid relevant). */
         private const val MAX_SEMANTIC_RESULTS = 100
-
-        /**
-         * Score added to a photo that is a literal OCR/name hit, on top of any
-         * semantic similarity. Larger than the semantic cosine range so exact
-         * text matches rank above purely-visual matches, and photos matching both
-         * rank highest.
-         */
-        private const val OCR_MATCH_BOOST = 1.0f
     }
 }
 
@@ -299,3 +309,18 @@ data class PersonCluster(
     val faceBottom: Float,
     val photos: List<Photo>,
 )
+
+/** Availability of OpenAssistant-backed semantic search, for the search UI. */
+enum class SearchAiState {
+    /** OpenAssistant is installed, recent, and serving embeddings. */
+    READY,
+
+    /** OpenAssistant is not installed. */
+    NOT_INSTALLED,
+
+    /** OpenAssistant is installed but too old to provide embeddings. */
+    NEEDS_UPDATE,
+
+    /** OpenAssistant is downloading the SigLIP2 models on demand. */
+    DOWNLOADING,
+}

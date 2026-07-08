@@ -20,6 +20,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Semantic search delegates embedding to the OpenAssistant app's exported,
+         signature-permission-gated InferenceService. -->
+    <uses-permission android:name="com.vayunmathur.openassistant.permission.ACCESS_INFERENCE" />
+
+    <queries>
+        <package android:name="com.vayunmathur.openassistant" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:backupAgent=".util.AppBackupAgent"

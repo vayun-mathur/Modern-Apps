@@ -28,6 +28,7 @@
     <string name="image_understanding_title">Experimental Image Understanding</string>
     <string name="image_understanding_description">This feature requires the OpenAssistant app to be installed and will use its local models to process images on-device.</string>
     <string name="openassistant_not_found">OpenAssistant app is not installed. Please install it to enable this feature.</string>
+    <string name="openassistant_needs_update">Update the OpenAssistant app to enable AI photo search.</string>
     <string name="enable_feature">Enable Feature</string>
     <string name="disable_ocr">Disable AI Indexing</string>
     <string name="indexing_progress_details">%1$d of %2$d photos processed</string>
