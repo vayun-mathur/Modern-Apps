@@ -11,6 +11,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -46,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -56,12 +59,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
@@ -121,6 +127,9 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     val document = (loadState as? LoadState.Loaded)?.document
     DisposableEffect(document) { onDispose { document?.close() } }
 
+    // Prebuild the search index in the background so the first query is instant.
+    LaunchedEffect(document) { document?.prewarmSearch() }
+
     var editMode by remember { mutableStateOf(false) }
     var tool by remember { mutableStateOf(EditTool.SELECT) }
     var color by remember { mutableStateOf(Color.Red) }
@@ -143,18 +152,9 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
             return@LaunchedEffect
         }
         delay(250)
-        val q = query.lowercase()
-        val found = ArrayList<Pair<Int, Rect>>()
-        for (i in 0 until doc.pageCount) {
-            val pg = doc.renderPage(i) ?: continue
-            for (p in pg.primitives) {
-                if (p is PdfPrimitive.Text && p.text.lowercase().contains(q)) {
-                    val wdt = p.text.length * p.size * 0.5f
-                    found.add(i to Rect(p.origin.x, p.origin.y, p.origin.x + wdt, p.origin.y + p.size))
-                }
-            }
+        matches = doc.search(query).map { m ->
+            m.page to Rect(m.x0, m.y0, m.x1, m.y1)
         }
-        matches = found
         matchIndex = 0
     }
 
@@ -166,6 +166,19 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val outline by produceState(emptyList<SafeOutlineItem>(), document) {
         value = document?.outline() ?: emptyList()
+    }
+
+    // Pinch-to-zoom + pan (two-finger); single-finger still scrolls.
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var pan by remember { mutableStateOf(Offset.Zero) }
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        zoom = (zoom * zoomChange).coerceIn(1f, 6f)
+        pan = if (zoom > 1f) pan + panChange else Offset.Zero
+    }
+
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(searching) {
+        if (searching) runCatching { searchFocus.requestFocus() }
     }
 
     BackHandler {
@@ -274,7 +287,7 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                         TextField(
                             value = query,
                             onValueChange = { query = it },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
                             placeholder = { Text(stringResource(R.string.search_label)) },
                             singleLine = true,
                         )
@@ -351,7 +364,18 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                 )
-                is LoadState.Loaded -> LazyColumn(Modifier.fillMaxSize(), state = listState) {
+                is LoadState.Loaded -> LazyColumn(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = zoom
+                            scaleY = zoom
+                            translationX = pan.x
+                            translationY = pan.y
+                        }
+                        .transformable(transformState, enabled = !editMode),
+                    state = listState,
+                ) {
                     items((0 until state.document.pageCount).toList()) { index ->
                         val pageHighlights = matches.filter { it.first == index }.map { it.second }
                         SafePdfPageItem(
