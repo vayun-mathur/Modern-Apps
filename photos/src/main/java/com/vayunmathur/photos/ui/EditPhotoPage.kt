@@ -733,7 +733,7 @@ fun EditPhotoPage(
                     start = paddingValues.calculateStartPadding(layoutDirection),
                     end = paddingValues.calculateEndPadding(layoutDirection),
                 )
-                .background(Color.Black),
+                .background(MaterialTheme.colorScheme.background),
         ) {
             BoxWithConstraints(
                 modifier = Modifier
