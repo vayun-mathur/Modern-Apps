@@ -29,25 +29,45 @@ fun InitialDownloadChecker(
     filesToDownload: List<Triple<String, String, String>>,
     mainPage: @Composable () -> Unit
 ) {
-    val dbSetup by ds.booleanFlow("dbSetupComplete").collectAsState(false)
-    if (dbSetup) {
+    val context = LocalContext.current
+    // Gate on the actual presence of the requested files on disk rather than a
+    // DataStore flag: if they are all already downloaded, go straight to the app;
+    // otherwise show the download screen. This self-heals if a file is deleted or
+    // the flag drifts out of sync with disk.
+    var filesPresent by remember {
+        mutableStateOf(allFilesPresent(context, filesToDownload))
+    }
+    if (filesPresent) {
         mainPage()
     } else {
-        InitialDownloadScreen(ds, filesToDownload)
+        InitialDownloadScreen(ds, filesToDownload, onAllDownloaded = { filesPresent = true })
     }
+}
+
+private fun allFilesPresent(
+    context: Context,
+    files: List<Triple<String, String, String>>,
+): Boolean {
+    val dir = context.getExternalFilesDir(null)
+    return files.all { File(dir, it.second).exists() }
 }
 
 @Composable
 fun InitialDownloadScreen(
     ds: DataStoreUtils,
-    filesToDownload: List<Triple<String, String, String>>
+    filesToDownload: List<Triple<String, String, String>>,
+    onAllDownloaded: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
     // Enqueue with Android's DownloadManager and poll it for progress, writing
-    // the same DataStore keys the UI below observes.
+    // the same DataStore keys the UI below observes. When every requested file is
+    // present on disk, advance to the main page.
     LaunchedEffect(Unit) {
         runDownloads(context, ds, filesToDownload)
+        if (allFilesPresent(context, filesToDownload)) {
+            onAllDownloaded()
+        }
     }
 
     Scaffold { paddingValues ->
@@ -100,12 +120,39 @@ private class Active(
 )
 
 /**
- * Drive the initial downloads with Android's [DownloadManager]. Each file is
- * enqueued (reusing a still-valid prior request id stored in DataStore so we
- * resume across process restarts), then the manager is polled to publish
- * `progress_*` / `speed_*` / `done_*` and finally `dbSetupComplete`.
+ * Drive the initial downloads with Android's [DownloadManager]. Gating is by
+ * file presence (see [InitialDownloadChecker]), so there is no completion flag to
+ * flip here.
  */
 private suspend fun runDownloads(
+    context: Context,
+    ds: DataStoreUtils,
+    files: List<Triple<String, String, String>>,
+) {
+    runDownloadsCore(context, ds, files)
+}
+
+/**
+ * On-demand download of [files] (url, fileName, description) into external
+ * files, publishing the same `progress_*` / `speed_*` / `done_*` DataStore keys
+ * as the initial screen but **without** touching the `dbSetupComplete` gate (so
+ * it is safe for optional, feature-triggered model fetches like SigLIP2). Skips
+ * files already marked done and resumes still-valid prior requests. Returns when
+ * the current polling pass finishes (all active downloads reached a terminal
+ * state).
+ */
+suspend fun downloadModelFiles(
+    context: Context,
+    ds: DataStoreUtils,
+    files: List<Triple<String, String, String>>,
+) = runDownloadsCore(context, ds, files)
+
+/**
+ * Shared enqueue + poll loop. Each file is enqueued (reusing a still-valid prior
+ * request id stored in DataStore so we resume across process restarts), then the
+ * manager is polled to publish `progress_*` / `speed_*` / `done_*`.
+ */
+private suspend fun runDownloadsCore(
     context: Context,
     ds: DataStoreUtils,
     files: List<Triple<String, String, String>>,
@@ -170,10 +217,6 @@ private suspend fun runDownloads(
         }
         if (active.isEmpty()) break
         delay(700)
-    }
-
-    if (files.all { ds.getBoolean("done_${it.second}", false) }) {
-        ds.setBoolean("dbSetupComplete", true)
     }
 }
 
