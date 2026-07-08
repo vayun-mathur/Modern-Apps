@@ -39,6 +39,7 @@ data class LearnUiState(
     val status: LearnStatus = LearnStatus.Playing,
     val nbMoves: Int = 0,
     val starsEarned: Int = 0,
+    val stageScore: Int = 0,
     // Best stars per level for the loaded stage (levelIndex -> stars), for the UI.
     val stageStars: List<Int> = emptyList(),
     val stageFinished: Boolean = false
@@ -63,8 +64,16 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
 
     private val opponentDelayMs = 700L
 
+    // Lichess-style scoring (ui/learn/src/score.ts): apple/capture/scenario = 50,
+    // completion bonus 500/300/100 by move count, and piece values for value levels.
+    private val applePoints = 50
+    private val capturePoints = 50
+    private val scenarioPoints = 50
+    private var stageScore = 0
+
     fun loadStage(categoryKey: String, stageKey: String) {
         this.categoryKey = categoryKey
+        stageScore = 0
         viewModelScope.launch {
             val stage = withContext(Dispatchers.IO) {
                 LearnRepository.ensureLoaded(getApplication())
@@ -78,6 +87,13 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         val s = _uiState.value
         val stage = s.stage ?: return
         startLevel(stage, s.levelIndex)
+    }
+
+    /** Jump directly to a level within the current stage (via the level stepper). */
+    fun goToLevel(index: Int) {
+        val s = _uiState.value
+        val stage = s.stage ?: return
+        if (index in stage.levels.indices) startLevel(stage, index)
     }
 
     fun nextLevel() {
@@ -108,6 +124,7 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
             apples = level.appleSquares.toSet(),
             shapes = level.shapes,
             status = LearnStatus.Playing,
+            stageScore = stageScore,
             stageStars = loadStageStars(stage)
         )
 
@@ -173,6 +190,15 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         val newMoves = state.nbMoves + 1
         val newApples = state.apples - to
 
+        if (to in state.apples) {
+            stageScore += applePoints
+        } else if (level.pointsForCapture) {
+            val captured = board.pieces[to.row][to.col]
+            if (captured != null && captured.color != state.playerColor) {
+                stageScore += if (level.showPieceValues) pieceValue(captured.type) else capturePoints
+            }
+        }
+
         val failed = isFailingMove(level, newBoard, state.playerColor)
         val outcome = when {
             failed -> LearnStatus.Failed
@@ -205,6 +231,7 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         val newBoard = board.movePiece(from, to, promo)
         scenarioIndex++
         sideToMove = sideToMove.opposite
+        stageScore += scenarioPoints
         val newMoves = state.nbMoves + 1
 
         if (scenarioIndex >= level.scenario.size) {
@@ -212,7 +239,10 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         _uiState.update {
-            it.copy(board = newBoard, selectedPiece = null, shapes = emptyList(), nbMoves = newMoves)
+            it.copy(
+                board = newBoard, selectedPiece = null, shapes = emptyList(),
+                nbMoves = newMoves, stageScore = stageScore
+            )
         }
         val myToken = token
         viewModelScope.launch {
@@ -233,7 +263,7 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         if (done) {
             applyOutcome(newBoard, state.apples, state.nbMoves, LearnStatus.Completed)
         } else {
-            _uiState.update { it.copy(board = newBoard, shapes = emptyList()) }
+            _uiState.update { it.copy(board = newBoard, shapes = emptyList(), stageScore = stageScore) }
         }
     }
 
@@ -243,6 +273,7 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
         if (outcome == LearnStatus.Completed) {
             val level = _uiState.value.level
             stars = if (level != null) starsFor(level, moves) else 3
+            stageScore += levelBonus(stars)
             stageStars = persistStars(_uiState.value.stage, _uiState.value.levelIndex, stars, stageStars)
         }
         _uiState.update {
@@ -254,6 +285,7 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
                 shapes = if (outcome == LearnStatus.Playing) it.shapes else emptyList(),
                 status = outcome,
                 starsEarned = if (outcome == LearnStatus.Completed) stars else it.starsEarned,
+                stageScore = stageScore,
                 stageStars = stageStars
             )
         }
@@ -350,6 +382,15 @@ class LearnViewModel(application: Application) : AndroidViewModel(application) {
             moves <= par + maxOf(1, par / 4) -> 2
             else -> 1
         }
+    }
+
+    private fun levelBonus(stars: Int): Int = when (stars) {
+        3 -> 500; 2 -> 300; else -> 100
+    }
+
+    private fun pieceValue(type: PieceType): Int = when (type) {
+        PieceType.QUEEN -> 90; PieceType.ROOK -> 50; PieceType.BISHOP -> 30
+        PieceType.KNIGHT -> 30; PieceType.PAWN -> 10; PieceType.KING -> 0
     }
 
     // ---- Progress persistence ----
