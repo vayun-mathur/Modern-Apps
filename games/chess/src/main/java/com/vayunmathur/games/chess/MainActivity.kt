@@ -161,7 +161,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         entry<Route.Game> {
                             val viewModel: ChessViewModel = viewModel()
-                            var showNewGameDialog by remember { mutableStateOf(true) }
+                            var showNewGameDialog by remember { mutableStateOf(false) }
 
                             LaunchedEffect(Unit) {
                                 StockfishEngine.start(this@MainActivity)
