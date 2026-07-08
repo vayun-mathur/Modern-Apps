@@ -19,6 +19,14 @@ data class Piece(val type: PieceType, val color: PieceColor, val hasMoved: Boole
 
 data class Position(val row: Int, val col: Int)
 
+/** Castling availability for a position, as encoded in a FEN's castling field. */
+data class CastlingRights(
+    val whiteKing: Boolean = false,
+    val whiteQueen: Boolean = false,
+    val blackKing: Boolean = false,
+    val blackQueen: Boolean = false
+)
+
 private fun getFileChar(col: Int): Char = 'a' + col
 private fun getRankChar(row: Int): Char = '8' - row
 
@@ -420,5 +428,143 @@ data class Board(
                 ),
             )
         )
+
+        private fun pieceFromFenChar(ch: Char): Piece {
+            val color = if (ch.isUpperCase()) PieceColor.WHITE else PieceColor.BLACK
+            val type = when (ch.lowercaseChar()) {
+                'k' -> PieceType.KING; 'q' -> PieceType.QUEEN; 'r' -> PieceType.ROOK
+                'b' -> PieceType.BISHOP; 'n' -> PieceType.KNIGHT; 'p' -> PieceType.PAWN
+                else -> throw IllegalArgumentException("Invalid FEN piece char: $ch")
+            }
+            return Piece(type, color)
+        }
+
+        /**
+         * Builds a puzzle [Board] from a raw piece grid plus the side to move,
+         * castling rights, and en-passant target. Shared by [fromFen] and the binary
+         * puzzle decoder so both reconstruct positions identically.
+         *
+         * The Board rules model has no explicit turn/castling/en-passant state; it
+         * infers them from [Piece.hasMoved] and [lastMove]. So we: set `hasMoved=false`
+         * only on the king/rook that still hold a castling right (everything else
+         * `hasMoved=true`; pawn double-steps key off the start rank, not `hasMoved`),
+         * and seed a `lastMove` that encodes the side to move (and, when an en-passant
+         * target exists, a pawn double-step so `isEnPassant` accepts the capture).
+         */
+        fun fromPuzzle(
+            rawPieces: List<List<Piece?>>,
+            sideToMove: PieceColor,
+            castling: CastlingRights,
+            epSquare: Position?
+        ): Board {
+            val pieces = rawPieces.mapIndexed { r, row ->
+                row.mapIndexed { c, p ->
+                    p?.let { piece ->
+                        val moved = when (piece.type) {
+                            PieceType.KING ->
+                                if (piece.color == PieceColor.WHITE)
+                                    !(castling.whiteKing || castling.whiteQueen)
+                                else
+                                    !(castling.blackKing || castling.blackQueen)
+                            PieceType.ROOK -> when {
+                                piece.color == PieceColor.WHITE && r == 7 && c == 7 -> !castling.whiteKing
+                                piece.color == PieceColor.WHITE && r == 7 && c == 0 -> !castling.whiteQueen
+                                piece.color == PieceColor.BLACK && r == 0 && c == 7 -> !castling.blackKing
+                                piece.color == PieceColor.BLACK && r == 0 && c == 0 -> !castling.blackQueen
+                                else -> true
+                            }
+                            else -> true
+                        }
+                        piece.copy(hasMoved = moved)
+                    }
+                }
+            }
+
+            val seed = seedLastMove(pieces, sideToMove, epSquare)
+            return Board(
+                pieces = pieces,
+                lastMove = seed,
+                moves = seed?.let { listOf(it) } ?: emptyList()
+            )
+        }
+
+        /**
+         * A synthetic previous move used to encode turn and en-passant into a puzzle
+         * board. When [epSquare] is set it is the pawn double-step that created the
+         * en-passant target; otherwise it is a zero-length move by the side that did
+         * NOT just move, which only serves to make [toFen]'s turn inference correct.
+         */
+        private fun seedLastMove(
+            pieces: List<List<Piece?>>,
+            sideToMove: PieceColor,
+            epSquare: Position?
+        ): Move? {
+            if (epSquare != null) {
+                // The pawn that just double-moved sits one square beyond the ep target,
+                // in the direction the mover was heading.
+                val (startPos, endPos) = if (sideToMove == PieceColor.WHITE) {
+                    // Black just moved e7->e5; ep target e6 (row epSquare.row).
+                    Position(epSquare.row - 1, epSquare.col) to Position(epSquare.row + 1, epSquare.col)
+                } else {
+                    // White just moved e2->e4; ep target e3.
+                    Position(epSquare.row + 1, epSquare.col) to Position(epSquare.row - 1, epSquare.col)
+                }
+                val pawn = pieces[endPos.row][endPos.col]
+                    ?: Piece(PieceType.PAWN, sideToMove.opposite)
+                return Move(start = startPos, end = endPos, piece = pawn)
+            }
+            // No en-passant: seed a no-op move by the opponent so the turn reads back
+            // correctly. A king "move" onto its own square is never a pawn double-step,
+            // so it cannot be mistaken for an en-passant setup.
+            val opponent = sideToMove.opposite
+            pieces.forEachIndexed { r, row ->
+                row.forEachIndexed { c, p ->
+                    if (p?.type == PieceType.KING && p.color == opponent) {
+                        val pos = Position(r, c)
+                        return Move(start = pos, end = pos, piece = p)
+                    }
+                }
+            }
+            return null
+        }
+
+        /**
+         * Parses a FEN string into a puzzle [Board]. Only the placement, side-to-move,
+         * castling, and en-passant fields are used (halfmove/fullmove clocks are
+         * ignored). See [fromPuzzle] for how turn/castling/en-passant are reconstructed.
+         */
+        fun fromFen(fen: String): Board {
+            val fields = fen.trim().split(Regex("\\s+"))
+            val placement = fields[0]
+            val side = fields.getOrElse(1) { "w" }
+            val castlingField = fields.getOrElse(2) { "-" }
+            val epField = fields.getOrElse(3) { "-" }
+
+            val grid = MutableList(8) { MutableList<Piece?>(8) { null } }
+            var row = 0
+            var col = 0
+            for (ch in placement) {
+                when {
+                    ch == '/' -> { row++; col = 0 }
+                    ch.isDigit() -> col += ch - '0'
+                    else -> { grid[row][col] = pieceFromFenChar(ch); col++ }
+                }
+            }
+
+            val sideToMove = if (side == "b") PieceColor.BLACK else PieceColor.WHITE
+            val castling = CastlingRights(
+                whiteKing = castlingField.contains('K'),
+                whiteQueen = castlingField.contains('Q'),
+                blackKing = castlingField.contains('k'),
+                blackQueen = castlingField.contains('q')
+            )
+            val epSquare = if (epField == "-") null else {
+                val f = epField[0] - 'a'
+                val r = epField[1] - '0'
+                Position(8 - r, f)
+            }
+
+            return fromPuzzle(grid.map { it.toList() }, sideToMove, castling, epSquare)
+        }
     }
 }
