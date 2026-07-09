@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.BottomAppBar
@@ -48,9 +49,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -60,11 +63,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -114,6 +119,7 @@ import com.vayunmathur.pdf.util.PdfPrimitive
 import com.vayunmathur.pdf.util.SafeAnnotation
 import com.vayunmathur.pdf.util.SafeFormField
 import com.vayunmathur.pdf.util.SafePdfDocument
+import com.vayunmathur.pdf.util.PdfStateStore
 import com.vayunmathur.pdf.util.SafePdfPage
 import java.io.ByteArrayOutputStream
 
@@ -279,6 +285,13 @@ private fun ShapeKind.label(): String {
 private data class PolyDraft(val page: Int, val points: List<Offset>, val bezier: Boolean)
 
 /**
+ * A reversible edit: an annotation was [added] (undo detaches it) or removed
+ * (undo re-attaches it). Backed by native detach/reattach so the object
+ * survives for redo.
+ */
+private data class EditAction(val page: Int, val annotId: Long, val added: Boolean)
+
+/**
  * Clamp the zoom [pan] (screen-pixel translation) so the content, scaled by
  * [zoom] around its center, can't be dragged past the viewport ([size]) edges.
  * At zoom 1 the range is zero, so the page stays put.
@@ -334,6 +347,14 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     // In-progress polyline/Bézier (built by tapping points; committed via the check button).
     var polyDraft by remember { mutableStateOf<PolyDraft?>(null) }
     var color by remember { mutableStateOf(Color.Red) }
+    var opacity by remember { mutableFloatStateOf(1f) }
+    var strokeWidth by remember { mutableFloatStateOf(2f) }
+    var showStyle by remember { mutableStateOf(false) }
+    // Undo/redo of annotation add/remove (backed by native detach/reattach).
+    val undoStack = remember { mutableStateListOf<EditAction>() }
+    val redoStack = remember { mutableStateListOf<EditAction>() }
+    // Jump-to-page dialog.
+    var showJump by remember { mutableStateOf(false) }
     // Per-page render version: bumping one page's entry re-renders ONLY that page,
     // so an edit doesn't force every visible page to re-decode.
     val pageVersions = remember { mutableStateMapOf<Int, Int>() }
@@ -343,9 +364,40 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
         pageVersions[page] = (pageVersions[page] ?: 0) + 1
         dirty = true
     }
+    // Register a freshly created annotation for undo.
+    val registerCreated: (Int, Long) -> Unit = { page, id ->
+        if (id != 0L) {
+            undoStack.add(EditAction(page, id, true))
+            redoStack.clear()
+        }
+    }
+    val undo: () -> Unit = {
+        val a = undoStack.removeLastOrNull()
+        val doc = document
+        if (a != null && doc != null) {
+            scope.launch {
+                if (a.added) doc.detachAnnotation(a.page, a.annotId)
+                else doc.reattachAnnotation(a.page, a.annotId)
+                redoStack.add(a); selected = null; markEdited(a.page)
+            }
+        }
+    }
+    val redo: () -> Unit = {
+        val a = redoStack.removeLastOrNull()
+        val doc = document
+        if (a != null && doc != null) {
+            scope.launch {
+                if (a.added) doc.reattachAnnotation(a.page, a.annotId)
+                else doc.detachAnnotation(a.page, a.annotId)
+                undoStack.add(a); selected = null; markEdited(a.page)
+            }
+        }
+    }
 
     // Search state.
     val listState = rememberLazyListState()
+    // Effective annotation color including the opacity slider's alpha.
+    val drawColor = color.copy(alpha = opacity)
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     // Matches as (pageIndex, page-space rect).
@@ -373,6 +425,19 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val outline by produceState(emptyList<SafeOutlineItem>(), document) {
         value = document?.outline() ?: emptyList()
+    }
+
+    // Restore last-read page, then persist the first-visible page as it changes.
+    LaunchedEffect(document) {
+        if (document != null) {
+            val p = PdfStateStore.restoreSafePage(context, uri)
+            if (p > 0) runCatching { listState.scrollToItem(p) }
+        }
+    }
+    LaunchedEffect(document) {
+        if (document == null) return@LaunchedEffect
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { PdfStateStore.saveSafePage(context, uri, it) }
     }
 
     // Pinch-to-zoom + pan (two-finger); single-finger still scrolls.
@@ -411,15 +476,16 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
         val doc = document ?: return@commit
         val txt = s.value.text.trim()
         scope.launch {
-            when {
-                s.annotId != null && txt.isEmpty() -> doc.deleteAnnotation(s.page, s.annotId)
-                s.annotId != null -> doc.editText(s.page, s.annotId, txt)
+            val newId = when {
+                s.annotId != null && txt.isEmpty() -> { doc.deleteAnnotation(s.page, s.annotId); 0L }
+                s.annotId != null -> { doc.editText(s.page, s.annotId, txt); 0L }
                 txt.isNotEmpty() -> doc.addText(
                     s.page, s.origin.x, s.origin.y - s.size * 1.3f, s.origin.x + 220f, s.origin.y,
                     s.color, s.size, txt,
                 )
                 else -> return@launch
             }
+            registerCreated(s.page, newId)
             markEdited(s.page)
         }
     }
@@ -434,7 +500,8 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
             val flat = FloatArray(pts.size * 2)
             pts.forEachIndexed { i, p -> flat[i * 2] = p.x; flat[i * 2 + 1] = p.y }
             scope.launch {
-                doc.addPoly(d.page, flat, color.toArgb(), 1.5f, fill = false, closed = false)
+                val id = doc.addPoly(d.page, flat, drawColor.toArgb(), strokeWidth, fill = false, closed = false)
+                registerCreated(d.page, id)
                 markEdited(d.page)
             }
         }
@@ -472,7 +539,7 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                 val h = w * jpeg.height / jpeg.width.coerceAtLeast(1)
                 doc.addImageStamp(
                     index, pt.x, pt.y - h, pt.x + w, pt.y, jpeg.width, jpeg.height, jpeg.bytes
-                )
+                ).also { registerCreated(index, it) }
                 markEdited(index)
             }
         }
@@ -585,6 +652,17 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                     } else {
                         if (!editMode) {
                             IconButton({ searching = true }) { IconSearch() }
+                            IconButton({ showJump = true }) {
+                                Icon(painterResource(R.drawable.ic_jump_to_page), contentDescription = "Jump to page")
+                            }
+                        }
+                        if (editMode) {
+                            IconButton({ undo() }, enabled = undoStack.isNotEmpty()) {
+                                Icon(painterResource(R.drawable.ic_undo), contentDescription = "Undo")
+                            }
+                            IconButton({ redo() }, enabled = redoStack.isNotEmpty()) {
+                                Icon(painterResource(R.drawable.ic_redo), contentDescription = "Redo")
+                            }
                         }
                         IconButton({
                             commitText(textSession); textSession = null
@@ -633,14 +711,30 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                     onShape = { shape = it; tool = EditTool.SHAPE; selected = null; commitPoly() },
                     color = color,
                     onColor = { color = it },
+                    onStyle = { showStyle = true },
                     canDelete = selected != null,
                     onDelete = {
                         val sel = selected
                         val doc = document
                         if (sel != null && doc != null) {
                             scope.launch {
-                                doc.deleteAnnotation(sel.first, sel.second)
+                                // Detach (not delete) so it can be undone.
+                                doc.detachAnnotation(sel.first, sel.second)
+                                undoStack.add(EditAction(sel.first, sel.second, false))
+                                redoStack.clear()
                                 selected = null
+                                markEdited(sel.first)
+                            }
+                        }
+                    },
+                    onDuplicate = {
+                        val sel = selected
+                        val doc = document
+                        if (sel != null && doc != null) {
+                            scope.launch {
+                                val newId = doc.duplicateAnnotation(sel.first, sel.second, 14f, -14f)
+                                registerCreated(sel.first, newId)
+                                if (newId != 0L) selected = sel.first to newId
                                 markEdited(sel.first)
                             }
                         }
@@ -699,13 +793,15 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                             editMode = editMode,
                             tool = tool,
                             shape = shape,
-                            color = color,
+                            color = drawColor,
+                            strokeWidth = strokeWidth,
                             selected = selected?.takeIf { it.first == index }?.second,
                             highlights = pageHighlights,
                             currentHighlight = currentHighlight,
                             scope = scope,
                             onSelect = { annotId -> selected = annotId?.let { index to it } },
                             onEdited = { markEdited(index) },
+                            onCreated = { id -> registerCreated(index, id) },
                             textSession = textSession?.takeIf { it.page == index },
                             onStartText = { s -> commitText(textSession); textSession = s },
                             onTextChange = { v -> textSession = textSession?.copy(value = v) },
@@ -726,6 +822,49 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
             }
         }
     }
+
+    if (showStyle) {
+        StyleDialog(
+            color = color,
+            onColor = { color = it },
+            opacity = opacity,
+            onOpacity = { opacity = it },
+            strokeWidth = strokeWidth,
+            onWidth = { strokeWidth = it },
+            onDismiss = { showStyle = false },
+        )
+    }
+
+    if (showJump) {
+        var target by remember { mutableStateOf("") }
+        val pageCount = document?.pageCount ?: 0
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showJump = false },
+            title = { Text("Go to page") },
+            text = {
+                TextField(
+                    value = target,
+                    onValueChange = { s -> target = s.filter { it.isDigit() }.take(6) },
+                    singleLine = true,
+                    placeholder = { Text(if (pageCount > 0) "1\u2013$pageCount" else "") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton({
+                    val p = target.toIntOrNull()
+                    if (p != null && pageCount > 0) {
+                        val idx = p.coerceIn(1, pageCount) - 1
+                        scope.launch { listState.animateScrollToItem(idx) }
+                    }
+                    showJump = false
+                }) { Text("Go") }
+            },
+            dismissButton = { TextButton({ showJump = false }) { Text("Cancel") } },
+        )
+    }
     }
 }
 
@@ -738,12 +877,14 @@ private fun SafePdfPageItem(
     tool: EditTool,
     shape: ShapeKind,
     color: Color,
+    strokeWidth: Float,
     selected: Long?,
     highlights: List<Rect>,
     currentHighlight: Rect?,
     scope: CoroutineScope,
     onSelect: (Long?) -> Unit,
     onEdited: () -> Unit,
+    onCreated: (Long) -> Unit,
     textSession: TextSession?,
     onStartText: (TextSession) -> Unit,
     onTextChange: (TextFieldValue) -> Unit,
@@ -810,6 +951,7 @@ private fun SafePdfPageItem(
                 tool = tool,
                 shape = shape,
                 color = color,
+                strokeWidth = strokeWidth,
                 cw = cw,
                 ch = ch,
                 scale = scale,
@@ -819,6 +961,7 @@ private fun SafePdfPageItem(
                 scope = scope,
                 onSelect = onSelect,
                 onEdited = onEdited,
+                onCreated = onCreated,
                 onStartText = onStartText,
                 onRequestImage = onRequestImage,
                 polyDraft = polyDraft,
@@ -869,6 +1012,7 @@ private fun EditOverlay(
     tool: EditTool,
     shape: ShapeKind,
     color: Color,
+    strokeWidth: Float,
     cw: Float,
     ch: Float,
     scale: Float,
@@ -878,6 +1022,7 @@ private fun EditOverlay(
     scope: CoroutineScope,
     onSelect: (Long?) -> Unit,
     onEdited: () -> Unit,
+    onCreated: (Long) -> Unit,
     onStartText: (TextSession) -> Unit,
     onRequestImage: (Offset) -> Unit,
     polyDraft: PolyDraft?,
@@ -982,23 +1127,26 @@ private fun EditOverlay(
                     EditTool.HIGHLIGHT -> if (s != null && e != null) {
                         val a = toPage(s); val b = toPage(e)
                         scope.launch {
-                            document.addHighlight(index, a.x, a.y, b.x, b.y, color.toArgb()); onEdited()
+                            val id = document.addHighlight(index, a.x, a.y, b.x, b.y, color.toArgb())
+                            onCreated(id); onEdited()
                         }
                     }
                     EditTool.SHAPE -> if (s != null && e != null) {
                         val rect = Rect(minOf(s.x, e.x), minOf(s.y, e.y), maxOf(s.x, e.x), maxOf(s.y, e.y))
-                        val lineWidth = if (shape.isFill) 0f else 1.5f
+                        val lineWidth = if (shape.isFill) 0f else strokeWidth
                         when (shape.geom) {
                             ShapeGeom.RECT -> {
                                 val a = toPage(Offset(rect.left, rect.top)); val b = toPage(Offset(rect.right, rect.bottom))
                                 scope.launch {
-                                    document.addRect(index, a.x, a.y, b.x, b.y, color.toArgb(), lineWidth, shape.isFill); onEdited()
+                                    val id = document.addRect(index, a.x, a.y, b.x, b.y, color.toArgb(), lineWidth, shape.isFill)
+                                    onCreated(id); onEdited()
                                 }
                             }
                             ShapeGeom.OVAL -> {
                                 val a = toPage(Offset(rect.left, rect.top)); val b = toPage(Offset(rect.right, rect.bottom))
                                 scope.launch {
-                                    document.addOval(index, a.x, a.y, b.x, b.y, color.toArgb(), lineWidth, shape.isFill); onEdited()
+                                    val id = document.addOval(index, a.x, a.y, b.x, b.y, color.toArgb(), lineWidth, shape.isFill)
+                                    onCreated(id); onEdited()
                                 }
                             }
                             ShapeGeom.POLYGON -> {
@@ -1008,7 +1156,8 @@ private fun EditOverlay(
                                     val pp = toPage(mapUnit(u, rect)); flat[i * 2] = pp.x; flat[i * 2 + 1] = pp.y
                                 }
                                 scope.launch {
-                                    document.addPoly(index, flat, color.toArgb(), lineWidth, shape.isFill, closed = true); onEdited()
+                                    val id = document.addPoly(index, flat, color.toArgb(), lineWidth, shape.isFill, closed = true)
+                                    onCreated(id); onEdited()
                                 }
                             }
                         }
@@ -1016,8 +1165,8 @@ private fun EditOverlay(
                     EditTool.LINE -> if (s != null && e != null) {
                         val a = toPage(s); val b = toPage(e)
                         scope.launch {
-                            document.addPoly(index, floatArrayOf(a.x, a.y, b.x, b.y), color.toArgb(), 1.5f, fill = false, closed = false)
-                            onEdited()
+                            val id = document.addPoly(index, floatArrayOf(a.x, a.y, b.x, b.y), color.toArgb(), strokeWidth, fill = false, closed = false)
+                            onCreated(id); onEdited()
                         }
                     }
                     EditTool.DRAW -> {
@@ -1027,7 +1176,10 @@ private fun EditOverlay(
                             pts.forEachIndexed { i, o ->
                                 val pp = toPage(o); flat[i * 2] = pp.x; flat[i * 2 + 1] = pp.y
                             }
-                            scope.launch { document.addInk(index, color.toArgb(), 2f, flat); onEdited() }
+                            scope.launch {
+                                val id = document.addInk(index, color.toArgb(), strokeWidth, flat)
+                                onCreated(id); onEdited()
+                            }
                         }
                     }
                     EditTool.SELECT -> if (selectMove) {
@@ -1185,8 +1337,10 @@ private fun EditToolbar(
     onShape: (ShapeKind) -> Unit,
     color: Color,
     onColor: (Color) -> Unit,
+    onStyle: () -> Unit,
     canDelete: Boolean,
     onDelete: () -> Unit,
+    onDuplicate: () -> Unit,
 ) {
     BottomAppBar {
         Row(
@@ -1211,13 +1365,19 @@ private fun EditToolbar(
                         .pointerInput(c) { detectTapGestures { onColor(c) } },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (c == color) {
+                    if (c.copy(alpha = 1f) == color.copy(alpha = 1f)) {
                         Box(Modifier.size(10.dp).clip(CircleShape).background(Color.White))
                     }
                 }
             }
 
+            IconButton(onStyle) {
+                Icon(painterResource(R.drawable.ic_style), contentDescription = "Style")
+            }
             if (canDelete) {
+                IconButton(onDuplicate) {
+                    Icon(painterResource(R.drawable.ic_duplicate), contentDescription = "Duplicate")
+                }
                 IconButton(onDelete) { IconDelete() }
             }
         }
@@ -1319,6 +1479,66 @@ private fun toolButton(
             else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** Style picker: color palette + custom RGB, opacity, and line-width sliders.
+ * Affects newly drawn annotations. */
+@Composable
+private fun StyleDialog(
+    color: Color,
+    onColor: (Color) -> Unit,
+    opacity: Float,
+    onOpacity: (Float) -> Unit,
+    strokeWidth: Float,
+    onWidth: (Float) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val palette = listOf(
+        Color.Red, Color(0xFFFF9800), Color.Yellow, Color(0xFF4CAF50),
+        Color.Cyan, Color.Blue, Color(0xFF3F51B5), Color(0xFF9C27B0),
+        Color.Magenta, Color.Black, Color.Gray, Color.White,
+    )
+    var r by remember(color) { mutableFloatStateOf(color.red) }
+    var g by remember(color) { mutableFloatStateOf(color.green) }
+    var b by remember(color) { mutableFloatStateOf(color.blue) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onDismiss) { Text("Done") } },
+        title = { Text("Style") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Color", style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
+                    for (c in palette) {
+                        Box(
+                            Modifier
+                                .padding(3.dp).size(28.dp).clip(CircleShape).background(c)
+                                .pointerInput(c) {
+                                    detectTapGestures {
+                                        r = c.red; g = c.green; b = c.blue; onColor(Color(r, g, b))
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (c.copy(alpha = 1f) == color.copy(alpha = 1f)) {
+                                Box(Modifier.size(12.dp).clip(CircleShape).background(Color(0xFFCCCCCC)))
+                            }
+                        }
+                    }
+                }
+                Text("Red", style = MaterialTheme.typography.labelSmall)
+                Slider(value = r, onValueChange = { r = it; onColor(Color(r, g, b)) })
+                Text("Green", style = MaterialTheme.typography.labelSmall)
+                Slider(value = g, onValueChange = { g = it; onColor(Color(r, g, b)) })
+                Text("Blue", style = MaterialTheme.typography.labelSmall)
+                Slider(value = b, onValueChange = { b = it; onColor(Color(r, g, b)) })
+                Text("Opacity ${(opacity * 100).toInt()}%", style = MaterialTheme.typography.labelSmall)
+                Slider(value = opacity, onValueChange = onOpacity, valueRange = 0.1f..1f)
+                Text("Line width ${strokeWidth.toInt()}", style = MaterialTheme.typography.labelSmall)
+                Slider(value = strokeWidth, onValueChange = onWidth, valueRange = 1f..20f)
+            }
+        },
+    )
 }
 
 /**

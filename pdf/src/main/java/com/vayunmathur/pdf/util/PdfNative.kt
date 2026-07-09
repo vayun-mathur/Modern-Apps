@@ -87,12 +87,23 @@ object PdfNative {
     ): Long
 
     external fun updateAnnotationRect(
-        handle: Long, annotId: Long, x0: Float, y0: Float, x1: Float, y1: Float,
+        handle: Long, page: Int, annotId: Long, x0: Float, y0: Float, x1: Float, y1: Float,
     ): Boolean
 
     external fun updateTextAnnotation(handle: Long, annotId: Long, text: String): Boolean
 
     external fun deleteAnnotation(handle: Long, page: Int, annotId: Long): Boolean
+
+    /** Remove an annotation's page reference but keep the object (undo). */
+    external fun detachAnnotation(handle: Long, page: Int, annotId: Long): Boolean
+
+    /** Re-attach a previously detached annotation (redo / undo-delete). */
+    external fun reattachAnnotation(handle: Long, page: Int, annotId: Long): Boolean
+
+    /** Duplicate an annotation shifted by (dx,dy) page-space units; returns new id or 0. */
+    external fun duplicateAnnotation(
+        handle: Long, page: Int, annotId: Long, dx: Float, dy: Float,
+    ): Long
 
     external fun setTextField(handle: Long, widgetId: Long, value: String): Boolean
 

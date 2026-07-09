@@ -103,7 +103,7 @@ class SafePdfDocument private constructor(
     suspend fun moveAnnotation(
         index: Int, annotId: Long, x0: Float, y0: Float, x1: Float, y1: Float,
     ): Boolean = withContext(Dispatchers.IO) {
-        PdfNative.updateAnnotationRect(handle, annotId, x0, y0, x1, y1).also { invalidate(index) }
+        PdfNative.updateAnnotationRect(handle, index, annotId, x0, y0, x1, y1).also { invalidate(index) }
     }
 
     suspend fun editText(index: Int, annotId: Long, text: String): Boolean =
@@ -113,6 +113,23 @@ class SafePdfDocument private constructor(
 
     suspend fun deleteAnnotation(index: Int, annotId: Long): Boolean = withContext(Dispatchers.IO) {
         PdfNative.deleteAnnotation(handle, index, annotId).also { invalidate(index) }
+    }
+
+    /** Detach (hide) an annotation, keeping it for undo. */
+    suspend fun detachAnnotation(index: Int, annotId: Long): Boolean = withContext(Dispatchers.IO) {
+        PdfNative.detachAnnotation(handle, index, annotId).also { invalidate(index) }
+    }
+
+    /** Re-attach a previously detached annotation. */
+    suspend fun reattachAnnotation(index: Int, annotId: Long): Boolean = withContext(Dispatchers.IO) {
+        PdfNative.reattachAnnotation(handle, index, annotId).also { invalidate(index) }
+    }
+
+    /** Duplicate an annotation shifted by (dx,dy); returns the new id (0 on failure). */
+    suspend fun duplicateAnnotation(
+        index: Int, annotId: Long, dx: Float, dy: Float,
+    ): Long = withContext(Dispatchers.IO) {
+        PdfNative.duplicateAnnotation(handle, index, annotId, dx, dy).also { invalidate(index) }
     }
 
     suspend fun setTextField(index: Int, widgetId: Long, value: String): Boolean =

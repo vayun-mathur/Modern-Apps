@@ -157,6 +157,22 @@ struct PageData {
     prims: Vec<Prim>,
 }
 
+/// Multiply the alpha channel of a primitive's color by `alpha` (0..1). Used to
+/// honor an annotation's constant opacity (`/CA`). Images are left unchanged.
+fn scale_prim_alpha(prim: &mut Prim, alpha: f64) {
+    let scale = |argb: &mut u32| {
+        let a = ((*argb >> 24) & 0xFF) as f64;
+        let na = (a * alpha).round().clamp(0.0, 255.0) as u32;
+        *argb = (*argb & 0x00FF_FFFF) | (na << 24);
+    };
+    match prim {
+        Prim::Text { argb, .. } => scale(argb),
+        Prim::Fill { argb, .. } => scale(argb),
+        Prim::Stroke { argb, .. } => scale(argb),
+        Prim::Image { .. } => {}
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Object helpers
 // ---------------------------------------------------------------------------
@@ -441,9 +457,88 @@ fn media_box(doc: &Document, page_id: ObjectId) -> [f64; 4] {
     out
 }
 
-// ---------------------------------------------------------------------------
-// Colors
-// ---------------------------------------------------------------------------
+/// Normalized page rotation in {0,90,180,270}, inherited via `/Parent`.
+fn page_rotation(doc: &Document, page_id: ObjectId) -> i64 {
+    let r = inherited(doc, page_id, b"Rotate")
+        .and_then(|o| deref(doc, o))
+        .and_then(num)
+        .unwrap_or(0.0) as i64;
+    (((r % 360) + 360) % 360 / 90) * 90
+}
+
+/// Matrix mapping raw page space (MediaBox origin, before rotation) into
+/// displayed space: origin bottom-left, with dimensions swapped for 90/270.
+fn page_base_matrix(doc: &Document, page_id: ObjectId) -> Mat {
+    let mb = media_box(doc, page_id);
+    let w = (mb[2] - mb[0]).abs();
+    let h = (mb[3] - mb[1]).abs();
+    let t = translate(-mb[0].min(mb[2]), -mb[1].min(mb[3]));
+    let r: Mat = match page_rotation(doc, page_id) {
+        90 => [0.0, 1.0, -1.0, 0.0, h, 0.0],
+        180 => [-1.0, 0.0, 0.0, -1.0, w, h],
+        270 => [0.0, -1.0, 1.0, 0.0, 0.0, w],
+        _ => IDENTITY,
+    };
+    mat_mul(&t, &r)
+}
+
+/// Page dimensions as displayed (after `/Rotate`).
+fn page_display_size(doc: &Document, page_id: ObjectId) -> (f32, f32) {
+    let mb = media_box(doc, page_id);
+    let w = (mb[2] - mb[0]).abs() as f32;
+    let h = (mb[3] - mb[1]).abs() as f32;
+    match page_rotation(doc, page_id) {
+        90 | 270 => (h, w),
+        _ => (w, h),
+    }
+}
+
+/// Inverse of an affine matrix `[a b c d e f]` (identity if singular).
+fn mat_inverse(m: &Mat) -> Mat {
+    let det = m[0] * m[3] - m[1] * m[2];
+    if det.abs() < 1e-12 {
+        return IDENTITY;
+    }
+    let inv = 1.0 / det;
+    let a = m[3] * inv;
+    let b = -m[1] * inv;
+    let c = -m[2] * inv;
+    let d = m[0] * inv;
+    let e = -(m[4] * a + m[5] * c);
+    let f = -(m[4] * b + m[5] * d);
+    [a, b, c, d, e, f]
+}
+
+/// Inverse base matrix for a page index, mapping displayed (editor) coordinates
+/// back into raw page space so stored annotations remain valid PDF.
+fn page_base_inverse(doc: &Document, page_index: i32) -> Mat {
+    match nth_page_id(doc, page_index) {
+        Some(pid) => mat_inverse(&page_base_matrix(doc, pid)),
+        None => IDENTITY,
+    }
+}
+
+/// Convert an editor-space rect into a normalized raw-page-space rect.
+fn page_rect(doc: &Document, page_index: i32, rect: [f64; 4]) -> [f64; 4] {
+    let binv = page_base_inverse(doc, page_index);
+    let (x0, y0) = transform(&binv, rect[0], rect[1]);
+    let (x1, y1) = transform(&binv, rect[2], rect[3]);
+    normalize_rect([x0, y0, x1, y1])
+}
+
+/// Convert editor-space flat x,y points into raw-page-space.
+fn page_points(doc: &Document, page_index: i32, points: &[f32]) -> Vec<f32> {
+    let binv = page_base_inverse(doc, page_index);
+    let mut out = Vec::with_capacity(points.len());
+    let mut i = 0;
+    while i + 1 < points.len() {
+        let (x, y) = transform(&binv, points[i] as f64, points[i + 1] as f64);
+        out.push(x as f32);
+        out.push(y as f32);
+        i += 2;
+    }
+    out
+}
 
 fn rgb_to_argb(r: f64, g: f64, b: f64) -> u32 {
     let c = |v: f64| (v.clamp(0.0, 1.0) * 255.0).round() as u32;
@@ -512,9 +607,8 @@ impl Default for GraphicsState {
 const BEZIER_STEPS: usize = 16;
 
 fn interpret_page(doc: &Document, page_id: ObjectId) -> Result<PageData, String> {
-    let mb = media_box(doc, page_id);
-    let width = (mb[2] - mb[0]).abs() as f32;
-    let height = (mb[3] - mb[1]).abs() as f32;
+    let (width, height) = page_display_size(doc, page_id);
+    let base = page_base_matrix(doc, page_id);
 
     let content = doc
         .get_and_decode_page_content(page_id)
@@ -522,16 +616,18 @@ fn interpret_page(doc: &Document, page_id: ObjectId) -> Result<PageData, String>
     let res = resources_dict(doc, page_id);
 
     let mut prims = Vec::new();
+    let mut init = GraphicsState::default();
+    init.ctm = base;
     interpret_content(
         doc,
         &content.operations,
         res.as_ref(),
-        GraphicsState::default(),
+        init,
         &mut prims,
         0,
         false,
     );
-    render_annotations(doc, page_id, &mut prims);
+    render_annotations(doc, page_id, &base, &mut prims);
 
     Ok(PageData {
         width,
@@ -973,8 +1069,9 @@ fn appearance_matrix(rect: [f64; 4], bbox: [f64; 4], matrix: Mat) -> Mat {
 }
 
 /// Render each visible page annotation's normal appearance (`/AP /N`) into
-/// primitives, mapping the appearance BBox into the annotation Rect.
-fn render_annotations(doc: &Document, page_id: ObjectId, prims: &mut Vec<Prim>) {
+/// primitives, mapping the appearance BBox into the annotation Rect, then
+/// through `base` (page rotation / origin) into displayed space.
+fn render_annotations(doc: &Document, page_id: ObjectId, base: &Mat, prims: &mut Vec<Prim>) {
     let annots = match doc
         .get_dictionary(page_id)
         .ok()
@@ -995,11 +1092,11 @@ fn render_annotations(doc: &Document, page_id: ObjectId, prims: &mut Vec<Prim>) 
         if flags & 0b10 != 0 || flags & 0b10_0000 != 0 {
             continue;
         }
-        render_annotation(doc, dict, prims);
+        render_annotation(doc, dict, base, prims);
     }
 }
 
-fn render_annotation(doc: &Document, dict: &lopdf::Dictionary, prims: &mut Vec<Prim>) {
+fn render_annotation(doc: &Document, dict: &lopdf::Dictionary, base: &Mat, prims: &mut Vec<Prim>) {
     let rect = match dict.get(b"Rect").ok().and_then(|o| read_rect(doc, o)) {
         Some(r) => r,
         None => return,
@@ -1053,8 +1150,17 @@ fn render_annotation(doc: &Document, dict: &lopdf::Dictionary, prims: &mut Vec<P
     };
 
     let mut gs = GraphicsState::default();
-    gs.ctm = appearance_matrix(rect, bbox, matrix);
+    gs.ctm = mat_mul(&appearance_matrix(rect, bbox, matrix), base);
+    let start = prims.len();
     interpret_content(doc, &ops, res.as_ref(), gs, prims, 1, false);
+
+    // Honor the annotation's constant opacity (/CA) over its rendered prims.
+    let ca = dict.get(b"CA").ok().and_then(num).unwrap_or(1.0);
+    if ca < 1.0 {
+        for p in prims[start..].iter_mut() {
+            scale_prim_alpha(p, ca);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1223,7 +1329,7 @@ fn add_free_text(
 ) -> Option<i64> {
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
-    let r = normalize_rect(rect);
+    let r = page_rect(doc, page_index, rect);
     let (w, h) = (r[2] - r[0], r[3] - r[1]);
     let content = free_text_content(w, h, text, argb, size);
     let ap_id = make_appearance(doc, w, h, content, helvetica_resources());
@@ -1238,6 +1344,7 @@ fn add_free_text(
         Object::string_literal(format!("{cr:.3} {cg:.3} {cb:.3} rg /F1 {size} Tf")),
     );
     annot.set("C", Object::Array(vec![cr.into(), cg.into(), cb.into()]));
+    set_alpha(&mut annot, argb);
     set_appearance(&mut annot, r, ap_id);
     add_annotation_object(doc, page_index, annot)
 }
@@ -1245,7 +1352,7 @@ fn add_free_text(
 fn add_highlight(handle: i64, page_index: i32, rect: [f64; 4], argb: u32) -> Option<i64> {
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
-    let r = normalize_rect(rect);
+    let r = page_rect(doc, page_index, rect);
     let (w, h) = (r[2] - r[0], r[3] - r[1]);
     let (cr, cg, cb) = argb_rgb(argb);
     // Multiply-blended translucent fill so underlying text shows through.
@@ -1288,7 +1395,7 @@ fn add_square(
 ) -> Option<i64> {
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
-    let r = normalize_rect(rect);
+    let r = page_rect(doc, page_index, rect);
     let (w, h) = (r[2] - r[0], r[3] - r[1]);
     let (cr, cg, cb) = argb_rgb(argb);
     let lw = line_width.max(0.5);
@@ -1326,12 +1433,12 @@ fn add_circle(
 ) -> Option<i64> {
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
-    let r = normalize_rect(rect);
+    let r = page_rect(doc, page_index, rect);
     let (w, h) = (r[2] - r[0], r[3] - r[1]);
     let (cr, cg, cb) = argb_rgb(argb);
     let lw = line_width.max(0.5);
 
-    // Ellipse inscribed in the BBox (inset by half the line width when stroking),
+    // Ellipse inscribed in the BBox
     // approximated by four cubic Bézier arcs.
     let inset = if fill { 0.0 } else { lw / 2.0 };
     let cx = w / 2.0;
@@ -1377,6 +1484,15 @@ fn add_circle(
     add_annotation_object(doc, page_index, annot)
 }
 
+/// Set annotation constant opacity (`/CA`, `/ca`) from the alpha byte of `argb`.
+fn set_alpha(annot: &mut Dictionary, argb: u32) {
+    let a = ((argb >> 24) & 0xFF) as f64 / 255.0;
+    if a < 1.0 {
+        annot.set("CA", Object::Real(a as f32));
+        annot.set("ca", Object::Real(a as f32));
+    }
+}
+
 /// Set `/BS` (border) and, for filled shapes, `/IC` (interior color) on a
 /// Square/Circle annotation. Filled shapes carry a zero-width border.
 fn set_shape_border(annot: &mut Dictionary, argb: u32, line_width: f64, fill: bool) {
@@ -1389,6 +1505,7 @@ fn set_shape_border(annot: &mut Dictionary, argb: u32, line_width: f64, fill: bo
         bs.set("W", Object::Real(line_width as f32));
     }
     annot.set("BS", Object::Dictionary(bs));
+    set_alpha(annot, argb);
 }
 
 /// Add a Polygon (when `closed`) or PolyLine (open) annotation from flat
@@ -1409,6 +1526,8 @@ fn add_poly(
     }
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
+    let converted = page_points(doc, page_index, points);
+    let points = converted.as_slice();
     let (cr, cg, cb) = argb_rgb(argb);
     let lw = line_width.max(0.5);
     let do_fill = fill && closed;
@@ -1471,6 +1590,7 @@ fn add_poly(
     let mut bs = Dictionary::new();
     bs.set("W", Object::Real(if do_fill { 0.0 } else { lw as f32 }));
     annot.set("BS", Object::Dictionary(bs));
+    set_alpha(&mut annot, argb);
     set_appearance(&mut annot, normalize_rect(rect), ap_id);
     add_annotation_object(doc, page_index, annot)
 }
@@ -1488,6 +1608,8 @@ fn add_ink(
     }
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
+    let converted = page_points(doc, page_index, points);
+    let points = converted.as_slice();
     let (cr, cg, cb) = argb_rgb(argb);
     let lw = line_width.max(0.5);
 
@@ -1538,6 +1660,7 @@ fn add_ink(
     let mut bs = Dictionary::new();
     bs.set("W", Object::Real(lw as f32));
     annot.set("BS", Object::Dictionary(bs));
+    set_alpha(&mut annot, argb);
     set_appearance(&mut annot, rect, ap_id);
     add_annotation_object(doc, page_index, annot)
 }
@@ -1553,7 +1676,7 @@ fn add_stamp(
 ) -> Option<i64> {
     let mut reg = registry().lock().unwrap();
     let doc = reg.get_mut(&handle)?;
-    let r = normalize_rect(rect);
+    let r = page_rect(doc, page_index, rect);
     let (w, h) = (r[2] - r[0], r[3] - r[1]);
 
     let mut img_dict = Dictionary::new();
@@ -1580,15 +1703,16 @@ fn add_stamp(
     add_annotation_object(doc, page_index, annot)
 }
 
-fn update_annotation_rect(handle: i64, annot_id: i64, rect: [f64; 4]) -> bool {
+fn update_annotation_rect(handle: i64, page_index: i32, annot_id: i64, rect: [f64; 4]) -> bool {
     let mut reg = registry().lock().unwrap();
     let doc = match reg.get_mut(&handle) {
         Some(d) => d,
         None => return false,
     };
+    let pr = page_rect(doc, page_index, rect);
     let id = decode_id(annot_id);
     if let Ok(dict) = doc.get_dictionary_mut(id) {
-        dict.set("Rect", rect_obj(normalize_rect(rect)));
+        dict.set("Rect", rect_obj(pr));
         true
     } else {
         false
@@ -1659,6 +1783,31 @@ fn parse_da_size(da: &[u8]) -> Option<f64> {
     toks[tf - 1].parse::<f64>().ok()
 }
 
+/// Remove an annotation reference from a page's `/Annots` (inline or indirect).
+/// Returns whether a reference was actually removed. Does NOT delete the object.
+fn remove_annot_ref(doc: &mut Document, page_id: ObjectId, id: ObjectId) -> bool {
+    let indirect = match doc.get_dictionary(page_id).ok().and_then(|d| d.get(b"Annots").ok()) {
+        Some(Object::Reference(aid)) => Some(*aid),
+        _ => None,
+    };
+    if let Some(arr_id) = indirect {
+        if let Ok(Object::Array(a)) = doc.get_object_mut(arr_id) {
+            let before = a.len();
+            a.retain(|o| o.as_reference().ok() != Some(id));
+            return before != a.len();
+        }
+        return false;
+    }
+    if let Ok(page) = doc.get_dictionary_mut(page_id) {
+        if let Ok(Object::Array(a)) = page.get_mut(b"Annots") {
+            let before = a.len();
+            a.retain(|o| o.as_reference().ok() != Some(id));
+            return before != a.len();
+        }
+    }
+    false
+}
+
 fn delete_annotation(handle: i64, page_index: i32, annot_id: i64) -> bool {
     let mut reg = registry().lock().unwrap();
     let doc = match reg.get_mut(&handle) {
@@ -1670,32 +1819,96 @@ fn delete_annotation(handle: i64, page_index: i32, annot_id: i64) -> bool {
         Some(p) => p,
         None => return false,
     };
-    // Remove the reference from the page's /Annots (inline or indirect).
-    let indirect = match doc.get_dictionary(page_id).ok().and_then(|d| d.get(b"Annots").ok()) {
-        Some(Object::Reference(aid)) => Some(*aid),
-        _ => None,
-    };
-    let removed = if let Some(arr_id) = indirect {
-        if let Ok(Object::Array(a)) = doc.get_object_mut(arr_id) {
-            let before = a.len();
-            a.retain(|o| o.as_reference().ok() != Some(id));
-            before != a.len()
-        } else {
-            false
-        }
-    } else if let Ok(page) = doc.get_dictionary_mut(page_id) {
-        if let Ok(Object::Array(a)) = page.get_mut(b"Annots") {
-            let before = a.len();
-            a.retain(|o| o.as_reference().ok() != Some(id));
-            before != a.len()
-        } else {
-            false
-        }
-    } else {
-        false
-    };
+    let removed = remove_annot_ref(doc, page_id, id);
     doc.objects.remove(&id);
     removed
+}
+
+/// Detach an annotation (remove its page reference) but keep the object, so it
+/// can be re-attached for undo/redo.
+fn detach_annotation(handle: i64, page_index: i32, annot_id: i64) -> bool {
+    let mut reg = registry().lock().unwrap();
+    let doc = match reg.get_mut(&handle) {
+        Some(d) => d,
+        None => return false,
+    };
+    let id = decode_id(annot_id);
+    let page_id = match nth_page_id(doc, page_index) {
+        Some(p) => p,
+        None => return false,
+    };
+    remove_annot_ref(doc, page_id, id)
+}
+
+/// Re-attach a previously detached annotation to its page.
+fn reattach_annotation(handle: i64, page_index: i32, annot_id: i64) -> bool {
+    let mut reg = registry().lock().unwrap();
+    let doc = match reg.get_mut(&handle) {
+        Some(d) => d,
+        None => return false,
+    };
+    let id = decode_id(annot_id);
+    if !doc.objects.contains_key(&id) {
+        return false;
+    }
+    let page_id = match nth_page_id(doc, page_index) {
+        Some(p) => p,
+        None => return false,
+    };
+    append_annot(doc, page_id, id);
+    true
+}
+
+/// Offset alternating x,y numbers of a flat array in place by (dx, dy).
+fn offset_flat(arr: &mut [Object], dx: f64, dy: f64) {
+    for (i, o) in arr.iter_mut().enumerate() {
+        if let Some(n) = num(o) {
+            let d = if i % 2 == 0 { dx } else { dy };
+            *o = Object::Real((n + d) as f32);
+        }
+    }
+}
+
+/// Duplicate an annotation, shifting its geometry by (dx, dy) page-space units.
+/// The copy shares the (immutable) appearance stream. Returns the new id, or 0.
+fn duplicate_annotation(handle: i64, page_index: i32, annot_id: i64, dx: f64, dy: f64) -> i64 {
+    let mut reg = registry().lock().unwrap();
+    let doc = match reg.get_mut(&handle) {
+        Some(d) => d,
+        None => return 0,
+    };
+    let id = decode_id(annot_id);
+    let mut dict = match doc.get_dictionary(id) {
+        Ok(d) => d.clone(),
+        Err(_) => return 0,
+    };
+    for key in [b"Rect".as_ref(), b"Vertices", b"QuadPoints", b"L"] {
+        if let Ok(Object::Array(a)) = dict.get(key) {
+            let mut a2 = a.clone();
+            offset_flat(&mut a2, dx, dy);
+            dict.set(key.to_vec(), Object::Array(a2));
+        }
+    }
+    if let Ok(Object::Array(lists)) = dict.get(b"InkList") {
+        let mut out = Vec::with_capacity(lists.len());
+        for l in lists {
+            if let Object::Array(pts) = l {
+                let mut p2 = pts.clone();
+                offset_flat(&mut p2, dx, dy);
+                out.push(Object::Array(p2));
+            } else {
+                out.push(l.clone());
+            }
+        }
+        dict.set("InkList", Object::Array(out));
+    }
+    let new_id = doc.add_object(dict);
+    let page_id = match nth_page_id(doc, page_index) {
+        Some(p) => p,
+        None => return 0,
+    };
+    append_annot(doc, page_id, new_id);
+    encode_id(new_id)
 }
 
 // --- Serialized listing for the UI ---------------------------------------
@@ -1737,6 +1950,7 @@ fn list_annotations(handle: i64, page_index: i32) -> Option<Vec<u8>> {
     let reg = registry().lock().unwrap();
     let doc = reg.get(&handle)?;
     let page_id = nth_page_id(doc, page_index)?;
+    let base = page_base_matrix(doc, page_id);
 
     let mut records: Vec<(i64, u8, [f64; 4], u32, String)> = Vec::new();
     if let Some(Object::Array(annots)) = doc
@@ -1756,8 +1970,15 @@ fn list_annotations(handle: i64, page_index: i32) -> Option<Vec<u8>> {
             };
             let subtype = dict.get(b"Subtype").ok().and_then(|o| o.as_name().ok());
             let code = subtype.map(subtype_code).unwrap_or(0);
+            // Report rects in displayed space so the editor's hit-testing and
+            // selection boxes line up with the (rotation-baked) render.
             let rect = match dict.get(b"Rect").ok().and_then(|o| read_rect(doc, o)) {
-                Some(r) => normalize_rect(r),
+                Some(r) => {
+                    let n = normalize_rect(r);
+                    let (dx0, dy0) = transform(&base, n[0], n[1]);
+                    let (dx1, dy1) = transform(&base, n[2], n[3]);
+                    normalize_rect([dx0, dy0, dx1, dy1])
+                }
                 None => continue,
             };
             let color = annot_color(doc, dict);
@@ -1804,6 +2025,7 @@ fn list_form_fields(handle: i64, page_index: i32) -> Option<Vec<u8>> {
     let reg = registry().lock().unwrap();
     let doc = reg.get(&handle)?;
     let page_id = nth_page_id(doc, page_index)?;
+    let base = page_base_matrix(doc, page_id);
 
     // (widgetId, typeCode, rect, name, value, checked)
     let mut fields: Vec<(i64, u8, [f64; 4], String, String, u8)> = Vec::new();
@@ -1836,7 +2058,12 @@ fn list_form_fields(handle: i64, page_index: i32) -> Option<Vec<u8>> {
                 _ => 3u8,
             };
             let rect = match dict.get(b"Rect").ok().and_then(|o| read_rect(doc, o)) {
-                Some(r) => normalize_rect(r),
+                Some(r) => {
+                    let n = normalize_rect(r);
+                    let (dx0, dy0) = transform(&base, n[0], n[1]);
+                    let (dx1, dy1) = transform(&base, n[2], n[3]);
+                    normalize_rect([dx0, dy0, dx1, dy1])
+                }
                 None => continue,
             };
             let name = field_attr(doc, id, b"T")
@@ -4027,11 +4254,13 @@ mod jni_bindings {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     #[no_mangle]
     pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_updateAnnotationRect<'local>(
         _env: JNIEnv<'local>,
         _class: JClass<'local>,
         handle: jlong,
+        page: jint,
         annot_id: jlong,
         x0: jfloat,
         y0: jfloat,
@@ -4040,6 +4269,7 @@ mod jni_bindings {
     ) -> jboolean {
         update_annotation_rect(
             handle as i64,
+            page,
             annot_id,
             [x0 as f64, y0 as f64, x1 as f64, y1 as f64],
         ) as jboolean
@@ -4066,6 +4296,41 @@ mod jni_bindings {
         annot_id: jlong,
     ) -> jboolean {
         delete_annotation(handle as i64, page, annot_id) as jboolean
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_detachAnnotation<'local>(
+        _env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+        page: jint,
+        annot_id: jlong,
+    ) -> jboolean {
+        detach_annotation(handle as i64, page, annot_id) as jboolean
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_reattachAnnotation<'local>(
+        _env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+        page: jint,
+        annot_id: jlong,
+    ) -> jboolean {
+        reattach_annotation(handle as i64, page, annot_id) as jboolean
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_duplicateAnnotation<'local>(
+        _env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+        page: jint,
+        annot_id: jlong,
+        dx: jfloat,
+        dy: jfloat,
+    ) -> jlong {
+        duplicate_annotation(handle as i64, page, annot_id, dx as f64, dy as f64)
     }
 
     #[no_mangle]
