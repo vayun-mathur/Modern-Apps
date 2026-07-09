@@ -3234,6 +3234,32 @@ fn redact_operations(
 
 /// Permanently remove content under redaction annotations, cover with black, and
 /// delete the annotations. Returns whether any redaction was applied.
+/// Whether the document has any redaction annotations pending.
+fn has_redactions(handle: i64) -> bool {
+    let reg = registry().lock().unwrap();
+    let doc = match reg.get(&handle) {
+        Some(d) => d,
+        None => return false,
+    };
+    for page_id in doc.get_pages().values().copied() {
+        if let Some(Object::Array(annots)) = doc
+            .get_dictionary(page_id)
+            .ok()
+            .and_then(|d| d.get(b"Annots").ok())
+            .and_then(|o| deref(doc, o))
+        {
+            for a in annots {
+                if let Some(dict) = a.as_reference().ok().and_then(|id| doc.get_dictionary(id).ok()) {
+                    if matches!(dict.get(b"PdfRedact"), Ok(Object::Boolean(true))) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 fn apply_redactions(handle: i64) -> bool {
     let mut reg = registry().lock().unwrap();
     let doc = match reg.get_mut(&handle) {
@@ -5724,6 +5750,16 @@ mod jni_bindings {
         handle: jlong,
     ) -> jboolean {
         apply_redactions(handle as i64) as jboolean
+    }
+
+    /// `PdfNative.hasRedactions(long) -> boolean`.
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_hasRedactions<'local>(
+        _env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+    ) -> jboolean {
+        has_redactions(handle as i64) as jboolean
     }
 
     /// `PdfNative.addRedaction(long, int, f,f,f,f) -> long`.

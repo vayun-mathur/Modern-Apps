@@ -524,6 +524,10 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     val outline by produceState(emptyList<SafeOutlineItem>(), document) {
         value = document?.outline() ?: emptyList()
     }
+    // Show the Apply-redactions action only while redaction annotations exist.
+    val hasRedactions by produceState(false, undoStack.size, redoStack.size, pageMgrVersion) {
+        value = document?.hasRedactions() ?: false
+    }
 
     // Restore last-read page, then persist the first-visible page as it changes.
     LaunchedEffect(document) {
@@ -854,23 +858,6 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                                             }
                                         },
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text("Apply redactions") },
-                                        onClick = {
-                                            showOverflow = false
-                                            val doc = document
-                                            if (doc != null) scope.launch {
-                                                doc.applyRedactions(); pageMgrVersion++; nonUndoDirty = true
-                                            }
-                                        },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Save compressed\u2026") },
-                                        onClick = {
-                                            showOverflow = false
-                                            compressLauncher.launch("compressed.pdf")
-                                        },
-                                    )
                                 }
                             }
                         }
@@ -880,6 +867,16 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                             }
                             IconButton({ redo() }, enabled = redoStack.isNotEmpty()) {
                                 Icon(painterResource(R.drawable.ic_redo), contentDescription = "Redo")
+                            }
+                        }
+                        if (hasRedactions) {
+                            IconButton({
+                                val doc = document
+                                if (doc != null) scope.launch {
+                                    doc.applyRedactions(); pageMgrVersion++; nonUndoDirty = true
+                                }
+                            }) {
+                                Icon(painterResource(R.drawable.ic_redact), contentDescription = "Apply redactions")
                             }
                         }
                         IconButton({

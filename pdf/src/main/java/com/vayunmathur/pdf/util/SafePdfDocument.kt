@@ -187,6 +187,9 @@ class SafePdfDocument private constructor(
         PdfNative.applyRedactions(handle).also { cache.clear() }
     }
 
+    /** Whether any redaction annotations exist (to show the Apply-redactions action). */
+    suspend fun hasRedactions(): Boolean = withContext(Dispatchers.IO) { PdfNative.hasRedactions(handle) }
+
     /** Current page count from native (reflects add/remove during editing). */
     fun livePageCount(): Int = PdfNative.getPageCount(handle)
 

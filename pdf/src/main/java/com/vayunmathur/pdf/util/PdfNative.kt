@@ -176,6 +176,9 @@ object PdfNative {
     /** Permanently remove content under redaction annotations; true if any applied. */
     external fun applyRedactions(handle: Long): Boolean
 
+    /** Whether the document currently has any redaction annotations. */
+    external fun hasRedactions(handle: Long): Boolean
+
     /** Serialized document outline (bookmarks), or null. */
     external fun listOutline(handle: Long): ByteArray?
 
