@@ -169,6 +169,12 @@ class SafePdfDocument private constructor(
     /** Serialize the (possibly edited) document to PDF bytes. */
     suspend fun save(): ByteArray? = withContext(Dispatchers.IO) { PdfNative.saveDocument(handle) }
 
+    /** Digitally sign the document (self-signed cert) and return the signed bytes. */
+    suspend fun sign(name: String): ByteArray? = withContext(Dispatchers.IO) {
+        val prepared = PdfNative.prepareSignature(handle, name, PdfSigner.CONTENTS_BYTES) ?: return@withContext null
+        PdfSigner.sign(prepared, name)
+    }
+
     /** Add a redaction annotation over the rect; returns id (0 on failure). */
     suspend fun addRedaction(
         index: Int, x0: Float, y0: Float, x1: Float, y1: Float,

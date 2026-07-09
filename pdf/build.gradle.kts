@@ -116,5 +116,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.reorderable)
     implementation(libs.material)
+    implementation(libs.bouncycastle)
+    implementation(libs.bouncycastle.pkix)
     implementation(project(":library:ocr"))
 }

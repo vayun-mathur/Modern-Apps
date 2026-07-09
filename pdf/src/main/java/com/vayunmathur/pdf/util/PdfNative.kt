@@ -164,6 +164,9 @@ object PdfNative {
     /** Serialize the modified document to PDF bytes, or null on failure. */
     external fun saveDocument(handle: Long): ByteArray?
 
+    /** Build a signature-ready PDF (placeholder /ByteRange + /Contents) for signing. */
+    external fun prepareSignature(handle: Long, name: String, contentsBytes: Int): ByteArray?
+
     /** Serialize with streams compressed + unused objects pruned, or null. */
     external fun saveCompressed(handle: Long): ByteArray?
 

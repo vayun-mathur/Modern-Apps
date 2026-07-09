@@ -625,6 +625,25 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
 
     var showEncrypt by remember { mutableStateOf(false) }
     var pendingEncryptPw by remember { mutableStateOf<String?>(null) }
+    val signLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { outUri ->
+        val doc = document
+        if (outUri != null && doc != null) scope.launch {
+            val signerName = android.os.Build.MODEL ?: "PDF Signer"
+            val bytes = doc.sign(signerName)
+            withContext(Dispatchers.IO) {
+                if (bytes != null) {
+                    runCatching { context.contentResolver.openOutputStream(outUri)?.use { it.write(bytes) } }
+                }
+            }
+            android.widget.Toast.makeText(
+                context,
+                if (bytes != null) "Signed & saved" else "Signing failed",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
     val encryptLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf")
     ) { outUri ->
@@ -778,6 +797,9 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                             }
                             IconButton({ showEncrypt = true }) {
                                 Icon(painterResource(R.drawable.ic_lock), contentDescription = "Encrypt with password")
+                            }
+                            IconButton({ signLauncher.launch((uri.lastPathSegment ?: "document") + "-signed.pdf") }) {
+                                Icon(painterResource(R.drawable.ic_signature), contentDescription = "Sign document")
                             }
                         }
                         if (editMode) {

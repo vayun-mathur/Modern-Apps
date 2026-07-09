@@ -3328,6 +3328,80 @@ fn save_document(handle: i64) -> Option<Vec<u8>> {
     Some(buf)
 }
 
+/// Build a signature-ready PDF: an invisible signature field + `/Sig` dict with a
+/// fixed-width `/ByteRange` placeholder and a `contents_bytes`-long zero
+/// `/Contents`. Kotlin patches the ByteRange and fills the detached PKCS#7
+/// signature. Returns the serialized bytes.
+fn prepare_signature(handle: i64, name: &str, contents_bytes: usize) -> Option<Vec<u8>> {
+    let bytes = save_document(handle)?;
+    let mut doc = Document::load_mem(&bytes).ok()?;
+    let page0 = doc.get_pages().values().next().copied()?;
+    let catalog_id = doc.trailer.get(b"Root").ok().and_then(|o| o.as_reference().ok())?;
+
+    let mut sig = Dictionary::new();
+    sig.set("Type", name_obj("Sig"));
+    sig.set("Filter", name_obj("Adobe.PPKLite"));
+    sig.set("SubFilter", name_obj("adbe.pkcs7.detached"));
+    sig.set(
+        "ByteRange",
+        Object::Array(vec![
+            Object::Integer(0),
+            Object::Integer(2_000_000_000),
+            Object::Integer(2_000_000_000),
+            Object::Integer(2_000_000_000),
+        ]),
+    );
+    sig.set(
+        "Contents",
+        Object::String(vec![0u8; contents_bytes], lopdf::StringFormat::Hexadecimal),
+    );
+    sig.set("Name", Object::string_literal(name));
+    let sig_id = doc.add_object(sig);
+
+    let mut widget = Dictionary::new();
+    widget.set("Type", name_obj("Annot"));
+    widget.set("Subtype", name_obj("Widget"));
+    widget.set("FT", name_obj("Sig"));
+    widget.set("T", Object::string_literal("Signature1"));
+    widget.set("V", Object::Reference(sig_id));
+    widget.set("P", Object::Reference(page0));
+    widget.set("Rect", Object::Array(vec![0.into(), 0.into(), 0.into(), 0.into()]));
+    widget.set("F", Object::Integer(132));
+    let widget_id = doc.add_object(widget);
+    append_annot(&mut doc, page0, widget_id);
+
+    // Attach the field to the AcroForm (reuse/extend existing, else create one).
+    let af_ref = doc
+        .get_dictionary(catalog_id)
+        .ok()
+        .and_then(|c| c.get(b"AcroForm").ok())
+        .and_then(|o| o.as_reference().ok());
+    if let Some(af_id) = af_ref {
+        if let Ok(af) = doc.get_dictionary_mut(af_id) {
+            let has_fields = matches!(af.get(b"Fields"), Ok(Object::Array(_)));
+            if !has_fields {
+                af.set("Fields", Object::Array(vec![]));
+            }
+            if let Ok(Object::Array(a)) = af.get_mut(b"Fields") {
+                a.push(Object::Reference(widget_id));
+            }
+            af.set("SigFlags", Object::Integer(3));
+        }
+    } else {
+        let mut af = Dictionary::new();
+        af.set("Fields", Object::Array(vec![Object::Reference(widget_id)]));
+        af.set("SigFlags", Object::Integer(3));
+        let af_id = doc.add_object(af);
+        if let Ok(cat) = doc.get_dictionary_mut(catalog_id) {
+            cat.set("AcroForm", Object::Reference(af_id));
+        }
+    }
+
+    let mut out = Vec::new();
+    doc.save_to(&mut out).ok()?;
+    Some(out)
+}
+
 /// Extract the document's visible text (from rendered text primitives), one
 /// blank line between pages.
 fn document_text(handle: i64) -> Option<String> {
@@ -5720,6 +5794,19 @@ mod jni_bindings {
         handle: jlong,
     ) -> jbyteArray {
         bytes_or_null(&env, save_document(handle as i64))
+    }
+
+    /// `PdfNative.prepareSignature(long, String, int) -> byte[]`.
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_prepareSignature<'local>(
+        mut env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+        name: JString<'local>,
+        contents_bytes: jint,
+    ) -> jbyteArray {
+        let n = jstr(&mut env, &name);
+        bytes_or_null(&env, prepare_signature(handle as i64, &n, contents_bytes.max(0) as usize))
     }
 
     /// `PdfNative.saveCompressed(long) -> byte[]`.

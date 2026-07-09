@@ -208,6 +208,7 @@ protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "p
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 keepassjava2-dom = { module = "org.linguafranca.pwdb:KeePassJava2-dom", version.ref = "keepassJava2" }
 bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
