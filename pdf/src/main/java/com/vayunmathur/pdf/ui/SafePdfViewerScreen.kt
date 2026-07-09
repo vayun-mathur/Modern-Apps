@@ -82,6 +82,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -113,14 +114,17 @@ import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconVisible
 import com.vayunmathur.pdf.util.SafeOutlineItem
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.vayunmathur.pdf.R
 import com.vayunmathur.pdf.util.PdfPrimitive
 import com.vayunmathur.pdf.util.SafeAnnotation
 import com.vayunmathur.pdf.util.SafeFormField
 import com.vayunmathur.pdf.util.SafePdfDocument
 import com.vayunmathur.pdf.util.PdfStateStore
+import com.vayunmathur.pdf.util.printPdfBytes
 import com.vayunmathur.pdf.util.SafePdfPage
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -382,6 +386,7 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     var showJump by remember { mutableStateOf(false) }
     // Page-manager overlay + dynamic page count / global refresh for page ops.
     var showPages by remember { mutableStateOf(false) }
+    var showOverflow by remember { mutableStateOf(false) }
     var pageCount by remember(document) { mutableIntStateOf(document?.pageCount ?: 0) }
     var pageMgrVersion by remember { mutableIntStateOf(0) }
     // Per-page render version: bumping one page's entry re-renders ONLY that page,
@@ -570,6 +575,34 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
         }
     }
 
+    val textExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { outUri ->
+        val doc = document
+        if (outUri != null && doc != null) scope.launch {
+            val t = doc.extractText() ?: ""
+            withContext(Dispatchers.IO) {
+                runCatching { context.contentResolver.openOutputStream(outUri)?.use { it.write(t.toByteArray()) } }
+            }
+        }
+    }
+
+    val pngExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("image/png")
+    ) { outUri ->
+        val doc = document
+        if (outUri != null && doc != null) scope.launch {
+            val idx = listState.firstVisibleItemIndex
+            val page = doc.renderPage(idx)
+            if (page != null && page.width > 0f) {
+                val png = withContext(Dispatchers.IO) { renderSafePagePng(page, 1600) }
+                withContext(Dispatchers.IO) {
+                    runCatching { context.contentResolver.openOutputStream(outUri)?.use { it.write(png) } }
+                }
+            }
+        }
+    }
+
     val imageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { imgUri ->
@@ -703,6 +736,34 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                             }
                             IconButton({ showPages = true }) {
                                 Icon(painterResource(R.drawable.ic_pages), contentDescription = "Manage pages")
+                            }
+                            Box {
+                                IconButton({ showOverflow = true }) {
+                                    Icon(painterResource(R.drawable.ic_overflow), contentDescription = "More")
+                                }
+                                DropdownMenu(expanded = showOverflow, onDismissRequest = { showOverflow = false }) {
+                                    DropdownMenuItem(
+                                        text = { Text("Print") },
+                                        onClick = {
+                                            showOverflow = false
+                                            val doc = document
+                                            if (doc != null) scope.launch {
+                                                val bytes = doc.save()
+                                                if (bytes != null) printPdfBytes(
+                                                    context, uri.lastPathSegment ?: "document", bytes,
+                                                )
+                                            }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Export page as PNG") },
+                                        onClick = { showOverflow = false; pngExportLauncher.launch("page.png") },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Export text") },
+                                        onClick = { showOverflow = false; textExportLauncher.launch("document.txt") },
+                                    )
+                                }
                             }
                         }
                         if (editMode) {
@@ -1923,6 +1984,27 @@ private inline fun List<Offset>.toPath(map: (Offset) -> Offset): Path? {
         path.lineTo(p.x, p.y)
     }
     return path
+}
+
+/** Render a page to a PNG byte array at [widthPx] wide (white background). */
+private fun renderSafePagePng(page: SafePdfPage, widthPx: Int): ByteArray {
+    val w = widthPx.coerceAtLeast(1)
+    val h = (w * page.height / page.width).toInt().coerceAtLeast(1)
+    val img = androidx.compose.ui.graphics.ImageBitmap(w, h)
+    val canvas = androidx.compose.ui.graphics.Canvas(img)
+    androidx.compose.ui.graphics.drawscope.CanvasDrawScope().draw(
+        androidx.compose.ui.unit.Density(1f),
+        androidx.compose.ui.unit.LayoutDirection.Ltr,
+        canvas,
+        Size(w.toFloat(), h.toFloat()),
+    ) {
+        drawRect(Color.White, size = Size(w.toFloat(), h.toFloat()))
+        drawSafePage(page)
+    }
+    val bmp = img.asAndroidBitmap()
+    val out = ByteArrayOutputStream()
+    bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+    return out.toByteArray()
 }
 
 private class JpegImage(val bytes: ByteArray, val width: Int, val height: Int)

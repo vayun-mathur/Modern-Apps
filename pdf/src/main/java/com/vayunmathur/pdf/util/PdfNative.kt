@@ -62,6 +62,9 @@ object PdfNative {
     /** Extract the page at [index] into a standalone one-page PDF (bytes), or null. */
     external fun extractPage(handle: Long, index: Int): ByteArray?
 
+    /** Extract the document's visible text, or null. */
+    external fun extractText(handle: Long): String?
+
     // --- Editing: annotations, forms, save ---------------------------------
 
     /** Serialized annotations on [page] for the overlay/hit-testing. */

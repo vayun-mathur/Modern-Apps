@@ -167,6 +167,9 @@ class SafePdfDocument private constructor(
     /** Current page count from native (reflects add/remove during editing). */
     fun livePageCount(): Int = PdfNative.getPageCount(handle)
 
+    /** Extract the document's visible text, or null. */
+    suspend fun extractText(): String? = withContext(Dispatchers.IO) { PdfNative.extractText(handle) }
+
     // --- Page management -----------------------------------------------------
 
     suspend fun movePage(from: Int, to: Int): Boolean = withContext(Dispatchers.IO) {

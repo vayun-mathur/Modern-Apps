@@ -2661,6 +2661,30 @@ fn save_document(handle: i64) -> Option<Vec<u8>> {
     Some(buf)
 }
 
+/// Extract the document's visible text (from rendered text primitives), one
+/// blank line between pages.
+fn document_text(handle: i64) -> Option<String> {
+    let reg = registry().lock().unwrap();
+    let doc = reg.get(&handle)?;
+    let mut out = String::new();
+    for (_num, page_id) in doc.get_pages() {
+        if let Ok(pd) = interpret_page(doc, page_id) {
+            let mut last_y = f32::NAN;
+            for p in &pd.prims {
+                if let Prim::Text { text, y, .. } = p {
+                    if !last_y.is_nan() && (last_y - *y).abs() > 2.0 {
+                        out.push('\n');
+                    }
+                    out.push_str(text);
+                    last_y = *y;
+                }
+            }
+        }
+        out.push_str("\n\n");
+    }
+    Some(out)
+}
+
 // ---------------------------------------------------------------------------
 // Document outline (bookmarks)
 // ---------------------------------------------------------------------------
@@ -4431,7 +4455,7 @@ mod wire {
 mod jni_bindings {
     use super::*;
     use jni::objects::{JByteArray, JClass, JFloatArray, JString};
-    use jni::sys::{jbyteArray, jboolean, jfloat, jint, jlong};
+    use jni::sys::{jbyteArray, jboolean, jfloat, jint, jlong, jstring};
     use jni::JNIEnv;
 
     /// `PdfNative.openDocument(byte[]) -> long`. Returns a non-zero handle, or
@@ -4975,6 +4999,19 @@ mod jni_bindings {
         handle: jlong,
     ) -> jbyteArray {
         bytes_or_null(&env, save_document(handle as i64))
+    }
+
+    /// `PdfNative.extractText(long) -> String` (null on failure).
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_extractText<'local>(
+        env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+    ) -> jstring {
+        match document_text(handle as i64).and_then(|s| env.new_string(s).ok()) {
+            Some(s) => s.into_raw(),
+            None => std::ptr::null_mut(),
+        }
     }
 
     /// `PdfNative.listOutline(long) -> byte[]`. Serialized document outline.
