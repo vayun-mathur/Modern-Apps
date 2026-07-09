@@ -10,9 +10,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -47,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -239,57 +240,101 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: UnblockJamViewModel, p
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
+            val infoBoxes = @Composable {
+                val currentLevelStats = pack.levels.getOrNull(levelIndex)?.id?.let { levelStats[it] }
+                PuzzleInfoBox(
+                    levelIndex = levelIndex,
+                    onLevelChange = { newIndex ->
+                        val bounded = newIndex.coerceIn(0, pack.levels.lastIndex)
+                        backStack.setLast(Route.Game(packIndex, bounded))
+                    },
+                    isCompleted = currentLevelStats != null,
+                    maxLevelIndex = pack.levels.lastIndex
+                )
+                MovesInfoBox(
+                    moves = if (isReady) viewModel.getCurrentMoves() else 0,
+                    bestScore = currentLevelStats?.bestScore,
+                    optimalMoves = currentLevelData.optimalMoves
+                )
+            }
+            val actionButtons = @Composable {
+                val hasHistory = isReady && uiState.history.isNotEmpty()
+                Button(
+                    onClick = { viewModel.onUndo() },
+                    enabled = hasHistory && !isLevelWon
                 ) {
-                    val currentLevelStats = pack.levels.getOrNull(levelIndex)?.id?.let { levelStats[it] }
-                    PuzzleInfoBox(
-                        levelIndex = levelIndex,
-                        onLevelChange = { newIndex ->
-                            val bounded = newIndex.coerceIn(0, pack.levels.lastIndex)
-                            backStack.setLast(Route.Game(packIndex, bounded))
-                        },
-                        isCompleted = currentLevelStats != null,
-                        maxLevelIndex = pack.levels.lastIndex
-                    )
-                    MovesInfoBox(
-                        moves = if (isReady) viewModel.getCurrentMoves() else 0,
-                        bestScore = currentLevelStats?.bestScore,
-                        optimalMoves = currentLevelData.optimalMoves
-                    )
+                    Text(stringResource(R.string.undo))
                 }
+                Button(
+                    onClick = { viewModel.onRestart() },
+                    enabled = hasHistory && !isLevelWon
+                ) {
+                    Text(stringResource(R.string.restart))
+                }
+            }
+            val board = @Composable { boardModifier: Modifier ->
                 GameBoard(
                     levelData = currentLevelData,
                     onLevelChanged = viewModel::onBlockMoved,
                     onLevelWon = viewModel::onLevelWon,
-                    isLevelWon = isLevelWon
+                    isLevelWon = isLevelWon,
+                    modifier = boardModifier
                 )
-                val hasHistory = isReady && uiState.history.isNotEmpty()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Button(
-                        onClick = { viewModel.onUndo() },
-                        enabled = hasHistory && !isLevelWon
+            }
+
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
+            ) {
+                if (maxWidth > maxHeight) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(stringResource(R.string.undo))
+                        Box(
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            board(Modifier.fillMaxSize())
+                        }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            infoBoxes()
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                actionButtons()
+                            }
+                        }
                     }
-                    Button(
-                        onClick = { viewModel.onRestart() },
-                        enabled = hasHistory && !isLevelWon
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(stringResource(R.string.restart))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            infoBoxes()
+                        }
+                        Box(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            board(Modifier.fillMaxSize())
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            actionButtons()
+                        }
                     }
                 }
             }
@@ -380,10 +425,11 @@ fun GameBoard(
     levelData: LevelData,
     onLevelChanged: (LevelData) -> Unit,
     onLevelWon: () -> Unit,
-    isLevelWon: Boolean
+    isLevelWon: Boolean,
+    modifier: Modifier = Modifier
 ) {
-    val screenWidth = LocalWindowInfo.current.containerDpSize.width
-    val boardSize = screenWidth - 32.dp
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+    val boardSize = minOf(maxWidth, maxHeight)
     val cellWidth = boardSize / levelData.dimension.width
     val cellHeight = boardSize / levelData.dimension.height
 
@@ -465,5 +511,6 @@ fun GameBoard(
                 )
             }
         }
+    }
     }
 }
