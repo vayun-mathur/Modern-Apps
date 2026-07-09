@@ -133,8 +133,22 @@ fun SearchPage(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                items(recommendations, key = { it.videoID }) { video ->
-                    VideoItem(backStack, youPipeViewModel, video, true)
+                items(recommendations, key = { it.video.videoID }) { ranked ->
+                    val video = ranked.video
+                    val channelKey = video.author.lowercase()
+                    VideoItem(
+                        backStack,
+                        youPipeViewModel,
+                        video,
+                        true,
+                        reason = ranked.reason,
+                        overflowActions = listOf(
+                            stringResource(R.string.action_not_interested) to { youPipeViewModel.removeInterest(channelKey = channelKey) },
+                            stringResource(R.string.action_more_like_this) to { youPipeViewModel.boostChannel(channelKey) },
+                            stringResource(R.string.action_pin_channel) to { youPipeViewModel.pinChannel(channelKey) },
+                            stringResource(R.string.action_block_channel) to { youPipeViewModel.blockChannel(channelKey) },
+                        ),
+                    )
                 }
             }
         }

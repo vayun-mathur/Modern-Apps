@@ -15,7 +15,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -27,12 +31,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.util.NavBackStack
@@ -114,6 +121,8 @@ fun VideoItem(
     onClick: (() -> Unit)? = null,
     backupOnClick: Boolean = true,
     trailingContent: @Composable (() -> Unit)? = null,
+    reason: String? = null,
+    overflowActions: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
     val context = LocalContext.current
     val historyFlow = remember(videoInfo.videoID) { youPipeViewModel.historyById(videoInfo.videoID) }
@@ -135,6 +144,13 @@ fun VideoItem(
         }
     } else {
         modifier
+    }
+
+    val effectiveTrailing: (@Composable () -> Unit)? = when {
+        overflowActions.isNotEmpty() -> {
+            { VideoOverflowMenu(overflowActions) }
+        }
+        else -> trailingContent
     }
 
     Row(itemModifier) {
@@ -170,8 +186,39 @@ fun VideoItem(
                         stringResource(R.string.video_stat_format, countString(context, videoInfo.views), uploadTimeAgo(context, videoInfo.uploadDate)),
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (reason != null) {
+                        Text(
+                            stringResource(R.string.recommendation_reason, reason),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
-            }, trailingContent = trailingContent?.let { { it() } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }, trailingContent = effectiveTrailing?.let { { it() } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+        }
+    }
+}
+
+@Composable
+private fun VideoOverflowMenu(actions: List<Pair<String, () -> Unit>>) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                painter = painterResource(R.drawable.outline_more_vert_24),
+                contentDescription = stringResource(R.string.action_more_options),
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            actions.forEach { (label, onClick) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        expanded = false
+                        onClick()
+                    },
+                )
+            }
         }
     }
 }
