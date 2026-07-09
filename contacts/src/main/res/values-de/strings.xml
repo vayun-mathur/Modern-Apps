@@ -95,4 +95,7 @@
     <string name="create_new_account">+ Neues Konto erstellen</string>
     <string name="no_groups_found">Keine Gruppen gefunden. Erstelle eine im Gruppen-Tab.</string>
     <string name="contacts_count">%1$d Kontakte</string>
+    <string name="done">Fertig</string>
+    <string name="telegram">Telegram</string>
+    <string name="google_meet">Google Meet</string>
 </resources>
