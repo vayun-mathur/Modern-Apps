@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -376,33 +377,73 @@ fun ChessGame(
             )
         }
     ) { innerPadding ->
-        Column(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            Arrangement.Center,
-            Alignment.CenterHorizontally
+                .padding(innerPadding)
         ) {
-            CapturedPiecesRow(uiState.board.capturedByBlack)
-            Spacer(modifier = Modifier.height(16.dp))
-            MovesList(moves = uiState.board.moves, turn = uiState.turn)
-            BoardGrid(
-                board = uiState.board,
-                selectedPiece = uiState.selectedPiece,
-                isFlipped = uiState.isBoardFlipped,
-                turn = uiState.turn,
-                onSquareClick = onSquareClick
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            CapturedPiecesRow(uiState.board.capturedByWhite)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onNewGame) {
-                Text(stringResource(R.string.new_game))
+            val boardSide = minOf(maxWidth, maxHeight)
+            val boardComposable = @Composable {
+                Box(Modifier.size(boardSide)) {
+                    BoardGrid(
+                        board = uiState.board,
+                        selectedPiece = uiState.selectedPiece,
+                        isFlipped = uiState.isBoardFlipped,
+                        turn = uiState.turn,
+                        onSquareClick = onSquareClick
+                    )
+                }
             }
+            if (maxWidth > maxHeight) {
+                Row(
+                    Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    boardComposable()
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CapturedPiecesRow(uiState.board.capturedByBlack)
+                        MovesList(moves = uiState.board.moves, turn = uiState.turn)
+                        CapturedPiecesRow(uiState.board.capturedByWhite)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onNewGame) {
+                            Text(stringResource(R.string.new_game))
+                        }
+                        uiState.gameStatus?.let {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(it, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize(),
+                    Arrangement.Center,
+                    Alignment.CenterHorizontally
+                ) {
+                    CapturedPiecesRow(uiState.board.capturedByBlack)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    MovesList(moves = uiState.board.moves, turn = uiState.turn)
+                    boardComposable()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    CapturedPiecesRow(uiState.board.capturedByWhite)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onNewGame) {
+                        Text(stringResource(R.string.new_game))
+                    }
 
-            uiState.gameStatus?.let {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(it, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    uiState.gameStatus?.let {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(it, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
