@@ -56,6 +56,12 @@ object PdfNative {
     /** Remove the page at [index] from the page order. */
     external fun removePage(handle: Long, index: Int): Boolean
 
+    /** Rotate the page at [index] by [delta] degrees. */
+    external fun rotatePage(handle: Long, index: Int, delta: Int): Boolean
+
+    /** Extract the page at [index] into a standalone one-page PDF (bytes), or null. */
+    external fun extractPage(handle: Long, index: Int): ByteArray?
+
     // --- Editing: annotations, forms, save ---------------------------------
 
     /** Serialized annotations on [page] for the overlay/hit-testing. */

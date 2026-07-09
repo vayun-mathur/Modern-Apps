@@ -164,6 +164,27 @@ class SafePdfDocument private constructor(
     /** Serialize the (possibly edited) document to PDF bytes. */
     suspend fun save(): ByteArray? = withContext(Dispatchers.IO) { PdfNative.saveDocument(handle) }
 
+    /** Current page count from native (reflects add/remove during editing). */
+    fun livePageCount(): Int = PdfNative.getPageCount(handle)
+
+    // --- Page management -----------------------------------------------------
+
+    suspend fun movePage(from: Int, to: Int): Boolean = withContext(Dispatchers.IO) {
+        PdfNative.movePage(handle, from, to)
+    }
+
+    suspend fun removePage(index: Int): Boolean = withContext(Dispatchers.IO) {
+        PdfNative.removePage(handle, index).also { invalidate(index) }
+    }
+
+    suspend fun rotatePage(index: Int, delta: Int): Boolean = withContext(Dispatchers.IO) {
+        PdfNative.rotatePage(handle, index, delta).also { invalidate(index) }
+    }
+
+    suspend fun extractPage(index: Int): ByteArray? = withContext(Dispatchers.IO) {
+        PdfNative.extractPage(handle, index)
+    }
+
     /** The document outline (bookmarks), empty if none. */
     suspend fun outline(): List<SafeOutlineItem> = withContext(Dispatchers.IO) {
         PdfNative.listOutline(handle)?.let { SafePdfParser.parseOutline(it) } ?: emptyList()

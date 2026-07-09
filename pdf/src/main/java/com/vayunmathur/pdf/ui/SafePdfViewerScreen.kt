@@ -70,6 +70,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -121,6 +122,8 @@ import com.vayunmathur.pdf.util.SafeFormField
 import com.vayunmathur.pdf.util.SafePdfDocument
 import com.vayunmathur.pdf.util.PdfStateStore
 import com.vayunmathur.pdf.util.SafePdfPage
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.ByteArrayOutputStream
 
 private sealed interface LoadState {
@@ -377,6 +380,10 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     val redoStack = remember { mutableStateListOf<EditAction>() }
     // Jump-to-page dialog.
     var showJump by remember { mutableStateOf(false) }
+    // Page-manager overlay + dynamic page count / global refresh for page ops.
+    var showPages by remember { mutableStateOf(false) }
+    var pageCount by remember(document) { mutableIntStateOf(document?.pageCount ?: 0) }
+    var pageMgrVersion by remember { mutableIntStateOf(0) }
     // Per-page render version: bumping one page's entry re-renders ONLY that page,
     // so an edit doesn't force every visible page to re-decode.
     val pageVersions = remember { mutableStateMapOf<Int, Int>() }
@@ -546,6 +553,23 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
         }
     }
 
+    var pendingExtract by remember { mutableStateOf<Int?>(null) }
+    val extractLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/pdf")
+    ) { outUri ->
+        val doc = document
+        val idx = pendingExtract
+        pendingExtract = null
+        if (outUri != null && doc != null && idx != null) {
+            scope.launch {
+                val bytes = doc.extractPage(idx)
+                if (bytes != null) runCatching {
+                    context.contentResolver.openOutputStream(outUri)?.use { it.write(bytes) }
+                }
+            }
+        }
+    }
+
     val imageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { imgUri ->
@@ -677,6 +701,9 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                             IconButton({ showJump = true }) {
                                 Icon(painterResource(R.drawable.ic_jump_to_page), contentDescription = "Jump to page")
                             }
+                            IconButton({ showPages = true }) {
+                                Icon(painterResource(R.drawable.ic_pages), contentDescription = "Manage pages")
+                            }
                         }
                         if (editMode) {
                             IconButton({ undo() }, enabled = undoStack.isNotEmpty()) {
@@ -806,14 +833,14 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                         .transformable(transformState, enabled = !editMode || tool == EditTool.SELECT),
                     state = listState,
                 ) {
-                    items((0 until state.document.pageCount).toList()) { index ->
+                    items((0 until pageCount).toList()) { index ->
                         val pageHighlights = matches.filter { it.first == index }.map { it.second }
                         val current = matches.getOrNull(matchIndex)
                         val currentHighlight = if (current?.first == index) current.second else null
                         SafePdfPageItem(
                             document = state.document,
                             index = index,
-                            version = pageVersions[index] ?: 0,
+                            version = (pageVersions[index] ?: 0) + pageMgrVersion,
                             editMode = editMode,
                             tool = tool,
                             shape = shape,
@@ -904,9 +931,28 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
         )
     }
 
+    if (showPages && document != null) {
+        val doc = document
+        PageManagerSheet(
+            document = doc!!,
+            initialCount = pageCount,
+            version = pageMgrVersion,
+            onMove = { from, to -> scope.launch { doc.movePage(from, to); pageMgrVersion++ } },
+            onDelete = { idx ->
+                scope.launch {
+                    doc.removePage(idx)
+                    pageCount = doc.livePageCount()
+                    pageMgrVersion++
+                }
+            },
+            onRotate = { idx, delta -> scope.launch { doc.rotatePage(idx, delta); pageMgrVersion++ } },
+            onExtract = { idx -> pendingExtract = idx; extractLauncher.launch("page-${idx + 1}.pdf") },
+            onClose = { showPages = false },
+        )
+    }
+
     if (showJump) {
         var target by remember { mutableStateOf("") }
-        val pageCount = document?.pageCount ?: 0
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showJump = false },
             title = { Text("Go to page") },
@@ -1632,6 +1678,102 @@ private fun toolButton(
             tint = if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** Full-screen page manager: reorder (long-press drag), rotate, extract, and
+ * delete pages of the open document. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PageManagerSheet(
+    document: SafePdfDocument,
+    initialCount: Int,
+    version: Int,
+    onMove: (Int, Int) -> Unit,
+    onDelete: (Int) -> Unit,
+    onRotate: (Int, Int) -> Unit,
+    onExtract: (Int) -> Unit,
+    onClose: () -> Unit,
+) {
+    androidx.activity.compose.BackHandler { onClose() }
+    val keys = remember { (0 until initialCount).map { it.toLong() }.toMutableStateList() }
+    var nextKey by remember { mutableIntStateOf(initialCount) }
+    val listState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        if (from.index < keys.size && to.index < keys.size) {
+            val k = keys.removeAt(from.index)
+            keys.add(to.index, k)
+            onMove(from.index, to.index)
+        }
+    }
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Pages") },
+                    navigationIcon = { IconNavigation { onClose() } },
+                )
+            },
+        ) { padding ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.padding(padding).fillMaxSize().padding(12.dp),
+            ) {
+                items(keys, key = { it }) { key ->
+                    val index = keys.indexOf(key)
+                    ReorderableItem(reorderState, key = key) { _ ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.weight(1f).then(Modifier.longPressDraggableHandle())) {
+                                ManagerThumb(document, index, version)
+                            }
+                            Column {
+                                IconButton({ onRotate(index, -90) }) {
+                                    Icon(painterResource(R.drawable.ic_rotate), "Rotate left")
+                                }
+                                IconButton({ onRotate(index, 90) }) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_rotate), "Rotate right",
+                                        modifier = Modifier.graphicsLayer { scaleX = -1f },
+                                    )
+                                }
+                                IconButton({ onExtract(index) }) {
+                                    Icon(painterResource(R.drawable.ic_extract), "Extract")
+                                }
+                                IconButton({ keys.removeAt(index); onDelete(index) }) { IconDelete() }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ManagerThumb(document: SafePdfDocument, index: Int, version: Int) {
+    val page by produceState<SafePdfPage?>(null, index, version) {
+        value = if (index >= 0) document.renderPage(index) else null
+    }
+    val current = page
+    val ratio = if (current != null && current.height > 0f) current.width / current.height else 0.75f
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(ratio)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+            .background(Color.White),
+    ) {
+        if (current == null || current.width <= 0f) {
+            CircularProgressIndicator(Modifier.align(Alignment.Center))
+        } else {
+            Canvas(Modifier.fillMaxSize()) { drawSafePage(current) }
+        }
     }
 }
 

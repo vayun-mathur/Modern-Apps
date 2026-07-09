@@ -297,6 +297,84 @@ fn remove_page(handle: i64, index: usize) -> bool {
     false
 }
 
+/// Rotate the page at `index` by `delta` degrees (adjusts `/Rotate`).
+fn rotate_page(handle: i64, index: i32, delta: i32) -> bool {
+    let mut reg = registry().lock().unwrap();
+    let doc = match reg.get_mut(&handle) {
+        Some(d) => d,
+        None => return false,
+    };
+    let page_id = match nth_page_id(doc, index) {
+        Some(p) => p,
+        None => return false,
+    };
+    let cur = page_rotation(doc, page_id) as i32;
+    let new = (((cur + delta) % 360) + 360) % 360;
+    if let Ok(pd) = doc.get_dictionary_mut(page_id) {
+        pd.set("Rotate", Object::Integer(new as i64));
+        true
+    } else {
+        false
+    }
+}
+
+/// Extract the page at `index` into a standalone one-page PDF, returned as bytes.
+fn extract_page(handle: i64, index: i32) -> Option<Vec<u8>> {
+    let reg = registry().lock().unwrap();
+    let src = reg.get(&handle)?;
+    let src_page_id = nth_page_id(src, index)?;
+
+    let mut out = Document::with_version("1.7");
+    let pages_id = out.add_object(dictionary! {
+        "Type" => "Pages",
+        "Kids" => Object::Array(vec![]),
+        "Count" => 0,
+    });
+    let catalog_id = out.add_object(dictionary! {
+        "Type" => "Catalog",
+        "Pages" => pages_id,
+    });
+    out.trailer.set("Root", catalog_id);
+
+    // Copy the whole source object graph, then attach just the chosen page.
+    let mut map: HashMap<ObjectId, ObjectId> = HashMap::new();
+    for old_id in src.objects.keys() {
+        out.max_id += 1;
+        map.insert(*old_id, (out.max_id, 0));
+    }
+    for (old_id, obj) in &src.objects {
+        out.objects.insert(map[old_id], remap_object(obj, &map));
+    }
+    let new_page_id = *map.get(&src_page_id)?;
+    let mb = media_box(src, src_page_id);
+    let res = inherited(src, src_page_id, b"Resources").map(|o| remap_object(o, &map));
+    let rot = page_rotation(src, src_page_id);
+    drop(reg);
+
+    if let Ok(pd) = out.get_dictionary_mut(new_page_id) {
+        pd.set("Parent", Object::Reference(pages_id));
+        if pd.get(b"MediaBox").is_err() {
+            pd.set(
+                "MediaBox",
+                Object::Array(vec![mb[0].into(), mb[1].into(), mb[2].into(), mb[3].into()]),
+            );
+        }
+        if pd.get(b"Resources").is_err() {
+            if let Some(r) = res {
+                pd.set("Resources", r);
+            }
+        }
+        if rot != 0 {
+            pd.set("Rotate", Object::Integer(rot));
+        }
+    }
+    append_kid(&mut out, pages_id, new_page_id);
+
+    let mut buf = Vec::new();
+    out.save_to(&mut buf).ok()?;
+    Some(buf)
+}
+
 /// Serialize page `index` (0-based) of the document behind `handle` into the
 /// wire buffer, or `None` on any error.
 fn render_page(handle: i64, index: i32) -> Option<Vec<u8>> {
@@ -4473,6 +4551,29 @@ mod jni_bindings {
         index: jint,
     ) -> jboolean {
         remove_page(handle as i64, index.max(0) as usize) as jboolean
+    }
+
+    /// `PdfNative.rotatePage(long, int, int) -> boolean`.
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_rotatePage<'local>(
+        _env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+        index: jint,
+        delta: jint,
+    ) -> jboolean {
+        rotate_page(handle as i64, index, delta) as jboolean
+    }
+
+    /// `PdfNative.extractPage(long, int) -> byte[]`.
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_pdf_util_PdfNative_extractPage<'local>(
+        env: JNIEnv<'local>,
+        _class: JClass<'local>,
+        handle: jlong,
+        index: jint,
+    ) -> jbyteArray {
+        bytes_or_null(&env, extract_page(handle as i64, index))
     }
 
     fn bytes_or_null<'local>(env: &JNIEnv<'local>, data: Option<Vec<u8>>) -> jbyteArray {
