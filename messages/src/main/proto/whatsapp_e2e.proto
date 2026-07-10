@@ -41,6 +41,8 @@ message Message {
     optional LocationMessage locationMessage = 16;
     optional ReactionMessage reactionMessage = 46;
     optional PollCreationMessage pollCreationMessage = 49;
+    optional PollCreationMessage pollCreationMessageV2 = 60;
+    optional PollCreationMessage pollCreationMessageV3 = 64;
     optional PollUpdateMessage pollUpdateMessage = 80;
     optional ProtocolMessage protocolMessage = 12;
     optional SenderKeyDistributionMessage senderKeyDistributionMessage = 2;

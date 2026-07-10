@@ -997,8 +997,25 @@ object WhatsAppClient {
 
                 // Decrypt failure: ask the sender to re-encrypt (Go decryptMessages -> sendRetryReceipt).
                 if (decryptFailed) {
+                    val encTypes = node.getChildren()
+                        .filter { it.tag == "enc" }
+                        .mapNotNull { it.attrs["type"] }
+                    WhatsAppDiag.log(TAG, "recv: DECRYPT FAILED id=${node.attrs["id"]} type=${node.attrs["type"]} from=${node.attrs["from"]} encs=$encTypes")
                     sendRetryReceipt(node)
                     return@launch
+                }
+
+                if (node.attrs["type"] == "poll" || WhatsAppProtocol.pollCreation(message.e2eMessage) != null ||
+                    message.e2eMessage?.hasPollUpdateMessage() == true
+                ) {
+                    WhatsAppDiag.log(
+                        TAG,
+                        "poll recv: id=${message.id} parsedType=${message.messageType} " +
+                            "create=${WhatsAppProtocol.pollCreation(message.e2eMessage) != null} " +
+                            "vote=${message.e2eMessage?.hasPollUpdateMessage()} " +
+                            "q=${message.pollData?.question} opts=${message.pollData?.options?.size} " +
+                            "fromMe=${message.isFromMe}",
+                    )
                 }
 
                 // History sync: the phone pushes message history as a protocolMessage notification
@@ -2686,9 +2703,10 @@ object WhatsAppClient {
         options: List<String>,
         selectableCount: Int = 0,
     ): String? {
-        if (_state.value !is State.Connected) return null
-        val ws = webSocket ?: return null
-        val to = extractJid(conversationId) ?: return null
+        WhatsAppDiag.log(TAG, "poll: sendPollCreation entry conv=$conversationId opts=${options.size}")
+        if (_state.value !is State.Connected) { WhatsAppDiag.log(TAG, "poll: not connected"); return null }
+        val ws = webSocket ?: run { WhatsAppDiag.log(TAG, "poll: no websocket"); return null }
+        val to = extractJid(conversationId) ?: run { WhatsAppDiag.log(TAG, "poll: bad convId"); return null }
         val id = WhatsAppProtocol.generateMessageId(authData?.wid)
 
         val messageSecret = ByteArray(32).also { random.nextBytes(it) }

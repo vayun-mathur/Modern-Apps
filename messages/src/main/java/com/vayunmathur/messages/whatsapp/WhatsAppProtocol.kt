@@ -1613,7 +1613,7 @@ object WhatsAppProtocol {
         val ctx = com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.MessageContextInfo.newBuilder()
             .setMessageSecret(com.google.protobuf.ByteString.copyFrom(messageSecret))
         return com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message.newBuilder()
-            .setPollCreationMessage(poll.build())
+            .setPollCreationMessageV3(poll.build())
             .setMessageContextInfo(ctx.build())
             .build()
     }
@@ -2062,6 +2062,21 @@ object WhatsAppProtocol {
         return phoneJid ?: senderJid
     }
 
+    /**
+     * Return the effective PollCreationMessage from a message regardless of version — modern
+     * WhatsApp sends polls as pollCreationMessageV3 (field 64) or V2 (60), older ones as V1 (49).
+     * Returns null if the message isn't a poll creation.
+     */
+    fun pollCreation(
+        e2eMessage: com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message?,
+    ): com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.PollCreationMessage? = when {
+        e2eMessage == null -> null
+        e2eMessage.hasPollCreationMessageV3() -> e2eMessage.pollCreationMessageV3
+        e2eMessage.hasPollCreationMessageV2() -> e2eMessage.pollCreationMessageV2
+        e2eMessage.hasPollCreationMessage() -> e2eMessage.pollCreationMessage
+        else -> null
+    }
+
     fun getMessageType(e2eMessage: com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message?): String {
         return when {
             e2eMessage == null -> "ignore"
@@ -2073,7 +2088,7 @@ object WhatsAppProtocol {
             e2eMessage.hasDocumentMessage() -> "document ${e2eMessage.documentMessage.mimetype}"
             e2eMessage.hasContactMessage() -> "contact"
             e2eMessage.hasLocationMessage() -> "location"
-            e2eMessage.hasPollCreationMessage() -> "poll"
+            pollCreation(e2eMessage) != null -> "poll"
             e2eMessage.hasReactionMessage() -> {
                 if (e2eMessage.reactionMessage.text.isNullOrEmpty()) "reaction remove" else "reaction"
             }
@@ -2235,8 +2250,8 @@ object WhatsAppProtocol {
                         "Location: $name\n${loc.address}\n$mapsUrl"
                     }
                     e2eMessage.hasReactionMessage() -> e2eMessage.reactionMessage.text
-                    e2eMessage.hasPollCreationMessage() -> {
-                        val poll = e2eMessage.pollCreationMessage
+                    pollCreation(e2eMessage) != null -> {
+                        val poll = pollCreation(e2eMessage)!!
                         buildString {
                             append("📊 ")
                             append(poll.name)
@@ -2289,14 +2304,13 @@ object WhatsAppProtocol {
                     else -> null
                 }
 
-                val pollData: PollData? = if (e2eMessage.hasPollCreationMessage()) {
-                    val poll = e2eMessage.pollCreationMessage
+                val pollData: PollData? = pollCreation(e2eMessage)?.let { poll ->
                     PollData(
                         question = poll.name,
                         options = poll.optionsList.map { it.optionName },
                         selectableOptionCount = poll.selectableOptionsCount,
                     )
-                } else null
+                }
 
                 val groupInviteData: GroupInviteMeta? = null
 

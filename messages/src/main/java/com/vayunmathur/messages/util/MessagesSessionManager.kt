@@ -201,6 +201,10 @@ object MessagesSessionManager {
         val previewBody = caption?.takeIf { it.isNotBlank() } ?: "[Image]"
         val pendingId = "${source.idPrefix}:pending:${System.currentTimeMillis()}"
         val now = System.currentTimeMillis()
+        // Cache the outgoing bytes locally and attach them so the sent bubble shows the actual
+        // image/video instead of a bare "[Image]" placeholder (the UI suppresses the placeholder
+        // once an attachment is present).
+        val localMediaJson = buildOutgoingMediaJson(pendingId, bytes, mime, fileName)
         db.messageDao().upsert(
             Message(
                 id = pendingId,
@@ -210,6 +214,7 @@ object MessagesSessionManager {
                 state = MessageState.PENDING,
                 timestamp = now,
                 senderName = null,
+                mediaJson = localMediaJson,
             )
         )
         touchConversationOutgoing(conversationId, previewBody)
@@ -1073,6 +1078,60 @@ object MessagesSessionManager {
     private fun attachmentsToJson(attachments: List<MessageAttachment>): String? =
         if (attachments.isEmpty()) null
         else Json.encodeToString(ListSerializer(MessageAttachment.serializer()), attachments)
+
+    /**
+     * Cache outgoing media bytes to disk and return a one-item attachments JSON pointing at the
+     * local file, so the sent bubble renders the actual image/video/etc. Returns null on failure
+     * (the bubble then falls back to the text placeholder).
+     */
+    private fun buildOutgoingMediaJson(
+        pendingId: String,
+        bytes: ByteArray,
+        mime: String,
+        fileName: String,
+    ): String? {
+        val attachmentType = when {
+            mime == "image/webp" -> "sticker"
+            mime.startsWith("image/") -> "image"
+            mime.startsWith("video/") -> "video"
+            mime.startsWith("audio/") -> "audio"
+            else -> "file"
+        }
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "outgoing_media")
+            dir.mkdirs()
+            val ext = fileName.substringAfterLast('.', "").ifEmpty {
+                when (attachmentType) {
+                    "image" -> "jpg"; "video" -> "mp4"; "audio" -> "ogg"
+                    "sticker" -> "webp"; else -> "bin"
+                }
+            }
+            val safe = pendingId.replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val file = java.io.File(dir, "$safe.$ext")
+            file.writeBytes(bytes)
+            // Decode image bounds for a correct aspect ratio (cheap, bounds-only).
+            var w = 0
+            var h = 0
+            if (attachmentType == "image" || attachmentType == "sticker") {
+                val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+                w = opts.outWidth.coerceAtLeast(0)
+                h = opts.outHeight.coerceAtLeast(0)
+            }
+            attachmentsToJson(
+                listOf(
+                    MessageAttachment(
+                        url = "file://${file.absolutePath}",
+                        mimeType = mime,
+                        attachmentType = attachmentType,
+                        fileName = fileName,
+                        width = w,
+                        height = h,
+                    )
+                )
+            )
+        }.getOrNull()
+    }
 
     /**
      * Coerce any platform timestamp to epoch-MILLISECONDS. The inbox is
