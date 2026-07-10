@@ -330,9 +330,10 @@ object MessagesSessionManager {
     suspend fun markConversationRead(conversationId: String) {
         db.conversationDao().markRead(conversationId)
         val source = sourceFor(conversationId) ?: return
-        val latest = db.messageDao().observeForConversation(conversationId)
+        val all = db.messageDao().observeForConversation(conversationId)
             .firstOrNull()
-            ?.maxByOrNull { it.timestamp }
+            .orEmpty()
+        val latest = all.maxByOrNull { it.timestamp }
         val lastMessageId = latest?.id
         val lastTimestamp = latest?.timestamp ?: 0L
         when (source) {
@@ -344,8 +345,20 @@ object MessagesSessionManager {
                 TelegramClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
             MessageSource.SIGNAL ->
                 SignalClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
-            MessageSource.WHATSAPP ->
-                WhatsAppClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
+            MessageSource.WHATSAPP -> {
+                // WhatsApp ignores read receipts that point at our own messages, so the
+                // "up to" pointer must be the newest INCOMING message. In groups the
+                // receipt also needs that sender as the participant.
+                val lastIncoming = all
+                    .filter { it.direction == MessageDirection.INCOMING }
+                    .maxByOrNull { it.timestamp }
+                WhatsAppClient.sendReadReceipt(
+                    conversationId,
+                    lastIncoming?.id,
+                    lastIncoming?.timestamp ?: 0L,
+                    senderJid = lastIncoming?.senderId,
+                )
+            }
             MessageSource.MESSENGER ->
                 MetaClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
             MessageSource.INSTAGRAM ->
@@ -459,12 +472,21 @@ object MessagesSessionManager {
                 add = action == ReactionAction.ADD || action == ReactionAction.SWITCH,
             )
             MessageSource.WHATSAPP -> {
-                com.vayunmathur.messages.whatsapp.WhatsAppClient.sendReaction(
-                    msg.conversationId,
-                    messageId,
-                    emoji
-                )
-                true
+                val targetFromMe = msg.direction == MessageDirection.OUTGOING
+                val remove = action == ReactionAction.REMOVE
+                val ok = if (remove) {
+                    WhatsAppClient.removeReaction(
+                        msg.conversationId, messageId, targetFromMe, msg.senderId,
+                    )
+                } else {
+                    WhatsAppClient.sendReaction(
+                        msg.conversationId, messageId, emoji, targetFromMe, msg.senderId,
+                    )
+                }
+                // WhatsApp doesn't echo our own sends back to this device, so reflect the
+                // reaction locally right away (senderId "self") for immediate UI feedback.
+                if (ok) applyReaction(messageId, "self", if (remove) null else emoji)
+                ok
             }
             MessageSource.MESSENGER -> {
                 com.vayunmathur.messages.meta.MetaClient.sendReaction(
@@ -944,6 +966,20 @@ object MessagesSessionManager {
                         .markRead("${event.source.idPrefix}:${event.conversationId}")
                 }
             }
+            is GMEvent.ReactionReceived -> {
+                applyReaction(
+                    "${event.source.idPrefix}:${event.messageId}",
+                    event.senderId,
+                    event.emoji,
+                )
+            }
+            is GMEvent.ReactionRemoved -> {
+                applyReaction(
+                    "${event.source.idPrefix}:${event.messageId}",
+                    event.senderId,
+                    null,
+                )
+            }
             else -> Unit
         }
     }
@@ -993,6 +1029,21 @@ object MessagesSessionManager {
             existing.copy(
                 lastMessagePreview = preview,
             )
+        )
+    }
+
+    /**
+     * Apply a single sender's reaction to a stored message. Tracks the reaction
+     * per-sender in the message's serviceData and rewrites the derived
+     * reactions_json the UI renders. A null [emoji] removes [senderId]'s reaction.
+     * No-op when the target message isn't stored locally yet.
+     */
+    private suspend fun applyReaction(dbMessageId: String, senderId: String, emoji: String?) {
+        val msg = db.messageDao().get(dbMessageId) ?: return
+        val newServiceData = applyReactionToServiceData(msg.serviceData, senderId, emoji)
+        val newReactionsJson = reactionsJsonFromServiceData(newServiceData)
+        db.messageDao().upsert(
+            msg.copy(serviceData = newServiceData, reactionsJson = newReactionsJson)
         )
     }
 }

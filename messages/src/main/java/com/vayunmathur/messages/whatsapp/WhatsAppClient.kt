@@ -1082,25 +1082,49 @@ object WhatsAppClient {
                     val reaction = message.e2eMessage.reactionMessage
                     val emoji = reaction.text?.replace("\uFE0F", "") ?: ""
                     val targetId = reaction.key?.id ?: ""
+                    // A reaction the user made on another device echoes back as fromMe;
+                    // tag its sender "self" so it isn't misattributed to the chat peer.
+                    val reactorId = if (message.isFromMe) "self" else sender
                     if (emoji.isEmpty()) {
                         _events.emit(GMEvent.ReactionRemoved(
                             source = MessageSource.WHATSAPP,
                             conversationId = "wa:${message.from}",
                             messageId = targetId,
-                            senderId = sender,
+                            senderId = reactorId,
                         ))
                     } else {
                         _events.emit(GMEvent.ReactionReceived(
                             source = MessageSource.WHATSAPP,
                             conversationId = "wa:${message.from}",
                             messageId = targetId,
-                            senderId = sender,
+                            senderId = reactorId,
                             emoji = emoji,
                         ))
                     }
                     return@launch
                 }
 
+                // Messages the user sent from another linked device (fromMe) are synced
+                // to us as outgoing, not incoming — emit a MessageUpdate so they render on
+                // the sent side instead of as an incoming (previously blank) bubble.
+                if (message.isFromMe) {
+                    _events.emit(GMEvent.MessageUpdate(
+                        source = MessageSource.WHATSAPP,
+                        conversationId = "wa:${message.from}",
+                        messageId = message.id,
+                        body = displayBody,
+                        outgoing = true,
+                        timestamp = message.timestamp * 1000,
+                        senderName = null,
+                    ))
+                    return@launch
+                }
+
+                // In group chats, attribute the message to the actual participant so
+                // the UI can show who sent each bubble. `sender` is the participant JID
+                // (resolveJID(participant ?: from)); for 1:1 chats it's the peer, so we
+                // leave sender fields null and fall back to the conversation peer.
+                val isGroupChat = message.from.contains("@g.us")
                 _events.emit(GMEvent.IncomingMessage(
                     source = MessageSource.WHATSAPP,
                     conversationId = "wa:${message.from}",
@@ -1109,6 +1133,8 @@ object WhatsAppClient {
                     peerName = resolveName(sender),
                     peerPhone = null,
                     timestamp = message.timestamp * 1000,
+                    senderName = if (isGroupChat) resolveName(sender) else null,
+                    senderId = if (isGroupChat) sender else null,
                 ))
 
                 // Send delivery receipt
@@ -2093,6 +2119,7 @@ object WhatsAppClient {
         groupJid: String,
         id: String,
         msg: WhatsAppE2EProto.Message,
+        type: String = "text",
     ): WhatsAppProtocol.Node? {
         val auth = authData ?: return null
         val crypto = ensureE2E(auth) ?: return null
@@ -2132,7 +2159,7 @@ object WhatsAppClient {
         return WhatsAppProtocol.buildFanOutMessageNode(
             to = groupJid,
             id = id,
-            type = "text",
+            type = type,
             participantEncs = encs,
             includeDeviceIdentity = includeIdentity,
             deviceIdentity = deviceIdentity,
@@ -2288,11 +2315,14 @@ object WhatsAppClient {
         conversationId: String,
         lastMessageId: String?,
         lastTimestamp: Long,
+        senderJid: String? = null,
     ): Boolean {
         if (_state.value !is State.Connected) return false
         val ws = webSocket ?: return false
         val to = extractJid(conversationId) ?: return false
         if (lastMessageId.isNullOrEmpty()) return false
+        // Message ids arrive DB-prefixed ("wa:RAWID"); WhatsApp only matches the raw id.
+        val rawMessageId = extractMessageId(lastMessageId)
         if (!readReceiptsEnabled) {
             WhatsAppDiag.log(TAG, "read receipt suppressed (privacy off) for $to")
             return true
@@ -2304,11 +2334,12 @@ object WhatsAppClient {
         }
         val node = WhatsAppProtocol.buildReadReceipt(
             chatJid = to,
-            messageIds = listOf(lastMessageId),
+            messageIds = listOf(rawMessageId),
+            senderJid = senderJid?.ifEmpty { null },
             timestamp = tSec,
         )
         val sent = ws.send(WhatsAppProtocol.encodeNode(node))
-        WhatsAppDiag.log(TAG, "read receipt to=$to id=$lastMessageId sent=$sent")
+        WhatsAppDiag.log(TAG, "read receipt to=$to id=$rawMessageId sent=$sent")
         return sent
     }
 
@@ -2337,50 +2368,56 @@ object WhatsAppClient {
         WhatsAppDiag.log(TAG, "privacy: readReceipts=${if (readReceiptsEnabled) "on" else "off"}")
     }
 
-    suspend fun sendReaction(conversationId: String, messageId: String, emoji: String) {
-        if (_state.value !is State.Connected) return
-        val ws = webSocket ?: return
-        val chatJid = extractJid(conversationId) ?: return
+    /**
+     * Send (or, with an empty [emoji], clear) a reaction on [messageId]. Routed through the same
+     * Signal encryption + multi-device fan-out as a normal message — an unencrypted reaction node
+     * is silently dropped by WhatsApp. The reaction key must point at the target message, so
+     * [targetFromMe] / [targetSenderJid] describe the ORIGINAL message being reacted to.
+     */
+    suspend fun sendReaction(
+        conversationId: String,
+        messageId: String,
+        emoji: String,
+        targetFromMe: Boolean,
+        targetSenderJid: String?,
+    ): Boolean {
+        if (_state.value !is State.Connected) return false
+        val ws = webSocket ?: return false
+        val chatJid = extractJid(conversationId) ?: return false
+        val rawTargetId = extractMessageId(messageId)
         val id = WhatsAppProtocol.generateMessageId(authData?.wid)
-        val ownJid = authData?.wid ?: ""
-        pendingMessageIDs.add(id)
 
         val strippedEmoji = emoji.replace("\uFE0F", "")
-        val node = WhatsAppProtocol.buildReactionMessage(
+        val proto = WhatsAppProtocol.buildReactionProto(
             chatJid = chatJid,
-            senderJid = "",
-            targetMessageId = messageId,
+            targetMessageId = rawTargetId,
             emoji = strippedEmoji,
-            ownJid = ownJid,
-            id = id,
+            targetFromMe = targetFromMe,
+            targetSenderJid = targetSenderJid?.let { extractMessageId(it) }?.ifEmpty { null },
         )
+        val node = if (chatJid.contains("@g.us")) {
+            buildEncryptedGroupMessageNode(chatJid, id, proto, type = "reaction")
+        } else {
+            buildEncryptedMessageNode(chatJid, id, proto, "reaction")
+        } ?: run { WhatsAppDiag.log(TAG, "reaction: build FAILED (no enc) for $chatJid"); return false }
+
+        pendingMessageIDs.add(id)
         val sent = ws.send(WhatsAppProtocol.encodeNode(node))
         if (!sent) pendingMessageIDs.remove(id)
+        WhatsAppDiag.log(TAG, "reaction to=$chatJid target=$rawTargetId emoji=${strippedEmoji.ifEmpty { "<remove>" }} sent=$sent")
+        return sent
     }
 
     /**
-     * Remove a reaction from a message by sending empty emoji.
+     * Remove a reaction from a message by sending an empty emoji.
      * From Go HandleMatrixReactionRemove.
      */
-    suspend fun removeReaction(conversationId: String, messageId: String, senderJid: String = "") {
-        if (_state.value !is State.Connected) return
-        val ws = webSocket ?: return
-        val chatJid = extractJid(conversationId) ?: return
-        val id = WhatsAppProtocol.generateMessageId(authData?.wid)
-        val ownJid = authData?.wid ?: ""
-        pendingMessageIDs.add(id)
-
-        val node = WhatsAppProtocol.buildReactionMessage(
-            chatJid = chatJid,
-            senderJid = senderJid,
-            targetMessageId = messageId,
-            emoji = "",
-            ownJid = ownJid,
-            id = id,
-        )
-        val sent = ws.send(WhatsAppProtocol.encodeNode(node))
-        if (!sent) pendingMessageIDs.remove(id)
-    }
+    suspend fun removeReaction(
+        conversationId: String,
+        messageId: String,
+        targetFromMe: Boolean,
+        targetSenderJid: String?,
+    ): Boolean = sendReaction(conversationId, messageId, "", targetFromMe, targetSenderJid)
 
     /**
      * Send a typing indicator (chat presence) with media type differentiation.
@@ -3036,6 +3073,14 @@ object WhatsAppClient {
         var s = conversationId
         while (s.startsWith("wa:")) s = s.removePrefix("wa:")
         return s.ifEmpty { null }
+    }
+
+    /** Strip the DB source prefix ("wa:") from a stored message id to recover the raw
+     *  WhatsApp message id that the wire protocol (receipts, reaction keys) expects. */
+    private fun extractMessageId(messageId: String): String {
+        var s = messageId
+        while (s.startsWith("wa:")) s = s.removePrefix("wa:")
+        return s
     }
 
     private fun generateMessageId(): String {

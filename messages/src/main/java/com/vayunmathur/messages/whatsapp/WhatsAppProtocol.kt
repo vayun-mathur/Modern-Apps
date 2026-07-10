@@ -1155,21 +1155,28 @@ object WhatsAppProtocol {
             content = listOf(Node(tag = "media_conn")),
         )
     }
-    fun buildReactionMessage(
+    /**
+     * Build a reaction as an E2E [Message] proto (ReactionMessage). Returned as a proto — NOT a
+     * wire node — so the caller sends it through the normal Signal encryption + multi-device
+     * fan-out path (buildEncryptedMessageNode / buildEncryptedGroupMessageNode) like any other
+     * message. The reaction key must point at the TARGET message: [targetFromMe] reflects whether
+     * the target was sent by us, and for group targets from someone else [targetSenderJid] is that
+     * sender's JID (participant). Ref whatsmeow send.go BuildReaction + BuildMessageKey.
+     * An empty [emoji] removes the reaction.
+     */
+    fun buildReactionProto(
         chatJid: String,
-        senderJid: String,
         targetMessageId: String,
         emoji: String,
-        ownJid: String,
-        id: String,
-    ): Node {
-        val isFromMe = senderJid.isEmpty() || senderJid == ownJid
+        targetFromMe: Boolean,
+        targetSenderJid: String?,
+    ): com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message {
         val messageKey = com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.MessageKey.newBuilder()
-            .setFromMe(isFromMe)
+            .setFromMe(targetFromMe)
             .setId(targetMessageId)
             .setRemoteJid(chatJid)
-        if (!isFromMe && chatJid.contains("@g.us")) {
-            messageKey.setParticipant(senderJid)
+        if (!targetFromMe && chatJid.contains("@g.us") && !targetSenderJid.isNullOrEmpty()) {
+            messageKey.setParticipant(targetSenderJid)
         }
 
         val reactionMessage = com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.ReactionMessage.newBuilder()
@@ -1178,26 +1185,9 @@ object WhatsAppProtocol {
             .setSenderTimestampMs(System.currentTimeMillis())
             .build()
 
-        val e2eMessage = com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message.newBuilder()
+        return com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message.newBuilder()
             .setReactionMessage(reactionMessage)
             .build()
-        val plaintext = e2eMessage.toByteArray()
-
-        return Node(
-            tag = "message",
-            attrs = mapOf(
-                "to" to chatJid,
-                "id" to id,
-                "type" to "reaction"
-            ),
-            content = listOf(
-                Node(
-                    tag = "enc",
-                    attrs = mapOf("v" to "2", "type" to "msg", "decrypt-fail" to "hide"),
-                    data = padMessage(plaintext)
-                )
-            )
-        )
     }
 
     /**
@@ -2137,6 +2127,27 @@ object WhatsAppProtocol {
                 val plaintext = unpadMessage(decryptedPadded)
                 var e2eMessage = com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message.parseFrom(plaintext)
 
+                // Messages the user sends from another linked device are echoed to us
+                // either wrapped in a DeviceSentMessage (carrying the real chat in
+                // destinationJid) or, for 1:1, with `from` set to our own JID and the real
+                // chat in the `recipient` attr. Unwrap/redirect so these map to the right
+                // conversation instead of surfacing as a blank message from ourselves.
+                // Ref whatsmeow message.go processProtocolParts / parseMessageSource.
+                var chatJid = from
+                var fromMe = false
+                if (e2eMessage.hasDeviceSentMessage()) {
+                    fromMe = true
+                    val dsm = e2eMessage.deviceSentMessage
+                    if (dsm.destinationJid.isNotEmpty()) chatJid = dsm.destinationJid
+                    if (dsm.hasMessage()) e2eMessage = dsm.message
+                } else {
+                    val recipient = node.attrs["recipient"]
+                    if (!recipient.isNullOrEmpty()) {
+                        fromMe = true
+                        chatJid = recipient
+                    }
+                }
+
                 // Unwrap FutureProofMessage (Go events.go GetInnerMessage)
                 if (e2eMessage.hasEditedMessage() && e2eMessage.editedMessage.hasMessage()) {
                     e2eMessage = e2eMessage.editedMessage.message
@@ -2236,7 +2247,7 @@ object WhatsAppProtocol {
 
                 WhatsAppMessage(
                     id = id,
-                    from = from,
+                    from = chatJid,
                     to = node.attrs["to"] ?: "",
                     body = body,
                     timestamp = timestamp,
@@ -2261,6 +2272,7 @@ object WhatsAppProtocol {
                     mentionedJids = contextInfo.mentionedJids,
                     isViewOnce = isViewOnce,
                     isHD = isHD,
+                    isFromMe = fromMe,
                     e2eMessage = e2eMessage,
                 )
             } catch (e: Exception) {
@@ -2312,6 +2324,10 @@ data class WhatsAppMessage(
     val mentionedJids: List<String> = emptyList(),
     val isViewOnce: Boolean = false,
     val isHD: Boolean = false,
+    /** True when this message was sent by the local user from another linked
+     *  device (DeviceSentMessage / own-JID echo). Lets the client render it as
+     *  outgoing instead of an incoming (or blank) bubble. */
+    val isFromMe: Boolean = false,
     val e2eMessage: com.vayunmathur.messages.whatsapp.proto.WhatsAppE2EProto.Message? = null,
 )
 

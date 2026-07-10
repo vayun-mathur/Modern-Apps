@@ -66,6 +66,23 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    "Connect to these services at your own risk. Account bans are very " +
+                        "rare but technically possible. Messages on E2EE platforms maintain " +
+                        "E2EE on this app.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
             Text(
                 stringResource(R.string.settings_section_sources),
                 style = MaterialTheme.typography.titleSmall,
