@@ -11,7 +11,7 @@
     <string name="time_in_days">%1$d päeva pärast</string>
     <string name="change_connected_contact">Muuda ühendatud kasutajakontot</string>
     <string name="history_button">Ajalugu</string>
-    <string name="hide_button">Peida</string>
+    <string name="hide_button">Vaade reaalajas</string>
     <string name="waypoint_name_blank_error">Nimi ei saa jääda tühjaks</string>
     <string name="waypoint_range_error">Vahemik peab olema number</string>
     <string name="waypoint_range_suffix">meetrit</string>
@@ -98,4 +98,13 @@
     <string name="permission_upgrade_dialog_title">Täpse asukoha tuvastamine on vajalik</string>
     <string name="permission_reopen_upgrade_prompt">Muud asukohatuvastuse tüüpi</string>
     <string name="permission_approximate_only_explanation">FindFamily toimib vaid siis, kui kasutusel on täpse asukoha tuvastamine. Jätkamiseks palun luba seadistustes vastavad õigused.</string>
+    <string name="history_title">Ajalugu: %1$s</string>
+    <string name="history_hide_content_desc">Tagasi reaalajas vaatesse</string>
+    <string name="history_show_content_desc">Vaata asukohtade ajalugu</string>
+    <string name="history_step_minus_5m">-5 min</string>
+    <string name="history_step_minus_1m">-1 min</string>
+    <string name="history_step_minus_10s">-10 sek</string>
+    <string name="history_step_plus_10s">+10 sek</string>
+    <string name="history_step_plus_1m">+1 min</string>
+    <string name="history_step_plus_5m">+5 min</string>
 </resources>
