@@ -10,6 +10,21 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class VideoData(val duration: Long)
 
+/**
+ * GPano geometry parsed from a photo's XMP. Present ⇒ the photo is a
+ * 360/panorama and should be viewed in the sphere renderer. Describes how the
+ * stored image maps onto the full equirectangular sphere.
+ */
+@Serializable
+data class PanoData(
+    val fullWidth: Int,
+    val fullHeight: Int,
+    val croppedWidth: Int,
+    val croppedHeight: Int,
+    val croppedLeft: Int,
+    val croppedTop: Int,
+)
+
 @Serializable
 @Entity(indices = [Index(value = ["date"])])
 data class Photo(
@@ -25,6 +40,8 @@ data class Photo(
     val long: Double?,
     @Embedded
     val videoData: VideoData?,
+    @Embedded
+    val panoData: PanoData?,
     val isTrashed: Boolean = false,
     // True once this photo has been scanned for faces (mirrors [exifSet]); keeps
     // the face indexer from re-processing the same photo on every sync.

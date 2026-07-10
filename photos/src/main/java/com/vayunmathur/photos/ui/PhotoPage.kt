@@ -204,9 +204,16 @@ fun PhotoDetailView(
         }
     }
 
+    // Panoramas/spheres get an interactive 360 renderer that owns its own touch
+    // handling (drag/pinch/tap), so the flat zoom/pan gestures are gated off.
+    val isPanorama = photo.videoData == null && photo.panoData != null
+
     Box(
             modifier =
                     Modifier.fillMaxSize()
+                            .then(
+                                if (isPanorama) Modifier
+                                else Modifier
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                         onTap = { updatedOnToggleMetadata() },
@@ -277,8 +284,15 @@ fun PhotoDetailView(
                                     } while (event.changes.any { it.pressed })
                                 }
                             }
+                            )
     ) {
-        if (photo.videoData == null) {
+        if (isPanorama) {
+            PanoramaSphereView(
+                    photo = photo,
+                    modifier = Modifier.fillMaxSize(),
+                    onTap = { updatedOnToggleMetadata() }
+            )
+        } else if (photo.videoData == null) {
             AsyncImage(
                     model =
                             ImageRequest.Builder(context)
@@ -368,6 +382,9 @@ fun PhotoDetailView(
                         text = stringResource(R.string.resolution, photo.width, photo.height),
                         color = Color.LightGray
                 )
+                if (photo.panoData != null) {
+                    Text(text = "360°", color = Color.LightGray)
+                }
                 if (peopleCount > 0) {
                     Text(
                             text = pluralStringResource(R.plurals.people_in_photo, peopleCount, peopleCount),

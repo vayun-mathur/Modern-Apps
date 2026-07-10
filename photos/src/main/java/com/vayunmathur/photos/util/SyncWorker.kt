@@ -246,7 +246,7 @@ suspend fun syncPhotos(context: Context, database: PhotoDatabase, uris: List<Uri
 
                 val existing = existingPhotos[id]
                 if (existing == null || existing.date != date || existing.uri != contentUri || existing.videoData != videoData || existing.width != width || existing.height != height || existing.dateModified != dateModified || existing.isTrashed != isTrashed) {
-                    newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, dateModified, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData, isTrashed, faceScanned = existing?.faceScanned ?: false, ocrText = existing?.ocrText, ocrScanned = existing?.ocrScanned ?: false)
+                    newOrUpdatedPhotos += Photo(id, name, contentUri, date, width, height, dateModified, existing?.exifSet ?: false, existing?.lat, existing?.long, videoData, existing?.panoData, isTrashed, faceScanned = existing?.faceScanned ?: false, ocrText = existing?.ocrText, ocrScanned = existing?.ocrScanned ?: false)
                 }
             } catch (e: Exception) {
                 Log.e("SyncWorker", "Error processing photo/video from cursor", e)
@@ -314,18 +314,22 @@ suspend fun setExifData(photos: List<Photo>, database: PhotoDatabase, context: C
         val newPhotos = photosChunk.map { photo ->
             async(Dispatchers.IO) {
                 try {
-                    val (lat, long) = context.contentResolver.openInputStream(
+                    val (latLong, panoData) = context.contentResolver.openInputStream(
                         MediaStore.setRequireOriginal(
                             photo.uri.toUri()
                         )
                     )?.use { inputStream ->
                         val exif = ExifInterface(inputStream)
-                        val latLong = exif.latLong
-                        val lat = latLong?.getOrNull(0)
-                        val long = latLong?.getOrNull(1)
-                        listOf(lat, long)
-                    } ?: listOf(null, null)
-                    photo.copy(exifSet = true, lat = lat, long = long)
+                        val ll = exif.latLong
+                        val pano = PanoXmpParser.parse(exif.getAttribute(ExifInterface.TAG_XMP))
+                        Pair(ll, pano)
+                    } ?: Pair(null, null)
+                    photo.copy(
+                        exifSet = true,
+                        lat = latLong?.getOrNull(0),
+                        long = latLong?.getOrNull(1),
+                        panoData = panoData,
+                    )
                 } catch (_: Exception) {
                     photo.copy(exifSet = true) // Mark as set even on error to avoid retry every time
                 }

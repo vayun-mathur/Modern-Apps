@@ -75,7 +75,7 @@ class PhotoEditViewModel(
                         id = 0, name = uri.substringAfterLast("/"), uri = uri,
                         date = System.currentTimeMillis(), width = 0, height = 0,
                         dateModified = System.currentTimeMillis() / 1000, exifSet = false,
-                        lat = null, long = null, videoData = null,
+                        lat = null, long = null, videoData = null, panoData = null,
                     )
                 }
             }

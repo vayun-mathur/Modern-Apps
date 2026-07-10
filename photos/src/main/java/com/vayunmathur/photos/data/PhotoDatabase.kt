@@ -88,13 +88,13 @@ data class PhotoEmbedding(
     val clipEmbedding: ByteArray,
 )
 
-@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 10, exportSchema = false)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 11, exportSchema = false)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun faceDao(): FaceDao
 
     companion object : com.vayunmathur.library.util.DatabaseMigrations {
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
     }
 }
 
@@ -164,4 +164,18 @@ val MIGRATION_9_10 = Migration(9, 10) {
     // SQL mirrors Room's generated schema exactly so schema validation passes.
     it.execSQL("ALTER TABLE Photo ADD COLUMN clipEmbedding BLOB")
     it.execSQL("ALTER TABLE Photo ADD COLUMN clipScanned INTEGER NOT NULL DEFAULT 0")
+}
+
+val MIGRATION_10_11 = Migration(10, 11) {
+    // Add GPano panorama geometry columns (@Embedded PanoData, all nullable).
+    // Reset exifSet so existing photos get re-scanned for GPano XMP on next
+    // sync (follows the faceScanned reset precedent in MIGRATION_7_8). Column
+    // names mirror Room's generated schema for the embedded fields exactly.
+    it.execSQL("ALTER TABLE Photo ADD COLUMN fullWidth INTEGER")
+    it.execSQL("ALTER TABLE Photo ADD COLUMN fullHeight INTEGER")
+    it.execSQL("ALTER TABLE Photo ADD COLUMN croppedWidth INTEGER")
+    it.execSQL("ALTER TABLE Photo ADD COLUMN croppedHeight INTEGER")
+    it.execSQL("ALTER TABLE Photo ADD COLUMN croppedLeft INTEGER")
+    it.execSQL("ALTER TABLE Photo ADD COLUMN croppedTop INTEGER")
+    it.execSQL("UPDATE Photo SET exifSet = 0")
 }
