@@ -78,4 +78,5 @@
     <string name="import_button">Importuj</string>
     <string name="default_layout">Domyślny układ</string>
     <string name="add_reminder">Dodaj przypomnienie</string>
+    <string name="calendar_widget_description">Nadchodzące wydarzenia w skrócie — dotknij, aby otworzyć Kalendarz</string>
 </resources>
