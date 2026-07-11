@@ -37,4 +37,18 @@
     <string name="enable_ai_search_button">Włącz</string>
     <string name="model_downloading_title">Pobieranie modelu SI</string>
     <string name="model_downloading_description">Trwa pobieranie modelu SI. Może to potrwać kilka minut, w zależności od połączenia.</string>
+    <string name="photo_widget_description">Zmieniające się zdjęcie z Twojej galerii — stuknij, aby wylosować</string>
+    <string name="label_people">Ludzie</string>
+    <string name="openassistant_needs_update">Zaktualizuj aplikację OpenAssistant, aby włączyć wyszukiwanie zdjęć za pomocą sztucznej inteligencji.</string>
+    <string name="people_empty">Nie znaleziono jeszcze żadnych osób. Skanowanie odbywa się w tle — sprawdź ponownie po zindeksowaniu zdjęć.</string>
+    <string name="people_scanning">Grupowanie twarzy… osoby będą wyświetlane tutaj w miarę ich odnajdywania.</string>
+    <string name="face_indexing_progress">Indeksowanie %1$d / %2$d</string>
+    <string name="people_model_missing">Grupowanie twarzy wymaga modelu MobileFaceNet. Dodaj plik mobilefacenet.tflite z licencją dopuszczającą do pliku photos/src/main/assets (patrz FaceRecognizer).</string>
+    <string name="people_photo_count">%1$d zdjęć</string>
+    <plurals name="people_in_photo">
+        <item quantity="one">%1$d osoba</item>
+        <item quantity="few">%1$d osoby</item>
+        <item quantity="many">%1$d osób</item>
+        <item quantity="other">%1$d osób</item>
+    </plurals>
 </resources>
