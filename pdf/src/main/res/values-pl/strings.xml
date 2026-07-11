@@ -23,4 +23,7 @@
     <string name="pdf_save">Zapisz</string>
     <string name="pdf_save_as_copy">Zapisz kopię</string>
     <string name="auto_detect">Automatyczne wykrywanie</string>
+    <string name="open_pdf_safe">Otwórz PDF (bezpieczny)</string>
+    <string name="safe_pdf_viewer_title">Przeglądarka PDF (bezpieczna)</string>
+    <string name="safe_pdf_error">Tego pliku PDF nie można otworzyć za pomocą bezpiecznej przeglądarki. Możliwe, że jest zaszyfrowany lub korzysta z nieobsługiwanych funkcji.</string>
 </resources>
