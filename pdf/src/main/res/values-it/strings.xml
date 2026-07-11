@@ -23,4 +23,7 @@
     <string name="auto_detect">Rilevamento automatico</string>
     <string name="pdf_save">Salva</string>
     <string name="pdf_save_as_copy">Salva come copia</string>
+    <string name="open_pdf_safe">Apri PDF (sicuro)</string>
+    <string name="safe_pdf_viewer_title">Visualizzatore PDF (sicuro)</string>
+    <string name="safe_pdf_error">Impossibile aprire questo PDF con il visualizzatore sicuro. Potrebbe essere crittografato o utilizzare funzionalità non supportate.</string>
 </resources>
