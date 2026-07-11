@@ -2,7 +2,7 @@
 <resources>
     <string name="cancel">Anuluj</string>
     <string name="month_year_format">%1$s %2$d</string>
-    <string name="app_name">Health</string>
+    <string name="app_name">Zdrowie</string>
     <string name="grant_permissions">Przyznaj uprawnienia</string>
     <string name="tab_day">Dni</string>
     <string name="tab_week">Tygodnie</string>
@@ -20,7 +20,7 @@
     <string name="value_unit_space_format">%1$s %2$s</string>
     <string name="k_format">%1$sk</string>
     <string name="metric_energy_burned">Spalone kalorie</string>
-    <string name="metric_active_calories">Kalorie aktywne</string>
+    <string name="metric_active_calories">Aktywne kalorie</string>
     <string name="metric_basal_metabolic_rate">Tętno podstawowego metabolizmu</string>
     <string name="metric_steps">Kroki</string>
     <string name="metric_wheelchair_pushes">Pchanie wózka inwalidzkiego</string>
@@ -68,7 +68,7 @@
     <string name="hours_minutes_format">%1$dh %2$dm</string>
     <string name="minutes_format">%1$dm</string>
     <string name="label_steps">Kroki</string>
-    <string name="label_wheelchair_pushes">Pchania wózka inwalidzkiego</string>
+    <string name="label_wheelchair_pushes">Pchnięcia wózka inwalidzkiego</string>
     <string name="label_mindfulness">rozumność</string>
     <string name="label_elevation">Wysokość</string>
     <string name="label_floors">Poziomy</string>
@@ -142,8 +142,8 @@
     <string name="confirm">Potwierdź</string>
     <string name="search_ingredient">Wyszukaj składnik</string>
     <string name="search">Szukaj</string>
-    <string name="log_hydration">Zarejestruj nawodnienie</string>
-    <string name="log_meal">Zarejestruj posiłek</string>
+    <string name="log_hydration">Zapisz nawodnienie</string>
+    <string name="log_meal">Zapisz posiłek</string>
     <string name="metric_exercise_duration">Ćwiczenia</string>
     <string name="label_exercise">Ćwiczenia</string>
     <string name="label_workouts">Treningi</string>
