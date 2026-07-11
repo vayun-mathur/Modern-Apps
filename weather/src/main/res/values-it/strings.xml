@@ -12,4 +12,5 @@
     <string name="map_time">Tempo</string>
     <string name="map_back">Indietro</string>
     <string name="map_attribution">© OpenStreetMap · © CARTO</string>
+    <string name="weather_widget_description">Ora, data e meteo a colpo d\'occhio — tocca per le previsioni</string>
 </resources>
