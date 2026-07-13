@@ -926,7 +926,9 @@ fun MessageItem(
             Text(
                 text = if (showQuotes || quotedText.isEmpty()) (msg.body ?: "(No Content)") else mainText,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
             if (quotedText.isNotEmpty()) {
                 TextButton(

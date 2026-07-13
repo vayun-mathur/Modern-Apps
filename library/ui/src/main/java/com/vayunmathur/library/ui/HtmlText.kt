@@ -2,16 +2,11 @@ package com.vayunmathur.library.ui
 
 import android.view.ViewGroup
 import android.webkit.WebView
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 
 @Composable
@@ -27,95 +22,98 @@ fun HtmlText(html: String, modifier: Modifier = Modifier, blockRemoteImages: Boo
         "blockquote, .gmail_quote, .yahoo_quoted, .moz-cite-prefix, .gmail_extra { display: none !important; }"
     } else ""
 
-    // Let Compose own all scrolling: the WebView is sized to WRAP_CONTENT in both
-    // dimensions so it never scrolls internally. The outer LazyColumn handles vertical
-    // scrolling, and the horizontalScroll below handles wide content. The WebView lays
-    // out at its natural (arbitrary) width but is forced to at least fill the viewport
-    // so narrow/fluid emails still span the screen.
-    BoxWithConstraints(modifier) {
-        val minContentWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
-        Box(Modifier.horizontalScroll(rememberScrollState())) {
-            AndroidView(
-                factory = { context ->
-                    WebView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                        )
-                        isVerticalScrollBarEnabled = false
-                        isHorizontalScrollBarEnabled = false
-                        isScrollContainer = false
-                        overScrollMode = WebView.OVER_SCROLL_NEVER
-                        settings.javaScriptEnabled = true
-                        // Disable the WebView's own fit-to-width / pan / zoom behavior so
-                        // content renders at its natural width and Compose does the scrolling.
-                        settings.loadWithOverviewMode = false
-                        settings.useWideViewPort = false
-                        settings.builtInZoomControls = false
-                        settings.displayZoomControls = false
-                        // Privacy: don't load remote images (tracking pixels) unless asked.
-                        settings.blockNetworkImage = blockRemoteImages
-                        setBackgroundColor(backgroundColor.toArgb())
-                    }
-                },
-                update = { webView ->
-                    webView.minimumWidth = minContentWidthPx
-                    webView.settings.blockNetworkImage = blockRemoteImages
-                    if (isDark) {
-                        // In dark mode, use JavaScript to force all text to be light colored
-                        // and invert the entire page, then re-invert images
-                        val darkModeHtml = """
-                            <html>
-                            <head>
-                                <style>
-                                    body {
-                                        margin: 0;
-                                        padding: 8px;
-                                        background-color: $backgroundHex;
-                                        font-family: sans-serif;
-                                        font-size: 14px;
-                                        line-height: 1.5;
-                                        /* Invert everything, then we'll un-invert images */
-                                        filter: invert(1) hue-rotate(180deg);
-                                    }
-                                    img, video, iframe, svg {
-                                        /* Re-invert media elements */
-                                        filter: invert(1) hue-rotate(180deg) brightness(0.9);
-                                        max-width: 100%;
-                                        height: auto;
-                                    }
-                                    $quoteCss
-                                </style>
-                            </head>
-                            <body>$html</body>
-                            </html>
-                        """.trimIndent()
-                        webView.loadDataWithBaseURL(null, darkModeHtml, "text/html", "UTF-8", null)
-                    } else {
-                        val lightHtml = """
-                            <html>
-                            <head>
-                                <style>
-                                    body {
-                                        margin: 0;
-                                        padding: 8px;
-                                        color: $textHex;
-                                        background-color: $backgroundHex;
-                                        font-family: sans-serif;
-                                        font-size: 14px;
-                                        line-height: 1.5;
-                                    }
-                                    img { max-width: 100%; height: auto; }
-                                    $quoteCss
-                                </style>
-                            </head>
-                            <body>$html</body>
-                            </html>
-                        """.trimIndent()
-                        webView.loadDataWithBaseURL(null, lightHtml, "text/html", "UTF-8", null)
-                    }
-                }
-            )
-        }
-    }
+    // Sizing model: the WebView fills the available width (MATCH_PARENT) and wraps its
+    // content height (WRAP_CONTENT), so the outer LazyColumn owns vertical scrolling.
+    // Combined with useWideViewPort = true and the injected width=device-width viewport
+    // meta, the layout viewport equals the WebView's own width, so content reflows to the
+    // screen. The CSS below (box-sizing: border-box; max-width: 100% on media/tables) keeps
+    // width:100% elements and wide media from spilling a few pixels past the edge, so
+    // everything fits without horizontal scrolling.
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            WebView(context).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+                isVerticalScrollBarEnabled = false
+                settings.javaScriptEnabled = true
+                // Honor the injected width=device-width viewport (below) instead of the
+                // WebView's default wide viewport, so content reflows to the screen width.
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = false
+                settings.builtInZoomControls = false
+                settings.displayZoomControls = false
+                // Privacy: don't load remote images (tracking pixels) unless asked.
+                settings.blockNetworkImage = blockRemoteImages
+                setBackgroundColor(backgroundColor.toArgb())
+            }
+        },
+        update = { webView ->
+            webView.settings.blockNetworkImage = blockRemoteImages
+            if (isDark) {
+                // In dark mode, invert the whole page to get light text on a dark
+                // background, then re-invert media so images/video look correct.
+                val darkModeHtml = """
+                    <html>
+                    <head>
+                        <meta name="viewport" content="width=device-width, initial-scale=1">
+                        <style>
+                            * { box-sizing: border-box; }
+                            html, body { max-width: 100%; }
+                            body {
+                                margin: 0;
+                                padding: 8px;
+                                background-color: $backgroundHex;
+                                font-family: sans-serif;
+                                font-size: 14px;
+                                line-height: 1.5;
+                                word-wrap: break-word;
+                                overflow-wrap: break-word;
+                                filter: invert(1) hue-rotate(180deg);
+                            }
+                            img, video, iframe, svg, table { max-width: 100% !important; }
+                            img, video, iframe, svg {
+                                filter: invert(1) hue-rotate(180deg) brightness(0.9);
+                                height: auto;
+                            }
+                            $quoteCss
+                        </style>
+                    </head>
+                    <body>$html</body>
+                    </html>
+                """.trimIndent()
+                webView.loadDataWithBaseURL(null, darkModeHtml, "text/html", "UTF-8", null)
+            } else {
+                val lightHtml = """
+                    <html>
+                    <head>
+                        <meta name="viewport" content="width=device-width, initial-scale=1">
+                        <style>
+                            * { box-sizing: border-box; }
+                            html, body { max-width: 100%; }
+                            body {
+                                margin: 0;
+                                padding: 8px;
+                                color: $textHex;
+                                background-color: $backgroundHex;
+                                font-family: sans-serif;
+                                font-size: 14px;
+                                line-height: 1.5;
+                                word-wrap: break-word;
+                                overflow-wrap: break-word;
+                            }
+                            img, table { max-width: 100% !important; }
+                            img { height: auto; }
+                            $quoteCss
+                        </style>
+                    </head>
+                    <body>$html</body>
+                    </html>
+                """.trimIndent()
+                webView.loadDataWithBaseURL(null, lightHtml, "text/html", "UTF-8", null)
+            }
+        },
+    )
 }
