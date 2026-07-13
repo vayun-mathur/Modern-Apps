@@ -31,6 +31,25 @@ fun createDeck(): List<Card> =
 fun createShuffledDeck(seed: Long = System.currentTimeMillis()): List<Card> =
     createDeck().shuffled(java.util.Random(seed))
 
+/**
+ * Builds a 104-card Spider deck for the given [suitCount] (1, 2, or 4), then
+ * shuffles it. Fewer suits = easier: 1 suit uses 8 copies of each rank in one
+ * suit, 2 suits use 4 copies across two suits, 4 suits use 2 full decks.
+ */
+fun createSpiderDeck(suitCount: Int, seed: Long = System.currentTimeMillis()): List<Card> {
+    val suits = when (suitCount) {
+        1 -> listOf(Suit.SPADES)
+        2 -> listOf(Suit.SPADES, Suit.HEARTS)
+        else -> Suit.entries.toList()
+    }
+    val copiesPerSuit = 104 / (suits.size * Rank.entries.size)
+    val cards = mutableListOf<Card>()
+    repeat(copiesPerSuit) {
+        for (suit in suits) for (rank in Rank.entries) cards.add(Card(suit, rank))
+    }
+    return cards.shuffled(java.util.Random(seed))
+}
+
 fun Card.isOneHigherThan(other: Card): Boolean =
     rank.value == other.rank.value + 1
 

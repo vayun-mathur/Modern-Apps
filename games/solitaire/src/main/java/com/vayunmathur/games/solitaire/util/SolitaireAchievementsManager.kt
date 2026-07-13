@@ -14,7 +14,7 @@ class SolitaireAchievementsManager(
         val totalWins = statsRepository.getTotalGamesWon()
         if (totalWins > 0) onAchievementUnlocked("first_win")
         for (mode in GameMode.entries) {
-            val stats = statsRepository.getStats(mode)
+            val stats = statsRepository.getModeStats(mode)
             if (stats.gamesWon > 0) {
                 when (mode) {
                     GameMode.KLONDIKE -> onAchievementUnlocked("klondike_first")

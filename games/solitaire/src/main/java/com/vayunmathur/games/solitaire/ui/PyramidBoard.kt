@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,7 +42,6 @@ fun PyramidBoard(state: PyramidState, viewModel: SolitaireViewModel, modifier: M
                     row.forEachIndexed { c, card ->
                         if (card != null) {
                             val id = "pyr_${r}_$c"
-                            val exposed = isExposed(state, r, c)
                             val xOffset = cardWidth * (c + 3f - r / 2f)
                             val yOffset = verticalStep * r
                             Box(
@@ -52,7 +49,6 @@ fun PyramidBoard(state: PyramidState, viewModel: SolitaireViewModel, modifier: M
                             ) {
                                 SelectableCard(
                                     selected = state.selectedId == id,
-                                    enabled = exposed,
                                     onClick = { viewModel.pyramidTapCard(id) },
                                     cardWidth = cardWidth,
                                     cardHeight = cardHeight
@@ -72,8 +68,9 @@ fun PyramidBoard(state: PyramidState, viewModel: SolitaireViewModel, modifier: M
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Stock: deal one card to the waste, or recycle when empty.
-                val canRecycle = state.passesRemaining > 0 && state.waste.isNotEmpty()
+                // Stock: deal one card to the waste, or recycle when empty
+                // (recycling only in Relaxed mode).
+                val canRecycle = state.relaxed && state.waste.isNotEmpty()
                 if (state.stock.isNotEmpty()) {
                     CardBack(
                         modifier = Modifier.clickable { viewModel.pyramidDealStock() },
@@ -94,7 +91,6 @@ fun PyramidBoard(state: PyramidState, viewModel: SolitaireViewModel, modifier: M
                 if (wasteTop != null) {
                     SelectableCard(
                         selected = state.selectedId == "waste",
-                        enabled = true,
                         onClick = { viewModel.pyramidTapCard("waste") },
                         cardWidth = cardWidth,
                         cardHeight = cardHeight
@@ -104,24 +100,15 @@ fun PyramidBoard(state: PyramidState, viewModel: SolitaireViewModel, modifier: M
                 } else {
                     EmptySlot(cardWidth = cardWidth, cardHeight = cardHeight)
                 }
-
-                Spacer(Modifier.width(8.dp))
-
-                Text(
-                    "Recycles left: ${state.passesRemaining}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
             }
         }
     }
 }
 
-/** A card that can be tapped; shows a highlight border when [selected] and is
- * dimmed via a disabled click when not [enabled]. */
+/** A tappable card that shows a highlight border when [selected]. */
 @Composable
 private fun SelectableCard(
     selected: Boolean,
-    enabled: Boolean,
     onClick: () -> Unit,
     cardWidth: androidx.compose.ui.unit.Dp,
     cardHeight: androidx.compose.ui.unit.Dp,
@@ -132,16 +119,9 @@ private fun SelectableCard(
     var m = Modifier
         .width(cardWidth)
         .height(cardHeight)
-        .clickable(enabled = enabled, onClick = onClick)
+        .clickable(onClick = onClick)
     if (selected) {
         m = m.border(3.dp, SelectionColor, RoundedCornerShape(corner))
     }
     Box(m) { content() }
-}
-
-private fun isExposed(state: PyramidState, row: Int, col: Int): Boolean {
-    if (state.pyramid[row][col] == null) return false
-    if (row == state.pyramid.lastIndex) return true
-    val below = state.pyramid[row + 1]
-    return below[col] == null && below[col + 1] == null
 }

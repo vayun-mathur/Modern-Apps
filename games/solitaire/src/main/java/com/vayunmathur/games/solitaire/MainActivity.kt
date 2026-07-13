@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -23,6 +25,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,7 +46,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.games.solitaire.data.DrawMode
+import com.vayunmathur.games.solitaire.data.GameConfig
 import com.vayunmathur.games.solitaire.data.GameMode
+import com.vayunmathur.games.solitaire.data.KlondikeDifficulty
 import com.vayunmathur.games.solitaire.ui.FreeCellBoard
 import com.vayunmathur.games.solitaire.ui.GameActionBar
 import com.vayunmathur.games.solitaire.ui.KlondikeBoard
@@ -128,7 +135,16 @@ fun Navigation(viewModel: SolitaireViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(backStack: NavBackStack<Route>, viewModel: SolitaireViewModel) {
-    var showModeDialog by remember { mutableStateOf(false) }
+    var showGamePicker by remember { mutableStateOf(false) }
+    var configMode by remember { mutableStateOf<GameMode?>(null) }
+
+    val startGame = { mode: GameMode, config: GameConfig ->
+        showGamePicker = false
+        configMode = null
+        if (viewModel.hasActiveGame()) viewModel.giveUp()
+        viewModel.selectMode(mode, config)
+        backStack.add(Route.Game(mode))
+    }
 
     Scaffold(topBar = {
         TopAppBar(
@@ -162,7 +178,7 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: SolitaireViewModel) {
 
             Button(
                 onClick = {
-                    showModeDialog = true
+                    showGamePicker = true
                 },
                 Modifier.fillMaxWidth()
             ) {
@@ -216,42 +232,136 @@ fun HomeScreen(backStack: NavBackStack<Route>, viewModel: SolitaireViewModel) {
         }
     }
 
-    if (showModeDialog) {
-        val startGame = { mode: GameMode, draw: DrawMode ->
-            showModeDialog = false
-            if (viewModel.hasActiveGame()) viewModel.giveUp()
-            viewModel.selectMode(mode, draw)
-            backStack.add(Route.Game(mode))
-        }
+    if (showGamePicker) {
         AlertDialog(
-            onDismissRequest = { showModeDialog = false },
+            onDismissRequest = { showGamePicker = false },
             title = { Text(stringResource(R.string.select_mode)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { startGame(GameMode.KLONDIKE, DrawMode.DRAW_ONE) }, Modifier.fillMaxWidth()) {
-                        Text("${stringResource(R.string.klondike)} — ${stringResource(R.string.draw_one)}")
-                    }
-                    Button(onClick = { startGame(GameMode.KLONDIKE, DrawMode.DRAW_THREE) }, Modifier.fillMaxWidth()) {
-                        Text("${stringResource(R.string.klondike)} — ${stringResource(R.string.draw_three)}")
-                    }
-                    Button(onClick = { startGame(GameMode.SPIDER, DrawMode.DRAW_ONE) }, Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.spider))
-                    }
-                    Button(onClick = { startGame(GameMode.FREECELL, DrawMode.DRAW_ONE) }, Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.freecell))
-                    }
-                    Button(onClick = { startGame(GameMode.PYRAMID, DrawMode.DRAW_ONE) }, Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.pyramid))
+                    GameMode.entries.forEach { mode ->
+                        Button(
+                            onClick = {
+                                // FreeCell has no options — start immediately.
+                                if (mode == GameMode.FREECELL) startGame(mode, GameConfig())
+                                else { showGamePicker = false; configMode = mode }
+                            },
+                            Modifier.fillMaxWidth()
+                        ) {
+                            Text(mode.displayName())
+                        }
                     }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showModeDialog = false }) {
+                TextButton(onClick = { showGamePicker = false }) {
                     Text(stringResource(R.string.back))
                 }
             }
         )
+    }
+
+    configMode?.let { mode ->
+        GameConfigDialog(
+            mode = mode,
+            onStart = { config -> startGame(mode, config) },
+            onDismiss = { configMode = null }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GameConfigDialog(mode: GameMode, onStart: (GameConfig) -> Unit, onDismiss: () -> Unit) {
+    var drawMode by remember { mutableStateOf(DrawMode.DRAW_ONE) }
+    var klondikeDifficulty by remember { mutableStateOf(KlondikeDifficulty.REGULAR) }
+    var relaxed by remember { mutableStateOf(false) }
+    var spiderSuits by remember { mutableStateOf(4) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(mode.displayName()) },
+        text = {
+            Column(
+                Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when (mode) {
+                    GameMode.KLONDIKE -> {
+                        SingleChoiceSegmentedButtonRow {
+                            listOf(
+                                DrawMode.DRAW_ONE to R.string.draw_one,
+                                DrawMode.DRAW_THREE to R.string.draw_three
+                            ).forEachIndexed { idx, (value, label) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(idx, 2),
+                                    onClick = { drawMode = value },
+                                    selected = drawMode == value
+                                ) { Text(stringResource(label)) }
+                            }
+                        }
+                        SingleChoiceSegmentedButtonRow {
+                            listOf(
+                                KlondikeDifficulty.RELAXED to R.string.mode_relaxed,
+                                KlondikeDifficulty.REGULAR to R.string.difficulty_regular,
+                                KlondikeDifficulty.HARD to R.string.difficulty_hard
+                            ).forEachIndexed { idx, (value, label) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(idx, 3),
+                                    onClick = { klondikeDifficulty = value },
+                                    selected = klondikeDifficulty == value
+                                ) { Text(stringResource(label)) }
+                            }
+                        }
+                    }
+                    GameMode.SPIDER -> {
+                        SingleChoiceSegmentedButtonRow {
+                            listOf(
+                                1 to R.string.difficulty_easy,
+                                2 to R.string.difficulty_medium,
+                                4 to R.string.difficulty_hard
+                            ).forEachIndexed { idx, (value, label) ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(idx, 3),
+                                    onClick = { spiderSuits = value },
+                                    selected = spiderSuits == value
+                                ) { Text(stringResource(label)) }
+                            }
+                        }
+                    }
+                    GameMode.PYRAMID -> DifficultyRow(relaxed) { relaxed = it }
+                    GameMode.FREECELL -> {}
+                }
+                Button(
+                    onClick = { onStart(GameConfig(drawMode = drawMode, klondikeDifficulty = klondikeDifficulty, relaxed = relaxed, spiderSuits = spiderSuits)) },
+                    Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.new_game))
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.back)) }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DifficultyRow(relaxed: Boolean, onChange: (Boolean) -> Unit) {
+    SingleChoiceSegmentedButtonRow {
+        listOf(
+            false to R.string.mode_original,
+            true to R.string.mode_relaxed
+        ).forEachIndexed { idx, (value, label) ->
+            SegmentedButton(
+                shape = SegmentedButtonDefaults.itemShape(idx, 2),
+                onClick = { onChange(value) },
+                selected = relaxed == value
+            ) { Text(stringResource(label)) }
+        }
     }
 }
 
@@ -377,8 +487,7 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: SolitaireViewModel, mo
                     elapsedSeconds = elapsed,
                     moveCount = moveCount,
                     onNewGame = {
-                        val drawMode = uiState.klondike?.drawMode ?: DrawMode.DRAW_ONE
-                        viewModel.selectMode(mode, drawMode)
+                        viewModel.selectMode(mode, viewModel.currentConfig())
                     },
                     onBack = { backStack.pop() }
                 )

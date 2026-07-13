@@ -21,4 +21,10 @@
     <string name="you_won">You Won!</string>
     <string name="back">Back</string>
     <string name="select_mode">Select Mode</string>
+    <string name="mode_original">Original</string>
+    <string name="mode_relaxed">Relaxed</string>
+    <string name="difficulty_easy">Easy</string>
+    <string name="difficulty_medium">Medium</string>
+    <string name="difficulty_hard">Hard</string>
+    <string name="difficulty_regular">Regular</string>
 </resources>
