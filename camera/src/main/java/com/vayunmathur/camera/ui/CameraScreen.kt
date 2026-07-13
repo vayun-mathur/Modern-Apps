@@ -77,6 +77,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
@@ -217,6 +218,10 @@ fun CameraScreen(
     val isCapturing by viewModel.isCapturing.collectAsState()
     val burstActive by viewModel.burstActive.collectAsState()
     val burstCount by viewModel.burstCount.collectAsState()
+    val focusLocked by viewModel.focusLocked.collectAsState()
+    val recordingPaused by viewModel.recordingPaused.collectAsState()
+    val micMuted by viewModel.micMuted.collectAsState()
+    val videoSnapshotSupported by viewModel.videoSnapshotSupported.collectAsState()
     val lastCaptureUri by viewModel.lastCaptureUri.collectAsState()
     val gridEnabled by viewModel.gridEnabled.collectAsState()
     val levelEnabled by viewModel.levelEnabled.collectAsState()
@@ -432,6 +437,35 @@ fun CameraScreen(
         AspectRatioOption.RATIO_1_1 -> 1f
     }
 
+    // The shutter action, shared by the on-screen button and the volume-key (hardware) shutter.
+    val performCapture: () -> Unit = {
+        view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+        if (longExposureProgress <= 0f) when {
+            cameraMode == CameraMode.PHOTOSPHERE -> {
+                if (panoSweeping) viewModel.stopPhotosphere() else viewModel.startPhotosphere()
+            }
+            cameraMode == CameraMode.PANORAMA -> {
+                if (panoSweeping) viewModel.stopPanorama() else viewModel.startPanorama()
+            }
+            isSloMo && highSpeedActive -> viewModel.toggleHighSpeedRecording()
+            isPhotoType -> {
+                if (onCaptureResult != null) {
+                    viewModel.capturePhotoForResult(
+                        onSaved = { thumbnail -> onCaptureResult(thumbnail) },
+                        onError = { /* stay in camera so the user can retry */ }
+                    )
+                } else {
+                    viewModel.takePhoto()
+                }
+            }
+            else -> viewModel.toggleRecording()
+        }
+    }
+    val currentCapture by rememberUpdatedState(performCapture)
+    LaunchedEffect(Unit) {
+        viewModel.shutterEvents.collect { currentCapture() }
+    }
+
     Scaffold(
         containerColor = Color.Black
     ) { padding ->
@@ -442,7 +476,10 @@ fun CameraScreen(
                     torchEnabled = torchEnabled,
                     gridEnabled = gridEnabled,
                     levelEnabled = levelEnabled,
+                    aspectRatio = aspectRatio,
                     isPhotoType = isPhotoType,
+                    isVideoType = isVideoType,
+                    micMuted = micMuted,
                     timerDuration = timerDuration,
                     onFlashToggle = {
                         if (torchEnabled) {
@@ -459,6 +496,8 @@ fun CameraScreen(
                     onTorchToggle = { viewModel.toggleTorch() },
                     onGridToggle = { viewModel.toggleGrid() },
                     onLevelToggle = { viewModel.toggleLevel() },
+                    onAspectCycle = { viewModel.cycleAspectRatio() },
+                    onMicToggle = { viewModel.toggleMicMuted() },
                     onTimerCycle = {
                         val next = when (timerDuration) {
                             TimerDuration.NONE -> TimerDuration.THREE
@@ -522,20 +561,32 @@ fun CameraScreen(
                                 }
                             )
                             .pointerInput(activeSetting) {
-                                detectTapGestures { tapOffset ->
-                                    // Manual focus bar open → suppress tap-to-focus.
-                                    if (activeSetting == CameraSetting.FOCUS) return@detectTapGestures
-                                    val request = surfaceRequest ?: return@detectTapGestures
+                                fun meteringPoint(tapOffset: Offset) = surfaceRequest?.let { request ->
                                     val transformed = with(coordinateTransformer) { tapOffset.transform() }
                                     val factory = SurfaceOrientedMeteringPointFactory(
                                         request.resolution.width.toFloat(),
                                         request.resolution.height.toFloat()
                                     )
-                                    val point = factory.createPoint(transformed.x, transformed.y)
-                                    viewModel.startFocusAndMetering(
-                                        FocusMeteringAction.Builder(point).build()
-                                    )
+                                    factory.createPoint(transformed.x, transformed.y)
                                 }
+                                detectTapGestures(
+                                    onTap = { tapOffset ->
+                                        // Manual focus bar open → suppress tap-to-focus.
+                                        if (activeSetting == CameraSetting.FOCUS) return@detectTapGestures
+                                        val point = meteringPoint(tapOffset) ?: return@detectTapGestures
+                                        viewModel.startFocusAndMetering(
+                                            FocusMeteringAction.Builder(point).build()
+                                        )
+                                    },
+                                    onLongPress = { tapOffset ->
+                                        // Long-press locks AE/AF at the point until the next tap.
+                                        if (activeSetting == CameraSetting.FOCUS) return@detectTapGestures
+                                        val point = meteringPoint(tapOffset) ?: return@detectTapGestures
+                                        viewModel.lockFocusAndMetering(
+                                            FocusMeteringAction.Builder(point).disableAutoCancel().build()
+                                        )
+                                    }
+                                )
                             }
                             .pointerInput(Unit) {
                                 detectTransformGestures { _, _, zoom, _ ->
@@ -695,35 +746,15 @@ fun CameraScreen(
                     cameraMode = cameraMode,
                     isRecording = isRecording,
                     isCapturing = isCapturing,
+                    recordingPaused = recordingPaused,
+                    videoSnapshotSupported = videoSnapshotSupported,
                     galleryBitmap = galleryBitmap,
                     burstEnabled = cameraMode == CameraMode.PHOTO && onCaptureResult == null,
                     onBurstStart = { viewModel.startBurst() },
                     onBurstStop = { viewModel.stopBurst() },
-                    onCapture = {
-                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                        if (longExposureProgress <= 0f) when {
-                            cameraMode == CameraMode.PHOTOSPHERE -> {
-                                if (panoSweeping) viewModel.stopPhotosphere()
-                                else viewModel.startPhotosphere()
-                            }
-                            cameraMode == CameraMode.PANORAMA -> {
-                                if (panoSweeping) viewModel.stopPanorama()
-                                else viewModel.startPanorama()
-                            }
-                            isSloMo && highSpeedActive -> viewModel.toggleHighSpeedRecording()
-                            isPhotoType -> {
-                                if (onCaptureResult != null) {
-                                    viewModel.capturePhotoForResult(
-                                        onSaved = { thumbnail -> onCaptureResult(thumbnail) },
-                                        onError = { /* stay in camera so the user can retry */ }
-                                    )
-                                } else {
-                                    viewModel.takePhoto()
-                                }
-                            }
-                            else -> viewModel.toggleRecording()
-                        }
-                    },
+                    onCapture = performCapture,
+                    onPauseResume = { viewModel.togglePauseRecording() },
+                    onSnapshot = { viewModel.captureVideoSnapshot() },
                     onFlipCamera = { viewModel.flipCamera() },
                     onGallery = {
                         val intent = lastCaptureUri?.let { uri ->
@@ -794,6 +825,20 @@ fun CameraScreen(
                     )
                 }
             }
+
+            if (focusLocked && !isRecording) {
+                Text(
+                    text = stringResource(R.string.ae_af_lock),
+                    color = Color(0xFFFFD54F),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 100.dp)
+                        .background(Color(0xCC000000), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
         }
     }
 }
@@ -805,12 +850,17 @@ private fun TopBar(
     torchEnabled: Boolean,
     gridEnabled: Boolean,
     levelEnabled: Boolean,
+    aspectRatio: AspectRatioOption,
     isPhotoType: Boolean,
+    isVideoType: Boolean,
+    micMuted: Boolean,
     timerDuration: TimerDuration,
     onFlashToggle: () -> Unit,
     onTorchToggle: () -> Unit,
     onGridToggle: () -> Unit,
     onLevelToggle: () -> Unit,
+    onAspectCycle: () -> Unit,
+    onMicToggle: () -> Unit,
     onTimerCycle: () -> Unit,
     iconRotation: Float
 ) {
@@ -867,6 +917,25 @@ private fun TopBar(
             )
         }
 
+        Spacer(Modifier.width(4.dp))
+
+        val aspectIcon = when (aspectRatio) {
+            AspectRatioOption.RATIO_1_1 -> R.drawable.ratio_1_1
+            AspectRatioOption.RATIO_4_3 -> R.drawable.ratio_4_3
+            AspectRatioOption.RATIO_16_9 -> R.drawable.ratio_16_9
+        }
+        IconButton(
+            onClick = onAspectCycle,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                painterResource(aspectIcon),
+                contentDescription = stringResource(R.string.settings_aspect_ratio),
+                tint = Color.White,
+                modifier = Modifier.size(22.dp).rotate(iconRotation)
+            )
+        }
+
         if (isPhotoType) {
             Spacer(Modifier.width(4.dp))
 
@@ -918,6 +987,25 @@ private fun TopBar(
                         Text(timerLabel, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, lineHeight = 10.sp)
                     }
                 }
+            }
+        }
+
+        if (isVideoType) {
+            Spacer(Modifier.width(4.dp))
+
+            val micBg = if (micMuted) Color(0xFF3C3C3C) else Color.Transparent
+            IconButton(
+                onClick = onMicToggle,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(micBg, CircleShape)
+            ) {
+                Icon(
+                    painterResource(if (micMuted) R.drawable.mic_off_24px else R.drawable.mic_24px),
+                    contentDescription = stringResource(R.string.mic),
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp).rotate(iconRotation)
+                )
             }
         }
     }
@@ -1156,11 +1244,15 @@ private fun ShutterRow(
     cameraMode: CameraMode,
     isRecording: Boolean,
     isCapturing: Boolean,
+    recordingPaused: Boolean,
+    videoSnapshotSupported: Boolean,
     galleryBitmap: android.graphics.Bitmap?,
     burstEnabled: Boolean,
     onBurstStart: () -> Unit,
     onBurstStop: () -> Unit,
     onCapture: () -> Unit,
+    onPauseResume: () -> Unit,
+    onSnapshot: () -> Unit,
     onFlipCamera: () -> Unit,
     onGallery: () -> Unit,
     iconRotation: Float
@@ -1181,28 +1273,46 @@ private fun ShutterRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF3C3C3C))
-                .clickable(onClick = onGallery),
-            contentAlignment = Alignment.Center
-        ) {
-            if (galleryBitmap != null) {
-                Image(
-                    bitmap = galleryBitmap.asImageBitmap(),
-                    contentDescription = stringResource(R.string.open_gallery),
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
-                )
-            } else {
+        // Left slot: pause/resume while recording, otherwise the gallery thumbnail.
+        if (isRecording) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFF3C3C3C), CircleShape)
+                    .clickable(onClick = onPauseResume),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
-                    painterResource(R.drawable.ic_photo_library),
-                    contentDescription = stringResource(R.string.open_gallery),
+                    painterResource(if (recordingPaused) R.drawable.play_arrow_24px else R.drawable.pause_24px),
+                    contentDescription = stringResource(if (recordingPaused) R.string.resume_recording else R.string.pause_recording),
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp).rotate(iconRotation)
                 )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF3C3C3C))
+                    .clickable(onClick = onGallery),
+                contentAlignment = Alignment.Center
+            ) {
+                if (galleryBitmap != null) {
+                    Image(
+                        bitmap = galleryBitmap.asImageBitmap(),
+                        contentDescription = stringResource(R.string.open_gallery),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                    )
+                } else {
+                    Icon(
+                        painterResource(R.drawable.ic_photo_library),
+                        contentDescription = stringResource(R.string.open_gallery),
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
 
@@ -1248,19 +1358,41 @@ private fun ShutterRow(
             )
         }
 
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(Color(0xFF3C3C3C), CircleShape)
-                .clickable(onClick = onFlipCamera),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painterResource(R.drawable.flip_camera_android_24px),
-                contentDescription = stringResource(R.string.flip_camera),
-                tint = Color.White,
-                modifier = Modifier.size(24.dp).rotate(iconRotation)
-            )
+        // Right slot: video snapshot while recording (if supported), otherwise flip camera.
+        if (isRecording) {
+            if (videoSnapshotSupported) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color.White, CircleShape)
+                        .clickable(onClick = onSnapshot),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painterResource(R.drawable.photo_camera_24px),
+                        contentDescription = stringResource(R.string.capture),
+                        tint = Color.Black,
+                        modifier = Modifier.size(24.dp).rotate(iconRotation)
+                    )
+                }
+            } else {
+                Spacer(Modifier.size(48.dp))
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFF3C3C3C), CircleShape)
+                    .clickable(onClick = onFlipCamera),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painterResource(R.drawable.flip_camera_android_24px),
+                    contentDescription = stringResource(R.string.flip_camera),
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp).rotate(iconRotation)
+                )
+            }
         }
     }
 }

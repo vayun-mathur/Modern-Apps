@@ -55,6 +55,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -378,6 +379,30 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _photoSessionActive = MutableStateFlow(false)
     val photoSessionActive = _photoSessionActive.asStateFlow()
 
+    // AE/AF lock (long-press-to-lock on the preview).
+    private val _focusLocked = MutableStateFlow(false)
+    val focusLocked = _focusLocked.asStateFlow()
+
+    // Video recording paused (between pause() and resume()).
+    private val _recordingPaused = MutableStateFlow(false)
+    val recordingPaused = _recordingPaused.asStateFlow()
+
+    // Mic mute for video (persisted). Applied live to the active recording.
+    private val _micMuted = MutableStateFlow(false)
+    val micMuted = _micMuted.asStateFlow()
+
+    // True when an ImageCapture is bound alongside the video session (in-recording snapshots).
+    private val _videoSnapshotSupported = MutableStateFlow(false)
+    val videoSnapshotSupported = _videoSnapshotSupported.asStateFlow()
+
+    // Hardware-shutter (volume key) events, collected by the UI to run the same capture action.
+    private val _shutterEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val shutterEvents = _shutterEvents.asSharedFlow()
+
+    fun triggerShutter() {
+        _shutterEvents.tryEmit(Unit)
+    }
+
     // Burst mode (press-and-hold shutter): fires single-frame captures back-to-back with only one
     // in flight at a time, up to BURST_MAX, until the user releases (stopBurst).
     private val _burstActive = MutableStateFlow(false)
@@ -439,6 +464,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         ds.getString("camera_last_capture")?.let { _lastCaptureUri.value = Uri.parse(it) }
         ds.getString("camera_grid")?.let { _gridEnabled.value = it.toBoolean() }
         ds.getString("camera_level")?.let { _levelEnabled.value = it.toBoolean() }
+        ds.getString("camera_mic_muted")?.let { _micMuted.value = it.toBoolean() }
         if (_levelEnabled.value) registerLevelSensor()
     }
 
@@ -459,6 +485,17 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setAspectRatio(ratio: AspectRatioOption) {
         _aspectRatio.value = ratio
         viewModelScope.launch { ds.setString("camera_aspect_ratio", ratio.name) }
+    }
+
+    /** Cycles the aspect ratio 4:3 → 16:9 → 1:1 → 4:3 (top-bar icon). */
+    fun cycleAspectRatio() {
+        val order = listOf(
+            AspectRatioOption.RATIO_4_3,
+            AspectRatioOption.RATIO_16_9,
+            AspectRatioOption.RATIO_1_1
+        )
+        val next = order[(order.indexOf(_aspectRatio.value) + 1) % order.size]
+        setAspectRatio(next)
     }
 
     fun setLocationEnabled(enabled: Boolean) {
@@ -976,7 +1013,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             owner.start()
             sessionLifecycleOwner = owner
 
-            fun bind(av1: Boolean, opus: Boolean, hlg: Boolean): Camera {
+            fun bind(av1: Boolean, opus: Boolean, hlg: Boolean, snapshot: Boolean): Camera {
                 val dynamicRange = if (hlg) androidx.camera.core.DynamicRange.HLG_10_BIT
                     else androidx.camera.core.DynamicRange.SDR
                 val previewBuilder = Preview.Builder()
@@ -996,17 +1033,43 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 capture.targetRotation = targetRotation
                 videoCapture = capture
                 recordingWithAv1 = av1
-                return provider.bindToLifecycle(owner, selector, preview, capture)
+                return if (snapshot) {
+                    // Extra ImageCapture use case enables taking a still while recording (SDR JPEG).
+                    val still = ImageCapture.Builder()
+                        .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+                        .setTargetRotation(targetRotation)
+                        .build()
+                    imageCapture = still
+                    provider.bindToLifecycle(owner, selector, preview, capture, still)
+                } else {
+                    imageCapture = null
+                    provider.bindToLifecycle(owner, selector, preview, capture)
+                }
             }
 
-            boundCamera = try {
-                bind(useAv1, useOpus, hlgSupported)
-            } catch (e: Exception) {
-                if (!useAv1 && !useOpus && !hlgSupported) throw e
-                Log.w("VideoSession", "HDR/AV1/Opus session failed to bind; falling back to SDR defaults", e)
-                provider.unbindAll()
-                bind(av1 = false, opus = false, hlg = false)
+            // Bind ladder: prefer HDR + snapshot, then drop the snapshot use case, then drop HDR.
+            val attempts = buildList {
+                add(hlgSupported to true)
+                add(hlgSupported to false)
+                if (hlgSupported) {
+                    add(false to true)
+                    add(false to false)
+                }
             }
+            var bound: Camera? = null
+            var lastError: Exception? = null
+            for ((hlg, snapshot) in attempts) {
+                try {
+                    provider.unbindAll()
+                    bound = bind(useAv1, useOpus, hlg, snapshot)
+                    break
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.w("VideoSession", "Video bind failed (hlg=$hlg, snapshot=$snapshot); trying next", e)
+                }
+            }
+            boundCamera = bound ?: throw (lastError ?: IllegalStateException("Video session bind failed"))
+            _videoSnapshotSupported.value = imageCapture != null
 
             boundCamera?.cameraInfo?.zoomState?.value?.let {
                 updateZoomLevels(it.minZoomRatio, it.maxZoomRatio)
@@ -1117,6 +1180,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         _photoSessionActive.value = false
         _highSpeedActive.value = false
         _videoSessionActive.value = false
+        _videoSnapshotSupported.value = false
+        _focusLocked.value = false
         resetNightModeDetection()
         resetManualControls()
         clearMotionFrames()
@@ -1125,7 +1190,24 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     // --- Unified manual session control wiring (targets the single bound camera) ---
 
     fun startFocusAndMetering(action: FocusMeteringAction) {
+        // A fresh tap clears any existing AE/AF lock.
+        _focusLocked.value = false
         boundCamera?.cameraControl?.startFocusAndMetering(action)
+    }
+
+    /**
+     * Locks focus + exposure at the metered point by disabling auto-cancel, so 3A stays put until
+     * the user taps again (long-press-to-lock). Sets [focusLocked] for the on-screen indicator.
+     */
+    fun lockFocusAndMetering(action: FocusMeteringAction) {
+        val cam = boundCamera ?: return
+        cam.cameraControl.startFocusAndMetering(action)
+        _focusLocked.value = true
+    }
+
+    fun clearFocusLock() {
+        boundCamera?.cameraControl?.cancelFocusAndMetering()
+        _focusLocked.value = false
     }
 
     fun enableTorch(enabled: Boolean) {
@@ -1162,17 +1244,19 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun startRecordingTimer() {
         _isRecording.value = true
+        _recordingPaused.value = false
         _recordingDurationSec.value = 0
         recordingTimerJob = viewModelScope.launch {
             while (true) {
                 delay(1000)
-                _recordingDurationSec.value += 1
+                if (!_recordingPaused.value) _recordingDurationSec.value += 1
             }
         }
     }
 
     private fun stopRecordingTimer() {
         _isRecording.value = false
+        _recordingPaused.value = false
         recordingTimerJob?.cancel()
         _recordingDurationSec.value = 0
     }
@@ -1881,7 +1965,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         startRecordingTimer()
 
         var pending = capture.output.prepareRecording(app, outputOptions)
-        if (recordingMode == CameraMode.VIDEO || recordingMode == CameraMode.CINEMATIC) {
+        val audioEnabled = recordingMode == CameraMode.VIDEO || recordingMode == CameraMode.CINEMATIC
+        if (audioEnabled) {
             pending = pending.withAudioEnabled()
         }
         currentRecording = pending.start(ContextCompat.getMainExecutor(app)) { event ->
@@ -1913,6 +1998,71 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
         }
+        // Apply the current mic-mute state to the freshly-started recording.
+        if (audioEnabled) {
+            try {
+                currentRecording?.mute(_micMuted.value)
+            } catch (e: Exception) {
+                Log.w("CameraViewModel", "Failed to apply initial mic mute", e)
+            }
+        }
+    }
+
+    /** Pauses or resumes the active recording (video/cinematic). No-op if not recording. */
+    fun togglePauseRecording() {
+        val recording = currentRecording ?: return
+        try {
+            if (_recordingPaused.value) {
+                recording.resume()
+                _recordingPaused.value = false
+            } else {
+                recording.pause()
+                _recordingPaused.value = true
+            }
+        } catch (e: Exception) {
+            Log.w("CameraViewModel", "Failed to pause/resume recording", e)
+        }
+    }
+
+    /** Toggles mic mute; applies live to the active recording. Persisted for the next session. */
+    fun toggleMicMuted() {
+        _micMuted.value = !_micMuted.value
+        try {
+            currentRecording?.mute(_micMuted.value)
+        } catch (e: Exception) {
+            Log.w("CameraViewModel", "Failed to toggle mic mute", e)
+        }
+        viewModelScope.launch { ds.setString("camera_mic_muted", _micMuted.value.toString()) }
+    }
+
+    /**
+     * Captures a still while recording (video snapshot), using the ImageCapture bound alongside the
+     * video session. No-op if the device couldn't bind the extra ImageCapture use case.
+     */
+    fun captureVideoSnapshot() {
+        val capture = imageCapture ?: return
+        val contentValues = MediaStoreSaver.imageValues("IMG_${MediaStoreSaver.timestamp()}.jpg")
+        val metadata = ImageCapture.Metadata().apply {
+            if (_locationEnabled.value) location = lastLocation
+            isReversedHorizontal = mirrorCaptures
+        }
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(
+            app.contentResolver,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        ).setMetadata(metadata).build()
+        capture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(app),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    outputFileResults.savedUri?.let { setLastCaptureUri(it) }
+                }
+                override fun onError(exception: ImageCaptureException) {
+                    Log.e("CameraViewModel", "Video snapshot failed", exception)
+                }
+            }
+        )
     }
 
     fun startPanorama() = panoramaEngine.startSweep()

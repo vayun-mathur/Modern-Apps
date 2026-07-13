@@ -47,4 +47,9 @@
     <string name="white_balance">White balance</string>
     <string name="not_available">N/A</string>
     <string name="burst_count">Burst %1$d</string>
+
+    <string name="mic">Microphone</string>
+    <string name="ae_af_lock">AE/AF LOCK</string>
+    <string name="pause_recording">Pause</string>
+    <string name="resume_recording">Resume</string>
 </resources>

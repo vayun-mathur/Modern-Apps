@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -81,5 +82,25 @@ class MainActivity : ComponentActivity() {
         val data = thumbnail?.let { Intent().putExtra("data", it) }
         setResult(RESULT_OK, data)
         finish()
+    }
+
+    // Volume keys act as a hardware shutter: routed to the same capture action as the on-screen
+    // button (the CameraScreen collects shutterEvents and picks the right action for the mode).
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            viewModel.triggerShutter()
+            true
+        } else {
+            super.onKeyDown(keyCode, event)
+        }
+    }
+
+    // Consume the matching key-up so the system volume UI doesn't appear.
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        return if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            true
+        } else {
+            super.onKeyUp(keyCode, event)
+        }
     }
 }
