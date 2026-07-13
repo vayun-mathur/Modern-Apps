@@ -39,4 +39,12 @@
     <string name="open_url">Open URL</string>
     <string name="no_app_to_open_url">No app can open this link</string>
     <string name="copy_text">Copy</string>
+
+    <string name="level">Level</string>
+    <string name="blur">Blur</string>
+    <string name="iso">ISO</string>
+    <string name="focus">Focus</string>
+    <string name="white_balance">White balance</string>
+    <string name="not_available">N/A</string>
+    <string name="burst_count">Burst %1$d</string>
 </resources>

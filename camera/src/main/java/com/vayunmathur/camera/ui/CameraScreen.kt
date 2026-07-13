@@ -18,6 +18,7 @@ import android.widget.Toast
 import android.view.OrientationEventListener
 import android.view.Surface
 import androidx.camera.compose.CameraXViewfinder
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.SurfaceOrientedMeteringPointFactory
@@ -40,6 +41,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +78,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -112,6 +115,7 @@ import com.vayunmathur.camera.util.CameraViewModel
 import com.vayunmathur.camera.util.GuideDot
 import com.vayunmathur.camera.util.GuideDotState
 import com.vayunmathur.camera.util.FlashMode
+import com.vayunmathur.camera.util.FocusPeakingAnalyzer
 import com.vayunmathur.camera.util.buildColorAdjustmentMatrix
 import com.vayunmathur.camera.util.formatZoomLabel
 import com.vayunmathur.camera.util.PhotoAnalyzer
@@ -126,6 +130,7 @@ import kotlin.math.roundToInt
 private const val BOKEH_SHADER = """
     uniform shader cameraInput;
     uniform shader alphaMask;
+    uniform float blurScale;
 
     half4 main(float2 fragCoord) {
         float maskAlpha = alphaMask.eval(fragCoord).a;
@@ -159,9 +164,9 @@ private const val BOKEH_SHADER = """
             else if (i < 5.5) w = w5;
             else w = w6;
 
-            float2 off0 = dir0 * i * 6.0;
-            float2 off1 = dir1 * i * 6.0;
-            float2 off2 = dir2 * i * 6.0;
+            float2 off0 = dir0 * i * 6.0 * blurScale;
+            float2 off1 = dir1 * i * 6.0 * blurScale;
+            float2 off2 = dir2 * i * 6.0 * blurScale;
 
             pass0 += cameraInput.eval(fragCoord + off0) * w;
             pass0 += cameraInput.eval(fragCoord - off0) * w;
@@ -177,7 +182,7 @@ private const val BOKEH_SHADER = """
 """
 
 private enum class CameraSetting {
-    BRIGHTNESS, SHADOWS, WARMTH, EXPOSURE_TIME
+    BRIGHTNESS, SHADOWS, WARMTH, EXPOSURE_TIME, PORTRAIT_BLUR, ISO, FOCUS, WHITE_BALANCE
 }
 
 /** Which camera pipeline drives the preview for the current mode. */
@@ -210,12 +215,22 @@ fun CameraScreen(
     val zoomRatio by viewModel.zoomRatio.collectAsState()
     val timerDuration by viewModel.timerDuration.collectAsState()
     val isCapturing by viewModel.isCapturing.collectAsState()
+    val burstActive by viewModel.burstActive.collectAsState()
+    val burstCount by viewModel.burstCount.collectAsState()
     val lastCaptureUri by viewModel.lastCaptureUri.collectAsState()
     val gridEnabled by viewModel.gridEnabled.collectAsState()
+    val levelEnabled by viewModel.levelEnabled.collectAsState()
+    val roll by viewModel.roll.collectAsState()
+    val blurStrength by viewModel.blurStrength.collectAsState()
     val exposureComp by viewModel.exposureCompensation.collectAsState()
     val warmth by viewModel.warmth.collectAsState()
     val shadows by viewModel.shadows.collectAsState()
     val exposureTimeIndex by viewModel.exposureTimeIndex.collectAsState()
+    val manualIsoIndex by viewModel.manualIsoIndex.collectAsState()
+    val isoStops by viewModel.isoStops.collectAsState()
+    val focusDistance by viewModel.focusDistance.collectAsState()
+    val minFocusDistance by viewModel.minFocusDistance.collectAsState()
+    val kelvin by viewModel.kelvin.collectAsState()
     val longExposureProgress by viewModel.longExposureProgress.collectAsState()
     val longExposureRemaining by viewModel.longExposureRemaining.collectAsState()
     val lowLightDetected by viewModel.lowLightDetected.collectAsState()
@@ -223,9 +238,10 @@ fun CameraScreen(
 
     var activeSetting by remember { mutableStateOf<CameraSetting?>(null) }
     var maskBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var peakingBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     val isPhotoType = cameraMode in listOf(CameraMode.PHOTO, CameraMode.PORTRAIT, CameraMode.PANORAMA, CameraMode.PHOTOSPHERE)
     val isSloMo = cameraMode == CameraMode.SLOW_MO
-    val isVideoType = cameraMode == CameraMode.VIDEO || cameraMode == CameraMode.TIMELAPSE
+    val isVideoType = cameraMode == CameraMode.VIDEO || cameraMode == CameraMode.TIMELAPSE || cameraMode == CameraMode.CINEMATIC
     val sessionKind = when {
         isSloMo -> SessionKind.HIGH_SPEED
         isVideoType -> SessionKind.VIDEO
@@ -299,9 +315,20 @@ fun CameraScreen(
         viewModel.applyExposureCompensation(exposureComp)
     }
 
+    // Close mode-specific settings when leaving the mode that offers them.
+    LaunchedEffect(cameraMode) {
+        val portraitOnly = activeSetting == CameraSetting.PORTRAIT_BLUR && cameraMode != CameraMode.PORTRAIT
+        val photoOnly = activeSetting in listOf(
+            CameraSetting.ISO, CameraSetting.FOCUS, CameraSetting.WHITE_BALANCE
+        ) && cameraMode != CameraMode.PHOTO
+        if (portraitOnly || photoOnly) activeSetting = null
+    }
+
     // Analyzer selection for the photo modes. Keyed on photoSessionActive so the analyzer is
     // re-applied to the freshly-bound ImageAnalysis after every (re)bind (mode switch / flip).
-    LaunchedEffect(cameraMode, photoSessionActive) {
+    // Also keyed on the focus-peaking toggle so the peaking analyzer swaps in/out of the stream.
+    val focusPeakingActive = activeSetting == CameraSetting.FOCUS && cameraMode == CameraMode.PHOTO
+    LaunchedEffect(cameraMode, photoSessionActive, focusPeakingActive) {
         when {
             cameraMode == CameraMode.SLOW_MO -> {
                 maskBitmap = null
@@ -324,12 +351,31 @@ fun CameraScreen(
                     }
                     else -> {
                         maskBitmap = null
-                        viewModel.setImageAnalyzer(
-                            PhotoAnalyzer(
-                                onLuminance = { viewModel.onLuminance(it) },
-                                onQrDetected = { viewModel.setQrResult(it) }
+                        if (focusPeakingActive) {
+                            // Swap in the focus-peaking analyzer; QR/night detection pauses while open.
+                            viewModel.setQrResult(null)
+                            viewModel.setImageAnalyzer(
+                                FocusPeakingAnalyzer(
+                                    mirror = lensFacing == CameraSelector.LENS_FACING_FRONT
+                                ) { overlay ->
+                                    peakingBitmap?.recycle()
+                                    peakingBitmap = overlay
+                                }
                             )
-                        )
+                        } else {
+                            peakingBitmap?.recycle()
+                            peakingBitmap = null
+                            viewModel.setImageAnalyzer(
+                                PhotoAnalyzer(
+                                    onLuminance = { viewModel.onLuminance(it) },
+                                    onQrDetected = { viewModel.setQrResult(it) },
+                                    // Motion-Photo ring buffer only in plain PHOTO mode.
+                                    onMotionFrame = if (cameraMode == CameraMode.PHOTO) {
+                                        { bmp, ts, rot -> viewModel.addMotionFrame(bmp, ts, rot) }
+                                    } else null
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -395,6 +441,7 @@ fun CameraScreen(
                     flashMode = flashMode,
                     torchEnabled = torchEnabled,
                     gridEnabled = gridEnabled,
+                    levelEnabled = levelEnabled,
                     isPhotoType = isPhotoType,
                     timerDuration = timerDuration,
                     onFlashToggle = {
@@ -411,6 +458,7 @@ fun CameraScreen(
                     },
                     onTorchToggle = { viewModel.toggleTorch() },
                     onGridToggle = { viewModel.toggleGrid() },
+                    onLevelToggle = { viewModel.toggleLevel() },
                     onTimerCycle = {
                         val next = when (timerDuration) {
                             TimerDuration.NONE -> TimerDuration.THREE
@@ -449,6 +497,7 @@ fun CameraScreen(
                                             matrix.setScale(size.width / mask.width, size.height / mask.height)
                                             maskShader.setLocalMatrix(matrix)
                                                 shader.setInputShader("alphaMask", maskShader)
+                                                shader.setFloatUniform("blurScale", 0.4f + blurStrength * 1.4f)
                                                 effect = RenderEffect.createRuntimeShaderEffect(shader, "cameraInput")
                                             }
 
@@ -472,8 +521,10 @@ fun CameraScreen(
                                     }
                                 }
                             )
-                            .pointerInput(Unit) {
+                            .pointerInput(activeSetting) {
                                 detectTapGestures { tapOffset ->
+                                    // Manual focus bar open → suppress tap-to-focus.
+                                    if (activeSetting == CameraSetting.FOCUS) return@detectTapGestures
                                     val request = surfaceRequest ?: return@detectTapGestures
                                     val transformed = with(coordinateTransformer) { tapOffset.transform() }
                                     val factory = SurfaceOrientedMeteringPointFactory(
@@ -509,6 +560,28 @@ fun CameraScreen(
                                 .fillMaxWidth()
                                 .aspectRatio(previewAspectRatio)
                         )
+                    }
+
+                    if (levelEnabled && isPhotoType) {
+                        LevelOverlay(
+                            roll = roll,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(previewAspectRatio)
+                        )
+                    }
+
+                    if (focusPeakingActive) {
+                        peakingBitmap?.let { pk ->
+                            Image(
+                                bitmap = pk.asImageBitmap(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(previewAspectRatio)
+                            )
+                        }
                     }
 
                     if (timerCountdown > 0) {
@@ -572,10 +645,33 @@ fun CameraScreen(
                                 selectedIndex = exposureTimeIndex,
                                 onIndexChange = { viewModel.setExposureTimeIndex(it) }
                             )
+                            CameraSetting.PORTRAIT_BLUR -> HorizontalSettingSlider(
+                                value = blurStrength,
+                                onValueChange = { viewModel.setBlurStrength(it) },
+                                iconRes = R.drawable.blur_on_24px,
+                                label = stringResource(R.string.blur),
+                                valueRange = 0f..1f,
+                                displayValue = { "%.0f%%".format(it * 100) }
+                            )
+                            CameraSetting.ISO -> IsoBar(
+                                selectedIndex = manualIsoIndex,
+                                isoStops = isoStops,
+                                onIndexChange = { viewModel.setManualIsoIndex(it) }
+                            )
+                            CameraSetting.FOCUS -> FocusBar(
+                                focusDistance = focusDistance,
+                                minFocusDistance = minFocusDistance,
+                                onFocusChange = { viewModel.setFocusDistance(it) }
+                            )
+                            CameraSetting.WHITE_BALANCE -> WhiteBalanceBar(
+                                kelvin = kelvin,
+                                onKelvinChange = { viewModel.setKelvin(it) }
+                            )
                         }
 
                         SettingsButtonRow(
                             activeSetting = activeSetting,
+                            cameraMode = cameraMode,
                             onSelect = { activeSetting = it }
                         )
                     }
@@ -600,6 +696,9 @@ fun CameraScreen(
                     isRecording = isRecording,
                     isCapturing = isCapturing,
                     galleryBitmap = galleryBitmap,
+                    burstEnabled = cameraMode == CameraMode.PHOTO && onCaptureResult == null,
+                    onBurstStart = { viewModel.startBurst() },
+                    onBurstStop = { viewModel.stopBurst() },
                     onCapture = {
                         view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
                         if (longExposureProgress <= 0f) when {
@@ -676,6 +775,25 @@ fun CameraScreen(
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 60.dp)
                 )
             }
+
+            if (burstActive) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 60.dp)
+                        .background(Color(0xCC000000), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.burst_count, burstCount),
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
@@ -686,11 +804,13 @@ private fun TopBar(
     flashMode: FlashMode,
     torchEnabled: Boolean,
     gridEnabled: Boolean,
+    levelEnabled: Boolean,
     isPhotoType: Boolean,
     timerDuration: TimerDuration,
     onFlashToggle: () -> Unit,
     onTorchToggle: () -> Unit,
     onGridToggle: () -> Unit,
+    onLevelToggle: () -> Unit,
     onTimerCycle: () -> Unit,
     iconRotation: Float
 ) {
@@ -750,6 +870,23 @@ private fun TopBar(
         if (isPhotoType) {
             Spacer(Modifier.width(4.dp))
 
+            val levelBg = if (levelEnabled) Color(0xFF3C3C3C) else Color.Transparent
+            IconButton(
+                onClick = onLevelToggle,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(levelBg, CircleShape)
+            ) {
+                Icon(
+                    painterResource(R.drawable.level_24px),
+                    contentDescription = stringResource(R.string.level),
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp).rotate(iconRotation)
+                )
+            }
+
+            Spacer(Modifier.width(4.dp))
+
             val timerBg = if (timerDuration != TimerDuration.NONE) Color(0xFF3C3C3C) else Color.Transparent
             IconButton(
                 onClick = onTimerCycle,
@@ -801,13 +938,45 @@ private fun GridOverlay(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Horizon indicator: a fixed horizontal reference plus a line that rotates with the device roll.
+ * Both turn green when the device is within ±1.5° of level.
+ */
+@Composable
+private fun LevelOverlay(roll: Float, modifier: Modifier = Modifier) {
+    val isLevel = kotlin.math.abs(roll) <= 1.5f
+    val color = if (isLevel) Color(0xFF4CAF50) else Color.White
+    Canvas(modifier = modifier) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val half = size.width * 0.18f
+        val stroke = 2.dp.toPx()
+        val gap = 10.dp.toPx()
+
+        // Fixed reference ticks either side of centre.
+        val refColor = Color.White.copy(alpha = 0.5f)
+        drawLine(refColor, Offset(cx - half - gap, cy), Offset(cx - half, cy), stroke)
+        drawLine(refColor, Offset(cx + half, cy), Offset(cx + half + gap, cy), stroke)
+
+        // Rolling line rotated by -roll (screen rotates opposite to device tilt).
+        val rad = Math.toRadians(-roll.toDouble())
+        val dx = (half * kotlin.math.cos(rad)).toFloat()
+        val dy = (half * kotlin.math.sin(rad)).toFloat()
+        drawLine(color, Offset(cx - dx, cy - dy), Offset(cx + dx, cy + dy), stroke)
+        drawCircle(color, 2.dp.toPx(), Offset(cx, cy))
+    }
+}
+
 @Composable
 private fun HorizontalSettingSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     iconRes: Int,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = -1f..1f,
+    activeWhen: (Float) -> Boolean = { it != 0f },
+    displayValue: (Float) -> String = { if (it == 0f) "0" else "%+.1f".format(it) }
 ) {
     Row(
         modifier = modifier
@@ -819,7 +988,7 @@ private fun HorizontalSettingSlider(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    if (value != 0f) Color(0xFF3C3C3C) else Color.Transparent,
+                    if (activeWhen(value)) Color(0xFF3C3C3C) else Color.Transparent,
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -834,7 +1003,7 @@ private fun HorizontalSettingSlider(
         Slider(
             value = value,
             onValueChange = onValueChange,
-            valueRange = -1f..1f,
+            valueRange = valueRange,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
             colors = SliderDefaults.colors(
                 thumbColor = Color.White,
@@ -843,7 +1012,7 @@ private fun HorizontalSettingSlider(
             )
         )
         Text(
-            text = if (value == 0f) "0" else "%+.1f".format(value),
+            text = displayValue(value),
             color = Color.White,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
@@ -888,22 +1057,32 @@ private fun NightModeButton(
 @Composable
 private fun SettingsButtonRow(
     activeSetting: CameraSetting?,
+    cameraMode: CameraMode,
     onSelect: (CameraSetting?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .background(Color(0x99000000), RoundedCornerShape(24.dp))
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 6.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val settings = listOf(
-            CameraSetting.BRIGHTNESS to R.drawable.wb_sunny_24px,
-            CameraSetting.SHADOWS to R.drawable.contrast_24px,
-            CameraSetting.WARMTH to R.drawable.warmth_24px,
-            CameraSetting.EXPOSURE_TIME to R.drawable.ic_timer
-        )
+        val settings = buildList {
+            add(CameraSetting.BRIGHTNESS to R.drawable.wb_sunny_24px)
+            add(CameraSetting.SHADOWS to R.drawable.contrast_24px)
+            add(CameraSetting.WARMTH to R.drawable.warmth_24px)
+            add(CameraSetting.EXPOSURE_TIME to R.drawable.ic_timer)
+            if (cameraMode == CameraMode.PHOTO) {
+                add(CameraSetting.ISO to R.drawable.iso_24px)
+                add(CameraSetting.FOCUS to R.drawable.center_focus_24px)
+                add(CameraSetting.WHITE_BALANCE to R.drawable.white_balance_24px)
+            }
+            if (cameraMode == CameraMode.PORTRAIT) {
+                add(CameraSetting.PORTRAIT_BLUR to R.drawable.blur_on_24px)
+            }
+        }
         settings.forEach { (setting, iconRes) ->
             val isActive = activeSetting == setting
             Box(
@@ -978,6 +1157,9 @@ private fun ShutterRow(
     isRecording: Boolean,
     isCapturing: Boolean,
     galleryBitmap: android.graphics.Bitmap?,
+    burstEnabled: Boolean,
+    onBurstStart: () -> Unit,
+    onBurstStop: () -> Unit,
     onCapture: () -> Unit,
     onFlipCamera: () -> Unit,
     onGallery: () -> Unit,
@@ -1043,10 +1225,26 @@ private fun ShutterRow(
                     .size(animatedSize.dp)
                     .clip(RoundedCornerShape(recordingCornerRadius.dp))
                     .background(
-                        if (cameraMode in listOf(CameraMode.VIDEO, CameraMode.SLOW_MO, CameraMode.TIMELAPSE)) Color.Red
+                        if (cameraMode in listOf(CameraMode.VIDEO, CameraMode.SLOW_MO, CameraMode.TIMELAPSE, CameraMode.CINEMATIC)) Color.Red
                         else Color.White
                     )
-                    .clickable(onClick = onCapture)
+                    .then(
+                        if (burstEnabled) {
+                            Modifier.pointerInput(Unit) {
+                                detectTapGestures(
+                                    onTap = { onCapture() },
+                                    onLongPress = { onBurstStart() },
+                                    onPress = {
+                                        tryAwaitRelease()
+                                        // No-op if a burst was never started (short tap).
+                                        onBurstStop()
+                                    }
+                                )
+                            }
+                        } else {
+                            Modifier.clickable(onClick = onCapture)
+                        }
+                    )
             )
         }
 
@@ -1089,6 +1287,7 @@ private fun ModeSelector(
             listOf(
                 CameraMode.SLOW_MO to "Slo-Mo",
                 CameraMode.VIDEO to "Video",
+                CameraMode.CINEMATIC to "Cinematic",
                 CameraMode.TIMELAPSE to "Timelapse"
             )
         }
@@ -1342,6 +1541,186 @@ private fun ExposureTimeBar(
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.width(64.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+/** Manual ISO: index 0 == Auto, 1..[isoStops].size select a sensitivity stop. */
+@Composable
+private fun IsoBar(
+    selectedIndex: Int,
+    isoStops: List<Int>,
+    onIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isManual = selectedIndex > 0
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(if (isManual) Color(0xFF3C3C3C) else Color.Transparent, CircleShape)
+                .clip(CircleShape)
+                .clickable { onIndexChange(0) },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painterResource(R.drawable.iso_24px),
+                contentDescription = stringResource(R.string.iso),
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        if (isoStops.isEmpty()) {
+            Text(
+                text = stringResource(R.string.not_available),
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                textAlign = TextAlign.Center
+            )
+        } else {
+            Slider(
+                value = selectedIndex.toFloat(),
+                onValueChange = { onIndexChange(it.roundToInt()) },
+                valueRange = 0f..isoStops.size.toFloat(),
+                steps = (isoStops.size - 1).coerceAtLeast(0),
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = Color.White,
+                    inactiveTrackColor = Color(0xFF666666)
+                )
+            )
+        }
+        Text(
+            text = if (selectedIndex == 0) "Auto" else "${isoStops.getOrNull(selectedIndex - 1) ?: ""}",
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(56.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+/** Manual focus: null == autofocus; else 0f (∞) … [minFocusDistance] (macro), in diopters. */
+@Composable
+private fun FocusBar(
+    focusDistance: Float?,
+    minFocusDistance: Float,
+    onFocusChange: (Float?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isManual = focusDistance != null
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(if (isManual) Color(0xFF3C3C3C) else Color.Transparent, CircleShape)
+                .clip(CircleShape)
+                .clickable { onFocusChange(null) },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painterResource(R.drawable.center_focus_24px),
+                contentDescription = stringResource(R.string.focus),
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        if (minFocusDistance <= 0f) {
+            Text(
+                text = stringResource(R.string.not_available),
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                textAlign = TextAlign.Center
+            )
+        } else {
+            Slider(
+                value = focusDistance ?: 0f,
+                onValueChange = { onFocusChange(it) },
+                valueRange = 0f..minFocusDistance,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = Color.White,
+                    activeTrackColor = Color.White,
+                    inactiveTrackColor = Color(0xFF666666)
+                )
+            )
+        }
+        Text(
+            text = when {
+                focusDistance == null -> "AF"
+                focusDistance <= 0.01f -> "\u221E"
+                else -> "%.1f".format(focusDistance)
+            },
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(56.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+/** Manual white balance (Kelvin slider only). null == auto AWB. */
+@Composable
+private fun WhiteBalanceBar(
+    kelvin: Int?,
+    onKelvinChange: (Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isManual = kelvin != null
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(if (isManual) Color(0xFF3C3C3C) else Color.Transparent, CircleShape)
+                .clip(CircleShape)
+                .clickable { onKelvinChange(null) },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painterResource(R.drawable.white_balance_24px),
+                contentDescription = stringResource(R.string.white_balance),
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Slider(
+            value = (kelvin ?: 5000).toFloat(),
+            onValueChange = { onKelvinChange(it.roundToInt()) },
+            valueRange = 2000f..8000f,
+            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color(0xFF666666)
+            )
+        )
+        Text(
+            text = if (kelvin == null) "AWB" else "${kelvin}K",
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(56.dp),
             textAlign = TextAlign.End
         )
     }

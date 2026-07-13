@@ -9,6 +9,10 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationManager
 import android.media.MediaFormat
@@ -33,6 +37,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.HighSpeedVideoSessionConfig
 import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
@@ -54,9 +61,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.camera.lifecycle.awaitInstance
 import java.io.ByteArrayInputStream
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 
-enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, TIMELAPSE }
+enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, TIMELAPSE, CINEMATIC }
 enum class FlashMode { ON, OFF, AUTO }
 enum class TimerDuration(val seconds: Int) { NONE(0), THREE(3), FIVE(5), TEN(10) }
 enum class AspectRatioOption(val label: String) { RATIO_16_9("16:9"), RATIO_4_3("4:3"), RATIO_1_1("1:1") }
@@ -110,6 +118,14 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         private const val NIGHT_TARGET_EXPOSURE_NANOS = 250_000_000L // ~1/4s
         private const val NIGHT_BURST_PER_FRAME_NANOS = 100_000_000L // ~1/10s, in the 1/15–1/8s range
         private const val NIGHT_ISO_FRACTION = 0.75f
+
+        /** Safety cap on frames captured during a single press-and-hold burst. */
+        private const val BURST_MAX = 30
+
+        // Motion-Photo ring buffer: keep ~1.5s of analysis frames, capped by count to bound memory
+        // (analysis frames can be high-res, so this count is deliberately conservative).
+        private const val MOTION_WINDOW_NANOS = 1_500_000_000L
+        private const val MOTION_MAX_FRAMES = 12
 
         val EXPOSURE_TIME_STOPS = listOf(
             ExposureTimeStop("Auto", null),
@@ -222,6 +238,32 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _gridEnabled = MutableStateFlow(false)
     val gridEnabled = _gridEnabled.asStateFlow()
 
+    // Horizon level indicator: a device-roll angle (degrees) read off the accelerometer/gravity
+    // sensor, exposed only while the level overlay is enabled. Registered lazily so the sensor
+    // isn't running when the overlay is off.
+    private val _levelEnabled = MutableStateFlow(false)
+    val levelEnabled = _levelEnabled.asStateFlow()
+
+    private val _roll = MutableStateFlow(0f)
+    val roll = _roll.asStateFlow()
+
+    private val sensorManager by lazy { app.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    private val levelListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            val x = event.values[0]
+            val y = event.values[1]
+            // 0° when the device is held upright in portrait; positive as the top edge tilts right.
+            _roll.value = Math.toDegrees(atan2(x.toDouble(), -y.toDouble())).toFloat()
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+    private var levelSensorRegistered = false
+
+    // Portrait blur strength (0..1 UI → ~0.4..1.8 shader blurScale). Scales the bokeh shader's
+    // tap offsets so the user can dial the background blur up/down. Default 0.5 ≈ 1.0 blurScale.
+    private val _blurStrength = MutableStateFlow(0.5f)
+    val blurStrength = _blurStrength.asStateFlow()
+
     private val _exposureCompensation = MutableStateFlow(0f)
     val exposureCompensation = _exposureCompensation.asStateFlow()
 
@@ -233,6 +275,44 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _exposureTimeIndex = MutableStateFlow(0)
     val exposureTimeIndex = _exposureTimeIndex.asStateFlow()
+
+    // --- Manual pro controls (ISO / focus / white balance). null / index 0 == Auto. ---
+
+    // ISO: index 0 == Auto; otherwise an index into [_isoStops] (+1). Stops are derived from the
+    // sensor's SENSOR_INFO_SENSITIVITY_RANGE when the session binds.
+    private val _manualIsoIndex = MutableStateFlow(0)
+    val manualIsoIndex = _manualIsoIndex.asStateFlow()
+
+    private val _isoStops = MutableStateFlow<List<Int>>(emptyList())
+    val isoStops = _isoStops.asStateFlow()
+
+    // Focus: null == autofocus; else a lens focus distance in diopters (0f == infinity, up to
+    // _minFocusDistance == closest/macro).
+    private val _focusDistance = MutableStateFlow<Float?>(null)
+    val focusDistance = _focusDistance.asStateFlow()
+
+    private val _minFocusDistance = MutableStateFlow(0f)
+    val minFocusDistance = _minFocusDistance.asStateFlow()
+
+    // White balance: null == auto AWB; else a Kelvin color temperature.
+    private val _kelvin = MutableStateFlow<Int?>(null)
+    val kelvin = _kelvin.asStateFlow()
+
+    // Last auto-converged AE ISO / exposure, snapshotted off the preview's capture results so a
+    // half-manual exposure (only ISO or only shutter set) can seed the other from the auto value.
+    @Volatile private var lastAeIso: Int? = null
+    @Volatile private var lastAeExposureNanos: Long? = null
+
+    private val aeSnapshotCallback = object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {
+        override fun onCaptureCompleted(
+            session: android.hardware.camera2.CameraCaptureSession,
+            request: android.hardware.camera2.CaptureRequest,
+            result: android.hardware.camera2.TotalCaptureResult
+        ) {
+            result.get(android.hardware.camera2.CaptureResult.SENSOR_SENSITIVITY)?.let { lastAeIso = it }
+            result.get(android.hardware.camera2.CaptureResult.SENSOR_EXPOSURE_TIME)?.let { lastAeExposureNanos = it }
+        }
+    }
 
     // Night mode is fully automatic: brightness detection engages it, and the moon button lets
     // the user override it off for the current dark scene. nightModeActive drives the capture path.
@@ -298,6 +378,20 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _photoSessionActive = MutableStateFlow(false)
     val photoSessionActive = _photoSessionActive.asStateFlow()
 
+    // Burst mode (press-and-hold shutter): fires single-frame captures back-to-back with only one
+    // in flight at a time, up to BURST_MAX, until the user releases (stopBurst).
+    private val _burstActive = MutableStateFlow(false)
+    val burstActive = _burstActive.asStateFlow()
+
+    private val _burstCount = MutableStateFlow(0)
+    val burstCount = _burstCount.asStateFlow()
+
+    // Motion-Photo ring buffer: the last ~MOTION_WINDOW of analysis frames (RGB copies), fed by the
+    // PhotoAnalyzer off the shared analysis stream and drained when a Motion Photo is captured.
+    private class MotionFrame(val bitmap: Bitmap, val timestampNanos: Long, val rotationDegrees: Int)
+    private val motionFrames = ArrayDeque<MotionFrame>()
+    private val motionLock = Any()
+
     // High-speed session state
     private var highSpeedVideoCapture: VideoCapture<Recorder>? = null
     private var highSpeedRecording: Recording? = null
@@ -344,6 +438,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         ds.getString("camera_location")?.let { _locationEnabled.value = it.toBoolean() }
         ds.getString("camera_last_capture")?.let { _lastCaptureUri.value = Uri.parse(it) }
         ds.getString("camera_grid")?.let { _gridEnabled.value = it.toBoolean() }
+        ds.getString("camera_level")?.let { _levelEnabled.value = it.toBoolean() }
+        if (_levelEnabled.value) registerLevelSensor()
     }
 
     fun setFlashMode(mode: FlashMode) {
@@ -375,6 +471,31 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { ds.setString("camera_grid", _gridEnabled.value.toString()) }
     }
 
+    fun toggleLevel() {
+        _levelEnabled.value = !_levelEnabled.value
+        if (_levelEnabled.value) registerLevelSensor() else unregisterLevelSensor()
+        viewModelScope.launch { ds.setString("camera_level", _levelEnabled.value.toString()) }
+    }
+
+    private fun registerLevelSensor() {
+        if (levelSensorRegistered) return
+        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
+            ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        sensorManager.registerListener(levelListener, sensor, SensorManager.SENSOR_DELAY_UI)
+        levelSensorRegistered = true
+    }
+
+    private fun unregisterLevelSensor() {
+        if (!levelSensorRegistered) return
+        sensorManager.unregisterListener(levelListener)
+        levelSensorRegistered = false
+    }
+
+    /** Maps the 0..1 blur-strength UI value to the bokeh shader's blurScale multiplier. */
+    fun setBlurStrength(value: Float) {
+        _blurStrength.value = value.coerceIn(0f, 1f)
+    }
+
     fun setExposureCompensation(value: Float) {
         _exposureCompensation.value = value
     }
@@ -389,6 +510,114 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun setExposureTimeIndex(index: Int) {
         _exposureTimeIndex.value = index.coerceIn(0, EXPOSURE_TIME_STOPS.lastIndex)
+        applyManualControls()
+    }
+
+    /** ISO index 0 == Auto; otherwise a 1-based index into [_isoStops]. */
+    fun setManualIsoIndex(index: Int) {
+        _manualIsoIndex.value = index.coerceIn(0, _isoStops.value.size)
+        applyManualControls()
+    }
+
+    /** null == autofocus; else a lens focus distance in diopters (0f == infinity). */
+    fun setFocusDistance(distance: Float?) {
+        _focusDistance.value = distance?.coerceIn(0f, _minFocusDistance.value)
+        applyManualControls()
+    }
+
+    /** null == auto AWB; else a Kelvin color temperature. */
+    fun setKelvin(kelvin: Int?) {
+        _kelvin.value = kelvin?.coerceIn(WhiteBalance.MIN_KELVIN, WhiteBalance.MAX_KELVIN)
+        applyManualControls()
+    }
+
+    private fun camera2ControlOrNull(): androidx.camera.camera2.interop.Camera2CameraControl? = try {
+        boundCamera?.cameraControl?.let {
+            androidx.camera.camera2.interop.Camera2CameraControl.from(it)
+        }
+    } catch (e: Exception) {
+        Log.w("CameraViewModel", "Camera2 control unavailable", e)
+        null
+    }
+
+    /** The manual ISO for the current index, or null when set to Auto. */
+    private fun manualIso(): Int? =
+        _manualIsoIndex.value.takeIf { it > 0 }?.let { _isoStops.value.getOrNull(it - 1) }
+
+    /** True when both shutter and ISO are on Auto (no manual exposure). */
+    private fun isExposureAuto(): Boolean =
+        _exposureTimeIndex.value == 0 && _manualIsoIndex.value == 0
+
+    /**
+     * Rebuilds a single [CaptureRequestOptions] from the current manual 3A state (exposure/ISO,
+     * focus, white balance) and pushes it to the bound camera, affecting the live preview and
+     * subsequent stills. Controls left on Auto are simply omitted, so they revert to CameraX's
+     * default auto behavior (including tap-to-focus). Called on every manual-control change and
+     * re-applied after a session rebind.
+     */
+    fun applyManualControls() {
+        val cam2 = camera2ControlOrNull() ?: return
+        val builder = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+
+        // Manual exposure / ISO with linkage: if either is manual, lock AE off and set both,
+        // seeding the un-set one from the last auto-converged value (or a sensible default).
+        val manualShutter = EXPOSURE_TIME_STOPS[_exposureTimeIndex.value].nanos
+        val manualIso = manualIso()
+        if (manualShutter != null || manualIso != null) {
+            val exposure = manualShutter ?: lastAeExposureNanos ?: 16_666_667L // ~1/60s
+            val iso = manualIso ?: lastAeIso ?: _isoStops.value.getOrNull(_isoStops.value.size / 2) ?: 400
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE,
+                android.hardware.camera2.CameraMetadata.CONTROL_AE_MODE_OFF
+            )
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME, exposure
+            )
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY, iso
+            )
+        }
+
+        // Manual focus.
+        _focusDistance.value?.let { fd ->
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
+                android.hardware.camera2.CameraMetadata.CONTROL_AF_MODE_OFF
+            )
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.LENS_FOCUS_DISTANCE, fd
+            )
+        }
+
+        // Manual white balance (Kelvin → RGGB gains).
+        _kelvin.value?.let { k ->
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.CONTROL_AWB_MODE,
+                android.hardware.camera2.CameraMetadata.CONTROL_AWB_MODE_OFF
+            )
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.COLOR_CORRECTION_MODE,
+                android.hardware.camera2.CameraMetadata.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX
+            )
+            builder.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.COLOR_CORRECTION_GAINS,
+                WhiteBalance.kelvinToRggbGains(k)
+            )
+        }
+
+        try {
+            // An empty options set clears any previously-applied manual 3A → full auto.
+            cam2.setCaptureRequestOptions(builder.build())
+        } catch (e: Exception) {
+            Log.w("CameraViewModel", "Failed to apply manual controls", e)
+        }
+    }
+
+    private fun resetManualControls() {
+        _manualIsoIndex.value = 0
+        _focusDistance.value = null
+        _kelvin.value = null
+        _exposureTimeIndex.value = 0
     }
 
     /**
@@ -594,14 +823,35 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 .requireLensFacing(_lensFacing.value)
                 .build()
 
-            val preview = Preview.Builder().build()
+            val previewBuilder = Preview.Builder()
+            // Snapshot auto-converged AE ISO/exposure off the repeating preview requests so a
+            // half-manual exposure can seed the un-set parameter.
+            try {
+                androidx.camera.camera2.interop.Camera2Interop.Extender(previewBuilder)
+                    .setSessionCaptureCallback(aeSnapshotCallback)
+            } catch (e: Exception) {
+                Log.w("PhotoSession", "Could not attach AE snapshot callback", e)
+            }
+            val preview = previewBuilder.build()
             preview.setSurfaceProvider { request -> _surfaceRequest.value = request }
 
             val owner = ManualLifecycleOwner()
             owner.start()
             sessionLifecycleOwner = owner
 
-            fun bind(maxRes: Boolean): Camera {
+            // Ultra HDR (JPEG with a gain map) when the sensor/pipeline supports it. Queried once
+            // here; the bind ladder falls back to plain JPEG if the Ultra HDR combo can't bind.
+            val ultraHdrSupported = try {
+                val cameraInfo = provider.getCameraInfo(selector)
+                ImageCapture.getImageCaptureCapabilities(cameraInfo)
+                    .supportedOutputFormats
+                    .contains(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
+            } catch (e: Exception) {
+                Log.w("PhotoSession", "Could not query Ultra HDR support", e)
+                false
+            }
+
+            fun bind(maxRes: Boolean, ultraHdr: Boolean): Camera {
                 val selectorBuilder = ResolutionSelector.Builder()
                     .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
                 if (maxRes) {
@@ -611,11 +861,14 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                         ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE
                     )
                 }
-                val capture = ImageCapture.Builder()
+                val captureBuilder = ImageCapture.Builder()
                     .setResolutionSelector(selectorBuilder.build())
                     .setFlashMode(getImageCaptureFlashMode())
                     .setTargetRotation(targetRotation)
-                    .build()
+                if (ultraHdr) {
+                    captureBuilder.setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR)
+                }
+                val capture = captureBuilder.build()
                 imageCapture = capture
                 val analysisBuilder = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -635,23 +888,54 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 return provider.bindToLifecycle(owner, selector, preview, capture, analysis)
             }
 
+            // Fallback ladder: UltraHDR+maxres → UltraHDR+default → JPEG+default.
             boundCamera = try {
-                bind(maxRes = true)
+                bind(maxRes = true, ultraHdr = ultraHdrSupported)
             } catch (e: Exception) {
-                Log.w("PhotoSession", "Max-res 3-stream bind failed; falling back to default resolution", e)
+                Log.w("PhotoSession", "Max-res bind failed; retrying at default resolution", e)
                 provider.unbindAll()
-                bind(maxRes = false)
+                try {
+                    bind(maxRes = false, ultraHdr = ultraHdrSupported)
+                } catch (e2: Exception) {
+                    if (!ultraHdrSupported) throw e2
+                    Log.w("PhotoSession", "Ultra HDR bind failed; falling back to plain JPEG", e2)
+                    provider.unbindAll()
+                    bind(maxRes = false, ultraHdr = false)
+                }
             }
 
             boundCamera?.cameraInfo?.zoomState?.value?.let {
                 updateZoomLevels(it.minZoomRatio, it.maxZoomRatio)
                 _zoomRatio.value = it.zoomRatio
             }
+            readManualControlRanges()
+            applyManualControls()
             _photoSessionActive.value = true
             true
         } catch (e: Exception) {
             Log.e("PhotoSession", "Failed to set up photo session", e)
             false
+        }
+    }
+
+    /** Reads the bound sensor's ISO range → stop list and its minimum focus distance. */
+    private fun readManualControlRanges() {
+        val cam = boundCamera ?: return
+        try {
+            val info = androidx.camera.camera2.interop.Camera2CameraInfo.from(cam.cameraInfo)
+            val isoRange = info.getCameraCharacteristic(
+                android.hardware.camera2.CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE
+            )
+            _isoStops.value = if (isoRange != null) {
+                listOf(50, 100, 200, 400, 800, 1600, 3200, 6400, 12800)
+                    .filter { it in isoRange.lower..isoRange.upper }
+                    .ifEmpty { listOf(isoRange.lower, isoRange.upper) }
+            } else emptyList()
+            _minFocusDistance.value = info.getCameraCharacteristic(
+                android.hardware.camera2.CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE
+            ) ?: 0f
+        } catch (e: Exception) {
+            Log.w("CameraViewModel", "Failed to read manual control ranges", e)
         }
     }
 
@@ -669,22 +953,46 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             val useAv1 = ENABLE_AV1_OPUS_RECORDING &&
                 CodecSupport.isHardwareAv1EncoderAvailable && av1SupportedByCamera(cameraInfo)
             val useOpus = ENABLE_AV1_OPUS_RECORDING && CodecSupport.isOpusEncoderAvailable
-            Log.d("VideoSession", "Codec selection: av1=$useAv1, opus=$useOpus")
+            // HLG10 (10-bit HDR) when the camera's video pipeline supports it. Uses the default
+            // HEVC/H.264 codec (AV1 stays off). Preview and VideoCapture must share the dynamic
+            // range or the bind fails, so both are gated together.
+            val hlgSupported = hlgSupportedByCamera(cameraInfo)
+            Log.d("VideoSession", "Codec selection: av1=$useAv1, opus=$useOpus, hlg10=$hlgSupported")
 
-            val preview = Preview.Builder().build()
-            preview.setSurfaceProvider { request -> _surfaceRequest.value = request }
+            // Cinematic mode enables video stabilization; all video modes always record at max
+            // quality/fps (no UI picker).
+            val cinematic = _cameraMode.value == CameraMode.CINEMATIC
+            val bestFpsRange = highestFpsRange(cameraInfo)
+            val stabilizationMode = if (cinematic) preferredStabilizationMode(cameraInfo) else null
+            Log.d("VideoSession", "Video tuning: fps=$bestFpsRange, stabilization=$stabilizationMode")
+
+            // Prefer UHD, then FHD, then HD, falling back to the next lower supported quality.
+            val qualitySelector = QualitySelector.fromOrderedList(
+                listOf(Quality.UHD, Quality.FHD, Quality.HD),
+                FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)
+            )
 
             val owner = ManualLifecycleOwner()
             owner.start()
             sessionLifecycleOwner = owner
 
-            fun bind(av1: Boolean, opus: Boolean): Camera {
+            fun bind(av1: Boolean, opus: Boolean, hlg: Boolean): Camera {
+                val dynamicRange = if (hlg) androidx.camera.core.DynamicRange.HLG_10_BIT
+                    else androidx.camera.core.DynamicRange.SDR
+                val previewBuilder = Preview.Builder()
+                    .setDynamicRange(dynamicRange)
+                applyVideoCaptureRequestOptions(previewBuilder, bestFpsRange, stabilizationMode)
+                val preview = previewBuilder.build()
+                preview.setSurfaceProvider { request -> _surfaceRequest.value = request }
                 val recorderBuilder = Recorder.Builder()
+                    .setQualitySelector(qualitySelector)
                 if (av1) recorderBuilder.setVideoMimeType(MediaFormat.MIMETYPE_VIDEO_AV1)
                 if (opus) recorderBuilder.setAudioMimeType(MediaFormat.MIMETYPE_AUDIO_OPUS)
-                val capture = VideoCapture.Builder(recorderBuilder.build())
+                val captureBuilder = VideoCapture.Builder(recorderBuilder.build())
                     .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
-                    .build()
+                    .setDynamicRange(dynamicRange)
+                applyVideoCaptureRequestOptions(captureBuilder, bestFpsRange, stabilizationMode)
+                val capture = captureBuilder.build()
                 capture.targetRotation = targetRotation
                 videoCapture = capture
                 recordingWithAv1 = av1
@@ -692,12 +1000,12 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             }
 
             boundCamera = try {
-                bind(useAv1, useOpus)
+                bind(useAv1, useOpus, hlgSupported)
             } catch (e: Exception) {
-                if (!useAv1 && !useOpus) throw e
-                Log.w("VideoSession", "AV1/Opus session failed to bind; falling back to defaults", e)
+                if (!useAv1 && !useOpus && !hlgSupported) throw e
+                Log.w("VideoSession", "HDR/AV1/Opus session failed to bind; falling back to SDR defaults", e)
                 provider.unbindAll()
-                bind(av1 = false, opus = false)
+                bind(av1 = false, opus = false, hlg = false)
             }
 
             boundCamera?.cameraInfo?.zoomState?.value?.let {
@@ -718,6 +1026,74 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     } catch (e: Exception) {
         Log.w("VideoSession", "Could not query AV1 video capabilities", e)
         false
+    }
+
+    private fun hlgSupportedByCamera(cameraInfo: androidx.camera.core.CameraInfo): Boolean = try {
+        Recorder.getVideoCapabilities(cameraInfo)
+            .supportedDynamicRanges
+            .contains(androidx.camera.core.DynamicRange.HLG_10_BIT)
+    } catch (e: Exception) {
+        Log.w("VideoSession", "Could not query HLG10 dynamic-range support", e)
+        false
+    }
+
+    /** Highest supported AE target frame-rate range for maxing video fps; null if unavailable. */
+    private fun highestFpsRange(cameraInfo: androidx.camera.core.CameraInfo): android.util.Range<Int>? = try {
+        androidx.camera.camera2.interop.Camera2CameraInfo.from(cameraInfo)
+            .getCameraCharacteristic(
+                android.hardware.camera2.CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
+            )
+            ?.maxByOrNull { it.upper }
+    } catch (e: Exception) {
+        Log.w("VideoSession", "Could not query supported frame-rate ranges", e)
+        null
+    }
+
+    /**
+     * Preferred video stabilization mode for Cinematic: preview-stabilization ("EIS") when the
+     * device lists it, else on-mode, else null (unsupported → stabilization is skipped).
+     */
+    private fun preferredStabilizationMode(cameraInfo: androidx.camera.core.CameraInfo): Int? = try {
+        val modes = androidx.camera.camera2.interop.Camera2CameraInfo.from(cameraInfo)
+            .getCameraCharacteristic(
+                android.hardware.camera2.CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES
+            )?.toList() ?: emptyList()
+        when {
+            modes.contains(
+                android.hardware.camera2.CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_PREVIEW_STABILIZATION
+            ) -> android.hardware.camera2.CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_PREVIEW_STABILIZATION
+            modes.contains(
+                android.hardware.camera2.CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON
+            ) -> android.hardware.camera2.CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON
+            else -> null
+        }
+    } catch (e: Exception) {
+        Log.w("VideoSession", "Could not query video stabilization modes", e)
+        null
+    }
+
+    /** Applies max-fps + (optional) stabilization capture options onto a Preview/VideoCapture builder. */
+    private fun <T> applyVideoCaptureRequestOptions(
+        builder: androidx.camera.core.ExtendableBuilder<T>,
+        fpsRange: android.util.Range<Int>?,
+        stabilizationMode: Int?
+    ) {
+        try {
+            val extender = androidx.camera.camera2.interop.Camera2Interop.Extender(builder)
+            if (fpsRange != null) {
+                extender.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fpsRange
+                )
+            }
+            if (stabilizationMode != null) {
+                extender.setCaptureRequestOption(
+                    android.hardware.camera2.CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                    stabilizationMode
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("VideoSession", "Could not apply Camera2 video capture options", e)
+        }
     }
 
     /** Tears down whatever session is currently bound and clears the shared preview surface. */
@@ -742,6 +1118,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         _highSpeedActive.value = false
         _videoSessionActive.value = false
         resetNightModeDetection()
+        resetManualControls()
+        clearMotionFrames()
     }
 
     // --- Unified manual session control wiring (targets the single bound camera) ---
@@ -856,13 +1234,164 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun capturePhoto() {
         if (imageCapture == null) return
-        // Multi-frame night capture only when night mode is active on the Auto exposure stop.
-        // A manual exposure stop always wins and falls through to the single-frame path.
-        if (nightModeActive.value && _exposureTimeIndex.value == 0) {
-            captureNightPhoto()
-        } else {
-            captureSinglePhoto()
+        when {
+            // Multi-frame night capture only when night mode is active and exposure is fully auto.
+            nightModeActive.value && isExposureAuto() -> captureNightPhoto()
+            // Motion Photo for plain PHOTO captures (no warmth/shadows bake, not capturing for a caller).
+            _cameraMode.value == CameraMode.PHOTO && !captureForResult &&
+                _warmth.value == 0f && _shadows.value == 0f -> captureMotionPhoto()
+            else -> captureSinglePhoto()
         }
+    }
+
+    /**
+     * Starts a press-and-hold burst: standard single-frame captures fired back-to-back (one in
+     * flight at a time) with `IMG_<ts>_BURSTn` names, until [stopBurst] or [BURST_MAX] is reached.
+     * Uses the plain capture path (no night/manual special-casing).
+     */
+    fun startBurst() {
+        if (_burstActive.value) return
+        val capture = imageCapture ?: return
+        _burstActive.value = true
+        _burstCount.value = 0
+        val ts = MediaStoreSaver.timestamp()
+
+        fun shootNext(n: Int) {
+            if (!_burstActive.value || n > BURST_MAX) {
+                _burstActive.value = false
+                return
+            }
+            val values = MediaStoreSaver.imageValues("IMG_${ts}_BURST${n}.jpg")
+            val metadata = ImageCapture.Metadata().apply {
+                if (_locationEnabled.value) location = lastLocation
+                isReversedHorizontal = mirrorCaptures
+            }
+            val outputOptions = ImageCapture.OutputFileOptions.Builder(
+                app.contentResolver,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                values
+            ).setMetadata(metadata).build()
+
+            capture.takePicture(
+                outputOptions,
+                ContextCompat.getMainExecutor(app),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                        _burstCount.value = n
+                        outputFileResults.savedUri?.let { setLastCaptureUri(it) }
+                        shootNext(n + 1)
+                    }
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.e("CameraViewModel", "Burst frame $n failed", exception)
+                        shootNext(n + 1)
+                    }
+                }
+            )
+        }
+        shootNext(1)
+    }
+
+    fun stopBurst() {
+        _burstActive.value = false
+    }
+
+    /** Appends an analysis frame to the Motion-Photo ring buffer, trimming by age then count. */
+    fun addMotionFrame(bitmap: Bitmap, timestampNanos: Long, rotationDegrees: Int) {
+        synchronized(motionLock) {
+            motionFrames.addLast(MotionFrame(bitmap, timestampNanos, rotationDegrees))
+            val cutoff = timestampNanos - MOTION_WINDOW_NANOS
+            while (motionFrames.size > 1 && motionFrames.first().timestampNanos < cutoff) {
+                motionFrames.removeFirst().bitmap.recycle()
+            }
+            while (motionFrames.size > MOTION_MAX_FRAMES) {
+                motionFrames.removeFirst().bitmap.recycle()
+            }
+        }
+    }
+
+    private fun drainMotionFrames(): List<MotionFrame> = synchronized(motionLock) {
+        val list = motionFrames.toList()
+        motionFrames.clear()
+        list
+    }
+
+    private fun clearMotionFrames() = synchronized(motionLock) {
+        motionFrames.forEach { it.bitmap.recycle() }
+        motionFrames.clear()
+    }
+
+    /**
+     * Captures a Motion Photo: the still (captured in-memory so its bytes can carry the trailer) plus
+     * the buffered ring-buffer frames encoded to a short MP4 and appended as a Google Motion Photo
+     * trailer. Falls back to saving the plain still if no frames are buffered or encoding fails.
+     * The still may be Ultra HDR (gain map preserved); the appended clip is SDR at analysis resolution.
+     */
+    private fun captureMotionPhoto() {
+        val capture = imageCapture ?: return
+        _isCapturing.value = true
+        capture.takePicture(
+            ContextCompat.getMainExecutor(app),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val degrees = image.imageInfo.rotationDegrees
+                    val jpegBytes = try {
+                        image.planes[0].buffer.let { buf ->
+                            ByteArray(buf.remaining()).also { buf.get(it) }
+                        }
+                    } finally {
+                        image.close()
+                    }
+                    val frames = drainMotionFrames()
+                    viewModelScope.launch {
+                        val uri = withContext(Dispatchers.Default) {
+                            assembleAndSaveMotionPhoto(jpegBytes, frames, degrees)
+                        }
+                        frames.forEach { it.bitmap.recycle() }
+                        _isCapturing.value = false
+                        if (uri != null) setLastCaptureUri(uri)
+                    }
+                }
+                override fun onError(exception: ImageCaptureException) {
+                    Log.e("CameraViewModel", "Motion Photo capture failed; falling back to still", exception)
+                    _isCapturing.value = false
+                    captureSinglePhoto()
+                }
+            }
+        )
+    }
+
+    private fun assembleAndSaveMotionPhoto(
+        jpegBytes: ByteArray,
+        frames: List<MotionFrame>,
+        degrees: Int
+    ): Uri? {
+        val values = MediaStoreSaver.imageValues("IMG_${MediaStoreSaver.timestamp()}.jpg")
+        // Only frames matching the newest frame's dimensions are encoded (a rebind can change size).
+        val sized = frames.takeIf { it.isNotEmpty() }?.let { list ->
+            val w = list.last().bitmap.width
+            val h = list.last().bitmap.height
+            list.filter { it.bitmap.width == w && it.bitmap.height == h }
+        }.orEmpty()
+
+        val bytes = if (sized.size >= 2) {
+            val tmp = java.io.File(app.cacheDir, "motion_${System.currentTimeMillis()}.mp4")
+            val spanNs = (sized.last().timestampNanos - sized.first().timestampNanos).coerceAtLeast(1)
+            val fps = (sized.size * 1_000_000_000.0 / spanNs).roundToInt().coerceIn(5, 30)
+            val ok = MotionPhotoEncoder.encode(
+                sized.map { it.bitmap }, tmp, sized.last().rotationDegrees, fps
+            )
+            if (ok && tmp.exists()) {
+                val mp4 = tmp.readBytes()
+                tmp.delete()
+                MotionPhotoWriter.assemble(jpegBytes, mp4)
+            } else {
+                tmp.delete()
+                jpegBytes
+            }
+        } else {
+            jpegBytes
+        }
+        return MediaStoreSaver.saveJpegBytes(app.contentResolver, values, bytes)
     }
 
     private fun captureSinglePhoto() {
@@ -882,10 +1411,11 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         ).setMetadata(metadata).build()
 
         val stop = EXPOSURE_TIME_STOPS[_exposureTimeIndex.value]
-        // Manual exposure stop selection always wins. Otherwise, if night mode is active on the
-        // Auto stop, derive a night exposure/ISO from the sensor's ranges (emulation).
-        val nightExposure = if (nightModeActive.value && _exposureTimeIndex.value == 0)
+        // Manual shutter/ISO are already applied live via applyManualControls(); the only transient
+        // per-capture override here is the night-mode emulation (fully-auto exposure + night active).
+        val nightExposure = if (nightModeActive.value && isExposureAuto())
             computeNightExposure() else null
+        // Used only to drive the long-exposure countdown overlay.
         val exposureNanos = stop.nanos ?: nightExposure?.nanos
         val nightIso = nightExposure?.iso
         val cam2Control = try {
@@ -894,20 +1424,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             }
         } catch (e: Exception) { Log.w("CameraViewModel", "Camera2 control unavailable", e); null }
 
-        fun restoreAutoExposure() {
-            if (exposureNanos != null && cam2Control != null) {
-                try {
-                    cam2Control.setCaptureRequestOptions(
-                        androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
-                            .clearCaptureRequestOption(android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME)
-                            .clearCaptureRequestOption(android.hardware.camera2.CaptureRequest.SENSOR_SENSITIVITY)
-                            .clearCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AE_MODE)
-                            .build()
-                    )
-                } catch (e: Exception) {
-                    Log.w("CameraViewModel", "Failed to restore auto exposure", e)
-                }
-            }
+        fun restoreAfterNight() {
+            // Undo the transient night override by re-asserting the (auto) manual-control state.
+            if (nightExposure != null) applyManualControls()
         }
 
         fun doCapture() {
@@ -917,7 +1436,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             fun finishCapture(uri: Uri?) {
                 _isCapturing.value = false
                 stopLongExposureCountdown()
-                restoreAutoExposure()
+                restoreAfterNight()
                 if (uri != null) setLastCaptureUri(uri)
             }
 
@@ -929,6 +1448,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 // it into the pixels here: capture in-memory, apply the same color matrix, then
                 // re-encode. Re-encoding drops the JPEG's EXIF, so we copy it back from the
                 // original frame (plus GPS and the orientation tag) to match the normal path.
+                // Caveat: this processed path is always SDR JPEG — decoding to an ARGB_8888 bitmap
+                // discards any Ultra HDR gain map, so warmth/shadows captures lose HDR even when
+                // Ultra HDR is otherwise active. Normal (unprocessed) captures keep the gain map.
                 capture.takePicture(
                     ContextCompat.getMainExecutor(app),
                     object : ImageCapture.OnImageCapturedCallback() {
@@ -976,7 +1498,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             )
         }
 
-        if (exposureNanos != null && cam2Control != null) {
+        if (nightExposure != null && cam2Control != null) {
             try {
                 val options = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
                     .setCaptureRequestOption(
@@ -985,7 +1507,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                     )
                     .setCaptureRequestOption(
                         android.hardware.camera2.CaptureRequest.SENSOR_EXPOSURE_TIME,
-                        exposureNanos
+                        nightExposure.nanos
                     )
                 if (nightIso != null) {
                     options.setCaptureRequestOption(
@@ -996,7 +1518,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 cam2Control.setCaptureRequestOptions(options.build())
                     .addListener({ doCapture() }, ContextCompat.getMainExecutor(app))
             } catch (e: Exception) {
-                Log.w("CameraViewModel", "Failed to set manual exposure", e)
+                Log.w("CameraViewModel", "Failed to set night exposure", e)
                 doCapture()
             }
         } else {
@@ -1347,6 +1869,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         val timestamp = MediaStoreSaver.timestamp()
         val prefix = when (_cameraMode.value) {
             CameraMode.TIMELAPSE -> "TL"
+            CameraMode.CINEMATIC -> "CINE"
             else -> "VID"
         }
         val contentValues = MediaStoreSaver.videoValues("${prefix}_$timestamp")
@@ -1358,7 +1881,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         startRecordingTimer()
 
         var pending = capture.output.prepareRecording(app, outputOptions)
-        if (recordingMode == CameraMode.VIDEO) {
+        if (recordingMode == CameraMode.VIDEO || recordingMode == CameraMode.CINEMATIC) {
             pending = pending.withAudioEnabled()
         }
         currentRecording = pending.start(ContextCompat.getMainExecutor(app)) { event ->
@@ -1415,6 +1938,11 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         FlashMode.ON -> ImageCapture.FLASH_MODE_ON
         FlashMode.OFF -> ImageCapture.FLASH_MODE_OFF
         FlashMode.AUTO -> ImageCapture.FLASH_MODE_AUTO
+    }
+
+    override fun onCleared() {
+        unregisterLevelSensor()
+        super.onCleared()
     }
 }
 
