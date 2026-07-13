@@ -134,6 +134,23 @@ data class MatchingQuestion(
     override val difficulty: Int = 3,
 ) : Question
 
+/**
+ * Trace-the-glyph (K-2). The child traces [glyph] (a letter/number/shape) with
+ * a finger. No-penalty: completing the trace is always accepted.
+ */
+@Serializable
+@SerialName("tracing")
+data class TracingQuestion(
+    override val id: String,
+    override val skillId: String,
+    override val prompt: Prompt,
+    val glyph: String,
+    override val hints: List<String> = emptyList(),
+    override val explanation: String? = null,
+    override val bands: List<Band> = emptyList(),
+    override val difficulty: Int = 1,
+) : Question
+
 // --- Answers (UI-side, not serialized) -------------------------------------
 
 /** A learner's answer to a [Question], produced by the quiz UI. */
@@ -150,6 +167,9 @@ data class OrderingAnswer(val order: List<Int>) : Answer
 /** [rightForLeft][i] is the chosen right index for left item i. */
 data class MatchingAnswer(val rightForLeft: List<Int>) : Answer
 
+/** The child completed a tracing gesture (no-penalty). */
+data object TraceAnswer : Answer
+
 /** True if [answer] correctly satisfies this question. */
 fun Question.isCorrect(answer: Answer?): Boolean = when (this) {
     is MultipleChoiceQuestion -> answer is ChoiceAnswer && answer.index == correctIndex
@@ -160,4 +180,5 @@ fun Question.isCorrect(answer: Answer?): Boolean = when (this) {
     }
     is OrderingQuestion -> answer is OrderingAnswer && answer.order == items.indices.toList()
     is MatchingQuestion -> answer is MatchingAnswer && answer.rightForLeft == correctRightForLeft
+    is TracingQuestion -> answer is TraceAnswer
 }

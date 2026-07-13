@@ -19,7 +19,10 @@ import com.vayunmathur.education.data.Learner
 import com.vayunmathur.education.data.LearnerDao
 import com.vayunmathur.education.data.SkillProgress
 import com.vayunmathur.education.data.SkillProgressDao
+import com.vayunmathur.library.util.Achievement
+import com.vayunmathur.library.util.AchievementStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -50,6 +53,17 @@ class EducationViewModel(
 
     val deadlines: StateFlow<List<Deadline>> = deadlineDao.getAllFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // --- Badges / stickers -----------------------------------------------
+
+    private val achievements = EducationAchievements(application)
+
+    /** Emits a newly-unlocked badge for the notification UI (null when none). */
+    val newBadge: StateFlow<Achievement?> = achievements.newAchievement
+
+    fun dismissBadge() = achievements.dismissNotification()
+
+    fun badgeStatuses(): Flow<List<AchievementStatus>> = achievements.getAchievementStatuses()
 
     // --- Band -------------------------------------------------------------
 
@@ -153,16 +167,39 @@ class EducationViewModel(
                 )
             }
             // Recompute total stars from the source of truth after the upserts.
-            val totalStars = skillProgressDao.getAll().sumOf { it.stars }
+            val all = skillProgressDao.getAll()
+            val totalStars = all.sumOf { it.stars }
             val current = learnerDao.get() ?: Learner()
+            val newStreak = nextStreak(current.streakCount, current.lastActivityEpochDay, today)
             learnerDao.upsert(
                 current.copy(
-                    streakCount = nextStreak(current.streakCount, current.lastActivityEpochDay, today),
+                    streakCount = newStreak,
                     lastActivityEpochDay = today,
                     totalStars = totalStars,
                 )
             )
+            awardBadges(result, all, totalStars, newStreak)
         }
+    }
+
+    /** Evaluates and unlocks badges after a committed result. */
+    private fun awardBadges(result: QuizResult, all: List<SkillProgress>, totalStars: Int, streak: Int) {
+        if (totalStars >= 1) achievements.onAchievementUnlocked(EducationAchievements.Ids.FIRST_STAR)
+        if (result.stars >= 3) achievements.onAchievementUnlocked(EducationAchievements.Ids.PERFECT)
+        achievements.onProgressUpdated(EducationAchievements.Ids.STREAK_3, streak)
+        achievements.onProgressUpdated(EducationAchievements.Ids.STREAK_7, streak)
+        achievements.onProgressUpdated(EducationAchievements.Ids.STARS_10, totalStars)
+        achievements.onProgressUpdated(EducationAchievements.Ids.STARS_25, totalStars)
+        achievements.onProgressUpdated(
+            EducationAchievements.Ids.FIVE_SKILLS,
+            all.count { it.stars > 0 },
+        )
+        val starsBySkill = all.associate { it.skillId to it.stars }
+        val masteredACourse = content.courses.any { course ->
+            val skills = content.skillIdsOfCourse(course)
+            skills.isNotEmpty() && skills.all { (starsBySkill[it] ?: 0) >= 3 }
+        }
+        if (masteredACourse) achievements.onAchievementUnlocked(EducationAchievements.Ids.COURSE_MASTER)
     }
 
     companion object {

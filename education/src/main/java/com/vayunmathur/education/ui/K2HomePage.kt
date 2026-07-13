@@ -66,6 +66,9 @@ fun K2HomePage(backStack: NavBackStack<Route>, viewModel: EducationViewModel) {
             TopAppBar(
                 title = { SunStreak(l.streakCount) },
                 actions = {
+                    IconButton(onClick = { backStack.add(Route.Badges) }) {
+                        Text("🌟", fontSize = 24.sp)
+                    }
                     IconButton(onClick = { backStack.add(Route.ParentGate) }) { IconSettings() }
                 },
             )

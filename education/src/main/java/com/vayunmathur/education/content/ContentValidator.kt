@@ -82,6 +82,9 @@ object ContentValidator {
                     e += "Matching '${q.id}' answer index out of range"
                 }
             }
+            is TracingQuestion -> {
+                if (q.glyph.isBlank()) e += "Tracing '${q.id}' has an empty glyph"
+            }
         }
         return e
     }

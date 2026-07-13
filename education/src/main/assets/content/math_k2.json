@@ -5,14 +5,15 @@
   "skills": [
     { "id": "skill.k2.count", "subject": "MATH", "name": "Counting to 10" },
     { "id": "skill.k2.compare", "subject": "MATH", "name": "More and fewer" },
-    { "id": "skill.k2.shapes", "subject": "MATH", "name": "Basic shapes" }
+    { "id": "skill.k2.shapes", "subject": "MATH", "name": "Basic shapes" },
+    { "id": "skill.k2.trace", "subject": "MATH", "name": "Tracing numbers" }
   ],
   "courses": [
     {
       "id": "course.k-math",
       "subject": "MATH",
       "title": "Counting and shapes",
-      "description": "Count, compare, and find shapes.",
+      "description": "Count, compare, trace, and find shapes.",
       "gradeLevel": 0,
       "units": [
         {
@@ -29,7 +30,7 @@
               "exercise": {
                 "id": "ex.k-count",
                 "title": "Count with me",
-                "questionIds": ["q.k.count3", "q.k.count5", "q.k.more"]
+                "questionIds": ["q.k.count3", "q.k.count5", "q.k.more", "q.k.matchcount"]
               }
             }
           ]
@@ -49,6 +50,25 @@
                 "id": "ex.k-shapes",
                 "title": "Tap the shape",
                 "questionIds": ["q.k.circle", "q.k.triangle"]
+              }
+            }
+          ]
+        },
+        {
+          "id": "unit.k-writing",
+          "title": "Writing numbers",
+          "description": "Trace numbers with your finger.",
+          "lessons": [
+            {
+              "id": "lesson.k-trace",
+              "title": "Trace 1, 2, 3",
+              "videos": [
+                { "youtubeId": "yt-placeholder-trace", "title": "Let's write numbers", "durationSeconds": 120 }
+              ],
+              "exercise": {
+                "id": "ex.k-trace",
+                "title": "Trace with me",
+                "questionIds": ["q.k.trace1", "q.k.trace2", "q.k.trace3"]
               }
             }
           ]
@@ -102,6 +122,18 @@
       "difficulty": 1
     },
     {
+      "type": "matching",
+      "id": "q.k.matchcount",
+      "skillId": "skill.k2.count",
+      "prompt": { "text": "Drag the number to the dots." },
+      "left": ["●", "● ●", "● ● ●"],
+      "right": ["3", "1", "2"],
+      "correctRightForLeft": [1, 2, 0],
+      "explanation": "One dot is 1, two dots is 2, three dots is 3.",
+      "bands": ["K2"],
+      "difficulty": 2
+    },
+    {
       "type": "multiple_choice",
       "id": "q.k.circle",
       "skillId": "skill.k2.shapes",
@@ -128,6 +160,33 @@
       ],
       "correctIndex": 0,
       "explanation": "🔺 is the triangle.",
+      "bands": ["K2"],
+      "difficulty": 1
+    },
+    {
+      "type": "tracing",
+      "id": "q.k.trace1",
+      "skillId": "skill.k2.trace",
+      "prompt": { "text": "Trace the number 1." },
+      "glyph": "1",
+      "bands": ["K2"],
+      "difficulty": 1
+    },
+    {
+      "type": "tracing",
+      "id": "q.k.trace2",
+      "skillId": "skill.k2.trace",
+      "prompt": { "text": "Trace the number 2." },
+      "glyph": "2",
+      "bands": ["K2"],
+      "difficulty": 1
+    },
+    {
+      "type": "tracing",
+      "id": "q.k.trace3",
+      "skillId": "skill.k2.trace",
+      "prompt": { "text": "Trace the number 3." },
+      "glyph": "3",
       "bands": ["K2"],
       "difficulty": 1
     }

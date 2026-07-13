@@ -5,10 +5,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.education.content.ContentRepository
@@ -19,6 +22,7 @@ import com.vayunmathur.education.data.Learner
 import com.vayunmathur.education.data.LearnerDao
 import com.vayunmathur.education.data.SkillProgressDao
 import com.vayunmathur.education.ui.CoursePage
+import com.vayunmathur.education.ui.BadgesPage
 import com.vayunmathur.education.ui.HomePage
 import com.vayunmathur.education.ui.K2LessonPage
 import com.vayunmathur.education.ui.K2QuizPage
@@ -36,6 +40,7 @@ import com.vayunmathur.education.util.EducationViewModelFactory
 import com.vayunmathur.education.util.LocalNarrator
 import com.vayunmathur.education.util.rememberNarrator
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
@@ -108,6 +113,8 @@ sealed interface Route : NavKey {
     data object ParentGate : Route
     @Serializable
     data object Parent : Route
+    @Serializable
+    data object Badges : Route
 }
 
 /** Chooses onboarding vs. the main graph based on the (single) learner's state. */
@@ -125,18 +132,23 @@ fun RootNavigation(viewModel: EducationViewModel) {
 @Composable
 fun MainGraph(viewModel: EducationViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Home)
-    MainNavigation(backStack) {
-        entry<Route.Home> { HomePage(backStack, viewModel) }
-        entry<Route.Course> { CoursePage(backStack, viewModel, it.courseId) }
-        entry<Route.UnitScreen> { UnitPage(backStack, viewModel, it.unitId) }
-        entry<Route.LessonScreen> { LessonPage(backStack, viewModel, it.lessonId) }
-        entry<Route.Quiz> { QuizPage(backStack, viewModel, it.exerciseId) }
-        entry<Route.VideoPlayer> { VideoPlayerPage(backStack, it.youtubeId, it.title) }
-        entry<Route.K2Lesson> { K2LessonPage(backStack, viewModel, it.lessonId) }
-        entry<Route.K2Quiz> { K2QuizPage(backStack, viewModel, it.exerciseId) }
-        entry<Route.K2Reward> { K2RewardPage(backStack, viewModel, it.stars) }
-        entry<Route.Results> { ResultsPage(backStack, viewModel, it.total, it.correct, it.stars) }
-        entry<Route.ParentGate>(metadata = DialogPage()) { ParentGatePage(backStack, viewModel) }
-        entry<Route.Parent> { ParentPage(backStack, viewModel) }
+    val badge by viewModel.newBadge.collectAsStateWithLifecycle()
+    Box(Modifier.fillMaxSize()) {
+        MainNavigation(backStack) {
+            entry<Route.Home> { HomePage(backStack, viewModel) }
+            entry<Route.Course> { CoursePage(backStack, viewModel, it.courseId) }
+            entry<Route.UnitScreen> { UnitPage(backStack, viewModel, it.unitId) }
+            entry<Route.LessonScreen> { LessonPage(backStack, viewModel, it.lessonId) }
+            entry<Route.Quiz> { QuizPage(backStack, viewModel, it.exerciseId) }
+            entry<Route.VideoPlayer> { VideoPlayerPage(backStack, it.youtubeId, it.title) }
+            entry<Route.K2Lesson> { K2LessonPage(backStack, viewModel, it.lessonId) }
+            entry<Route.K2Quiz> { K2QuizPage(backStack, viewModel, it.exerciseId) }
+            entry<Route.K2Reward> { K2RewardPage(backStack, viewModel, it.stars) }
+            entry<Route.Results> { ResultsPage(backStack, viewModel, it.total, it.correct, it.stars) }
+            entry<Route.ParentGate>(metadata = DialogPage()) { ParentGatePage(backStack, viewModel) }
+            entry<Route.Parent> { ParentPage(backStack, viewModel) }
+            entry<Route.Badges> { BadgesPage(backStack, viewModel) }
+        }
+        badge?.let { AchievementNotification(it) { viewModel.dismissBadge() } }
     }
 }

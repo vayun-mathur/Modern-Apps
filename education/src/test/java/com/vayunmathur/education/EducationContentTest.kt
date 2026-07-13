@@ -13,6 +13,9 @@ import com.vayunmathur.education.content.NumericQuestion
 import com.vayunmathur.education.content.OrderingAnswer
 import com.vayunmathur.education.content.OrderingQuestion
 import com.vayunmathur.education.content.Prompt
+import com.vayunmathur.education.content.ShortTextQuestion
+import com.vayunmathur.education.content.TraceAnswer
+import com.vayunmathur.education.content.TracingQuestion
 import com.vayunmathur.education.content.isCorrect
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -143,6 +146,13 @@ class EducationContentTest {
         )
         assertTrue(q.isCorrect(MatchingAnswer(listOf(1, 0))))
         assertFalse(q.isCorrect(MatchingAnswer(listOf(0, 1))))
+    }
+
+    @Test
+    fun grading_tracing_acceptsCompletion() {
+        val q = TracingQuestion(id = "q", skillId = "s", prompt = Prompt("?"), glyph = "1")
+        assertTrue(q.isCorrect(TraceAnswer))
+        assertFalse(q.isCorrect(null))
     }
 
     @Test

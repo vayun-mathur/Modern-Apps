@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -65,6 +66,8 @@ import com.vayunmathur.education.content.OrderingQuestion
 import com.vayunmathur.education.content.Question
 import com.vayunmathur.education.content.ShortTextQuestion
 import com.vayunmathur.education.content.TextAnswer
+import com.vayunmathur.education.content.TraceAnswer
+import com.vayunmathur.education.content.TracingQuestion
 import com.vayunmathur.education.content.isCorrect
 import com.vayunmathur.education.util.EducationViewModel
 import com.vayunmathur.library.ui.IconNavigation
@@ -205,6 +208,12 @@ private fun QuestionInput(question: Question, enabled: Boolean, onAnswer: (Answe
         is ShortTextQuestion -> ShortTextInput(enabled, onAnswer)
         is OrderingQuestion -> OrderingInput(question, enabled, onAnswer)
         is MatchingQuestion -> MatchingInput(question, enabled, onAnswer)
+        is TracingQuestion -> TracingCanvas(
+            glyph = question.glyph,
+            enabled = enabled,
+            onTraced = { onAnswer(TraceAnswer) },
+            modifier = Modifier.fillMaxWidth().height(240.dp),
+        )
     }
 }
 

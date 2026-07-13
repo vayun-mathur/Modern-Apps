@@ -72,6 +72,10 @@ class ContentRepository(val packs: List<ContentPack>) {
         return exercises.flatMap { skillIdsOf(it) }.distinct()
     }
 
+    /** Distinct skills across a whole course. */
+    fun skillIdsOfCourse(course: Course): List<String> =
+        course.units.flatMap { skillIdsOfUnit(it) }.distinct()
+
     fun moduleTitle(type: ModuleType, id: String): String? = when (type) {
         ModuleType.COURSE -> course(id)?.title
         ModuleType.UNIT -> unit(id)?.title
