@@ -18,13 +18,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 data class PlacedItem(val id: Long, val offset: Offset, val key: Long = System.nanoTime())
+
+@Serializable
+private data class PersistedPlacedItem(val id: Long, val x: Float, val y: Float)
 
 class AlchemistViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -57,6 +64,29 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
             _allItems.value = Alchemist.items
             _recipes.value = Alchemist.recipes
             seedInitialItemsIfEmpty()
+            loadPlacedElements()
+            launchPlacedElementsSaver()
+        }
+    }
+
+    private fun loadPlacedElements() {
+        val stored = ds.getString(PLACED_ELEMENTS_KEY) ?: return
+        try {
+            val persisted = Json.decodeFromString<List<PersistedPlacedItem>>(stored)
+            _placedElements.value = persisted.mapIndexed { index, item ->
+                PlacedItem(item.id, Offset(item.x, item.y), key = System.nanoTime() + index)
+            }
+        } catch (_: Exception) {
+            // Malformed or incompatible data: fall back to an empty board.
+        }
+    }
+
+    private fun launchPlacedElementsSaver() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _placedElements.drop(1).collect { list ->
+                val dto = list.map { PersistedPlacedItem(it.id, it.offset.x, it.offset.y) }
+                ds.setString(PLACED_ELEMENTS_KEY, Json.encodeToString(dto))
+            }
         }
     }
 
@@ -175,5 +205,6 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
     companion object {
         private const val TIME_ID = 41L
         private const val TIME_UNLOCK_THRESHOLD = 100
+        private const val PLACED_ELEMENTS_KEY = "placed_elements"
     }
 }
