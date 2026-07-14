@@ -1,3 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="close">Zavřít</string>
+    <string name="settings">Nastavení</string>
+    <string name="app_name">Tvorba slov</string>
+    <string name="difficulty_easy">Jednoduchá</string>
+    <string name="difficulty_medium">Střední</string>
+    <string name="difficulty_hard">Těžká</string>
+    <string name="competitive_score">Skóre: %1$d</string>
+    <string name="competitive_start">Začít</string>
+    <string name="competitive_difficulty">Obtížnost</string>
+    <string name="competitive_time_limit">%1$d na jeden level</string>
+    <string name="competitive_solved">Vyřešeno! +%1$d bodů</string>
+    <string name="competitive_timed_out">Čas vypršel! %1$d bodů</string>
+    <string name="all_levels_completed">Všechny úrovně byly dokončeny</string>
+    <string name="stay_tuned_new_levels">Nové úrovně přijdou v příštích aktualizacích</string>
+    <string name="error_parse_level">Nepovedlo se zpracovat data úrovně.</string>
+    <string name="error_load_level">Nepodařilo se načíst data úrovně: %1$s</string>
+    <string name="level_number">Úroveň %1$d</string>
+    <string name="next_level">Další úroveň</string>
+    <string name="bonus_words">Bonusová slova</string>
+    <string name="tap_to_spell">Klepnutím hláskjute</string>
+    <string name="tap_to_spell_description">Místo táhnutí klepejte na písmena pro stavbu slov</string>
+    <string name="hint_confirmation">Jste si jist, že chcete použít nápovědu?</string>
+    <string name="yes">Ano</string>
+    <string name="no">Ne</string>
+    <string name="mode_casual">Klidná hra</string>
+    <string name="mode_competitive">Kompetetivní</string>
 </resources>
