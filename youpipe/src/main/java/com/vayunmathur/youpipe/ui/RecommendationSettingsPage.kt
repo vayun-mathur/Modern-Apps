@@ -59,7 +59,7 @@ fun RecommendationSettingsPage(
             items(topChannels, key = { "ch-$it" }) { channelKey ->
                 val pinned = channelKey in pinnedKeys
                 ListItem(
-                    headlineContent = { Text(channelKey.decodeHtml(), style = MaterialTheme.typography.titleMedium) },
+                    content = { Text(channelKey.decodeHtml(), style = MaterialTheme.typography.titleMedium) },
                     supportingContent = { if (pinned) Text(stringResource(R.string.label_pinned)) },
                     trailingContent = {
                         androidx.compose.foundation.layout.Row {
@@ -80,7 +80,7 @@ fun RecommendationSettingsPage(
             }
             items(topKeywords, key = { "kw-$it" }) { keyword ->
                 ListItem(
-                    headlineContent = { Text(keyword, style = MaterialTheme.typography.titleMedium) },
+                    content = { Text(keyword, style = MaterialTheme.typography.titleMedium) },
                     trailingContent = {
                         TextButton(onClick = { ypvm.removeInterest(keyword = keyword) }) {
                             Text(stringResource(R.string.action_remove))
@@ -95,7 +95,7 @@ fun RecommendationSettingsPage(
             }
             items(blockedChannels, key = { "bl-$it" }) { channelKey ->
                 ListItem(
-                    headlineContent = { Text(channelKey.decodeHtml(), style = MaterialTheme.typography.titleMedium) },
+                    content = { Text(channelKey.decodeHtml(), style = MaterialTheme.typography.titleMedium) },
                     trailingContent = {
                         TextButton(onClick = { ypvm.clearChannelPreference(channelKey) }) {
                             Text(stringResource(R.string.action_unblock))
@@ -110,7 +110,7 @@ fun RecommendationSettingsPage(
             }
             items(mutedKeywords, key = { "mk-$it" }) { keyword ->
                 ListItem(
-                    headlineContent = { Text(keyword, style = MaterialTheme.typography.titleMedium) },
+                    content = { Text(keyword, style = MaterialTheme.typography.titleMedium) },
                     trailingContent = {
                         TextButton(onClick = { ypvm.unmuteKeyword(keyword) }) {
                             Text(stringResource(R.string.action_unmute))

@@ -32,13 +32,13 @@ fun AddToPlaylistDialog(backStack: NavBackStack<Route>, musicViewModel: MusicVie
         text = {
             Column {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.new_playlist)) },
+                    content = { Text(stringResource(R.string.new_playlist)) },
                     leadingContent = { IconAdd() },
                     modifier = Modifier.clickable { showCreateDialog = true }
                 )
                 playlists.forEach { playlist ->
                     ListItem(
-                        headlineContent = { Text(playlist.name) },
+                        content = { Text(playlist.name) },
                         leadingContent = {
                             RadioButton(
                                 selected = selectedPlaylistId == playlist.id,

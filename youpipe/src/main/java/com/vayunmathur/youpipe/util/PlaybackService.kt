@@ -67,6 +67,7 @@ class PlaybackService : MediaSessionService() {
             .setDataSourceFactory(dataSourceFactory)
 
         val customMediaSourceFactory = object : MediaSource.Factory {
+            @Suppress("DEPRECATION")
             override fun createMediaSource(mediaItem: MediaItem): MediaSource {
                 // Check if we passed an audio URI in the tag (via onAddMediaItems)
                 // or in the extras (fallback)

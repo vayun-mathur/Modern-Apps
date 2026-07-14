@@ -288,7 +288,7 @@ fun ContactDetailsPage(
                         contact!!.birthday?.let { birthday ->
                             val birthdayText = birthday.startDate.formatDisplay()
                             ListItem(
-                                headlineContent = { Text(birthdayText) },
+                                content = { Text(birthdayText) },
                                 supportingContent = { Text(stringResource(R.string.birthday)) },
                                 leadingContent = { Icon(painterResource(R.drawable.outline_cake_24), birthday.typeString(context)) },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -303,7 +303,7 @@ fun ContactDetailsPage(
                         details.dates.filter{it.type != CDKEvent.TYPE_BIRTHDAY }.forEach { event ->
                             val eventText = event.startDate.formatDisplay()
                             ListItem(
-                                headlineContent = { Text(eventText) },
+                                content = { Text(eventText) },
                                 supportingContent = { Text(event.typeString(context)) },
                                 leadingContent = { Icon(painterResource(R.drawable.outline_event_24), event.typeString(context)) },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -631,7 +631,7 @@ fun DetailItem(
             )
     ) {
         ListItem(
-            headlineContent = {
+            content = {
                 Box {
                     Text(data, style = MaterialTheme.typography.bodyLarge)
                     dropdownContent?.invoke()

@@ -380,11 +380,9 @@ fun VideoDetails(
     }
 
     Column {
-        ListItem({
-            Text(videoData.title, style = MaterialTheme.typography.titleMedium)
-        }, Modifier, {}, {
+        ListItem(modifier = Modifier, overlineContent = {}, supportingContent = {
             Text(stringResource(R.string.video_info_format, videoData.author, countString(context, videoData.views), uploadTimeAgo(context, videoData.uploadDate)))
-        }, {
+        }, leadingContent = {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(videoData.authorThumbnail)
@@ -395,7 +393,7 @@ fun VideoDetails(
                     backStack.add(Route.ChannelPage(videoData.authorURL))
                 }
             )
-        }, {
+        }, trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (downloadProgress != null) {
                     CircularProgressIndicator(
@@ -432,7 +430,9 @@ fun VideoDetails(
                     }
                 }
             }
-        })
+        }) {
+            Text(videoData.title, style = MaterialTheme.typography.titleMedium)
+        }
     }
 }
 
@@ -465,11 +465,9 @@ fun CommentsSection(comments: List<Comment>) {
 
 @Composable
 fun CommentItem(c: Comment) {
-    ListItem({
-        Text(c.text)
-    }, Modifier, {
+    ListItem(modifier = Modifier, overlineContent = {
         Text(c.author)
-    }, {
+    }, supportingContent = {
         Column {
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -480,7 +478,9 @@ fun CommentItem(c: Comment) {
                 Icon(painterResource(R.drawable.outline_thumb_down_24), null, Modifier.size(16.dp))
             }
         }
-    })
+    }) {
+        Text(c.text)
+    }
 }
 
 fun uploadTimeAgo(context: android.content.Context, date: Instant): String {

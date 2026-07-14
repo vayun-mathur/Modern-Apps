@@ -40,6 +40,7 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
                 val heading = if (location.hasBearing()) location.bearing else currentHeading
                 onUpdate?.invoke(Position(location.longitude, location.latitude), heading)
             }
+            @Deprecated("Overrides deprecated LocationListener.onStatusChanged")
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         }
         registeredLocationListener = locationListener

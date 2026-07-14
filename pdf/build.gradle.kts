@@ -11,7 +11,7 @@ android {
     }
     // The Rust build drops <abi>/libpdf_render.so under this dir; register it as
     // a jniLibs source so AGP packages the native lib.
-    sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("rustJniLibs").get().asFile)
+    sourceSets["main"].jniLibs.directories.add(layout.buildDirectory.dir("rustJniLibs").get().asFile.absolutePath)
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
     }
 }
 
-val cargoNdkBuild by tasks.registering {
+val cargoNdkBuild = tasks.register("cargoNdkBuild") {
     description = "Builds libpdf_render.so for all Android ABIs."
     dependsOn(perAbiBuildTasks)
 }

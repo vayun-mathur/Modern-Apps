@@ -79,7 +79,7 @@ fun LocationItem(
                     )
                 }
             },
-            headlineContent = { Text(location.name, color = contentColor) },
+            content = { Text(location.name, color = contentColor) },
             supportingContent = {
                 Text(
                     description,

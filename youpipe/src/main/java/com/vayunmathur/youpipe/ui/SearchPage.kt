@@ -158,15 +158,13 @@ fun SearchPage(
 @Composable
 fun ChannelItem(backStack: NavBackStack<Route>, channelInfo: ChannelInfo) {
     val context = LocalContext.current
-    ListItem({
-        Text(channelInfo.name, style = MaterialTheme.typography.titleMedium)
-    }, Modifier.clickable {
+    ListItem(modifier = Modifier.clickable {
         backStack.add(Route.ChannelPage(channelInfo.channelID))
-    }, {
+    }, overlineContent = {
 
-    }, {
+    }, supportingContent = {
         Text(stringResource(R.string.subscribers_count, countString(context, channelInfo.subscribers)))
-    }, {
+    }, leadingContent = {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(channelInfo.avatar)
@@ -175,5 +173,7 @@ fun ChannelItem(backStack: NavBackStack<Route>, channelInfo: ChannelInfo) {
             contentDescription = null,
             Modifier.size(50.dp).clip(CircleShape)
         )
-    }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+    }, colors = ListItemDefaults.colors(containerColor = Color.Transparent)) {
+        Text(channelInfo.name, style = MaterialTheme.typography.titleMedium)
+    }
 }

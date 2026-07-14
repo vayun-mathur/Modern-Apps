@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.ClipEntry
+import android.content.ClipData
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -35,7 +37,6 @@ import com.vayunmathur.openassistant.Route
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.util.AssistantViewModel
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -275,7 +276,8 @@ fun ChatBubble(message: Message) {
     val context = LocalContext.current
     val isUser = message.role == "user"
     val isTool = message.role == "tool"
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
         if (isUser) {
             Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp), modifier = Modifier.widthIn(max = 300.dp)) {
@@ -356,7 +358,7 @@ fun ChatBubble(message: Message) {
         }
         if (message.text.isNotBlank() && !isTool) {
             IconButton(
-                onClick = { clipboardManager.setText(AnnotatedString(message.text)) },
+                onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("message", message.text))) } },
                 modifier = Modifier.size(32.dp).padding(top = 4.dp)
             ) {
                 IconCopy(tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f))

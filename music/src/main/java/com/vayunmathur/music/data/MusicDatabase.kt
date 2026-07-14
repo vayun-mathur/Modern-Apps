@@ -62,7 +62,7 @@ interface PlaylistDao {
 }
 
 @TypeConverters(DefaultConverters::class)
-@Database(entities = [Music::class, Album::class, Artist::class, Playlist::class, ManyManyMatching::class], version = 3)
+@Database(entities = [Music::class, Album::class, Artist::class, Playlist::class, ManyManyMatching::class], version = 3, exportSchema = false)
 abstract class MusicDatabase: RoomDatabase() {
     abstract fun musicDao(): MusicDao
     abstract fun albumDao(): AlbumDao

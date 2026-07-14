@@ -62,7 +62,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit) {
 
     Box {
         ListItem(
-            headlineContent = { Text(stringResource(R.string.label_youtube_language)) },
+            content = { Text(stringResource(R.string.label_youtube_language)) },
             supportingContent = { Text(currentName) },
             trailingContent = {
                 Icon(painterResource(R.drawable.outline_arrow_drop_down_24), contentDescription = null)
@@ -125,7 +125,7 @@ fun SettingsPage(
             LazyColumn(Modifier.padding(paddingValues)) {
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_sponsorblock)) }
+                        content = { Text(stringResource(R.string.label_sponsorblock)) }
                     )
                 }
                 ALL_SPONSOR_CATEGORIES.forEach { category ->
@@ -133,7 +133,7 @@ fun SettingsPage(
                         val label = SPONSOR_CATEGORY_LABELS[category] ?: category
                         val checked = category in sponsorBlockCategories
                         ListItem(
-                            headlineContent = { Text(label) },
+                            content = { Text(label) },
                             trailingContent = {
                                 Switch(
                                     checked = checked,
@@ -146,7 +146,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_dearrow)) },
+                        content = { Text(stringResource(R.string.label_dearrow)) },
                         supportingContent = { Text(stringResource(R.string.label_dearrow_description)) },
                         trailingContent = {
                             Switch(
@@ -158,7 +158,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_youtube_content)) }
+                        content = { Text(stringResource(R.string.label_youtube_content)) }
                     )
                 }
                 item {
@@ -169,7 +169,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_recommendations)) }
+                        content = { Text(stringResource(R.string.label_recommendations)) }
                     )
                 }
                 item {
@@ -206,7 +206,7 @@ fun SettingsPage(
                     )
                 }
                 item {
-                    ListItem(headlineContent = { Text(stringResource(R.string.label_rec_sources)) })
+                    ListItem(content = { Text(stringResource(R.string.label_rec_sources)) })
                 }
                 SOURCE_TOGGLES.forEach { (source, labelRes) ->
                     item(key = "src_${source.name}") {
@@ -218,7 +218,7 @@ fun SettingsPage(
                             RecSource.SEARCH -> recPrefs.sourceSearch
                         }
                         ListItem(
-                            headlineContent = { Text(stringResource(labelRes)) },
+                            content = { Text(stringResource(labelRes)) },
                             trailingContent = {
                                 Switch(checked = enabled, onCheckedChange = { ypvm.toggleSource(source) })
                             },
@@ -227,11 +227,11 @@ fun SettingsPage(
                     }
                 }
                 item {
-                    ListItem(headlineContent = { Text(stringResource(R.string.label_rec_content_filters)) })
+                    ListItem(content = { Text(stringResource(R.string.label_rec_content_filters)) })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_hide_shorts)) },
+                        content = { Text(stringResource(R.string.label_hide_shorts)) },
                         trailingContent = {
                             Switch(checked = recPrefs.hideShorts, onCheckedChange = { ypvm.setHideShorts(it) })
                         },
@@ -240,7 +240,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_hide_live)) },
+                        content = { Text(stringResource(R.string.label_hide_live)) },
                         trailingContent = {
                             Switch(checked = recPrefs.hideLive, onCheckedChange = { ypvm.setHideLive(it) })
                         },
@@ -263,7 +263,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_manage_interests)) },
+                        content = { Text(stringResource(R.string.label_manage_interests)) },
                         modifier = Modifier.padding(start = 16.dp).clickable {
                             backStack.add(Route.RecommendationSettings)
                         },
@@ -271,7 +271,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = {
+                        content = {
                             Button(onClick = { ypvm.resetAlgorithm() }) {
                                 Text(stringResource(R.string.action_reset_algorithm))
                             }
@@ -282,12 +282,12 @@ fun SettingsPage(
                 item { HorizontalDivider() }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_backup_restore)) }
+                        content = { Text(stringResource(R.string.label_backup_restore)) }
                     )
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_export_youpipe)) },
+                        content = { Text(stringResource(R.string.label_export_youpipe)) },
                         modifier = Modifier.padding(start = 16.dp).clickable {
                             exportLauncher.launch("youpipe_subscriptions.json")
                         }
@@ -295,7 +295,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_restore_youpipe)) },
+                        content = { Text(stringResource(R.string.label_restore_youpipe)) },
                         modifier = Modifier.padding(start = 16.dp).clickable {
                             restoreLauncher.launch("application/json")
                         }
@@ -303,7 +303,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_import_newpipe)) },
+                        content = { Text(stringResource(R.string.label_import_newpipe)) },
                         modifier = Modifier.padding(start = 16.dp).clickable {
                             newPipeLauncher.launch("application/json")
                         }
@@ -311,7 +311,7 @@ fun SettingsPage(
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.label_import_youtube)) },
+                        content = { Text(stringResource(R.string.label_import_youtube)) },
                         modifier = Modifier.padding(start = 16.dp).clickable {
                             youtubeLauncher.launch("application/zip")
                         }

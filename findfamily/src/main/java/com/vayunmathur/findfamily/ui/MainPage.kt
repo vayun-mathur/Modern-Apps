@@ -686,7 +686,7 @@ fun WaypointCard(waypoint: Waypoint, userNamesHere: List<String>, onSelect: () -
     }
     Card(Modifier.clickable(onClick = onSelect)) {
         ListItem(
-            headlineContent = { Text(waypoint.name, fontWeight = FontWeight.Bold) },
+            content = { Text(waypoint.name, fontWeight = FontWeight.Bold) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             supportingContent = { Text(usersString, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             trailingContent = { IconEdit() }
@@ -726,7 +726,7 @@ fun UserCard(user: User, locationValue: LocationValue?, showSupportingContent: B
         ListItem(
             leadingContent = { UserPicture(user, 40.dp) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            headlineContent = {
+            content = {
                 Text(
                     user.name,
                     style = MaterialTheme.typography.titleMediumEmphasized,

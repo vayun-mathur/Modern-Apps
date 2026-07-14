@@ -1,6 +1,7 @@
 package com.vayunmathur.things.util
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
@@ -53,12 +54,13 @@ class BleManager(private val activity: MainActivity) {
         activity.connectionState.value = "Scanning..."
     }
 
+    @Suppress("DEPRECATION")
     fun connect(address: String) {
         scanner?.stopScan(scanCallback)
         activity.scanning.value = false
         activity.connectionState.value = "Connecting..."
         val device = adapter.getRemoteDevice(address)
-        gatt = device.connectGatt(activity, false, gattCallback)
+        gatt = device.connectGatt(activity, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
     }
 
     fun disconnect() {

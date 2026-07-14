@@ -166,7 +166,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Bouncy Castle — AES-IGE for MTProto encryption, X25519 for WhatsApp Noise
-    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation(libs.bouncycastle)
 
     // Signal protocol crypto (Double Ratchet, sealed sender, pre-keys, etc.)
     implementation("org.signal:libsignal-android:0.86.5")

@@ -16,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,7 +72,7 @@ fun LogHydrationDialog(viewModel: HealthViewModel, initialTime: Instant? = null,
                                 ) {
                                     Row(
                                             modifier =
-                                                    Modifier.menuAnchor()
+                                                    Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                                                             .clickable { unitExpanded = true }
                                                             .padding(end = 8.dp),
                                             verticalAlignment = Alignment.CenterVertically
@@ -169,7 +170,7 @@ fun LogMealDialog(viewModel: HealthViewModel, initialTime: Instant? = null, onDi
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                                 },
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                         )
                         ExposedDropdownMenu(
                                 expanded = expanded,

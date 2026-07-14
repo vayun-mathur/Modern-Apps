@@ -96,6 +96,17 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
             matchingFallbacks += listOf("release")
         }
     }
+
+    packaging {
+        resources {
+            // bouncycastle 1.85 (bcprov/bcpkix/bcutil) each ship these license files,
+            // which collide during Java-resource merge.
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/NOTICE.md",
+            )
+        }
+    }
 }
 
 dependencies {

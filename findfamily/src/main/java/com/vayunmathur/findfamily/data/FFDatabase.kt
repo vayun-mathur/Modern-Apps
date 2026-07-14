@@ -97,7 +97,7 @@ interface TemporaryLinkDao {
     suspend fun delete(value: TemporaryLink): Int
 }
 
-@Database(entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class], version = 5)
+@Database(entities = [User::class, Waypoint::class, LocationValue::class, TemporaryLink::class], version = 5, exportSchema = false)
 @TypeConverters(DefaultConverters::class)
 abstract class FFDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao

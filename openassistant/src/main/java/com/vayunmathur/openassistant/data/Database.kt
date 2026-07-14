@@ -99,7 +99,7 @@ interface MemoryDao {
 }
 
 @TypeConverters(DefaultConverters::class)
-@Database(entities = [Conversation::class, Message::class, Memory::class], version = 3)
+@Database(entities = [Conversation::class, Message::class, Memory::class], version = 3, exportSchema = false)
 abstract class AppDatabase: RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
     abstract fun messageDao(): MessageDao

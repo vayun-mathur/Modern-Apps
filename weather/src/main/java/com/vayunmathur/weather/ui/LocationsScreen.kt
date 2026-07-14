@@ -33,7 +33,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -154,7 +155,7 @@ fun LocationsScreen(
     }
 
     var longPressedLocation: SavedLocation? by remember { mutableStateOf(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
 
     val (onAddCurrentLocation, deviceLocationLoading) = rememberRequestDeviceLocation(viewModel)
 
@@ -311,7 +312,7 @@ fun LocationsScreen(
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     },
-                    headlineContent = { Text("Delete", color = MaterialTheme.colorScheme.onSurface) },
+                    content = { Text("Delete", color = MaterialTheme.colorScheme.onSurface) },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
                 Spacer(Modifier.height(4.dp))
@@ -423,7 +424,7 @@ fun SearchLocationPage(backStack: NavBackStack<Route>, viewModel: WeatherViewMod
                                     colors = ListItemDefaults.colors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                     ),
-                                    headlineContent = { Text(r.name) },
+                                    content = { Text(r.name) },
                                     supportingContent = {
                                         val parts = listOfNotNull(r.admin1, r.country).filter { it.isNotBlank() }
                                         if (parts.isNotEmpty()) Text(parts.joinToString(", "))

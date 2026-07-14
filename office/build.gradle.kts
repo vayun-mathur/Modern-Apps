@@ -9,7 +9,7 @@ android {
     }
     // Ship the real sample documents (metadata_data/assets) inside the instrumented
     // test APK so the screenshot generator can open them via ACTION_VIEW on device.
-    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("metadata_data/assets"))
+    sourceSets.getByName("androidTest").assets.directories.add(rootProject.file("metadata_data/assets").absolutePath)
 }
 
 dependencies {

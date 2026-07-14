@@ -88,11 +88,10 @@ fun HolidayCalendarsScreen(viewModel: CalendarViewModel, backStack: NavBackStack
                                 busy = busy - country.code
                                 viewModel.reloadAll()
                             }
-                            Unit
                         }
                     }
                     ListItem(
-                        headlineContent = { Text(country.name) },
+                        content = { Text(country.name) },
                         modifier = Modifier.fillMaxWidth().clickable(enabled = !isBusy) { toggle() },
                         trailingContent = {
                             if (isBusy) {

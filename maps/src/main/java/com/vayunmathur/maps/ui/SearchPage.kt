@@ -100,7 +100,7 @@ fun SearchPage(
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(results, key = { it.key }) { result ->
                         ListItem(
-                            headlineContent = { Text(result.title.ifBlank { stringResource(R.string.unnamed_amenity) }) },
+                            content = { Text(result.title.ifBlank { stringResource(R.string.unnamed_amenity) }) },
                             supportingContent = {
                                 Text(stringResource(R.string.coordinates, result.lat.round(4), result.lon.round(4)))
                             },

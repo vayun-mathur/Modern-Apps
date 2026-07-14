@@ -145,7 +145,7 @@ fun ArtistDetailScreen(backStack: NavBackStack<Route>, musicViewModel: MusicView
                 }
 
                 ListItem(
-                    headlineContent = { Text(album.name) },
+                    content = { Text(album.name) },
                     modifier = Modifier.clickable {
                         backStack.add(Route.AlbumDetail(album.id))
                     },

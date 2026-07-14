@@ -829,8 +829,8 @@ internal object OoxmlDocx {
             e = parser.next()
         }
         val rows = grid.map { cells ->
-            val decorated = if (tblBorders != null && !tblBorders!!.isEmpty()) cells.map { c ->
-                if (c.borders == null && !c.isCovered) c.copy(borders = tblBorders, borderColor = OdfBorders.renderColor(tblBorders!!.top)) else c
+            val decorated = if (tblBorders != null && !tblBorders.isEmpty()) cells.map { c ->
+                if (c.borders == null && !c.isCovered) c.copy(borders = tblBorders, borderColor = OdfBorders.renderColor(tblBorders.top)) else c
             } else cells
             OdfTableRow(decorated)
         }

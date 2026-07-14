@@ -43,7 +43,7 @@ fun CalendarSelectorDropdown(
 
     Box(modifier) {
         ListItem(
-            headlineContent = { androidx.compose.material3.Text(selectedCalendar?.displayName ?: stringResource(R.string.select_calendar)) },
+            content = { androidx.compose.material3.Text(selectedCalendar?.displayName ?: stringResource(R.string.select_calendar)) },
             leadingContent = {
                 selectedCalendar?.color?.let { Box(Modifier.size(24.dp).background(Color(it), RectangleShape)) }
             },

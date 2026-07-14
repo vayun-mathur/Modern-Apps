@@ -323,7 +323,7 @@ private fun ConversationRow(
     onLongPress: () -> Unit = {},
 ) {
     ListItem(
-        headlineContent = {
+        content = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     conversation.displayTitle(),

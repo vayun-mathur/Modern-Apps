@@ -62,9 +62,7 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, youPipeViewModel:
                 Text(stringResource(R.string.label_select_subscriptions))
                 LazyColumn(Modifier.weight(1f)) {
                     items(subscriptions, key = { it.id }) {subscription ->
-                        ListItem({
-                            Text(subscription.name)
-                        }, trailingContent = {
+                        ListItem(trailingContent = {
                         Checkbox(subscription in selectedSubscriptions, {
                                 selectedSubscriptions = if(subscription in selectedSubscriptions)
                                     selectedSubscriptions - subscription
@@ -80,7 +78,9 @@ fun CreateSubscriptionCategory(backStack: NavBackStack<Route>, youPipeViewModel:
                                 contentDescription = null,
                                 Modifier.size(24.dp).clip(CircleShape)
                             )
-                        })
+                        }) {
+                            Text(subscription.name)
+                        }
                     }
                 }
                 Button(

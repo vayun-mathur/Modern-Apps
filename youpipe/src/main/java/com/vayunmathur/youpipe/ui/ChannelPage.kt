@@ -173,11 +173,9 @@ fun VideoItem(
             }
         }
         Box(Modifier.weight(1.5f)) {
-            ListItem({
-                Text(displayTitle.decodeHtml(), style = MaterialTheme.typography.titleMedium)
-            }, Modifier, {
+            ListItem(modifier = Modifier, overlineContent = {
 
-            }, {
+            }, supportingContent = {
                 Column {
                     if(showAuthor) {
                         Text(videoInfo.author.decodeHtml(), style = MaterialTheme.typography.bodySmall)
@@ -194,7 +192,9 @@ fun VideoItem(
                         )
                     }
                 }
-            }, trailingContent = effectiveTrailing?.let { { it() } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }, trailingContent = effectiveTrailing?.let { { it() } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent)) {
+                Text(displayTitle.decodeHtml(), style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 }
@@ -226,13 +226,11 @@ private fun VideoOverflowMenu(actions: List<Pair<String, () -> Unit>>) {
 @Composable
 fun ChannelHeader(channelInfo: ChannelInfo) {
     val context = LocalContext.current
-    ListItem({
-        Text(channelInfo.name.decodeHtml(), style = MaterialTheme.typography.titleLarge)
-    }, Modifier, {
+    ListItem(modifier = Modifier, overlineContent = {
 
-    }, {
+    }, supportingContent = {
         Text(stringResource(R.string.channel_info, countString(context, channelInfo.subscribers)))
-    }, {
+    }, leadingContent = {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(channelInfo.avatar)
@@ -241,5 +239,7 @@ fun ChannelHeader(channelInfo: ChannelInfo) {
             contentDescription = null,
             Modifier.size(52.dp).clip(CircleShape)
         )
-    })
+    }) {
+        Text(channelInfo.name.decodeHtml(), style = MaterialTheme.typography.titleLarge)
+    }
 }

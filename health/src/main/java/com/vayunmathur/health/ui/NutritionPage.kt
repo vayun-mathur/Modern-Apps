@@ -205,7 +205,7 @@ fun NutritionPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
             GroupedSection(accentColor = HealthColors.Nutrition) {
                 val totalCal = loggedMeals.sumOf { it.nutritionData?.calories ?: 0.0 }
                 ListItem(
-                    headlineContent = {
+                    content = {
                         Text(
                             if (loggedMeals.isEmpty()) "No meals logged today"
                             else "${loggedMeals.size} meals · ${totalCal.round(0).toInt()} cal"

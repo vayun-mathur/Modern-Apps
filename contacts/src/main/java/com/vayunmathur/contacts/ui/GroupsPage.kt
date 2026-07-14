@@ -103,7 +103,7 @@ fun GroupsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>, expa
                             color = headerColor,
                         ) {
                             ListItem(
-                                headlineContent = {
+                                content = {
                                     Text(
                                         text = group.name,
                                         style = MaterialTheme.typography.bodyLarge,

@@ -104,7 +104,7 @@ class SearchManager(private val context: Context) {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val apps = context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_ALL)
         val docs = apps.mapNotNull { info ->
-            val label = info.loadLabel(context.packageManager)?.toString() ?: return@mapNotNull null
+            val label = info.loadLabel(context.packageManager).toString()
             GenericDocument.Builder<GenericDocument.Builder<*>>(
                 "apps", info.activityInfo.packageName, SCHEMA_APP
             )

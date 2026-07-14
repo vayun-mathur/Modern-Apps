@@ -121,7 +121,7 @@ fun DownloadedVideosPage(backStack: NavBackStack<Route>, youPipeViewModel: YouPi
                                 modifier = Modifier.size(80.dp, 45.dp).clip(RoundedCornerShape(8.dp)),
                             )
                         },
-                        headlineContent = { Text(status.videoInfo.name, maxLines = 1) },
+                        content = { Text(status.videoInfo.name, maxLines = 1) },
                         supportingContent = { Text("${(status.progress * 100).toInt()}%") },
                         trailingContent = {
                             Row(verticalAlignment = Alignment.CenterVertically) {

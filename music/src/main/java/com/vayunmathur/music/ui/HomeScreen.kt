@@ -138,7 +138,7 @@ fun PlayingBottomBar(
             ListItem(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                headlineContent = {
+                content = {
                     Text(
                         text = metadata.title?.toString() ?: stringResource(R.string.unknown_title),
                         maxLines = 1,

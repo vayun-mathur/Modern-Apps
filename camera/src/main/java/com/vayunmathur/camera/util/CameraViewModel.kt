@@ -277,7 +277,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _exposureTimeIndex = MutableStateFlow(0)
     val exposureTimeIndex = _exposureTimeIndex.asStateFlow()
 
-    // --- Manual pro controls (ISO / focus / white balance). null / index 0 == Auto. ---
+    // --- Manual pro controls (ISO). Index 0 == Auto. ---
 
     // ISO: index 0 == Auto; otherwise an index into [_isoStops] (+1). Stops are derived from the
     // sensor's SENSOR_INFO_SENSITIVITY_RANGE when the session binds.
@@ -286,18 +286,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _isoStops = MutableStateFlow<List<Int>>(emptyList())
     val isoStops = _isoStops.asStateFlow()
-
-    // Focus: null == autofocus; else a lens focus distance in diopters (0f == infinity, up to
-    // _minFocusDistance == closest/macro).
-    private val _focusDistance = MutableStateFlow<Float?>(null)
-    val focusDistance = _focusDistance.asStateFlow()
-
-    private val _minFocusDistance = MutableStateFlow(0f)
-    val minFocusDistance = _minFocusDistance.asStateFlow()
-
-    // White balance: null == auto AWB; else a Kelvin color temperature.
-    private val _kelvin = MutableStateFlow<Int?>(null)
-    val kelvin = _kelvin.asStateFlow()
 
     // Last auto-converged AE ISO / exposure, snapshotted off the preview's capture results so a
     // half-manual exposure (only ISO or only shutter set) can seed the other from the auto value.
@@ -556,18 +544,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         applyManualControls()
     }
 
-    /** null == autofocus; else a lens focus distance in diopters (0f == infinity). */
-    fun setFocusDistance(distance: Float?) {
-        _focusDistance.value = distance?.coerceIn(0f, _minFocusDistance.value)
-        applyManualControls()
-    }
-
-    /** null == auto AWB; else a Kelvin color temperature. */
-    fun setKelvin(kelvin: Int?) {
-        _kelvin.value = kelvin?.coerceIn(WhiteBalance.MIN_KELVIN, WhiteBalance.MAX_KELVIN)
-        applyManualControls()
-    }
-
     private fun camera2ControlOrNull(): androidx.camera.camera2.interop.Camera2CameraControl? = try {
         boundCamera?.cameraControl?.let {
             androidx.camera.camera2.interop.Camera2CameraControl.from(it)
@@ -586,11 +562,10 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         _exposureTimeIndex.value == 0 && _manualIsoIndex.value == 0
 
     /**
-     * Rebuilds a single [CaptureRequestOptions] from the current manual 3A state (exposure/ISO,
-     * focus, white balance) and pushes it to the bound camera, affecting the live preview and
-     * subsequent stills. Controls left on Auto are simply omitted, so they revert to CameraX's
-     * default auto behavior (including tap-to-focus). Called on every manual-control change and
-     * re-applied after a session rebind.
+     * Rebuilds a single [CaptureRequestOptions] from the current manual exposure/ISO state and
+     * pushes it to the bound camera, affecting the live preview and subsequent stills. When on Auto
+     * the options are cleared, reverting to CameraX's default auto behavior (including tap-to-focus).
+     * Called on every manual-control change and re-applied after a session rebind.
      */
     fun applyManualControls() {
         val cam2 = camera2ControlOrNull() ?: return
@@ -615,33 +590,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             )
         }
 
-        // Manual focus.
-        _focusDistance.value?.let { fd ->
-            builder.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE,
-                android.hardware.camera2.CameraMetadata.CONTROL_AF_MODE_OFF
-            )
-            builder.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.LENS_FOCUS_DISTANCE, fd
-            )
-        }
-
-        // Manual white balance (Kelvin → RGGB gains).
-        _kelvin.value?.let { k ->
-            builder.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.CONTROL_AWB_MODE,
-                android.hardware.camera2.CameraMetadata.CONTROL_AWB_MODE_OFF
-            )
-            builder.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.COLOR_CORRECTION_MODE,
-                android.hardware.camera2.CameraMetadata.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX
-            )
-            builder.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.COLOR_CORRECTION_GAINS,
-                WhiteBalance.kelvinToRggbGains(k)
-            )
-        }
-
         try {
             // An empty options set clears any previously-applied manual 3A → full auto.
             cam2.setCaptureRequestOptions(builder.build())
@@ -652,8 +600,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun resetManualControls() {
         _manualIsoIndex.value = 0
-        _focusDistance.value = null
-        _kelvin.value = null
         _exposureTimeIndex.value = 0
     }
 
@@ -955,7 +901,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Reads the bound sensor's ISO range → stop list and its minimum focus distance. */
+    /** Reads the bound sensor's ISO range → stop list for the manual ISO control. */
     private fun readManualControlRanges() {
         val cam = boundCamera ?: return
         try {
@@ -968,9 +914,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                     .filter { it in isoRange.lower..isoRange.upper }
                     .ifEmpty { listOf(isoRange.lower, isoRange.upper) }
             } else emptyList()
-            _minFocusDistance.value = info.getCameraCharacteristic(
-                android.hardware.camera2.CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE
-            ) ?: 0f
         } catch (e: Exception) {
             Log.w("CameraViewModel", "Failed to read manual control ranges", e)
         }

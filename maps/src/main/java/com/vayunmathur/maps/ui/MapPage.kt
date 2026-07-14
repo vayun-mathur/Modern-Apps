@@ -37,7 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -203,9 +203,13 @@ fun MapPage(backStack: NavBackStack<Route>, viewModel: SelectedFeatureViewModel,
     var allowProgrammaticHide by retain { mutableStateOf(false) }
 
     val scaffoldState = rememberBottomSheetScaffoldState(
-        rememberStandardBottomSheetState(SheetValue.Hidden, {
-            it != SheetValue.Hidden || allowProgrammaticHide
-        }, false)
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded),
+            confirmValueChange = {
+                it != SheetValue.Hidden || allowProgrammaticHide
+            }
+        )
     )
 
     LaunchedEffect(Unit) {

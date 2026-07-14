@@ -2,6 +2,7 @@ package com.vayunmathur.email
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -689,7 +690,7 @@ fun MessageListScreen(
                             ) {}
                             ListItem(
                                 leadingContent = null,
-                                headlineContent = {
+                                content = {
                                     Text(
                                         text = message.subject,
                                         style = MaterialTheme.typography.bodyLarge,
@@ -1060,6 +1061,7 @@ fun DetailItem(label: String, name: String, email: String, avatarColor: Color) {
 
 @Composable
 fun AttachmentItem(attachment: Attachment, viewModel: EmailViewModel) {
+    val context = LocalContext.current
     var downloading by remember { mutableStateOf(false) }
     var localPath by remember { mutableStateOf(attachment.localUri) }
 
@@ -1069,14 +1071,36 @@ fun AttachmentItem(attachment: Attachment, viewModel: EmailViewModel) {
     ) {
         Text(text = attachment.fileName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
         if (localPath != null) {
-            Text("Downloaded", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+            Text(
+                "Open",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.clickable {
+                    val uri = try { Uri.parse(localPath) } catch (e: Exception) { null }
+                    if (uri != null) {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, attachment.mimeType.ifBlank { "*/*" })
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        try {
+                            context.startActivity(Intent.createChooser(intent, null))
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No app can open this file", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            )
         } else {
-            IconButton(onClick = { 
+            IconButton(onClick = {
                 downloading = true
-                viewModel.downloadAttachment(attachment, { path -> 
+                viewModel.downloadAttachment(attachment, { path ->
                     downloading = false
                     localPath = path
-                }, { downloading = false })
+                    Toast.makeText(context, "Saved to Downloads", Toast.LENGTH_SHORT).show()
+                }, { error ->
+                    downloading = false
+                    Toast.makeText(context, "Download failed: $error", Toast.LENGTH_SHORT).show()
+                })
             }, enabled = !downloading) {
                 if (downloading) CircularProgressIndicator(modifier = Modifier.size(16.dp))
                 else IconDownload(modifier = Modifier.size(16.dp))
@@ -1316,7 +1340,7 @@ fun ComposerScreen(
                         Column {
                             accounts.forEach { acc ->
                                 ListItem(
-                                    headlineContent = { Text(acc.email) },
+                                    content = { Text(acc.email) },
                                     modifier = Modifier.clickable { 
                                         fromAccount = acc
                                         showAccountPicker = false 
@@ -1582,7 +1606,7 @@ fun SettingsScreen(viewModel: EmailViewModel, onBack: () -> Unit) {
             }
             blocked.forEach { b ->
                 ListItem(
-                    headlineContent = { Text(b.address) },
+                    content = { Text(b.address) },
                     trailingContent = {
                         TextButton(onClick = { viewModel.unblockSender(b.address) }) { Text("Unblock") }
                     },
@@ -1617,7 +1641,7 @@ fun DraftsScreen(
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(drafts, key = { it.id }) { d ->
                     ListItem(
-                        headlineContent = { Text(d.subject.ifBlank { "(no subject)" }) },
+                        content = { Text(d.subject.ifBlank { "(no subject)" }) },
                         supportingContent = {
                             val prefix = if (d.to.isNotBlank()) "To: ${d.to}  " else ""
                             Text(prefix + d.body.replace("\n", " ").take(80), maxLines = 2)

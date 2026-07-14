@@ -100,7 +100,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                     .all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
 
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.sync_contacts_calendar)) },
+                    content = { Text(stringResource(R.string.sync_contacts_calendar)) },
                     trailingContent = {
                         if (hasCalendarPermissions) {
                             Switch(
@@ -131,7 +131,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                 )
                 val showAccountLabels by viewModel.showAccountLabels.collectAsStateWithLifecycle()
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.show_account_labels)) },
+                    content = { Text(stringResource(R.string.show_account_labels)) },
                     trailingContent = {
                         Switch(
                             checked = showAccountLabels,
@@ -151,7 +151,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.export_contacts)) },
+                    content = { Text(stringResource(R.string.export_contacts)) },
                     trailingContent = {
                         IconButton(onClick = { exportLauncher.launch("contacts.vcf") }) {
                             Icon(
@@ -177,7 +177,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                 val isVisible = account.name !in hiddenAccounts
                 val onDevice = stringResource(R.string.on_device)
                 ListItem(
-                    headlineContent = { Text(account.name.ifEmpty { onDevice }) },
+                    content = { Text(account.name.ifEmpty { onDevice }) },
                     supportingContent = { Text(account.type) },
                     trailingContent = {
                         Checkbox(

@@ -70,7 +70,7 @@ fun RecipeManagementPage(backStack: NavBackStack<Route>, viewModel: HealthViewMo
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            TabRow(
+            PrimaryTabRow(
                 selectedTabIndex = selectedTab,
                 contentColor = HealthColors.Nutrition,
             ) {
@@ -372,7 +372,7 @@ fun IngredientQuantityDialog(
                         readOnly = true,
                         label = { Text(stringResource(R.string.unit)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = unitExpanded,
@@ -459,7 +459,7 @@ fun IngredientSearchDialog(
                             }
                             items(localResults, key = { "local-${it.id}" }) { ingredient ->
                                 ListItem(
-                                    headlineContent = { Text(ingredient.displayName) },
+                                    content = { Text(ingredient.displayName) },
                                     supportingContent = { Text("Saved Locally", style = MaterialTheme.typography.bodySmall) },
                                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                     modifier = Modifier.clickable { onIngredientSelected(ingredient) }
@@ -478,7 +478,7 @@ fun IngredientSearchDialog(
                                 if (includeLocal && localResults.any { it.id == result.id.toString() }) return@items
 
                                 ListItem(
-                                    headlineContent = { Text(result.displayName) },
+                                    content = { Text(result.displayName) },
                                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                     modifier = Modifier.clickable {
                                         isFetchingData = true

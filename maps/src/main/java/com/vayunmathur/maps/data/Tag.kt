@@ -92,7 +92,7 @@ interface AddressDao {
     suspend fun search(query: String, limit: Int = 50): List<AddressResult>
 }
 
-@Database(entities = [AmenityTag::class, AmenityEntity::class], version = 1)
+@Database(entities = [AmenityTag::class, AmenityEntity::class], version = 1, exportSchema = false)
 abstract class AmenityDatabase : RoomDatabase() {
     abstract fun tagDao(): TagDao
     abstract fun amenityDao(): AmenityDao

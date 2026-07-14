@@ -103,6 +103,7 @@ class GattClientManager(private val context: Context) {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun connect(device: BluetoothDevice) {
         _state.value = ConnectionState.Connecting
         gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)

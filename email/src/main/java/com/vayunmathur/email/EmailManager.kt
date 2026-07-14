@@ -1,7 +1,10 @@
 package com.vayunmathur.email
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
 import com.vayunmathur.email.data.CredentialCrypto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -439,6 +442,11 @@ class EmailManager {
         }
     }
 
+    /**
+     * Streams an IMAP attachment MIME part into the public Downloads folder via MediaStore, so it
+     * lands in the user-visible Downloads directory (attachments have no HTTP URL, so
+     * DownloadManager isn't applicable). Returns the saved `content://` URI as a string.
+     */
     suspend fun downloadAttachment(
         context: Context,
         server: ServerConfig,
@@ -447,24 +455,37 @@ class EmailManager {
         folderName: String,
         uid: Long,
         partId: String,
-        fileName: String
+        fileName: String,
+        mimeType: String
     ): String = withStore(server, user, auth) { store ->
         val folder = store.getFolder(folderName)
         folder.open(Folder.READ_ONLY)
         try {
             val msg = (folder as UIDFolder).getMessageByUID(uid)
             val part = findPartById(msg, partId) ?: throw Exception("Part not found")
-            
-            val dir = File(context.filesDir, "attachments/$user/$uid")
-            dir.mkdirs()
-            val file = File(dir, fileName)
-            
-            part.inputStream.use { input ->
-                FileOutputStream(file).use { output ->
-                    input.copyTo(output)
-                }
+
+            val resolver = context.contentResolver
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType.ifBlank { "application/octet-stream" })
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
-            file.absolutePath
+            val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: throw Exception("Could not create Downloads entry")
+            try {
+                resolver.openOutputStream(itemUri)?.use { output ->
+                    part.inputStream.use { input -> input.copyTo(output) }
+                } ?: throw Exception("Could not open output stream")
+                values.clear()
+                values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(itemUri, values, null, null)
+            } catch (e: Exception) {
+                // Roll back the partially-written entry so we don't leave a 0-byte file behind.
+                resolver.delete(itemUri, null, null)
+                throw e
+            }
+            itemUri.toString()
         } finally {
             folder.closeQuietly()
         }

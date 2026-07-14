@@ -40,7 +40,7 @@ tasks.named<ShadowJar>("shadowJar") {
 }
 
 // Consumable configuration :messages depends on by name.
-val shaded: Configuration by configurations.creating {
+val shaded: Configuration = configurations.create("shaded") {
     isCanBeConsumed = true
     isCanBeResolved = false
 }

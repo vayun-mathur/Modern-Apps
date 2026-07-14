@@ -430,7 +430,7 @@ fun EditPhotoPage(
 
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
+    val transformState = rememberTransformableState { _, zoomChange, offsetChange, _ ->
         if (activeTool == DrawingTool.Pointer) { scale *= zoomChange; offset += offsetChange }
     }
 

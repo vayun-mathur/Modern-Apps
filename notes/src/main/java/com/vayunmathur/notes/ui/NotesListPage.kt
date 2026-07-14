@@ -204,7 +204,7 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
                     val isSelected = note.id in selectedIds
                     Surface(Modifier.animateItem(), shadowElevation = elevation) {
                         ListItem(
-                            headlineContent = { Text(note.title) },
+                            content = { Text(note.title) },
                             modifier = Modifier.combinedClickable(
                                 onClick = {
                                     if (isSelectionMode) {
@@ -248,8 +248,7 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
                             colors = ListItemDefaults.colors(
                                 containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                             ),
-                            tonalElevation = elevation,
-                            shadowElevation = elevation
+                            elevation = ListItemDefaults.elevation(elevation = elevation),
                         )
                     }
                 }

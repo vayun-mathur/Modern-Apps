@@ -23,7 +23,7 @@ val MIGRATION_1_2 = Migration(1, 2) {
 @Database(
     entities = [SavedLocation::class, WeatherCache::class],
     version = 2,
-    exportSchema = true,
+    exportSchema = false,
 )
 abstract class WeatherDatabase : RoomDatabase() {
     abstract fun weatherDao(): WeatherDao

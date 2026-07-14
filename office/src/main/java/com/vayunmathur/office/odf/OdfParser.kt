@@ -106,7 +106,7 @@ object OdfParser {
                     "config-item-map-entry" -> if (curSheet != null && parser.depth == entryDepth) {
                         val cols = if (hMode == 2) hPos else 0
                         val rows = if (vMode == 2) vPos else 0
-                        if (rows > 0 || cols > 0) out[curSheet!!] = rows to cols
+                        if (rows > 0 || cols > 0) out[curSheet] = rows to cols
                         curSheet = null
                     }
                     "config-item-map-named" -> if (inTables && parser.depth == tablesDepth) inTables = false
@@ -840,7 +840,7 @@ object OdfParser {
                         "keyword" -> keywords.add(text)
                         "generator" -> generator = text
                         "editing-cycles" -> editingCycles = text.toIntOrNull()
-                        "user-defined" -> udName?.let { userDefined[it] = text; if (udType != null) userDefinedTypes[it] = udType!! }
+                        "user-defined" -> udName?.let { userDefined[it] = text; if (udType != null) userDefinedTypes[it] = udType }
                     }
                 }
                 XmlPullParser.END_TAG -> currentTag = ""
@@ -1656,7 +1656,7 @@ object OdfParser {
                     "axis" -> axisDim = null
                     "table" -> if (inTable) inTable = false
                     "table-cell" -> if (inCell) { curRow?.add(cellText.toString().trim() to cellValue); inCell = false }
-                    "table-row" -> if (curRow != null) { rows.add(curRow!!); curRow = null }
+                    "table-row" -> if (curRow != null) { rows.add(curRow); curRow = null }
                 }
             }
             eventType = parser.next()
@@ -1717,7 +1717,7 @@ object OdfParser {
                 }
                 XmlPullParser.END_TAG -> if (parser.name == "style" && curName != null && depthStack.isNotEmpty() && parser.depth == depthStack.last()) {
                     depthStack.removeLast()
-                    map[curName!!] = fill to dataLabels
+                    map[curName] = fill to dataLabels
                     curName = null
                 }
             }

@@ -489,7 +489,8 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                     folderName = attachment.folderName,
                     uid = attachment.messageId,
                     partId = attachment.partId,
-                    fileName = attachment.fileName
+                    fileName = attachment.fileName,
+                    mimeType = attachment.mimeType
                 )
                 dao.updateAttachmentLocalUri(account.email, attachment.messageId, attachment.partId, path)
                 onSuccess(path)

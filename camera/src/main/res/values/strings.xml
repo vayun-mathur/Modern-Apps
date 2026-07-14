@@ -43,8 +43,6 @@
     <string name="level">Level</string>
     <string name="blur">Blur</string>
     <string name="iso">ISO</string>
-    <string name="focus">Focus</string>
-    <string name="white_balance">White balance</string>
     <string name="not_available">N/A</string>
     <string name="burst_count">Burst %1$d</string>
 

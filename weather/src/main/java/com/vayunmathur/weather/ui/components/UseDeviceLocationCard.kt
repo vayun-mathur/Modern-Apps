@@ -56,7 +56,7 @@ fun UseDeviceLocationCard(onClick: () -> Unit, isLoading: Boolean = false) {
                     }
                 }
             },
-            headlineContent = {
+            content = {
                 Text("Use current location", color = MaterialTheme.colorScheme.onSurface)
             },
             supportingContent = {

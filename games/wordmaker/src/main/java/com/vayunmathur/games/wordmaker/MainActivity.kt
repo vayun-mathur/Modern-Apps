@@ -894,21 +894,28 @@ fun CrosswordBoard(
 
         var scale by remember(crosswordData) { mutableFloatStateOf(initialScale) }
         var offset by remember(crosswordData) { mutableStateOf(Offset.Zero) }
+        var boxCenter by remember { mutableStateOf(Offset.Zero) }
 
         // Ensure parent knows the current scale, especially the initial one
         LaunchedEffect(scale) {
             scaleUpdated(scale)
         }
 
-        val state = rememberTransformableState { zoomChange, offsetChange, _ ->
+        val state = rememberTransformableState { centroid, zoomChange, offsetChange, _ ->
             scale *= zoomChange
-            offset += offsetChange
+            // Keep the board point under the gesture centroid fixed while zooming.
+            // The graphicsLayer lives on the centered child (default centre
+            // transformOrigin), so pivot relative to the container centre, then
+            // apply the two-finger drag.
+            val d = centroid - boxCenter
+            offset = d - (d - offset) * zoomChange + offsetChange
             scaleUpdated(scale)
         }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .onGloballyPositioned { boxCenter = Offset(it.size.width / 2f, it.size.height / 2f) }
                 .transformable(state = state)
         ) {
             Column(

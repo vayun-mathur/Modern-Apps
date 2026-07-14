@@ -26,7 +26,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -532,52 +531,47 @@ fun DirectoryItem(
                 else if (isSelected) MaterialTheme.colorScheme.surfaceVariant
                 else Color.Transparent
             )
-            .dragAndDropSource(
-                block = {
-                    detectDragGesturesAfterLongPress(onDragStart = {
-                        val paths = currentOnStartDrag()
-                        if (paths.isEmpty()) return@detectDragGesturesAfterLongPress
+            .dragAndDropSource { _ ->
+                val paths = currentOnStartDrag()
+                if (paths.isEmpty()) return@dragAndDropSource null
 
-                        val uris = paths.map { path ->
-                            FileProvider.getUriForFile(
-                                context, "${context.packageName}.fileprovider", path.toFile()
-                            )
-                        }
-                        val mimeTypes = paths.map { path ->
-                            val extension = path.name.substringAfterLast(
-                                '.', ""
-                            )
-                            if (extension == "md") "text/markdown"
-                            else MimeTypeMap.getSingleton().getMimeTypeFromExtension(
-                                extension
-                            ) ?: "*/*"
-                        }.toMutableList().apply {
-                            add(
-                                ClipDescription.MIMETYPE_TEXT_PLAIN
-                            )
-                        }.distinct().toTypedArray()
+                val uris = paths.map { path ->
+                    FileProvider.getUriForFile(
+                        context, "${context.packageName}.fileprovider", path.toFile()
+                    )
+                }
+                val mimeTypes = paths.map { path ->
+                    val extension = path.name.substringAfterLast(
+                        '.', ""
+                    )
+                    if (extension == "md") "text/markdown"
+                    else MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+                        extension
+                    ) ?: "*/*"
+                }.toMutableList().apply {
+                    add(
+                        ClipDescription.MIMETYPE_TEXT_PLAIN
+                    )
+                }.distinct().toTypedArray()
 
-                        val clipData = ClipData(
-                            paths.first().name, mimeTypes, ClipData.Item(
-                                paths.first().toString(), null, null, uris.first()
-                            )
+                val clipData = ClipData(
+                    paths.first().name, mimeTypes, ClipData.Item(
+                        paths.first().toString(), null, null, uris.first()
+                    )
+                )
+                for (i in 1 until uris.size) {
+                    clipData.addItem(
+                        ClipData.Item(
+                            paths[i].toString(), null, null, uris[i]
                         )
-                        for (i in 1 until uris.size) {
-                            clipData.addItem(
-                                ClipData.Item(
-                                    paths[i].toString(), null, null, uris[i]
-                                )
-                            )
-                        }
+                    )
+                }
 
-                        startTransfer(
-                            DragAndDropTransferData(
-                                clipData = clipData,
-                                flags = View.DRAG_FLAG_GLOBAL or View.DRAG_FLAG_GLOBAL_URI_READ
-                            )
-                        )
-                    }, onDrag = { _, _ -> }, onDragEnd = {}, onDragCancel = {})
-                })
+                DragAndDropTransferData(
+                    clipData = clipData,
+                    flags = View.DRAG_FLAG_GLOBAL or View.DRAG_FLAG_GLOBAL_URI_READ
+                )
+            }
             .then(
                 if (file.isDirectory(fileSystem) && !isReadOnly) {
                     Modifier.dragAndDropTarget(shouldStartDragAndDrop = { event ->
@@ -595,7 +589,7 @@ fun DirectoryItem(
             .combinedClickable(onClick = onClick, onLongClick = onToggleSelection)
     ) {
         ListItem(
-            headlineContent = {
+            content = {
                 if (isEditing) {
                     TextField(
                         value = editedName,

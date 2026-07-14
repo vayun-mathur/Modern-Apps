@@ -83,7 +83,7 @@ internal object OoxmlMetadata {
                         ev = p.next()
                     }
                     if (name.isNotBlank() && value != null) {
-                        userDefined[name] = value!!
+                        userDefined[name] = value
                         type?.let { userDefinedTypes[name] = it }
                     }
                 }

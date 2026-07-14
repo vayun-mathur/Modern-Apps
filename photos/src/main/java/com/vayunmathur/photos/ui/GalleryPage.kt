@@ -30,6 +30,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -210,29 +211,35 @@ fun GalleryPage(
                     )
                 } else {
                     SearchBar(
-                        query = searchQuery,
-                        onQueryChange = { galleryViewModel.setSearchQuery(it) },
-                        onSearch = { searchActive = false },
-                        active = searchActive,
-                        onActiveChange = { searchActive = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                        leadingIcon = {
-                            IconSearch()
-                        },
-                        trailingIcon = {
-                            if (searchActive) {
-                                IconButton(onClick = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        galleryViewModel.setSearchQuery("")
-                                    } else {
-                                        searchActive = false
+                        inputField = {
+                            SearchBarDefaults.InputField(
+                                query = searchQuery,
+                                onQueryChange = { galleryViewModel.setSearchQuery(it) },
+                                onSearch = { searchActive = false },
+                                expanded = searchActive,
+                                onExpandedChange = { searchActive = it },
+                                placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                                leadingIcon = {
+                                    IconSearch()
+                                },
+                                trailingIcon = {
+                                    if (searchActive) {
+                                        IconButton(onClick = {
+                                            if (searchQuery.isNotEmpty()) {
+                                                galleryViewModel.setSearchQuery("")
+                                            } else {
+                                                searchActive = false
+                                            }
+                                        }) {
+                                            IconClose()
+                                        }
                                     }
-                                }) {
-                                    IconClose()
-                                }
-                            }
-                        }
+                                },
+                            )
+                        },
+                        expanded = searchActive,
+                        onExpandedChange = { searchActive = it },
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         // Search bar expanded content
                         if (searchQuery.isNotEmpty()) {
@@ -247,7 +254,7 @@ fun GalleryPage(
                             }
                             if (aiMessage != null) {
                                 ListItem(
-                                    headlineContent = { Text(aiMessage) },
+                                    content = { Text(aiMessage) },
                                     leadingContent = { IconSearch() },
                                 )
                             }
@@ -274,7 +281,7 @@ fun GalleryPage(
                             if (ocrTargetCount > 0) {
                                 val pct = if (ocrTargetCount > 0) (ocrCount * 100 / ocrTargetCount) else 0
                                 ListItem(
-                                    headlineContent = { Text("$pct% of photos processed") },
+                                    content = { Text("$pct% of photos processed") },
                                     supportingContent = { Text("$ocrCount / $ocrTargetCount photos indexed for text search") },
                                     leadingContent = {
                                         CircularProgressIndicator(
@@ -288,7 +295,7 @@ fun GalleryPage(
                             if (clipTargetCount > 0) {
                                 val pct = if (clipTargetCount > 0) (clipCount * 100 / clipTargetCount) else 0
                                 ListItem(
-                                    headlineContent = { Text("$pct% of photos processed") },
+                                    content = { Text("$pct% of photos processed") },
                                     supportingContent = { Text("$clipCount / $clipTargetCount photos indexed for visual search") },
                                     leadingContent = {
                                         CircularProgressIndicator(

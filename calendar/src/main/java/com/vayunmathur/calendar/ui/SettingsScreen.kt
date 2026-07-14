@@ -111,7 +111,7 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
                     var showDefaultLayoutMenu by remember { mutableStateOf(false) }
 
                     ListItem(
-                        headlineContent = { Text("Default Layout") },
+                        content = { Text("Default Layout") },
                         trailingContent = {
                             Box {
                                 TextButton(onClick = { showDefaultLayoutMenu = true }) {
@@ -139,7 +139,7 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
 
                 item {
                     ListItem(
-                        headlineContent = { Text("Holiday calendars") },
+                        content = { Text("Holiday calendars") },
                         supportingContent = { Text("Add public holidays for countries") },
                         modifier = Modifier.clickable { backStack.add(Route.Settings.HolidayCalendars) },
                         trailingContent = {
@@ -156,7 +156,7 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
                     items(cals, key = { it.id }) { cal ->
                         val isSelected = selectedCalendarId == cal.id
                         ListItem(
-                            headlineContent = { Text(cal.displayName) },
+                            content = { Text(cal.displayName) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.surfaceVariant) else Modifier)

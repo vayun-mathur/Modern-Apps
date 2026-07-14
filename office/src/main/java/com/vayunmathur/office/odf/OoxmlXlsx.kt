@@ -362,8 +362,8 @@ internal object OoxmlXlsx {
                     }
                     "c" -> if (curCells != null) {
                         val ref = OoxmlXml.attr(parser, "r") ?: ""
-                        val ci = if (ref.isNotEmpty()) OoxmlXml.colIndex(ref) else curCells!!.size
-                        curCells!!.add(ci to parseCell(parser, shared, styles, sharedFormulas))
+                        val ci = if (ref.isNotEmpty()) OoxmlXml.colIndex(ref) else curCells.size
+                        curCells.add(ci to parseCell(parser, shared, styles, sharedFormulas))
                     }
                     "mergeCell" -> OoxmlXml.attr(parser, "ref")?.let { merges.add(it) }
                     "dataValidation" -> parseDataValidation(parser)?.let { (v, refs) ->
@@ -383,9 +383,9 @@ internal object OoxmlXlsx {
                     "drawing" -> drawingRid = OoxmlXml.attrNs(parser, "http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id")
                 }
                 XmlPullParser.END_TAG -> if (parser.name == "row" && curCells != null) {
-                    val maxCol = curCells!!.maxOfOrNull { it.first } ?: -1
+                    val maxCol = curCells.maxOfOrNull { it.first } ?: -1
                     val arr = MutableList(maxCol + 1) { OdfCell(text = "") }
-                    for ((ci, cell) in curCells!!) if (ci in arr.indices) arr[ci] = cell
+                    for ((ci, cell) in curCells) if (ci in arr.indices) arr[ci] = cell
                     while (rows.size < rowIndex) { rows.add(OdfRow(emptyList())); }
                     if (rows.size == rowIndex) rows.add(OdfRow(arr)) else if (rowIndex in rows.indices) rows[rowIndex] = OdfRow(arr) else rows.add(OdfRow(arr))
                     curCells = null
@@ -483,7 +483,7 @@ internal object OoxmlXlsx {
             "b" -> OdfCell(text = if (value == "1") "TRUE" else "FALSE", numberValue = if (value == "1") 1.0 else 0.0, valueType = "boolean")
             else -> {
                 val num = value?.toDoubleOrNull()
-                if (num != null) OdfCell(text = value ?: "", numberValue = num, valueType = if (isDate) "date" else "float")
+                if (num != null) OdfCell(text = value, numberValue = num, valueType = if (isDate) "date" else "float")
                 else OdfCell(text = value ?: "")
             }
         }

@@ -68,6 +68,7 @@ class PhotoMapViewModel(application: Application) : AndroidViewModel(application
      * Request reverse-geocoding for a photo. Results are deduplicated and cached
      * across photos using a coarse lat/long key.
      */
+    @Suppress("DEPRECATION")
     fun requestCountryName(photoId: Long, lat: Double, long: Double) {
         if (_countryNames.value.containsKey(photoId)) return
         val key = bucketKey(lat, long)

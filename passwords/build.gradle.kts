@@ -23,6 +23,7 @@ dependencies {
     implementation(libs.androidx.autofill)
     implementation(libs.keepassjava2.dom)
     implementation(libs.bouncycastle)
+    implementation(libs.bouncycastle.pkix)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.websockets)

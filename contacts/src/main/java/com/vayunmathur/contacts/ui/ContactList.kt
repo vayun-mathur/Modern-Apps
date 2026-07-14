@@ -479,7 +479,7 @@ fun ContactItem(
             }
             ListItem(
                 modifier = itemModifier,
-                headlineContent = {
+                content = {
                     Text(
                         text = contactDisplayName(contact),
                         style = MaterialTheme.typography.bodyLarge,

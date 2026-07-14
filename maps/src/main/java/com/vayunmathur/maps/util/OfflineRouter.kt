@@ -477,7 +477,7 @@ object OfflineRouter {
                                             stopCount = raw.stopCount,
                                             transitLine = RouteService.API.TransitLine(
                                                 name = raw.roadName,
-                                                color = raw.gtfsFeed?.let { GTFSProvider.getRouteColor(context, it, raw.roadName) } ?: "#FF0000"
+                                                color = raw.gtfsFeed.let { GTFSProvider.getRouteColor(context, it, raw.roadName) } ?: "#FF0000"
                                             ),
                                             stopDetails = RouteService.API.StopDetails(
                                                 arrivalTime = "",

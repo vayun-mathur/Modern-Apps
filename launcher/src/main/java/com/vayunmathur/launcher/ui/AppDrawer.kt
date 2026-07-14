@@ -40,7 +40,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,7 +78,7 @@ fun AppDrawer(
     onAppLongClick: (AppInfo) -> Unit = {},
     focusSearch: Boolean = false
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded))
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
@@ -308,7 +308,7 @@ private fun SearchResultsContent(results: GroupedResults, context: android.conte
             items(results.apps.size) { index ->
                 val app = results.apps[index]
                 ListItem(
-                    headlineContent = { Text(app.name) },
+                    content = { Text(app.name) },
                     supportingContent = { Text(app.packageName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     modifier = Modifier.clickable {
                         context.packageManager.getLaunchIntentForPackage(app.packageName)?.let {
@@ -331,7 +331,7 @@ private fun SearchResultsContent(results: GroupedResults, context: android.conte
             items(results.contacts.size) { index ->
                 val contact = results.contacts[index]
                 ListItem(
-                    headlineContent = { Text(contact.name) },
+                    content = { Text(contact.name) },
                     supportingContent = {
                         if (contact.phones.isNotBlank()) Text(contact.phones, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     },
@@ -359,7 +359,7 @@ private fun SearchResultsContent(results: GroupedResults, context: android.conte
             items(results.events.size) { index ->
                 val event = results.events[index]
                 ListItem(
-                    headlineContent = { Text(event.title) },
+                    content = { Text(event.title) },
                     supportingContent = {
                         val subtitle = listOfNotNull(
                             event.date.takeIf { it.isNotBlank() },

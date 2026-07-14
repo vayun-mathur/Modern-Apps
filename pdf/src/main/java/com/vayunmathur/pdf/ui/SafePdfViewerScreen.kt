@@ -543,12 +543,17 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+    val transformState = rememberTransformableState { centroid, zoomChange, panChange, _ ->
+        val zoomOld = zoom
         zoom = (zoom * zoomChange).coerceIn(1f, 6f)
-        // panChange arrives in the layer's (scaled) coordinate space, so scale it
-        // back up to screen pixels; then clamp so content can't drift past the
-        // viewport edges.
-        pan = if (zoom > 1f) clampPan(pan + panChange * zoom, zoom, viewportSize) else Offset.Zero
+        // Keep the content point under the gesture centroid fixed while zooming
+        // (the graphicsLayer uses the default center transformOrigin, so pivot
+        // relative to the viewport centre), then apply the two-finger drag.
+        // panChange/centroid arrive in the layer's (unscaled) coordinate space,
+        // so the drag maps to screen pixels via the current zoom.
+        val center = Offset(viewportSize.width / 2f, viewportSize.height / 2f)
+        val pivoted = pan - (centroid - center) * (zoom - zoomOld)
+        pan = if (zoom > 1f) clampPan(pivoted + panChange * zoom, zoom, viewportSize) else Offset.Zero
     }
 
     val searchFocus = remember { FocusRequester() }
@@ -1313,7 +1318,8 @@ private data class SelGlyph(val ch: Char, val left: Float, val top: Float, val r
 @Composable
 private fun TextSelectionLayer(page: SafePdfPage, ch: Float, scale: Float) {
     val context = LocalContext.current
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
+    val scope = rememberCoroutineScope()
     // Build ordered glyphs once per page/scale.
     val glyphs = remember(page, scale, ch) {
         val list = ArrayList<Triple<Float, Float, SelGlyph>>() // (orderY, orderX, glyph)
@@ -1381,7 +1387,7 @@ private fun TextSelectionLayer(page: SafePdfPage, ch: Float, scale: Float) {
                     if (r != null) {
                         val text = glyphs.subList(r.first, r.last + 1).joinToString("") { it.ch.toString() }
                         if (text.isNotBlank()) {
-                            clipboard.setText(androidx.compose.ui.text.AnnotatedString(text))
+                            scope.launch { clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(android.content.ClipData.newPlainText("text", text))) }
                             android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }

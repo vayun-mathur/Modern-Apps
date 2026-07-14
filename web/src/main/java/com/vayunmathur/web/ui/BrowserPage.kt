@@ -123,7 +123,7 @@ fun BrowserPage(
             )
         }
 
-        AnimatedVisibility(visible = entry is NavEntry.Search && (entry as NavEntry.Search).loading) {
+        AnimatedVisibility(visible = entry is NavEntry.Search && entry.loading) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 

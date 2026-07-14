@@ -118,7 +118,7 @@ fun Navigation(viewModel: AlchemistViewModel) {
 
         newAchievement?.let { ach ->
             AchievementNotification(ach) {
-                achievementsManager?.dismissNotification()
+                achievementsManager.dismissNotification()
             }
         }
 

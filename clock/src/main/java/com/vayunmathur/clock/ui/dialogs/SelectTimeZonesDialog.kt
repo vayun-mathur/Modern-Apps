@@ -85,7 +85,7 @@ fun SelectTimeZonesDialog(backStack: NavBackStack<Route>, ds: DataStoreUtils, cl
                             else ds.addStringToSet("time_zones", city)
                         }
                         ListItem(
-                            headlineContent = { Text(city) },
+                            content = { Text(city) },
                             supportingContent = { Text(id, style = MaterialTheme.typography.labelSmall) },
                             trailingContent = {
                                 Checkbox(checked = isSelected, onCheckedChange = { toggle() })

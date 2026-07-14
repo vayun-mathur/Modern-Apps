@@ -13,7 +13,7 @@ android {
     // The Rust build drops <abi>/libweather_om.so under this dir; register it as
     // a jniLibs source so AGP packages the native lib like the existing
     // libmaplibre.so.
-    sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("rustJniLibs").get().asFile)
+    sourceSets["main"].jniLibs.directories.add(layout.buildDirectory.dir("rustJniLibs").get().asFile.absolutePath)
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +103,7 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
     }
 }
 
-val cargoNdkBuild by tasks.registering {
+val cargoNdkBuild = tasks.register("cargoNdkBuild") {
     description = "Builds libweather_om.so for all Android ABIs."
     dependsOn(perAbiBuildTasks)
 }

@@ -66,8 +66,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.ClipEntry
+import android.content.ClipData
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.zIndex
 import androidx.compose.material3.Slider
@@ -335,7 +336,8 @@ fun ShareOnlineDialog(
     var sharing by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var memberMenu by remember { mutableStateOf<String?>(null) }
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Share online") },
@@ -370,7 +372,7 @@ fun ShareOnlineDialog(
                     Text("Your device id:", style = MaterialTheme.typography.bodySmall)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(deviceId.ifEmpty { "…" }, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { if (deviceId.isNotEmpty()) clipboard.setText(AnnotatedString(deviceId)) }) { Text("Copy") }
+                        TextButton(onClick = { if (deviceId.isNotEmpty()) scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("device id", deviceId))) } }) { Text("Copy") }
                     }
                 } else {
                     if (!isOnline) {
@@ -409,7 +411,7 @@ fun ShareOnlineDialog(
                     Text("Your device id:", style = MaterialTheme.typography.bodySmall)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(deviceId.ifEmpty { "…" }, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { if (deviceId.isNotEmpty()) clipboard.setText(AnnotatedString(deviceId)) }) { Text("Copy") }
+                        TextButton(onClick = { if (deviceId.isNotEmpty()) scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("device id", deviceId))) } }) { Text("Copy") }
                     }
                     TextButton(
                         enabled = recipient.isNotBlank() && !computing,
@@ -456,7 +458,8 @@ fun OnlineTab(viewModel: OfficeViewModel, onOpenDoc: (com.vayunmathur.office.uti
     OnlineInit(viewModel)
     val docs by viewModel.onlineDocs.collectAsState()
     val deviceId = viewModel.syncDeviceId
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -474,7 +477,7 @@ fun OnlineTab(viewModel: OfficeViewModel, onOpenDoc: (com.vayunmathur.office.uti
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(deviceId.ifEmpty { "…" }, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                TextButton(onClick = { if (deviceId.isNotEmpty()) clipboard.setText(AnnotatedString(deviceId)) }) { Text("Copy") }
+                TextButton(onClick = { if (deviceId.isNotEmpty()) scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("device id", deviceId))) } }) { Text("Copy") }
             }
             Spacer(Modifier.height(12.dp))
             if (docs.isEmpty()) {
@@ -485,7 +488,7 @@ fun OnlineTab(viewModel: OfficeViewModel, onOpenDoc: (com.vayunmathur.office.uti
                     items(docs) { meta ->
                         Card(Modifier.fillMaxWidth().clickable { onOpenDoc(meta) }) {
                             ListItem(
-                                headlineContent = { Text(meta.title) },
+                                content = { Text(meta.title) },
                                 supportingContent = { Text(if (meta.owner) "Shared by you" else "Shared with you") }
                             )
                         }
@@ -857,7 +860,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
                                         findMatches = matches
                                         if (matches.isEmpty()) return
                                         findIndex = ((findIndex + delta) % matches.size + matches.size) % matches.size
-                                        scope.launch { listState.animateScrollToItem(matches[findIndex].coerceIn(0, (document as OdfDocument.TextDocument).content.size - 1)) }
+                                        scope.launch { listState.animateScrollToItem(matches[findIndex].coerceIn(0, document.content.size - 1)) }
                                     }
                                     val total = remember(searchQuery, matchCase, wholeWord, document) { viewModel.findMatchBlocks(searchQuery, matchCase, wholeWord).size }
                                     TextButton(onClick = { jump(-1) }) { Text("◀ Prev") }
@@ -1254,7 +1257,7 @@ fun DocumentScreen(document: OdfDocument, viewModel: OfficeViewModel, activity: 
     }
     if (showSlideTransition && isPresentation) {
         val types = listOf("none", "fade", "wipe", "dissolve", "push", "cover", "split", "blinds", "checkerboard", "circle", "wheel")
-        var type by remember(showSlideTransition) { mutableStateOf((document as? OdfDocument.Presentation)?.slides?.getOrNull(activeSlide)?.transitionType ?: "none") }
+        var type by remember(showSlideTransition) { mutableStateOf(document.slides.getOrNull(activeSlide)?.transitionType ?: "none") }
         var expanded by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { showSlideTransition = false },

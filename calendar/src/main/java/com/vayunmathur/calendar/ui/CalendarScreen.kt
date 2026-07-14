@@ -635,7 +635,7 @@ fun AgendaView(
                 dayInstances.forEach { instance ->
                     val ev = vEventsByID[instance.eventID]!!
                     ListItem(
-                        headlineContent = { Text(ev.title.ifEmpty { context.getString(R.string.no_title) }) },
+                        content = { Text(ev.title.ifEmpty { context.getString(R.string.no_title) }) },
                         supportingContent = {
                             Text(dateRangeString(context, instance.startDateTimeDisplay.date, instance.endDateTimeDisplay.date, instance.startDateTimeDisplay.time, instance.endDateTimeDisplay.time, instance.allDay, includeDate = false))
                         },

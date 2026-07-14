@@ -84,7 +84,7 @@ fun TrackListItem(
     trailing: (@Composable () -> Unit)? = null,
 ) {
     ListItem(
-        headlineContent = {
+        content = {
             Text(
                 text = title,
                 color = if (isPlaying) MaterialTheme.colorScheme.primary else Color.Unspecified,

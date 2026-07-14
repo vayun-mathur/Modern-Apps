@@ -90,7 +90,7 @@ interface AlarmDao {
 }
 
 @TypeConverters(DefaultConverters::class)
-@Database(entities = [Timer::class, Alarm::class], version = 2)
+@Database(entities = [Timer::class, Alarm::class], version = 2, exportSchema = false)
 abstract class ClockDatabase: RoomDatabase() {
     abstract fun timerDao(): TimerDao
     abstract fun alarmDao(): AlarmDao

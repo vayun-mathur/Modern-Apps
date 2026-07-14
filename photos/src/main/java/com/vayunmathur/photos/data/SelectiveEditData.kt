@@ -54,7 +54,7 @@ private fun generateSelectiveMask(mask: SelectiveMask, w: Int, h: Int): FloatArr
             val r = mask.radius * max(w, h)
             for (y in 0 until h) {
                 for (x in 0 until w) {
-                    val dist = sqrt(((x - cx) * (x - cx) + (y - cy) * (y - cy)).toFloat())
+                    val dist = sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy))
                     alpha[y * w + x] = (1f - dist / r.coerceAtLeast(1f)).coerceIn(0f, 1f)
                 }
             }

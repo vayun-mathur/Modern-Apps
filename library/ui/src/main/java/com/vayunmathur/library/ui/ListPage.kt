@@ -111,15 +111,22 @@ inline fun <reified T : DatabaseItem, Route : NavKey, reified EditPage : Route> 
         ) {
             items(displayed, key = { it.id }) { item ->
                 val modifier = itemModifier(item)
-                ListItem({ headlineContent(item) }, modifier.clickable {
-                    coroutineScope.launch {
-                        backStack.add(viewPage(item.id))
-                    }
-                }, {}, { supportingContent(item) }, { leadingContent(item) }, {
-                    Row {
-                        trailingContent(item)
-                    }
-                }, itemColors(item))
+                ListItem(
+                    modifier = modifier.clickable {
+                        coroutineScope.launch {
+                            backStack.add(viewPage(item.id))
+                        }
+                    },
+                    overlineContent = {},
+                    supportingContent = { supportingContent(item) },
+                    leadingContent = { leadingContent(item) },
+                    trailingContent = {
+                        Row {
+                            trailingContent(item)
+                        }
+                    },
+                    colors = itemColors(item),
+                ) { headlineContent(item) }
             }
         }
     }

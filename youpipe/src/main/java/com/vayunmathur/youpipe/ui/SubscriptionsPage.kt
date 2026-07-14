@@ -51,7 +51,7 @@ fun SubscriptionsPage(
             if (fetchProgress in 0f..1f) {
                 item {
                     ListItem(
-                        headlineContent = { Text("Loading recent subscriptions") },
+                        content = { Text("Loading recent subscriptions") },
                         trailingContent = {
                             CircularProgressIndicator(
                                 progress = { fetchProgress },
@@ -63,27 +63,25 @@ fun SubscriptionsPage(
                 }
             }
             item {
-                ListItem({
-                    Text(stringResource(R.string.label_groups))
-                }, trailingContent = {
+                ListItem(trailingContent = {
                     IconButton({
                         backStack.add(Route.CreateSubscriptionCategory(null))
                     }) {
                         IconAdd()
                     }
-                })
+                }) {
+                    Text(stringResource(R.string.label_groups))
+                }
             }
             item {
-                ListItem({
-                    Text(stringResource(R.string.label_all_subscriptions))
-                }, Modifier.clickable {
+                ListItem(modifier = Modifier.clickable {
                     backStack.add(Route.SubscriptionVideosPage(null))
-                })
+                }) {
+                    Text(stringResource(R.string.label_all_subscriptions))
+                }
             }
             items(categories, key = { it }) {
-                ListItem({
-                    Text(it)
-                }, Modifier.clickable {
+                ListItem(modifier = Modifier.clickable {
                     backStack.add(Route.SubscriptionVideosPage(it))
                 }, trailingContent = {
                     IconButton({
@@ -91,17 +89,17 @@ fun SubscriptionsPage(
                     }) {
                         IconEdit()
                     }
-                })
+                }) {
+                    Text(it)
+                }
             }
             item {
-                ListItem({ Text(stringResource(R.string.label_channels)) })
+                ListItem { Text(stringResource(R.string.label_channels)) }
             }
             items(subscriptions, key = { it.id }) {
-                ListItem({
-                    Text(it.name.decodeHtml())
-                }, Modifier.clickable {
+                ListItem(modifier = Modifier.clickable {
                     backStack.add(Route.ChannelPage(it.channelID))
-                }, {}, {}, {
+                }, overlineContent = {}, supportingContent = {}, leadingContent = {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(it.avatarURL)
@@ -110,7 +108,9 @@ fun SubscriptionsPage(
                         contentDescription = null,
                         Modifier.size(24.dp).clip(CircleShape)
                     )
-                })
+                }) {
+                    Text(it.name.decodeHtml())
+                }
             }
         }
     }

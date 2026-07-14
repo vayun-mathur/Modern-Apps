@@ -58,7 +58,7 @@ configure<ApplicationExtension> {
     }
     // Shared androidTest source: PlaystoreIconRenderer, which renders each app's
     // adaptive launcher icon to a 512x512 Play Store PNG during the metadata run.
-    sourceSets.getByName("androidTest").kotlin.srcDir(File(rootDir, "build-logic/metadataIconTest"))
+    sourceSets.getByName("androidTest").kotlin.directories.add(File(rootDir, "build-logic/metadataIconTest").absolutePath)
 }
 
 dependencies {
