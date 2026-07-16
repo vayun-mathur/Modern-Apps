@@ -95,6 +95,12 @@ val PERMISSIONS = CLASSES.map { HealthPermission.getReadPermission(it) }.toSet()
     setOf(
         HealthPermission.getWritePermission(NutritionRecord::class),
         HealthPermission.getWritePermission(HydrationRecord::class),
+        HealthPermission.getWritePermission(WeightRecord::class),
+        HealthPermission.getWritePermission(HeightRecord::class),
+        HealthPermission.getWritePermission(BodyFatRecord::class),
+        HealthPermission.getWritePermission(LeanBodyMassRecord::class),
+        HealthPermission.getWritePermission(BoneMassRecord::class),
+        HealthPermission.getWritePermission(BodyWaterMassRecord::class),
         "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
     )
 

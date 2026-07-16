@@ -6,26 +6,46 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.health.R
 import com.vayunmathur.health.Route
+import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.health.ui.components.GroupedSection
 import com.vayunmathur.health.ui.components.GroupedSectionDivider
 import com.vayunmathur.health.ui.components.MetricRow
 import com.vayunmathur.health.util.HealthViewModel
 import com.vayunmathur.health.util.MainPageMetrics
+import com.vayunmathur.library.ui.IconAdd
+import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.round
+
+private val bodyMetricConfigs = listOf(
+    HealthMetricConfig.WEIGHT,
+    HealthMetricConfig.HEIGHT,
+    HealthMetricConfig.BODY_FAT,
+    HealthMetricConfig.LEAN_BODY_MASS,
+    HealthMetricConfig.BONE_MASS,
+    HealthMetricConfig.BODY_WATER_MASS,
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -36,9 +56,45 @@ fun BodyPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
         viewModel.loadMainPageMetrics()
     }
 
+    var fabExpanded by remember { mutableStateOf(false) }
+    var dialogConfig by remember { mutableStateOf<HealthMetricConfig?>(null) }
+
+    dialogConfig?.let { config ->
+        LogBodyMetricDialog(
+            viewModel = viewModel,
+            config = config,
+            onDismiss = { dialogConfig = null },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.nav_body)) })
+        },
+        floatingActionButton = {
+            FloatingActionButtonMenu(
+                expanded = fabExpanded,
+                button = {
+                    ToggleFloatingActionButton(fabExpanded, { fabExpanded = it }) {
+                        val tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        if (!fabExpanded) IconAdd(tint = tint) else IconClose(tint = tint)
+                    }
+                },
+            ) {
+                bodyMetricConfigs.forEach { config ->
+                    FloatingActionButtonMenuItem(
+                        onClick = { fabExpanded = false; dialogConfig = config },
+                        text = { Text(stringResource(config.titleRes)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.body_24px),
+                                contentDescription = null,
+                                tint = colorFor(config.recordType),
+                            )
+                        },
+                    )
+                }
+            }
         },
     ) { paddingValues ->
         LazyColumn(

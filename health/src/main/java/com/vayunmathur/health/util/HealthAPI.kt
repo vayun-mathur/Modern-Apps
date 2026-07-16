@@ -4,11 +4,19 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BodyWaterMassRecord
+import androidx.health.connect.client.records.BoneMassRecord
+import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.HydrationRecord
+import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.NutritionRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.units.Energy
+import androidx.health.connect.client.units.Length
 import androidx.health.connect.client.units.Mass
+import androidx.health.connect.client.units.Percentage
 import androidx.health.connect.client.units.Volume
 import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.Record
@@ -48,6 +56,12 @@ object HealthAPI {
             val recordClass: KClass<out androidx.health.connect.client.records.Record>? = when (record.type) {
                 RecordType.Nutrition -> NutritionRecord::class
                 RecordType.Hydration -> HydrationRecord::class
+                RecordType.Weight -> WeightRecord::class
+                RecordType.Height -> HeightRecord::class
+                RecordType.BodyFat -> BodyFatRecord::class
+                RecordType.LeanBodyMass -> LeanBodyMassRecord::class
+                RecordType.BoneMass -> BoneMassRecord::class
+                RecordType.BodyWaterMass -> BodyWaterMassRecord::class
                 else -> null
             }
             if (recordClass != null) {
@@ -135,6 +149,42 @@ object HealthAPI {
                                 metadata = Metadata.manualEntry(clientRecordId = record.id)
                         )
                     }
+                    RecordType.Weight -> WeightRecord(
+                            time = startInstant,
+                            zoneOffset = ZoneOffset.systemDefault().rules.getOffset(startInstant),
+                            weight = Mass.kilograms(record.value),
+                            metadata = Metadata.manualEntry(clientRecordId = record.id)
+                    )
+                    RecordType.Height -> HeightRecord(
+                            time = startInstant,
+                            zoneOffset = ZoneOffset.systemDefault().rules.getOffset(startInstant),
+                            height = Length.meters(record.value),
+                            metadata = Metadata.manualEntry(clientRecordId = record.id)
+                    )
+                    RecordType.BodyFat -> BodyFatRecord(
+                            time = startInstant,
+                            zoneOffset = ZoneOffset.systemDefault().rules.getOffset(startInstant),
+                            percentage = Percentage(record.value),
+                            metadata = Metadata.manualEntry(clientRecordId = record.id)
+                    )
+                    RecordType.LeanBodyMass -> LeanBodyMassRecord(
+                            time = startInstant,
+                            zoneOffset = ZoneOffset.systemDefault().rules.getOffset(startInstant),
+                            mass = Mass.kilograms(record.value),
+                            metadata = Metadata.manualEntry(clientRecordId = record.id)
+                    )
+                    RecordType.BoneMass -> BoneMassRecord(
+                            time = startInstant,
+                            zoneOffset = ZoneOffset.systemDefault().rules.getOffset(startInstant),
+                            mass = Mass.kilograms(record.value),
+                            metadata = Metadata.manualEntry(clientRecordId = record.id)
+                    )
+                    RecordType.BodyWaterMass -> BodyWaterMassRecord(
+                            time = startInstant,
+                            zoneOffset = ZoneOffset.systemDefault().rules.getOffset(startInstant),
+                            mass = Mass.kilograms(record.value),
+                            metadata = Metadata.manualEntry(clientRecordId = record.id)
+                    )
                     else -> return
                 }
 

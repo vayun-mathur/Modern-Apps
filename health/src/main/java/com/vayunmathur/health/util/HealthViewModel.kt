@@ -341,6 +341,23 @@ class HealthViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun logBodyMetric(type: RecordType, value: Double, time: java.time.Instant) {
+        viewModelScope.launch {
+            val record = Record(
+                id = UUID.randomUUID().toString(),
+                index = 0,
+                type = type,
+                startTime = time,
+                endTime = time,
+                value = value,
+                metadata = type.name,
+            )
+            db.healthDao().upsert(listOf(record))
+            HealthAPI.writeHealthRecord(record)
+            loadMainPageMetrics()
+        }
+    }
+
     sealed class LogMealTarget {
         data class FromRecipe(val recipeId: String, val name: String) : LogMealTarget()
         data class FromIngredient(val ingredient: Ingredient) : LogMealTarget()
