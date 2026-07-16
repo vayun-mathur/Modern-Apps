@@ -9,7 +9,7 @@ enum class DataType {
 
 /** How an account authenticates against its provider. */
 enum class AuthType {
-    /** OAuth2 Authorization Code + PKCE via Custom Tabs (Google, Withings). */
+    /** OAuth2 Authorization Code + PKCE via Custom Tabs (Google, Google Health). */
     OAUTH,
 
     /** CalDAV / CardDAV with a base URL + app-specific password (generic, Apple/iCloud). */

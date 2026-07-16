@@ -105,8 +105,6 @@ object OAuthManager {
             put("client_id", config.clientId)
             put("grant_type", "refresh_token")
             put("refresh_token", refreshToken)
-            // Withings requires an action param.
-            if (config.tokenEndpoint.contains("withings")) put("action", "requesttoken")
         }
         val parsed = postForm(config, form) ?: return null
         val updated = tokens.copy(
@@ -125,31 +123,24 @@ object OAuthManager {
             put("code", code)
             put("redirect_uri", config.redirectUri)
             put("code_verifier", verifier)
-            if (config.tokenEndpoint.contains("withings")) put("action", "requesttoken")
         }
         return postForm(config, form)
     }
 
     private suspend fun postForm(config: OAuthConfig, form: Map<String, String>): OAuthTokens? {
-        // Providers needing a confidential secret (Withings) go through a backend
-        // relay so the secret never ships in the build; everyone else hits the
-        // real token endpoint directly with PKCE.
-        val endpoint = config.tokenProxyUrl.ifBlank { config.tokenEndpoint }
         return try {
             val body = form.entries.joinToString("&") {
                 "${Uri.encode(it.key)}=${Uri.encode(it.value)}"
             }
             val resp = NetworkClient.performRequest(
-                endpoint, "POST",
+                config.tokenEndpoint, "POST",
                 mapOf("Content-Type" to "application/x-www-form-urlencoded"),
                 body,
             )
             val root = json.parseToJsonElement(resp.body) as? JsonObject ?: return null
-            // Withings wraps the payload in a "body" object with a status code.
-            val payload = (root["body"] as? JsonObject) ?: root
-            val access = payload["access_token"]?.jsonPrimitive?.contentOrNullSafe() ?: return null
-            val refresh = payload["refresh_token"]?.jsonPrimitive?.contentOrNullSafe()
-            val expiresIn = payload["expires_in"]?.jsonPrimitive?.longOrNull ?: 0L
+            val access = root["access_token"]?.jsonPrimitive?.contentOrNullSafe() ?: return null
+            val refresh = root["refresh_token"]?.jsonPrimitive?.contentOrNullSafe()
+            val expiresIn = root["expires_in"]?.jsonPrimitive?.longOrNull ?: 0L
             OAuthTokens(
                 accessToken = access,
                 refreshToken = refresh,

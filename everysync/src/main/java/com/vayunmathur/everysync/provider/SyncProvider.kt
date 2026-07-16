@@ -8,9 +8,8 @@ import com.vayunmathur.everysync.auth.OAuthTokens
 /**
  * A cloud service EverySync can sync into the on-device system providers.
  *
- * Direct-cloud providers (Google, generic CalDAV/CardDAV, Apple/iCloud, Withings)
- * make real network round-trips. Health-Connect-backed providers (Samsung Health,
- * Google Health) read data already present in Health Connect on-device.
+ * Direct-cloud providers (Google, generic CalDAV/CardDAV, Apple/iCloud, Google
+ * Health) make real network round-trips.
  */
 interface SyncProvider {
     val id: String

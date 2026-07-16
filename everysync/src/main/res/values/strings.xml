@@ -18,7 +18,6 @@
     <string name="provider_icloud">Apple / iCloud</string>
     <string name="provider_caldav">CalDAV server</string>
     <string name="provider_carddav">CardDAV server</string>
-    <string name="provider_withings">Withings</string>
     <string name="provider_google_health">Google Health</string>
     <string name="provider_via_health_connect">via Health Connect</string>
 

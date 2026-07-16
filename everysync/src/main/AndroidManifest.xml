@@ -19,8 +19,7 @@
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
 
-    <!-- Health Connect: body composition + vitals we bridge from Withings /
-         Samsung Health / Google Health. -->
+    <!-- Health Connect: body composition + vitals synced from Google Health. -->
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.WRITE_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_HEIGHT" />

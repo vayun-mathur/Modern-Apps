@@ -6,22 +6,14 @@ import com.vayunmathur.everysync.BuildConfig
  * OAuth2 endpoints + scopes for a provider.
  *
  * Everything here is safe to commit — client IDs are public identifiers, not
- * secrets, so builds stay reproducible. Providers that require a confidential
- * client secret (Withings) never ship the secret in the APK: their token
- * exchange is relayed through [tokenProxyUrl], a small backend that injects the
- * secret server-side.
+ * secrets, so builds stay reproducible. All providers are public PKCE clients;
+ * no client secret is ever shipped.
  */
 data class OAuthConfig(
     val authEndpoint: String,
     val tokenEndpoint: String,
     val clientId: String,
     val scopes: List<String>,
-    /**
-     * If non-empty, token exchange/refresh POSTs go here instead of
-     * [tokenEndpoint] so a confidential secret can be added server-side. Keeps
-     * secrets out of the (reproducible) build.
-     */
-    val tokenProxyUrl: String = "",
     /** Extra query params appended to the authorization request. */
     val extraAuthParams: Map<String, String> = emptyMap(),
     /** Redirect URI for this provider (Google needs its reverse-DNS scheme). */
@@ -43,16 +35,6 @@ data class OAuthConfig(
             // Force a refresh token to be returned on first consent.
             extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
             redirectUri = BuildConfig.GOOGLE_REDIRECT_URI,
-        )
-
-        val WITHINGS = OAuthConfig(
-            authEndpoint = "https://account.withings.com/oauth2_user/authorize2",
-            tokenEndpoint = "https://wbsapi.withings.net/v2/oauth2",
-            clientId = BuildConfig.WITHINGS_OAUTH_CLIENT_ID,
-            // Withings needs a client secret; keep it off-device by relaying token
-            // exchange through this backend (empty = Withings token exchange disabled).
-            tokenProxyUrl = BuildConfig.WITHINGS_TOKEN_PROXY_URL,
-            scopes = listOf("user.metrics", "user.activity"),
         )
 
         // Google Health via the Google Fitness REST API — same Google OAuth client,

@@ -15,8 +15,6 @@ android {
         // optionally Samsung) live behind a *_TOKEN_PROXY_URL backend relay.
         val googleClientId = (project.findProperty("EVERYSYNC_GOOGLE_CLIENT_ID")
             ?: "827025129169-1nm22b5uec77b3b7e0qjl0lah29g82h7.apps.googleusercontent.com").toString()
-        val withingsClientId = project.findProperty("EVERYSYNC_WITHINGS_CLIENT_ID") ?: ""
-        val withingsTokenProxy = project.findProperty("EVERYSYNC_WITHINGS_TOKEN_PROXY_URL") ?: ""
 
         // Google installed-app PKCE uses the reverse-DNS custom scheme derived from
         // the client ID (e.g. com.googleusercontent.apps.<id>:/oauth2redirect).
@@ -28,8 +26,6 @@ android {
 
         buildConfigField("String", "GOOGLE_OAUTH_CLIENT_ID", "\"$googleClientId\"")
         buildConfigField("String", "GOOGLE_REDIRECT_URI", "\"$googleRedirectUri\"")
-        buildConfigField("String", "WITHINGS_OAUTH_CLIENT_ID", "\"$withingsClientId\"")
-        buildConfigField("String", "WITHINGS_TOKEN_PROXY_URL", "\"$withingsTokenProxy\"")
 
         // Register the Google reverse-DNS redirect scheme for OAuthCallbackActivity.
         manifestPlaceholders["googleRedirectScheme"] = googleReverse.ifBlank { "com.vayunmathur.everysync.oauthunused" }

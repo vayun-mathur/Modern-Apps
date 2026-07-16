@@ -65,8 +65,8 @@ class MetadataScreenshots {
             )
             store.upsert(
                 AccountConfig(
-                    accountName = "Withings",
-                    providerId = "withings",
+                    accountName = "jane@gmail.com (Google Health)",
+                    providerId = "google_health",
                     enabledTypes = setOf(DataType.HEALTH),
                     lastSyncEpochMs = System.currentTimeMillis(),
                 ),
