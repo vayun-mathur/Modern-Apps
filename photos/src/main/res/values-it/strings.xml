@@ -50,4 +50,5 @@
     <string name="photo_widget_description">Una foto a rotazione dalla tua galleria — tocca per cambiare</string>
     <string name="openassistant_needs_update">Aggiorna l\'app OpenAssistant per abilitare la ricerca AI delle foto.</string>
     <string name="people_model_missing">Il raggruppamento dei volti richiede un modello MobileFaceNet. Aggiungi un file mobilefacenet.tflite con licenza permissiva in photos/src/main/assets (vedi FaceRecognizer).</string>
+    <string name="view_360">Visualizza 360°</string>
 </resources>
