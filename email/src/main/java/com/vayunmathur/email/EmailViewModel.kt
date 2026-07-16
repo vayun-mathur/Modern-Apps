@@ -267,7 +267,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                 emailManager.deleteMessage(
                     server = account.imapServer(),
                     user = account.loginUser(),
-                    auth = account.authType(),
+                    auth = account.resolveAuth(appContext),
                     folderName = folderName,
                     uid = uid,
                 )
@@ -294,7 +294,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                 emailManager.setSeenFlag(
                     server = account.imapServer(),
                     user = account.loginUser(),
-                    auth = account.authType(),
+                    auth = account.resolveAuth(appContext),
                     folderName = folderName,
                     uid = uid,
                     seen = isRead,
@@ -365,7 +365,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                     context = getApplication(),
                     server = account.smtpServer(),
                     user = account.loginUser(),
-                    auth = account.authType(),
+                    auth = account.resolveAuth(appContext),
                     to = to,
                     subject = subject,
                     body = body,
@@ -418,7 +418,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                 val (body, isHtml, attachments) = emailManager.fetchMessageBody(
                     server = account.imapServer(),
                     user = account.loginUser(),
-                    auth = account.authType(),
+                    auth = account.resolveAuth(appContext),
                     folderName = message.folderName,
                     uid = message.id,
                 )
@@ -485,7 +485,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                     context = getApplication(),
                     server = account.imapServer(),
                     user = account.loginUser(),
-                    auth = account.authType(),
+                    auth = account.resolveAuth(appContext),
                     folderName = attachment.folderName,
                     uid = attachment.messageId,
                     partId = attachment.partId,

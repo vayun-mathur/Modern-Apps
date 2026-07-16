@@ -49,13 +49,11 @@ val PROVIDER_PRESETS: List<ProviderPreset> = listOf(
         displayName = "Outlook / Microsoft 365",
         imap = ServerConfig("outlook.office365.com", 993, useSsl = true),
         smtp = ServerConfig("smtp-mail.outlook.com", 587, useSsl = false),
-        authType = "password",
-        appPasswordHelpUrl = "https://support.microsoft.com/en-us/account-billing/manage-app-passwords-for-two-step-verification-d6dc8c6d-4bf7-4851-ad95-6d07799387e9",
+        authType = "oauth2",
+        appPasswordHelpUrl = null,
         instructions = listOf(
-            "Two-step verification must be enabled on your Microsoft account.",
-            "Go to https://account.microsoft.com/security → Advanced security options.",
-            "Under \"App passwords\", choose \"Create a new app password\".",
-            "Copy the generated password and paste it below.",
+            "Microsoft no longer allows app passwords for mail.",
+            "Tap \"Sign in with Microsoft\" and approve access.",
         ),
     ),
     ProviderPreset(

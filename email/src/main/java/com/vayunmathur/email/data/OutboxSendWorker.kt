@@ -14,7 +14,7 @@ import androidx.work.WorkerParameters
 import com.vayunmathur.email.EmailManager
 import com.vayunmathur.email.OutboxEntry
 import com.vayunmathur.email.loginUser
-import com.vayunmathur.email.authType
+import com.vayunmathur.email.resolveAuth
 import com.vayunmathur.email.smtpServer
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -118,7 +118,7 @@ class OutboxSendWorker(
             context = applicationContext,
             server = account.smtpServer(),
             user = account.loginUser(),
-            auth = account.authType(),
+            auth = account.resolveAuth(applicationContext),
             to = entry.to,
             subject = entry.subject,
             body = entry.body,

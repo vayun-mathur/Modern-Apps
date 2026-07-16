@@ -6,7 +6,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import com.vayunmathur.email.EmailManager
-import com.vayunmathur.email.authType
+import com.vayunmathur.email.resolveAuth
 import com.vayunmathur.email.data.EmailDatabase
 import com.vayunmathur.email.imapServer
 import com.vayunmathur.email.loginUser
@@ -37,13 +37,13 @@ class EmailNotificationActionReceiver : BroadcastReceiver() {
                     ACTION_MARK_READ -> {
                         dao.updateReadStatus(accountEmail, folderName, uid, true)
                         account?.let {
-                            manager.setSeenFlag(it.imapServer(), it.loginUser(), it.authType(), folderName, uid, true)
+                            manager.setSeenFlag(it.imapServer(), it.loginUser(), it.resolveAuth(context), folderName, uid, true)
                         }
                     }
                     ACTION_DELETE -> {
                         dao.deleteMessageRow(accountEmail, folderName, uid)
                         account?.let {
-                            manager.deleteMessage(it.imapServer(), it.loginUser(), it.authType(), folderName, uid)
+                            manager.deleteMessage(it.imapServer(), it.loginUser(), it.resolveAuth(context), folderName, uid)
                         }
                     }
                 }

@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.work.*
 import com.vayunmathur.email.EmailManager
-import com.vayunmathur.email.authType
+import com.vayunmathur.email.resolveAuth
 import com.vayunmathur.email.imapServer
 import com.vayunmathur.email.loginUser
 import com.vayunmathur.email.widget.EmailWidget
@@ -32,7 +32,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
         for (account in accounts) {
             try {
                 Log.d("EmailSync", ">>> Starting sync for account: ${account.email}")
-                val auth = account.authType()
+                val auth = account.resolveAuth(applicationContext)
 
                 manager.withStore(account.imapServer(), account.loginUser(), auth) { store ->
                     Log.d("EmailSync", "Fetching folders for ${account.email}...")

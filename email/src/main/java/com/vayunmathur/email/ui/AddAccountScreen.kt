@@ -29,6 +29,7 @@ import com.vayunmathur.email.data.CredentialCrypto
 import com.vayunmathur.email.data.EmailDatabase
 import com.vayunmathur.email.data.EmailSyncWorker
 import com.vayunmathur.email.data.ImapIdleService
+import com.vayunmathur.email.data.OutlookOAuth
 import com.vayunmathur.email.data.PROVIDER_CUSTOM
 import com.vayunmathur.email.data.PROVIDER_GMAIL
 import com.vayunmathur.email.data.PROVIDER_PRESETS
@@ -83,6 +84,8 @@ fun AddAccountScreen(
         Box(Modifier.padding(padding).fillMaxSize()) {
             if (selectedProvider == null) {
                 ProviderPicker(onPick = { selectedProviderId = it.id })
+            } else if (selectedProvider.authType == "oauth2") {
+                OAuthForm(preset = selectedProvider)
             } else {
                 PasswordForm(
                     preset = selectedProvider,
@@ -114,8 +117,9 @@ private fun ProviderPicker(onPick: (ProviderPreset) -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Text(preset.displayName, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        when (preset.id) {
-                            PROVIDER_CUSTOM -> "Enter IMAP/SMTP server details manually"
+                        when {
+                            preset.id == PROVIDER_CUSTOM -> "Enter IMAP/SMTP server details manually"
+                            preset.authType == "oauth2" -> "Sign in with Microsoft"
                             else -> "App password"
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -275,6 +279,33 @@ private fun PasswordForm(
             } else {
                 Text(stringResource(R.string.test_connection_and_save))
             }
+        }
+    }
+}
+
+@Composable
+private fun OAuthForm(preset: ProviderPreset) {
+    val context = LocalContext.current
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        ElevatedCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Sign in with ${preset.displayName}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                preset.instructions.forEach { line ->
+                    Text("• $line", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        Button(
+            onClick = { OutlookOAuth.start(context) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Sign in with Microsoft")
         }
     }
 }
