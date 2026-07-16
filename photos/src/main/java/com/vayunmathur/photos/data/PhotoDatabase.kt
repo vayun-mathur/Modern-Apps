@@ -11,7 +11,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PhotoDao {
-    @Query("SELECT * FROM Photo")
+    // Excludes the heavy clipEmbedding BLOB and ocrText, which the gallery/photo
+    // UI never reads, so the first emission on cold start is fast (loading those
+    // for a large library is what left the grid blank). Semantic search reads
+    // embeddings via getClipEmbeddings(); OCR text is read via getAll().
+    @Query("SELECT id, name, uri, date, width, height, dateModified, exifSet, lat, `long`, duration, fullWidth, fullHeight, croppedWidth, croppedHeight, croppedLeft, croppedTop, isTrashed, faceScanned, ocrScanned, clipScanned FROM Photo")
     fun getAllFlow(): Flow<List<Photo>>
 
     @Query("SELECT * FROM Photo WHERE id = :id")

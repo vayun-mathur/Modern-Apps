@@ -87,18 +87,34 @@ import kotlinx.datetime.toLocalDateTime
 data class ZoomState(val scale: Float = 1f, val offset: Offset = Offset.Zero)
 
 @Composable
-fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapViewModel, id: Long, overridePhotosList: List<Photo>?) {
+fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapViewModel, id: Long, overridePhotosList: List<Photo>?, pendingUri: String? = null) {
     val photosAll by galleryViewModel.photos.collectAsState()
     val photos = overridePhotosList ?: photosAll.filter { !it.isTrashed }
     val context = LocalContext.current
     val photosSorted = remember(photos) { photos.sortedByDescending { it.date } }
     val matchedCounts by galleryViewModel.faceCountByPhoto.collectAsState()
 
+    // Resolve the page to open by id, falling back to the incoming view-intent
+    // URI. A freshly received photo may not be indexed into the DB yet, so it
+    // won't be in the list until the background sync writes its row.
     val initialIndex =
-            remember(photosSorted, id) {
-                val index = photosSorted.indexOfFirst { it.id == id }
-                if (index == -1) 0 else index
+            remember(photosSorted, id, pendingUri) {
+                var index = photosSorted.indexOfFirst { it.id == id }
+                if (index == -1 && pendingUri != null) {
+                    index = photosSorted.indexOfFirst { it.uri == pendingUri }
+                }
+                index
             }
+
+    // Not in the library yet: show the incoming image directly so the viewer
+    // opens instantly. Once indexing adds the row, this recomposes into the
+    // swipeable pager below (initialIndex becomes valid).
+    if (initialIndex == -1) {
+        if (pendingUri != null) {
+            PendingPhotoView(uri = pendingUri, context = context)
+        }
+        return
+    }
 
     var isMetadataVisible by remember { mutableStateOf(true) }
 
@@ -156,6 +172,24 @@ fun PhotoPage(galleryViewModel: GalleryViewModel, photoMapViewModel: PhotoMapVie
                 )
             }
         }
+    }
+}
+
+/**
+ * Minimal full-screen viewer for a photo that just arrived via ACTION_VIEW but
+ * isn't in the gallery DB yet. Renders the URI directly so the app opens on the
+ * image with no delay; [PhotoPage] swaps to the full swipeable pager as soon as
+ * the background index writes the row.
+ */
+@Composable
+private fun PendingPhotoView(uri: String, context: Context) {
+    Scaffold(containerColor = Color.Black) { paddingValues ->
+        AsyncImage(
+                model = ImageRequest.Builder(context).data(uri.toUri()).build(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentScale = ContentScale.Fit,
+        )
     }
 }
 

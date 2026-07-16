@@ -1,6 +1,7 @@
 package com.vayunmathur.photos
 
 import android.Manifest
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -223,7 +224,7 @@ sealed interface Route: NavKey {
     data object Gallery: Route
 
     @Serializable
-    data class PhotoPage(val id: Long, val overridePhotosList: List<Photo>?): Route
+    data class PhotoPage(val id: Long, val overridePhotosList: List<Photo>?, val pendingUri: String? = null): Route
 
     @Serializable
     data object Map: Route
@@ -249,14 +250,19 @@ fun Navigation(
     val vaultPhotoDao by secureFolderViewModel.vaultPhotoDao.collectAsState()
     val vaultPassword by secureFolderViewModel.vaultPassword.collectAsState()
 
-    // Opened via ACTION_VIEW from another app: index the URI into the gallery
-    // DB, then open it in the regular swipeable PhotoPage (full gallery as the
-    // pager so the user can swipe to other photos). Done once per URI.
+    // Opened via ACTION_VIEW from another app (e.g. the camera): open the
+    // swipeable PhotoPage immediately, rendering the incoming URI directly so
+    // there's no wait. The MediaStore _id in a content URI equals Photo.id, so
+    // once the background index writes the row (and the full sync populates the
+    // rest of the library for swiping), PhotoPage reconciles to the DB-backed
+    // pager. Done once per URI, even across configuration changes.
+    var handledViewUri by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(viewUri) {
-        if (viewUri != null) {
-            galleryViewModel.resolveAndIndex(viewUri) { id ->
-                if (id != null) backStack.add(Route.PhotoPage(id, null))
-            }
+        if (viewUri != null && !handledViewUri) {
+            handledViewUri = true
+            val parsedId = runCatching { ContentUris.parseId(viewUri) }.getOrNull() ?: -1L
+            backStack.add(Route.PhotoPage(parsedId, null, viewUri.toString()))
+            galleryViewModel.resolveAndIndex(viewUri) {}
         }
     }
 
@@ -274,7 +280,7 @@ fun Navigation(
         }
 
         entry<Route.PhotoPage> {
-            PhotoPage(galleryViewModel, photoMapViewModel, it.id, it.overridePhotosList)
+            PhotoPage(galleryViewModel, photoMapViewModel, it.id, it.overridePhotosList, it.pendingUri)
         }
 
         entry<Route.Trash> {
