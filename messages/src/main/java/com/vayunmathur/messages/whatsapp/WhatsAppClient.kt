@@ -207,6 +207,32 @@ object WhatsAppClient {
         _state.value = State.NeedsSetup
     }
 
+    /**
+     * User-triggered "force resync" (settings button): drop any existing socket and reconnect from
+     * scratch, regardless of current state. This is the recovery path when the socket has silently
+     * died — resetting attempts and calling connect() (which tears down the old socket first).
+     * No-op if there is no saved session.
+     */
+    fun forceResync() {
+        if (!initialized.get()) return
+        val auth = authData ?: run {
+            WhatsAppDiag.log(TAG, "forceResync: no session, ignoring")
+            return
+        }
+        WhatsAppDiag.log(TAG, "forceResync: forcing full reconnect")
+        reconnectAttempts = 0
+        reconnectJob?.cancel()
+        suppressReconnect = false
+        scope.launch {
+            try {
+                connect(auth)
+            } catch (e: Exception) {
+                Log.e(TAG, "forceResync connect failed", e)
+                scheduleReconnect()
+            }
+        }
+    }
+
     private fun scheduleReconnect() {
         // Never permanently give up: a companion device must keep retrying so it recovers after a
         // long offline stretch (device asleep, no Wi-Fi/data) without a manual app restart. The
@@ -929,8 +955,13 @@ object WhatsAppClient {
                     }
                 }
 
-                // Ack messages, notifications, and receipts (whatsmeow/receipt.go)
-                if (node.tag == "message" || node.tag == "notification" || node.tag == "receipt") {
+                // Ack messages, notifications, receipts AND calls (whatsmeow/receipt.go +
+                // call.go). Calls MUST be acked too: during the post-login offline flush the server
+                // is flow-controlled and head-of-line — if the offline <call> offers aren't acked it
+                // stops delivering, so queued <message> stanzas never arrive ("stuck syncing").
+                if (node.tag == "message" || node.tag == "notification" ||
+                    node.tag == "receipt" || node.tag == "call"
+                ) {
                     val ack = WhatsAppProtocol.buildAck(
                         nodeClass = node.tag,
                         nodeId = node.attrs["id"] ?: "",

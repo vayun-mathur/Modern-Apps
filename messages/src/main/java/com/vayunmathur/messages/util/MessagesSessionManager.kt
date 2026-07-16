@@ -794,6 +794,7 @@ object MessagesSessionManager {
         GVoiceClient.forceResync()
         TelegramClient.forceResync()
         SignalClient.forceResync()
+        com.vayunmathur.messages.whatsapp.WhatsAppClient.forceResync()
     }
 
     fun fetchMessages(conversationId: String) {
@@ -879,6 +880,10 @@ object MessagesSessionManager {
     }
 
     private suspend fun handleEvent(event: GMEvent) {
+        // Never let a single bad event crash the whole app: this pipeline persists to Room, and a
+        // malformed/edge-case event would otherwise take down the process and crash-loop on replay
+        // of the offline queue. Log and skip instead.
+        try {
         when (event) {
             is GMEvent.ConversationUpdate -> {
                 val id = "${event.source.idPrefix}:${event.conversationId}"
@@ -916,6 +921,26 @@ object MessagesSessionManager {
             is GMEvent.MessageUpdate -> {
                 val convId = "${event.source.idPrefix}:${event.conversationId}"
                 val msgId = "${event.source.idPrefix}:${event.messageId}"
+                // Ensure the parent conversation row exists before inserting the message (the
+                // messages table FKs to it). Unlike IncomingMessage, a MessageUpdate is NOT preceded
+                // by a guaranteed ConversationUpdate — e.g. own messages synced from another linked
+                // device (fromMe), or history backfill for a chat not yet persisted — so without
+                // this the insert throws SQLiteConstraintException and crashes the app. Preview is
+                // refreshed but unread is NOT bumped (these are backfill / outgoing, not new unread).
+                val existingConv = db.conversationDao().get(convId)
+                db.conversationDao().upsert(
+                    existingConv?.copy(
+                        lastMessagePreview = event.body.ifEmpty { existingConv.lastMessagePreview },
+                    ) ?: Conversation(
+                        id = convId,
+                        source = event.source,
+                        peerName = null,
+                        peerPhoneE164 = null,
+                        avatarUrl = null,
+                        lastMessagePreview = event.body,
+                        unreadCount = 0,
+                    )
+                )
                 db.messageDao().upsert(
                     Message(
                         id = msgId,
@@ -1061,6 +1086,9 @@ object MessagesSessionManager {
                 }
             }
             else -> Unit
+        }
+        } catch (e: Exception) {
+            Log.e(TAG, "handleEvent failed for ${event::class.simpleName}", e)
         }
     }
 
