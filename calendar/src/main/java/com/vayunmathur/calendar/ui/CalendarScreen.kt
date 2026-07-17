@@ -3,7 +3,6 @@ package com.vayunmathur.calendar.ui
 import android.text.format.DateFormat
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
@@ -425,10 +425,11 @@ fun SummaryEventItem(
     Box(
         Modifier
             .padding(bottom = 2.dp)
-            .background(Color(ev.color ?: calendars[ev.calendarID]!!.color), RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(ev.color ?: calendars[ev.calendarID]!!.color))
             .fillMaxWidth()
             .clickable { onEventClick(instance) }
-            .padding(4.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
         Column {
             Text(
@@ -515,7 +516,7 @@ fun MonthView(
             )
         }
 
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().padding(4.dp), Arrangement.spacedBy(4.dp)) {
             weeks.forEach { weekSunday ->
                 MonthWeekRow(
                     Modifier.weight(1f),
@@ -547,28 +548,50 @@ fun MonthWeekRow(
 ) {
     val weekDays = (0..6).map { weekSunday.plus(DatePeriod(days = it)) }
 
-    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), Arrangement.spacedBy(4.dp)) {
         weekDays.forEach { date ->
             val dayInstances = allInstances.filter { date in it.spanDays }
                 .sortedBy { it.startDateTime }
             val isToday = date == Clock.System.todayIn(TimeZone.currentSystemDefault())
             val isPartOfViewingMonth = date.month.number == viewingMonth
-            
+
             Column(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-                    .background(if (isToday) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (isToday) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    )
                     .clickable { onDayClick(date) }
-                    .padding(2.dp)
+                    .padding(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = date.day.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isToday) MaterialTheme.colorScheme.primary else if (isPartOfViewingMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (isToday || isPartOfViewingMonth) FontWeight.Bold else FontWeight.Normal
-                )
+                if (isToday) {
+                    Box(
+                        Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = date.day.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Text(
+                        text = date.day.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isPartOfViewingMonth) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (isPartOfViewingMonth) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
                 dayInstances.forEach { instance ->
                     val ev = vEventsByID[instance.eventID]!!
                     SummaryEventItem(context, instance, ev, calendars, onEventClick)
@@ -675,13 +698,13 @@ private fun WeekHeader(weekDays: List<LocalDate>) {
                 Text(
                     d.dayOfWeek.name.take(3),
                     Modifier,
-                    if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
                 Text(
                     d.day.toString(),
                     fontWeight = FontWeight.Bold,
-                    color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = if (isToday) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -703,7 +726,9 @@ private fun AllDayRow(
                 if (instances.isEmpty()) {
                     Box(modifier = Modifier
                         .height(32.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant)) {}
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {}
                 } else {
                     Column {
                         instances.forEach { instance ->
@@ -711,7 +736,7 @@ private fun AllDayRow(
                             Box(
                                 Modifier
                                     .padding(bottom = 4.dp)
-                                    .border(1.dp, MaterialTheme.colorScheme.outline)
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(Color(ev.color ?: calendars[ev.calendarID]!!.color))
                                     .height(28.dp)
                                     .clickable { onEventClick(instance) }
@@ -719,7 +744,7 @@ private fun AllDayRow(
                             ) {
                                 Text(
                                     ev.title.ifEmpty { stringResource(R.string.no_title) },
-                                    Modifier.padding(4.dp),
+                                    Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                                     Color.White,
                                     fontSize = 12.sp
                                 )
@@ -767,16 +792,22 @@ private fun HourlyGrid(
             // collect unique timed events for this day (timedByDateHour groups by hour)
             val eventsForDay = timedByDateHour[d]?.values?.flatten().orEmpty().distinctBy { it.id }
 
-            Box(Modifier.weight(1f).background(if (isToday) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else Color.Transparent)) {
-                // background hourly grid — fixed 24 rows
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (isToday) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))) {
+                // background hourly grid — fixed 24 rows with faint hour separators
                 Column {
                     for (hour in 0..23) {
                         Box(
                             Modifier
                                 .height(hourRowHeight)
                                 .fillMaxWidth()
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                        )
+                        ) {
+                            if (hour != 0) {
+                                HorizontalDivider(
+                                    Modifier.align(Alignment.TopStart),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -823,7 +854,7 @@ private fun HourlyGrid(
                                 .size(widthDp, heightDp)
                                 .padding(2.dp)
                                 .zIndex(1f + ev.columnIndex * 0.01f)
-                                .border(1.dp, MaterialTheme.colorScheme.outline)
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(Color(ev.color))
                                 .clickable { onEventClick(instance) }
                         ) {
