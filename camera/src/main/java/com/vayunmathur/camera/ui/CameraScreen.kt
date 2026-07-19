@@ -136,8 +136,6 @@ import com.vayunmathur.camera.util.AspectRatioOption
 import com.vayunmathur.camera.util.BokehAnalyzer
 import com.vayunmathur.camera.util.CameraMode
 import com.vayunmathur.camera.util.CameraViewModel
-import com.vayunmathur.camera.util.GuideDot
-import com.vayunmathur.camera.util.GuideDotState
 import com.vayunmathur.camera.util.FlashMode
 import com.vayunmathur.camera.util.buildColorAdjustmentMatrix
 import com.vayunmathur.camera.util.formatZoomLabel
@@ -283,10 +281,6 @@ fun CameraScreen(
     val panoStitching by viewModel.panoramaEngine.isStitching.collectAsState()
     val panoFrameCount by viewModel.panoramaEngine.frameCount.collectAsState()
     val panoAngle by viewModel.panoramaEngine.sweepAngle.collectAsState()
-    val panoDots by viewModel.panoramaEngine.guideDots.collectAsState()
-    val panoCurrentAngle by viewModel.panoramaEngine.currentAngle.collectAsState()
-    val panoDirection by viewModel.panoramaEngine.sweepDirection.collectAsState()
-    val panoPitch by viewModel.panoramaEngine.currentPitch.collectAsState()
 
     // Orientation tracking
     var deviceRotation by remember { mutableIntStateOf(0) }
@@ -711,10 +705,8 @@ fun CameraScreen(
                         PanoramaOverlay(
                             isSweeping = panoSweeping,
                             isStitching = panoStitching,
-                            guideDots = panoDots,
-                            currentAngle = panoCurrentAngle,
-                            sweepDirection = panoDirection,
-                            currentPitch = panoPitch,
+                            frameCount = panoFrameCount,
+                            sweepAngle = panoAngle,
                             modifier = previewSize
                         )
                     }
@@ -1638,10 +1630,8 @@ private fun IsoBar(
 private fun PanoramaOverlay(
     isSweeping: Boolean,
     isStitching: Boolean,
-    guideDots: List<GuideDot>,
-    currentAngle: Float,
-    sweepDirection: Int,
-    currentPitch: Float,
+    frameCount: Int,
+    sweepAngle: Float,
     modifier: Modifier = Modifier
 ) {
     if (isStitching) {
@@ -1657,15 +1647,12 @@ private fun PanoramaOverlay(
 
     if (!isSweeping) return
 
-    val capturedCount = guideDots.count { it.state == GuideDotState.CAPTURED }
-    val totalDots = guideDots.size
-    val halfFOV = 30f
-
+    // Flash briefly each time a new frame is captured.
     val flashAlpha = remember { Animatable(0f) }
-    LaunchedEffect(capturedCount) {
-        if (capturedCount > 1) {
-            flashAlpha.snapTo(0.3f)
-            flashAlpha.animateTo(0f, tween(250))
+    LaunchedEffect(frameCount) {
+        if (frameCount > 1) {
+            flashAlpha.snapTo(0.25f)
+            flashAlpha.animateTo(0f, tween(200))
         }
     }
 
@@ -1677,38 +1664,6 @@ private fun PanoramaOverlay(
         Canvas(Modifier.fillMaxSize()) {
             val centerX = size.width / 2
             val centerY = size.height / 2
-            val halfVertFOV = 40f
-
-            guideDots.forEach { dot ->
-                val angleOffset = dot.targetAngle - currentAngle
-                val pitchOffset = dot.targetPitch - currentPitch
-                if (Math.abs(angleOffset) <= halfFOV * 1.2f && Math.abs(pitchOffset) <= halfVertFOV * 1.2f) {
-                    val dotX = centerX + (angleOffset / halfFOV) * (size.width / 2)
-                    val dotY = centerY - (pitchOffset / halfVertFOV) * (size.height / 2)
-                    val baseRadius = 14.dp.toPx()
-
-                    when (dot.state) {
-                        GuideDotState.PENDING -> {
-                            drawCircle(Color.White.copy(alpha = 0.7f), baseRadius, Offset(dotX, dotY), style = Stroke(2.dp.toPx()))
-                            drawCircle(Color.White.copy(alpha = 0.3f), 3.dp.toPx(), Offset(dotX, dotY))
-                        }
-                        GuideDotState.ALIGNING, GuideDotState.CAPTURING -> {
-                            drawCircle(Color(0xFF4FC3F7), baseRadius * 1.2f, Offset(dotX, dotY))
-                            drawCircle(Color.White, baseRadius * 1.2f, Offset(dotX, dotY), style = Stroke(2.dp.toPx()))
-                        }
-                        GuideDotState.CAPTURED -> {
-                            drawCircle(Color(0xFF4CAF50), baseRadius, Offset(dotX, dotY))
-                            val checkPath = Path().apply {
-                                moveTo(dotX - baseRadius * 0.35f, dotY)
-                                lineTo(dotX - baseRadius * 0.05f, dotY + baseRadius * 0.3f)
-                                lineTo(dotX + baseRadius * 0.4f, dotY - baseRadius * 0.3f)
-                            }
-                            drawPath(checkPath, Color.White, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
-                        }
-                    }
-                }
-            }
-
             val crossSize = 20.dp.toPx()
             val crossGap = 6.dp.toPx()
             val crossStroke = 2.dp.toPx()
@@ -1720,14 +1675,23 @@ private fun PanoramaOverlay(
             drawCircle(crossColor, 2.dp.toPx(), Offset(centerX, centerY))
         }
 
-        Text(
-            "$capturedCount / $totalDots",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
+        Column(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 60.dp)
                 .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-        )
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Pan slowly \u2014 tap shutter to finish",
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                "$frameCount frames \u00b7 ${sweepAngle.toInt()}\u00b0",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 12.sp
+            )
+        }
     }
 }

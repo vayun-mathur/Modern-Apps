@@ -13,7 +13,7 @@ use crate::features::{detect_and_describe, Features};
 use crate::imgbuf::{to_gray, Rgba};
 use crate::matching::{biggest_component, match_all, MatchInfo};
 use crate::seam::seam_masks;
-use crate::sphere::{warp_one, warped_bounds};
+use crate::sphere::{warp_one, warped_bounds, WarpedTile};
 use crate::wave::wave_correct_horizontal;
 use rayon::prelude::*;
 
@@ -22,7 +22,7 @@ const FAST_THRESHOLD: i32 = 12;
 const CONF_THRESH: f64 = 1.0;
 const MATCH_WINDOW: usize = 5; // match each frame only to ~5 neighbours (ordered sweep)
 const REG_MEGAPIXELS: f64 = 0.6; // registration resolution (like OpenCV's registr_resol_)
-const COMPOSE_MAX_PIXELS: f64 = 5_000_000.0; // cap output canvas area (bounds blend memory)
+const COMPOSE_MAX_PIXELS: f64 = 3_000_000.0; // cap output canvas area (bounds warp+blend cost/memory)
 const SEAM_MAX_PIXELS: f64 = 400_000.0; // seam/exposure canvas area (OpenCV seam_est_resol_)
 
 fn remap_matches(matches: Vec<MatchInfo>, kept: &[usize]) -> Vec<MatchInfo> {
@@ -166,10 +166,11 @@ pub fn stitch_panorama(frames: &[Rgba], _yaw: &[f32], _pitch: &[f32]) -> Option<
         .map(|(f, c)| warp_one(f, &c.k(), &c.r, scale))
         .collect::<Option<Vec<_>>>()?;
 
-    // Upscale seam masks (nearest) and gain maps (bilinear) to compose tile size.
-    let masks: Vec<Vec<u8>> = (0..tiles.len())
-        .map(|i| resize_mask(&low_masks[i], seam_tiles[i].img.w, seam_tiles[i].img.h, tiles[i].img.w, tiles[i].img.h))
-        .collect();
+    // Build compose-resolution seam masks as a true partition of the actual
+    // coverage: every covered pixel is owned by exactly one covering tile,
+    // guided by the low-res seam. This avoids unassigned (black) gaps at seams
+    // that break the blend and the crop.
+    let masks = build_compose_masks(&tiles, &seam_tiles, &low_masks);
     let gain_maps: Vec<Vec<f32>> = (0..tiles.len())
         .map(|i| resize_gain(&seam_gains[i], seam_tiles[i].img.w, seam_tiles[i].img.h, tiles[i].img.w, tiles[i].img.h))
         .collect();
@@ -178,20 +179,62 @@ pub fn stitch_panorama(frames: &[Rgba], _yaw: &[f32], _pitch: &[f32]) -> Option<
     multiband_blend(&tiles, &masks, &gain_maps)
 }
 
-/// Nearest-neighbour upscale of a binary mask.
-fn resize_mask(src: &[u8], sw: usize, sh: usize, dw: usize, dh: usize) -> Vec<u8> {
-    if sw == 0 || sh == 0 {
-        return vec![0u8; dw * dh];
+/// Build compose-resolution seam masks as a partition of the actual coverage:
+/// every pixel covered by any tile is assigned to exactly one covering tile
+/// (preferring the tile the low-res seam assigned there), so the masks' union
+/// equals the coverage — no unassigned black gaps.
+fn build_compose_masks(tiles: &[WarpedTile], seam_tiles: &[WarpedTile], low_masks: &[Vec<u8>]) -> Vec<Vec<u8>> {
+    let num = tiles.len();
+    let mut masks: Vec<Vec<u8>> = tiles.iter().map(|t| vec![0u8; t.img.w * t.img.h]).collect();
+    if num == 0 {
+        return masks;
     }
-    let mut out = vec![0u8; dw * dh];
-    for y in 0..dh {
-        let sy = (y * sh / dh).min(sh - 1);
-        for x in 0..dw {
-            let sx = (x * sw / dw).min(sw - 1);
-            out[y * dw + x] = src[sy * sw + sx];
+    let mut gx0 = i32::MAX;
+    let mut gy0 = i32::MAX;
+    let mut gx1 = i32::MIN;
+    let mut gy1 = i32::MIN;
+    for t in tiles {
+        gx0 = gx0.min(t.corner_x);
+        gy0 = gy0.min(t.corner_y);
+        gx1 = gx1.max(t.corner_x + t.img.w as i32);
+        gy1 = gy1.max(t.corner_y + t.img.h as i32);
+    }
+    for gy in gy0..gy1 {
+        for gx in gx0..gx1 {
+            let mut owner = usize::MAX;
+            let mut fallback = usize::MAX;
+            for ti in 0..num {
+                let t = &tiles[ti];
+                let lx = gx - t.corner_x;
+                let ly = gy - t.corner_y;
+                if lx < 0 || ly < 0 || lx >= t.img.w as i32 || ly >= t.img.h as i32 {
+                    continue;
+                }
+                if t.img.get(lx as usize, ly as usize)[3] == 0 {
+                    continue;
+                }
+                if fallback == usize::MAX {
+                    fallback = ti;
+                }
+                // Does the low-res seam assign this region to tile ti?
+                let st = &seam_tiles[ti];
+                let slx = (lx as usize * st.img.w / t.img.w.max(1)).min(st.img.w.saturating_sub(1));
+                let sly = (ly as usize * st.img.h / t.img.h.max(1)).min(st.img.h.saturating_sub(1));
+                if low_masks[ti].get(sly * st.img.w + slx).copied().unwrap_or(0) != 0 {
+                    owner = ti;
+                    break;
+                }
+            }
+            let chosen = if owner != usize::MAX { owner } else { fallback };
+            if chosen != usize::MAX {
+                let t = &tiles[chosen];
+                let lx = (gx - t.corner_x) as usize;
+                let ly = (gy - t.corner_y) as usize;
+                masks[chosen][ly * t.img.w + lx] = 1;
+            }
         }
     }
-    out
+    masks
 }
 
 /// Bilinear upscale of a per-pixel gain map.

@@ -12,8 +12,9 @@ use nalgebra::{DMatrix, DVector, Matrix3, Vector3};
 use rayon::prelude::*;
 
 const CONF_THRESH: f64 = 1.0;
-const MAX_ITERS: usize = 100;
+const MAX_ITERS: usize = 40;
 const STEP: f64 = 1e-4;
+const CONVERGE_REL: f64 = 1e-3;
 
 struct Edge {
     i: usize,
@@ -106,6 +107,7 @@ pub fn bundle_adjust(cams: &mut Vec<CameraParams>, matches: &[MatchInfo]) {
     let mut lambda = 1.0;
 
     for _ in 0..MAX_ITERS {
+        let cost_before = cost;
         // Block-sparse normal equations, accumulated per edge in parallel.
         let (jtj, jtr) = edges
             .par_iter()
@@ -189,6 +191,9 @@ pub fn bundle_adjust(cams: &mut Vec<CameraParams>, matches: &[MatchInfo]) {
         }
         if !improved {
             break;
+        }
+        if (cost_before - cost) / cost_before.max(1e-9) < CONVERGE_REL {
+            break; // converged
         }
     }
 }

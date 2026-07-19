@@ -2083,9 +2083,8 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         isFinishingPano = true
         panoramaEngine.stopSweep()
         viewModelScope.launch {
-            panoramaEngine.stitch()?.let { (bitmap, info) ->
-                panoramaEngine.saveToMediaStore(bitmap, info)
-                bitmap.recycle()
+            panoramaEngine.stitch()?.let { (jpeg, info) ->
+                panoramaEngine.saveToMediaStore(jpeg, info)
             }
             panoramaEngine.reset()
             isFinishingPano = false

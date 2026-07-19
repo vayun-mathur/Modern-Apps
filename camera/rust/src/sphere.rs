@@ -129,13 +129,14 @@ impl Proj {
         })
     }
 
-    /// source (x,y) -> sphere (u,v)
+    /// source (x,y) -> sphere (u,v). Spherical handles large vertical FOV (tall
+    /// frames) far better than cylindrical. (OpenCV SphericalProjector::mapForward)
     fn forward(&self, x: f64, y: f64) -> (f64, f64) {
         let p = self.r_kinv * Vector3::new(x, y, 1.0);
         let u = self.scale * p.x.atan2(p.z);
         let denom = (p.x * p.x + p.y * p.y + p.z * p.z).sqrt();
-        let w = if denom > 1e-12 { p.y / denom } else { 0.0 };
-        let v = self.scale * (std::f64::consts::PI - w.clamp(-1.0, 1.0).acos());
+        let ww = if denom > 1e-12 { p.y / denom } else { 0.0 };
+        let v = self.scale * (std::f64::consts::PI - ww.clamp(-1.0, 1.0).acos());
         (u, v)
     }
 

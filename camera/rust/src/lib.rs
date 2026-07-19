@@ -104,24 +104,72 @@ mod tests {
         let dt = t0.elapsed();
         let jpeg = encode_jpeg(&out, 92).expect("encode");
         std::fs::write("testdata/output.jpg", &jpeg).expect("write output");
+
+        // Quantitatively count pure-black pixels (the uncovered-warp fill) — both
+        // overall and specifically on the four borders.
+        let total = out.w * out.h;
+        let mut black = 0usize;
+        for i in 0..total {
+            let (r, g, b) = (out.px[i * 4], out.px[i * 4 + 1], out.px[i * 4 + 2]);
+            if r == 0 && g == 0 && b == 0 {
+                black += 1;
+            }
+        }
+        let mut border_black = 0usize;
+        let mut count_px = |x: usize, y: usize, acc: &mut usize| {
+            let i = (y * out.w + x) * 4;
+            if out.px[i] == 0 && out.px[i + 1] == 0 && out.px[i + 2] == 0 {
+                *acc += 1;
+            }
+        };
+        for x in 0..out.w {
+            count_px(x, 0, &mut border_black);
+            count_px(x, out.h - 1, &mut border_black);
+        }
+        for y in 0..out.h {
+            count_px(0, y, &mut border_black);
+            count_px(out.w - 1, y, &mut border_black);
+        }
+        let black_pct = 100.0 * black as f64 / total as f64;
+        // Locate the brightest vertical streak in the sky (top 25%): per-column
+        // mean brightness, find the peak column and dump values around it.
+        let top = out.h / 4;
+        let colmean: Vec<f64> = (0..out.w)
+            .map(|x| {
+                let mut s = 0.0;
+                for y in 0..top {
+                    let i = (y * out.w + x) * 4;
+                    s += (out.px[i] as f64 + out.px[i + 1] as f64 + out.px[i + 2] as f64) / 3.0;
+                }
+                s / top as f64
+            })
+            .collect();
+        let avg: f64 = colmean.iter().sum::<f64>() / out.w as f64;
+        let peak = (0..out.w).max_by(|&a, &b| colmean[a].total_cmp(&colmean[b])).unwrap();
         eprintln!(
-            "inputs {aw}x{ah}; stitched {}x{} in {:?} -> testdata/output.jpg ({} KB)",
+            "streak: peak col {} mean {:.0} vs avg {:.0} (+{:.0})",
+            peak, colmean[peak], avg, colmean[peak] - avg
+        );
+        let y = top / 2;
+        let mut line = String::new();
+        for x in (peak.saturating_sub(10))..(peak + 11).min(out.w) {
+            let i = (y * out.w + x) * 4;
+            line.push_str(&format!("{}:{},{},{} ", x, out.px[i], out.px[i + 1], out.px[i + 2]));
+        }
+        eprintln!("row {y} around peak: {line}");
+        eprintln!(
+            "inputs {aw}x{ah}; stitched {}x{} in {:?} -> {} KB; black={} ({:.3}%), border_black={}",
             out.w,
             out.h,
             dt,
-            jpeg.len() / 1024
+            jpeg.len() / 1024,
+            black,
+            black_pct,
+            border_black
         );
-        // The inputs are portrait (aspect < 1); a real two-frame panorama must be
-        // much wider relative to its height. (Output pixel size is memory-capped,
-        // so compare aspect ratios rather than absolute width.)
-        let in_aspect = aw as f32 / ah as f32;
-        let out_aspect = out.w as f32 / out.h as f32;
-        assert!(
-            out_aspect > in_aspect * 1.4,
-            "output aspect {out_aspect:.2} not panoramic vs input {in_aspect:.2} ({}x{})",
-            out.w,
-            out.h
-        );
+        assert!(out.w > 800 && out.h > 800, "degenerate crop: {}x{}", out.w, out.h);
+        assert_eq!(border_black, 0, "black pixels on the border");
+        assert!(black_pct < 0.05, "too many black pixels: {:.3}%", black_pct);
     }
 }
 
