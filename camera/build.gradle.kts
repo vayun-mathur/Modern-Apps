@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("common-conventions-app")
     id("common-conventions-metadata")
@@ -11,9 +13,82 @@ android {
     defaultConfig {
         applicationId = "com.vayunmathur.camera"
     }
-    packaging {
-        jniLibs.useLegacyPackaging = true
+    // The Rust stitcher drops <abi>/libcamera_stitch.so under this dir; register
+    // it as a jniLibs source so AGP packages the native lib.
+    sourceSets["main"].jniLibs.directories.add(layout.buildDirectory.dir("rustJniLibs").get().asFile.absolutePath)
+}
+
+// ---------------------------------------------------------------------------
+// Native panorama stitcher + night burst aligner (Rust). See camera/rust/.
+// Cross-compiled per-ABI with the NDK's clang, driven directly from cargo (same
+// approach as :pdf and :weather).
+// Contributor/CI prerequisite:  rustup target add aarch64-linux-android
+// ---------------------------------------------------------------------------
+
+val ndkVersionForRust = "29.0.14206865"
+val androidApiLevel = 31
+
+fun resolveSdkDir(): String =
+    System.getenv("ANDROID_HOME")
+        ?: System.getenv("ANDROID_SDK_ROOT")
+        ?: rootProject.file("local.properties").takeIf { it.exists() }?.let { f ->
+            Properties().apply { f.inputStream().use { load(it) } }.getProperty("sdk.dir")
+        }
+        ?: error("Android SDK not found (set ANDROID_HOME or sdk.dir in local.properties)")
+
+val cargoBin = "${System.getProperty("user.home")}/.cargo/bin"
+val ndkRoot = "${resolveSdkDir()}/ndk/$ndkVersionForRust"
+val hostTag = when {
+    org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "darwin-x86_64"
+    org.gradle.internal.os.OperatingSystem.current().isLinux -> "linux-x86_64"
+    org.gradle.internal.os.OperatingSystem.current().isWindows -> "windows-x86_64"
+    else -> error("Unsupported host OS for NDK toolchain")
+}
+val ndkBin = "$ndkRoot/toolchains/llvm/prebuilt/$hostTag/bin"
+val ndkSysroot = "$ndkRoot/toolchains/llvm/prebuilt/$hostTag/sysroot"
+
+// (jniLibs ABI dir, Rust target triple)
+val rustAbis = listOf(
+    "arm64-v8a" to "aarch64-linux-android",
+)
+
+val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
+    tasks.register<Exec>("cargoBuild_${abiDir.replace('-', '_')}") {
+        description = "Cross-compiles the Rust camera stitcher for $abiDir."
+        workingDir = file("rust")
+
+        val clang = "$ndkBin/$triple$androidApiLevel-clang"
+        val linkerVar = "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER"
+        val soOut = file("rust/target/$triple/release/libcamera_stitch.so")
+        val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/libcamera_stitch.so").get().asFile
+
+        inputs.dir("rust/src")
+        inputs.file("rust/Cargo.toml")
+        outputs.file(destSo)
+
+        environment("PATH", "$cargoBin:${System.getenv("PATH")}")
+        environment("CC", clang)
+        environment("AR", "$ndkBin/llvm-ar")
+        environment("SYSROOT", ndkSysroot)
+        environment(linkerVar, clang)
+        environment("HOST_CC", "/usr/bin/clang")
+
+        commandLine("$cargoBin/cargo", "build", "--release", "--target", triple)
+
+        doLast {
+            destSo.parentFile.mkdirs()
+            soOut.copyTo(destSo, overwrite = true)
+        }
     }
+}
+
+val cargoNdkBuild = tasks.register("cargoNdkBuild") {
+    description = "Builds libcamera_stitch.so for all Android ABIs."
+    dependsOn(perAbiBuildTasks)
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(cargoNdkBuild)
 }
 
 dependencies {
@@ -26,5 +101,4 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     implementation(libs.zxing.core)
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
-    implementation("com.quickbirdstudios:opencv:4.5.3.0")
 }
