@@ -8,7 +8,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import com.vayunmathur.games.chess.data.Board
 import com.vayunmathur.stockfish.Stockfish
-import java.io.File
 
 object StockfishEngine {
     val inputChannel = Channel<String>(Channel.UNLIMITED)
@@ -39,7 +38,7 @@ object StockfishEngine {
             outputChannel.trySend(line)
         }
 
-        val nnuePath = copyAssetToFiles(context, "nn-71d6d32cb962.nnue")
+        val evalFileSpec = nnueEvalFileSpec(context, "nn-71d6d32cb962.nnue")
 
         CoroutineScope(Dispatchers.IO).launch {
             for (cmd in inputChannel) {
@@ -50,20 +49,25 @@ object StockfishEngine {
 
         CoroutineScope(Dispatchers.IO).launch {
             inputChannel.send("uci")
-            inputChannel.send("setoption name EvalFile value $nnuePath")
+            inputChannel.send("setoption name EvalFile value $evalFileSpec")
             inputChannel.send("isready")
         }
     }
 
-    private fun copyAssetToFiles(context: Context, fileName: String): String {
-        val destFile = File(context.filesDir, fileName)
-        if (!destFile.exists()) {
-            context.assets.open(fileName).use { input ->
-                destFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-        }
-        return destFile.absolutePath
+    /**
+     * Points Stockfish at the NNUE stored uncompressed inside the APK, read in
+     * place via a file descriptor instead of being copied to internal storage.
+     * Returns an "fd:<fd>:<offset>:<length>" spec understood by the engine's
+     * EvalFile loader. The fd is detached (ownership handed to native, which
+     * closes it after loading). Requires `noCompress += "nnue"` so the asset is
+     * page-aligned and openable as a descriptor.
+     */
+    private fun nnueEvalFileSpec(context: Context, fileName: String): String {
+        val afd = context.assets.openFd(fileName)
+        val offset = afd.startOffset
+        val length = afd.length
+        val fd = afd.parcelFileDescriptor.detachFd()
+        afd.close()
+        return "fd:$fd:$offset:$length"
     }
 }
