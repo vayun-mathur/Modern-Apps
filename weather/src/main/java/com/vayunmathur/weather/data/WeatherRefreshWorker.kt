@@ -8,7 +8,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.weather.glance.WeatherGlanceWidget
 import com.vayunmathur.weather.network.WeatherApi
 import java.util.concurrent.TimeUnit

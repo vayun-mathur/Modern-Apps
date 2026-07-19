@@ -17,7 +17,7 @@ import androidx.exifinterface.media.ExifInterface
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.photos.data.PhotoDatabase
 import com.vayunmathur.photos.util.setExifData
 import com.vayunmathur.photos.util.syncPhotos

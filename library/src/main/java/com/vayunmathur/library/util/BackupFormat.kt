@@ -19,16 +19,17 @@ class ZipBackupFormat(
     private val prefNames: List<String> = emptyList(),
     private val extraFiles: List<File> = emptyList(),
     private val extraFilesMapping: Map<String, File> = extraFiles.associateBy { it.name },
+    private val dbCodec: DbBackupCodec? = null,
 ) : BackupFormat {
     override val mimeType = "application/zip"
     override val defaultFileName = "backup.zip"
     override val needsPassword = false
 
     override suspend fun export(context: Context, password: String?, outputStream: OutputStream) {
-        BackupHelper.performFullBackup(context, dbConfigs, datastoreNames, prefNames, extraFiles, outputStream)
+        BackupHelper.performFullBackup(context, dbConfigs, datastoreNames, prefNames, extraFiles, outputStream, dbCodec)
     }
 
     override suspend fun import(context: Context, password: String?, inputStream: InputStream) {
-        BackupHelper.performFullRestore(context, dbConfigs, datastoreNames, prefNames, extraFilesMapping, inputStream)
+        BackupHelper.performFullRestore(context, dbConfigs, datastoreNames, prefNames, extraFilesMapping, inputStream, dbCodec)
     }
 }

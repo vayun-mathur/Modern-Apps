@@ -15,7 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
 import com.google.ai.edge.litertlm.*
 import com.vayunmathur.library.util.SecureResultReceiver
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.downloadservice.downloadModelFiles
 import kotlinx.coroutines.*

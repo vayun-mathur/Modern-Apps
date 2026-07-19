@@ -8,7 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.youpipe.data.DownloadedVideo
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.ui.VideoInfo

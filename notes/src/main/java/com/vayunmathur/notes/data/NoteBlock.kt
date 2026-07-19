@@ -1,6 +1,6 @@
 package com.vayunmathur.notes.data
 
-import com.vayunmathur.library.util.SerializedStroke
+import com.vayunmathur.library.ink.SerializedStroke
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString

@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.vayunmathur.clock.data.ClockDatabase
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconPause
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlin.time.Clock

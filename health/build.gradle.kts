@@ -24,6 +24,7 @@ dependencies {
 
     // room
     implementRoom(libs)
+    implementation(project(":library:room"))
 
     implementation(project(":library:network"))
 }

@@ -32,6 +32,7 @@ dependencies {
 
     // room
     implementRoom(libs)
+    implementation(project(":library:room"))
 
     // adaptive navigation
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)

@@ -55,6 +55,7 @@ import com.vayunmathur.library.ui.TopAppBarDefaults
 import com.vayunmathur.library.ui.dynamicLightColorScheme
 import com.vayunmathur.library.ui.rememberBottomSheetScaffoldState
 import com.vayunmathur.library.ui.rememberSliderState
+import com.vayunmathur.library.room.SqlCipherDbCodec
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -250,6 +251,7 @@ fun MainPage(
                     if (selectedUserId == null && (selectedWaypointId == null || selectedWaypointId == 0L)) {
                         BackupButtons(
                             dbConfigs = listOf("passwords-db" to ffViewModel.backupPassphrase),
+                            dbCodec = SqlCipherDbCodec,
                             extraFiles = emptyList()
                         )
                     } else if (selectedUserId != null && !historyMode) {

@@ -18,7 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.library.util.BackupFormat
-import com.vayunmathur.library.util.BackupHelper
+import com.vayunmathur.library.util.DbBackupCodec
 import com.vayunmathur.library.util.ZipBackupFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,10 +31,11 @@ fun BackupButtons(
     datastoreNames: List<String> = emptyList(),
     prefNames: List<String> = emptyList(),
     extraFiles: List<File> = emptyList(),
-    extraFilesMapping: Map<String, File> = extraFiles.associateBy { it.name }
+    extraFilesMapping: Map<String, File> = extraFiles.associateBy { it.name },
+    dbCodec: DbBackupCodec? = null,
 ) {
     BackupButtons(
-        format = ZipBackupFormat(dbConfigs, datastoreNames, prefNames, extraFiles, extraFilesMapping)
+        format = ZipBackupFormat(dbConfigs, datastoreNames, prefNames, extraFiles, extraFilesMapping, dbCodec)
     )
 }
 

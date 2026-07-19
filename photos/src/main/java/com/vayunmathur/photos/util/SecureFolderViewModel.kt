@@ -12,7 +12,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.room.migration.Migration
 import androidx.core.net.toUri
 import com.vayunmathur.library.biometric.unlockDatabaseWithBiometrics
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoDao
 import com.vayunmathur.photos.data.VaultDatabase

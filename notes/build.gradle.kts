@@ -16,6 +16,8 @@ android {
 
 dependencies {
     implementRoom(libs)
+    implementation(project(":library:room"))
+    implementation(project(":library:ink"))
     implementation(libs.reorderable)
     implementation(libs.coil.compose)
     implementation("androidx.compose.material:material-icons-extended")

@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.newpipeextractor)
 
     implementRoom(libs)
+    implementation(project(":library:room"))
 
     implementation(libs.androidx.media3.ui.compose.material3)
     implementation(libs.androidx.media3.exoplayer)

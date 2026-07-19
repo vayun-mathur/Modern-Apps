@@ -24,6 +24,7 @@ dependencies {
     implementation(libs.jaudiotagger)
 
     implementRoom(libs)
+    implementation(project(":library:room"))
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)

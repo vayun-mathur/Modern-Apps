@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":library:e2ee-p2p"))
 
     implementRoom(libs)
+    implementation(project(":library:room"))
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(project(":library:work"))

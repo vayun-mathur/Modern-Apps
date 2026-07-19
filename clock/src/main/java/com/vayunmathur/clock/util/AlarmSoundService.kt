@@ -14,7 +14,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 import com.vayunmathur.clock.R
 import com.vayunmathur.clock.data.ClockDatabase
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

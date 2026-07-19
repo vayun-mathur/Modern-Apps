@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.BackupButtons
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.room.SqlCipherDbCodec
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.openassistant.Route
@@ -36,6 +37,7 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: AssistantViewModel) 
                     val pass = remember { DatabaseHelper(context).getPassphrase() }
                     BackupButtons(
                         dbConfigs = listOf("passwords-db" to pass),
+                        dbCodec = SqlCipherDbCodec,
                         extraFiles = emptyList()
                     )
                 }

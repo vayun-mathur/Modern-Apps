@@ -14,7 +14,7 @@ import com.vayunmathur.library.downloadservice.InitialDownloadChecker
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.IntentLauncher
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.serialization.Serializable
 import com.vayunmathur.openassistant.data.AppDatabase

@@ -41,6 +41,7 @@ import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconClose
 import com.vayunmathur.library.ui.IconUnarchive
 import com.vayunmathur.library.ui.BackupButtons
+import com.vayunmathur.library.room.SqlCipherDbCodec
 import java.io.File
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.photos.LocalColumnCount
@@ -92,6 +93,7 @@ fun SecureFolderPage(
                     } else {
                         BackupButtons(
                             dbConfigs = listOf("vault-db" to password),
+                            dbCodec = SqlCipherDbCodec,
                             extraFiles = listOf(File(context.filesDir, "secure_vault"))
                         )
                     }

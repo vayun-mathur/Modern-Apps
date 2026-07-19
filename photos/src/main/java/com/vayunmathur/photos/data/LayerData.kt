@@ -1,7 +1,7 @@
 package com.vayunmathur.photos.data
 
 import android.graphics.Bitmap
-import com.vayunmathur.library.util.SerializedStroke
+import com.vayunmathur.library.ink.SerializedStroke
 import java.util.UUID
 
 /**

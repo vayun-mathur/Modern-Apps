@@ -16,7 +16,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.core.net.toUri
-import com.vayunmathur.library.util.SerializedStroke
+import com.vayunmathur.library.ink.SerializedStroke
 import com.vayunmathur.photos.data.AdjustmentLayer
 import com.vayunmathur.photos.data.BasicAdjustment
 import com.vayunmathur.photos.data.BitmapReference

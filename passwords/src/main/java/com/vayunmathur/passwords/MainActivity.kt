@@ -11,7 +11,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.DatabaseHelper
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.biometric.unlockDatabaseWithBiometrics

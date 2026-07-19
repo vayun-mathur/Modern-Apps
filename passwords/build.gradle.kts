@@ -21,6 +21,7 @@ android {
 dependencies {
     implementation(project(":library:biometric"))
     implementRoom(libs)
+    implementation(project(":library:room"))
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.credentials.lib)

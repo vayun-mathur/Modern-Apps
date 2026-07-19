@@ -123,4 +123,5 @@ dependencies {
     implementation(libs.reorderable)
     implementation(libs.maplibre.compose)
     implementRoom(libs)
+    implementation(project(":library:room"))
 }

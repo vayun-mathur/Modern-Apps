@@ -2,7 +2,6 @@ package com.vayunmathur.library.util
 
 import android.content.Context
 import android.util.Log
-import net.zetetic.database.sqlcipher.SQLiteDatabase
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -12,72 +11,20 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+/**
+ * Encodes/decodes an app database during backup. The SQLCipher-backed
+ * implementation lives in `:library:room` ([com.vayunmathur.library.room.SqlCipherDbCodec]);
+ * this interface keeps [BackupHelper] (and therefore `:library`/`:library:ui`)
+ * free of any SQLCipher dependency. Apps that back up an encrypted DB inject
+ * the codec; apps that only back up datastore/prefs/files leave it null.
+ */
+interface DbBackupCodec {
+    fun exportDatabase(context: Context, dbName: String, password: String, outputFile: File)
+    fun importDatabase(context: Context, dbName: String, password: String, inputFile: File)
+}
+
 object BackupHelper {
     private const val TAG = "BackupHelper"
-
-    fun exportDatabase(context: Context, dbName: String, password: String, outputFile: File) {
-        loadSqlCipher()
-        val dbFile = context.getDatabasePath(dbName)
-        if (!dbFile.exists()) {
-            Log.w(TAG, "exportDatabase: Database file does not exist!")
-            return
-        }
-
-        // Ensure parent directory exists and use canonical path to avoid symlink issues
-        val parent = outputFile.parentFile
-        if (parent != null && !parent.exists()) {
-            parent.mkdirs()
-        }
-        if (outputFile.exists()) {
-            outputFile.delete()
-        }
-        outputFile.createNewFile()
-
-        val outputPath = outputFile.canonicalPath
-        val sourcePath = dbFile.canonicalPath
-
-        // Use SQLCipher to export to an unencrypted database
-        val db = SQLiteDatabase.openDatabase(
-            sourcePath,
-            password,
-            null,
-            SQLiteDatabase.OPEN_READWRITE,
-            null
-        )
-        db.rawExecSQL("PRAGMA cipher_compatibility = 4")
-        db.rawExecSQL("ATTACH DATABASE '$outputPath' AS plaintext KEY ''")
-        db.rawExecSQL("SELECT sqlcipher_export('plaintext')")
-        db.rawExecSQL("DETACH DATABASE plaintext")
-        db.close()
-    }
-
-    fun importDatabase(context: Context, dbName: String, password: String, inputFile: File) {
-        loadSqlCipher()
-        val dbFile = context.getDatabasePath(dbName)
-
-        val inputPath = inputFile.canonicalPath
-        val outputPath = dbFile.canonicalPath
-
-        // Delete existing database files
-        dbFile.delete()
-        File("$outputPath-wal").delete()
-        File("$outputPath-shm").delete()
-        File("$outputPath-journal").delete()
-
-        // Create a new encrypted database from the plaintext input
-        val db = SQLiteDatabase.openDatabase(
-            outputPath,
-            password,
-            null,
-            SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY,
-            null
-        )
-        db.rawExecSQL("PRAGMA cipher_compatibility = 4")
-        db.rawExecSQL("ATTACH DATABASE '$inputPath' AS plaintext KEY ''")
-        db.rawExecSQL("SELECT sqlcipher_export('main', 'plaintext')")
-        db.rawExecSQL("DETACH DATABASE plaintext")
-        db.close()
-    }
 
     fun zipFiles(files: List<File>, baseDir: File, outputStream: OutputStream) {
         ZipOutputStream(BufferedOutputStream(outputStream)).use { zos ->
@@ -115,7 +62,8 @@ object BackupHelper {
         datastoreNames: List<String> = emptyList(),
         prefNames: List<String> = emptyList(),
         extraFiles: List<File>,
-        outputStream: OutputStream
+        outputStream: OutputStream,
+        dbCodec: DbBackupCodec? = null,
     ) {
         val tempDir = File(context.cacheDir, "backup_temp_${System.currentTimeMillis()}")
         if (tempDir.exists()) tempDir.deleteRecursively()
@@ -123,13 +71,18 @@ object BackupHelper {
 
         val filesToZip = mutableListOf<File>()
 
-        dbConfigs.forEach { (dbName, password) ->
-            val plainDbFile = File(tempDir, "$dbName.db")
-            exportDatabase(context, dbName, password, plainDbFile)
-            if (plainDbFile.exists() && plainDbFile.length() > 0) {
-                filesToZip.add(plainDbFile)
-            } else {
-                Log.w(TAG, "performFullBackup: Database export failed or file is empty: $dbName")
+        if (dbConfigs.isNotEmpty() && dbCodec == null) {
+            Log.w(TAG, "performFullBackup: dbConfigs provided but no DbBackupCodec; skipping database export")
+        }
+        if (dbCodec != null) {
+            dbConfigs.forEach { (dbName, password) ->
+                val plainDbFile = File(tempDir, "$dbName.db")
+                dbCodec.exportDatabase(context, dbName, password, plainDbFile)
+                if (plainDbFile.exists() && plainDbFile.length() > 0) {
+                    filesToZip.add(plainDbFile)
+                } else {
+                    Log.w(TAG, "performFullBackup: Database export failed or file is empty: $dbName")
+                }
             }
         }
 
@@ -181,7 +134,8 @@ object BackupHelper {
         datastoreNames: List<String> = emptyList(),
         prefNames: List<String> = emptyList(),
         extraFilesMapping: Map<String, File>, // filename in zip to target File
-        inputStream: InputStream
+        inputStream: InputStream,
+        dbCodec: DbBackupCodec? = null,
     ) {
         val tempDir = File(context.cacheDir, "restore_temp")
         if (tempDir.exists()) tempDir.deleteRecursively()
@@ -189,10 +143,15 @@ object BackupHelper {
 
         unzipFiles(inputStream, tempDir)
 
-        dbConfigs.forEach { (dbName, password) ->
-            val plainDbFile = File(tempDir, "$dbName.db")
-            if (plainDbFile.exists()) {
-                importDatabase(context, dbName, password, plainDbFile)
+        if (dbConfigs.isNotEmpty() && dbCodec == null) {
+            Log.w(TAG, "performFullRestore: dbConfigs provided but no DbBackupCodec; skipping database import")
+        }
+        if (dbCodec != null) {
+            dbConfigs.forEach { (dbName, password) ->
+                val plainDbFile = File(tempDir, "$dbName.db")
+                if (plainDbFile.exists()) {
+                    dbCodec.importDatabase(context, dbName, password, plainDbFile)
+                }
             }
         }
 

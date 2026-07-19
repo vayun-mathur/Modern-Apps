@@ -11,7 +11,7 @@ import androidx.credentials.provider.PendingIntentHandler
 import androidx.fragment.app.FragmentActivity
 import com.vayunmathur.library.biometric.unlockDatabaseWithBiometrics
 import com.vayunmathur.library.util.DatabaseHelper
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.passwords.cable.WebAuthnAuthenticator
 import com.vayunmathur.passwords.data.Passkey
 import com.vayunmathur.passwords.data.PasswordDatabase

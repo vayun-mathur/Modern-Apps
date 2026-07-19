@@ -5,7 +5,7 @@ import com.vayunmathur.clock.data.ClockDatabase
 import com.vayunmathur.clock.util.AlarmScheduler
 import com.vayunmathur.library.intents.clock.SetAlarmData
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.datetime.LocalTime
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer

@@ -4,7 +4,7 @@ import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.findfamily.data.TemporaryLink
 import com.vayunmathur.findfamily.util.Networking
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer

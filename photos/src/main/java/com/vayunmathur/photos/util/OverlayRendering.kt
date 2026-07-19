@@ -5,8 +5,8 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.util.Log
 import androidx.ink.rendering.android.canvas.CanvasStrokeRenderer
-import com.vayunmathur.library.util.SerializedStroke
-import com.vayunmathur.library.util.deserialize
+import com.vayunmathur.library.ink.SerializedStroke
+import com.vayunmathur.library.ink.deserialize
 import com.vayunmathur.photos.data.TextElement
 
 private const val OVERLAY_TAG = "OverlayRendering"

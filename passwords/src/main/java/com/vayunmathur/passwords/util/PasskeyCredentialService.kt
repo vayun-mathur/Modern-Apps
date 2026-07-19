@@ -20,7 +20,7 @@ import androidx.credentials.provider.CreateEntry
 import androidx.credentials.provider.CredentialProviderService
 import androidx.credentials.provider.ProviderClearCredentialStateRequest
 import com.vayunmathur.library.util.DatabaseHelper
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.closeCachedDatabase
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.data.PasswordDatabase

@@ -1,4 +1,4 @@
-package com.vayunmathur.library.ui
+package com.vayunmathur.library.ink
 
 import android.annotation.SuppressLint
 import android.content.Context

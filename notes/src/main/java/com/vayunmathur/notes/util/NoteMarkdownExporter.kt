@@ -6,7 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import androidx.core.content.FileProvider
-import com.vayunmathur.library.util.SerializedStroke
+import com.vayunmathur.library.ink.SerializedStroke
 import com.vayunmathur.notes.data.Note
 import com.vayunmathur.notes.data.NoteBlock
 import com.vayunmathur.notes.data.body

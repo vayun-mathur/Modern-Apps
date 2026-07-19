@@ -24,7 +24,7 @@ import androidx.autofill.inline.UiVersions
 import androidx.autofill.inline.v1.InlineSuggestionUi
 import androidx.core.net.toUri
 import com.vayunmathur.library.util.DatabaseHelper
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.passwords.R
 import com.vayunmathur.passwords.data.PasswordDatabase
 import kotlinx.coroutines.runBlocking

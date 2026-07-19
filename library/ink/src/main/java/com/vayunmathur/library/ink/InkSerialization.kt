@@ -1,4 +1,4 @@
-package com.vayunmathur.library.util
+package com.vayunmathur.library.ink
 
 import androidx.ink.brush.Brush
 import androidx.ink.brush.BrushFamily

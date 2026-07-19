@@ -19,7 +19,7 @@ import com.vayunmathur.library.util.ListDetailPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.closeCachedDatabase
 import com.vayunmathur.library.util.onFileDrop
 import com.vayunmathur.library.util.rememberNavBackStack

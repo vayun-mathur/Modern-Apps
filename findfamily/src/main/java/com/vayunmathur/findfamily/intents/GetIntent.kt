@@ -3,7 +3,7 @@ package com.vayunmathur.findfamily.intents
 import com.vayunmathur.findfamily.data.FFDatabase
 import com.vayunmathur.library.intents.findfamily.FamilyMemberData
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer

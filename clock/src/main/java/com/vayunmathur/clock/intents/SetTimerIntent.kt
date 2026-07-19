@@ -5,7 +5,7 @@ import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.clock.ui.sendTimerNotification
 import com.vayunmathur.library.intents.clock.SetTimerData
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer
 import kotlin.time.Clock

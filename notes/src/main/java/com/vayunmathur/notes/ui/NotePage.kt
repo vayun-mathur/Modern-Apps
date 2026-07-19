@@ -59,13 +59,13 @@ import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.EditorBottomBar
 import com.vayunmathur.library.ui.FormatIconButton
 import com.vayunmathur.library.ui.IconShare
-import com.vayunmathur.library.ui.InkCanvasView
+import com.vayunmathur.library.ink.InkCanvasView
 import com.vayunmathur.library.ui.OdfMarkdownEditorController
 import com.vayunmathur.library.ui.OdfMarkdownEditorField
 import com.vayunmathur.library.ui.OdfMarkdownEditorToolbar
 import com.vayunmathur.library.ui.rememberOdfMarkdownEditorController
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.deserialize
+import com.vayunmathur.library.ink.deserialize
 import com.vayunmathur.notes.R
 import com.vayunmathur.notes.Route
 import com.vayunmathur.notes.data.Note

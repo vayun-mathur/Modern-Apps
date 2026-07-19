@@ -53,7 +53,7 @@ import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone

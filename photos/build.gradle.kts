@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.onnxruntime.android)
 
     implementRoom(libs)
+    implementation(project(":library:room"))
+    implementation(project(":library:ink"))
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui.compose.material3)

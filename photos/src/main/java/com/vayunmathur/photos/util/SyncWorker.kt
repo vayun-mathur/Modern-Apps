@@ -24,7 +24,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.ListenableWorker.Result as WorkResult
 import com.vayunmathur.library.util.DataStoreUtils
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.ocr.OcrEngine
 import com.vayunmathur.sdk.openassistant.EmbeddingImageFailedException
 import com.vayunmathur.sdk.openassistant.EmbeddingModelDownloadingException

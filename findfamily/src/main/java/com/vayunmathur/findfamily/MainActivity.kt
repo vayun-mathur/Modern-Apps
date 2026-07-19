@@ -56,7 +56,7 @@ import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone

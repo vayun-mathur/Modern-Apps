@@ -2,7 +2,7 @@ package com.vayunmathur.music.intents
 
 import com.vayunmathur.library.intents.music.MusicSearchResult
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.music.data.MusicDatabase
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.serializer

@@ -59,7 +59,7 @@ import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.widgets.updateWidgetPreviews
 import com.vayunmathur.photos.data.FaceDao

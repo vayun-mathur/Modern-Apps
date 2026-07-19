@@ -8,7 +8,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.weather.data.SavedLocation
 import com.vayunmathur.weather.data.WeatherDatabase
 import kotlinx.coroutines.runBlocking

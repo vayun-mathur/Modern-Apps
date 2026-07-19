@@ -95,7 +95,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.ink.brush.Brush
 import androidx.ink.brush.StockBrushes
 import androidx.ink.strokes.Stroke as InkStroke
-import com.vayunmathur.library.ui.CanvasTextElement
+import com.vayunmathur.library.ink.CanvasTextElement
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.IconBrush
 import com.vayunmathur.library.ui.IconCopy
@@ -111,9 +111,9 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.IconUndo
 import com.vayunmathur.library.ui.IconVisible
-import com.vayunmathur.library.ui.InkCanvasView
+import com.vayunmathur.library.ink.InkCanvasView
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.library.util.translate
+import com.vayunmathur.library.ink.translate
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.AdjustmentLayer
 import com.vayunmathur.photos.data.BasicAdjustment
@@ -169,8 +169,8 @@ import com.vayunmathur.photos.data.applyHealingToBitmap
 import com.vayunmathur.photos.data.toColorMatrix
 import com.vayunmathur.photos.util.PhotoEditViewModel
 import com.vayunmathur.library.util.ResultEffect
-import com.vayunmathur.library.util.serialize
-import com.vayunmathur.library.util.deserialize
+import com.vayunmathur.library.ink.serialize
+import com.vayunmathur.library.ink.deserialize
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.atan2

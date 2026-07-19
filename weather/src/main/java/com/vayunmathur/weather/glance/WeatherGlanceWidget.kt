@@ -38,7 +38,7 @@ import androidx.glance.text.TextStyle
 import android.widget.RemoteViews
 import androidx.glance.appwidget.AndroidRemoteViews
 import com.vayunmathur.weather.R
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.widgets.DynamicThemeGlance
 import com.vayunmathur.weather.MainActivity
 import com.vayunmathur.weather.data.WeatherDatabase

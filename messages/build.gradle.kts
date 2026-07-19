@@ -154,6 +154,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(project(":library:room"))
 
     // Protobuf runtime — full Java variant. The lite runtime drops the
     // reflection API which we need for the PB-Lite encoder.

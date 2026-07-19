@@ -2,7 +2,7 @@ package com.vayunmathur.music.intents
 
 import com.vayunmathur.library.intents.music.PlayMusicData
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.music.data.MusicDatabase
 import com.vayunmathur.music.data.TYPE_MUSIC_PLAYLIST
 import com.vayunmathur.music.util.PlaybackManager

@@ -14,6 +14,7 @@ abstract class BaseBackupAgent : BackupAgent() {
     open val datastoreNames: List<String> = emptyList()
     open val prefNames: List<String> = emptyList()
     open val extraFiles: List<File> = emptyList()
+    open val dbCodec: DbBackupCodec? = null
     
     private val BACKUP_KEY = "full_backup"
 
@@ -24,7 +25,7 @@ abstract class BaseBackupAgent : BackupAgent() {
     ) {
         val backupFile = File(cacheDir, "backup.zip")
         FileOutputStream(backupFile).use { fos ->
-            BackupHelper.performFullBackup(this, dbConfigs, datastoreNames, prefNames, extraFiles, fos)
+            BackupHelper.performFullBackup(this, dbConfigs, datastoreNames, prefNames, extraFiles, fos, dbCodec)
         }
 
         val lastModified = backupFile.lastModified()
@@ -61,7 +62,7 @@ abstract class BaseBackupAgent : BackupAgent() {
                 val extraFilesMapping = extraFiles.associateBy { it.name }
                 
                 restoreFile.inputStream().use { fis ->
-                    BackupHelper.performFullRestore(this, dbConfigs, datastoreNames, prefNames, extraFilesMapping, fis)
+                    BackupHelper.performFullRestore(this, dbConfigs, datastoreNames, prefNames, extraFilesMapping, fis, dbCodec)
                 }
                 
                 restoreFile.delete()

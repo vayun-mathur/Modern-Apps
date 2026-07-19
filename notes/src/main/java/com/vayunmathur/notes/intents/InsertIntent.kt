@@ -2,7 +2,7 @@ package com.vayunmathur.notes.intents
 
 import com.vayunmathur.library.intents.notes.NoteData
 import com.vayunmathur.library.util.AssistantIntent
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.notes.data.DB_NAME
 import com.vayunmathur.notes.data.Note
 import com.vayunmathur.notes.data.NoteDatabase

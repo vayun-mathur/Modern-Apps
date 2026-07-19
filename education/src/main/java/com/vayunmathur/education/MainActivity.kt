@@ -43,7 +43,7 @@ import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.library.util.rememberNavBackStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

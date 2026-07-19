@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.BackupButtons
+import com.vayunmathur.library.room.SqlCipherDbCodec
 import com.vayunmathur.library.ui.CommonSearchBar
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconClose
@@ -177,6 +178,7 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
                     actions = {
                         BackupButtons(
                             dbConfigs = remember { noteDbConfigs(context) },
+                            dbCodec = SqlCipherDbCodec,
                             extraFiles = emptyList()
                         )
                     }

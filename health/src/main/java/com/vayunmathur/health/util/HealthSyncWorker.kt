@@ -50,7 +50,7 @@ import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
 import com.vayunmathur.library.util.DataStoreUtils
-import com.vayunmathur.library.util.buildDatabase
+import com.vayunmathur.library.room.buildDatabase
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit

@@ -21,4 +21,5 @@ metadataScreenshots {
 
 dependencies {
     implementRoom(libs)
+    implementation(project(":library:room"))
 }
