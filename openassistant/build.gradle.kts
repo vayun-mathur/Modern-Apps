@@ -13,13 +13,6 @@ android {
         applicationId = "com.vayunmathur.openassistant"
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-    }
-
     androidResources {
         // SigLIP2 .onnx encoders are downloaded to external files at runtime,
         // but the SentencePiece tokenizer.model is downloaded too; keep .onnx

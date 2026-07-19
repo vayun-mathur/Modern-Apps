@@ -16,6 +16,19 @@
 # LiteRT LM / Gemma 4
 -keep class com.google.ai.edge.litertlm.** { *; }
 
+# OpenAssistant tools: the @Tool/@ToolParam-annotated methods in the ToolSet are
+# never called from Kotlin directly — litertlm discovers and invokes them via
+# reflection (using method + parameter names to build the function schema). R8's
+# shrinker would treat them as unused and remove them, silently breaking every
+# assistant tool. Keep the ToolSet implementation (all members + names) and any
+# @Tool method, plus the attributes reflection relies on.
+-keepattributes RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations,AnnotationDefault,MethodParameters,Signature
+-keep class com.vayunmathur.openassistant.util.AssistantToolSet { *; }
+-keep class * implements com.google.ai.edge.litertlm.ToolSet { *; }
+-keepclassmembers class * {
+    @com.google.ai.edge.litertlm.Tool <methods>;
+}
+
 # LiteRT Core - prevent R8 from deleting LiteRT classes used via reflection
 -keep class com.google.ai.edge.litert.** { *; }
 
@@ -53,6 +66,18 @@
 -keep class ai.onnxruntime.** { *; }
 -keep interface ai.onnxruntime.** { *; }
 -dontwarn ai.onnxruntime.**
+
+# Stockfish (com.github.vayun-mathur:Stockfish-Library, used by :games:chess) — the
+# native libstockfish.so calls back into Kotlin via JNI. nativeSetOutputCallback looks
+# up Stockfish$OutputCallback.onOutput(String) by name via GetMethodID, and the lambda
+# passed to Stockfish.init { } is compiled to a Stockfish$init$1 OutputCallback SAM.
+# R8 optimization (horizontal class merging) reroutes that SAM into an unrelated class,
+# so the JNI lookup fails with "NoSuchMethodError: no non-static method
+# Lkotlin/time/Duration$Companion;.onOutput(Ljava/lang/String;)V". Keep the whole
+# Stockfish API + callback interface so the JNI callback resolves.
+-keep class com.vayunmathur.stockfish.** { *; }
+-keep interface com.vayunmathur.stockfish.** { *; }
+-dontwarn com.vayunmathur.stockfish.**
 
 # BouncyCastle (post-quantum crypto for Office): keep providers/algorithms found via reflection.
 -keep class org.bouncycastle.** { *; }
