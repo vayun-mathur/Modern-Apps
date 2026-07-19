@@ -26,6 +26,19 @@ android {
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
     }
+    packaging {
+        resources {
+            // libsignal-client bundles its desktop JNI natives (macOS .dylib,
+            // Windows .dll) as Java resources. They can never load on Android and
+            // add ~40 MB to the APK — strip them. The Android lib/arm64-v8a/
+            // libsignal_jni.so is unaffected.
+            excludes += setOf("**/*.dylib", "*.dylib", "**/*.dll", "*.dll")
+        }
+        jniLibs {
+            // Test-only libsignal native (NativeTesting bridge); unused in prod.
+            excludes += "**/libsignal_jni_testing.so"
+        }
+    }
 }
 
 dependencies {
