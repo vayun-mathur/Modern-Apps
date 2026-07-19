@@ -9,8 +9,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.vayunmathur.library.room.buildDatabase
 
 @Entity(tableName = "signal_sessions", primaryKeys = ["address", "deviceId"])
 data class SignalSessionEntity(
@@ -425,13 +425,9 @@ abstract class SignalDatabase : RoomDatabase() {
         fun getInstance(context: Context): SignalDatabase {
             instance?.let { return it }
             return synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    SignalDatabase::class.java,
-                    "signal_protocol.db",
+                instance ?: context.applicationContext.buildDatabase<SignalDatabase>(
+                    dbName = "signal_protocol.db",
                 )
-                    .fallbackToDestructiveMigration(true)
-                    .build()
                     .also { instance = it }
             }
         }

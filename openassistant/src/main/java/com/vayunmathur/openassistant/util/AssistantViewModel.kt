@@ -200,8 +200,8 @@ class AssistantViewModel(
     /**
      * Version the on-demand SigLIP2 model files: if [SiglipEmbedder.MODEL_VERSION]
      * changed since we last downloaded them, delete the stale files and clear the
-     * downloadservice `done_`/`dlid_`/`progress_` keys so they re-download on the
-     * next embedding request. Unlike the gemma path this never touches
+     * downloadservice `dlid_`/`progress_` keys so they re-download on the next
+     * embedding request. Unlike the gemma path this never touches
      * `dbSetupComplete` — SigLIP2 is optional and fetched on demand.
      */
     private fun cleanupStaleSiglipModels() {
@@ -220,7 +220,6 @@ class AssistantViewModel(
                 )
                 for (name in files) {
                     externalDir?.let { File(it, name).takeIf { f -> f.exists() }?.delete() }
-                    ds.setBoolean("done_$name", false)
                     ds.setLong("dlid_$name", 0L)
                     ds.setDouble("progress_$name", 0.0)
                 }

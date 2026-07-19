@@ -49,9 +49,11 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
+    // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(project(":library:room"))
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)

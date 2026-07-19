@@ -95,10 +95,12 @@ fun InitialDownloadScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 items(filesToDownload, key = { it.second }) { (_, fileName, desc) ->
-                    // Each item observes its own specific progress and speed from DataStore
+                    // Each item observes its own progress and speed from DataStore.
+                    // "Done" is derived from progress (1.0) — no separate persisted
+                    // flag that could disagree with disk state.
                     val progress by ds.doubleFlow("progress_$fileName").collectAsState(0.0)
                     val speedMbps by ds.doubleFlow("speed_$fileName").collectAsState(0.0)
-                    val isDone by ds.booleanFlow("done_$fileName").collectAsState(false)
+                    val isDone = progress >= 0.999
 
                     FileProgressItem(
                         label = desc,
@@ -137,10 +139,10 @@ private suspend fun runDownloads(
 
 /**
  * On-demand download of [files] (url, fileName, description) into external
- * files, publishing the same `progress_*` / `speed_*` / `done_*` DataStore keys
- * as the initial screen but **without** touching the `dbSetupComplete` gate (so
- * it is safe for optional, feature-triggered model fetches like SigLIP2). Skips
- * files already marked done and resumes still-valid prior requests. Returns when
+ * files, publishing the same `progress_*` / `speed_*` DataStore keys as the
+ * initial screen but **without** touching the `dbSetupComplete` gate (so it is
+ * safe for optional, feature-triggered model fetches like SigLIP2). Skips files
+ * already present on disk and resumes still-valid prior requests. Returns when
  * the current polling pass finishes (all active downloads reached a terminal
  * state).
  */
@@ -153,7 +155,7 @@ suspend fun downloadModelFiles(
 /**
  * Shared enqueue + poll loop. Each file is enqueued (reusing a still-valid prior
  * request id stored in DataStore so we resume across process restarts), then the
- * manager is polled to publish `progress_*` / `speed_*` / `done_*`.
+ * manager is polled to publish `progress_*` / `speed_*`.
  */
 private suspend fun runDownloadsCore(
     context: Context,
@@ -163,8 +165,15 @@ private suspend fun runDownloadsCore(
     val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
     val active = mutableListOf<Active>()
+    val dir = context.getExternalFilesDir(null)
     for ((url, fileName, _) in files) {
-        if (ds.getBoolean("done_$fileName", false)) continue
+        // Gate purely on disk presence — there is no persisted "done" flag that
+        // could drift out of sync with disk and hang the init screen. If the file
+        // is already on disk, mark its bar complete and skip; otherwise download.
+        if (File(dir, fileName).exists()) {
+            ds.setDouble("progress_$fileName", 1.0)
+            continue
+        }
         val existingId = ds.getLong("dlid_$fileName") ?: 0L
         val id = if (existingId > 0L && isQueryable(dm, existingId)) {
             existingId
@@ -192,7 +201,6 @@ private suspend fun runDownloadsCore(
                 val now = System.currentTimeMillis()
                 when (status) {
                     DownloadManager.STATUS_SUCCESSFUL -> {
-                        ds.setBoolean("done_${a.fileName}", true)
                         ds.setDouble("progress_${a.fileName}", 1.0)
                         ds.setDouble("speed_${a.fileName}", 0.0)
                         active.remove(a)

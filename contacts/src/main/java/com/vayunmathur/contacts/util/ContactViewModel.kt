@@ -17,11 +17,8 @@ import com.vayunmathur.contacts.data.CDKEvent
 import com.vayunmathur.contacts.data.CDKNickname
 import com.vayunmathur.contacts.data.CDKPhone
 import com.vayunmathur.contacts.data.Contact
-import com.vayunmathur.contacts.data.ContactDatabase
 import com.vayunmathur.contacts.data.ContactDetails
-import com.vayunmathur.contacts.data.ContactEntity
 import com.vayunmathur.contacts.data.ContactGroup
-import com.vayunmathur.contacts.data.ContactSearchEntity
 import com.vayunmathur.contacts.data.Email
 import com.vayunmathur.contacts.data.Event
 import com.vayunmathur.contacts.data.GroupMembership
@@ -41,11 +38,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
@@ -63,8 +58,10 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
 
     private val dataStore = DataStoreUtils.getInstance(application)
 
-    private val database = ContactDatabase.getInstance(application)
-    private val contactDao = database.contactDao()
+    // Provider-backed in-memory contact list (no local DB). Populated by
+    // syncFromSystem() from the system Contacts provider and refreshed via the
+    // ContentObserver registered in init.
+    private val _allContacts = MutableStateFlow<List<Contact>>(emptyList())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
@@ -72,19 +69,12 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     val hiddenAccounts: StateFlow<Set<String>> = dataStore.stringSetFlow("hidden_accounts")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val contacts: StateFlow<List<com.vayunmathur.contacts.data.Contact>> = combine(
-        _searchQuery.flatMapLatest { query ->
-            val ftsQuery = toFtsPrefixQuery(query)
-            if (ftsQuery == null) {
-                contactDao.getContactsFlow()
-            } else {
-                contactDao.search(ftsQuery).catch { emit(emptyList()) }
-            }
-        },
+        _allContacts,
+        _searchQuery,
         hiddenAccounts
-    ) { entities, hidden ->
-        entities.map { it.toContact() }.filter { it.accountName !in hidden }
+    ) { all, query, hidden ->
+        filterBySearch(all.filter { it.accountName !in hidden }, query)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val groups: StateFlow<List<ContactGroup>> = callbackFlow {
@@ -160,18 +150,25 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Builds a safe FTS4 prefix-match expression from raw user input. Splits on
-     * whitespace, strips characters that are FTS query operators (which would
-     * make the MATCH malformed) from each token, then appends `*` for prefix
-     * matching, e.g. `tok1* tok2*`. Returns `null` when there is nothing
-     * searchable, so callers fall back to the full contact list.
+     * In-memory search over the provider-backed contact list. Splits the query
+     * into whitespace-separated tokens; a contact matches when every token is a
+     * case-insensitive substring of its searchable text (names, nicknames, phone
+     * numbers, emails, notes, organizations). An empty query returns the full list.
      */
-    private fun toFtsPrefixQuery(query: String): String? {
-        val tokens = query.split(Regex("\\s+"))
-            .map { it.replace(Regex("[^\\p{L}\\p{N}]"), "") }
-            .filter { it.isNotBlank() }
-        if (tokens.isEmpty()) return null
-        return tokens.joinToString(" ") { "$it*" }
+    private fun filterBySearch(list: List<Contact>, query: String): List<Contact> {
+        val tokens = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) return list
+        return list.filter { contact ->
+            val haystack = buildString {
+                append(contact.details.names.joinToString(" ") { it.value }); append(' ')
+                append(contact.details.nicknames.joinToString(" ") { it.nickname }); append(' ')
+                append(contact.details.phoneNumbers.joinToString(" ") { it.number }); append(' ')
+                append(contact.details.emails.joinToString(" ") { it.address }); append(' ')
+                append(contact.details.notes.joinToString(" ") { it.content }); append(' ')
+                append(contact.details.orgs.joinToString(" ") { it.company })
+            }.lowercase()
+            tokens.all { haystack.contains(it) }
+        }
     }
 
     fun setCalendarSyncEnabled(enabled: Boolean) {
@@ -204,28 +201,9 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun syncFromSystem() = withContext(Dispatchers.IO) {
         try {
-            val systemContacts = com.vayunmathur.contacts.data.Contact.getAllContacts(getApplication())
-            val localContacts = contacts.value
-
-            val toUpsert = systemContacts.map { ContactEntity.fromContact(it) }
-            val searchEntities = systemContacts.map { contact ->
-                ContactSearchEntity(
-                    rowid = contact.id,
-                    displayName = contact.name.value,
-                    nickname = contact.nickname.value,
-                    phoneNumbers = contact.details.phoneNumbers.joinToString(" ") { it.number },
-                    emails = contact.details.emails.joinToString(" ") { it.address },
-                    notes = contact.details.notes.joinToString(" ") { it.content },
-                    organization = contact.details.orgs.joinToString(" ") { it.company }
-                )
-            }
-
-            val systemIds = systemContacts.map { it.id }.toSet()
-            val toDelete = localContacts.map { it.id }.filter { it !in systemIds }
-
-            contactDao.syncContacts(toUpsert, toDelete, searchEntities)
+            _allContacts.value = com.vayunmathur.contacts.data.Contact.getAllContacts(getApplication())
         } catch (e: Exception) {
-            Log.e("ContactViewModel", "Error syncing contacts", e)
+            Log.e("ContactViewModel", "Error loading contacts", e)
         }
     }
 
@@ -314,7 +292,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             if (isCalendarSyncEnabled.value) {
                 CalendarSyncHelper.syncContact(getApplication(), contact.copy(details = contact.details.copy(dates = emptyList())))
             }
-            contactDao.deleteContact(contact.id)
+            // The system-contacts ContentObserver picks up the delete and re-syncs.
         }
     }
 

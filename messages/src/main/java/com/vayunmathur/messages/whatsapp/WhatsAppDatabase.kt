@@ -8,10 +8,10 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
-import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import com.vayunmathur.library.room.buildDatabase
 
 /**
  * Room database for WhatsApp-specific data.
@@ -59,12 +59,9 @@ abstract class WhatsAppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): WhatsAppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    WhatsAppDatabase::class.java,
-                    "whatsapp_database"
-                ).fallbackToDestructiveMigration()
-                .build()
+                val instance = context.applicationContext.buildDatabase<WhatsAppDatabase>(
+                    dbName = "whatsapp_database"
+                )
                 INSTANCE = instance
                 instance
             }

@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import androidx.room.Upsert
+import com.vayunmathur.library.room.buildDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -128,13 +129,9 @@ private val dbLock = Any()
 fun buildMessagesDatabase(context: android.content.Context): MessagesDatabase {
     sharedDb?.let { return it }
     return synchronized(dbLock) {
-        sharedDb ?: androidx.room.Room.databaseBuilder(
-            context.applicationContext,
-            MessagesDatabase::class.java,
-            "messages.db",
+        sharedDb ?: context.applicationContext.buildDatabase<MessagesDatabase>(
+            dbName = "messages.db",
         )
-            .fallbackToDestructiveMigration(true)
-            .build()
             .also { sharedDb = it }
     }
 }
