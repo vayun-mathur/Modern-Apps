@@ -42,6 +42,9 @@ dependencies {
 
     // ai
     implementation(libs.litertlm.android)
+    // litertlm 0.14.0 needs kotlinx-coroutines 1.11.0 (close$default on the
+    // SendChannel interface); requesting it directly wins over the transitive 1.9.0.
+    implementation(libs.kotlinx.coroutines.android)
     // SigLIP2 image/text embedding (semantic photo search served to the photos
     // app) runs on ONNX Runtime; litertlm stays for the chat LLM.
     implementation(libs.onnxruntime.android)
