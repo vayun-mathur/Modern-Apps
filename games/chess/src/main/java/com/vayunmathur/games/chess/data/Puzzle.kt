@@ -16,7 +16,7 @@ data class PuzzleMove(val from: Position, val to: Position, val promotion: Piece
 data class Puzzle(val rating: Int, val board: Board, val solution: List<PuzzleMove>)
 
 /**
- * Loads and decodes the bundled `puzzles.bin` asset produced by
+ * Loads and decodes the bundled `puzzles.dat` asset produced by
  * `scripts/chess/generate_puzzles.py`. The blob is read once into memory; a
  * lightweight index (record offsets + ratings) is built so puzzles can be picked
  * by difficulty and decoded one at a time, without materializing ~50k Boards.
@@ -26,7 +26,7 @@ data class Puzzle(val rating: Int, val board: Board, val solution: List<PuzzleMo
  *   32B board nibbles, 1B flags, 1B enPassant, 2B rating, 1B moveCount, 2B*M moves.
  */
 object PuzzleRepository {
-    private const val ASSET_NAME = "puzzles.bin"
+    private const val ASSET_NAME = "puzzles.dat"
     private const val HEADER_SIZE = 8
     private const val EP_NONE = 0xFF
 
@@ -42,11 +42,11 @@ object PuzzleRepository {
         if (data != null) return
 
         val bytes = context.assets.open(ASSET_NAME).use { it.readBytes() }
-        require(bytes.size >= HEADER_SIZE) { "puzzles.bin too small" }
+        require(bytes.size >= HEADER_SIZE) { "puzzles.dat too small" }
         require(
             bytes[0] == 'C'.code.toByte() && bytes[1] == 'P'.code.toByte() &&
                 bytes[2] == 'Z'.code.toByte() && bytes[3] == '1'.code.toByte()
-        ) { "puzzles.bin: bad magic" }
+        ) { "puzzles.dat: bad magic" }
 
         val bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val n = bb.getInt(4)

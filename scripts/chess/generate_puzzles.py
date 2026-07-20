@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the compact `puzzles.bin` asset for the Chess app's Puzzles mode.
+"""Generate the compact `puzzles.dat` asset for the Chess app's Puzzles mode.
 
 Source: the Lichess puzzle database CSV (`lichess_db_puzzle.csv.zst`, ~6M rows),
 whose columns are:
@@ -15,7 +15,7 @@ keep the top `ceil(TARGET / 12)` rows by Popularity, so difficulty is balanced.
 All bands 400..2799 are densely populated in the source (each has 130k-880k
 rows), so no redistribution is needed; any short band simply contributes fewer.
 
-Binary format (`puzzles.bin`, little-endian) — kept in sync with the Kotlin
+Binary format (`puzzles.dat`, little-endian) — kept in sync with the Kotlin
 loader in `PuzzleRepository` / `Board.fromPuzzle`:
 
     Header:
@@ -38,7 +38,7 @@ Usage:
     python3 generate_puzzles.py [input.csv.zst] [output.bin]
 
 Defaults: input ~/Documents/lichess_db_puzzle.csv.zst, output
-Modern-Apps/games/chess/src/main/assets/puzzles.bin (both overridable via argv).
+Modern-Apps/games/chess/src/main/assets/puzzles.dat (both overridable via argv).
 """
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ import sys
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DEFAULT_INPUT = os.path.expanduser("~/Documents/lichess_db_puzzle.csv.zst")
 DEFAULT_OUTPUT = os.path.join(
-    REPO_ROOT, "games", "chess", "src", "main", "assets", "puzzles.bin"
+    REPO_ROOT, "games", "chess", "src", "main", "assets", "puzzles.dat"
 )
 
 MAGIC = b"CPZ1"

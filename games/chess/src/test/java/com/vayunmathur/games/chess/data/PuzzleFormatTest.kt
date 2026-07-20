@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Verifies the `puzzles.bin` binary format round-trips: a record encoded exactly
+ * Verifies the `puzzles.dat` binary format round-trips: a record encoded exactly
  * as `scripts/chess/generate_puzzles.py` writes it decodes back to the same
  * position (board + solution). Also covers [Board.fromFen] reconstruction of
  * castling rights and en-passant, which the decoder relies on.
