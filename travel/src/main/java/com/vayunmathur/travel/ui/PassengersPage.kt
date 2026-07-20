@@ -1,5 +1,7 @@
 package com.vayunmathur.travel.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,9 +12,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -23,6 +29,7 @@ import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
+import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
@@ -31,6 +38,10 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.PassengerInputDto
 import com.vayunmathur.travel.util.TravelViewModel
+import com.vayunmathur.travel.util.readContact
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val TITLES = listOf("mr", "ms", "mrs", "miss")
 private val GENDERS = listOf("m" to "Male", "f" to "Female")
@@ -89,13 +100,49 @@ private fun PassengerForm(
     passenger: PassengerInputDto,
     onChange: (PassengerInputDto) -> Unit,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val info = withContext(Dispatchers.IO) { readContact(context, uri) }
+                if (info != null) {
+                    onChange(
+                        passenger.copy(
+                            givenName = info.givenName.ifBlank { passenger.givenName },
+                            familyName = info.familyName.ifBlank { passenger.familyName },
+                            email = info.email.ifBlank { passenger.email },
+                            phoneNumber = info.phone.ifBlank { passenger.phoneNumber },
+                            bornOn = info.bornOn.ifBlank { passenger.bornOn },
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(
-                if (total > 1) "Passenger ${index + 1}" else "Passenger details",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (total > 1) "Passenger ${index + 1}" else "Passenger details",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                OutlinedButton(onClick = { pickContact.launch(null) }) {
+                    Icon(
+                        Icons.Filled.Contacts,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                    Text("Contacts")
+                }
+            }
 
             ChipRow("Title", TITLES.map { it to it.replaceFirstChar(Char::uppercase) }, passenger.title) {
                 onChange(passenger.copy(title = it))
