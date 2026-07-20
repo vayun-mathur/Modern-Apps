@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) { viewModel.initSync() }
 
             if (documentUri != null && state is OfficeViewModel.ViewState.Empty) {
-                viewModel.loadDocument(documentUri!!, documentUri?.lastPathSegment ?: "document")
+                viewModel.loadDocument(documentUri!!, resolveDisplayName(this@MainActivity, documentUri!!))
             }
 
             val odfMimeTypes = arrayOf(
@@ -187,7 +187,7 @@ class MainActivity : ComponentActivity() {
             val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                 uri?.let {
                     documentUri = it
-                    viewModel.loadDocument(it, it.lastPathSegment ?: "document")
+                    viewModel.loadDocument(it, resolveDisplayName(this@MainActivity, it))
                     backStack.add(OfficeRoute.OfflineEditor(it.toString()))
                 }
             }
@@ -251,6 +251,29 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/**
+ * Resolves a human-readable file name (with extension) for an opened uri. Content
+ * uris from other apps often expose an opaque document id as their last path
+ * segment with no extension; DocumentImporter routes by extension, so query
+ * OpenableColumns.DISPLAY_NAME first to keep extension-based routing working for
+ * files opened via intents (falling back to the last path segment).
+ */
+private fun resolveDisplayName(context: android.content.Context, uri: Uri): String {
+    if (uri.scheme == "content") {
+        runCatching {
+            context.contentResolver.query(
+                uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null,
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0) c.getString(idx)?.takeIf { it.isNotBlank() }?.let { return it }
+                }
+            }
+        }
+    }
+    return uri.lastPathSegment?.substringAfterLast('/') ?: "document"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

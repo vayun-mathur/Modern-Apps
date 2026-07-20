@@ -26,6 +26,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- OpenDocument Format (odt/ods/odp/odg + templates; flat-ODF & .xml open via the XML types below). -->
                 <data android:mimeType="application/vnd.oasis.opendocument.text" />
                 <data android:mimeType="application/vnd.oasis.opendocument.spreadsheet" />
                 <data android:mimeType="application/vnd.oasis.opendocument.presentation" />
@@ -33,7 +35,52 @@
                 <data android:mimeType="application/vnd.oasis.opendocument.text-template" />
                 <data android:mimeType="application/vnd.oasis.opendocument.spreadsheet-template" />
                 <data android:mimeType="application/vnd.oasis.opendocument.presentation-template" />
+                <data android:mimeType="application/vnd.oasis.opendocument.graphics-template" />
+
+                <!-- Word (docx/docm/dotx/dotm) -->
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.template" />
+                <data android:mimeType="application/vnd.ms-word.document.macroEnabled.12" />
+                <data android:mimeType="application/vnd.ms-word.template.macroEnabled.12" />
+
+                <!-- Excel (xlsx/xlsm/xltx/xltm) -->
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.template" />
+                <data android:mimeType="application/vnd.ms-excel.sheet.macroEnabled.12" />
+                <data android:mimeType="application/vnd.ms-excel.template.macroEnabled.12" />
+
+                <!-- PowerPoint (pptx/pptm/potx/potm/ppsx/ppsm) -->
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.template" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.slideshow" />
+                <data android:mimeType="application/vnd.ms-powerpoint.presentation.macroEnabled.12" />
+                <data android:mimeType="application/vnd.ms-powerpoint.template.macroEnabled.12" />
+                <data android:mimeType="application/vnd.ms-powerpoint.slideshow.macroEnabled.12" />
+
+                <!-- CSV / TSV -->
                 <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="text/tab-separated-values" />
+
+                <!-- Markdown -->
+                <data android:mimeType="text/markdown" />
+                <data android:mimeType="text/x-markdown" />
+
+                <!-- HTML -->
+                <data android:mimeType="text/html" />
+                <data android:mimeType="application/xhtml+xml" />
+
+                <!-- Rich Text -->
+                <data android:mimeType="application/rtf" />
+                <data android:mimeType="text/rtf" />
+
+                <!-- Flat-ODF (fodt/fods/fodp/fodg) and .xml -->
+                <data android:mimeType="application/xml" />
+                <data android:mimeType="text/xml" />
+
+                <!-- Plain text (txt/text/log) -->
+                <data android:mimeType="text/plain" />
+
                 <data android:scheme="content" />
                 <data android:scheme="file" />
             </intent-filter>
