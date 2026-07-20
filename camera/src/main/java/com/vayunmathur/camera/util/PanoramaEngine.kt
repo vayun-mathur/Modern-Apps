@@ -108,8 +108,8 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
         private const val ALIGNMENT_THRESHOLD_DEGREES = 3f
         private const val PITCH_THRESHOLD_DEGREES = 5f
         private const val MAX_VELOCITY_DPS = 30f
-        // Safety auto-finish for a flat panorama that has swept far enough.
-        private const val PANO_MAX_ANGLE = 200f
+        // Safety auto-finish once a flat panorama has swept a full circle (+ margin).
+        private const val PANO_MAX_ANGLE = 380f
     }
 
     fun startSweep(fullSphere: Boolean = false) {
@@ -126,7 +126,7 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
         _currentAngle.value = 0f
         _currentPitch.value = 0f
 
-        // Guide-dot layout: a full-sphere grid (pitch rows) or a flat horizontal ring.
+        // Guide-dot layout: a full-sphere grid (pitch rows) or a full horizontal ring.
         val dots = if (fullSphere) {
             var idx = 0
             val result = mutableListOf<GuideDot>()
@@ -146,7 +146,8 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
             }
             result
         } else {
-            (0 until 7).map { i ->
+            // Full horizontal ring: 12 dots every 30° around the whole circle.
+            (0 until 12).map { i ->
                 GuideDot(i, i * 30f, 0f, if (i == 0) GuideDotState.CAPTURING else GuideDotState.PENDING)
             }
         }

@@ -198,6 +198,14 @@ object GpuStitcher {
             val uGain = GLES30.glGetUniformLocation(warpProgram, "uGain")
             val uFeather = GLES30.glGetUniformLocation(warpProgram, "uFeather")
             val uTex = GLES30.glGetUniformLocation(warpProgram, "uTex")
+            val uXOffset = GLES30.glGetUniformLocation(warpProgram, "uXOffset")
+
+            // Seam handling: one full circle in u is 2π·scale px → this much in NDC
+            // x. Drawing each frame at {0, +circle, -circle} lets a frame crossing
+            // the ±180° meridian appear on both canvas edges; copies that fall
+            // outside the viewport are clipped, so a sub-360° pano is unaffected.
+            val circleNdc = (2.0 * Math.PI * est.scale / est.canvasW * 2.0).toFloat()
+            val xOffsets = floatArrayOf(0f, circleNdc, -circleNdc)
 
             var drawn = 0
             for (cam in est.cams) {
@@ -218,8 +226,11 @@ object GpuStitcher {
                     GLES30.glEnableVertexAttribArray(1)
                     GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, 4 * 4, verts)
 
-                    indices.position(0)
-                    GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, indices)
+                    for (off in xOffsets) {
+                        GLES30.glUniform1f(uXOffset, off)
+                        indices.position(0)
+                        GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_SHORT, indices)
+                    }
                     GLES30.glDisableVertexAttribArray(0)
                     GLES30.glDisableVertexAttribArray(1)
                     drawn++
@@ -287,10 +298,19 @@ object GpuStitcher {
             return tex
         }
 
-        /** Build a GRID×GRID warp mesh: interleaved [ndcX, ndcY, u, v] per vertex. */
+        /**
+         * Build a GRID×GRID warp mesh: interleaved [ndcX, ndcY, u, v] per vertex.
+         * Each vertex's `u` is unwrapped relative to the frame center so a frame
+         * that straddles the ±180° seam stays horizontally continuous (no torn
+         * triangle). The seam wrap itself is handled by drawing the mesh at ±one
+         * full-circle X offset (see the draw loop).
+         */
         private fun buildFrameMesh(est: Estimate, cam: FrameCam): FloatBuffer {
             val cols = GRID + 1
             val data = FloatArray(cols * cols * 4)
+            val period = 2.0 * Math.PI * est.scale // u span of a full 360° circle
+            // Reference u at the frame center — vertices unwrap toward this.
+            val refU = forward(cam, est.scale, cam.ppx, cam.ppy)[0]
             var p = 0
             for (j in 0..GRID) {
                 val b = j.toFloat() / GRID
@@ -301,7 +321,9 @@ object GpuStitcher {
                     val sx = a.toDouble() * (cam.ppx * 2.0)
                     val sy = b.toDouble() * (cam.ppy * 2.0)
                     val uv = forward(cam, est.scale, sx, sy)
-                    val outX = uv[0] - est.u0
+                    var u = uv[0]
+                    if (period > 0.0) u -= period * Math.round((u - refU) / period)
+                    val outX = u - est.u0
                     val outY = uv[1] - est.v0
                     val ndcX = (outX / est.canvasW * 2.0 - 1.0).toFloat()
                     val ndcY = (outY / est.canvasH * 2.0 - 1.0).toFloat()
@@ -535,10 +557,11 @@ object GpuStitcher {
     private const val WARP_VS = """#version 310 es
         layout(location = 0) in vec2 aPos;
         layout(location = 1) in vec2 aUv;
+        uniform float uXOffset;
         out vec2 vUv;
         void main() {
             vUv = aUv;
-            gl_Position = vec4(aPos, 0.0, 1.0);
+            gl_Position = vec4(aPos.x + uXOffset, aPos.y, 0.0, 1.0);
         }
     """
 
