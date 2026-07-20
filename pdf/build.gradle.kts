@@ -88,6 +88,17 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
         environment(linkerVar, clang)
         // Keep host-side C tooling (if any build dep needs it) on the host clang.
         environment("HOST_CC", "/usr/bin/clang")
+        // Reproducible builds: strip the build machine's absolute paths (cargo
+        // registry + local crate dir) from the binary. Rust otherwise embeds
+        // $HOME-specific paths in panic/debug strings, so F-Droid's /home/vagrant
+        // and CI's /home/runner would produce different .so bytes. Each host remaps
+        // its own paths to the same constants, yielding identical output.
+        val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
+        val rustSrc = file("src/main/rust").absolutePath
+        environment(
+            "RUSTFLAGS",
+            "--remap-path-prefix=$cargoHome=/cargo --remap-path-prefix=$rustSrc=/pdf",
+        )
 
         commandLine("$cargoBin/cargo", "build", "--release", "--target", triple)
 
