@@ -61,18 +61,52 @@ data class RemoteMeasurement(
     /** Provider-scoped stable id, used as Health Connect clientRecordId. */
     val clientRecordId: String,
     val type: MeasurementType,
-    val value: Double,
-    /** Secondary value (e.g. diastolic for blood pressure). */
-    val value2: Double = 0.0,
-    val timeMillis: Long,
+    /** Primary value in the type's canonical unit (see [MeasurementType]). */
+    val value: Double = 0.0,
+    /** Start instant; equals [endMillis] for instantaneous sample/daily records. */
+    val startMillis: Long,
+    /** End instant for interval/session records (steps, distance, sleep, ...). */
+    val endMillis: Long = startMillis,
+    /** Sleep-stage segments; populated only for [MeasurementType.SLEEP]. */
+    val sleepStages: List<RemoteSleepStage> = emptyList(),
 )
 
+/** One sleep-stage segment. [stage] is a Health Connect `SleepSessionRecord.STAGE_TYPE_*` value. */
+data class RemoteSleepStage(
+    val startMillis: Long,
+    val endMillis: Long,
+    val stage: Int,
+)
+
+/**
+ * Health metrics synced from Google Health into Health Connect. Each maps to one
+ * Health Connect record type; the trailing comment is the canonical unit stored in
+ * [RemoteMeasurement.value].
+ */
 enum class MeasurementType {
-    WEIGHT,
-    HEIGHT,
-    BODY_FAT,
-    HEART_RATE,
-    RESTING_HEART_RATE,
-    OXYGEN_SATURATION,
-    STEPS,
+    // Body composition (instantaneous samples)
+    WEIGHT, // kilograms
+    HEIGHT, // meters
+    BODY_FAT, // percent (0-100)
+
+    // Vitals (instantaneous)
+    HEART_RATE, // beats/min
+    RESTING_HEART_RATE, // beats/min
+    HEART_RATE_VARIABILITY, // milliseconds (RMSSD)
+    OXYGEN_SATURATION, // percent (0-100)
+    RESPIRATORY_RATE, // breaths/min
+    BLOOD_GLUCOSE, // mg/dL
+    BODY_TEMPERATURE, // degrees Celsius
+    VO2_MAX, // mL/kg/min
+
+    // Activity (intervals)
+    STEPS, // count
+    DISTANCE, // meters
+    FLOORS, // count
+    ACTIVE_CALORIES, // kilocalories
+    TOTAL_CALORIES, // kilocalories
+
+    // Lifestyle
+    HYDRATION, // liters
+    SLEEP, // session (start/end + sleepStages)
 }

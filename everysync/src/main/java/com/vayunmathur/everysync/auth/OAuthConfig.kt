@@ -53,6 +53,8 @@ data class OAuthConfig(
             scopes = listOf(
                 "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
                 "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
+                "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+                "https://www.googleapis.com/auth/googlehealth.nutrition.readonly",
             ),
             extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
         )
