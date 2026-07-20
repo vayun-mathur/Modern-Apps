@@ -121,6 +121,39 @@ import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.IconShare
 import com.vayunmathur.library.ui.IconVisible
+import com.vayunmathur.library.ui.IconBezier
+import com.vayunmathur.library.ui.IconCallout
+import com.vayunmathur.library.ui.IconDraw
+import com.vayunmathur.library.ui.IconFormatUnderlined
+import com.vayunmathur.library.ui.IconHighlight
+import com.vayunmathur.library.ui.IconImage
+import com.vayunmathur.library.ui.IconLine
+import com.vayunmathur.library.ui.IconPolyline
+import com.vayunmathur.library.ui.IconRedact
+import com.vayunmathur.library.ui.IconSelect
+import com.vayunmathur.library.ui.IconSignature
+import com.vayunmathur.library.ui.IconSquiggly
+import com.vayunmathur.library.ui.IconStrikethrough
+import com.vayunmathur.library.ui.IconStyle
+import com.vayunmathur.library.ui.IconTextTool
+import com.vayunmathur.library.ui.IconShapeArrowFill
+import com.vayunmathur.library.ui.IconShapeArrowOutline
+import com.vayunmathur.library.ui.IconShapeDiamondFill
+import com.vayunmathur.library.ui.IconShapeDiamondOutline
+import com.vayunmathur.library.ui.IconShapeHexagonFill
+import com.vayunmathur.library.ui.IconShapeHexagonOutline
+import com.vayunmathur.library.ui.IconShapeOvalFill
+import com.vayunmathur.library.ui.IconShapeOvalOutline
+import com.vayunmathur.library.ui.IconShapePentagonFill
+import com.vayunmathur.library.ui.IconShapePentagonOutline
+import com.vayunmathur.library.ui.IconShapeRectFill
+import com.vayunmathur.library.ui.IconShapeRectOutline
+import com.vayunmathur.library.ui.IconShapeRoundRectFill
+import com.vayunmathur.library.ui.IconShapeRoundRectOutline
+import com.vayunmathur.library.ui.IconShapeStarFill
+import com.vayunmathur.library.ui.IconShapeStarOutline
+import com.vayunmathur.library.ui.IconShapeTriangleFill
+import com.vayunmathur.library.ui.IconShapeTriangleOutline
 import com.vayunmathur.pdf.util.SafeOutlineItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -151,12 +184,11 @@ private enum class EditTool { SELECT, TEXT, HIGHLIGHT, MARKUP, DRAW, SHAPE, LINE
 /** Text-markup variants for the [EditTool.MARKUP] tool. */
 private enum class MarkupKind { HIGHLIGHT, UNDERLINE, STRIKEOUT, SQUIGGLY }
 
-@DrawableRes
-private fun MarkupKind.icon(): Int = when (this) {
-    MarkupKind.HIGHLIGHT -> R.drawable.ic_tool_highlight
-    MarkupKind.UNDERLINE -> R.drawable.ic_markup_underline
-    MarkupKind.STRIKEOUT -> R.drawable.ic_markup_strikeout
-    MarkupKind.SQUIGGLY -> R.drawable.ic_markup_squiggly
+private fun MarkupKind.icon(): @Composable (Color) -> Unit = when (this) {
+    MarkupKind.HIGHLIGHT -> { t -> IconHighlight(tint = t) }
+    MarkupKind.UNDERLINE -> { t -> IconFormatUnderlined(tint = t) }
+    MarkupKind.STRIKEOUT -> { t -> IconStrikethrough(tint = t) }
+    MarkupKind.SQUIGGLY -> { t -> IconSquiggly(tint = t) }
 }
 
 private fun MarkupKind.label(): String = when (this) {
@@ -275,26 +307,25 @@ private fun flattenSmooth(points: List<Offset>): List<Offset> {
     return out
 }
 
-@DrawableRes
-private fun ShapeKind.icon(): Int = when (this) {
-    ShapeKind.RECT_OUTLINE -> R.drawable.ic_tool_rect
-    ShapeKind.RECT_FILL -> R.drawable.ic_shape_rect_fill
-    ShapeKind.ROUNDRECT_OUTLINE -> R.drawable.ic_shape_roundrect_outline
-    ShapeKind.ROUNDRECT_FILL -> R.drawable.ic_shape_roundrect_fill
-    ShapeKind.OVAL_OUTLINE -> R.drawable.ic_shape_oval_outline
-    ShapeKind.OVAL_FILL -> R.drawable.ic_shape_oval_fill
-    ShapeKind.TRIANGLE_OUTLINE -> R.drawable.ic_shape_triangle_outline
-    ShapeKind.TRIANGLE_FILL -> R.drawable.ic_shape_triangle_fill
-    ShapeKind.DIAMOND_OUTLINE -> R.drawable.ic_shape_diamond_outline
-    ShapeKind.DIAMOND_FILL -> R.drawable.ic_shape_diamond_fill
-    ShapeKind.PENTAGON_OUTLINE -> R.drawable.ic_shape_pentagon_outline
-    ShapeKind.PENTAGON_FILL -> R.drawable.ic_shape_pentagon_fill
-    ShapeKind.HEXAGON_OUTLINE -> R.drawable.ic_shape_hexagon_outline
-    ShapeKind.HEXAGON_FILL -> R.drawable.ic_shape_hexagon_fill
-    ShapeKind.STAR_OUTLINE -> R.drawable.ic_shape_star_outline
-    ShapeKind.STAR_FILL -> R.drawable.ic_shape_star_fill
-    ShapeKind.ARROW_OUTLINE -> R.drawable.ic_shape_arrow_outline
-    ShapeKind.ARROW_FILL -> R.drawable.ic_shape_arrow_fill
+private fun ShapeKind.icon(): @Composable (Color) -> Unit = when (this) {
+    ShapeKind.RECT_OUTLINE -> { t -> IconShapeRectOutline(tint = t) }
+    ShapeKind.RECT_FILL -> { t -> IconShapeRectFill(tint = t) }
+    ShapeKind.ROUNDRECT_OUTLINE -> { t -> IconShapeRoundRectOutline(tint = t) }
+    ShapeKind.ROUNDRECT_FILL -> { t -> IconShapeRoundRectFill(tint = t) }
+    ShapeKind.OVAL_OUTLINE -> { t -> IconShapeOvalOutline(tint = t) }
+    ShapeKind.OVAL_FILL -> { t -> IconShapeOvalFill(tint = t) }
+    ShapeKind.TRIANGLE_OUTLINE -> { t -> IconShapeTriangleOutline(tint = t) }
+    ShapeKind.TRIANGLE_FILL -> { t -> IconShapeTriangleFill(tint = t) }
+    ShapeKind.DIAMOND_OUTLINE -> { t -> IconShapeDiamondOutline(tint = t) }
+    ShapeKind.DIAMOND_FILL -> { t -> IconShapeDiamondFill(tint = t) }
+    ShapeKind.PENTAGON_OUTLINE -> { t -> IconShapePentagonOutline(tint = t) }
+    ShapeKind.PENTAGON_FILL -> { t -> IconShapePentagonFill(tint = t) }
+    ShapeKind.HEXAGON_OUTLINE -> { t -> IconShapeHexagonOutline(tint = t) }
+    ShapeKind.HEXAGON_FILL -> { t -> IconShapeHexagonFill(tint = t) }
+    ShapeKind.STAR_OUTLINE -> { t -> IconShapeStarOutline(tint = t) }
+    ShapeKind.STAR_FILL -> { t -> IconShapeStarFill(tint = t) }
+    ShapeKind.ARROW_OUTLINE -> { t -> IconShapeArrowOutline(tint = t) }
+    ShapeKind.ARROW_FILL -> { t -> IconShapeArrowFill(tint = t) }
 }
 
 private fun ShapeKind.label(): String {
@@ -797,7 +828,7 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                                 IconLock()
                             }
                             IconButton({ signLauncher.launch((uri.lastPathSegment ?: "document") + "-signed.pdf") }) {
-                                Icon(painterResource(R.drawable.ic_signature), contentDescription = "Sign document")
+                                IconSignature()
                             }
                         }
                         if (editMode) {
@@ -815,7 +846,7 @@ fun SafePdfViewerScreen(uri: Uri, onBack: () -> Unit) {
                                     doc.applyRedactions(); pageMgrVersion++; nonUndoDirty = true
                                 }
                             }) {
-                                Icon(painterResource(R.drawable.ic_redact), contentDescription = "Apply redactions")
+                                IconRedact()
                             }
                         }
                         IconButton({
@@ -1810,16 +1841,16 @@ private fun EditToolbar(
             Modifier.horizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            toolButton(R.drawable.ic_tool_select, "Select", tool == EditTool.SELECT) { onTool(EditTool.SELECT) }
-            toolButton(R.drawable.ic_tool_text, "Text", tool == EditTool.TEXT) { onTool(EditTool.TEXT) }
+            toolButton({ IconSelect(tint = it) }, tool == EditTool.SELECT) { onTool(EditTool.SELECT) }
+            toolButton({ IconTextTool(tint = it) }, tool == EditTool.TEXT) { onTool(EditTool.TEXT) }
             markupMenuButton(markup = markup, active = tool == EditTool.MARKUP, onMarkup = onMarkup)
-            toolButton(R.drawable.ic_tool_draw, "Draw", tool == EditTool.DRAW) { onTool(EditTool.DRAW) }
+            toolButton({ IconDraw(tint = it) }, tool == EditTool.DRAW) { onTool(EditTool.DRAW) }
             shapeMenuButton(shape = shape, active = tool == EditTool.SHAPE, onShape = onShape)
             linesMenuButton(tool = tool, onTool = onTool)
             toolButton({ IconNote(tint = it) }, tool == EditTool.NOTE) { onTool(EditTool.NOTE) }
-            toolButton(R.drawable.ic_callout, "Callout", tool == EditTool.CALLOUT) { onTool(EditTool.CALLOUT) }
-            toolButton(R.drawable.ic_redact, "Redact", tool == EditTool.REDACT) { onTool(EditTool.REDACT) }
-            toolButton(R.drawable.ic_tool_image, "Image", tool == EditTool.IMAGE) { onTool(EditTool.IMAGE) }
+            toolButton({ IconCallout(tint = it) }, tool == EditTool.CALLOUT) { onTool(EditTool.CALLOUT) }
+            toolButton({ IconRedact(tint = it) }, tool == EditTool.REDACT) { onTool(EditTool.REDACT) }
+            toolButton({ IconImage(tint = it) }, tool == EditTool.IMAGE) { onTool(EditTool.IMAGE) }
 
             for (c in listOf(Color.Red, Color.Yellow, Color.Blue, Color.Black)) {
                 Box(
@@ -1838,7 +1869,7 @@ private fun EditToolbar(
             }
 
             IconButton(onStyle) {
-                Icon(painterResource(R.drawable.ic_style), contentDescription = "Style")
+                IconStyle()
             }
             if (canDelete) {
                 IconButton(onDuplicate) {
@@ -1860,10 +1891,8 @@ private fun markupMenuButton(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton({ expanded = true }) {
-            Icon(
-                painterResource(markup.icon()),
-                contentDescription = "Text markup",
-                tint = if (active) MaterialTheme.colorScheme.primary
+            markup.icon()(
+                if (active) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1871,10 +1900,8 @@ private fun markupMenuButton(
             for (kind in MarkupKind.entries) {
                 DropdownMenuItem(
                     leadingIcon = {
-                        Icon(
-                            painterResource(kind.icon()),
-                            contentDescription = null,
-                            tint = if (active && kind == markup) MaterialTheme.colorScheme.primary
+                        kind.icon()(
+                            if (active && kind == markup) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -1897,10 +1924,8 @@ private fun shapeMenuButton(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton({ expanded = true }) {
-            Icon(
-                painterResource(shape.icon()),
-                contentDescription = "Shapes",
-                tint = if (active) MaterialTheme.colorScheme.primary
+            shape.icon()(
+                if (active) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1908,10 +1933,8 @@ private fun shapeMenuButton(
             for (kind in ShapeKind.entries) {
                 DropdownMenuItem(
                     leadingIcon = {
-                        Icon(
-                            painterResource(kind.icon()),
-                            contentDescription = null,
-                            tint = if (active && kind == shape) MaterialTheme.colorScheme.primary
+                        kind.icon()(
+                            if (active && kind == shape) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -1931,19 +1954,17 @@ private fun linesMenuButton(
     onTool: (EditTool) -> Unit,
 ) {
     val lineTools = listOf(
-        Triple(EditTool.LINE, R.drawable.ic_tool_line, "Line"),
-        Triple(EditTool.POLYLINE, R.drawable.ic_tool_polyline, "Polyline"),
-        Triple(EditTool.BEZIER, R.drawable.ic_tool_bezier, "Bézier curve"),
+        Triple<EditTool, @Composable (Color) -> Unit, String>(EditTool.LINE, { t -> IconLine(tint = t) }, "Line"),
+        Triple<EditTool, @Composable (Color) -> Unit, String>(EditTool.POLYLINE, { t -> IconPolyline(tint = t) }, "Polyline"),
+        Triple<EditTool, @Composable (Color) -> Unit, String>(EditTool.BEZIER, { t -> IconBezier(tint = t) }, "Bézier curve"),
     )
     val active = tool == EditTool.LINE || tool == EditTool.POLYLINE || tool == EditTool.BEZIER
-    val currentIcon = lineTools.firstOrNull { it.first == tool }?.second ?: R.drawable.ic_tool_line
+    val currentIcon: @Composable (Color) -> Unit = lineTools.firstOrNull { it.first == tool }?.second ?: { t -> IconLine(tint = t) }
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton({ expanded = true }) {
-            Icon(
-                painterResource(currentIcon),
-                contentDescription = "Lines",
-                tint = if (active) MaterialTheme.colorScheme.primary
+            currentIcon(
+                if (active) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -1951,10 +1972,8 @@ private fun linesMenuButton(
             for ((t, icon, label) in lineTools) {
                 DropdownMenuItem(
                     leadingIcon = {
-                        Icon(
-                            painterResource(icon),
-                            contentDescription = null,
-                            tint = if (tool == t) MaterialTheme.colorScheme.primary
+                        icon(
+                            if (tool == t) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
@@ -1963,23 +1982,6 @@ private fun linesMenuButton(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun toolButton(
-    @DrawableRes icon: Int,
-    contentDescription: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    IconButton(onClick) {
-        Icon(
-            painterResource(icon),
-            contentDescription = contentDescription,
-            tint = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

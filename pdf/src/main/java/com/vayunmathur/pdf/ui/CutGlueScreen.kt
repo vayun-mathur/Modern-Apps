@@ -147,7 +147,7 @@ fun CutGlueScreen(onBack: () -> Unit) {
                 FloatingActionButton(onClick = { menuOpen = true }) { IconAdd() }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
-                        leadingIcon = { Icon(painterResource(R.drawable.ic_tool_image), null) },
+                        leadingIcon = { com.vayunmathur.library.ui.IconImage() },
                         text = { Text("Append image") },
                         onClick = {
                             menuOpen = false
@@ -157,7 +157,7 @@ fun CutGlueScreen(onBack: () -> Unit) {
                         },
                     )
                     DropdownMenuItem(
-                        leadingIcon = { Icon(painterResource(R.drawable.ic_tool_rect), null) },
+                        leadingIcon = { com.vayunmathur.library.ui.IconShapeRectOutline() },
                         text = { Text("Append PDF") },
                         onClick = { menuOpen = false; pdfPicker.launch(arrayOf("application/pdf")) },
                     )

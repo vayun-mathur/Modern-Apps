@@ -185,7 +185,7 @@ fun CapturePdfScreen(
                                         for (f in com.vayunmathur.pdf.util.ScanFilter.entries) {
                                             com.vayunmathur.library.ui.DropdownMenuItem(
                                                 leadingIcon = {
-                                                    if (scanFilter == f) Icon(painterResource(R.drawable.ic_tool_select), null)
+                                                    if (scanFilter == f) com.vayunmathur.library.ui.IconCheck()
                                                 },
                                                 text = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) },
                                                 onClick = { scanFilter = f },
@@ -194,7 +194,7 @@ fun CapturePdfScreen(
                                         com.vayunmathur.library.ui.HorizontalDivider()
                                         com.vayunmathur.library.ui.DropdownMenuItem(
                                             leadingIcon = {
-                                                if (addOcr) Icon(painterResource(R.drawable.ic_tool_select), null)
+                                                if (addOcr) com.vayunmathur.library.ui.IconCheck()
                                             },
                                             text = { Text("Searchable (OCR)") },
                                             onClick = { addOcr = !addOcr },

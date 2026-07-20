@@ -24,6 +24,37 @@ import androidx.compose.material.icons.filled.TurnSlightLeft
 import androidx.compose.material.icons.filled.TurnSlightRight
 import androidx.compose.material.icons.filled.UTurnLeft
 import androidx.compose.material.icons.filled.WbCloudy
+import androidx.compose.material.icons.filled.ArrowRightAlt
+import androidx.compose.material.icons.filled.ChangeHistory
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.FormatUnderlined
+import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.Hexagon
+import androidx.compose.material.icons.filled.HideSource
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.HorizontalRule
+import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.Pentagon
+import androidx.compose.material.icons.filled.Polyline
+import androidx.compose.material.icons.filled.Rectangle
+import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.Square
+import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.StrikethroughS
+import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.outlined.ArrowRightAlt
+import androidx.compose.material.icons.outlined.ChangeHistory
+import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.Hexagon
+import androidx.compose.material.icons.outlined.Pentagon
+import androidx.compose.material.icons.outlined.Rectangle
+import androidx.compose.material.icons.outlined.Square
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.ui.res.painterResource
 import com.vayunmathur.library.R
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -841,3 +872,130 @@ fun IconRoundaboutLeft(modifier: Modifier = Modifier, tint: Color = LocalContent
 @Composable
 fun IconRoundaboutRight(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.RoundaboutRight, "Roundabout", modifier, tint)
+
+// --- PDF editor tools ---
+@Composable
+fun IconSelect(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.NearMe, "Select", modifier, tint)
+
+@Composable
+fun IconTextTool(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.TextFields, "Text", modifier, tint)
+
+@Composable
+fun IconHighlight(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Highlight, "Highlight", modifier, tint)
+
+@Composable
+fun IconLine(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.HorizontalRule, "Line", modifier, tint)
+
+@Composable
+fun IconPolyline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Polyline, "Polyline", modifier, tint)
+
+@Composable
+fun IconBezier(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.ShowChart, "Bézier curve", modifier, tint)
+
+@Composable
+fun IconCallout(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.ChatBubbleOutline, "Callout", modifier, tint)
+
+@Composable
+fun IconRedact(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.HideSource, "Redact", modifier, tint)
+
+@Composable
+fun IconStyle(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Style, "Style", modifier, tint)
+
+@Composable
+fun IconSignature(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Gesture, "Signature", modifier, tint)
+
+// --- PDF text markup ---
+@Composable
+fun IconFormatUnderlined(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.FormatUnderlined, "Underline", modifier, tint)
+
+@Composable
+fun IconStrikethrough(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.StrikethroughS, "Strikeout", modifier, tint)
+
+@Composable
+fun IconSquiggly(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Waves, "Squiggly", modifier, tint)
+
+// --- PDF annotation shapes (fill = Filled theme, outline = Outlined theme) ---
+@Composable
+fun IconShapeRectFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Rectangle, "Rectangle", modifier, tint)
+
+@Composable
+fun IconShapeRectOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.Rectangle, "Rectangle outline", modifier, tint)
+
+@Composable
+fun IconShapeRoundRectFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Square, "Rounded rectangle", modifier, tint)
+
+@Composable
+fun IconShapeRoundRectOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.Square, "Rounded rectangle outline", modifier, tint)
+
+@Composable
+fun IconShapeOvalFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Circle, "Oval", modifier, tint)
+
+@Composable
+fun IconShapeOvalOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.Circle, "Oval outline", modifier, tint)
+
+@Composable
+fun IconShapeTriangleFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.ChangeHistory, "Triangle", modifier, tint)
+
+@Composable
+fun IconShapeTriangleOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.ChangeHistory, "Triangle outline", modifier, tint)
+
+@Composable
+fun IconShapeDiamondFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Diamond, "Diamond", modifier, tint)
+
+@Composable
+fun IconShapeDiamondOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.Diamond, "Diamond outline", modifier, tint)
+
+@Composable
+fun IconShapePentagonFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Pentagon, "Pentagon", modifier, tint)
+
+@Composable
+fun IconShapePentagonOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.Pentagon, "Pentagon outline", modifier, tint)
+
+@Composable
+fun IconShapeHexagonFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Hexagon, "Hexagon", modifier, tint)
+
+@Composable
+fun IconShapeHexagonOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.Hexagon, "Hexagon outline", modifier, tint)
+
+@Composable
+fun IconShapeStarFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Star, "Star", modifier, tint)
+
+@Composable
+fun IconShapeStarOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.StarOutline, "Star outline", modifier, tint)
+
+@Composable
+fun IconShapeArrowFill(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.ArrowRightAlt, "Arrow", modifier, tint)
+
+@Composable
+fun IconShapeArrowOutline(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Outlined.ArrowRightAlt, "Arrow outline", modifier, tint)
