@@ -144,8 +144,54 @@ class ModuleTreeProvider {
     if (node.kind === 'file') {
       return [];
     }
-    const dir = node.kind === 'module' ? node.module.dir : node.path;
-    return this.readDir(dir);
+    if (node.kind === 'module') {
+      return this.readModuleChildren(node.module.dir);
+    }
+    return this.readDir(node.path);
+  }
+
+  /**
+   * Children shown directly under a module. Collapses the `src/` layer: its
+   * children (main, androidTest, test, ...) are lifted to the module root and
+   * shown alongside the module's other files/folders.
+   */
+  readModuleChildren(moduleDir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(moduleDir, { withFileTypes: true });
+    } catch (e) {
+      return [];
+    }
+
+    const dirs = [];
+    const files = [];
+    for (const entry of entries) {
+      if (IGNORED_NAMES.has(entry.name)) {
+        continue;
+      }
+      const full = path.join(moduleDir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'src') {
+          // Lift src/'s children up to the module root instead of showing src/.
+          for (const child of this.readDir(full)) {
+            (child.kind === 'dir' ? dirs : files).push(child);
+          }
+          continue;
+        }
+        if (this.isModuleSubtree(full)) {
+          continue; // Shown as its own top-level module entry instead.
+        }
+        dirs.push({ kind: 'dir', path: full });
+      } else if (entry.isFile()) {
+        files.push({ kind: 'file', path: full });
+      }
+    }
+
+    const byBasename = (a, b) =>
+      path.basename(a.path).localeCompare(path.basename(b.path));
+    dirs.sort(byBasename);
+    files.sort(byBasename);
+    return [...dirs, ...files];
   }
 
   /** True if `dir` is a module directory or an ancestor of one (a nested-module subtree). */

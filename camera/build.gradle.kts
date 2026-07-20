@@ -19,7 +19,7 @@ android {
 }
 
 // ---------------------------------------------------------------------------
-// Native panorama stitcher + night burst aligner (Rust). See camera/rust/.
+// Native panorama stitcher + night burst aligner (Rust). See camera/src/main/rust/.
 // Cross-compiled per-ABI with the NDK's clang, driven directly from cargo (same
 // approach as :pdf and :weather).
 // Contributor/CI prerequisite:  rustup target add aarch64-linux-android
@@ -55,15 +55,15 @@ val rustAbis = listOf(
 val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
     tasks.register<Exec>("cargoBuild_${abiDir.replace('-', '_')}") {
         description = "Cross-compiles the Rust camera stitcher for $abiDir."
-        workingDir = file("rust")
+        workingDir = file("src/main/rust")
 
         val clang = "$ndkBin/$triple$androidApiLevel-clang"
         val linkerVar = "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER"
-        val soOut = file("rust/target/$triple/release/libcamera_stitch.so")
+        val soOut = file("src/main/rust/target/$triple/release/libcamera_stitch.so")
         val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/libcamera_stitch.so").get().asFile
 
-        inputs.dir("rust/src")
-        inputs.file("rust/Cargo.toml")
+        inputs.dir("src/main/rust/src")
+        inputs.file("src/main/rust/Cargo.toml")
         outputs.file(destSo)
 
         environment("PATH", "$cargoBin:${System.getenv("PATH")}")

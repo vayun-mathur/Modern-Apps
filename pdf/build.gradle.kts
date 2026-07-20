@@ -19,7 +19,7 @@ android {
 }
 
 // ---------------------------------------------------------------------------
-// Native PDF renderer (Rust + lopdf). See pdf/rust/.
+// Native PDF renderer (Rust + lopdf). See pdf/src/main/rust/.
 //
 // Powers the "Open PDF (safe)" viewer: parses PDFs entirely in memory-safe Rust
 // and returns plain drawing primitives, never touching the system PDF stack.
@@ -67,15 +67,15 @@ val rustAbis = listOf(
 val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
     tasks.register<Exec>("cargoBuild_${abiDir.replace('-', '_')}") {
         description = "Cross-compiles the Rust PDF renderer for $abiDir."
-        workingDir = file("rust")
+        workingDir = file("src/main/rust")
 
         val clang = "$ndkBin/$triple$androidApiLevel-clang"
         val linkerVar = "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER"
-        val soOut = file("rust/target/$triple/release/libpdf_render.so")
+        val soOut = file("src/main/rust/target/$triple/release/libpdf_render.so")
         val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/libpdf_render.so").get().asFile
 
-        inputs.dir("rust/src")
-        inputs.file("rust/Cargo.toml")
+        inputs.dir("src/main/rust/src")
+        inputs.file("src/main/rust/Cargo.toml")
         outputs.file(destSo)
 
         // Prepend the rustup toolchain (has the Android targets) ahead of any

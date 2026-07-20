@@ -20,19 +20,10 @@ android {
         val googleClientId = (project.findProperty("EVERYSYNC_GOOGLE_CLIENT_ID")
             ?: "827025129169-tvph1v4c7b4n36s0prbe3u8dh3kd12t7.apps.googleusercontent.com").toString()
 
-        // Google installed-app PKCE uses the reverse-DNS custom scheme derived from
-        // the client ID (e.g. com.googleusercontent.apps.<id>:/oauth2redirect).
-        val googleReverse = if (googleClientId.endsWith(".apps.googleusercontent.com"))
-            "com.googleusercontent.apps." + googleClientId.removeSuffix(".apps.googleusercontent.com")
-        else ""
-        val googleRedirectUri = if (googleReverse.isNotBlank()) "$googleReverse:/oauth2redirect"
-        else "com.vayunmathur.everysync:/oauth"
-
         buildConfigField("String", "GOOGLE_OAUTH_CLIENT_ID", "\"$googleClientId\"")
-        buildConfigField("String", "GOOGLE_REDIRECT_URI", "\"$googleRedirectUri\"")
-
-        // Register the Google reverse-DNS redirect scheme for OAuthCallbackActivity.
-        manifestPlaceholders["googleRedirectScheme"] = googleReverse.ifBlank { "com.vayunmathur.everysync.oauthunused" }
+        // The OAuth redirect is the app-id custom scheme (com.vayunmathur.everysync:/oauth),
+        // caught by OAuthCallbackActivity — see OAuthConfig.REDIRECT_URI. It is NOT
+        // derived from the client ID.
     }
     buildFeatures {
         buildConfig = true

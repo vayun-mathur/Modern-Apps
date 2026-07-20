@@ -19,7 +19,7 @@ import kotlinx.serialization.json.longOrNull
 
 /**
  * OAuth2 Authorization Code + PKCE (RFC 7636). The authorization request opens in
- * a Custom Tab; the redirect (`com.vayunmathur.everysync:/oauth`) is caught by
+ * a Custom Tab; the redirect (`https://everysync.vayunmathur.com/oauth`) is caught by
  * [OAuthCallbackActivity], which calls [complete] to exchange the code for tokens.
  */
 object OAuthManager {

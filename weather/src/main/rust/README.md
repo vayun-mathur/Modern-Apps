@@ -34,7 +34,7 @@ The decode path can be validated on the host (no Android) against the live
 bucket:
 
 ```sh
-cd weather/rust
+cd weather/src/main/rust
 cargo test -- --ignored --nocapture
 ```
 

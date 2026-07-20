@@ -16,13 +16,13 @@ data class OAuthConfig(
     val scopes: List<String>,
     /** Extra query params appended to the authorization request. */
     val extraAuthParams: Map<String, String> = emptyMap(),
-    /** Redirect URI for this provider (Google needs its reverse-DNS scheme). */
+    /** Redirect URI for this provider (app-id custom scheme by default). */
     val redirectUri: String = REDIRECT_URI,
 ) {
     val hasClientId: Boolean get() = clientId.isNotBlank()
 
     companion object {
-        const val REDIRECT_URI = "com.vayunmathur.everysync:/oauth"
+        const val REDIRECT_URI = "https://everysync.vayunmathur.com/oauth"
 
         val GOOGLE = OAuthConfig(
             authEndpoint = "https://accounts.google.com/o/oauth2/v2/auth",
@@ -34,7 +34,6 @@ data class OAuthConfig(
             ),
             // Force a refresh token to be returned on first consent.
             extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
-            redirectUri = BuildConfig.GOOGLE_REDIRECT_URI,
         )
 
         // Google Health via the Google Fitness REST API — same Google OAuth client,
@@ -50,7 +49,6 @@ data class OAuthConfig(
                 "https://www.googleapis.com/auth/fitness.heart_rate.read",
             ),
             extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
-            redirectUri = BuildConfig.GOOGLE_REDIRECT_URI,
         )
     }
 }

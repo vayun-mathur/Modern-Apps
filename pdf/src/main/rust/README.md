@@ -44,7 +44,7 @@ The interpreter, CMap parser and wire format are validated on the host (no
 Android / NDK needed):
 
 ```sh
-cd pdf/rust
+cd pdf/src/main/rust
 cargo test
 ```
 

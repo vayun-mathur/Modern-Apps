@@ -21,7 +21,7 @@ android {
 }
 
 // ---------------------------------------------------------------------------
-// Native `.om` decoder (Rust). See weather/rust/.
+// Native `.om` decoder (Rust). See weather/src/main/rust/.
 //
 // Cross-compiled per-ABI with the NDK's clang. We drive cargo directly (rather
 // than rust-android-gradle, which needs AGP's removed legacy AppExtension, or
@@ -70,15 +70,15 @@ val rustAbis = listOf(
 val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
     tasks.register<Exec>("cargoBuild_${abiDir.replace('-', '_')}") {
         description = "Cross-compiles the Rust .om decoder for $abiDir."
-        workingDir = file("rust")
+        workingDir = file("src/main/rust")
 
         val clang = "$ndkBin/$triple$androidApiLevel-clang"
         val linkerVar = "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER"
-        val soOut = file("rust/target/$triple/release/libweather_om.so")
+        val soOut = file("src/main/rust/target/$triple/release/libweather_om.so")
         val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/libweather_om.so").get().asFile
 
-        inputs.dir("rust/src")
-        inputs.file("rust/Cargo.toml")
+        inputs.dir("src/main/rust/src")
+        inputs.file("src/main/rust/Cargo.toml")
         outputs.file(destSo)
 
         // Prepend the rustup toolchain (has the Android targets) ahead of any
