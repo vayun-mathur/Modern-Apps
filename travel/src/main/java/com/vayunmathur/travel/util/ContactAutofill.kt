@@ -1,6 +1,7 @@
 package com.vayunmathur.travel.util
 
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Email
@@ -18,30 +19,50 @@ data class ContactInfo(
     val bornOn: String,
 )
 
+/** The Data MIME types we ask the picker for / read out of the result. */
+val REQUESTED_CONTACT_FIELDS: List<String> = listOf(
+    StructuredName.CONTENT_ITEM_TYPE,
+    Email.CONTENT_ITEM_TYPE,
+    Phone.CONTENT_ITEM_TYPE,
+    Event.CONTENT_ITEM_TYPE,
+)
+
 /**
- * Read name / email / phone for the contact at [contactUri] (as returned by the
- * system contact picker).
+ * Read contact fields from a **session URI** returned by the Android 17
+ * `ContactsPickerSessionContract.ACTION_PICK_CONTACTS` picker. No
+ * `READ_CONTACTS` permission is needed: the picker grants field-scoped read
+ * access (for the MIME types requested) on this URI.
  *
- * No `READ_CONTACTS` permission is required: the picker grants temporary read
- * access to the chosen contact, and querying that contact's *entities*
- * directory (which joins its Data rows) is covered by the same grant. We must
- * therefore go through `contactUri` — querying the global Email/Phone/Data
- * tables by id would *not* be covered and would need the permission.
- *
- * Runs synchronous ContentResolver queries, so call off the main thread.
- * Returns null if the contact can't be read.
+ * Call off the main thread. Returns null if nothing can be read.
  */
-fun readContact(context: Context, contactUri: Uri): ContactInfo? {
-    val entityUri = Uri.withAppendedPath(
-        contactUri, ContactsContract.Contacts.Entity.CONTENT_DIRECTORY,
-    )
-    val projection = arrayOf(
-        ContactsContract.Contacts.Entity.MIMETYPE,
-        ContactsContract.Contacts.Entity.DATA1,
-        ContactsContract.Contacts.Entity.DATA2,
-        ContactsContract.Contacts.Entity.DATA3,
-        ContactsContract.Contacts.Entity.DISPLAY_NAME,
-    )
+fun readSessionContact(context: Context, sessionUri: Uri): ContactInfo? = try {
+    context.contentResolver.query(sessionUri, DATA_PROJECTION, null, null, null)?.use(::parseContactCursor)
+} catch (_: Exception) {
+    null
+}
+
+/**
+ * Shared projection over the generic Data columns. These column names are the
+ * same on the session URI and in the Data table, so one projection + one parser
+ * serves the source.
+ */
+private val DATA_PROJECTION = arrayOf(
+    ContactsContract.Data.MIMETYPE,
+    ContactsContract.Data.DATA1,
+    ContactsContract.Data.DATA2,
+    ContactsContract.Data.DATA3,
+    ContactsContract.Data.DISPLAY_NAME,
+)
+
+private fun parseContactCursor(c: Cursor): ContactInfo? {
+    val mimeIdx = c.getColumnIndex(ContactsContract.Data.MIMETYPE)
+    // Email.ADDRESS / Phone.NUMBER / Event.START_DATE map to DATA1;
+    // StructuredName given/family map to DATA2/DATA3; Event.TYPE is DATA2.
+    val data1 = c.getColumnIndex(ContactsContract.Data.DATA1)
+    val data2 = c.getColumnIndex(ContactsContract.Data.DATA2)
+    val data3 = c.getColumnIndex(ContactsContract.Data.DATA3)
+    val nameIdx = c.getColumnIndex(ContactsContract.Data.DISPLAY_NAME)
+    if (mimeIdx < 0) return null
 
     var given = ""
     var family = ""
@@ -50,32 +71,22 @@ fun readContact(context: Context, contactUri: Uri): ContactInfo? {
     var birthday = ""
     var display = ""
 
-    context.contentResolver.query(entityUri, projection, null, null, null)?.use { c ->
-        val mimeIdx = c.getColumnIndexOrThrow(ContactsContract.Contacts.Entity.MIMETYPE)
-        // Email.ADDRESS / Phone.NUMBER / Event.START_DATE map to DATA1;
-        // StructuredName given/family map to DATA2/DATA3; Event.TYPE is DATA2.
-        // These are the shared generic Data columns.
-        val data1 = c.getColumnIndexOrThrow(ContactsContract.Contacts.Entity.DATA1)
-        val data2 = c.getColumnIndexOrThrow(ContactsContract.Contacts.Entity.DATA2)
-        val data3 = c.getColumnIndexOrThrow(ContactsContract.Contacts.Entity.DATA3)
-        val nameIdx = c.getColumnIndexOrThrow(ContactsContract.Contacts.Entity.DISPLAY_NAME)
-        while (c.moveToNext()) {
-            if (display.isBlank()) display = c.getString(nameIdx).orEmpty()
-            when (c.getString(mimeIdx)) {
-                StructuredName.CONTENT_ITEM_TYPE -> {
-                    given = c.getString(data2).orEmpty()
-                    family = c.getString(data3).orEmpty()
-                }
-                Email.CONTENT_ITEM_TYPE -> if (email.isBlank()) email = c.getString(data1).orEmpty()
-                Phone.CONTENT_ITEM_TYPE -> if (phone.isBlank()) phone = c.getString(data1).orEmpty()
-                Event.CONTENT_ITEM_TYPE -> {
-                    if (birthday.isBlank() && c.getInt(data2) == Event.TYPE_BIRTHDAY) {
-                        birthday = isoBirthday(c.getString(data1))
-                    }
+    while (c.moveToNext()) {
+        if (display.isBlank() && nameIdx >= 0) display = c.getString(nameIdx).orEmpty()
+        when (c.getString(mimeIdx)) {
+            StructuredName.CONTENT_ITEM_TYPE -> {
+                given = c.getString(data2).orEmpty()
+                family = c.getString(data3).orEmpty()
+            }
+            Email.CONTENT_ITEM_TYPE -> if (email.isBlank()) email = c.getString(data1).orEmpty()
+            Phone.CONTENT_ITEM_TYPE -> if (phone.isBlank()) phone = c.getString(data1).orEmpty()
+            Event.CONTENT_ITEM_TYPE -> {
+                if (birthday.isBlank() && data2 >= 0 && c.getInt(data2) == Event.TYPE_BIRTHDAY) {
+                    birthday = isoBirthday(c.getString(data1))
                 }
             }
         }
-    } ?: return null
+    }
 
     // Fall back to splitting the display name if there's no structured name.
     if (given.isBlank() && family.isBlank() && display.isNotBlank()) {

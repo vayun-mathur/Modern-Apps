@@ -38,7 +38,8 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.network.PassengerInputDto
 import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.readContact
+import com.vayunmathur.travel.util.REQUESTED_CONTACT_FIELDS
+import com.vayunmathur.travel.util.readSessionContact
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,10 +104,17 @@ private fun PassengerForm(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { uri ->
-        if (uri != null) {
+    // Android 17+ field-scoped picker: grants read for only the requested MIME
+    // types on the returned session URI — no READ_CONTACTS permission needed.
+    // Autofill is only offered on API 37+; older devices enter details manually.
+    val canImportContacts = android.os.Build.VERSION.SDK_INT >= 37
+    val sessionPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && uri != null) {
             scope.launch {
-                val info = withContext(Dispatchers.IO) { readContact(context, uri) }
+                val info = withContext(Dispatchers.IO) { readSessionContact(context, uri) }
                 if (info != null) {
                     onChange(
                         passenger.copy(
@@ -122,6 +130,21 @@ private fun PassengerForm(
         }
     }
 
+    fun importFromContacts() {
+        val intent = android.content.Intent(
+            android.provider.ContactsPickerSessionContract.ACTION_PICK_CONTACTS
+        ).apply {
+            putStringArrayListExtra(
+                android.provider.ContactsPickerSessionContract.EXTRA_PICK_CONTACTS_REQUESTED_DATA_FIELDS,
+                ArrayList(REQUESTED_CONTACT_FIELDS),
+            )
+            putExtra(
+                android.provider.ContactsPickerSessionContract.EXTRA_PICK_CONTACTS_SELECTION_LIMIT, 1,
+            )
+        }
+        runCatching { sessionPicker.launch(intent) }
+    }
+
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -134,13 +157,15 @@ private fun PassengerForm(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                OutlinedButton(onClick = { pickContact.launch(null) }) {
-                    Icon(
-                        Icons.Filled.Contacts,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text("Contacts")
+                if (canImportContacts) {
+                    OutlinedButton(onClick = { importFromContacts() }) {
+                        Icon(
+                            Icons.Filled.Contacts,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                        Text("Contacts")
+                    }
                 }
             }
 
@@ -163,7 +188,12 @@ private fun PassengerForm(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            DateField("Date of birth", passenger.bornOn, onDate = { onChange(passenger.copy(bornOn = it)) })
+            DateField(
+                "Date of birth",
+                passenger.bornOn,
+                onDate = { onChange(passenger.copy(bornOn = it)) },
+                dateFormat = "MMM d, yyyy",
+            )
 
             ChipRow("Gender", GENDERS, passenger.gender) { onChange(passenger.copy(gender = it)) }
 

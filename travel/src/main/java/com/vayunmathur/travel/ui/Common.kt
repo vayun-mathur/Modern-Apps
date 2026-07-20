@@ -125,10 +125,11 @@ fun DateField(
     value: String,
     onDate: (String) -> Unit,
     modifier: Modifier = Modifier,
+    dateFormat: String = "EEE, MMM d",
 ) {
     var show by remember { mutableStateOf(false) }
     val display = if (value.isBlank()) "" else runCatching {
-        LocalDate.parse(value).format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+        LocalDate.parse(value).format(DateTimeFormatter.ofPattern(dateFormat))
     }.getOrDefault(value)
 
     Box(modifier) {
