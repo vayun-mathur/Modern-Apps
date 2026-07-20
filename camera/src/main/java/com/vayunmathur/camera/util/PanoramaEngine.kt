@@ -282,17 +282,27 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
      */
     suspend fun stitch(): Pair<ByteArray, PanoInfo>? {
         val handle = nativeHandle
-        if (handle == 0L || _frameCount.value < 2) return null
+        if (handle == 0L || _frameCount.value < 2) {
+            android.util.Log.w("PanoramaEngine", "stitch skipped: handle=$handle frames=${_frameCount.value}")
+            return null
+        }
         _isStitching.value = true
         return withContext(Dispatchers.IO) {
             try {
-                gpuStitch(handle) ?: cpuStitch(handle)
+                android.util.Log.i("PanoramaEngine", "stitch start: frames=${_frameCount.value} sphere=$sphereMode")
+                val gpu = gpuStitch(handle)
+                if (gpu != null) {
+                    gpu
+                } else {
+                    android.util.Log.w("PanoramaEngine", "GPU path failed; falling back to CPU stitch")
+                    cpuStitch(handle)
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
+                android.util.Log.e("PanoramaEngine", "GPU stitch threw; falling back to CPU", e)
                 try {
                     cpuStitch(handle)
                 } catch (e2: Exception) {
-                    e2.printStackTrace()
+                    android.util.Log.e("PanoramaEngine", "CPU stitch also failed", e2)
                     null
                 }
             } finally {
@@ -304,10 +314,26 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
     /** GPU path: Rust registration blob → [GpuStitcher] → JPEG. Null on any failure. */
     private fun gpuStitch(handle: Long): Pair<ByteArray, PanoInfo>? {
         val t0 = System.currentTimeMillis()
-        val blob = StitchNative.estimate(handle) ?: return null
-        val estimate = GpuStitcher.parseEstimate(blob) ?: return null
+        val blob = StitchNative.estimate(handle)
+        if (blob == null) {
+            android.util.Log.w("PanoramaEngine", "estimate returned null (registration failed)")
+            return null
+        }
+        val estimate = GpuStitcher.parseEstimate(blob)
+        if (estimate == null) {
+            android.util.Log.w("PanoramaEngine", "parseEstimate returned null (bad blob, ${blob.size} bytes)")
+            return null
+        }
         val tReg = System.currentTimeMillis()
-        val result = GpuStitcher.composite(estimate, capturedFrames) ?: return null
+        android.util.Log.i(
+            "PanoramaEngine",
+            "estimate ok in ${tReg - t0}ms: canvas=${estimate.canvasW}x${estimate.canvasH} cams=${estimate.cams.size} frames=${capturedFrames.size}"
+        )
+        val result = GpuStitcher.composite(estimate, capturedFrames)
+        if (result == null) {
+            android.util.Log.w("PanoramaEngine", "GpuStitcher.composite returned null")
+            return null
+        }
         val tComp = System.currentTimeMillis()
 
         val baos = ByteArrayOutputStream()
@@ -335,12 +361,18 @@ class PanoramaEngine(private val context: Context) : SensorEventListener {
 
     /** CPU fallback: the full Rust stitcher. */
     private fun cpuStitch(handle: Long): Pair<ByteArray, PanoInfo>? {
-        val jpeg = StitchNative.stitch(handle) ?: return null
+        val t0 = System.currentTimeMillis()
+        val jpeg = StitchNative.stitch(handle)
+        if (jpeg == null) {
+            android.util.Log.e("PanoramaEngine", "CPU stitch returned null (registration/stitch failed)")
+            return null
+        }
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, opts)
         val w = opts.outWidth
         val h = opts.outHeight
         if (w <= 0 || h <= 0) return null
+        android.util.Log.i("PanoramaEngine", "CPU stitch ok in ${System.currentTimeMillis() - t0}ms -> ${w}x$h")
         val info = PanoInfo(
             projectionType = if (sphereMode) "equirectangular" else "cylindrical",
             fullWidth = w,

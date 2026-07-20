@@ -115,7 +115,11 @@ object GpuStitcher {
     fun composite(estimate: Estimate, frames: List<ByteArray>): CompositeResult? {
         var gl: GlEnv? = null
         return try {
-            gl = GlEnv.create() ?: return null
+            gl = GlEnv.create()
+            if (gl == null) {
+                Log.w(TAG, "EGL/GLES init failed or float FBO unsupported; cannot composite")
+                return null
+            }
             gl.render(estimate, frames)
         } catch (t: Throwable) {
             Log.e(TAG, "composite failed", t)
@@ -400,9 +404,15 @@ object GpuStitcher {
             /** Bring up a headless ES3 context on a 1×1 pbuffer, or null on failure. */
             fun create(): GlEnv? {
                 val display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
-                if (display == EGL14.EGL_NO_DISPLAY) return null
+                if (display == EGL14.EGL_NO_DISPLAY) {
+                    Log.w(TAG, "eglGetDisplay: no display")
+                    return null
+                }
                 val ver = IntArray(2)
-                if (!EGL14.eglInitialize(display, ver, 0, ver, 1)) return null
+                if (!EGL14.eglInitialize(display, ver, 0, ver, 1)) {
+                    Log.w(TAG, "eglInitialize failed")
+                    return null
+                }
 
                 val cfgAttr = intArrayOf(
                     EGL14.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
@@ -418,6 +428,7 @@ object GpuStitcher {
                 if (!EGL14.eglChooseConfig(display, cfgAttr, 0, configs, 0, 1, numConfig, 0) ||
                     numConfig[0] == 0 || configs[0] == null
                 ) {
+                    Log.w(TAG, "eglChooseConfig failed (no ES3 pbuffer config)")
                     EGL14.eglTerminate(display)
                     return null
                 }
@@ -426,17 +437,20 @@ object GpuStitcher {
                 val ctxAttr = intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 3, EGL14.EGL_NONE)
                 val context = EGL14.eglCreateContext(display, config, EGL14.EGL_NO_CONTEXT, ctxAttr, 0)
                 if (context == EGL14.EGL_NO_CONTEXT) {
+                    Log.w(TAG, "eglCreateContext failed")
                     EGL14.eglTerminate(display)
                     return null
                 }
                 val surfAttr = intArrayOf(EGL14.EGL_WIDTH, 1, EGL14.EGL_HEIGHT, 1, EGL14.EGL_NONE)
                 val surface = EGL14.eglCreatePbufferSurface(display, config, surfAttr, 0)
                 if (surface == EGL14.EGL_NO_SURFACE) {
+                    Log.w(TAG, "eglCreatePbufferSurface failed")
                     EGL14.eglDestroyContext(display, context)
                     EGL14.eglTerminate(display)
                     return null
                 }
                 if (!EGL14.eglMakeCurrent(display, surface, surface, context)) {
+                    Log.w(TAG, "eglMakeCurrent failed")
                     EGL14.eglDestroySurface(display, surface)
                     EGL14.eglDestroyContext(display, context)
                     EGL14.eglTerminate(display)

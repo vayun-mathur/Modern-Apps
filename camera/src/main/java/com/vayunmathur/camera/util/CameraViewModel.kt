@@ -903,11 +903,12 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Binds a lean Preview + high-resolution ImageAnalysis session for the
+     * Binds a lean Preview + capped-resolution ImageAnalysis session for the
      * panorama and photo-sphere modes. These sweep off the analysis stream and
-     * never use ImageCapture, so dropping the capture use case frees the device's
-     * stream-config budget to grant a much sharper (~1080p) analysis stream than
-     * the 3-stream photo session can — the dominant lever on panorama quality.
+     * never use ImageCapture. The analysis stream is capped at ~3 MP: the pano
+     * analyzer decodes every delivered frame to a Bitmap, so an uncapped max-res
+     * stream janks the preview, while the 8 MP compose canvas means higher
+     * per-frame resolution barely affects the stitched output.
      */
     suspend fun setupPanoramaSession(): Boolean {
         return try {
@@ -927,19 +928,24 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             owner.start()
             sessionLifecycleOwner = owner
 
-            // Max-resolution analysis stream (same as the photo route): frames are
-            // now stored JPEG-compressed and decoded one at a time at stitch, so a
-            // high-res sweep no longer blows up memory. Fall back to a default-res
-            // bind if the high-res analysis combo is rejected by the device.
-            fun bind(maxRes: Boolean): Camera {
+            // Cap the analysis stream at ~3 MP. The compose canvas is bounded to
+            // 8 MP, so per-frame resolution beyond a few MP adds little to the
+            // stitched output — but the analyzer converts every delivered frame to
+            // a Bitmap, so a max-res stream makes that conversion (and its GC
+            // churn) heavy enough to jank the preview during the sweep. ~3 MP keeps
+            // it smooth. Falls back to the device-default analysis resolution if
+            // this bound can't bind.
+            fun bind(capped: Boolean): Camera {
                 val analysisBuilder = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                if (maxRes) {
+                if (capped) {
                     analysisBuilder.setResolutionSelector(
                         ResolutionSelector.Builder()
-                            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
-                            .setAllowedResolutionMode(
-                                ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE
+                            .setResolutionStrategy(
+                                ResolutionStrategy(
+                                    Size(2016, 1512), // ~3 MP
+                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER
+                                )
                             )
                             .build()
                     )
@@ -951,11 +957,11 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             }
 
             boundCamera = try {
-                bind(maxRes = true)
+                bind(capped = true)
             } catch (e: Exception) {
-                Log.w("PhotoSession", "Max-res panorama bind failed; retrying at default resolution", e)
+                Log.w("PhotoSession", "Capped panorama bind failed; retrying at default resolution", e)
                 provider.unbindAll()
-                bind(maxRes = false)
+                bind(capped = false)
             }
 
             boundCamera?.cameraInfo?.zoomState?.value?.let {
