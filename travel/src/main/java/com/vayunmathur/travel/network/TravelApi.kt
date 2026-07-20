@@ -5,13 +5,12 @@ import java.net.URLEncoder
 
 /**
  * Thin wrapper over the shared [NetworkClient] for the `/api/travel` endpoints
- * on the self-hosted proxy (`api.vayunmathur.com`). The proxy holds the
- * Travelpayouts token/affiliate marker server-side, so the app ships no secret;
- * it just does URL construction + delegation to the Ktor client.
+ * on the self-hosted proxy (`api.vayunmathur.com`). The proxy holds the Duffel
+ * token server-side, so the app ships no secret; it just does URL/body
+ * construction + delegation to the Ktor client.
  *
- * Modeled after [com.vayunmathur.weather.network.WeatherApi]. Each call throws
- * on network/parse failure; callers (the ViewModel) wrap in try/catch and
- * surface an error state.
+ * Each call throws on network/parse failure; callers (the ViewModel) wrap in
+ * try/catch and surface an error state.
  */
 object TravelApi {
 
@@ -26,8 +25,9 @@ object TravelApi {
     }
 
     /**
-     * Cheapest fares for a route. [depart] / [ret] are `YYYY-MM-DD`; omit [ret]
-     * for one-way. [adults] is forwarded but ignored by the aggregated upstream.
+     * Search bookable flight offers for a route. [depart] / [ret] are
+     * `YYYY-MM-DD`; omit [ret] for one-way. [cabin] is one of
+     * `economy`/`premium_economy`/`business`/`first`.
      */
     suspend fun flights(
         origin: String,
@@ -35,8 +35,8 @@ object TravelApi {
         depart: String,
         ret: String? = null,
         adults: Int = 1,
-        currency: String = "usd",
-    ): List<FlightDto> {
+        cabin: String = "economy",
+    ): OfferSearchDto {
         val url = buildString {
             append(BASE).append("/flights")
             append("?origin=").append(enc(origin))
@@ -44,44 +44,21 @@ object TravelApi {
             append("&depart=").append(enc(depart))
             if (!ret.isNullOrBlank()) append("&return=").append(enc(ret))
             append("&adults=").append(adults)
-            append("&currency=").append(enc(currency))
+            append("&cabin=").append(enc(cabin))
         }
         return NetworkClient.getJson(url)
     }
 
-    /** Hotel offers for a location and date range. */
-    suspend fun hotels(
-        location: String,
-        checkin: String,
-        checkout: String,
-        adults: Int = 2,
-        currency: String = "usd",
-    ): List<HotelDto> {
-        val url = buildString {
-            append(BASE).append("/hotels")
-            append("?location=").append(enc(location))
-            append("&checkin=").append(enc(checkin))
-            append("&checkout=").append(enc(checkout))
-            append("&adults=").append(adults)
-            append("&currency=").append(enc(currency))
-        }
-        return NetworkClient.getJson(url)
-    }
+    /** Re-price/confirm a single offer right before booking (offers expire). */
+    suspend fun offer(id: String): OfferDto =
+        NetworkClient.getJson("$BASE/offer?id=${enc(id)}")
 
-    /** Best-effort car-rental offers (deep-link-first; see [CarDto]). */
-    suspend fun cars(
-        location: String,
-        pickup: String,
-        dropoff: String,
-        currency: String = "usd",
-    ): List<CarDto> {
-        val url = buildString {
-            append(BASE).append("/cars")
-            append("?location=").append(enc(location))
-            append("&pickup=").append(enc(pickup))
-            append("&dropoff=").append(enc(dropoff))
-            append("&currency=").append(enc(currency))
-        }
-        return NetworkClient.getJson(url)
-    }
+    /** Book a selected offer. Returns the confirmed order (with a PNR). */
+    suspend fun createOrder(request: OrderRequestDto): OrderResultDto =
+        NetworkClient.callJson(
+            url = "$BASE/orders",
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+            body = request,
+        )
 }

@@ -17,14 +17,17 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
+import com.vayunmathur.travel.data.BookedTripDao
 import com.vayunmathur.travel.data.DB_NAME
-import com.vayunmathur.travel.data.FavoriteDao
 import com.vayunmathur.travel.data.RecentSearchDao
 import com.vayunmathur.travel.data.TravelDatabase
-import com.vayunmathur.travel.ui.CarResultsPage
+import com.vayunmathur.travel.ui.ConfirmationPage
 import com.vayunmathur.travel.ui.FlightResultsPage
 import com.vayunmathur.travel.ui.HomePage
-import com.vayunmathur.travel.ui.HotelResultsPage
+import com.vayunmathur.travel.ui.OfferReviewPage
+import com.vayunmathur.travel.ui.PassengersPage
+import com.vayunmathur.travel.ui.PaymentPage
+import com.vayunmathur.travel.ui.TripsPage
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.TravelViewModelFactory
 import kotlinx.coroutines.Dispatchers
@@ -34,10 +37,10 @@ import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
     private lateinit var recentSearchDao: RecentSearchDao
-    private lateinit var favoriteDao: FavoriteDao
+    private lateinit var bookedTripDao: BookedTripDao
 
     private val viewModel: TravelViewModel by viewModels {
-        TravelViewModelFactory(application, recentSearchDao, favoriteDao)
+        TravelViewModelFactory(application, recentSearchDao, bookedTripDao)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +51,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val db = buildDatabase<TravelDatabase>(dbName = DB_NAME)
             recentSearchDao = db.recentSearchDao()
-            favoriteDao = db.favoriteDao()
+            bookedTripDao = db.bookedTripDao()
             withContext(Dispatchers.Main) { ready.value = true }
         }
 
@@ -72,22 +75,23 @@ sealed interface Route : NavKey {
         val depart: String,
         val returnDate: String?,
         val adults: Int,
+        val cabin: String,
     ) : Route
 
     @Serializable
-    data class HotelResults(
-        val location: String,
-        val checkin: String,
-        val checkout: String,
-        val adults: Int,
-    ) : Route
+    data class OfferReview(val offerId: String) : Route
 
     @Serializable
-    data class CarResults(
-        val location: String,
-        val pickup: String,
-        val dropoff: String,
-    ) : Route
+    data class Passengers(val offerId: String) : Route
+
+    @Serializable
+    data class Payment(val offerId: String) : Route
+
+    @Serializable
+    data class Confirmation(val orderId: String) : Route
+
+    @Serializable
+    data object Trips : Route
 }
 
 @Composable
@@ -97,8 +101,11 @@ fun MainGraph(viewModel: TravelViewModel) {
         MainNavigation(backStack) {
             entry<Route.Home> { HomePage(backStack, viewModel) }
             entry<Route.FlightResults> { FlightResultsPage(backStack, viewModel, it) }
-            entry<Route.HotelResults> { HotelResultsPage(backStack, viewModel, it) }
-            entry<Route.CarResults> { CarResultsPage(backStack, viewModel, it) }
+            entry<Route.OfferReview> { OfferReviewPage(backStack, viewModel, it) }
+            entry<Route.Passengers> { PassengersPage(backStack, viewModel, it) }
+            entry<Route.Payment> { PaymentPage(backStack, viewModel, it) }
+            entry<Route.Confirmation> { ConfirmationPage(backStack, viewModel, it) }
+            entry<Route.Trips> { TripsPage(backStack, viewModel) }
         }
     }
 }

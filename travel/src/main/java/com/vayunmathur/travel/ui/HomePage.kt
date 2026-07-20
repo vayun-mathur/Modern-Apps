@@ -1,7 +1,7 @@
 package com.vayunmathur.travel.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,12 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Flight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,38 +20,35 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
-import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedCard
 import com.vayunmathur.library.ui.Scaffold
-import com.vayunmathur.library.ui.SegmentedButton
-import com.vayunmathur.library.ui.SegmentedButtonDefaults
-import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
-import com.vayunmathur.travel.data.Favorite
+import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.RecentSearch
-import com.vayunmathur.travel.data.Vertical
 import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.openBooking
-
-private enum class Tab(val label: String) {
-    FLIGHTS("Flights"), HOTELS("Hotels"), CARS("Cars"), TRAINS("Trains")
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var tab by remember { mutableStateOf(Tab.FLIGHTS) }
     val recents by viewModel.recentSearches.collectAsStateWithLifecycle()
-    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Travel") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Flights") },
+                actions = {
+                    if (trips.isNotEmpty()) {
+                        TextButton(onClick = { backStack.add(Route.Trips) }) { Text("My trips") }
+                    }
+                },
+            )
+        },
     ) { padding ->
         Column(
             Modifier
@@ -62,32 +56,8 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                Tab.entries.forEachIndexed { index, t ->
-                    SegmentedButton(
-                        selected = tab == t,
-                        onClick = { tab = t },
-                        shape = SegmentedButtonDefaults.itemShape(index, Tab.entries.size),
-                        label = { Text(t.label) },
-                    )
-                }
-            }
-
-            when (tab) {
-                Tab.FLIGHTS -> FlightSearchForm(viewModel) { origin, destination, depart, ret, adults ->
-                    backStack.add(Route.FlightResults(origin, destination, depart, ret, adults))
-                }
-                Tab.HOTELS -> HotelSearchForm(viewModel) { location, checkin, checkout, adults ->
-                    backStack.add(Route.HotelResults(location, checkin, checkout, adults))
-                }
-                Tab.CARS -> CarSearchForm(viewModel) { location, pickup, dropoff ->
-                    backStack.add(Route.CarResults(location, pickup, dropoff))
-                }
-                Tab.TRAINS -> TrainsComingSoon()
+            FlightSearchForm(viewModel) { origin, destination, depart, ret, adults, cabin ->
+                backStack.add(Route.FlightResults(origin, destination, depart, ret, adults, cabin))
             }
 
             if (recents.isNotEmpty()) {
@@ -104,14 +74,16 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                 }
             }
 
-            if (favorites.isNotEmpty()) {
-                SectionHeader("Saved")
-                favorites.forEach { favorite ->
-                    FavoriteCard(
-                        favorite = favorite,
-                        onOpen = { openBooking(context, favorite.bookingUrl) },
-                        onRemove = { viewModel.removeFavorite(favorite) },
-                    )
+            if (trips.isNotEmpty()) {
+                SectionHeader("My trips")
+                trips.take(3).forEach { trip ->
+                    TripSummaryCard(trip) { backStack.add(Route.Confirmation(trip.orderId)) }
+                }
+                if (trips.size > 3) {
+                    TextButton(
+                        onClick = { backStack.add(Route.Trips) },
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    ) { Text("See all ${trips.size} trips") }
                 }
             }
 
@@ -122,7 +94,6 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
 
 @Composable
 private fun RecentSearchCard(recent: RecentSearch, onClick: () -> Unit) {
-    val vertical = runCatching { Vertical.valueOf(recent.vertical) }.getOrNull()
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -134,73 +105,51 @@ private fun RecentSearchCard(recent: RecentSearch, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (vertical != null) Icon(verticalIcon(vertical), contentDescription = null)
+            Icon(Icons.Filled.Flight, contentDescription = null)
             Text(recent.label, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
 
 @Composable
-private fun FavoriteCard(favorite: Favorite, onOpen: () -> Unit, onRemove: () -> Unit) {
+private fun TripSummaryCard(trip: BookedTrip, onClick: () -> Unit) {
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable { onClick() },
     ) {
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(favorite.title, style = MaterialTheme.typography.titleMedium)
-                if (favorite.subtitle.isNotBlank()) {
-                    Text(
-                        favorite.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(trip.route, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${TravelViewModel.prettyDate(trip.departDate)} · ${trip.bookingReference}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Text(
-                formatPrice(favorite.price, favorite.currency),
+                formatMoney(trip.amount, trip.currency),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Favorite, contentDescription = "Remove", tint = MaterialTheme.colorScheme.tertiary)
-            }
-            TextButton(onClick = onOpen) { Text("Book") }
         }
     }
 }
 
-/** Rebuild the results Route for a stored search and navigate to it. */
+/** Rebuild the flight-results Route for a stored search and navigate to it. */
 private fun openRecent(backStack: NavBackStack<Route>, recent: RecentSearch) {
-    when (runCatching { Vertical.valueOf(recent.vertical) }.getOrNull()) {
-        Vertical.FLIGHTS -> backStack.add(
-            Route.FlightResults(
-                origin = recent.origin.orEmpty(),
-                destination = recent.destination.orEmpty(),
-                depart = recent.depart.orEmpty(),
-                returnDate = recent.returnDate,
-                adults = recent.adults,
-            )
+    backStack.add(
+        Route.FlightResults(
+            origin = recent.origin.orEmpty(),
+            destination = recent.destination.orEmpty(),
+            depart = recent.depart.orEmpty(),
+            returnDate = recent.returnDate,
+            adults = recent.adults,
+            cabin = recent.cabin,
         )
-        Vertical.HOTELS -> backStack.add(
-            Route.HotelResults(
-                location = recent.location.orEmpty(),
-                checkin = recent.checkin.orEmpty(),
-                checkout = recent.checkout.orEmpty(),
-                adults = recent.adults,
-            )
-        )
-        Vertical.CARS -> backStack.add(
-            Route.CarResults(
-                location = recent.location.orEmpty(),
-                pickup = recent.pickup.orEmpty(),
-                dropoff = recent.dropoff.orEmpty(),
-            )
-        )
-        null -> {}
-    }
+    )
 }

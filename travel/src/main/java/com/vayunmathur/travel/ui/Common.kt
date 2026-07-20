@@ -8,19 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,10 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DatePicker
 import com.vayunmathur.library.ui.DatePickerDialog
@@ -50,6 +39,7 @@ import com.vayunmathur.travel.network.PlaceDto
 import com.vayunmathur.travel.util.TravelViewModel
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -62,18 +52,6 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
         fontWeight = FontWeight.SemiBold,
         modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
-}
-
-/** A row of up to [max] stars, [stars] of them filled (hotel rating). */
-@Composable
-fun StarRow(stars: Int, max: Int = 5, modifier: Modifier = Modifier) {
-    if (stars <= 0) return
-    val filled = MaterialTheme.colorScheme.tertiary
-    Row(modifier) {
-        repeat(stars.coerceIn(0, max)) {
-            Icon(Icons.Filled.Star, contentDescription = null, tint = filled, modifier = Modifier.size(16.dp))
-        }
-    }
 }
 
 /**
@@ -194,7 +172,7 @@ fun DateField(
     }
 }
 
-/** A +/- stepper for a small integer count (passengers, rooms). */
+/** A +/- stepper for a small integer count (passengers). */
 @Composable
 fun CountStepper(
     label: String,
@@ -224,86 +202,14 @@ fun CountStepper(
     }
 }
 
-/** A price like "$412" / "€220"; "See prices" when [price] is 0 (unknown). */
-fun formatPrice(price: Double, currency: String): String {
-    if (price <= 0.0) return "See prices"
-    val symbol = when (currency.lowercase()) {
-        "usd" -> "$"
-        "eur" -> "€"
-        "gbp" -> "£"
-        else -> currency.uppercase() + " "
-    }
-    return symbol + (if (price % 1.0 == 0.0) price.toInt().toString() else "%.2f".format(price))
-}
-
-/**
- * A reusable result card: title + subtitle on the left, a price and a "Book"
- * button on the right, and a favorite toggle.
- */
-@Composable
-fun ResultCard(
-    title: String,
-    subtitle: String,
-    price: Double,
-    currency: String,
-    isFavorite: Boolean,
-    onFavorite: () -> Unit,
-    onBook: () -> Unit,
-    modifier: Modifier = Modifier,
-    extra: (@Composable () -> Unit)? = null,
-) {
-    ElevatedCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                extra?.invoke()
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    formatPrice(price, currency),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onFavorite) {
-                        if (isFavorite) {
-                            Icon(Icons.Filled.Favorite, contentDescription = "Saved", tint = MaterialTheme.colorScheme.tertiary)
-                        } else {
-                            Icon(Icons.Filled.FavoriteBorder, contentDescription = "Save")
-                        }
-                    }
-                    TextButton(onClick = onBook) { Text("Book") }
-                }
-            }
-        }
-    }
-}
-
-/** Centered loading/error/empty state used by every results page. */
+/** Centered loading/error/empty state used by results pages. */
 @Composable
 fun StatusBox(
     loading: Boolean,
     error: String?,
     isEmpty: Boolean,
     modifier: Modifier = Modifier,
-    emptyMessage: String = "No results found. Try different dates or destinations.",
+    emptyMessage: String = "No flights found. Try different dates or airports.",
 ) {
     Box(modifier.fillMaxWidth().heightIn(min = 200.dp), contentAlignment = Alignment.Center) {
         when {
@@ -322,8 +228,42 @@ fun StatusBox(
     }
 }
 
-fun verticalIcon(vertical: com.vayunmathur.travel.data.Vertical): ImageVector = when (vertical) {
-    com.vayunmathur.travel.data.Vertical.FLIGHTS -> Icons.Filled.Flight
-    com.vayunmathur.travel.data.Vertical.HOTELS -> Icons.Filled.Hotel
-    com.vayunmathur.travel.data.Vertical.CARS -> Icons.Filled.DirectionsCar
+// --- Formatting helpers ------------------------------------------------------
+
+/** A money label like "$412" / "€220.50" from a Duffel decimal-string amount. */
+fun formatMoney(amount: String, currency: String): String {
+    val value = amount.toDoubleOrNull() ?: return "$currency $amount"
+    val symbol = when (currency.uppercase()) {
+        "USD" -> "$"
+        "EUR" -> "€"
+        "GBP" -> "£"
+        else -> currency.uppercase() + " "
+    }
+    return symbol + (if (value % 1.0 == 0.0) value.toInt().toString() else "%.2f".format(value))
+}
+
+/** "510" minutes -> "8h 30m". */
+fun formatDuration(minutes: Long): String {
+    if (minutes <= 0) return ""
+    val h = minutes / 60
+    val m = minutes % 60
+    return buildString {
+        if (h > 0) append("${h}h")
+        if (m > 0) {
+            if (h > 0) append(" ")
+            append("${m}m")
+        }
+    }
+}
+
+/** "2026-09-01T10:00:00" -> "10:00"; falls back to the raw time part. */
+fun formatTime(iso: String): String = runCatching {
+    LocalDateTime.parse(iso.take(19)).format(DateTimeFormatter.ofPattern("HH:mm"))
+}.getOrDefault(iso.substringAfter('T').take(5))
+
+/** Stops label: "Nonstop" / "1 stop" / "N stops". */
+fun stopsLabel(stops: Long): String = when (stops) {
+    0L -> "Nonstop"
+    1L -> "1 stop"
+    else -> "$stops stops"
 }

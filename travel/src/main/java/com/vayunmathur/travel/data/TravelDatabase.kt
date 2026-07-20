@@ -38,25 +38,28 @@ interface RecentSearchDao {
 }
 
 @Dao
-interface FavoriteDao {
-    @Query("SELECT * FROM Favorite ORDER BY createdAt DESC")
-    fun observeAll(): Flow<List<Favorite>>
+interface BookedTripDao {
+    @Query("SELECT * FROM BookedTrip ORDER BY createdAt DESC")
+    fun observeAll(): Flow<List<BookedTrip>>
+
+    @Query("SELECT * FROM BookedTrip WHERE orderId = :orderId")
+    suspend fun byId(orderId: String): BookedTrip?
 
     @Upsert
-    suspend fun upsert(value: Favorite)
+    suspend fun upsert(value: BookedTrip)
 
-    @Query("DELETE FROM Favorite WHERE bookingUrl = :bookingUrl")
-    suspend fun deleteByUrl(bookingUrl: String)
+    @Query("DELETE FROM BookedTrip WHERE orderId = :orderId")
+    suspend fun deleteById(orderId: String)
 }
 
 @Database(
-    entities = [RecentSearch::class, Favorite::class],
+    entities = [RecentSearch::class, BookedTrip::class],
     version = 1,
     exportSchema = false,
 )
 abstract class TravelDatabase : RoomDatabase() {
     abstract fun recentSearchDao(): RecentSearchDao
-    abstract fun favoriteDao(): FavoriteDao
+    abstract fun bookedTripDao(): BookedTripDao
 
     companion object : DatabaseMigrations {
         override val migrations = emptyList<androidx.room.migration.Migration>()
