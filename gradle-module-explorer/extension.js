@@ -118,11 +118,16 @@ class ModuleTreeProvider {
     }
 
     if (node.kind === 'dir') {
-      // Passing a Uri gives us the themed folder icon and the basename label.
-      return new vscode.TreeItem(
-        vscode.Uri.file(node.path),
+      // Compact a chain of single-child folders into one row (a/b/c), like
+      // VS Code's "compact folders". resourceUri (final dir) gives the icon.
+      const chain = this.collapseChain(node.path);
+      const item = new vscode.TreeItem(
+        chain.label,
         vscode.TreeItemCollapsibleState.Collapsed,
       );
+      item.resourceUri = vscode.Uri.file(chain.finalDir);
+      item.iconPath = vscode.ThemeIcon.Folder;
+      return item;
     }
 
     const item = new vscode.TreeItem(
@@ -147,7 +152,8 @@ class ModuleTreeProvider {
     if (node.kind === 'module') {
       return this.readModuleChildren(node.module.dir);
     }
-    return this.readDir(node.path);
+    // Descend through any collapsed single-folder chain first.
+    return this.readDir(this.collapseChain(node.path).finalDir);
   }
 
   /**
@@ -199,6 +205,28 @@ class ModuleTreeProvider {
     return this.moduleDirs.some(
       (md) => md === dir || md.startsWith(dir + path.sep),
     );
+  }
+
+  /**
+   * Follow a run of single-child directories starting at `dir`. Returns the
+   * deepest directory reached and a "a/b/c" label of the joined segment names.
+   * Stops when a directory has zero or multiple visible children, or its single
+   * child is a file.
+   */
+  collapseChain(dir) {
+    const segments = [path.basename(dir)];
+    let current = dir;
+    // Guard against pathological depth / symlink loops.
+    for (let i = 0; i < 100; i++) {
+      const children = this.readDir(current);
+      if (children.length === 1 && children[0].kind === 'dir') {
+        current = children[0].path;
+        segments.push(path.basename(current));
+      } else {
+        break;
+      }
+    }
+    return { finalDir: current, label: segments.join('/') };
   }
 
   readDir(dir) {
