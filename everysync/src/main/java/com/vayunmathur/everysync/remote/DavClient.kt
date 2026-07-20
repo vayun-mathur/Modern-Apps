@@ -31,12 +31,15 @@ data class DavCollection(
  * Change detection uses collection ctags and per-resource ETags; the caller
  * decides what to re-fetch.
  */
-class DavClient(private val creds: DavCredentials) {
+class DavClient(private val authHeader: () -> String) {
 
-    private fun authHeaders(extra: Map<String, String> = emptyMap()): Map<String, String> {
-        val basic = Base64.encode("${creds.username}:${creds.password}".toByteArray())
-        return mapOf("Authorization" to "Basic $basic") + extra
-    }
+    /** Basic-auth client for username/password DAV servers (iCloud, generic). */
+    constructor(creds: DavCredentials) : this({
+        "Basic " + Base64.encode("${creds.username}:${creds.password}".toByteArray())
+    })
+
+    private fun authHeaders(extra: Map<String, String> = emptyMap()): Map<String, String> =
+        mapOf("Authorization" to authHeader()) + extra
 
     private suspend fun request(url: String, method: String, headers: Map<String, String>, body: String?): SimpleResponse =
         NetworkClient.performRequest(url, method, headers, body)
@@ -61,6 +64,7 @@ class DavClient(private val creds: DavCredentials) {
         } catch (e: Exception) {
             Log.e(TAG, "discoverCollections failed", e)
         }
+        Log.i(TAG, "discoverCollections(isCalendar=$isCalendar) base=$baseUrl -> ${out.size} collection(s): ${out.map { it.url }}")
         return out
     }
 

@@ -11,18 +11,15 @@ import com.vayunmathur.everysync.provider.AuthType
 import com.vayunmathur.everysync.provider.DataType
 import com.vayunmathur.everysync.provider.SyncDirection
 import com.vayunmathur.everysync.provider.SyncProvider
-import com.vayunmathur.everysync.provider.SyncState
-import com.vayunmathur.everysync.remote.GoogleCalendarClient
-import com.vayunmathur.everysync.remote.GooglePeopleClient
-import com.vayunmathur.everysync.sink.CalendarSink
-import com.vayunmathur.everysync.sink.ContactsSink
+import com.vayunmathur.everysync.remote.DavClient
+import com.vayunmathur.everysync.remote.DavSync
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.ui.IconProvider
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/** Google (People API + Calendar API), OAuth PKCE, contacts + calendar, two-way. */
+/** Google via CardDAV (contacts) + CalDAV (calendar), OAuth PKCE Bearer, two-way. */
 class GoogleProvider : SyncProvider {
     override val id = "google"
     override val displayName = "Google"
@@ -33,78 +30,58 @@ class GoogleProvider : SyncProvider {
     override fun oauthConfig(): OAuthConfig = OAuthConfig.GOOGLE
 
     override suspend fun resolveAccountName(context: Context, tokens: OAuthTokens): String {
-        return try {
-            val resp = NetworkClient.performRequest(
-                "https://www.googleapis.com/oauth2/v3/userinfo", "GET",
-                mapOf("Authorization" to "Bearer ${tokens.accessToken}"),
-            )
-            val email = (JSON.parseToJsonElement(resp.body) as? JsonObject)
-                ?.get("email")?.jsonPrimitive?.content
-            if (!email.isNullOrBlank()) "$email (Google)" else "Google account"
-        } catch (e: Exception) {
-            Log.e(TAG, "resolveAccountName failed", e)
-            "Google account"
-        }
+        val email = fetchEmail(tokens.accessToken)
+        return if (!email.isNullOrBlank()) "$email (Google)" else "Google account"
     }
 
     override suspend fun sync(context: Context, config: AccountConfig, direction: SyncDirection) {
         val token = OAuthManager.validAccessToken(context, config.accountName, id) ?: return
         val account = config.accountName
-
-        if (DataType.CONTACTS in config.enabledTypes) syncContacts(context, account, token, direction)
-        if (DataType.CALENDAR in config.enabledTypes) syncCalendars(context, account, token, direction)
-    }
-
-    private suspend fun syncContacts(context: Context, account: String, token: String, direction: SyncDirection) {
-        val people = GooglePeopleClient(token)
-        if (direction != SyncDirection.PUSH) {
-            val result = people.listConnections(SyncState.get(context, account, "google_contacts"))
-            for (c in result.contacts) {
-                if (c.deleted) ContactsSink.delete(context, account, c.uid)
-                else ContactsSink.upsert(context, account, c)
-            }
-            result.nextSyncToken?.let { SyncState.set(context, account, "google_contacts", it) }
+        val email = fetchEmail(token) ?: emailFromAccountName(account)
+        if (email == null) {
+            Log.e(TAG, "sync: could not resolve Google account email for '$account'")
+            return
         }
-        if (direction != SyncDirection.PULL) {
-            for (change in ContactsSink.getLocalChanges(context, account)) {
-                when {
-                    change.deleted && change.sourceId != null -> people.deleteContact(change.sourceId)
-                    !change.deleted && change.sourceId == null && change.contact != null -> {
-                        val newUid = people.createContact(change.contact)
-                        if (newUid != null) ContactsSink.setSourceId(context, account, change.rawContactId, newUid, null)
-                    }
-                }
-                if (!change.deleted) ContactsSink.clearDirty(context, account, change.rawContactId)
-            }
-        }
-    }
 
-    private suspend fun syncCalendars(context: Context, account: String, token: String, direction: SyncDirection) {
-        val cal = GoogleCalendarClient(token)
-        val remoteCalendars = cal.listCalendars()
-        for (rc in remoteCalendars) {
-            val localCalId = CalendarSink.getOrCreateCalendarId(context, account, rc.id, rc.displayName, rc.color)
-            if (localCalId == -1L) continue
-            if (direction != SyncDirection.PUSH) {
-                val result = cal.listEvents(rc.id, SyncState.get(context, account, "google_cal_${rc.id}"))
-                for (e in result.events) {
-                    if (e.deleted) CalendarSink.deleteEvent(context, account, localCalId, e.uid)
-                    else CalendarSink.upsertEvent(context, account, localCalId, e)
-                }
-                result.nextSyncToken?.let { SyncState.set(context, account, "google_cal_${rc.id}", it) }
-            }
-            if (direction != SyncDirection.PULL) {
-                for (change in CalendarSink.getLocalChanges(context, account, localCalId)) {
-                    when {
-                        change.deleted && change.syncId != null -> cal.deleteEvent(rc.id, change.syncId)
-                        !change.deleted && change.syncId == null && change.event != null ->
-                            cal.createEvent(rc.id, change.event)
-                        !change.deleted -> CalendarSink.clearDirty(context, account, change.eventId)
-                    }
-                }
-            }
+        val client = DavClient { "Bearer $token" }
+
+        if (DataType.CONTACTS in config.enabledTypes) {
+            DavSync.syncContacts(
+                context, account, client,
+                "https://www.googleapis.com/carddav/v1/principals/$email/lists/default",
+                direction,
+            )
+        }
+        if (DataType.CALENDAR in config.enabledTypes) {
+            // Google's CalDAV principal is /caldav/v2/$email/user, but that is not a
+            // collection — if principal→home-set discovery fails, the fallback needs a
+            // real calendar collection to list. Point at the primary calendar's events
+            // collection so discovery always resolves at least the primary calendar
+            // (secondary calendars still come through the principal/home-set chain).
+            DavSync.syncCalendars(
+                context, account, client,
+                "https://apidata.googleusercontent.com/caldav/v2/$email/events",
+                direction,
+            )
         }
     }
+
+    /** Fetch the account email from the OAuth userinfo endpoint. */
+    private suspend fun fetchEmail(token: String): String? = try {
+        val resp = NetworkClient.performRequest(
+            "https://www.googleapis.com/oauth2/v3/userinfo", "GET",
+            mapOf("Authorization" to "Bearer $token"),
+        )
+        (JSON.parseToJsonElement(resp.body) as? JsonObject)
+            ?.get("email")?.jsonPrimitive?.content?.ifBlank { null }
+    } catch (e: Exception) {
+        Log.e(TAG, "fetchEmail failed", e)
+        null
+    }
+
+    /** Fall back to parsing the account name, which has the form "email (Google)". */
+    private fun emailFromAccountName(accountName: String): String? =
+        accountName.substringBefore(" (Google)").takeIf { "@" in it }
 
     companion object {
         private const val TAG = "GoogleProvider"

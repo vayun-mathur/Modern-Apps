@@ -9,7 +9,7 @@ import com.vayunmathur.everysync.sync.SyncScheduler
 import kotlinx.coroutines.launch
 
 /**
- * Receives the OAuth2 redirect (`https://everysync.vayunmathur.com/oauth`), completes the
+ * Receives the OAuth2 redirect (`com.vayunmathur.everysync:/oauth`), completes the
  * PKCE token exchange, then returns to [MainActivity] and kicks off a first sync.
  */
 class OAuthCallbackActivity : ComponentActivity() {

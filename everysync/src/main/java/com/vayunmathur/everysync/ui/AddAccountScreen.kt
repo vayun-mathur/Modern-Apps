@@ -40,7 +40,14 @@ fun AddAccountScreen(backStack: NavBackStack<Route>, viewModel: EverySyncViewMod
                 ListItem(
                     modifier = Modifier.clickable {
                         when (provider.authType) {
-                            AuthType.OAUTH -> viewModel.startOAuth(provider.id)
+                            AuthType.OAUTH -> {
+                                viewModel.startOAuth(provider.id)
+                                // OAuth continues in a Custom Tab and returns via
+                                // OAuthCallbackActivity → MainActivity, which retains
+                                // this back stack. Reset to the accounts list now so
+                                // the user lands on home (not here) when they return.
+                                backStack.reset(Route.Accounts)
+                            }
                             AuthType.DAV -> backStack.add(Route.DavLogin(provider.id))
                             AuthType.HEALTH_CONNECT -> viewModel.addHealthConnectAccount(provider.id) { backStack.pop() }
                         }

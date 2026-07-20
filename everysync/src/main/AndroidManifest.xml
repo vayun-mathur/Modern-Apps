@@ -64,21 +64,20 @@
             </intent-filter>
         </activity>
 
-        <!-- Receives the OAuth2 redirect (https://everysync.vayunmathur.com/oauth) as
-             a verified Android App Link, so the OS routes it straight to the app. -->
+        <!-- Receives the OAuth2 redirect (com.vayunmathur.everysync:/oauth). The
+             custom scheme is the app id, registered as the iOS OAuth client's
+             bundle ID in Google Cloud. Scheme-only filter so the hostless
+             `com.vayunmathur.everysync:/oauth` is matched. -->
         <activity
             android:name=".auth.OAuthCallbackActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.NoDisplay">
-            <intent-filter android:autoVerify="true">
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="everysync.vayunmathur.com"
-                    android:path="/oauth" />
+                <data android:scheme="com.vayunmathur.everysync" />
             </intent-filter>
         </activity>
 

@@ -12,7 +12,7 @@ import com.vayunmathur.everysync.provider.DataType
 import com.vayunmathur.everysync.provider.SyncDirection
 import com.vayunmathur.everysync.provider.SyncProvider
 import com.vayunmathur.everysync.provider.SyncState
-import com.vayunmathur.everysync.remote.GoogleFitClient
+import com.vayunmathur.everysync.remote.GoogleHealthClient
 import com.vayunmathur.everysync.sink.HealthSink
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.ui.IconProvider
@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Google Health via the Google Fitness REST API (OAuth PKCE). Pulls measurements
+ * Google Health via the Google Health API v4 (OAuth PKCE). Pulls measurements
  * into Health Connect. Pull-dominant — the cloud is the source of truth.
  */
 class GoogleHealthProvider : SyncProvider {
@@ -31,7 +31,7 @@ class GoogleHealthProvider : SyncProvider {
     override val authType = AuthType.OAUTH
     override val capabilities = setOf(DataType.HEALTH)
 
-    override fun oauthConfig(): OAuthConfig = OAuthConfig.GOOGLE_FIT
+    override fun oauthConfig(): OAuthConfig = OAuthConfig.GOOGLE_HEALTH
 
     override suspend fun resolveAccountName(context: Context, tokens: OAuthTokens): String {
         return try {
@@ -51,9 +51,9 @@ class GoogleHealthProvider : SyncProvider {
     override suspend fun sync(context: Context, config: AccountConfig, direction: SyncDirection) {
         if (DataType.HEALTH !in config.enabledTypes || direction == SyncDirection.PUSH) return
         val token = OAuthManager.validAccessToken(context, config.accountName, id) ?: return
-        val since = SyncState.get(context, config.accountName, "googlefit_since")?.toLongOrNull() ?: 0L
-        HealthSink.upsert(context, GoogleFitClient(token).getMeasurements(since))
-        SyncState.set(context, config.accountName, "googlefit_since", System.currentTimeMillis().toString())
+        val since = SyncState.get(context, config.accountName, "googlehealth_since")?.toLongOrNull() ?: 0L
+        HealthSink.upsert(context, GoogleHealthClient(token).getMeasurements(since))
+        SyncState.set(context, config.accountName, "googlehealth_since", System.currentTimeMillis().toString())
     }
 
     companion object {

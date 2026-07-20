@@ -22,31 +22,37 @@ data class OAuthConfig(
     val hasClientId: Boolean get() = clientId.isNotBlank()
 
     companion object {
-        const val REDIRECT_URI = "https://everysync.vayunmathur.com/oauth"
+        // iOS-type Google OAuth client → custom URI scheme redirect. The scheme is
+        // the app id (registered as the iOS client's "bundle ID" in Google Cloud).
+        // Per Google's installed-app spec the path uses a single slash. iOS clients
+        // do NOT accept https redirects (that's Web-client only), and Android-type
+        // clients don't allow custom schemes at all — hence the iOS client.
+        const val REDIRECT_URI = "com.vayunmathur.everysync:/oauth"
 
         val GOOGLE = OAuthConfig(
             authEndpoint = "https://accounts.google.com/o/oauth2/v2/auth",
             tokenEndpoint = "https://oauth2.googleapis.com/token",
             clientId = BuildConfig.GOOGLE_OAUTH_CLIENT_ID,
             scopes = listOf(
-                "https://www.googleapis.com/auth/contacts",
+                "openid",
+                "email",
+                "https://www.googleapis.com/auth/carddav",
                 "https://www.googleapis.com/auth/calendar",
             ),
             // Force a refresh token to be returned on first consent.
             extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
         )
 
-        // Google Health via the Google Fitness REST API — same Google OAuth client,
-        // fitness read scopes. (Google's Fit REST API is being wound down; configure
-        // the client ID to use it while available.)
-        val GOOGLE_FIT = OAuthConfig(
+        // Google Health via the Google Health API v4 (health.googleapis.com) —
+        // same Google OAuth client, read-only Google Health scopes. Replaces the
+        // wound-down Google Fitness REST API and its fitness.* scopes.
+        val GOOGLE_HEALTH = OAuthConfig(
             authEndpoint = "https://accounts.google.com/o/oauth2/v2/auth",
             tokenEndpoint = "https://oauth2.googleapis.com/token",
             clientId = BuildConfig.GOOGLE_OAUTH_CLIENT_ID,
             scopes = listOf(
-                "https://www.googleapis.com/auth/fitness.activity.read",
-                "https://www.googleapis.com/auth/fitness.body.read",
-                "https://www.googleapis.com/auth/fitness.heart_rate.read",
+                "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+                "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
             ),
             extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
         )

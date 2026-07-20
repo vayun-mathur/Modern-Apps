@@ -82,7 +82,7 @@ fun DavLoginScreen(backStack: NavBackStack<Route>, viewModel: EverySyncViewModel
             TextButton(
                 enabled = username.isNotBlank() && password.isNotBlank() && baseUrl.isNotBlank(),
                 onClick = {
-                    viewModel.davLogin(providerId, baseUrl.trim(), username.trim(), password) { backStack.pop() }
+                    viewModel.davLogin(providerId, baseUrl.trim(), username.trim(), password) { backStack.reset(Route.Accounts) }
                 },
             ) { Text(stringResource(R.string.login)) }
         },
