@@ -75,7 +75,10 @@ object HealthSink {
         // samples, so a batch of them is far larger than a batch of scalar records.
         // Keep HR batches small so a single insert doesn't blow past Health
         // Connect's per-transaction limits (which silently fails the whole call).
-        val scalar = other.mapNotNull { toRecord(it) }
+        // Build scalar records defensively: Health Connect validates value ranges
+        // at construction (e.g. HRV RMSSD must be <= 200 ms), and a single bad
+        // datapoint must never abort the whole sync — just skip it.
+        val scalar = other.mapNotNull { safeRecord(it) }
         val batches = scalar.chunked(INSERT_BATCH) + hrRecords.chunked(HR_RECORDS_PER_INSERT)
         val semaphore = Semaphore(INSERT_CONCURRENCY)
         var inserted = 0
@@ -109,11 +112,14 @@ object HealthSink {
                 dayMeasurements.sortedBy { it.startMillis }
                     .chunked(HR_SAMPLES_PER_RECORD)
                     .forEachIndexed { bucket, chunk ->
-                        val samples = chunk.map {
-                            HeartRateRecord.Sample(Instant.ofEpochMilli(it.startMillis), it.value.toLong())
+                        val samples = chunk.mapNotNull {
+                            val bpm = it.value.toLong()
+                            if (bpm in 1..300) HeartRateRecord.Sample(Instant.ofEpochMilli(it.startMillis), bpm)
+                            else null
                         }
-                        val startInst = Instant.ofEpochMilli(chunk.first().startMillis)
-                        var endInst = Instant.ofEpochMilli(chunk.last().startMillis)
+                        if (samples.isEmpty()) return@forEachIndexed
+                        val startInst = samples.first().time
+                        var endInst = samples.last().time
                         if (!endInst.isAfter(startInst)) endInst = startInst.plusMillis(1)
                         out += HeartRateRecord(
                             startTime = startInst,
@@ -128,6 +134,14 @@ object HealthSink {
                     }
             }
         return out
+    }
+
+    /** Construct a record, skipping (not crashing) on Health Connect range violations. */
+    private fun safeRecord(m: RemoteMeasurement): Record? = try {
+        toRecord(m)
+    } catch (e: Exception) {
+        Log.w(TAG, "skipping ${m.type} (${m.value}) @ ${m.startMillis}: ${e.message}")
+        null
     }
 
     private fun toRecord(m: RemoteMeasurement): Record? {
