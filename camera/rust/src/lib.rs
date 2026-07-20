@@ -23,7 +23,7 @@ use std::sync::{Mutex, OnceLock};
 
 struct Session {
     sphere: bool,
-    frames: Vec<Rgba>,
+    frames: Vec<Vec<u8>>, // JPEG-compressed frames (decoded on demand at stitch time)
     yaw: Vec<f32>,
     pitch: Vec<f32>,
 }
@@ -71,8 +71,43 @@ fn do_stitch(s: &mut Session) -> Option<Vec<u8>> {
 
 fn do_merge(s: &mut Session) -> Option<Vec<u8>> {
     let frames = std::mem::take(&mut s.frames);
-    let result = night::align_and_merge(&frames)?;
+    // Decode the JPEG burst to RGBA for alignment + merge.
+    let decoded: Vec<Rgba> = frames.iter().filter_map(|j| Rgba::from_jpeg(j)).collect();
+    let result = night::align_and_merge(&decoded)?;
     encode_jpeg(&result, 95)
+}
+
+/// Serialize an [`stitch::Estimate`] to a compact little-endian blob for the
+/// Kotlin GPU compositor. Layout:
+///   header: canvas_w u32, canvas_h u32, u0 f64, v0 f64, scale f64, count u32
+///   per cam: original_index u32, focal f64, ppx f64, ppy f64, R[9] f64
+///            (row-major), gain f32
+fn serialize_estimate(est: &stitch::Estimate) -> Vec<u8> {
+    let mut out = Vec::with_capacity(32 + est.cams.len() * (4 + 8 * 12 + 4));
+    out.extend_from_slice(&est.canvas_w.to_le_bytes());
+    out.extend_from_slice(&est.canvas_h.to_le_bytes());
+    out.extend_from_slice(&est.u0.to_le_bytes());
+    out.extend_from_slice(&est.v0.to_le_bytes());
+    out.extend_from_slice(&est.scale.to_le_bytes());
+    out.extend_from_slice(&(est.cams.len() as u32).to_le_bytes());
+    for c in &est.cams {
+        out.extend_from_slice(&(c.original_index as u32).to_le_bytes());
+        out.extend_from_slice(&c.focal.to_le_bytes());
+        out.extend_from_slice(&c.ppx.to_le_bytes());
+        out.extend_from_slice(&c.ppy.to_le_bytes());
+        for v in &c.r {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        out.extend_from_slice(&c.gain.to_le_bytes());
+    }
+    out
+}
+
+// Registration-only path for the GPU compositor. Borrows the session (does not
+// consume its frames) so a CPU-stitch fallback can still run if the GPU fails.
+fn do_estimate(s: &Session) -> Option<Vec<u8>> {
+    let est = stitch::estimate_pano(&s.frames, &s.yaw, &s.pitch)?;
+    Some(serialize_estimate(&est))
 }
 
 #[cfg(test)]
@@ -80,14 +115,8 @@ mod tests {
     use super::*;
     use crate::imgbuf::Rgba;
 
-    fn load(path: &str) -> Rgba {
-        let img = image::ImageReader::open(path)
-            .expect("open image")
-            .decode()
-            .expect("decode image")
-            .to_rgba8();
-        let (w, h) = img.dimensions();
-        Rgba::from_bytes(w as usize, h as usize, img.into_raw())
+    fn load(path: &str) -> Vec<u8> {
+        std::fs::read(path).expect("read image bytes")
     }
 
     /// Stitches the two sample photos from linrl3/Image-Stitching-OpenCV and
@@ -97,7 +126,10 @@ mod tests {
     fn stitch_two_samples() {
         let a = load("testdata/q11.jpg");
         let b = load("testdata/q22.jpg");
-        let (aw, ah) = (a.w, a.h);
+        let (aw, ah) = {
+            let img = crate::imgbuf::Rgba::from_jpeg(&a).unwrap();
+            (img.w, img.h)
+        };
         let t0 = std::time::Instant::now();
         let out = crate::stitch::stitch_panorama(&[a, b], &[0.0, 0.0], &[0.0, 0.0])
             .expect("stitch returned None");
@@ -171,13 +203,55 @@ mod tests {
         assert_eq!(border_black, 0, "black pixels on the border");
         assert!(black_pct < 0.05, "too many black pixels: {:.3}%", black_pct);
     }
+
+    /// Registration-only path used by the GPU compositor: decode the estimate
+    /// blob and assert it yields 2 cameras with finite intrinsics/rotation and a
+    /// plausible canvas size. (GLES compositing itself needs an Android EGL
+    /// context, so it can't run under host `cargo test`.)
+    #[test]
+    fn estimate_two_samples() {
+        let a = load("testdata/q11.jpg");
+        let b = load("testdata/q22.jpg");
+        let est = crate::stitch::estimate_pano(&[a, b], &[0.0, 0.0], &[0.0, 0.0])
+            .expect("estimate returned None");
+        let blob = serialize_estimate(&est);
+
+        // Header: canvas_w u32, canvas_h u32, u0 f64, v0 f64, scale f64, count u32.
+        let u32_at = |o: usize| u32::from_le_bytes(blob[o..o + 4].try_into().unwrap());
+        let f64_at = |o: usize| f64::from_le_bytes(blob[o..o + 8].try_into().unwrap());
+        let canvas_w = u32_at(0);
+        let canvas_h = u32_at(4);
+        let scale = f64_at(24);
+        let count = u32_at(32);
+        assert_eq!(count, 2, "expected 2 cameras, got {count}");
+        assert!(scale.is_finite() && scale > 1.0, "bad scale {scale}");
+        assert!(
+            canvas_w > 800 && canvas_h > 400 && (canvas_w as u64 * canvas_h as u64) < 12_000_000,
+            "implausible canvas {canvas_w}x{canvas_h}"
+        );
+
+        // Per-cam records begin at offset 36; each is 4 + 8*12 + 4 = 104 bytes.
+        let rec = 4 + 8 * 12 + 4;
+        assert_eq!(blob.len(), 36 + count as usize * rec, "blob size mismatch");
+        for i in 0..count as usize {
+            let base = 36 + i * rec;
+            let focal = f64_at(base + 4);
+            assert!(focal.is_finite() && focal > 1.0, "bad focal {focal}");
+            for j in 0..9 {
+                let v = f64_at(base + 4 + 8 * (3 + j));
+                assert!(v.is_finite(), "non-finite rotation entry");
+            }
+            let gain = f32::from_le_bytes(blob[base + 100..base + 104].try_into().unwrap());
+            assert!(gain.is_finite() && gain >= 0.5 && gain <= 2.0, "bad gain {gain}");
+        }
+    }
 }
 
 #[cfg(not(test))]
 mod jni_bindings {
     use super::*;
     use jni::objects::{JByteArray, JClass};
-    use jni::sys::{jboolean, jbyteArray, jfloat, jint, jlong};
+    use jni::sys::{jboolean, jbyteArray, jfloat, jlong};
     use jni::JNIEnv;
 
     #[no_mangle]
@@ -199,23 +273,20 @@ mod jni_bindings {
         env: JNIEnv<'l>,
         _class: JClass<'l>,
         handle: jlong,
-        rgba: JByteArray<'l>,
-        width: jint,
-        height: jint,
+        jpeg: JByteArray<'l>,
         yaw: jfloat,
         pitch: jfloat,
         _roll: jfloat,
     ) {
-        let bytes = match env.convert_byte_array(&rgba) {
+        let bytes = match env.convert_byte_array(&jpeg) {
             Ok(b) => b,
             Err(_) => return,
         };
-        let (w, h) = (width as usize, height as usize);
-        if bytes.len() != w * h * 4 {
+        if bytes.is_empty() {
             return;
         }
         if let Some(s) = registry().lock().unwrap().get_mut(&(handle as i64)) {
-            s.frames.push(Rgba::from_bytes(w, h, bytes));
+            s.frames.push(bytes);
             s.yaw.push(yaw);
             s.pitch.push(pitch);
         }
@@ -237,6 +308,41 @@ mod jni_bindings {
         handle: jlong,
     ) -> jbyteArray {
         run_and_return(env, handle, false)
+    }
+
+    #[no_mangle]
+    pub extern "system" fn Java_com_vayunmathur_camera_util_StitchNative_estimate<'l>(
+        env: JNIEnv<'l>,
+        _class: JClass<'l>,
+        handle: jlong,
+    ) -> jbyteArray {
+        let null = std::ptr::null_mut();
+        // Move the session data out so the (long) registration doesn't hold the
+        // registry lock, then restore it afterwards so a CPU-stitch fallback can
+        // still consume the same frames if the GPU path fails.
+        let session = match registry().lock().unwrap().get_mut(&(handle as i64)) {
+            Some(s) => Session {
+                sphere: s.sphere,
+                frames: std::mem::take(&mut s.frames),
+                yaw: std::mem::take(&mut s.yaw),
+                pitch: std::mem::take(&mut s.pitch),
+            },
+            None => return null,
+        };
+        let bytes = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| do_estimate(&session)))
+            .unwrap_or(None);
+        if let Some(s) = registry().lock().unwrap().get_mut(&(handle as i64)) {
+            s.frames = session.frames;
+            s.yaw = session.yaw;
+            s.pitch = session.pitch;
+        }
+        match bytes {
+            Some(b) => match env.byte_array_from_slice(&b) {
+                Ok(arr) => arr.into_raw(),
+                Err(_) => null,
+            },
+            None => null,
+        }
     }
 
     #[no_mangle]
@@ -278,3 +384,4 @@ mod jni_bindings {
         }
     }
 }
+

@@ -7,7 +7,7 @@ use crate::imgbuf::Rgba;
 use crate::sphere::WarpedTile;
 
 const INF: i64 = 1 << 40;
-const MAX_CUT_NODES: usize = 900_000;
+const MAX_CUT_NODES: usize = 150_000;
 
 pub fn seam_masks(tiles: &[WarpedTile]) -> Vec<Vec<u8>> {
     graph_cut_masks(tiles).unwrap_or_else(|| voronoi_masks(tiles))

@@ -20,6 +20,13 @@ impl Rgba {
         Rgba { w, h, px }
     }
 
+    /// Decode JPEG/PNG bytes into an RGBA buffer.
+    pub fn from_jpeg(bytes: &[u8]) -> Option<Rgba> {
+        let img = image::load_from_memory(bytes).ok()?.to_rgba8();
+        let (w, h) = img.dimensions();
+        Some(Rgba::from_bytes(w as usize, h as usize, img.into_raw()))
+    }
+
     #[inline]
     pub fn get(&self, x: usize, y: usize) -> [u8; 4] {
         let i = (y * self.w + x) * 4;

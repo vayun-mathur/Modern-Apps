@@ -927,26 +927,36 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             owner.start()
             sessionLifecycleOwner = owner
 
-            // Target ~1080p for the analysis stream: a large jump over the default
-            // ~VGA analysis size, while bounding per-frame memory (the sphere sweep
-            // holds ~40 frames until stitch).
-            val analysisSelector = ResolutionSelector.Builder()
-                .setResolutionStrategy(
-                    ResolutionStrategy(
-                        android.util.Size(1920, 1080),
-                        ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+            // Max-resolution analysis stream (same as the photo route): frames are
+            // now stored JPEG-compressed and decoded one at a time at stitch, so a
+            // high-res sweep no longer blows up memory. Fall back to a default-res
+            // bind if the high-res analysis combo is rejected by the device.
+            fun bind(maxRes: Boolean): Camera {
+                val analysisBuilder = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                if (maxRes) {
+                    analysisBuilder.setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                            .setAllowedResolutionMode(
+                                ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE
+                            )
+                            .build()
                     )
-                )
-                .build()
-            val analysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setResolutionSelector(analysisSelector)
-                .build()
-            imageAnalysis = analysis
-            // No ImageCapture in this session.
-            imageCapture = null
+                }
+                val analysis = analysisBuilder.build()
+                imageAnalysis = analysis
+                imageCapture = null // No ImageCapture in this session.
+                return provider.bindToLifecycle(owner, selector, preview, analysis)
+            }
 
-            boundCamera = provider.bindToLifecycle(owner, selector, preview, analysis)
+            boundCamera = try {
+                bind(maxRes = true)
+            } catch (e: Exception) {
+                Log.w("PhotoSession", "Max-res panorama bind failed; retrying at default resolution", e)
+                provider.unbindAll()
+                bind(maxRes = false)
+            }
 
             boundCamera?.cameraInfo?.zoomState?.value?.let {
                 updateZoomLevels(it.minZoomRatio, it.maxZoomRatio)

@@ -51,16 +51,32 @@ fn match_pair(src: usize, dst: usize, fs: &Features, fd: &Features) -> Option<Ma
     Some(MatchInfo { src, dst, h, inliers, confidence })
 }
 
-/// Match pairs (i<j). `window` limits pairs to |i-j| <= window (0 = all pairs);
-/// for an ordered continuous sweep a small window is far cheaper and loses
-/// nothing since only nearby frames overlap. Runs in parallel across pairs.
-pub fn match_all(feats: &[Features], window: usize) -> Vec<MatchInfo> {
+/// Angular separation (deg) between two frames' gyro orientations.
+fn angular_dist(yaw: &[f32], pitch: &[f32], i: usize, j: usize) -> f32 {
+    let mut dy = (yaw[i] - yaw[j]) % 360.0;
+    if dy > 180.0 {
+        dy -= 360.0;
+    }
+    if dy < -180.0 {
+        dy += 360.0;
+    }
+    let dp = pitch[i] - pitch[j];
+    (dy * dy + dp * dp).sqrt()
+}
+
+/// Match pairs (i<j). When per-frame gyro orientations are available, only pairs
+/// within `max_angle` degrees are matched (they physically overlap) — this both
+/// connects a 2D photo-sphere grid (horizontal AND vertical neighbours) and keeps
+/// the pair count low. Falls back to all pairs otherwise. Runs in parallel.
+pub fn match_all(feats: &[Features], yaw: &[f32], pitch: &[f32], max_angle: f32) -> Vec<MatchInfo> {
     let n = feats.len();
+    let use_angles = yaw.len() == n && pitch.len() == n && max_angle > 0.0;
     let mut pairs: Vec<(usize, usize)> = Vec::new();
     for i in 0..n {
-        let jmax = if window == 0 { n } else { (i + window + 1).min(n) };
-        for j in (i + 1)..jmax {
-            pairs.push((i, j));
+        for j in (i + 1)..n {
+            if !use_angles || angular_dist(yaw, pitch, i, j) <= max_angle {
+                pairs.push((i, j));
+            }
         }
     }
     pairs

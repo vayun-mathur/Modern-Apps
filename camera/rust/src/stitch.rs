@@ -14,16 +14,17 @@ use crate::imgbuf::{to_gray, Rgba};
 use crate::matching::{biggest_component, match_all, MatchInfo};
 use crate::seam::seam_masks;
 use crate::sphere::{warp_one, warped_bounds, WarpedTile};
+use crate::warp::mean_luma;
 use crate::wave::wave_correct_horizontal;
 use rayon::prelude::*;
 
 const MAX_FEATURES: usize = 3000;
 const FAST_THRESHOLD: i32 = 12;
 const CONF_THRESH: f64 = 1.0;
-const MATCH_WINDOW: usize = 5; // match each frame only to ~5 neighbours (ordered sweep)
+const MATCH_MAX_ANGLE: f32 = 55.0; // match frames within this gyro separation (deg)
 const REG_MEGAPIXELS: f64 = 0.6; // registration resolution (like OpenCV's registr_resol_)
-const COMPOSE_MAX_PIXELS: f64 = 3_000_000.0; // cap output canvas area (bounds warp+blend cost/memory)
-const SEAM_MAX_PIXELS: f64 = 400_000.0; // seam/exposure canvas area (OpenCV seam_est_resol_)
+const COMPOSE_MAX_PIXELS: f64 = 8_000_000.0; // cap output canvas area (bounds warp+blend cost/memory)
+const SEAM_MAX_PIXELS: f64 = 100_000.0; // seam/exposure canvas area (OpenCV seam_est_resol_ = 0.1 MP)
 
 fn remap_matches(matches: Vec<MatchInfo>, kept: &[usize]) -> Vec<MatchInfo> {
     let max = kept.iter().max().map(|m| m + 1).unwrap_or(0);
@@ -62,36 +63,211 @@ fn median_focal(cams: &[CameraParams]) -> f64 {
     }
 }
 
-pub fn stitch_panorama(frames: &[Rgba], _yaw: &[f32], _pitch: &[f32]) -> Option<Rgba> {
-    let n = frames.len();
+/// One kept frame's camera solution for GPU compositing. `r` is the 3×3 rotation
+/// serialized **row-major** (r[0..3] = row 0, etc.). Intrinsics are at full
+/// capture resolution (aspect = 1, so K = [[focal,0,ppx],[0,focal,ppy],[0,0,1]]).
+pub struct FrameCam {
+    pub original_index: usize,
+    pub focal: f64,
+    pub ppx: f64,
+    pub ppy: f64,
+    pub r: [f64; 9],
+    pub gain: f32,
+}
+
+/// Registration result for the GPU compositor: the global sphere canvas geometry
+/// (in warp pixels) plus the per-kept-frame camera solutions. The compositor
+/// warps each kept frame with `outputPx = (u - u0, v - v0)` onto a
+/// `canvas_w × canvas_h` canvas using `scale`.
+pub struct Estimate {
+    pub canvas_w: u32,
+    pub canvas_h: u32,
+    pub u0: f64,
+    pub v0: f64,
+    pub scale: f64,
+    pub cams: Vec<FrameCam>,
+}
+
+fn median_f32(vals: &[f32]) -> f32 {
+    let mut v: Vec<f32> = vals.iter().copied().filter(|x| x.is_finite() && *x > 0.0).collect();
+    if v.is_empty() {
+        return 0.0;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    let m = v.len() / 2;
+    if v.len() % 2 == 1 {
+        v[m]
+    } else {
+        (v[m - 1] + v[m]) / 2.0
+    }
+}
+
+/// Registration-only path for the GPU compositor: runs the same low-res
+/// features → matching → estimate → bundle-adjust → wave-correct stages as
+/// [`stitch_panorama`], computes the compose canvas geometry, and returns
+/// per-frame camera solutions + a cheap exposure gain — **without** running the
+/// expensive per-pixel warp/seam/blend (those move to the GPU).
+pub fn estimate_pano(frames_jpeg: &[Vec<u8>], yaw: &[f32], pitch: &[f32]) -> Option<Estimate> {
+    let n = frames_jpeg.len();
+    if n < 2 {
+        return None;
+    }
+
+    // Full-resolution frame dimensions (from the first frame).
+    let (full_w, full_h) = {
+        let f0 = Rgba::from_jpeg(&frames_jpeg[0])?;
+        (f0.w, f0.h)
+    };
+
+    // Registration at ~0.6 MP; also capture each frame's mean luma (for the
+    // cheap per-frame exposure gain) from the already-decoded low-res image.
+    let reg_scale = (REG_MEGAPIXELS * 1e6 / (full_w as f64 * full_h as f64)).sqrt().min(1.0);
+    let reg_w = ((full_w as f64 * reg_scale).round() as usize).max(1);
+    let reg_h = ((full_h as f64 * reg_scale).round() as usize).max(1);
+    let reg: Vec<(Features, f32)> = frames_jpeg
+        .par_iter()
+        .map(|j| {
+            let full = Rgba::from_jpeg(j).unwrap_or_else(|| Rgba::new(1, 1));
+            let small = if reg_scale < 0.999 { full.resized(reg_w, reg_h) } else { full };
+            let luma = mean_luma(&small);
+            (detect_and_describe(&to_gray(&small), MAX_FEATURES, FAST_THRESHOLD), luma)
+        })
+        .collect();
+    let (feats, lumas): (Vec<Features>, Vec<f32>) = reg.into_iter().unzip();
+
+    let matches = match_all(&feats, yaw, pitch, MATCH_MAX_ANGLE);
+    if matches.is_empty() {
+        return None;
+    }
+    let kept = biggest_component(n, &matches, CONF_THRESH);
+    if kept.len() < 2 {
+        return None;
+    }
+    let matches = remap_matches(matches, &kept);
+    if matches.is_empty() {
+        return None;
+    }
+    let m = kept.len();
+
+    let mut cams = estimate_cameras(m, reg_w, reg_h, &matches);
+    bundle_adjust(&mut cams, &matches);
+    wave_correct_horizontal(&mut cams);
+
+    // Rescale intrinsics from registration to full resolution.
+    for c in cams.iter_mut() {
+        c.focal /= reg_scale;
+        c.ppx = full_w as f64 / 2.0;
+        c.ppy = full_h as f64 / 2.0;
+    }
+
+    // Choose the compose scale (bounded so the canvas stays within memory), the
+    // same way stitch_panorama does, so GPU and CPU paths size the canvas alike.
+    let mut scale = median_focal(&cams);
+    if !scale.is_finite() || scale <= 1.0 {
+        return None;
+    }
+    let compose_area = {
+        let mut gx0 = f64::MAX;
+        let mut gy0 = f64::MAX;
+        let mut gx1 = f64::MIN;
+        let mut gy1 = f64::MIN;
+        for c in cams.iter() {
+            if let Some((u0, v0, u1, v1)) = warped_bounds(full_w, full_h, &c.k(), &c.r, scale) {
+                gx0 = gx0.min(u0);
+                gy0 = gy0.min(v0);
+                gx1 = gx1.max(u1);
+                gy1 = gy1.max(v1);
+            }
+        }
+        (gx1 - gx0).max(1.0) * (gy1 - gy0).max(1.0)
+    };
+    if compose_area.is_finite() && compose_area > COMPOSE_MAX_PIXELS {
+        scale *= (COMPOSE_MAX_PIXELS / compose_area).sqrt();
+    }
+
+    // Final global bounds at the committed scale -> canvas geometry.
+    let (mut gx0, mut gy0, mut gx1, mut gy1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+    for c in cams.iter() {
+        if let Some((u0, v0, u1, v1)) = warped_bounds(full_w, full_h, &c.k(), &c.r, scale) {
+            gx0 = gx0.min(u0);
+            gy0 = gy0.min(v0);
+            gx1 = gx1.max(u1);
+            gy1 = gy1.max(v1);
+        }
+    }
+    if !gx0.is_finite() || !gy0.is_finite() || !gx1.is_finite() || !gy1.is_finite() {
+        return None;
+    }
+    let canvas_w = ((gx1 - gx0).ceil() as i64 + 1).max(1);
+    let canvas_h = ((gy1 - gy0).ceil() as i64 + 1).max(1);
+
+    // Cheap per-frame exposure gain: pull each kept frame toward the median luma.
+    let kept_lumas: Vec<f32> = kept.iter().map(|&i| lumas[i]).collect();
+    let ref_luma = median_f32(&kept_lumas);
+    let cams_out: Vec<FrameCam> = kept
+        .iter()
+        .zip(cams.iter())
+        .map(|(&i, c)| {
+            let luma = lumas[i];
+            let gain = if ref_luma > 1.0 && luma > 1.0 { (ref_luma / luma).clamp(0.5, 2.0) } else { 1.0 };
+            let r = c.r;
+            FrameCam {
+                original_index: i,
+                focal: c.focal,
+                ppx: c.ppx,
+                ppy: c.ppy,
+                r: [
+                    r[(0, 0)], r[(0, 1)], r[(0, 2)],
+                    r[(1, 0)], r[(1, 1)], r[(1, 2)],
+                    r[(2, 0)], r[(2, 1)], r[(2, 2)],
+                ],
+                gain,
+            }
+        })
+        .collect();
+
+    Some(Estimate {
+        canvas_w: canvas_w as u32,
+        canvas_h: canvas_h as u32,
+        u0: gx0,
+        v0: gy0,
+        scale,
+        cams: cams_out,
+    })
+}
+
+pub fn stitch_panorama(frames_jpeg: &[Vec<u8>], yaw: &[f32], pitch: &[f32]) -> Option<Rgba> {
+    let n = frames_jpeg.len();
     if n == 0 {
         return None;
     }
     if n == 1 {
-        return Some(frames[0].clone());
+        return Rgba::from_jpeg(&frames_jpeg[0]);
     }
 
-    let full_w = frames[0].w;
-    let full_h = frames[0].h;
+    // Full-resolution frame dimensions (from the first frame).
+    let (full_w, full_h) = {
+        let f0 = Rgba::from_jpeg(&frames_jpeg[0])?;
+        (f0.w, f0.h)
+    };
 
-    // --- registration resolution (downscale for the slow stages) ---
+    // --- registration: decode each frame, downscale to ~0.6 MP, detect features.
+    // Frames are decoded on demand and dropped, so max-res frames never all sit in
+    // RAM as RGBA at once. ---
     let reg_scale = (REG_MEGAPIXELS * 1e6 / (full_w as f64 * full_h as f64)).sqrt().min(1.0);
     let reg_w = ((full_w as f64 * reg_scale).round() as usize).max(1);
     let reg_h = ((full_h as f64 * reg_scale).round() as usize).max(1);
-    let reg_frames: Vec<Rgba> = if reg_scale < 0.999 {
-        frames.par_iter().map(|f| f.resized(reg_w, reg_h)).collect()
-    } else {
-        frames.to_vec()
-    };
-
-    // 1) features (parallel)
-    let feats: Vec<Features> = reg_frames
+    let feats: Vec<Features> = frames_jpeg
         .par_iter()
-        .map(|f| detect_and_describe(&to_gray(f), MAX_FEATURES, FAST_THRESHOLD))
+        .map(|j| {
+            let full = Rgba::from_jpeg(j).unwrap_or_else(|| Rgba::new(1, 1));
+            let small = if reg_scale < 0.999 { full.resized(reg_w, reg_h) } else { full };
+            detect_and_describe(&to_gray(&small), MAX_FEATURES, FAST_THRESHOLD)
+        })
         .collect();
 
-    // 2) all-pairs matching
-    let matches = match_all(&feats, MATCH_WINDOW);
+    // 2) matching (by gyro angular proximity so both pano rings and sphere grids connect)
+    let matches = match_all(&feats, yaw, pitch, MATCH_MAX_ANGLE);
     if matches.is_empty() {
         return None;
     }
@@ -128,14 +304,13 @@ pub fn stitch_panorama(frames: &[Rgba], _yaw: &[f32], _pitch: &[f32]) -> Option<
     if !scale.is_finite() || scale <= 1.0 {
         return None;
     }
-    let kept_full: Vec<&Rgba> = kept.iter().map(|&i| &frames[i]).collect();
     let mut compose_area = {
         let mut gx0 = f64::MAX;
         let mut gy0 = f64::MAX;
         let mut gx1 = f64::MIN;
         let mut gy1 = f64::MIN;
-        for (f, c) in kept_full.iter().zip(cams.iter()) {
-            if let Some((u0, v0, u1, v1)) = warped_bounds(f.w, f.h, &c.k(), &c.r, scale) {
+        for c in cams.iter() {
+            if let Some((u0, v0, u1, v1)) = warped_bounds(full_w, full_h, &c.k(), &c.r, scale) {
                 gx0 = gx0.min(u0);
                 gy0 = gy0.min(v0);
                 gx1 = gx1.max(u1);
@@ -150,32 +325,30 @@ pub fn stitch_panorama(frames: &[Rgba], _yaw: &[f32], _pitch: &[f32]) -> Option<
     }
     let seam_scale = (scale * (SEAM_MAX_PIXELS / compose_area).sqrt()).min(scale).max(1.0);
 
-    // Low-res warps -> exposure + seam (cheap).
-    let seam_tiles = kept_full
+    // Decode each kept frame once (on demand), warp both the low-res seam tile and
+    // the full-res compose tile from it, then drop the decoded frame — so at most a
+    // few full-res frames are in RAM at a time even at maximum capture resolution.
+    let warped: Vec<(WarpedTile, WarpedTile)> = kept
         .par_iter()
         .zip(cams.par_iter())
-        .map(|(f, c)| warp_one(f, &c.k(), &c.r, seam_scale))
+        .map(|(&i, c)| {
+            let full = Rgba::from_jpeg(&frames_jpeg[i])?;
+            let seam = warp_one(&full, &c.k(), &c.r, seam_scale)?;
+            let comp = warp_one(&full, &c.k(), &c.r, scale)?;
+            Some((seam, comp))
+        })
         .collect::<Option<Vec<_>>>()?;
+    let (seam_tiles, tiles): (Vec<WarpedTile>, Vec<WarpedTile>) = warped.into_iter().unzip();
+
     let seam_gains = compensate(&seam_tiles);
     let low_masks = seam_masks(&seam_tiles);
 
-    // Full-res warps -> blend.
-    let tiles = kept_full
-        .par_iter()
-        .zip(cams.par_iter())
-        .map(|(f, c)| warp_one(f, &c.k(), &c.r, scale))
-        .collect::<Option<Vec<_>>>()?;
-
-    // Build compose-resolution seam masks as a true partition of the actual
-    // coverage: every covered pixel is owned by exactly one covering tile,
-    // guided by the low-res seam. This avoids unassigned (black) gaps at seams
-    // that break the blend and the crop.
+    // Compose-resolution seam masks as a true partition of the coverage.
     let masks = build_compose_masks(&tiles, &seam_tiles, &low_masks);
     let gain_maps: Vec<Vec<f32>> = (0..tiles.len())
         .map(|i| resize_gain(&seam_gains[i], seam_tiles[i].img.w, seam_tiles[i].img.h, tiles[i].img.w, tiles[i].img.h))
         .collect();
 
-    // 10) multi-band blend + crop
     multiband_blend(&tiles, &masks, &gain_maps)
 }
 

@@ -1,57 +1,62 @@
-//! Compositing blender. Uses a FeatherBlender (distance-weighted average of the
-//! actual warped pixels). Because the result is a convex combination of input
-//! pixel values, it can never overshoot the valid range — unlike a Laplacian
-//! multi-band pyramid, which rings and clips to white at seams in smooth regions.
-//! After blending, the panorama is cropped to the maximal all-opaque rectangle so
-//! there are no black borders.
+//! Compositing blender: a **seam-aware feather** blend. Each pixel is taken from
+//! the single frame the seam finder assigned to it (sharp — so parallax from
+//! close objects isn't ghosted by averaging the whole overlap), with only a
+//! narrow feather across the seam. The weight is a convex combination of the
+//! actual pixels, so it can never overshoot to white like a Laplacian pyramid.
+//! After blending, the panorama is cropped to the maximal all-opaque rectangle.
 
 use crate::imgbuf::Rgba;
 use crate::sphere::WarpedTile;
 
-/// Manhattan distance (in pixels) from each covered pixel to the nearest
-/// uncovered pixel — used as the feather weight (large in the interior, small at
-/// the coverage edge, so seams blend smoothly). Two-pass chamfer transform.
-fn coverage_distance(img: &Rgba) -> Vec<f32> {
-    let (w, h) = (img.w, img.h);
-    let big = (w + h) as i32;
-    let mut d = vec![0i32; w * h];
-    for i in 0..w * h {
-        d[i] = if img.px[i * 4 + 3] != 0 { big } else { 0 };
+/// Separable box blur of a float plane (running-sum, radius r).
+fn box_blur(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
+    if r == 0 {
+        return src.to_vec();
     }
-    // forward
+    let mut tmp = vec![0f32; w * h];
+    let norm = 1.0 / (2 * r + 1) as f32;
+    // horizontal
     for y in 0..h {
+        let row = y * w;
+        let mut sum = 0.0;
+        for x in 0..=r.min(w - 1) {
+            sum += src[row + x];
+        }
         for x in 0..w {
-            let i = y * w + x;
-            if d[i] == 0 {
-                continue;
+            tmp[row + x] = sum * norm;
+            let add = x + r + 1;
+            let sub = x as isize - r as isize;
+            if add < w {
+                sum += src[row + add];
             }
-            if x > 0 {
-                d[i] = d[i].min(d[i - 1] + 1);
-            }
-            if y > 0 {
-                d[i] = d[i].min(d[i - w] + 1);
-            }
-        }
-    }
-    // backward
-    for y in (0..h).rev() {
-        for x in (0..w).rev() {
-            let i = y * w + x;
-            if d[i] == 0 {
-                continue;
-            }
-            if x + 1 < w {
-                d[i] = d[i].min(d[i + 1] + 1);
-            }
-            if y + 1 < h {
-                d[i] = d[i].min(d[i + w] + 1);
+            if sub >= 0 {
+                sum -= src[row + sub as usize];
             }
         }
     }
-    d.iter().map(|&v| v as f32).collect()
+    let mut out = vec![0f32; w * h];
+    // vertical
+    for x in 0..w {
+        let mut sum = 0.0;
+        for y in 0..=r.min(h - 1) {
+            sum += tmp[y * w + x];
+        }
+        for y in 0..h {
+            out[y * w + x] = sum * norm;
+            let add = y + r + 1;
+            let sub = y as isize - r as isize;
+            if add < h {
+                sum += tmp[add * w + x];
+            }
+            if sub >= 0 {
+                sum -= tmp[sub as usize * w + x];
+            }
+        }
+    }
+    out
 }
 
-pub fn multiband_blend(tiles: &[WarpedTile], _masks: &[Vec<u8>], gain_maps: &[Vec<f32>]) -> Option<Rgba> {
+pub fn multiband_blend(tiles: &[WarpedTile], masks: &[Vec<u8>], gain_maps: &[Vec<f32>]) -> Option<Rgba> {
     let num = tiles.len();
     if num == 0 {
         return None;
@@ -78,18 +83,24 @@ pub fn multiband_blend(tiles: &[WarpedTile], _masks: &[Vec<u8>], gain_maps: &[Ve
     for ti in 0..num {
         let t = &tiles[ti];
         let gmap = &gain_maps[ti];
-        let dist = coverage_distance(&t.img);
-        for ly in 0..t.img.h {
-            for lx in 0..t.img.w {
-                let li = ly * t.img.w + lx;
+        let (tw, th) = (t.img.w, t.img.h);
+        // Feather = blurred seam mask: ~1 deep in this frame's owned region,
+        // tapering to ~0 a few px past the seam. Narrow blur => sharp interiors,
+        // thin transition, minimal parallax ghosting.
+        let radius = (tw.min(th) / 40).clamp(6, 32);
+        let maskf: Vec<f32> = masks[ti].iter().map(|&m| if m != 0 { 1.0 } else { 0.0 }).collect();
+        let feather = box_blur(&maskf, tw, th, radius);
+        for ly in 0..th {
+            for lx in 0..tw {
+                let li = ly * tw + lx;
                 let c = t.img.get(lx, ly);
                 if c[3] == 0 {
+                    continue; // frame doesn't cover here
+                }
+                let weight = feather[li];
+                if weight <= 0.0 {
                     continue;
                 }
-                // feather weight: distance from the coverage edge (+1 so edge
-                // pixels still contribute), squared for a sharper interior bias.
-                let dw = dist[li] + 1.0;
-                let weight = dw * dw;
                 let gain = gmap[li];
                 let gxp = (t.corner_x - gx0) as usize + lx;
                 let gyp = (t.corner_y - gy0) as usize + ly;
@@ -98,6 +109,31 @@ pub fn multiband_blend(tiles: &[WarpedTile], _masks: &[Vec<u8>], gain_maps: &[Ve
                 acc[idx * 3 + 1] += (c[1] as f32 * gain).min(255.0) * weight;
                 acc[idx * 3 + 2] += (c[2] as f32 * gain).min(255.0) * weight;
                 accw[idx] += weight;
+            }
+        }
+    }
+
+    // Any covered pixel that got zero feather weight (e.g. a frame's owned region
+    // where the blurred mask vanished) — fill from whichever frame covers it.
+    for ti in 0..num {
+        let t = &tiles[ti];
+        let gmap = &gain_maps[ti];
+        for ly in 0..t.img.h {
+            for lx in 0..t.img.w {
+                let c = t.img.get(lx, ly);
+                if c[3] == 0 {
+                    continue;
+                }
+                let gxp = (t.corner_x - gx0) as usize + lx;
+                let gyp = (t.corner_y - gy0) as usize + ly;
+                let idx = gyp * cw + gxp;
+                if accw[idx] <= 0.0 {
+                    let gain = gmap[ly * t.img.w + lx];
+                    acc[idx * 3] = (c[0] as f32 * gain).min(255.0);
+                    acc[idx * 3 + 1] = (c[1] as f32 * gain).min(255.0);
+                    acc[idx * 3 + 2] = (c[2] as f32 * gain).min(255.0);
+                    accw[idx] = 1.0;
+                }
             }
         }
     }

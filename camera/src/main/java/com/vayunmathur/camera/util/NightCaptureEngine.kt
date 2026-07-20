@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.nio.ByteBuffer
 import kotlin.math.roundToInt
 
 /**
@@ -60,11 +59,9 @@ object NightCaptureEngine {
         val handle = StitchNative.newSession(false)
         try {
             for (f in burst) {
-                val bmp = if (f.config == Bitmap.Config.ARGB_8888) f else f.copy(Bitmap.Config.ARGB_8888, false)
-                val buf = ByteBuffer.allocate(bmp.width * bmp.height * 4)
-                bmp.copyPixelsToBuffer(buf)
-                StitchNative.addFrame(handle, buf.array(), bmp.width, bmp.height, 0f, 0f, 0f)
-                if (bmp !== f) bmp.recycle()
+                val baos = java.io.ByteArrayOutputStream()
+                f.compress(Bitmap.CompressFormat.JPEG, 95, baos)
+                StitchNative.addFrame(handle, baos.toByteArray(), 0f, 0f, 0f)
             }
             val jpeg = StitchNative.merge(handle) ?: return null
             return BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
