@@ -27,8 +27,8 @@ import com.vayunmathur.travel.util.TravelViewModel
 @Composable
 fun FlightSearchForm(
     viewModel: TravelViewModel,
-    onSearch: (origin: String, destination: String, depart: String, ret: String?, adults: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onSearch: (origin: String, destination: String, depart: String, ret: String?, adults: Int) -> Unit,
 ) {
     var origin by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }

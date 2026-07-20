@@ -4,7 +4,7 @@ import com.vayunmathur.library.network.NetworkClient
 import java.net.URLEncoder
 
 /**
- * Thin wrapper over the shared [NetworkClient] for the `/api/travel/*` endpoints
+ * Thin wrapper over the shared [NetworkClient] for the `/api/travel` endpoints
  * on the self-hosted proxy (`api.vayunmathur.com`). The proxy holds the
  * Travelpayouts token/affiliate marker server-side, so the app ships no secret;
  * it just does URL construction + delegation to the Ktor client.

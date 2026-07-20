@@ -24,8 +24,8 @@ import com.vayunmathur.travel.util.TravelViewModel
 @Composable
 fun CarSearchForm(
     @Suppress("UNUSED_PARAMETER") viewModel: TravelViewModel,
-    onSearch: (location: String, pickup: String, dropoff: String) -> Unit,
     modifier: Modifier = Modifier,
+    onSearch: (location: String, pickup: String, dropoff: String) -> Unit,
 ) {
     var location by remember { mutableStateOf("") }
     var pickup by remember { mutableStateOf("") }

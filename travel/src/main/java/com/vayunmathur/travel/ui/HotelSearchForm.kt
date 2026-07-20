@@ -24,8 +24,8 @@ import com.vayunmathur.travel.util.TravelViewModel
 @Composable
 fun HotelSearchForm(
     @Suppress("UNUSED_PARAMETER") viewModel: TravelViewModel,
-    onSearch: (location: String, checkin: String, checkout: String, adults: Int) -> Unit,
     modifier: Modifier = Modifier,
+    onSearch: (location: String, checkin: String, checkout: String, adults: Int) -> Unit,
 ) {
     var location by remember { mutableStateOf("") }
     var checkin by remember { mutableStateOf("") }
