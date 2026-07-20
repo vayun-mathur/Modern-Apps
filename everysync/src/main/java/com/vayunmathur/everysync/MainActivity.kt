@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
-import com.vayunmathur.everysync.sync.SyncScheduler
 import com.vayunmathur.everysync.ui.AccountDetailScreen
 import com.vayunmathur.everysync.ui.AccountsScreen
 import com.vayunmathur.everysync.ui.AddAccountScreen
@@ -27,7 +26,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        SyncScheduler.schedulePeriodic(this)
         setContent {
             DynamicTheme {
                 Navigation(viewModel)

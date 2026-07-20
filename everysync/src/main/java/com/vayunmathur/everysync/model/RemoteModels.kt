@@ -69,6 +69,14 @@ data class RemoteMeasurement(
     val endMillis: Long = startMillis,
     /** Sleep-stage segments; populated only for [MeasurementType.SLEEP]. */
     val sleepStages: List<RemoteSleepStage> = emptyList(),
+    /** Health Connect `ExerciseSessionRecord.EXERCISE_TYPE_*`; only for [MeasurementType.EXERCISE]. */
+    val exerciseType: Int = 0,
+    /** Session title (exercise) or food name (nutrition). */
+    val title: String? = null,
+    /** Free-form notes; only for [MeasurementType.EXERCISE]. */
+    val notes: String? = null,
+    /** Nutrition payload; populated only for [MeasurementType.NUTRITION]. */
+    val nutrition: RemoteNutrition? = null,
 )
 
 /** One sleep-stage segment. [stage] is a Health Connect `SleepSessionRecord.STAGE_TYPE_*` value. */
@@ -76,6 +84,16 @@ data class RemoteSleepStage(
     val startMillis: Long,
     val endMillis: Long,
     val stage: Int,
+)
+
+/**
+ * A logged food / nutrition entry. Energy is in kilocalories; [nutrientGrams] holds
+ * each nutrient's mass in grams keyed by Google Health nutrient name (e.g. "PROTEIN",
+ * "SODIUM"), plus the synthetic keys "TOTAL_FAT" and "TOTAL_CARBOHYDRATE".
+ */
+data class RemoteNutrition(
+    val energyKcal: Double? = null,
+    val nutrientGrams: Map<String, Double> = emptyMap(),
 )
 
 /**
@@ -103,10 +121,13 @@ enum class MeasurementType {
     STEPS, // count
     DISTANCE, // meters
     FLOORS, // count
+    ELEVATION, // meters gained
     ACTIVE_CALORIES, // kilocalories
     TOTAL_CALORIES, // kilocalories
 
-    // Lifestyle
+    // Sessions / lifestyle
     HYDRATION, // liters
     SLEEP, // session (start/end + sleepStages)
+    EXERCISE, // session (exerciseType/title)
+    NUTRITION, // logged food (nutrition payload)
 }

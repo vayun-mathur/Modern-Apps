@@ -51,13 +51,45 @@ class GoogleHealthProvider : SyncProvider {
     override suspend fun sync(context: Context, config: AccountConfig, direction: SyncDirection) {
         if (DataType.HEALTH !in config.enabledTypes || direction == SyncDirection.PUSH) return
         val token = OAuthManager.validAccessToken(context, config.accountName, id) ?: return
-        val since = SyncState.get(context, config.accountName, "googlehealth_since")?.toLongOrNull() ?: 0L
-        HealthSink.upsert(context, GoogleHealthClient(token).getMeasurements(since))
-        SyncState.set(context, config.accountName, "googlehealth_since", System.currentTimeMillis().toString())
+        val client = GoogleHealthClient(token)
+        val account = config.accountName
+        val now = System.currentTimeMillis()
+
+        // 1. Forward window: pull everything new since the last run (with a small
+        // overlap so late-arriving data isn't missed). Idempotent via clientRecordId.
+        val watermark = SyncState.get(context, account, KEY_WATERMARK)?.toLongOrNull()
+        val recentFrom = (watermark?.minus(RECENT_OVERLAP_MILLIS) ?: (now - RECENT_SEED_DAYS * DAY_MILLIS))
+            .coerceAtLeast(0)
+        Log.i(TAG, "sync $account: recent window [$recentFrom, $now]")
+        HealthSink.upsert(context, client.getMeasurements(recentFrom, now))
+        SyncState.set(context, account, KEY_WATERMARK, now.toString())
+
+        // 2. Backfill older history one chunk at a time, writing each chunk as it
+        // lands so data appears progressively rather than after one huge request.
+        // The cursor is persisted after every chunk, so if the worker is killed the
+        // next run resumes where this one left off instead of restarting.
+        val floor = now - BACKFILL_DAYS * DAY_MILLIS
+        var cursor = SyncState.get(context, account, KEY_BACKFILL_CURSOR)?.toLongOrNull()
+            ?: (now - RECENT_SEED_DAYS * DAY_MILLIS)
+        while (cursor > floor) {
+            val chunkStart = maxOf(cursor - BACKFILL_CHUNK_DAYS * DAY_MILLIS, floor)
+            Log.i(TAG, "sync $account: backfill chunk [$chunkStart, $cursor]")
+            HealthSink.upsert(context, client.getMeasurements(chunkStart, cursor))
+            cursor = chunkStart
+            SyncState.set(context, account, KEY_BACKFILL_CURSOR, cursor.toString())
+        }
+        Log.i(TAG, "sync $account: complete (backfilled to $cursor)")
     }
 
     companion object {
         private const val TAG = "GoogleHealthProvider"
         private val JSON = Json { ignoreUnknownKeys = true }
+        private const val DAY_MILLIS = 86_400_000L
+        private const val KEY_WATERMARK = "googlehealth_watermark"
+        private const val KEY_BACKFILL_CURSOR = "googlehealth_backfill_cursor"
+        private const val RECENT_SEED_DAYS = 30L // recent window pulled on the first sync
+        private const val RECENT_OVERLAP_MILLIS = DAY_MILLIS // re-check the last day for late data
+        private const val BACKFILL_CHUNK_DAYS = 30L // one window of history written per step
+        private const val BACKFILL_DAYS = 365L // total history to backfill (1 year)
     }
 }
