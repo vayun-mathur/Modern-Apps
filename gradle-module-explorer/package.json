@@ -1,0 +1,55 @@
+{
+  "name": "gradle-module-explorer",
+  "displayName": "Gradle Module Explorer",
+  "description": "Custom source tree that lists Gradle modules (flattened with colon paths) with library/sdk grouped at the bottom.",
+  "version": "0.0.1",
+  "publisher": "modern-apps",
+  "private": true,
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:settings.gradle.kts",
+    "workspaceContains:settings.gradle"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gradleModuleExplorer",
+          "title": "Modules",
+          "icon": "resources/modules.svg"
+        }
+      ]
+    },
+    "views": {
+      "gradleModuleExplorer": [
+        {
+          "id": "gradleModuleExplorer.view",
+          "name": "Gradle Modules"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "gradleModuleExplorer.refresh",
+        "title": "Refresh Modules",
+        "category": "Gradle Modules",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gradleModuleExplorer.refresh",
+          "when": "view == gradleModuleExplorer.view",
+          "group": "navigation"
+        }
+      ]
+    }
+  }
+}
