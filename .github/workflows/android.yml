@@ -2,12 +2,6 @@ name: "🚀 Publish Next Release"
 
 on:
   workflow_dispatch:
-    inputs:
-      modules:
-        description: 'Optional: comma-separated modules to build APKs for (e.g. "photos,pdf,games:chess"). Leave empty to build all.'
-        required: false
-        default: ''
-        type: string
 
 env:
   ks_filename: release_keystore.jks
@@ -110,9 +104,12 @@ jobs:
             # --- Generate the 512x512 Play Store icon ---
             symbol=$(grep -oE 'symbol[[:space:]]*=[[:space:]]*"[^"]+"' "$dir/build.gradle.kts" 2>/dev/null | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
             if [ -n "$symbol" ]; then
-              scale=$(grep -oE 'scale[[:space:]]*=[[:space:]]*[0-9.]+' "$dir/build.gradle.kts" 2>/dev/null | head -1 | grep -oE '[0-9.]+')
+              # NOTE: these end in `grep`, which exits non-zero when there is no
+              # match. Under `bash -e` that would abort the whole step, so each is
+              # made non-fatal with `|| true` and falls back to a default below.
+              scale=$(grep -oE 'scale[[:space:]]*=[[:space:]]*[0-9.]+' "$dir/build.gradle.kts" 2>/dev/null | head -1 | grep -oE '[0-9.]+' || true)
               scale=${scale:-0.58}
-              bg=$(grep -rhoE '<color name="ic_launcher_background">#[0-9A-Fa-f]+' "$dir/src/main/res" 2>/dev/null | head -1 | grep -oE '#[0-9A-Fa-f]+')
+              bg=$(grep -rhoE '<color name="ic_launcher_background">#[0-9A-Fa-f]+' "$dir/src/main/res" 2>/dev/null | head -1 | grep -oE '#[0-9A-Fa-f]+' || true)
               bg=${bg:-$DEFAULT_BG}
               glyph_px=$(awk "BEGIN{printf \"%d\", 512*$scale}")
               svg_url="https://raw.githubusercontent.com/google/material-design-icons/$MATERIAL_SYMBOLS_REF/symbols/web/$symbol/materialsymbolsoutlined/${symbol}_24px.svg"
@@ -130,7 +127,7 @@ jobs:
             screenshot_dir="metadata_data/photos/${module_key}"
             screenshot_file="metadata_data/photos/${module_key}.png"
             if [ -d "$screenshot_dir" ]; then
-              cp "$screenshot_dir"/*.png "$target_path/graphics/phone-screenshots/"
+              cp "$screenshot_dir"/*.png "$target_path/graphics/phone-screenshots/" 2>/dev/null || true
             elif [ -f "$screenshot_file" ]; then
               cp "$screenshot_file" "$target_path/graphics/phone-screenshots/1.png"
             fi
@@ -157,29 +154,9 @@ jobs:
         run: rustup target add aarch64-linux-android
 
       - name: Build and Sign APKs
-        env:
-          MODULES_INPUT: ${{ inputs.modules }}
         run: |
-          # Default: build release APKs for every app module (assembleRelease).
-          # If a modules list was supplied, build only those modules' APKs while
-          # every earlier step (versioning, metadata, tag) still ran in full.
-          GRADLE_TASKS="assembleRelease"
-          if [ -n "$MODULES_INPUT" ]; then
-            echo "Building APKs only for selected modules: $MODULES_INPUT"
-            GRADLE_TASKS=""
-            IFS=',' read -ra MODS <<< "$MODULES_INPUT"
-            for mod in "${MODS[@]}"; do
-              mod=$(echo "$mod" | xargs)   # trim surrounding whitespace
-              [ -z "$mod" ] && continue
-              mod="${mod#:}"               # tolerate a leading ':'
-              GRADLE_TASKS="$GRADLE_TASKS :${mod}:assembleRelease"
-            done
-            echo "Resolved Gradle tasks:$GRADLE_TASKS"
-          else
-            echo "No modules specified — building all app modules"
-          fi
-
-          ./gradlew $GRADLE_TASKS \
+          # Always build release APKs for every app module.
+          ./gradlew assembleRelease \
             --no-daemon \
             -x lint \
             -x test \
