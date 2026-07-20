@@ -10,6 +10,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20260718
+        versionName = "v2.6.0"
         applicationId = "com.vayunmathur.everysync"
 
         // OAuth2 configuration. These are ALL public values (client IDs are

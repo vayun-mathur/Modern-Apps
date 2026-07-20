@@ -12,6 +12,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20260718
+        versionName = "v2.6.0"
         applicationId = "com.vayunmathur.weather"
     }
     // The Rust build drops <abi>/libweather_om.so under this dir; register it as
