@@ -20,6 +20,8 @@ dependencies {
     implementation(project(":library:network"))
 
     implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.svg)
 
     testImplementation(libs.junit)
 }

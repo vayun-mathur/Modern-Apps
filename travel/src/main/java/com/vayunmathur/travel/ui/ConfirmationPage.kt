@@ -41,9 +41,16 @@ fun ConfirmationPage(
 ) {
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
     val trip = trips.find { it.orderId == route.orderId }
+    val paymentAction by viewModel.payment.collectAsStateWithLifecycle()
+
+    androidx.compose.runtime.LaunchedEffect(paymentAction) {
+        if (paymentAction is com.vayunmathur.travel.util.PaymentActionState.Success) {
+            viewModel.resetPaymentAction()
+        }
+    }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Booking confirmed") }) },
+        topBar = { TopAppBar(title = { Text(if (trip?.awaitingPayment == true) "On hold" else "Booking confirmed") }) },
     ) { padding ->
         Column(
             Modifier
@@ -68,7 +75,7 @@ fun ConfirmationPage(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(64.dp).padding(top = 8.dp),
             )
-            Text("You're booked!", style = MaterialTheme.typography.headlineSmall)
+            Text(if (trip.awaitingPayment) "Held — pay to confirm" else "You're booked!", style = MaterialTheme.typography.headlineSmall)
 
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -76,14 +83,33 @@ fun ConfirmationPage(
                     HorizontalDivider()
                     DetailRow("Route", trip.route)
                     DetailRow("Departs", TravelViewModel.prettyDate(trip.departDate))
-                    DetailRow("Amount paid", formatMoney(trip.amount, trip.currency))
+                    DetailRow(if (trip.awaitingPayment) "Amount due" else "Amount paid", formatMoney(trip.amount, trip.currency))
                     DetailRow("Status", trip.status.replaceFirstChar(Char::uppercase))
+                    if (trip.awaitingPayment && trip.paymentRequiredBy.isNotBlank()) {
+                        DetailRow("Pay before", TravelViewModel.prettyDate(trip.paymentRequiredBy.take(10)))
+                    }
                 }
+            }
+
+            if (trip.awaitingPayment) {
+                val paying = paymentAction is com.vayunmathur.travel.util.PaymentActionState.Loading
+                (paymentAction as? com.vayunmathur.travel.util.PaymentActionState.Error)?.let {
+                    Text(it.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Button(
+                    onClick = { viewModel.payOrder(trip.orderId) },
+                    enabled = !paying,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (paying) "Paying…" else "Pay now with test balance") }
             }
 
             Button(onClick = { backStack.reset(Route.Home) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Done")
             }
+            OutlinedButton(
+                onClick = { backStack.add(Route.OrderDetail(trip.orderId)) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("View full itinerary") }
             OutlinedButton(
                 onClick = { backStack.reset(Route.Home, Route.Trips) },
                 modifier = Modifier.fillMaxWidth(),

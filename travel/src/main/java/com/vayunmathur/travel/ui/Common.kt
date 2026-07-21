@@ -1,5 +1,6 @@
 package com.vayunmathur.travel.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -20,8 +22,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DatePicker
 import com.vayunmathur.library.ui.DatePickerDialog
@@ -231,6 +237,75 @@ fun StatusBox(
 
 // --- Formatting helpers ------------------------------------------------------
 
+/**
+ * An airline logo loaded from an SVG URL via Coil, falling back to a round
+ * badge with the [iata] code while loading or on error / when no URL is set.
+ */
+@Composable
+fun AirlineLogo(
+    logoUrl: String,
+    iata: String,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 32.dp,
+) {
+    if (logoUrl.isBlank()) {
+        IataBadge(iata, size, modifier)
+        return
+    }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val imageLoader = androidx.compose.runtime.remember(context) {
+        coil.ImageLoader.Builder(context)
+            .components { add(coil.decode.SvgDecoder.Factory()) }
+            .build()
+    }
+    coil.compose.SubcomposeAsyncImage(
+        model = coil.request.ImageRequest.Builder(context).data(logoUrl).build(),
+        imageLoader = imageLoader,
+        contentDescription = iata,
+        modifier = modifier.size(size),
+        loading = { IataBadge(iata, size) },
+        error = { IataBadge(iata, size) },
+    )
+}
+
+@Composable
+private fun IataBadge(
+    iata: String,
+    size: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .size(size)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            iata.take(2),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
+}
+
+/**
+ * Short fare-condition chips for an offer, e.g. ["Refundable", "Changeable"].
+ * Falls back to "Non-refundable" when a refund rule is explicitly disallowed.
+ */
+fun conditionsLabels(conditions: com.vayunmathur.travel.network.ConditionsDto): List<String> {
+    val labels = mutableListOf<String>()
+    val refund = conditions.refundBeforeDeparture
+    val change = conditions.changeBeforeDeparture
+    when {
+        refund?.allowed == true -> labels.add("Refundable")
+        refund != null -> labels.add("Non-refundable")
+    }
+    if (change?.allowed == true) labels.add("Changeable")
+    return labels
+}
+
 /** A money label like "$412" / "€220.50" from a Duffel decimal-string amount. */
 fun formatMoney(amount: String, currency: String): String {
     val value = amount.toDoubleOrNull() ?: return "$currency $amount"
@@ -267,4 +342,36 @@ fun stopsLabel(stops: Long): String = when (stops) {
     0L -> "Nonstop"
     1L -> "1 stop"
     else -> "$stops stops"
+}
+
+/** Whole seconds from now until an ISO-8601 instant; [Long.MAX_VALUE] if unparseable. */
+fun secondsUntil(iso: String): Long = runCatching {
+    java.time.Duration.between(java.time.Instant.now(), java.time.Instant.parse(iso)).seconds
+}.getOrDefault(Long.MAX_VALUE)
+
+/** "125" -> "2:05" (mm:ss), clamped at zero. */
+fun formatCountdown(seconds: Long): String {
+    val s = seconds.coerceAtLeast(0)
+    return "%d:%02d".format(s / 60, s % 60)
+}
+
+/**
+ * Seconds remaining until [expiresAtIso], ticking once per second **only while
+ * the app is in the foreground** (`RESUMED`). Backgrounding pauses the ticker;
+ * returning resumes it (and reports 0 immediately if it already lapsed).
+ */
+@Composable
+fun rememberSecondsUntil(expiresAtIso: String): Long {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var remaining by remember(expiresAtIso) { mutableStateOf(secondsUntil(expiresAtIso)) }
+    LaunchedEffect(expiresAtIso, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                remaining = secondsUntil(expiresAtIso)
+                if (remaining <= 0) break
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+    return remaining
 }

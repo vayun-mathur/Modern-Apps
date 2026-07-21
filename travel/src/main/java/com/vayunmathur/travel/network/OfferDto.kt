@@ -3,16 +3,60 @@ package com.vayunmathur.travel.network
 import kotlinx.serialization.Serializable
 
 /**
+ * A baggage allowance on a [SegmentDto] (per passenger). [type] is `carry_on`
+ * or `checked`; [quantity] is how many are included.
+ */
+@Serializable
+data class BaggageDto(
+    val type: String = "",
+    val quantity: Long = 0,
+) {
+    /** e.g. "1 carry-on", "2 checked". */
+    val label: String
+        get() {
+            val name = when (type) {
+                "carry_on" -> "carry-on"
+                "checked" -> "checked"
+                else -> type.replace('_', ' ')
+            }
+            return "$quantity $name"
+        }
+}
+
+/**
  * A single operated leg of a [SliceDto], from `/api/travel/flights`.
  */
 @Serializable
 data class SegmentDto(
+    val id: String = "",
     val carrier: String = "",
+    val carrierIata: String = "",
     val flightNumber: String = "",
     val origin: String = "",
     val destination: String = "",
     val departureAt: String = "",
     val arrivalAt: String = "",
+    val aircraft: String = "",
+    val cabinClass: String = "",
+    val baggages: List<BaggageDto> = emptyList(),
+)
+
+/**
+ * A fare rule: whether an action (refund/change) is allowed before departure,
+ * and if so the penalty.
+ */
+@Serializable
+data class PenaltyRuleDto(
+    val allowed: Boolean = false,
+    val penaltyAmount: String? = null,
+    val penaltyCurrency: String? = null,
+)
+
+/** Refund/change conditions carried on an [OfferDto] (or a [SliceDto]). */
+@Serializable
+data class ConditionsDto(
+    val refundBeforeDeparture: PenaltyRuleDto? = null,
+    val changeBeforeDeparture: PenaltyRuleDto? = null,
 )
 
 /**
@@ -22,6 +66,7 @@ data class SegmentDto(
  */
 @Serializable
 data class SliceDto(
+    val id: String = "",
     val origin: String = "",
     val destination: String = "",
     val departureAt: String = "",
@@ -29,6 +74,15 @@ data class SliceDto(
     val durationMinutes: Long = 0,
     val stops: Long = 0,
     val segments: List<SegmentDto> = emptyList(),
+    val conditions: ConditionsDto = ConditionsDto(),
+)
+
+/** A passenger carried on an offer (id + Duffel type + optional age). */
+@Serializable
+data class OfferPassengerDto(
+    val id: String = "",
+    val type: String = "",
+    val age: Long? = null,
 )
 
 /**
@@ -44,10 +98,28 @@ data class OfferDto(
     val currency: String = "USD",
     val owner: String = "",
     val ownerIata: String = "",
+    val ownerLogoUrl: String = "",
     val expiresAt: String = "",
+    val passengerIdentityDocumentsRequired: Boolean = false,
+    val requiresInstantPayment: Boolean = true,
+    val totalDurationMinutes: Long = 0,
     val passengerIds: List<String> = emptyList(),
+    val passengers: List<OfferPassengerDto> = emptyList(),
+    val conditions: ConditionsDto = ConditionsDto(),
+    val availableServices: List<ServiceDto> = emptyList(),
     val slices: List<SliceDto> = emptyList(),
-)
+) {
+    /** Distinct marketing airline IATA codes across all segments. */
+    val airlineIatas: List<String>
+        get() = slices.flatMap { it.segments }.map { it.carrierIata }.filter { it.isNotBlank() }.distinct()
+
+    /** Included baggage summary from the first segment, e.g. "1 carry-on · 2 checked". */
+    val baggageSummary: String
+        get() = slices.firstOrNull()?.segments?.firstOrNull()?.baggages
+            ?.filter { it.quantity > 0 }
+            ?.joinToString(" · ") { it.label }
+            .orEmpty()
+}
 
 /** A flight search response: the offer-request id plus the mapped offers. */
 @Serializable

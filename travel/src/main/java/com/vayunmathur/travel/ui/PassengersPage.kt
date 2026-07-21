@@ -2,6 +2,7 @@ package com.vayunmathur.travel.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FilterChip
+import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
@@ -36,6 +38,9 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBar
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
+import com.vayunmathur.travel.network.IdentityDocumentDto
+import com.vayunmathur.travel.network.LoyaltyAccountDto
+import com.vayunmathur.travel.network.OfferPassengerDto
 import com.vayunmathur.travel.network.PassengerInputDto
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.REQUESTED_CONTACT_FIELDS
@@ -55,6 +60,17 @@ fun PassengersPage(
     route: Route.Passengers,
 ) {
     val passengers by viewModel.passengers.collectAsStateWithLifecycle()
+    val review by viewModel.review.collectAsStateWithLifecycle()
+    val offer = review.offer
+    val offerPassengers = offer?.passengers.orEmpty()
+    val identityRequired = offer?.passengerIdentityDocumentsRequired == true
+
+    // Infants that must be linked to an accompanying adult.
+    val infantOptions = passengers.mapIndexedNotNull { index, p ->
+        val type = offerPassengers.getOrNull(index)?.type
+        if (type == "infant_without_seat") p.id to "Infant ${index + 1}" else null
+    }
+    val linkedInfantIds = passengers.mapNotNull { it.infantPassengerId }.filter { it.isNotBlank() }.toSet()
 
     Scaffold(
         topBar = {
@@ -81,13 +97,19 @@ fun PassengersPage(
                     index = index,
                     total = passengers.size,
                     passenger = passenger,
+                    passengerRef = offerPassengers.getOrNull(index),
+                    identityRequired = identityRequired,
+                    infantOptions = infantOptions,
                     onChange = { viewModel.updatePassenger(index, it) },
                 )
             }
 
+            val allInfantsLinked = infantOptions.all { it.first in linkedInfantIds }
             Button(
                 onClick = { backStack.add(Route.Payment(route.offerId)) },
-                enabled = passengers.isNotEmpty() && passengers.all { it.isValid() },
+                enabled = passengers.isNotEmpty() &&
+                    passengers.indices.all { passengers[it].isValid(offerPassengers.getOrNull(it), identityRequired) } &&
+                    allInfantsLinked,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Continue to payment") }
         }
@@ -99,14 +121,16 @@ private fun PassengerForm(
     index: Int,
     total: Int,
     passenger: PassengerInputDto,
+    passengerRef: OfferPassengerDto?,
+    identityRequired: Boolean,
+    infantOptions: List<Pair<String, String>>,
     onChange: (PassengerInputDto) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val type = passengerRef?.type ?: "adult"
+    val isAdult = type == "adult"
 
-    // Android 17+ field-scoped picker: grants read for only the requested MIME
-    // types on the returned session URI — no READ_CONTACTS permission needed.
-    // Autofill is only offered on API 37+; older devices enter details manually.
     val canImportContacts = android.os.Build.VERSION.SDK_INT >= 37
     val sessionPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -153,7 +177,7 @@ private fun PassengerForm(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    if (total > 1) "Passenger ${index + 1}" else "Passenger details",
+                    passengerLabel(index, total, passengerRef),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -200,7 +224,7 @@ private fun PassengerForm(
             OutlinedTextField(
                 value = passenger.email,
                 onValueChange = { onChange(passenger.copy(email = it)) },
-                label = { Text("Email") },
+                label = { Text(if (isAdult) "Email" else "Email (optional)") },
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
@@ -208,11 +232,122 @@ private fun PassengerForm(
             OutlinedTextField(
                 value = passenger.phoneNumber,
                 onValueChange = { onChange(passenger.copy(phoneNumber = it)) },
-                label = { Text("Phone (e.g. +14155550123)") },
+                label = { Text(if (isAdult) "Phone (e.g. +14155550123)" else "Phone (optional)") },
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            if (identityRequired) {
+                HorizontalDivider()
+                IdentityDocumentFields(passenger.identityDocument) {
+                    onChange(passenger.copy(identityDocument = it))
+                }
+            }
+
+            HorizontalDivider()
+            LoyaltyFields(passenger.loyaltyProgrammeAccounts.firstOrNull()) { acct ->
+                onChange(
+                    passenger.copy(
+                        loyaltyProgrammeAccounts = if (acct == null) emptyList() else listOf(acct),
+                    )
+                )
+            }
+
+            if (isAdult && infantOptions.isNotEmpty()) {
+                HorizontalDivider()
+                InfantLinkField(
+                    selected = passenger.infantPassengerId,
+                    infantOptions = infantOptions,
+                    onSelect = { onChange(passenger.copy(infantPassengerId = it)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IdentityDocumentFields(doc: IdentityDocumentDto?, onChange: (IdentityDocumentDto) -> Unit) {
+    val current = doc ?: IdentityDocumentDto()
+    Text(
+        "Passport",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    OutlinedTextField(
+        value = current.uniqueIdentifier,
+        onValueChange = { onChange(current.copy(uniqueIdentifier = it)) },
+        label = { Text("Passport number") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = current.issuingCountryCode,
+        onValueChange = { onChange(current.copy(issuingCountryCode = it.uppercase().take(2))) },
+        label = { Text("Issuing country (e.g. GB)") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    DateField(
+        "Expiry date",
+        current.expiresOn,
+        onDate = { onChange(current.copy(expiresOn = it)) },
+        dateFormat = "MMM d, yyyy",
+    )
+}
+
+@Composable
+private fun LoyaltyFields(account: LoyaltyAccountDto?, onChange: (LoyaltyAccountDto?) -> Unit) {
+    val current = account ?: LoyaltyAccountDto()
+    Text(
+        "Frequent flyer (optional)",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = current.airlineIataCode,
+            onValueChange = {
+                val next = current.copy(airlineIataCode = it.uppercase().take(2))
+                onChange(if (next.airlineIataCode.isBlank() && next.accountNumber.isBlank()) null else next)
+            },
+            label = { Text("Airline") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        OutlinedTextField(
+            value = current.accountNumber,
+            onValueChange = {
+                val next = current.copy(accountNumber = it)
+                onChange(if (next.airlineIataCode.isBlank() && next.accountNumber.isBlank()) null else next)
+            },
+            label = { Text("Number") },
+            singleLine = true,
+            modifier = Modifier.weight(2f),
+        )
+    }
+}
+
+@Composable
+private fun InfantLinkField(
+    selected: String?,
+    infantOptions: List<Pair<String, String>>,
+    onSelect: (String?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Accompanying infant",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = selected.isNullOrBlank(), onClick = { onSelect(null) }, label = { Text("None") })
+            infantOptions.forEach { (id, label) ->
+                FilterChip(selected = selected == id, onClick = { onSelect(id) }, label = { Text(label) })
+            }
         }
     }
 }
@@ -238,11 +373,28 @@ private fun ChipRow(
     }
 }
 
-private fun PassengerInputDto.isValid(): Boolean =
-    title.isNotBlank() &&
+private fun passengerLabel(index: Int, total: Int, ref: OfferPassengerDto?): String {
+    val kind = when (ref?.type) {
+        "child" -> ref.age?.let { "Child ($it)" } ?: "Child"
+        "infant_without_seat" -> "Infant"
+        else -> "Adult"
+    }
+    return if (total > 1) "$kind ${index + 1}" else "$kind"
+}
+
+private fun PassengerInputDto.isValid(ref: OfferPassengerDto?, identityRequired: Boolean): Boolean {
+    val isAdult = (ref?.type ?: "adult") == "adult"
+    val base = title.isNotBlank() &&
         givenName.isNotBlank() &&
         familyName.isNotBlank() &&
         bornOn.isNotBlank() &&
-        gender.isNotBlank() &&
-        email.contains("@") &&
-        phoneNumber.isNotBlank()
+        gender.isNotBlank()
+    val contact = !isAdult || (email.contains("@") && phoneNumber.isNotBlank())
+    val identity = !identityRequired || (
+        identityDocument != null &&
+            identityDocument.uniqueIdentifier.isNotBlank() &&
+            identityDocument.issuingCountryCode.isNotBlank() &&
+            identityDocument.expiresOn.isNotBlank()
+        )
+    return base && contact && identity
+}

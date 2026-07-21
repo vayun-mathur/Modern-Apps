@@ -54,7 +54,7 @@ interface BookedTripDao {
 
 @Database(
     entities = [RecentSearch::class, BookedTrip::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class TravelDatabase : RoomDatabase() {
@@ -62,6 +62,15 @@ abstract class TravelDatabase : RoomDatabase() {
     abstract fun bookedTripDao(): BookedTripDao
 
     companion object : DatabaseMigrations {
-        override val migrations = emptyList<androidx.room.migration.Migration>()
+        override val migrations = listOf(
+            object : androidx.room.migration.Migration(1, 2) {
+                override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE BookedTrip ADD COLUMN type TEXT NOT NULL DEFAULT 'flight'")
+                    db.execSQL("ALTER TABLE BookedTrip ADD COLUMN awaitingPayment INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE BookedTrip ADD COLUMN paymentRequiredBy TEXT NOT NULL DEFAULT ''")
+                    db.execSQL("ALTER TABLE BookedTrip ADD COLUMN remoteSyncedAt INTEGER NOT NULL DEFAULT 0")
+                }
+            },
+        )
     }
 }

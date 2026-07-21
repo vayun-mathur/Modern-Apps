@@ -11,6 +11,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +80,8 @@ fun PaymentPage(
     ) { padding ->
         val offer = review.offer
         val loading = booking is BookingState.Loading
+        val allowHold = offer != null && !offer.requiresInstantPayment
+        var hold by remember { mutableStateOf(false) }
         Column(
             Modifier
                 .fillMaxSize()
@@ -100,8 +105,30 @@ fun PaymentPage(
                 }
             }
 
+            if (allowHold) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                ) {
+                    com.vayunmathur.library.ui.FilterChip(
+                        selected = !hold,
+                        onClick = { hold = false },
+                        label = { Text("Pay now") },
+                    )
+                    com.vayunmathur.library.ui.FilterChip(
+                        selected = hold,
+                        onClick = { hold = true },
+                        label = { Text("Hold (pay later)") },
+                    )
+                }
+            }
+
             Text(
-                "Sandbox booking — paid with a Duffel test balance. No card is charged.",
+                if (hold) {
+                    "Hold order — the price is held and you pay from your test balance before the deadline."
+                } else {
+                    "Sandbox booking — paid with a Duffel test balance. No card is charged."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -111,7 +138,7 @@ fun PaymentPage(
             }
 
             Button(
-                onClick = { viewModel.createOrder() },
+                onClick = { viewModel.createOrder(hold = hold) },
                 enabled = offer != null && !loading,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -119,7 +146,7 @@ fun PaymentPage(
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
                     Text("Booking…")
                 } else {
-                    Text("Pay with test balance")
+                    Text(if (hold) "Place hold" else "Pay with test balance")
                 }
             }
         }

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vayunmathur.library.ui.AssistChip
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.ElevatedCard
@@ -72,7 +73,32 @@ fun OfferReviewPage(
                 return@Column
             }
 
-            Text(offer.owner.ifBlank { "Flight" }, style = MaterialTheme.typography.titleLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AirlineLogo(offer.ownerLogoUrl, offer.ownerIata, size = 40.dp)
+                Text(offer.owner.ifBlank { "Flight" }, style = MaterialTheme.typography.titleLarge)
+            }
+
+            val chips = conditionsLabels(offer.conditions)
+            if (chips.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    chips.forEach { AssistChip(onClick = {}, label = { Text(it) }) }
+                }
+            }
+
+            if (offer.expiresAt.isNotBlank()) {
+                val remaining = rememberSecondsUntil(offer.expiresAt)
+                LaunchedEffect(remaining <= 0L) {
+                    if (remaining <= 0L) viewModel.refreshOffer(offer.offerId)
+                }
+                Text(
+                    if (remaining <= 0L) "Refreshing price…" else "Price held · ${formatCountdown(remaining)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             offer.slices.forEachIndexed { index, slice ->
                 SliceDetailCard(
@@ -96,10 +122,7 @@ fun OfferReviewPage(
             }
 
             Button(
-                onClick = {
-                    viewModel.initPassengers(offer)
-                    backStack.add(Route.Passengers(offer.offerId))
-                },
+                onClick = { backStack.add(Route.Ancillaries(offer.offerId)) },
                 enabled = !review.loading,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Continue") }
@@ -131,9 +154,18 @@ private fun SliceDetailCard(title: String, slice: SliceDto) {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     val carrier = listOf(seg.carrier, seg.flightNumber).filter { it.isNotBlank() }.joinToString(" ")
-                    if (carrier.isNotBlank()) {
+                    val detail = listOf(carrier, seg.aircraft, seg.cabinClass).filter { it.isNotBlank() }.joinToString(" · ")
+                    if (detail.isNotBlank()) {
                         Text(
-                            carrier,
+                            detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    val bags = seg.baggages.filter { it.quantity > 0 }.joinToString(" · ") { it.label }
+                    if (bags.isNotBlank()) {
+                        Text(
+                            "Bags: $bags",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

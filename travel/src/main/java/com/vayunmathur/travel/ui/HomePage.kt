@@ -1,6 +1,7 @@
 package com.vayunmathur.travel.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,12 +14,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
+import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedCard
@@ -32,16 +37,19 @@ import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.util.TravelViewModel
 
+private enum class Product(val label: String) { FLIGHTS("Flights"), STAYS("Stays") }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
     val recents by viewModel.recentSearches.collectAsStateWithLifecycle()
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
+    var product by remember { mutableStateOf(Product.FLIGHTS) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Flights") },
+                title = { Text("Travel") },
                 actions = {
                     if (trips.isNotEmpty()) {
                         TextButton(onClick = { backStack.add(Route.Trips) }) { Text("My trips") }
@@ -56,8 +64,31 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            FlightSearchForm(viewModel) { origin, destination, depart, ret, adults, cabin ->
-                backStack.add(Route.FlightResults(origin, destination, depart, ret, adults, cabin))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Product.entries.forEach { p ->
+                    FilterChip(selected = product == p, onClick = { product = p }, label = { Text(p.label) })
+                }
+            }
+
+            when (product) {
+                Product.FLIGHTS -> FlightSearchForm(viewModel) { query ->
+                    backStack.add(
+                        Route.FlightResults(
+                            slices = query.slices,
+                            adults = query.adults,
+                            children = query.children,
+                            infants = query.infants,
+                            cabin = query.cabin,
+                            maxConnections = query.maxConnections,
+                        )
+                    )
+                }
+                Product.STAYS -> StaySearchForm(viewModel) { place, checkIn, checkOut, rooms, adults ->
+                    backStack.add(Route.StayResults(place, checkIn, checkOut, rooms, adults))
+                }
             }
 
             if (recents.isNotEmpty()) {
@@ -77,7 +108,7 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
             if (trips.isNotEmpty()) {
                 SectionHeader("My trips")
                 trips.take(3).forEach { trip ->
-                    TripSummaryCard(trip) { backStack.add(Route.Confirmation(trip.orderId)) }
+                    TripSummaryCard(trip) { backStack.add(destinationForTrip(trip)) }
                 }
                 if (trips.size > 3) {
                     TextButton(
@@ -91,6 +122,10 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
         }
     }
 }
+
+/** Where tapping a trip summary goes, depending on flight vs stay. */
+private fun destinationForTrip(trip: BookedTrip): Route =
+    if (trip.type == "stay") Route.StayConfirmation(trip.orderId) else Route.Confirmation(trip.orderId)
 
 @Composable
 private fun RecentSearchCard(recent: RecentSearch, onClick: () -> Unit) {
@@ -140,16 +175,36 @@ private fun TripSummaryCard(trip: BookedTrip, onClick: () -> Unit) {
     }
 }
 
-/** Rebuild the flight-results Route for a stored search and navigate to it. */
+/** Rebuild the results Route for a stored search (flight or stay). */
 private fun openRecent(backStack: NavBackStack<Route>, recent: RecentSearch) {
+    if (recent.vertical == "STAYS") {
+        backStack.add(
+            Route.StayResults(
+                place = recent.origin.orEmpty(),
+                checkIn = recent.depart.orEmpty(),
+                checkOut = recent.returnDate.orEmpty(),
+                rooms = 1,
+                adults = recent.adults,
+            )
+        )
+        return
+    }
+    val origin = recent.origin.orEmpty()
+    val destination = recent.destination.orEmpty()
+    val depart = recent.depart.orEmpty()
+    val slices = if (!recent.returnDate.isNullOrBlank()) {
+        "$origin:$destination:$depart,$destination:$origin:${recent.returnDate}"
+    } else {
+        "$origin:$destination:$depart"
+    }
     backStack.add(
         Route.FlightResults(
-            origin = recent.origin.orEmpty(),
-            destination = recent.destination.orEmpty(),
-            depart = recent.depart.orEmpty(),
-            returnDate = recent.returnDate,
+            slices = slices,
             adults = recent.adults,
+            children = "",
+            infants = 0,
             cabin = recent.cabin,
+            maxConnections = -1,
         )
     )
 }

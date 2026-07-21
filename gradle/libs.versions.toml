@@ -130,6 +130,7 @@ androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-
 
 # Images & Visuals
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
+coil-svg = { module = "io.coil-kt:coil-svg", version.ref = "coilCompose" }
 coil-video = { module = "io.coil-kt:coil-video", version.ref = "coilCompose" }
 fhir-model = { module = "com.google.fhir:fhir-model", version.ref = "fhirModel" }
 flatgeobuf = { module = "org.wololo:flatgeobuf", version.ref = "flatgeobuf" }
