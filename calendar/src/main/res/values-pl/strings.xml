@@ -35,9 +35,7 @@
     <string name="repeat">Powtarzaj</string>
     <string name="every">Każdy</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
     <string name="on_days_of_week">Dni tygodnia</string>
-    <string name="monthly_type">Typ powtarzania</string>
     <string name="end">Koniec</string>
     <string name="never">Nigdy</string>
     <string name="count">Liczba powtórzeń</string>
@@ -58,17 +56,6 @@
     <string name="open_location_in_navigation">Otwórz lokalizację</string>
     <string name="delete_this_event">Usuń to wydarzenie</string>
     <string name="delete_all_events">Usuń wszystkie wydarzenia</string>
-    <string name="by_month_day_label">Według miesiąca i dnia (1-31, -1 do -31)</string>
-    <string name="by_month_day_placeholder">np. 1,15,-1</string>
-    <string name="by_month_label">Według miesiąca (1-12)</string>
-    <string name="by_month_placeholder">np. 1,6,12</string>
-    <string name="by_set_pos_label">Według ustawionej pozycji (1-366, -1 do -366)</string>
-    <string name="by_set_pos_placeholder">np. 1,-1,2</string>
-    <string name="by_year_day_label">Według roku i dnia (1-366, -1 do -366)</string>
-    <string name="by_year_day_placeholder">np. 1100,-1</string>
-    <string name="by_week_no_label">Według numeru tygodnia (1-53, -1 do -53)</string>
-    <string name="by_week_no_placeholder">np. 1,26,52</string>
-    <string name="week_start_label">Początek tygodnia</string>
     <string name="new_local_calendar_title">Nowy kalendarz lokalny</string>
     <string name="calendar_name_label">Nazwa kalendarza</string>
     <string name="loading_events">Ładowanie wydarzeń…</string>

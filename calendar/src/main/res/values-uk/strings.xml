@@ -20,7 +20,6 @@
     <string name="calendar_id_label">ІД: %1$d</string>
     <string name="choose_calendar">Обрати календар</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
     <string name="end">Кінець</string>
     <string name="never">Ніколи</string>
     <string name="count">Кількість</string>

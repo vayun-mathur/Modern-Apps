@@ -52,6 +52,7 @@ sealed class RRule {
     abstract val byYearDay: List<Int>?
     abstract val byWeekNo: List<Int>?
     abstract val wkst: DayOfWeek?
+    abstract val byDay: List<DayOfWeek>?
     abstract fun asString(firstDay: LocalDate, timeZone: TimeZone): String
     final override fun toString(): String {
         return toStringImpl() + endCondition.toStringSuffix()
@@ -102,13 +103,22 @@ sealed class RRule {
                 }
 
                 "MONTHLY" -> {
-                    val byDay = parts["BYDAY"]
-                    // type 1 if BYDAY contains a numeric prefix (e.g., 2TU or 1MO)
-                    val type = if (byDay != null && byDay.any { it.isDigit() }) 1 else 0
+                    val byDayRaw = parts["BYDAY"]
+                    // type 2 = last weekday (negative prefix, e.g. -1MO), type 1 = nth weekday
+                    // (positive prefix, e.g. 2TU), type 0 = by month day.
+                    val type = when {
+                        byDayRaw == null -> 0
+                        byDayRaw.contains("-") -> 2
+                        byDayRaw.any { it.isDigit() } -> 1
+                        else -> 0
+                    }
                     EveryXMonths(interval, type, endCondition, byMonthDay, byMonth, bySetPos, byYearDay, byWeekNo, wkst)
                 }
 
-                "YEARLY" -> EveryXYears(interval, endCondition, byMonthDay, byMonth, bySetPos, byYearDay, byWeekNo, wkst)
+                "YEARLY" -> {
+                    val byDayDows = parts["BYDAY"]?.split(",")?.mapNotNull { dayOfWeekByIcal[it.takeLast(2)] }
+                    EveryXYears(interval, endCondition, byMonthDay, byMonth, bySetPos, byYearDay, byWeekNo, wkst, byDayDows)
+                }
 
                 else -> null // Unsupported frequency (e.g., HOURLY)
             }
@@ -146,6 +156,9 @@ sealed class RRule {
         byWeekNo?.takeIf { it.isNotEmpty() }?.let {
             parts.add("BYWEEKNO=${it.joinToString(",")}")
         }
+        byDay?.takeIf { it.isNotEmpty() }?.let {
+            parts.add("BYDAY=${it.sorted().joinToString(",") { d -> d.toIcal() }}")
+        }
         wkst?.let {
             parts.add("WKST=${it.toIcal()}")
         }
@@ -163,7 +176,8 @@ sealed class RRule {
         override val bySetPos: List<Int>? = null,
         override val byYearDay: List<Int>? = null,
         override val byWeekNo: List<Int>? = null,
-        override val wkst: DayOfWeek? = null
+        override val wkst: DayOfWeek? = null,
+        override val byDay: List<DayOfWeek>? = null
     ) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val base = "FREQ=YEARLY;INTERVAL=$years"
@@ -182,15 +196,20 @@ sealed class RRule {
         override val bySetPos: List<Int>? = null,
         override val byYearDay: List<Int>? = null,
         override val byWeekNo: List<Int>? = null,
-        override val wkst: DayOfWeek? = null
+        override val wkst: DayOfWeek? = null,
+        override val byDay: List<DayOfWeek>? = null
     ) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val base = "FREQ=MONTHLY;INTERVAL=$months"
-            val byDayPart = if (typeE == 1) {
-                val dayOfWeek = firstDay.dayOfWeek.toIcal()
-                val weekIndex = (firstDay.day - 1) / 7 + 1
-                ";BYDAY=$weekIndex$dayOfWeek"
-            } else ""
+            val byDayPart = when (typeE) {
+                1 -> {
+                    val dayOfWeek = firstDay.dayOfWeek.toIcal()
+                    val weekIndex = (firstDay.day - 1) / 7 + 1
+                    ";BYDAY=$weekIndex$dayOfWeek"
+                }
+                2 -> ";BYDAY=-1${firstDay.dayOfWeek.toIcal()}"
+                else -> ""
+            }
             return buildRRuleString(base + byDayPart, timeZone)
         }
         override fun toStringImpl(): String = if (months == 1) "Monthly" else "Every $months months"
@@ -206,7 +225,8 @@ sealed class RRule {
         override val bySetPos: List<Int>? = null,
         override val byYearDay: List<Int>? = null,
         override val byWeekNo: List<Int>? = null,
-        override val wkst: DayOfWeek? = null
+        override val wkst: DayOfWeek? = null,
+        override val byDay: List<DayOfWeek>? = null
     ) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val days = daysOfWeek.sorted().joinToString(",") { it.toIcal() }
@@ -232,7 +252,8 @@ sealed class RRule {
         override val bySetPos: List<Int>? = null,
         override val byYearDay: List<Int>? = null,
         override val byWeekNo: List<Int>? = null,
-        override val wkst: DayOfWeek? = null
+        override val wkst: DayOfWeek? = null,
+        override val byDay: List<DayOfWeek>? = null
     ) : RRule() {
         override fun asString(firstDay: LocalDate, timeZone: TimeZone): String {
             val base = "FREQ=DAILY;INTERVAL=$days"

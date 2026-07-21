@@ -46,6 +46,9 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
+import kotlinx.datetime.format.MonthNames
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.number
 
 private const val KEY_UNTIL = "RecurranceDialog.until"
 
@@ -57,83 +60,68 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
 
     var freq by remember { mutableStateOf(initial?.freq ?: "days") }
     var intervalStr by remember { mutableStateOf((initial?.interval ?: 1).toString()) }
-    var monthlyType by remember { mutableIntStateOf(initial?.monthlyType ?: 0) }
-    var daysOfWeek by remember { mutableStateOf(initial?.daysOfWeek ?: emptyList()) }
+    var daysOfWeek by remember {
+        mutableStateOf(initial?.daysOfWeek?.ifEmpty { listOf(startDate.dayOfWeek) } ?: listOf(startDate.dayOfWeek))
+    }
     var endCondition by remember { mutableStateOf(initial?.endCondition ?: RRule.EndCondition.Never) }
-    
-    // RFC 5545 properties
-    var byMonthDay by remember { mutableStateOf(initial?.byMonthDay ?: emptyList()) }
-    var byMonth by remember { mutableStateOf(initial?.byMonth ?: emptyList()) }
-    var bySetPos by remember { mutableStateOf(initial?.bySetPos ?: emptyList()) }
-    var byYearDay by remember { mutableStateOf(initial?.byYearDay ?: emptyList()) }
-    var byWeekNo by remember { mutableStateOf(initial?.byWeekNo ?: emptyList()) }
-    var wkst by remember { mutableStateOf(initial?.wkst) }
 
-    // result key for the nested date picker used for UNTIL
-    // listen for date picker result
+    // Which "On..." preset is chosen for monthly / yearly. Every preset is derived
+    // entirely from the start date, so we only need to remember which one is selected.
+    var monthlyOption by remember { mutableIntStateOf(initial?.monthlyType ?: 0) }
+    var yearlyOption by remember {
+        mutableIntStateOf(
+            when {
+                !initial?.byWeekNo.isNullOrEmpty() -> 1
+                !initial?.byYearDay.isNullOrEmpty() -> 2
+                else -> 0
+            }
+        )
+    }
+
+    // listen for date picker result (used for the UNTIL end condition)
     ResultEffect<LocalDate>(KEY_UNTIL) { selected ->
         endCondition = RRule.EndCondition.Until(selected)
     }
+
+    // Values derived from the chosen start date, used to label the preset options.
+    val weekdayFull = startDate.dayOfWeek.name.lowercase().replaceFirstChar { it.titlecase() }
+    val nthOfMonth = ordinal((startDate.day - 1) / 7 + 1)
+    val monthName = MonthNames.ENGLISH_FULL.names[startDate.month.number - 1]
 
     AlertDialog(
         onDismissRequest = { backStack.pop() },
         confirmButton = {
             Button(onClick = {
-                val params = RecurrenceParams(
-                    freq = freq,
-                    interval = intervalStr.toIntOrNull() ?: 1,
-                    daysOfWeek = daysOfWeek,
-                    monthlyType = monthlyType,
-                    endCondition = endCondition,
-                    byMonthDay = byMonthDay,
-                    byMonth = byMonth,
-                    bySetPos = bySetPos,
-                    byYearDay = byYearDay,
-                    byWeekNo = byWeekNo,
-                    wkst = wkst
-                )
-
-                val rrule = params.let { p ->
-                    when (p.freq) {
-                        "days" -> RRule.EveryXDays(
-                            p.interval, p.endCondition,
-                            p.byMonthDay.ifEmpty { null },
-                            p.byMonth.ifEmpty { null },
-                            p.bySetPos.ifEmpty { null },
-                            p.byYearDay.ifEmpty { null },
-                            p.byWeekNo.ifEmpty { null },
-                            p.wkst
-                        )
-                        "weeks" -> RRule.EveryXWeeks(
-                            p.interval, p.daysOfWeek, p.endCondition,
-                            p.byMonthDay.ifEmpty { null },
-                            p.byMonth.ifEmpty { null },
-                            p.bySetPos.ifEmpty { null },
-                            p.byYearDay.ifEmpty { null },
-                            p.byWeekNo.ifEmpty { null },
-                            p.wkst
-                        )
-                        "months" -> RRule.EveryXMonths(
-                            p.interval, p.monthlyType, p.endCondition,
-                            p.byMonthDay.ifEmpty { null },
-                            p.byMonth.ifEmpty { null },
-                            p.bySetPos.ifEmpty { null },
-                            p.byYearDay.ifEmpty { null },
-                            p.byWeekNo.ifEmpty { null },
-                            p.wkst
-                        )
-                        "years" -> RRule.EveryXYears(
-                            p.interval, p.endCondition,
-                            p.byMonthDay.ifEmpty { null },
-                            p.byMonth.ifEmpty { null },
-                            p.bySetPos.ifEmpty { null },
-                            p.byYearDay.ifEmpty { null },
-                            p.byWeekNo.ifEmpty { null },
-                            p.wkst
-                        )
-                        else -> null
+                val interval = intervalStr.toIntOrNull() ?: 1
+                val rrule: RRule = when (freq) {
+                    "days" -> RRule.EveryXDays(interval, endCondition)
+                    "weeks" -> RRule.EveryXWeeks(
+                        interval,
+                        daysOfWeek.ifEmpty { listOf(startDate.dayOfWeek) },
+                        endCondition
+                    )
+                    "months" -> when (monthlyOption) {
+                        1 -> RRule.EveryXMonths(interval, 1, endCondition)
+                        2 -> RRule.EveryXMonths(interval, 2, endCondition)
+                        else -> RRule.EveryXMonths(interval, 0, endCondition, byMonthDay = listOf(startDate.day))
                     }
-                } ?: ""
+                    else -> when (yearlyOption) {
+                        1 -> RRule.EveryXYears(
+                            interval, endCondition,
+                            byWeekNo = listOf(isoWeekNumber(startDate)),
+                            byDay = listOf(startDate.dayOfWeek)
+                        )
+                        2 -> RRule.EveryXYears(
+                            interval, endCondition,
+                            byYearDay = listOf(dayOfYear(startDate))
+                        )
+                        else -> RRule.EveryXYears(
+                            interval, endCondition,
+                            byMonth = listOf(startDate.month.number),
+                            byMonthDay = listOf(startDate.day)
+                        )
+                    }
+                }
 
                 scope.launch { registry.dispatchResult(resultKey, rrule) }
                 backStack.pop()
@@ -196,110 +184,30 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
                 }
 
                 if (freq == "months") {
-                    Text(stringResource(R.string.monthly_type))
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        SegmentedButton(monthlyType == 0, {monthlyType = 0}, shape = SegmentedButtonDefaults.itemShape(0, 2)) {
-                            Text(ordinal(startDate.day))
-                        }
-                        SegmentedButton(monthlyType == 1, {monthlyType = 1}, shape = SegmentedButtonDefaults.itemShape(1, 2)) {
-                            Text(stringResource(R.string.monthly_nth_day_format, ordinal((startDate.day-1)/7+1), startDate.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.titlecase() }))
-                        }
-                    }
-                }
-
-                // BYMONTHDAY - specific days of month
-                if (freq == "months" || freq == "years") {
-                    var byMonthDayStr by remember { mutableStateOf(byMonthDay.joinToString(",")) }
-                    OutlinedTextField(
-                        byMonthDayStr,
-                        { new ->
-                            byMonthDayStr = new
-                            byMonthDay = new.split(",").mapNotNull { it.trim().toIntOrNull() }
-                        },
-                        label = { Text(stringResource(R.string.by_month_day_label)) },
-                        placeholder = { Text(stringResource(R.string.by_month_day_placeholder)) }
+                    OnDropdown(
+                        label = stringResource(R.string.on_label),
+                        options = listOf(
+                            stringResource(R.string.month_option_day_of_month, startDate.day),
+                            stringResource(R.string.month_option_nth_weekday, nthOfMonth, weekdayFull),
+                            stringResource(R.string.month_option_last_weekday, weekdayFull)
+                        ),
+                        selected = monthlyOption,
+                        onSelect = { monthlyOption = it }
                     )
                 }
 
-                // BYMONTH - specific months
                 if (freq == "years") {
-                    var byMonthStr by remember { mutableStateOf(byMonth.joinToString(",")) }
-                    OutlinedTextField(
-                        byMonthStr,
-                        { new ->
-                            byMonthStr = new
-                            byMonth = new.split(",").mapNotNull { it.trim().toIntOrNull() }
-                        },
-                        label = { Text(stringResource(R.string.by_month_label)) },
-                        placeholder = { Text(stringResource(R.string.by_month_placeholder)) }
+                    OnDropdown(
+                        label = stringResource(R.string.on_label),
+                        options = listOf(
+                            stringResource(R.string.year_option_month_day, monthName, startDate.day),
+                            stringResource(R.string.year_option_week, isoWeekNumber(startDate), weekdayFull),
+                            stringResource(R.string.year_option_day_of_year, dayOfYear(startDate))
+                        ),
+                        selected = yearlyOption,
+                        onSelect = { yearlyOption = it }
                     )
                 }
-
-                // BYSETPOS - position in set
-                var bySetPosStr by remember { mutableStateOf(bySetPos.joinToString(",")) }
-                OutlinedTextField(
-                    bySetPosStr,
-                    { new ->
-                        bySetPosStr = new
-                        bySetPos = new.split(",").mapNotNull { it.trim().toIntOrNull() }
-                    },
-                    label = { Text(stringResource(R.string.by_set_pos_label)) },
-                    placeholder = { Text(stringResource(R.string.by_set_pos_placeholder)) }
-                )
-
-                // BYYEARDAY - day of year
-                if (freq == "years") {
-                    var byYearDayStr by remember { mutableStateOf(byYearDay.joinToString(",")) }
-                    OutlinedTextField(
-                        byYearDayStr,
-                        { new ->
-                            byYearDayStr = new
-                            byYearDay = new.split(",").mapNotNull { it.trim().toIntOrNull() }
-                        },
-                        label = { Text(stringResource(R.string.by_year_day_label)) },
-                        placeholder = { Text(stringResource(R.string.by_year_day_placeholder)) }
-                    )
-                }
-
-                // BYWEEKNO - week number
-                if (freq == "years") {
-                    var byWeekNoStr by remember { mutableStateOf(byWeekNo.joinToString(",")) }
-                    OutlinedTextField(
-                        byWeekNoStr,
-                        { new ->
-                            byWeekNoStr = new
-                            byWeekNo = new.split(",").mapNotNull { it.trim().toIntOrNull() }
-                        },
-                        label = { Text(stringResource(R.string.by_week_no_label)) },
-                        placeholder = { Text(stringResource(R.string.by_week_no_placeholder)) }
-                    )
-                }
-
-                // WKST - week start day
-                var wkstDropdownOpen by remember { mutableStateOf(false) }
-                OutlinedTextField(
-                    wkst?.name?.take(2) ?: "MO",
-                    { },
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.week_start_label)) },
-                    trailingIcon = {
-                        Text(
-                            wkst?.name?.take(2) ?: "MO",
-                            Modifier.clickable { wkstDropdownOpen = true }
-                        )
-                        DropdownMenu(wkstDropdownOpen, onDismissRequest = { wkstDropdownOpen = false }) {
-                            DayOfWeek.entries.forEach { day ->
-                                DropdownMenuItem(
-                                    text = { Text(day.name.take(2)) },
-                                    onClick = {
-                                        wkst = day
-                                        wkstDropdownOpen = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                )
 
                 Text(stringResource(R.string.end))
 
@@ -343,6 +251,53 @@ fun RecurrenceDialog(backStack: NavBackStack<Route>, resultKey: String, startDat
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OnDropdown(label: String, options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        OutlinedTextField(
+            value = options.getOrElse(selected) { options.firstOrNull() ?: "" },
+            onValueChange = {},
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(label) },
+            trailingIcon = { Text("▼") },
+            interactionSource = remember { MutableInteractionSource() }.also { src ->
+                LaunchedEffect(src) {
+                    src.interactions.collect { if (it is PressInteraction.Release) open = true }
+                }
+            }
+        )
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            options.forEachIndexed { i, opt ->
+                DropdownMenuItem({ Text(opt) }, onClick = {
+                    onSelect(i)
+                    open = false
+                })
+            }
+        }
+    }
+}
+
+private fun dayOfYear(date: LocalDate): Int =
+    (date.toEpochDays() - LocalDate(date.year, 1, 1).toEpochDays() + 1).toInt()
+
+private fun isoWeeksInYear(year: Int): Int {
+    val jan1 = LocalDate(year, 1, 1).dayOfWeek.isoDayNumber
+    val leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
+    return if (jan1 == 4 || (leap && jan1 == 3)) 53 else 52
+}
+
+private fun isoWeekNumber(date: LocalDate): Int {
+    val week = (dayOfYear(date) - date.dayOfWeek.isoDayNumber + 10) / 7
+    return when {
+        week < 1 -> isoWeeksInYear(date.year - 1)
+        week > isoWeeksInYear(date.year) -> 1
+        else -> week
+    }
 }
 
 private fun ordinal(int: Int): String {

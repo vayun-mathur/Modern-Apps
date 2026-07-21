@@ -31,7 +31,6 @@
     <string name="repeat">Répéter</string>
     <string name="every">Chaque</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
     <string name="never">Jamais</string>
     <string name="until">Jusque</string>
     <string name="until_date">Jusque : %1$s</string>
@@ -48,7 +47,6 @@
     <string name="create_a_calendar">Créer un calendrier</string>
     <string name="choose_timezone">Choix du fuseau horaire</string>
     <string name="on_days_of_week">Les jours de la semaine</string>
-    <string name="monthly_type">Mensuellement</string>
     <string name="end">Fin</string>
     <string name="month_year_format">%1$s %2$d</string>
     <string name="date_range_format">%1$s - %2$s</string>
@@ -58,10 +56,6 @@
     <string name="import_button">Importer</string>
     <string name="delete_this_event">Supprimer l\'événement</string>
     <string name="delete_all_events">Supprimer tous les événements</string>
-    <string name="by_month_day_label">Par jour du mois (1-31, de -1 à -31)</string>
-    <string name="by_month_day_placeholder">p. ex. 1,15,-1</string>
-    <string name="by_month_label">Par mois (1-12)</string>
-    <string name="by_month_placeholder">p. ex. 1,6,12</string>
     <string name="new_local_calendar_title">Nouveau calendrier local</string>
     <string name="calendar_name_label">Nom du calendrier</string>
     <string name="loading_events">Chargement des événements…</string>
@@ -70,13 +64,6 @@
     <string name="create_new_calendar">+ Créer un nouveau calendrier</string>
     <string name="default_layout">Affichage par défaut</string>
     <string name="open_location_in_navigation">Afficher l\'emplacement</string>
-    <string name="by_set_pos_label">Par position fixe (1-366, de -1 à -366)</string>
-    <string name="by_set_pos_placeholder">p. ex. 1,-1,2</string>
-    <string name="by_year_day_label">Par jour de l\'an (1-366, de -1 à -366)</string>
-    <string name="by_year_day_placeholder">p. ex. 1,100,-1</string>
-    <string name="by_week_no_label">Par numéro de semaine (1-53, de -1 à -53)</string>
-    <string name="by_week_no_placeholder">p. ex. 1,26,52</string>
-    <string name="week_start_label">Premier jour de la semaine</string>
     <string name="add_reminder">Définir un rappel</string>
     <string name="calendar_widget_description">Aperçu des événements à venir ― tapoter pour ouvrir le Calendrier</string>
 </resources>

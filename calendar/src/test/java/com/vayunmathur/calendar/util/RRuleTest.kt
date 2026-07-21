@@ -240,6 +240,48 @@ class RRuleTest {
     }
 
     @Test
+    fun testParseMonthlyNthWeekday() {
+        val rrule = RRule.parse("FREQ=MONTHLY;INTERVAL=1;BYDAY=2TU", timeZone)
+        assertTrue(rrule is RRule.EveryXMonths)
+        assertEquals(1, (rrule as RRule.EveryXMonths).typeE)
+    }
+
+    @Test
+    fun testParseMonthlyLastWeekday() {
+        val rrule = RRule.parse("FREQ=MONTHLY;INTERVAL=1;BYDAY=-1MO", timeZone)
+        assertTrue(rrule is RRule.EveryXMonths)
+        assertEquals(2, (rrule as RRule.EveryXMonths).typeE)
+    }
+
+    @Test
+    fun testAsStringMonthlyLastWeekdayDerivesFromStartDate() {
+        // 2025-01-06 is a Monday.
+        val result = RRule.EveryXMonths(1, 2, RRule.EndCondition.Never)
+            .asString(LocalDate(2025, 1, 6), timeZone)
+        assertTrue(result.contains("FREQ=MONTHLY"))
+        assertTrue(result.contains("BYDAY=-1MO"))
+    }
+
+    @Test
+    fun testYearlyWeekOfYearRoundTrip() {
+        val original = RRule.EveryXYears(
+            years = 1,
+            endCondition = RRule.EndCondition.Never,
+            byWeekNo = listOf(30),
+            byDay = listOf(DayOfWeek.MONDAY)
+        )
+        val result = original.asString(LocalDate(2026, 7, 20), timeZone)
+        assertTrue(result.contains("BYWEEKNO=30"))
+        assertTrue(result.contains("BYDAY=MO"))
+
+        val parsed = RRule.parse(result, timeZone)
+        assertTrue(parsed is RRule.EveryXYears)
+        val yearly = parsed as RRule.EveryXYears
+        assertEquals(listOf(30), yearly.byWeekNo)
+        assertEquals(listOf(DayOfWeek.MONDAY), yearly.byDay)
+    }
+
+    @Test
     fun testRoundTripParsing() {
         val original = RRule.EveryXWeeks(
             weeks = 2,

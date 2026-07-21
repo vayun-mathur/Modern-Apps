@@ -29,7 +29,6 @@
     <string name="every">A cada</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
     <string name="on_days_of_week">Nos dias da semana</string>
-    <string name="monthly_type">Tipo mensal</string>
     <string name="end">Fim</string>
     <string name="never">Nunca</string>
     <string name="count">Vezes</string>
@@ -51,14 +50,12 @@
     <string name="month_year_format">%2$d %1$s</string>
     <string name="label_description">Descrição</string>
     <string name="settings">Configurações</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
     <string name="change_color_for">Alterar a cor para este calendário</string>
     <string name="delete_calendar_confirm">Tem certeza que deseja apagar este calendário? Irá remover todos os eventos no calendário.</string>
     <string name="delete_calendar_name_confirm">Tem certeza que deseja apagar \"%1$s\"? Irá remover todos os eventos no calendário.</string>
     <string name="open_location_in_navigation">Abrir a localização</string>
     <string name="delete_this_event">Apagar este evento</string>
     <string name="delete_all_events">Apagar todos os eventos</string>
-    <string name="week_start_label">Começo semana</string>
     <string name="new_local_calendar_title">Novo Calendário Local</string>
     <string name="calendar_name_label">Nome Do Calendário</string>
     <string name="loading_events">Carregando eventos…</string>

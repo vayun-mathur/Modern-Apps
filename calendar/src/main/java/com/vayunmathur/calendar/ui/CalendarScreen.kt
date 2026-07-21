@@ -654,7 +654,7 @@ fun AgendaView(
                     style = MaterialTheme.typography.titleMedium,
                     color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
-                dayInstances.forEach { instance ->
+                dayInstances.filter { date in it.spanDays }.forEach { instance ->
                     val ev = vEventsByID[instance.eventID]!!
                     ListItem(
                         content = { Text(ev.title.ifEmpty { context.getString(R.string.no_title) }) },

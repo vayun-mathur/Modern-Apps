@@ -35,9 +35,7 @@
     <string name="repeat">重复</string>
     <string name="every">每</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
     <string name="on_days_of_week">每周的某几天</string>
-    <string name="monthly_type">每月类型</string>
     <string name="end">结束</string>
     <string name="never">从不</string>
     <string name="count">计数</string>
@@ -59,17 +57,6 @@
     <string name="import_button">导入</string>
     <string name="delete_this_event">删除此活动</string>
     <string name="delete_all_events">删除所有活动</string>
-    <string name="by_month_day_label">按月份中的天数（1-31，-1 至 -31）</string>
-    <string name="by_month_day_placeholder">例如：1,15,-1</string>
-    <string name="by_month_label">按月份（1-12）</string>
-    <string name="by_month_placeholder">例如：1,6,12</string>
-    <string name="by_set_pos_label">按设定位置（1-366，-1 至 -366）</string>
-    <string name="by_set_pos_placeholder">例如：1,-1,2</string>
-    <string name="by_year_day_label">按年份中的天数（1-366，-1 至 -366）</string>
-    <string name="by_year_day_placeholder">例如：1,100,-1</string>
-    <string name="by_week_no_label">按周数（1-53，-1 至 -53）</string>
-    <string name="by_week_no_placeholder">例如：1,26,52</string>
-    <string name="week_start_label">一周起始日</string>
     <string name="new_local_calendar_title">新本地日历</string>
     <string name="calendar_name_label">日历名称</string>
     <string name="loading_events">正在加载活动…</string>

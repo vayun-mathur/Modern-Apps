@@ -52,9 +52,14 @@
     <string name="repeat">Repeat</string>
     <string name="every">Every</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
     <string name="on_days_of_week">On days of week</string>
-    <string name="monthly_type">Monthly type</string>
+    <string name="on_label">On</string>
+    <string name="month_option_day_of_month">On day %1$d of the month</string>
+    <string name="month_option_nth_weekday">On the %1$s %2$s</string>
+    <string name="month_option_last_weekday">On the last %1$s</string>
+    <string name="year_option_month_day">On %1$s %2$d</string>
+    <string name="year_option_week">On week %1$d of the year on %2$s</string>
+    <string name="year_option_day_of_year">On day %1$d of the year</string>
     <string name="end">End</string>
     <string name="never">Never</string>
     <string name="count">Count</string>
@@ -89,19 +94,6 @@
     <!-- Delete event dialog -->
     <string name="delete_this_event">Delete this event</string>
     <string name="delete_all_events">Delete all events</string>
-
-    <!-- Recurrence dialog - RFC 5545 properties -->
-    <string name="by_month_day_label">By month day (1-31, -1 to -31)</string>
-    <string name="by_month_day_placeholder">e.g., 1,15,-1</string>
-    <string name="by_month_label">By month (1-12)</string>
-    <string name="by_month_placeholder">e.g., 1,6,12</string>
-    <string name="by_set_pos_label">By set position (1-366, -1 to -366)</string>
-    <string name="by_set_pos_placeholder">e.g., 1,-1,2</string>
-    <string name="by_year_day_label">By year day (1-366, -1 to -366)</string>
-    <string name="by_year_day_placeholder">e.g., 1,100,-1</string>
-    <string name="by_week_no_label">By week number (1-53, -1 to -53)</string>
-    <string name="by_week_no_placeholder">e.g., 1,26,52</string>
-    <string name="week_start_label">Week start</string>
 
     <!-- Import ICS dialog -->
     <string name="new_local_calendar_title">New Local Calendar</string>

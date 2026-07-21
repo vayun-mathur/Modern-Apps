@@ -40,9 +40,6 @@
     <string name="new_name">שם חדש</string>
     <string name="create_a_calendar">יצירת לוח שנה</string>
     <string name="delete_all_events">מחיקת כל האירועים</string>
-    <string name="by_month_label">לפי חודש (1-‏12)</string>
-    <string name="by_month_placeholder">למשל: 1,‏ 6,‏ 12</string>
-    <string name="week_start_label">תחילת השבוע</string>
     <string name="new_local_calendar_title">לוח שנה מקומי חדש</string>
     <string name="calendar_name_label">שם לוח שנה</string>
     <string name="loading_events">האירועים נטענים…</string>

@@ -49,7 +49,5 @@
     <string name="every">A cada</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
     <string name="on_days_of_week">Nos dias da semana</string>
-    <string name="monthly_type">Tipo mensal</string>
     <string name="end">Fim</string>
-    <string name="monthly_nth_day_format">%1$s %2$s</string>
 </resources>

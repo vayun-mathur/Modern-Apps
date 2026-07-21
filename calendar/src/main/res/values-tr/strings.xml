@@ -29,7 +29,6 @@
     <string name="repeat">Tekrar et</string>
     <string name="every">Her</string>
     <string name="on_days_of_week">Belirli günlerde</string>
-    <string name="monthly_type">Aylık tekrar şekli</string>
     <string name="end">Sonlandır</string>
     <string name="never">Hiçbir zaman</string>
     <string name="count">Miktar</string>

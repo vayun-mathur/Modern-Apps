@@ -50,17 +50,6 @@
     <string name="open_location_in_navigation">Ort öffnen</string>
     <string name="delete_this_event">Diesen Termin löschen</string>
     <string name="delete_all_events">Alle Termine löschen</string>
-    <string name="by_month_day_label">Nach Tag im Monat (1-31, -1 to -31)</string>
-    <string name="by_month_day_placeholder">z.B.: 1,15,-1</string>
-    <string name="by_month_label">Nach Monat (1-12)</string>
-    <string name="by_month_placeholder">z.B.: 1,6,12</string>
-    <string name="by_set_pos_label">Nach bestimmter Position (1-366, -1 to -366)</string>
-    <string name="by_set_pos_placeholder">z.B.: 1,-1,2</string>
-    <string name="by_year_day_label">Nach Tag im Jahr (1-366, -1 to -366)</string>
-    <string name="by_year_day_placeholder">z.B.: 1,100,-1</string>
-    <string name="by_week_no_label">Nach Kalenderwoche (1-53, -1 to -53)</string>
-    <string name="by_week_no_placeholder">z.B.: 1,26,52</string>
-    <string name="week_start_label">Wochenanfang</string>
     <string name="new_local_calendar_title">Neuer lokaler Kalender</string>
     <string name="calendar_name_label">Kalender Name</string>
     <string name="loading_events">Lade Termine…</string>
@@ -71,7 +60,6 @@
     <string name="default_layout">Standart Ansicht</string>
     <string name="twelve_am">00:00</string>
     <string name="twelve_pm">12:00</string>
-    <string name="monthly_type">Monatlicher Typ</string>
     <string name="add_reminder">Erinnerung hinzufügen</string>
     <string name="calendar_widget_description">Zukünftige Termine im Überblick - tippe um Kalender zu öffnen</string>
 </resources>
