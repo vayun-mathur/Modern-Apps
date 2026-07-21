@@ -25,5 +25,6 @@ data class BookedTrip(
     val awaitingPayment: Boolean = false,
     val paymentRequiredBy: String = "",
     val remoteSyncedAt: Long = 0,
+    val customerId: String = "",
     val createdAt: Long = System.currentTimeMillis(),
 )

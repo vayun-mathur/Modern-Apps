@@ -10,9 +10,22 @@ data class StaySearchResultDto(
     val rating: Long = 0,
     val reviewScore: Double = 0.0,
     val photoUrl: String = "",
+    val photos: List<String> = emptyList(),
+    val amenities: List<String> = emptyList(),
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val address: String = "",
     val cheapestAmount: String = "0",
     val cheapestCurrency: String = "USD",
+)
+
+/** A location suggestion for the stays search box (free-text → coordinates). */
+@Serializable
+data class StaySuggestionDto(
+    val name: String = "",
+    val kind: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 /** One bookable rate on a room. */
@@ -54,12 +67,20 @@ data class StayQuoteDto(
     val totalCurrency: String = "USD",
 )
 
+/** A hotel loyalty membership for a guest. */
+@Serializable
+data class StayLoyaltyAccountDto(
+    val programmeName: String = "",
+    val accountNumber: String = "",
+)
+
 /** A guest supplied when booking a stay. */
 @Serializable
 data class StayGuestInputDto(
     val givenName: String = "",
     val familyName: String = "",
     val bornOn: String = "",
+    val loyaltyProgrammeAccount: StayLoyaltyAccountDto? = null,
 )
 
 /** The stay-booking body posted to `POST /api/stays/bookings`. */

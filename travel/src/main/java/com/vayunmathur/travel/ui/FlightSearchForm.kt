@@ -172,6 +172,7 @@ fun FlightSearchForm(
                         infants = infants,
                         cabin = cabin.code,
                         maxConnections = if (nonstop) 0 else -1,
+                        isRoundTrip = tripType == TripType.ROUND_TRIP,
                     )
                 )
             },

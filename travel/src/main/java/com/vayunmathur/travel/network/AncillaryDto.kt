@@ -18,20 +18,34 @@ data class ServiceDto(
     val passengerIds: List<String> = emptyList(),
 )
 
-/** One seat on a seat map. [available] gates selection; [serviceId] (+ amount) is set when it costs extra. */
+/**
+ * One element in a seat-map row section. [type] is `seat`/`restricted_seat_general`
+ * (a real seat) or an amenity/spacer (`empty`, `lavatory`, `galley`, `exit_row`,
+ * `bassinet`, `closet`, `stairs`). Seats are selectable only when [available].
+ */
 @Serializable
-data class SeatDto(
+data class SeatElementDto(
+    val type: String = "",
     val designator: String = "",
     val available: Boolean = false,
     val serviceId: String? = null,
     val totalAmount: String? = null,
     val totalCurrency: String? = null,
+    val name: String? = null,
+) {
+    val isSeat: Boolean get() = type == "seat" || type == "restricted_seat_general"
+}
+
+/** A contiguous group of elements between aisles. */
+@Serializable
+data class SeatSectionDto(
+    val elements: List<SeatElementDto> = emptyList(),
 )
 
-/** A flattened row of seats. */
+/** A cabin row, split into sections by the aisle(s). */
 @Serializable
 data class SeatRowDto(
-    val seats: List<SeatDto> = emptyList(),
+    val sections: List<SeatSectionDto> = emptyList(),
 )
 
 /** A cabin's seat map for a single segment. */
@@ -39,6 +53,8 @@ data class SeatRowDto(
 data class SeatCabinDto(
     val segmentId: String = "",
     val cabinClass: String = "",
+    val deck: Long = 0,
+    val aisles: Long = 0,
     val rows: List<SeatRowDto> = emptyList(),
 )
 
@@ -47,4 +63,5 @@ data class SeatCabinDto(
 data class ServiceSelectionDto(
     val id: String = "",
     val quantity: Long = 1,
+    val passengerId: String? = null,
 )

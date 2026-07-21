@@ -46,6 +46,10 @@ fun OfferReviewPage(
     val review by viewModel.review.collectAsStateWithLifecycle()
 
     LaunchedEffect(route.offerId) { viewModel.refreshOffer(route.offerId) }
+    LaunchedEffect(Unit) {
+        viewModel.loadAircraft()
+        viewModel.loadCities()
+    }
 
     Scaffold(
         topBar = {
@@ -82,8 +86,11 @@ fun OfferReviewPage(
             }
 
             val chips = conditionsLabels(offer.conditions)
-            if (chips.isNotEmpty()) {
+            if (chips.isNotEmpty() || offer.fareBrand.isNotBlank()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (offer.fareBrand.isNotBlank()) {
+                        AssistChip(onClick = {}, label = { Text(offer.fareBrand) })
+                    }
                     chips.forEach { AssistChip(onClick = {}, label = { Text(it) }) }
                 }
             }

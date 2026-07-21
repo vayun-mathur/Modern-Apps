@@ -28,6 +28,8 @@ object StaysApi {
         rooms: Int = 1,
         adults: Int = 2,
         radius: Int = 10,
+        latitude: Double? = null,
+        longitude: Double? = null,
     ): List<StaySearchResultDto> {
         val url = buildString {
             append(BASE).append("/search")
@@ -37,8 +39,18 @@ object StaysApi {
             append("&rooms=").append(rooms)
             append("&adults=").append(adults)
             append("&radius=").append(radius)
+            if (latitude != null && longitude != null) {
+                append("&latitude=").append(latitude)
+                append("&longitude=").append(longitude)
+            }
         }
         return NetworkClient.getJson(url)
+    }
+
+    /** Accommodation/location autocomplete for the search box. */
+    suspend fun suggestions(query: String): List<StaySuggestionDto> {
+        if (query.isBlank()) return emptyList()
+        return NetworkClient.getJson("$BASE/suggestions?q=${enc(query)}")
     }
 
     /** All rates for a search result. */

@@ -75,6 +75,7 @@ data class SliceDto(
     val stops: Long = 0,
     val segments: List<SegmentDto> = emptyList(),
     val conditions: ConditionsDto = ConditionsDto(),
+    val fareBrandName: String = "",
 )
 
 /** A passenger carried on an offer (id + Duffel type + optional age). */
@@ -107,6 +108,7 @@ data class OfferDto(
     val passengers: List<OfferPassengerDto> = emptyList(),
     val conditions: ConditionsDto = ConditionsDto(),
     val availableServices: List<ServiceDto> = emptyList(),
+    val fareBrand: String = "",
     val slices: List<SliceDto> = emptyList(),
 ) {
     /** Distinct marketing airline IATA codes across all segments. */
@@ -125,5 +127,16 @@ data class OfferDto(
 @Serializable
 data class OfferSearchDto(
     val offerRequestId: String = "",
+    val offers: List<OfferDto> = emptyList(),
+)
+
+/**
+ * A step in a partial (step-by-step) offer request: the request [id] plus the
+ * offers for the current leg (or the final orderable fares). Each partial offer
+ * carries a single slice.
+ */
+@Serializable
+data class PartialOfferDto(
+    val id: String = "",
     val offers: List<OfferDto> = emptyList(),
 )

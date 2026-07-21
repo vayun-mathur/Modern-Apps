@@ -22,3 +22,19 @@ data class AirportDto(
     val latitude: Double? = null,
     val longitude: Double? = null,
 )
+
+/** Reference data for an aircraft type, from `/api/travel/aircraft`. */
+@Serializable
+data class AircraftDto(
+    val id: String = "",
+    val name: String = "",
+    val iataCode: String = "",
+)
+
+/** Reference data for a city, from `/api/travel/cities`. */
+@Serializable
+data class CityDto(
+    val name: String = "",
+    val iataCode: String = "",
+    val iataCountryCode: String = "",
+)

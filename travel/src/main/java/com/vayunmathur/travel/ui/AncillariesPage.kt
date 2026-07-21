@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -43,6 +45,7 @@ fun AncillariesPage(
 ) {
     val review by viewModel.review.collectAsStateWithLifecycle()
     val selectedBaggage by viewModel.selectedBaggage.collectAsStateWithLifecycle()
+    val selectedExtras by viewModel.selectedExtras.collectAsStateWithLifecycle()
     val selectedSeats by viewModel.selectedSeats.collectAsStateWithLifecycle()
     val offer = review.offer
 
@@ -70,6 +73,7 @@ fun AncillariesPage(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            val multiPassenger = offer.passengers.size > 1
             val bags = offer.availableServices.filter { it.type == "baggage" }
             if (bags.isNotEmpty()) {
                 SectionHeader("Extra baggage")
@@ -77,7 +81,21 @@ fun AncillariesPage(
                     BaggageRow(
                         service = svc,
                         quantity = selectedBaggage[svc.id] ?: 0L,
+                        passengerLabel = if (multiPassenger) passengerLabel(offer, svc.passengerIds.firstOrNull()) else null,
                         onQuantity = { viewModel.setBaggageQuantity(svc.id, it) },
+                    )
+                }
+            }
+
+            val extras = offer.availableServices.filter { it.type != "baggage" && it.type != "seat" }
+            if (extras.isNotEmpty()) {
+                SectionHeader("Extras")
+                extras.forEach { svc ->
+                    ExtraServiceRow(
+                        service = svc,
+                        quantity = selectedExtras[svc.id] ?: 0L,
+                        passengerLabel = if (multiPassenger) passengerLabel(offer, svc.passengerIds.firstOrNull()) else null,
+                        onQuantity = { viewModel.setExtraQuantity(svc.id, it) },
                     )
                 }
             }
@@ -113,7 +131,7 @@ fun AncillariesPage(
             }
 
             HorizontalDivider()
-            ExtrasSummary(offer, selectedBaggage, selectedSeats)
+            ExtrasSummary(offer, selectedBaggage, selectedExtras, selectedSeats)
 
             Button(
                 onClick = {
@@ -127,12 +145,17 @@ fun AncillariesPage(
 }
 
 @Composable
-private fun BaggageRow(service: ServiceDto, quantity: Long, onQuantity: (Long) -> Unit) {
+private fun BaggageRow(
+    service: ServiceDto,
+    quantity: Long,
+    passengerLabel: String?,
+    onQuantity: (Long) -> Unit,
+) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Column(Modifier.weight(1f)) {
                 Text(service.title.ifBlank { "Extra bag" }, style = MaterialTheme.typography.bodyLarge)
@@ -141,27 +164,89 @@ private fun BaggageRow(service: ServiceDto, quantity: Long, onQuantity: (Long) -
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (passengerLabel != null) {
+                    Text(
+                        "For $passengerLabel",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
-            CountStepper(
-                label = "",
-                count = quantity.toInt(),
-                onCount = { onQuantity(it.toLong()) },
-                min = 0,
-                max = service.maxQuantity.toInt().coerceAtLeast(1),
+            // Compact stepper (must not fill width, or it squeezes the title column).
+            val max = service.maxQuantity.toInt().coerceAtLeast(1)
+            IconButton(
+                onClick = { onQuantity((quantity - 1).coerceAtLeast(0)) },
+                enabled = quantity > 0,
+            ) { Icon(Icons.Filled.Remove, contentDescription = "Fewer") }
+            Text("$quantity", style = MaterialTheme.typography.titleMedium)
+            IconButton(
+                onClick = { onQuantity((quantity + 1).coerceAtMost(max.toLong())) },
+                enabled = quantity < max,
+            ) { Icon(Icons.Filled.Add, contentDescription = "More") }
+        }
+    }
+}
+
+/** A non-baggage service (CFAR, priority boarding, …) as an on/off toggle. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExtraServiceRow(
+    service: ServiceDto,
+    quantity: Long,
+    passengerLabel: String?,
+    onQuantity: (Long) -> Unit,
+) {
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(service.title.ifBlank { "Extra" }, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    formatMoney(service.totalAmount, service.totalCurrency),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (passengerLabel != null) {
+                    Text(
+                        "For $passengerLabel",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            com.vayunmathur.library.ui.Switch(
+                checked = quantity > 0,
+                onCheckedChange = { onQuantity(if (it) 1L else 0L) },
             )
         }
     }
+}
+
+/** A human label for a passenger id, e.g. "Adult 1" / "Child 2". */
+private fun passengerLabel(offer: OfferDto, passengerId: String?): String? {
+    if (passengerId == null) return null
+    val index = offer.passengers.indexOfFirst { it.id == passengerId }
+    if (index < 0) return null
+    val kind = offer.passengers[index].type
+        .replace('_', ' ')
+        .replaceFirstChar { it.uppercase() }
+        .ifBlank { "Passenger" }
+    return "$kind ${index + 1}"
 }
 
 @Composable
 private fun ExtrasSummary(
     offer: OfferDto,
     selectedBaggage: Map<String, Long>,
-    selectedSeats: Map<String, com.vayunmathur.travel.network.SeatDto>,
+    selectedExtras: Map<String, Long>,
+    selectedSeats: Map<String, com.vayunmathur.travel.network.SeatElementDto>,
 ) {
     val currency = offer.currency
     var total = 0.0
-    selectedBaggage.forEach { (id, qty) ->
+    (selectedBaggage + selectedExtras).forEach { (id, qty) ->
         val svc = offer.availableServices.find { it.id == id }
         total += (svc?.totalAmount?.toDoubleOrNull() ?: 0.0) * qty
     }

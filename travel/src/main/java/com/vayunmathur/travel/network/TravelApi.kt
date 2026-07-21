@@ -48,24 +48,60 @@ object TravelApi {
         infants: Int = 0,
         cabin: String = "economy",
         maxConnections: Int = -1,
-    ): OfferSearchDto {
-        val url = buildString {
-            append(BASE).append("/flights")
-            if (!slices.isNullOrBlank()) {
-                append("?slices=").append(enc(slices))
-            } else {
-                append("?origin=").append(enc(origin))
-                append("&destination=").append(enc(destination))
-                append("&depart=").append(enc(depart))
-                if (!ret.isNullOrBlank()) append("&return=").append(enc(ret))
-            }
-            append("&adults=").append(adults)
-            if (children.isNotBlank()) append("&children=").append(enc(children))
-            if (infants > 0) append("&infants=").append(infants)
-            append("&cabin=").append(enc(cabin))
-            if (maxConnections >= 0) append("&max_connections=").append(maxConnections)
+        loyalty: String = "",
+    ): OfferSearchDto = NetworkClient.getJson(
+        flightsUrl("/flights", origin, destination, depart, ret, slices, adults, children, infants, cabin, maxConnections, loyalty)
+    )
+
+    /**
+     * Kick off an incremental (batch) search: returns quickly with just the
+     * [OfferSearchDto.offerRequestId] (no offers). Poll [offers] for results.
+     */
+    suspend fun flightsAsync(
+        origin: String = "",
+        destination: String = "",
+        depart: String = "",
+        ret: String? = null,
+        slices: String? = null,
+        adults: Int = 1,
+        children: String = "",
+        infants: Int = 0,
+        cabin: String = "economy",
+        maxConnections: Int = -1,
+        loyalty: String = "",
+    ): OfferSearchDto = NetworkClient.getJson(
+        flightsUrl("/flights-async", origin, destination, depart, ret, slices, adults, children, infants, cabin, maxConnections, loyalty)
+    )
+
+    private fun flightsUrl(
+        path: String,
+        origin: String,
+        destination: String,
+        depart: String,
+        ret: String?,
+        slices: String?,
+        adults: Int,
+        children: String,
+        infants: Int,
+        cabin: String,
+        maxConnections: Int,
+        loyalty: String,
+    ): String = buildString {
+        append(BASE).append(path)
+        if (!slices.isNullOrBlank()) {
+            append("?slices=").append(enc(slices))
+        } else {
+            append("?origin=").append(enc(origin))
+            append("&destination=").append(enc(destination))
+            append("&depart=").append(enc(depart))
+            if (!ret.isNullOrBlank()) append("&return=").append(enc(ret))
         }
-        return NetworkClient.getJson(url)
+        append("&adults=").append(adults)
+        if (children.isNotBlank()) append("&children=").append(enc(children))
+        if (infants > 0) append("&infants=").append(infants)
+        append("&cabin=").append(enc(cabin))
+        if (maxConnections >= 0) append("&max_connections=").append(maxConnections)
+        if (loyalty.isNotBlank()) append("&loyalty=").append(enc(loyalty))
     }
 
     /**
@@ -86,8 +122,51 @@ object TravelApi {
         return NetworkClient.getJson(url)
     }
 
+    /**
+     * Start a step-by-step (partial) offer request; returns the first leg's
+     * offers plus the request id used for the following steps.
+     */
+    suspend fun createPartialOffers(
+        slices: String? = null,
+        origin: String = "",
+        destination: String = "",
+        depart: String = "",
+        ret: String? = null,
+        adults: Int = 1,
+        children: String = "",
+        infants: Int = 0,
+        cabin: String = "economy",
+        maxConnections: Int = -1,
+        loyalty: String = "",
+    ): PartialOfferDto {
+        val url = flightsUrl("/partial-offers", origin, destination, depart, ret, slices, adults, children, infants, cabin, maxConnections, loyalty)
+        val res = NetworkClient.performRequest(
+            url = url,
+            method = "POST",
+            headers = mapOf("Content-Type" to "application/json"),
+        )
+        if (!res.isSuccess) {
+            throw RuntimeException(extractError(res.body).ifBlank { "Search failed (HTTP ${res.status})." })
+        }
+        return json.decodeFromString(res.body)
+    }
+
+    /** The next leg's offers, given the already-selected partial-offer ids. */
+    suspend fun selectPartialOffer(requestId: String, selected: List<String>): PartialOfferDto =
+        NetworkClient.getJson("$BASE/partial-offers/${enc(requestId)}/select?selected=${enc(selected.joinToString(","))}")
+
+    /** The final orderable fares for the fully-selected combination. */
+    suspend fun partialOfferFares(requestId: String, selected: List<String>): PartialOfferDto =
+        NetworkClient.getJson("$BASE/partial-offers/${enc(requestId)}/fares?selected=${enc(selected.joinToString(","))}")
+
     /** Reference list of airlines with logo URLs (cache client-side). */
     suspend fun airlines(): List<AirlineDto> = NetworkClient.getJson("$BASE/airlines")
+
+    /** Reference list of aircraft types (cache client-side). */
+    suspend fun aircraft(): List<AircraftDto> = NetworkClient.getJson("$BASE/aircraft")
+
+    /** Reference list of cities (cache client-side). */
+    suspend fun cities(): List<CityDto> = NetworkClient.getJson("$BASE/cities")
 
     /** Reference data for a single airport by IATA code. */
     suspend fun airport(code: String): AirportDto =
@@ -143,6 +222,10 @@ object TravelApi {
     suspend fun orderDetail(orderId: String): OrderDetailDto =
         NetworkClient.getJson("$BASE/orders/${enc(orderId)}")
 
+    /** Server-recorded webhook events (schedule change / cancellation) for an order. */
+    suspend fun orderEvents(orderId: String): List<OrderEventDto> =
+        NetworkClient.getJson("$BASE/order-events?order_id=${enc(orderId)}")
+
     /** Get a refund quote for cancelling an order (does not confirm). */
     suspend fun cancelQuote(orderId: String): CancellationDto =
         postJson("$BASE/orders/${enc(orderId)}/cancel", "", "Cancellation quote failed")
@@ -162,6 +245,17 @@ object TravelApi {
     /** Add services to a booked order, settling via balance. */
     suspend fun addServices(orderId: String, input: AddServicesInputDto): OrderResultDto =
         postJson("$BASE/orders/${enc(orderId)}/services", input, "Adding services failed")
+
+    /** Create a Duffel customer user to associate orders with. */
+    suspend fun createCustomer(input: CustomerUserInputDto): CustomerDto =
+        postJson("$BASE/customers", input, "Creating customer failed")
+
+    /** List the account's customer users. */
+    suspend fun customers(): List<CustomerDto> = NetworkClient.getJson("$BASE/customers")
+
+    /** Full detail for one customer user. */
+    suspend fun customer(id: String): CustomerDto =
+        NetworkClient.getJson("$BASE/customers/${enc(id)}")
 
     /** POST [body] to [url] and decode the JSON result, surfacing upstream errors. */
     private suspend inline fun <reified T> postJson(url: String, body: Any, fallback: String): T {

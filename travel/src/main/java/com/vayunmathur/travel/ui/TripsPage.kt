@@ -40,6 +40,11 @@ import com.vayunmathur.travel.util.TravelViewModel
 fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
     val remote by viewModel.remoteOrders.collectAsStateWithLifecycle()
+    val orderEvents by viewModel.orderEvents.collectAsStateWithLifecycle()
+
+    androidx.compose.runtime.LaunchedEffect(remote.orders) {
+        remote.orders.forEach { viewModel.loadOrderEvents(it.orderId) }
+    }
 
     Scaffold(
         topBar = {
@@ -72,7 +77,9 @@ fun TripsPage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
             if (remote.orders.isNotEmpty()) {
                 item { SectionHeader("Synced from Duffel") }
                 items(remote.orders) { order ->
-                    RemoteOrderCard(order) { backStack.add(Route.OrderDetail(order.orderId)) }
+                    RemoteOrderCard(order, hasUpdates = orderEvents[order.orderId].orEmpty().isNotEmpty()) {
+                        backStack.add(Route.OrderDetail(order.orderId))
+                    }
                 }
             }
 
@@ -135,7 +142,7 @@ private fun LocalTripCard(trip: BookedTrip, onClick: () -> Unit) {
 }
 
 @Composable
-private fun RemoteOrderCard(order: OrderDetailDto, onClick: () -> Unit) {
+private fun RemoteOrderCard(order: OrderDetailDto, hasUpdates: Boolean = false, onClick: () -> Unit) {
     val route = order.slices.firstOrNull()?.let { "${it.origin} → ${it.destination}" } ?: order.bookingReference
     ElevatedCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clickable { onClick() },
@@ -149,7 +156,9 @@ private fun RemoteOrderCard(order: OrderDetailDto, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (order.paymentStatus == "awaiting_payment") {
+                if (hasUpdates) {
+                    AssistChip(onClick = onClick, label = { Text("Schedule change") })
+                } else if (order.paymentStatus == "awaiting_payment") {
                     AssistChip(onClick = onClick, label = { Text("Payment due") })
                 }
             }

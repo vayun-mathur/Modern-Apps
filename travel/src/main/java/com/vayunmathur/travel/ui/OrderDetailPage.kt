@@ -45,8 +45,13 @@ fun OrderDetailPage(
 ) {
     val state by viewModel.orderDetail.collectAsStateWithLifecycle()
     val paymentAction by viewModel.payment.collectAsStateWithLifecycle()
+    val orderEvents by viewModel.orderEvents.collectAsStateWithLifecycle()
+    val events = orderEvents[route.orderId].orEmpty()
 
-    LaunchedEffect(route.orderId) { viewModel.loadOrderDetail(route.orderId) }
+    LaunchedEffect(route.orderId) {
+        viewModel.loadOrderDetail(route.orderId)
+        viewModel.loadOrderEvents(route.orderId)
+    }
     LaunchedEffect(paymentAction) {
         if (paymentAction is PaymentActionState.Success) {
             viewModel.resetPaymentAction()
@@ -85,6 +90,8 @@ fun OrderDetailPage(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            events.forEach { event -> OrderEventBanner(event.message) }
+
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OrderRow("Booking reference", order.bookingReference, emphasize = true)
@@ -131,6 +138,22 @@ fun OrderDetailPage(
                 ) { Text("Cancel order") }
             }
         }
+    }
+}
+
+@Composable
+private fun OrderEventBanner(message: String) {
+    com.vayunmathur.library.ui.Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.padding(12.dp),
+        )
     }
 }
 

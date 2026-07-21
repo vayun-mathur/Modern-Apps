@@ -18,7 +18,9 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.travel.data.BookedTripDao
+import com.vayunmathur.travel.data.CustomerDao
 import com.vayunmathur.travel.data.DB_NAME
+import com.vayunmathur.travel.data.FrequentFlyerDao
 import com.vayunmathur.travel.data.RecentSearchDao
 import com.vayunmathur.travel.data.TravelDatabase
 import com.vayunmathur.travel.ui.AncillariesPage
@@ -26,12 +28,16 @@ import com.vayunmathur.travel.ui.CancellationPage
 import com.vayunmathur.travel.ui.ChangePage
 import com.vayunmathur.travel.ui.ConfirmationPage
 import com.vayunmathur.travel.ui.FlightResultsPage
+import com.vayunmathur.travel.ui.FareSelectPage
 import com.vayunmathur.travel.ui.HomePage
 import com.vayunmathur.travel.ui.OfferReviewPage
 import com.vayunmathur.travel.ui.OrderDetailPage
+import com.vayunmathur.travel.ui.OutboundSelectPage
 import com.vayunmathur.travel.ui.PassengersPage
 import com.vayunmathur.travel.ui.PaymentPage
+import com.vayunmathur.travel.ui.ReturnSelectPage
 import com.vayunmathur.travel.ui.SeatMapPage
+import com.vayunmathur.travel.ui.SettingsPage
 import com.vayunmathur.travel.ui.StayConfirmationPage
 import com.vayunmathur.travel.ui.StayDetailPage
 import com.vayunmathur.travel.ui.StayGuestsPage
@@ -47,9 +53,11 @@ import kotlinx.serialization.Serializable
 class MainActivity : ComponentActivity() {
     private lateinit var recentSearchDao: RecentSearchDao
     private lateinit var bookedTripDao: BookedTripDao
+    private lateinit var frequentFlyerDao: FrequentFlyerDao
+    private lateinit var customerDao: CustomerDao
 
     private val viewModel: TravelViewModel by viewModels {
-        TravelViewModelFactory(application, recentSearchDao, bookedTripDao)
+        TravelViewModelFactory(application, recentSearchDao, bookedTripDao, frequentFlyerDao, customerDao)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +69,8 @@ class MainActivity : ComponentActivity() {
             val db = buildDatabase<TravelDatabase>(dbName = DB_NAME)
             recentSearchDao = db.recentSearchDao()
             bookedTripDao = db.bookedTripDao()
+            frequentFlyerDao = db.frequentFlyerDao()
+            customerDao = db.customerDao()
             withContext(Dispatchers.Main) { ready.value = true }
         }
 
@@ -89,6 +99,22 @@ sealed interface Route : NavKey {
 
     @Serializable
     data class OfferReview(val offerId: String) : Route
+
+    @Serializable
+    data class OutboundSelect(
+        val slices: String,
+        val adults: Int,
+        val children: String,
+        val infants: Int,
+        val cabin: String,
+        val maxConnections: Int,
+    ) : Route
+
+    @Serializable
+    data class ReturnSelect(val outboundId: String) : Route
+
+    @Serializable
+    data class FareSelect(val outboundId: String, val returnId: String) : Route
 
     @Serializable
     data class Ancillaries(val offerId: String) : Route
@@ -121,6 +147,8 @@ sealed interface Route : NavKey {
         val checkOut: String,
         val rooms: Int,
         val adults: Int,
+        val latitude: Double = Double.NaN,
+        val longitude: Double = Double.NaN,
     ) : Route
 
     @Serializable
@@ -134,6 +162,9 @@ sealed interface Route : NavKey {
 
     @Serializable
     data object Trips : Route
+
+    @Serializable
+    data object Settings : Route
 }
 
 @Composable
@@ -143,6 +174,9 @@ fun MainGraph(viewModel: TravelViewModel) {
         MainNavigation(backStack) {
             entry<Route.Home> { HomePage(backStack, viewModel) }
             entry<Route.FlightResults> { FlightResultsPage(backStack, viewModel, it) }
+            entry<Route.OutboundSelect> { OutboundSelectPage(backStack, viewModel, it) }
+            entry<Route.ReturnSelect> { ReturnSelectPage(backStack, viewModel, it) }
+            entry<Route.FareSelect> { FareSelectPage(backStack, viewModel, it) }
             entry<Route.OfferReview> { OfferReviewPage(backStack, viewModel, it) }
             entry<Route.Ancillaries> { AncillariesPage(backStack, viewModel, it) }
             entry<Route.SeatMap> { SeatMapPage(backStack, viewModel, it) }
@@ -157,6 +191,7 @@ fun MainGraph(viewModel: TravelViewModel) {
             entry<Route.StayGuests> { StayGuestsPage(backStack, viewModel) }
             entry<Route.StayConfirmation> { StayConfirmationPage(backStack, viewModel, it) }
             entry<Route.Trips> { TripsPage(backStack, viewModel) }
+            entry<Route.Settings> { SettingsPage(backStack, viewModel) }
         }
     }
 }

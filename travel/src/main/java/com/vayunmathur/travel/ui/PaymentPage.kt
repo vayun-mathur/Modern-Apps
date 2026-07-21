@@ -55,6 +55,9 @@ fun PaymentPage(
 ) {
     val review by viewModel.review.collectAsStateWithLifecycle()
     val booking by viewModel.booking.collectAsStateWithLifecycle()
+    val customers by viewModel.customers.collectAsStateWithLifecycle()
+    val activeCustomerId by viewModel.activeCustomerId.collectAsStateWithLifecycle()
+    val activeCustomer = customers.firstOrNull { it.id == activeCustomerId }
 
     LaunchedEffect(booking) {
         val b = booking
@@ -103,6 +106,14 @@ fun PaymentPage(
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
+            }
+
+            if (activeCustomer != null) {
+                Text(
+                    "Booking for ${activeCustomer.displayName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             if (allowHold) {

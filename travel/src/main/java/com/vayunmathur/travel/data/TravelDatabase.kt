@@ -52,14 +52,46 @@ interface BookedTripDao {
     suspend fun deleteById(orderId: String)
 }
 
+@Dao
+interface FrequentFlyerDao {
+    @Query("SELECT * FROM FrequentFlyer ORDER BY airlineName")
+    fun observeAll(): Flow<List<FrequentFlyer>>
+
+    @Query("SELECT * FROM FrequentFlyer ORDER BY airlineName")
+    suspend fun getAll(): List<FrequentFlyer>
+
+    @Upsert
+    suspend fun upsert(value: FrequentFlyer)
+
+    @Query("DELETE FROM FrequentFlyer WHERE airlineIata = :airlineIata")
+    suspend fun deleteById(airlineIata: String)
+}
+
+@Dao
+interface CustomerDao {
+    @Query("SELECT * FROM Customer ORDER BY givenName, familyName")
+    fun observeAll(): Flow<List<Customer>>
+
+    @Query("SELECT * FROM Customer WHERE id = :id")
+    suspend fun byId(id: String): Customer?
+
+    @Upsert
+    suspend fun upsert(value: Customer)
+
+    @Query("DELETE FROM Customer WHERE id = :id")
+    suspend fun deleteById(id: String)
+}
+
 @Database(
-    entities = [RecentSearch::class, BookedTrip::class],
-    version = 2,
+    entities = [RecentSearch::class, BookedTrip::class, FrequentFlyer::class, Customer::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class TravelDatabase : RoomDatabase() {
     abstract fun recentSearchDao(): RecentSearchDao
     abstract fun bookedTripDao(): BookedTripDao
+    abstract fun frequentFlyerDao(): FrequentFlyerDao
+    abstract fun customerDao(): CustomerDao
 
     companion object : DatabaseMigrations {
         override val migrations = listOf(
@@ -69,6 +101,29 @@ abstract class TravelDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE BookedTrip ADD COLUMN awaitingPayment INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE BookedTrip ADD COLUMN paymentRequiredBy TEXT NOT NULL DEFAULT ''")
                     db.execSQL("ALTER TABLE BookedTrip ADD COLUMN remoteSyncedAt INTEGER NOT NULL DEFAULT 0")
+                }
+            },
+            object : androidx.room.migration.Migration(2, 3) {
+                override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS FrequentFlyer (" +
+                            "airlineIata TEXT NOT NULL PRIMARY KEY, " +
+                            "accountNumber TEXT NOT NULL, " +
+                            "airlineName TEXT NOT NULL DEFAULT '')"
+                    )
+                }
+            },
+            object : androidx.room.migration.Migration(3, 4) {
+                override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS Customer (" +
+                            "id TEXT NOT NULL PRIMARY KEY, " +
+                            "email TEXT NOT NULL, " +
+                            "givenName TEXT NOT NULL, " +
+                            "familyName TEXT NOT NULL, " +
+                            "phoneNumber TEXT NOT NULL DEFAULT '')"
+                    )
+                    db.execSQL("ALTER TABLE BookedTrip ADD COLUMN customerId TEXT NOT NULL DEFAULT ''")
                 }
             },
         )

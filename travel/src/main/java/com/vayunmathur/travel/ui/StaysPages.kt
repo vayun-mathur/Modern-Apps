@@ -59,25 +59,94 @@ import com.vayunmathur.travel.util.TravelViewModel
 fun StaySearchForm(
     viewModel: TravelViewModel,
     modifier: Modifier = Modifier,
-    onSearch: (place: String, checkIn: String, checkOut: String, rooms: Int, adults: Int) -> Unit,
+    onSearch: (place: String, checkIn: String, checkOut: String, rooms: Int, adults: Int, latitude: Double?, longitude: Double?) -> Unit,
 ) {
     var place by remember { mutableStateOf("") }
+    var latitude by remember { mutableStateOf<Double?>(null) }
+    var longitude by remember { mutableStateOf<Double?>(null) }
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
     var rooms by remember { mutableIntStateOf(1) }
     var adults by remember { mutableIntStateOf(2) }
 
     Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PlaceAutocompleteField("Destination", viewModel, onCodeChange = { place = it })
+        StaySuggestField(
+            label = "Destination or hotel",
+            viewModel = viewModel,
+            onSelect = { name, lat, lng ->
+                place = name
+                latitude = lat
+                longitude = lng
+            },
+        )
         DateField("Check-in", checkIn, onDate = { checkIn = it })
         DateField("Check-out", checkOut, onDate = { checkOut = it })
         CountStepper("Rooms", rooms, onCount = { rooms = it }, min = 1, max = 5)
         CountStepper("Guests", adults, onCount = { adults = it }, min = 1, max = 9)
         Button(
-            onClick = { onSearch(place, checkIn, checkOut, rooms, adults) },
+            onClick = { onSearch(place, checkIn, checkOut, rooms, adults, latitude, longitude) },
             enabled = place.isNotBlank() && checkIn.isNotBlank() && checkOut.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Search hotels") }
+    }
+}
+
+/**
+ * Stays location autocomplete: type a city or hotel name and pick a suggestion,
+ * which carries coordinates so the search can run without an airport code.
+ */
+@Composable
+private fun StaySuggestField(
+    label: String,
+    viewModel: TravelViewModel,
+    onSelect: (name: String, latitude: Double?, longitude: Double?) -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    var suggestions by remember { mutableStateOf<List<com.vayunmathur.travel.network.StaySuggestionDto>>(emptyList()) }
+    var justSelected by remember { mutableStateOf(false) }
+
+    LaunchedEffect(text) {
+        if (justSelected) {
+            justSelected = false
+            return@LaunchedEffect
+        }
+        if (text.length < 2) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.delay(250)
+        suggestions = viewModel.staySuggestions(text)
+    }
+
+    Column {
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                // Free-text fallback: pass the typed text with no coordinates so
+                // the server resolves it as an IATA code.
+                onSelect(it.trim(), null, null)
+            },
+            label = { Text(label) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (suggestions.isNotEmpty()) {
+            ElevatedCard(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Column {
+                    suggestions.take(6).forEach { s ->
+                        com.vayunmathur.library.ui.ListItem(
+                            modifier = Modifier.clickable {
+                                onSelect(s.name, s.latitude, s.longitude)
+                                text = s.name
+                                justSelected = true
+                                suggestions = emptyList()
+                            },
+                        ) { Text(s.name) }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -90,7 +159,9 @@ fun StayResultsPage(
 ) {
     val state by viewModel.stayResults.collectAsStateWithLifecycle()
     LaunchedEffect(route) {
-        viewModel.searchStays(route.place, route.checkIn, route.checkOut, route.rooms, route.adults)
+        val lat = route.latitude.takeIf { !it.isNaN() }
+        val lng = route.longitude.takeIf { !it.isNaN() }
+        viewModel.searchStays(route.place, route.checkIn, route.checkOut, route.rooms, route.adults, lat, lng)
     }
     Scaffold(
         topBar = {
@@ -147,6 +218,13 @@ private fun StayResultCard(result: StaySearchResultDto, onClick: () -> Unit) {
                     Text(starLabel(result.rating, result.reviewScore), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (result.address.isNotBlank()) {
                         Text(result.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (result.amenities.isNotEmpty()) {
+                        Text(
+                            result.amenities.take(4).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -267,6 +345,8 @@ fun StayGuestsPage(
     var bornOn by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
+    var loyaltyProgramme by remember { mutableStateOf("") }
+    var loyaltyNumber by remember { mutableStateOf("") }
     val (amount, currency) = viewModel.stayTotal()
 
     LaunchedEffect(booking) {
@@ -322,6 +402,17 @@ fun StayGuestsPage(
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier = Modifier.fillMaxWidth(),
             )
+            Text("Hotel loyalty (optional)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    loyaltyProgramme, { loyaltyProgramme = it }, label = { Text("Programme") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    loyaltyNumber, { loyaltyNumber = it }, label = { Text("Number") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             (booking as? StayBookingState.Error)?.let {
                 Text(it.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
@@ -331,7 +422,21 @@ fun StayGuestsPage(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(
-                onClick = { viewModel.bookStay(StayGuestInputDto(givenName, familyName, bornOn), email, phone) },
+                onClick = {
+                    val loyalty = if (loyaltyNumber.isNotBlank()) {
+                        com.vayunmathur.travel.network.StayLoyaltyAccountDto(
+                            programmeName = loyaltyProgramme.trim(),
+                            accountNumber = loyaltyNumber.trim(),
+                        )
+                    } else {
+                        null
+                    }
+                    viewModel.bookStay(
+                        StayGuestInputDto(givenName, familyName, bornOn, loyaltyProgrammeAccount = loyalty),
+                        email,
+                        phone,
+                    )
+                },
                 enabled = !loading && givenName.isNotBlank() && familyName.isNotBlank() && bornOn.isNotBlank() && email.contains("@") && phone.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {

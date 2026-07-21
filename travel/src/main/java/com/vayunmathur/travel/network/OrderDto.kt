@@ -58,6 +58,20 @@ data class OrderRequestDto(
     val payment: PaymentInputDto = PaymentInputDto(),
     val services: List<ServiceSelectionDto> = emptyList(),
     val hold: Boolean = false,
+    val customerUserId: String? = null,
+)
+
+/**
+ * A Duffel order event recorded server-side from a webhook (schedule change /
+ * cancellation), surfaced so the app can show an alert banner.
+ */
+@Serializable
+data class OrderEventDto(
+    val id: String = "",
+    val orderId: String = "",
+    val type: String = "",
+    val createdAt: String = "",
+    val message: String = "",
 )
 
 /** A confirmed order returned by `POST /api/travel/orders`. */

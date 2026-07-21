@@ -89,13 +89,32 @@ fun FlightResultsPage(
                         maxStops = state.filters.maxStops,
                         airlines = state.availableAirlines,
                         selectedAirlines = state.filters.airlines,
+                        fareBrands = state.availableFareBrands,
+                        selectedFareBrand = state.filters.fareBrand,
                         onMaxStops = { viewModel.setMaxStopsFilter(it) },
                         onToggleAirline = { viewModel.toggleAirlineFilter(it) },
+                        onSelectFareBrand = { viewModel.setFareBrandFilter(it) },
                     )
                 }
             }
             if (expiry != null && visible.isNotEmpty()) {
                 item { OfferExpiryBanner(expiry) { viewModel.searchFlights(query) } }
+            }
+            if (state.polling && visible.isNotEmpty()) {
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text(
+                            "Still searching for more fares…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
             items(visible) { offer ->
                 OfferCard(offer) {
@@ -137,8 +156,11 @@ private fun FilterRow(
     maxStops: Int?,
     airlines: List<String>,
     selectedAirlines: Set<String>,
+    fareBrands: List<String>,
+    selectedFareBrand: String?,
     onMaxStops: (Int?) -> Unit,
     onToggleAirline: (String) -> Unit,
+    onSelectFareBrand: (String?) -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
@@ -147,6 +169,13 @@ private fun FilterRow(
         FilterChip(selected = maxStops == null, onClick = { onMaxStops(null) }, label = { Text("Any stops") })
         FilterChip(selected = maxStops == 0, onClick = { onMaxStops(0) }, label = { Text("Nonstop") })
         FilterChip(selected = maxStops == 1, onClick = { onMaxStops(1) }, label = { Text("≤ 1 stop") })
+        fareBrands.forEach { brand ->
+            FilterChip(
+                selected = brand == selectedFareBrand,
+                onClick = { onSelectFareBrand(if (brand == selectedFareBrand) null else brand) },
+                label = { Text(brand) },
+            )
+        }
         airlines.forEach { iata ->
             FilterChip(
                 selected = iata in selectedAirlines,
@@ -206,7 +235,12 @@ private fun OfferCard(offer: OfferDto, onClick: () -> Unit) {
         ) {
             AirlineLogo(offer.ownerLogoUrl, offer.ownerIata)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(offer.owner.ifBlank { "Flight" }, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(offer.owner.ifBlank { "Flight" }, style = MaterialTheme.typography.titleMedium)
+                    if (offer.fareBrand.isNotBlank()) {
+                        FareBrandBadge(offer.fareBrand)
+                    }
+                }
                 offer.slices.forEach { slice -> SliceRow(slice) }
                 val chips = conditionsLabels(offer.conditions)
                 val bags = offer.baggageSummary
@@ -227,6 +261,21 @@ private fun OfferCard(offer: OfferDto, onClick: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
             )
         }
+    }
+}
+
+@Composable
+private fun FareBrandBadge(brand: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+    ) {
+        Text(
+            brand,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
 

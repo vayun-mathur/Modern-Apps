@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +26,7 @@ import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.Icon
+import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedCard
 import com.vayunmathur.library.ui.Scaffold
@@ -54,6 +56,9 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                     if (trips.isNotEmpty()) {
                         TextButton(onClick = { backStack.add(Route.Trips) }) { Text("My trips") }
                     }
+                    IconButton(onClick = { backStack.add(Route.Settings) }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    }
                 },
             )
         },
@@ -75,19 +80,42 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
 
             when (product) {
                 Product.FLIGHTS -> FlightSearchForm(viewModel) { query ->
+                    if (query.isRoundTrip) {
+                        backStack.add(
+                            Route.OutboundSelect(
+                                slices = query.slices,
+                                adults = query.adults,
+                                children = query.children,
+                                infants = query.infants,
+                                cabin = query.cabin,
+                                maxConnections = query.maxConnections,
+                            )
+                        )
+                    } else {
+                        backStack.add(
+                            Route.FlightResults(
+                                slices = query.slices,
+                                adults = query.adults,
+                                children = query.children,
+                                infants = query.infants,
+                                cabin = query.cabin,
+                                maxConnections = query.maxConnections,
+                            )
+                        )
+                    }
+                }
+                Product.STAYS -> StaySearchForm(viewModel) { place, checkIn, checkOut, rooms, adults, lat, lng ->
                     backStack.add(
-                        Route.FlightResults(
-                            slices = query.slices,
-                            adults = query.adults,
-                            children = query.children,
-                            infants = query.infants,
-                            cabin = query.cabin,
-                            maxConnections = query.maxConnections,
+                        Route.StayResults(
+                            place = place,
+                            checkIn = checkIn,
+                            checkOut = checkOut,
+                            rooms = rooms,
+                            adults = adults,
+                            latitude = lat ?: Double.NaN,
+                            longitude = lng ?: Double.NaN,
                         )
                     )
-                }
-                Product.STAYS -> StaySearchForm(viewModel) { place, checkIn, checkOut, rooms, adults ->
-                    backStack.add(Route.StayResults(place, checkIn, checkOut, rooms, adults))
                 }
             }
 

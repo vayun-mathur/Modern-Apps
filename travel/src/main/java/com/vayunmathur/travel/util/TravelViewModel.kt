@@ -5,16 +5,27 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.BookedTripDao
+import com.vayunmathur.travel.data.Customer
+import com.vayunmathur.travel.data.CustomerDao
+import com.vayunmathur.travel.data.FrequentFlyer
+import com.vayunmathur.travel.data.FrequentFlyerDao
 import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.data.RecentSearchDao
 import com.vayunmathur.travel.data.Vertical
+import com.vayunmathur.travel.network.AirlineDto
+import com.vayunmathur.travel.network.AircraftDto
 import com.vayunmathur.travel.network.CancellationDto
 import com.vayunmathur.travel.network.ChangeOfferDto
 import com.vayunmathur.travel.network.ChangeRequestInputDto
+import com.vayunmathur.travel.network.CityDto
+import com.vayunmathur.travel.network.CustomerUserInputDto
+import com.vayunmathur.travel.network.LoyaltyAccountDto
 import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.OrderDetailDto
+import com.vayunmathur.travel.network.OrderEventDto
 import com.vayunmathur.travel.network.OrderRequestDto
 import com.vayunmathur.travel.network.OrderResultDto
 import com.vayunmathur.travel.network.PassengerInputDto
@@ -22,7 +33,7 @@ import com.vayunmathur.travel.network.PaymentInputDto
 import com.vayunmathur.travel.network.PlaceDto
 import com.vayunmathur.travel.network.SearchSliceInputDto
 import com.vayunmathur.travel.network.SeatCabinDto
-import com.vayunmathur.travel.network.SeatDto
+import com.vayunmathur.travel.network.SeatElementDto
 import com.vayunmathur.travel.network.ServiceSelectionDto
 import com.vayunmathur.travel.network.StayBookingRequestDto
 import com.vayunmathur.travel.network.StayBookingResultDto
@@ -32,6 +43,7 @@ import com.vayunmathur.travel.network.StayRateDto
 import com.vayunmathur.travel.network.StayRatesDto
 import com.vayunmathur.travel.network.StaySearchResultDto
 import com.vayunmathur.travel.network.StaysApi
+import com.vayunmathur.travel.network.StaySuggestionDto
 import com.vayunmathur.travel.network.TravelApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -57,6 +69,7 @@ data class FlightQuery(
     val infants: Int = 0,
     val cabin: String = "economy",
     val maxConnections: Int = -1,
+    val isRoundTrip: Boolean = false,
 )
 
 /** Server-side sort options for the offer list. */
@@ -70,6 +83,7 @@ enum class OfferSort(val key: String?, val label: String) {
 data class FlightFilters(
     val maxStops: Int? = null,
     val airlines: Set<String> = emptySet(),
+    val fareBrand: String? = null,
 )
 
 /** State for the flight results screen: offers plus sort/filter controls. */
@@ -81,17 +95,24 @@ data class FlightResultsState(
     val allOffers: List<OfferDto> = emptyList(),
     val sort: OfferSort = OfferSort.BEST,
     val filters: FlightFilters = FlightFilters(),
+    /** True while still polling for more offers (incremental search). */
+    val polling: Boolean = false,
 ) {
     /** Offers after applying the client-side filters. */
     val visibleOffers: List<OfferDto>
         get() = allOffers.filter { offer ->
             (filters.maxStops == null || offer.slices.all { it.stops <= filters.maxStops }) &&
-                (filters.airlines.isEmpty() || offer.airlineIatas.any { it in filters.airlines })
+                (filters.airlines.isEmpty() || offer.airlineIatas.any { it in filters.airlines }) &&
+                (filters.fareBrand == null || offer.fareBrand == filters.fareBrand)
         }
 
     /** Distinct airline IATA codes present in the results, for the filter UI. */
     val availableAirlines: List<String>
         get() = allOffers.flatMap { it.airlineIatas }.distinct().sorted()
+
+    /** Distinct fare brands present in the results, for the filter UI. */
+    val availableFareBrands: List<String>
+        get() = allOffers.map { it.fareBrand }.filter { it.isNotBlank() }.distinct().sorted()
 }
 
 /** State for the single-offer review (re-price) screen. */
@@ -99,6 +120,18 @@ data class OfferReviewState(
     val loading: Boolean = false,
     val error: String? = null,
     val offer: OfferDto? = null,
+)
+
+/**
+ * State for the step-by-step (partial offer) round-trip flow. [offers] holds the
+ * choices for the current leg (outbound, then return, then final fares);
+ * [requestId] threads the partial offer request across steps.
+ */
+data class PartialFlowState(
+    val loading: Boolean = false,
+    val error: String? = null,
+    val requestId: String = "",
+    val offers: List<OfferDto> = emptyList(),
 )
 
 /** State for the seat-map screen. */
@@ -190,6 +223,8 @@ class TravelViewModel(
     application: Application,
     private val recentSearchDao: RecentSearchDao,
     private val bookedTripDao: BookedTripDao,
+    private val frequentFlyerDao: FrequentFlyerDao,
+    private val customerDao: CustomerDao,
 ) : AndroidViewModel(application) {
 
     private val _flights = MutableStateFlow(FlightResultsState())
@@ -201,6 +236,9 @@ class TravelViewModel(
     private val _review = MutableStateFlow(OfferReviewState())
     val review: StateFlow<OfferReviewState> = _review.asStateFlow()
 
+    private val _partialFlow = MutableStateFlow(PartialFlowState())
+    val partialFlow: StateFlow<PartialFlowState> = _partialFlow.asStateFlow()
+
     private val _passengers = MutableStateFlow<List<PassengerInputDto>>(emptyList())
     val passengers: StateFlow<List<PassengerInputDto>> = _passengers.asStateFlow()
 
@@ -211,9 +249,22 @@ class TravelViewModel(
     private val _selectedBaggage = MutableStateFlow<Map<String, Long>>(emptyMap())
     val selectedBaggage: StateFlow<Map<String, Long>> = _selectedBaggage.asStateFlow()
 
+    /** Selected non-baggage extra services (CFAR, priority boarding, …): id → quantity. */
+    private val _selectedExtras = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val selectedExtras: StateFlow<Map<String, Long>> = _selectedExtras.asStateFlow()
+
     /** Selected seats keyed by `"segmentId|designator"`. */
-    private val _selectedSeats = MutableStateFlow<Map<String, SeatDto>>(emptyMap())
-    val selectedSeats: StateFlow<Map<String, SeatDto>> = _selectedSeats.asStateFlow()
+    private val _selectedSeats = MutableStateFlow<Map<String, SeatElementDto>>(emptyMap())
+    val selectedSeats: StateFlow<Map<String, SeatElementDto>> = _selectedSeats.asStateFlow()
+
+    private val _airlines = MutableStateFlow<List<AirlineDto>>(emptyList())
+    val airlines: StateFlow<List<AirlineDto>> = _airlines.asStateFlow()
+
+    private val _aircraft = MutableStateFlow<List<AircraftDto>>(emptyList())
+    val aircraft: StateFlow<List<AircraftDto>> = _aircraft.asStateFlow()
+
+    private val _cities = MutableStateFlow<List<CityDto>>(emptyList())
+    val cities: StateFlow<List<CityDto>> = _cities.asStateFlow()
 
     private val _booking = MutableStateFlow<BookingState>(BookingState.Idle)
     val booking: StateFlow<BookingState> = _booking.asStateFlow()
@@ -255,6 +306,83 @@ class TravelViewModel(
     val bookedTrips: StateFlow<List<BookedTrip>> = bookedTripDao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Saved frequent-flyer accounts, applied as loyalty pricing at search. */
+    val frequentFlyers: StateFlow<List<FrequentFlyer>> = frequentFlyerDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun saveFrequentFlyer(airlineIata: String, accountNumber: String, airlineName: String) {
+        val iata = airlineIata.trim().uppercase()
+        val account = accountNumber.trim()
+        if (iata.isBlank() || account.isBlank()) return
+        viewModelScope.launch {
+            frequentFlyerDao.upsert(
+                FrequentFlyer(airlineIata = iata, accountNumber = account, airlineName = airlineName),
+            )
+        }
+    }
+
+    fun removeFrequentFlyer(airlineIata: String) {
+        viewModelScope.launch { frequentFlyerDao.deleteById(airlineIata) }
+    }
+
+    // --- Customers (Duffel customer users) --------------------------------
+
+    private val dataStore = DataStoreUtils.getInstance(application)
+    private val activeCustomerKey = "travel_active_customer_id"
+
+    /** Saved customer users; orders are associated with the active one. */
+    val customers: StateFlow<List<Customer>> = customerDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The id of the currently selected customer (persisted), or blank. */
+    val activeCustomerId: StateFlow<String> = dataStore.stringFlow(activeCustomerKey)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    /** Create a Duffel customer user, store it locally, and make it active. */
+    fun createCustomer(email: String, givenName: String, familyName: String, phone: String) {
+        viewModelScope.launch {
+            runCatching {
+                TravelApi.createCustomer(
+                    CustomerUserInputDto(
+                        email = email.trim(),
+                        givenName = givenName.trim(),
+                        familyName = familyName.trim(),
+                        phoneNumber = phone.trim().ifBlank { null },
+                    )
+                )
+            }.onSuccess { dto ->
+                if (dto.id.isNotBlank()) {
+                    customerDao.upsert(
+                        Customer(
+                            id = dto.id,
+                            email = dto.email,
+                            givenName = dto.givenName,
+                            familyName = dto.familyName,
+                            phoneNumber = dto.phoneNumber.orEmpty(),
+                        )
+                    )
+                    dataStore.setString(activeCustomerKey, dto.id)
+                    _customerError.value = null
+                }
+            }.onFailure { _customerError.value = errorMessage(it) }
+        }
+    }
+
+    private val _customerError = MutableStateFlow<String?>(null)
+    val customerError: StateFlow<String?> = _customerError.asStateFlow()
+
+    /** Select (or clear, with blank) the active customer. */
+    fun selectCustomer(id: String) {
+        viewModelScope.launch { dataStore.setString(activeCustomerKey, id) }
+    }
+
+    fun removeCustomer(id: String) {
+        viewModelScope.launch {
+            customerDao.deleteById(id)
+            if (activeCustomerId.value == id) dataStore.setString(activeCustomerKey, "")
+        }
+    }
+
     // --- Autocomplete -----------------------------------------------------
 
     /** Airport/city suggestions for [query]; never throws (empty on failure). */
@@ -289,27 +417,69 @@ class TravelViewModel(
         )
         _flights.value = FlightResultsState(loading = true, hasSearched = true)
         viewModelScope.launch {
+            val loyalty = frequentFlyerDao.getAll()
+                .joinToString(",") { "${it.airlineIata}:${it.accountNumber}" }
+            // Incremental search: create the request async, then poll /offers so
+            // results appear progressively instead of blocking on the full set.
             runCatching {
-                TravelApi.flights(
+                TravelApi.flightsAsync(
                     slices = query.slices,
                     adults = query.adults,
                     children = query.children,
                     infants = query.infants,
                     cabin = query.cabin,
                     maxConnections = query.maxConnections,
+                    loyalty = loyalty,
                 )
             }
-                .onSuccess {
+                .onSuccess { started ->
+                    val requestId = started.offerRequestId
+                    if (requestId.isBlank()) {
+                        _flights.value = FlightResultsState(
+                            error = "Search could not be started. Please try again.",
+                            hasSearched = true,
+                        )
+                        return@onSuccess
+                    }
                     _flights.value = FlightResultsState(
                         hasSearched = true,
-                        offerRequestId = it.offerRequestId,
-                        allOffers = it.offers,
+                        offerRequestId = requestId,
+                        loading = true,
+                        polling = true,
                     )
+                    pollOffers(requestId, query.maxConnections)
                 }
                 .onFailure {
                     _flights.value = FlightResultsState(error = errorMessage(it), hasSearched = true)
                 }
         }
+    }
+
+    /** Poll `/offers` for [requestId] a few rounds, updating results as they arrive. */
+    private suspend fun pollOffers(requestId: String, maxConnections: Int) {
+        var lastCount = -1
+        var stableRounds = 0
+        repeat(6) { round ->
+            // Skip the initial wait on the first round so results show ASAP.
+            if (round > 0) kotlinx.coroutines.delay(1_200)
+            // Stop if the user has navigated to a different search.
+            if (_flights.value.offerRequestId != requestId) return
+            val offers = runCatching { TravelApi.offers(requestId, null, maxConnections) }.getOrNull()
+            if (offers != null) {
+                _flights.value = _flights.value.copy(
+                    allOffers = offers,
+                    loading = offers.isEmpty(),
+                )
+                if (offers.size == lastCount) stableRounds++ else stableRounds = 0
+                lastCount = offers.size
+                // Stop early once the count stabilizes with some results in hand.
+                if (stableRounds >= 2 && offers.isNotEmpty()) {
+                    _flights.value = _flights.value.copy(polling = false, loading = false)
+                    return
+                }
+            }
+        }
+        _flights.value = _flights.value.copy(polling = false, loading = false)
     }
 
     /** Change the server-side sort, re-fetching the offer list for the request. */
@@ -345,6 +515,12 @@ class TravelViewModel(
         _flights.value = _flights.value.copy(filters = _flights.value.filters.copy(airlines = next))
     }
 
+    fun setFareBrandFilter(fareBrand: String?) {
+        _flights.value = _flights.value.copy(
+            filters = _flights.value.filters.copy(fareBrand = fareBrand),
+        )
+    }
+
     fun clearFilters() {
         _flights.value = _flights.value.copy(filters = FlightFilters())
     }
@@ -355,6 +531,7 @@ class TravelViewModel(
     fun selectOffer(offer: OfferDto) {
         _review.value = OfferReviewState(offer = offer)
         _selectedBaggage.value = emptyMap()
+        _selectedExtras.value = emptyMap()
         _selectedSeats.value = emptyMap()
         _seatMap.value = SeatMapState()
     }
@@ -372,7 +549,63 @@ class TravelViewModel(
         }
     }
 
-    // --- Passengers -------------------------------------------------------
+    // --- Partial offers (round-trip step-by-step flow) -------------------
+
+    /** Start the round-trip partial flow: fetch the outbound leg's offers. */
+    fun startPartialSearch(query: FlightQuery) {
+        _partialFlow.value = PartialFlowState(loading = true)
+        viewModelScope.launch {
+            val loyalty = frequentFlyerDao.getAll()
+                .joinToString(",") { "${it.airlineIata}:${it.accountNumber}" }
+            runCatching {
+                TravelApi.createPartialOffers(
+                    slices = query.slices,
+                    adults = query.adults,
+                    children = query.children,
+                    infants = query.infants,
+                    cabin = query.cabin,
+                    maxConnections = query.maxConnections,
+                    loyalty = loyalty,
+                )
+            }
+                .onSuccess { _partialFlow.value = PartialFlowState(requestId = it.id, offers = it.offers) }
+                .onFailure { _partialFlow.value = PartialFlowState(error = errorMessage(it)) }
+        }
+    }
+
+    /** Load the return leg's offers after an outbound partial offer is chosen. */
+    fun loadPartialReturn(outboundId: String) {
+        val requestId = _partialFlow.value.requestId
+        if (requestId.isBlank()) {
+            _partialFlow.value = _partialFlow.value.copy(error = "Please restart your search.")
+            return
+        }
+        _partialFlow.value = _partialFlow.value.copy(loading = true, error = null, offers = emptyList())
+        viewModelScope.launch {
+            runCatching { TravelApi.selectPartialOffer(requestId, listOf(outboundId)) }
+                .onSuccess { _partialFlow.value = _partialFlow.value.copy(loading = false, requestId = it.id.ifBlank { requestId }, offers = it.offers) }
+                .onFailure { _partialFlow.value = _partialFlow.value.copy(loading = false, error = errorMessage(it)) }
+        }
+    }
+
+    /** Load the final orderable fares after both legs are chosen. */
+    fun loadPartialFares(outboundId: String, returnId: String) {
+        val requestId = _partialFlow.value.requestId
+        if (requestId.isBlank()) {
+            _partialFlow.value = _partialFlow.value.copy(error = "Please restart your search.")
+            return
+        }
+        _partialFlow.value = _partialFlow.value.copy(loading = true, error = null, offers = emptyList())
+        viewModelScope.launch {
+            runCatching { TravelApi.partialOfferFares(requestId, listOf(outboundId, returnId)) }
+                .onSuccess { _partialFlow.value = _partialFlow.value.copy(loading = false, offers = it.offers) }
+                .onFailure { _partialFlow.value = _partialFlow.value.copy(loading = false, error = errorMessage(it)) }
+        }
+    }
+
+    /** Look up a partial-flow offer by id (for seeding the review screen). */
+    fun partialOfferById(offerId: String): OfferDto? =
+        _partialFlow.value.offers.find { it.offerId == offerId }
 
     /**
      * Initialize one blank passenger per Duffel passenger id on the offer,
@@ -383,6 +616,21 @@ class TravelViewModel(
         val ids = offer.passengerIds.ifEmpty { listOf("") }
         if (_passengers.value.map { it.id } == ids) return
         _passengers.value = ids.map { PassengerInputDto(id = it) }
+        // Pre-fill the lead passenger with any saved frequent-flyer accounts.
+        viewModelScope.launch {
+            val saved = frequentFlyerDao.getAll()
+            if (saved.isEmpty()) return@launch
+            val loyalty = saved.map {
+                LoyaltyAccountDto(airlineIataCode = it.airlineIata, accountNumber = it.accountNumber)
+            }
+            _passengers.value = _passengers.value.toMutableList().also { list ->
+                list.firstOrNull()?.let { lead ->
+                    if (lead.loyaltyProgrammeAccounts.isEmpty()) {
+                        list[0] = lead.copy(loyaltyProgrammeAccounts = loyalty)
+                    }
+                }
+            }
+        }
     }
 
     fun updatePassenger(index: Int, passenger: PassengerInputDto) {
@@ -400,6 +648,13 @@ class TravelViewModel(
         }
     }
 
+    /** Set the selected quantity for a non-baggage extra service (0 removes it). */
+    fun setExtraQuantity(serviceId: String, quantity: Long) {
+        _selectedExtras.value = _selectedExtras.value.toMutableMap().also {
+            if (quantity <= 0) it.remove(serviceId) else it[serviceId] = quantity
+        }
+    }
+
     /** Fetch seat maps for the given offer. */
     fun loadSeatMaps(offerId: String) {
         _seatMap.value = SeatMapState(loading = true)
@@ -410,8 +665,41 @@ class TravelViewModel(
         }
     }
 
+    /** Load the airline reference list once (for the frequent-flyer picker). */
+    fun loadAirlines() {
+        if (_airlines.value.isNotEmpty()) return
+        viewModelScope.launch {
+            runCatching { TravelApi.airlines() }
+                .onSuccess { list -> _airlines.value = list.filter { it.iataCode.isNotBlank() }.sortedBy { it.name } }
+        }
+    }
+
+    /** Load the aircraft reference list once, to label segments by aircraft name. */
+    fun loadAircraft() {
+        if (_aircraft.value.isNotEmpty()) return
+        viewModelScope.launch {
+            runCatching { TravelApi.aircraft() }.onSuccess { _aircraft.value = it }
+        }
+    }
+
+    /** Load the cities reference list once, to improve place labels. */
+    fun loadCities() {
+        if (_cities.value.isNotEmpty()) return
+        viewModelScope.launch {
+            runCatching { TravelApi.cities() }.onSuccess { _cities.value = it }
+        }
+    }
+
+    /** Human aircraft name for an IATA aircraft code, falling back to the code. */
+    fun aircraftName(iataCode: String): String =
+        _aircraft.value.firstOrNull { it.iataCode == iataCode }?.name?.ifBlank { iataCode } ?: iataCode
+
+    /** City name for an IATA city code, falling back to the code. */
+    fun cityName(iataCode: String): String =
+        _cities.value.firstOrNull { it.iataCode == iataCode }?.name?.ifBlank { iataCode } ?: iataCode
+
     /** Toggle selection of a (selectable) seat on a segment. */
-    fun toggleSeat(segmentId: String, seat: SeatDto) {
+    fun toggleSeat(segmentId: String, seat: SeatElementDto) {
         if (!seat.available || seat.serviceId == null) return
         val key = "$segmentId|${seat.designator}"
         _selectedSeats.value = _selectedSeats.value.toMutableMap().also {
@@ -419,13 +707,22 @@ class TravelViewModel(
         }
     }
 
-    /** Combined selected services (baggage + seats) for the order body. */
+    /** Combined selected services (baggage + extras + seats) for the order body,
+     *  tagged with the passenger each service belongs to when known. */
     private fun selectedServices(): List<ServiceSelectionDto> {
-        val bags = _selectedBaggage.value.map { (id, qty) -> ServiceSelectionDto(id = id, quantity = qty) }
+        val available = _review.value.offer?.availableServices.orEmpty()
+        fun passengerFor(id: String): String? =
+            available.firstOrNull { it.id == id }?.passengerIds?.firstOrNull()
+        val bags = _selectedBaggage.value.map { (id, qty) ->
+            ServiceSelectionDto(id = id, quantity = qty, passengerId = passengerFor(id))
+        }
+        val extras = _selectedExtras.value.map { (id, qty) ->
+            ServiceSelectionDto(id = id, quantity = qty, passengerId = passengerFor(id))
+        }
         val seats = _selectedSeats.value.values.mapNotNull { seat ->
             seat.serviceId?.let { ServiceSelectionDto(id = it, quantity = 1) }
         }
-        return bags + seats
+        return bags + extras + seats
     }
 
     // --- Booking ----------------------------------------------------------
@@ -434,6 +731,7 @@ class TravelViewModel(
     fun createOrder(hold: Boolean = false) {
         val offer = _review.value.offer ?: return
         val pax = _passengers.value
+        val customerId = activeCustomerId.value.ifBlank { null }
         _booking.value = BookingState.Loading
         viewModelScope.launch {
             runCatching {
@@ -444,11 +742,12 @@ class TravelViewModel(
                         payment = PaymentInputDto(type = "balance"),
                         services = selectedServices(),
                         hold = hold,
+                        customerUserId = customerId,
                     )
                 )
             }
                 .onSuccess { result ->
-                    persistTrip(offer, pax, result)
+                    persistTrip(offer, pax, result, customerId.orEmpty())
                     _booking.value = BookingState.Success(result)
                 }
                 .onFailure { _booking.value = BookingState.Error(errorMessage(it)) }
@@ -500,6 +799,21 @@ class TravelViewModel(
             runCatching { TravelApi.orderDetail(orderId) }
                 .onSuccess { _orderDetail.value = OrderDetailState(order = it) }
                 .onFailure { _orderDetail.value = OrderDetailState(error = errorMessage(it)) }
+        }
+    }
+
+    /** Recorded webhook events per order id (schedule changes / cancellations). */
+    private val _orderEvents = MutableStateFlow<Map<String, List<OrderEventDto>>>(emptyMap())
+    val orderEvents: StateFlow<Map<String, List<OrderEventDto>>> = _orderEvents.asStateFlow()
+
+    /** Poll the server for order events; updates [orderEvents] for [orderId]. */
+    fun loadOrderEvents(orderId: String) {
+        if (orderId.isBlank()) return
+        viewModelScope.launch {
+            runCatching { TravelApi.orderEvents(orderId) }
+                .onSuccess { events ->
+                    _orderEvents.value = _orderEvents.value.toMutableMap().also { it[orderId] = events }
+                }
         }
     }
 
@@ -596,6 +910,7 @@ class TravelViewModel(
         offer: OfferDto,
         passengers: List<PassengerInputDto>,
         result: OrderResultDto,
+        customerId: String = "",
     ) {
         val first = offer.slices.firstOrNull()
         val roundTrip = offer.slices.size > 1
@@ -618,13 +933,22 @@ class TravelViewModel(
                 type = "flight",
                 awaitingPayment = result.awaitingPayment,
                 paymentRequiredBy = result.paymentRequiredBy.orEmpty(),
+                customerId = customerId,
             )
         )
     }
 
     // --- Stays (hotels) ---------------------------------------------------
 
-    fun searchStays(place: String, checkIn: String, checkOut: String, rooms: Int, adults: Int) {
+    fun searchStays(
+        place: String,
+        checkIn: String,
+        checkOut: String,
+        rooms: Int,
+        adults: Int,
+        latitude: Double? = null,
+        longitude: Double? = null,
+    ) {
         selectedCheckIn = checkIn
         selectedCheckOut = checkOut
         recordRecent(
@@ -639,11 +963,15 @@ class TravelViewModel(
         )
         _stayResults.value = StaySearchState(loading = true, hasSearched = true)
         viewModelScope.launch {
-            runCatching { StaysApi.search(place, checkIn, checkOut, rooms, adults) }
+            runCatching { StaysApi.search(place, checkIn, checkOut, rooms, adults, latitude = latitude, longitude = longitude) }
                 .onSuccess { _stayResults.value = StaySearchState(results = it, hasSearched = true) }
                 .onFailure { _stayResults.value = StaySearchState(error = errorMessage(it), hasSearched = true) }
         }
     }
+
+    /** Accommodation/location suggestions for the stays search box. */
+    suspend fun staySuggestions(query: String): List<StaySuggestionDto> =
+        runCatching { StaysApi.suggestions(query) }.getOrDefault(emptyList())
 
     fun loadStayRates(searchResultId: String, accommodationName: String) {
         selectedStayName = accommodationName
@@ -730,6 +1058,7 @@ class TravelViewModel(
                 currency = currency,
                 status = result.status.ifBlank { "confirmed" },
                 type = "stay",
+                customerId = activeCustomerId.value,
             )
         )
     }
@@ -765,12 +1094,14 @@ class TravelViewModelFactory(
     private val application: Application,
     private val recentSearchDao: RecentSearchDao,
     private val bookedTripDao: BookedTripDao,
+    private val frequentFlyerDao: FrequentFlyerDao,
+    private val customerDao: CustomerDao,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(TravelViewModel::class.java)) {
             "Unexpected ViewModel class: $modelClass"
         }
-        return TravelViewModel(application, recentSearchDao, bookedTripDao) as T
+        return TravelViewModel(application, recentSearchDao, bookedTripDao, frequentFlyerDao, customerDao) as T
     }
 }
