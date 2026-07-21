@@ -195,6 +195,7 @@ class MessagesService : Service() {
                     MessageSource.WHATSAPP -> "WhatsApp"
                     MessageSource.MESSENGER -> "Messenger"
                     MessageSource.INSTAGRAM -> "Instagram"
+                    MessageSource.RCS -> "RCS"
                 }
             }
         return if (connected.isEmpty()) {

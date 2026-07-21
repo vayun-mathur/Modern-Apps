@@ -34,7 +34,8 @@ enum class MediaCapability {
  *   a normal text message, so any text-capable platform qualifies.
  */
 fun MessageSource.mediaCapabilities(): Set<MediaCapability> = when (this) {
-    MessageSource.MESSAGES_WEB -> setOf(
+    MessageSource.MESSAGES_WEB,
+    MessageSource.RCS -> setOf(
         MediaCapability.IMAGE,
         MediaCapability.FILE,
         MediaCapability.LOCATION,

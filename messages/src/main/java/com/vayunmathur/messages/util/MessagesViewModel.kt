@@ -214,4 +214,18 @@ class MessagesViewModel(application: Application) : AndroidViewModel(application
     fun forceResync() {
         MessagesSessionManager.forceResync()
     }
+
+    /** Phase 1 discovery: test SIP register info API */
+    fun testSIPRegisterInfo(onResult: (String) -> Unit = {}) {
+        viewModelScope.launch {
+            onResult(MessagesSessionManager.getSIPRegisterInfo())
+        }
+    }
+
+    /** Start a voice call for a Voice conversation. */
+    fun startVoiceCall(conversationId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            onResult(MessagesSessionManager.startVoiceCall(conversationId))
+        }
+    }
 }

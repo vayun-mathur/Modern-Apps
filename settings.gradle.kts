@@ -24,6 +24,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "apps"
+include(":pjsip")
 include(":library")
 include(":library:network")
 include(":library:biometric")
@@ -68,3 +69,8 @@ include(":tools:holidaygen")
 include(":education")
 include(":everysync")
 include(":travel")
+
+if (file("dooraccess").exists()) {
+    include(":dooraccess")
+}
+include(":netcapture")

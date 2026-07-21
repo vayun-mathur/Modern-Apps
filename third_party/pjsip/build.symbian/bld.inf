@@ -1,0 +1,35 @@
+prj_platforms
+winscw
+armv5
+gcce
+
+prj_mmpfiles
+
+/* Libraries */
+pjlib.mmp
+pjlib_util.mmp
+pjnath.mmp
+pjsdp.mmp
+pjmedia.mmp
+pjsip.mmp
+pjsip_simple.mmp
+pjsip_ua.mmp
+pjsua_lib.mmp
+libsrtp.mmp
+
+/* Codecs */
+libgsmcodec.mmp
+libspeexcodec.mmp
+libg7221codec.mmp
+libpassthroughcodec.mmp
+
+/* Resample */
+libresample.mmp
+
+/* Audio device. */
+pjmedia_audiodev.mmp
+
+/* Applications */
+//symsndtest.mmp
+pjlib_test.mmp
+../pjsip-apps/src/pjsua/symbian/group/pjsua.mmp

@@ -89,6 +89,15 @@
     <string name="inbox_setup_instagram_desc">Sign in to your Instagram account to see your DMs here.</string>
     <string name="inbox_setup_instagram_action">Sign in</string>
 
+    <!-- RCS setup -->
+    <string name="setup_rcs_title">Set up RCS</string>
+    <string name="setup_rcs_intro">Enter your phone number to set up RCS messaging via Google Jibe. Your number will be verified via SMS OTP, then RCS will be provisioned.</string>
+    <string name="setup_rcs_start">Start RCS setup</string>
+    <string name="inbox_setup_rcs_title">Set up RCS</string>
+    <string name="inbox_setup_rcs_desc">Set up RCS messaging to send rich messages over data/WiFi.</string>
+    <string name="inbox_setup_rcs_action">Set up</string>
+    <string name="source_rcs">RCS</string>
+
     <!-- Notifications -->
     <string name="channel_sync_name">Background sync</string>
     <string name="channel_sync_desc">Keeps the connection to your phone and Voice active</string>

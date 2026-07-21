@@ -6,7 +6,7 @@ message Account {
     string primaryDestinationID = 1;
     repeated Phone phones = 3;
     Communication communication = 4;
-    //Integration integration = 6;
+    Integration integration = 6;
     //ClientAccess clientAccess = 7;
     //Promos promos = 8;
     //Accessibility accessibility = 9;
@@ -205,4 +205,53 @@ message AccountPhone {
 
 message PhoneNumber {
     string e164 = 1;
+}
+
+/**
+ * Integration message at Account field 6.
+ * Contains VoIP settings and other integration configurations.
+ */
+message Integration {
+    // VoipSettings (wij equivalent) - field number TBD, using 12 as placeholder per bit flag
+    VoipSettings voip_settings = 12;
+}
+
+/**
+ * VoipSettings message (wij) containing BirdsongConfig.
+ * Per deobfuscation: wij.b & 2048 checks field 12 presence, wij.m is wra
+ */
+message VoipSettings {
+    // BirdsongConfig (wra) - field 13 (m) per deobfuscation, or field 8 per alternative mapping
+    BirdsongConfig birdsong_config = 13;
+}
+
+/**
+ * BirdsongConfig message (wra) with SIP server URIs and DNS options.
+ * Field numbers from decompiled code: wra[1]=sip_server_uri, wra[2]=secondary,
+ * wra[8]=wqz (preresolved), wra[9]=wor (dns_options)
+ */
+message BirdsongConfig {
+    string sip_server_uri = 1;
+    string secondary_sip_server_uri = 2;
+    // Field 8: preresolved address (wqz)
+    PreresolvedAddress preresolved_address = 8;
+    // Field 9: DNS options (wor)
+    DnsOptions dns_options = 9;
+}
+
+/**
+ * PreresolvedAddress message (wqz) with hostname and IP addresses.
+ */
+message PreresolvedAddress {
+    string hostname = 1;
+    string ipv4 = 2;
+    string ipv6 = 3;
+}
+
+/**
+ * DnsOptions message (wor) with preresolved addresses list.
+ */
+message DnsOptions {
+    // Field 2: list of preresolved addresses per deobfuscation
+    repeated PreresolvedAddress preresolved_addresses = 2;
 }

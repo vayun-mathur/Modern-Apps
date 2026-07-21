@@ -197,6 +197,18 @@ fun ShortNavigationBarItem(
 
 // --- Tab rows ---
 @Composable
+fun TabRow(
+    selectedTabIndex: Int,
+    modifier: Modifier = Modifier,
+    containerColor: Color = TabRowDefaults.primaryContainerColor,
+    contentColor: Color = TabRowDefaults.primaryContentColor,
+    tabs: @Composable () -> Unit,
+) = androidx.compose.material3.TabRow(
+    selectedTabIndex = selectedTabIndex, modifier = modifier,
+    containerColor = containerColor, contentColor = contentColor, tabs = tabs,
+)
+
+@Composable
 fun SecondaryTabRow(
     selectedTabIndex: Int,
     modifier: Modifier = Modifier,

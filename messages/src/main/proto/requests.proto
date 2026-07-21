@@ -87,3 +87,16 @@ message ReqLookupContacts {
     repeated int32 unknownInts2 = 2; // 1,2
     repeated contacts.ContactID targets = 3;
 }
+
+message ReqGetSIPRegisterInfo {
+    // Discovered: field 1 is client_type enum, NOT sip_device_id
+    // Error: "Invalid value at 'request.client_type' (type.googleapis.com/api.voiceclient.ClientType)"
+    // Trying sip_device_id at different field numbers
+    int32 client_type = 1;  // enum ClientType
+    string sip_device_id = 2;  // Try field 2
+    // Alternative positions to try via brute force in code
+    int32 unknown_int_3 = 3;
+    string unknown_string_4 = 4;
+    string unknown_string_5 = 5;
+    UnknownWrapper unknown_wrapper = 6;
+}

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE scenario SYSTEM "sipp.dtd">
+
+<scenario name="Basic UAS responder">
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 100 Trying
+      [last_Via:];received=1.1.1.1;rport=1111
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      WWW-Authenticate: digest realm="test"
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <pause milliseconds="2000"/>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 401 Unauthorized
+      [last_Via:];received=2.2.2.2;rport=2222
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      WWW-Authenticate: digest realm="test"
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 401 Unauthorized again
+      [last_Via:];received=3.3.3.3;rport=3333
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      WWW-Authenticate: digest realm="test", stale=true
+      Content-Length: 0
+    ]]>
+  </send>
+
+
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 200 OK
+      [last_Via:];received=4.4.4.4;rport=4444
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <!-- IP CHANGE FOR 200/OK -->
+
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 401 Unauthorized
+      [last_Via:];received=5.5.5.5;rport=5555
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      WWW-Authenticate: digest realm="test"
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 401 Nasty Unauthorized
+      [last_Via:];received=6.6.6.6;rport=6666
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      WWW-Authenticate: digest realm="test", stale=true
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 200 OK
+      [last_Via:];received=8.8.8.8;rport=8888
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <recv request="REGISTER" crlf="true">
+  </recv>
+
+  <send>
+    <![CDATA[
+      SIP/2.0 200 OK
+      [last_Via:];received=8.8.8.8;rport=8888
+      [last_From:]
+      [last_To:];tag=[call_number]
+      [last_Call-ID:]
+      [last_CSeq:]
+      [last_Contact:]
+      Content-Length: 0
+    ]]>
+  </send>
+
+  <!-- definition of the response time repartition table (unit is ms)   -->
+  <ResponseTimeRepartition value="10, 20, 30, 40, 50, 100, 150, 200"/>
+
+  <!-- definition of the call length repartition table (unit is ms)     -->
+  <CallLengthRepartition value="10, 50, 100, 500, 1000, 5000, 10000"/>
+
+</scenario>
+

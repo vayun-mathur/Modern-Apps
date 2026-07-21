@@ -79,6 +79,8 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Apartment
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Attachment
@@ -412,6 +414,14 @@ fun IconHome(modifier: Modifier = Modifier, tint: Color = LocalContentColor.curr
 @Composable
 fun IconWork(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.Work, "Work", modifier, tint)
+
+@Composable
+fun IconApartment(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Apartment, "Apartment", modifier, tint)
+
+@Composable
+fun IconReceipt(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Receipt, "Receipt", modifier, tint)
 
 @Composable
 fun IconImage(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =

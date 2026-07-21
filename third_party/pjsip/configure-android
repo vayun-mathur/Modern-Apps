@@ -1,0 +1,387 @@
+#!/bin/sh
+#
+
+F="configure-android"
+IS_USING_LLVM="0"
+
+if test "$*" = "--help" -o "$*" = "-h"; then
+  echo "$F [--use-ndk-cflags] [OPTIONS]"
+  echo ""
+  echo "where:"
+  echo "  --use-ndk-cflags Optional parameter to use the same compilation flags"
+  echo "              	   as the one used by ndk-build. Android NDK r9 or later"   
+  echo "                   is required when using this option."
+  echo "  OPTIONS     	   Other options that will be passed directly to"
+  echo "                   ./aconfigure script. Run ./aconfigure --help"
+  echo "                   for more info."
+  echo ""
+  echo "Environment variables:"
+  echo "  ANDROID_NDK_ROOT Specify the directory of Android NDK to use."
+  echo "  APP_PLATFORM     Optionally specify the platform level used, e.g."
+  echo "                   android-9. By default, configure will use the"
+  echo "                   maximum platform level detected."
+  echo "  TARGET_ABI       Optionally specify a single target architecture,"
+  echo "                   e.g. armeabi-v7a, arm64-v8a, mips, x86. By default, "
+  echo "                   the target architecture is arm64-v8a."
+  echo "  IGNORE_CFLAGS    Optionally specify compilation flags to be ignored."
+  echo "                   Each grepped flag that satisfies the criteria will"
+  echo "                   be ignored. Default:"
+  echo "                   IGNORE_CFLAGS=\"\-M\|\-f*stack\|\-f*alias\|\-\<g\>\""
+  echo "                   Only used when --use-ndk-cflags is specified."
+  echo ""
+  exit 0
+fi
+
+if test "x${ANDROID_NDK_ROOT}" = "x" || test ! -e ${ANDROID_NDK_ROOT}; then
+  echo "$F error: ANDROID_NDK_ROOT env var is not specified or invalid"
+  exit 0
+fi
+
+# The BRE version somehow does not work well on MacOSX
+#NDK_VER=`sed -n -e 's/.*Pkg.Revision *= *\([0-9]\+\).*/\1/p' ${ANDROID_NDK_ROOT}/source.properties`
+NDK_VER=`sed -n -E 's/^Pkg.Revision *= *([0-9]+).*/\1/p' ${ANDROID_NDK_ROOT}/source.properties`
+
+if test "x$APP_PLATFORM" = "x"; then
+  if test -d ${ANDROID_NDK_ROOT}/platforms; then
+    APP_PLATFORM=`ls ${ANDROID_NDK_ROOT}/platforms/ | sed 's/android-//' | sort -gr | head -1`
+  fi
+  if test "x$APP_PLATFORM" != "x"; then
+    APP_PLATFORM="android-${APP_PLATFORM}"
+  else
+    APP_PLATFORM="latest"
+  fi
+  echo "$F: APP_PLATFORM not specified, using ${APP_PLATFORM}"
+fi
+
+if test "x$TARGET_ABI" = "x"; then
+  TARGET_ABI="arm64-v8a"
+  echo "$F: TARGET_ABI not specified, using ${TARGET_ABI}"
+fi
+
+if test "$TARGET_ABI" = "x86_64" || test "$TARGET_ABI" = "mips64"; then       
+    USR_LIB="/usr/lib64"
+else
+    USR_LIB="/usr/lib"
+fi
+
+
+if test "$1" = "--use-ndk-cflags" || [ "${NDK_VER}" -ge "17" ]; then
+  if test "$1" = "--use-ndk-cflags"; then
+    shift # don't pass this param to main configure script
+  fi
+
+  ADD_CFLAGS="0"
+  ADD_CXXFLAGS="0"
+  ADD_LDFLAGS="0"
+  ADD_NDK_TOOLCHAIN="0"
+  ADD_NDK_TARGET="0"
+  if test "x${IGNORE_CFLAGS}" = "x"; then
+    IGNORE_CFLAGS="\-M\|\-f*stack\|\-f*alias\|\-\<g\>\|\-DNDEBUG\|\-O"
+  fi
+  if test "x${IGNORE_CPPFLAGS}" = "x"; then
+    IGNORE_CPPFLAGS="\-M\|\-f*stack\|\-f*alias\|\-\<g\>\|\-DNDEBUG\|\-O\|\-std\="
+  fi
+  
+  if test -f ${ANDROID_NDK_ROOT}/build/ndk-build; then    
+    NDK_BUILD=${ANDROID_NDK_ROOT}/build/ndk-build
+  else 
+    NDK_BUILD=${ANDROID_NDK_ROOT}/ndk-build
+  fi
+
+  NDK_OUT=`${NDK_BUILD} -n -C pjsip-apps/src/samples/android_sample APP_PLATFORM=${APP_PLATFORM} APP_ABI=${TARGET_ABI}`
+  if test ! "${NDK_OUT}"; then
+    echo "$F error: failed to run ndk-build, check ANDROID_NDK_ROOT env var"
+    exit 1
+  fi
+
+  #echo "====="
+  #echo "NDK_OUT : ${NDK_OUT}"
+  #echo "====="
+
+  for i in $NDK_OUT; do
+
+    # Parse NDK CXXFLAGS
+    if test "${ADD_CXXFLAGS}" = "1"; then
+      if test "$i" = "-o"; then
+        ADD_CXXFLAGS="0"
+        continue
+      fi
+      if test "$i" = "-c"; then
+        continue
+      fi
+      if test "x`echo $i|grep 'dummy'`" != "x"; then
+        continue
+      fi
+      if test "x`echo $i|grep ${IGNORE_CPPFLAGS}`" != "x"; then
+        continue
+      fi
+      # Check if flag is already in CFLAGS
+      ISDUP="0"
+      for j in $NDK_CFLAGS; do
+        if test "$i" = "$j"; then
+	  ISDUP="1"
+	  break
+	fi
+      done
+      if test "${ISDUP}" = "1"; then
+        continue
+      fi
+      NDK_CXXFLAGS="${NDK_CXXFLAGS} $i"
+      continue
+    fi
+
+    # Parse NDK CFLAGS
+    if test "${ADD_CFLAGS}" = "1"; then
+      if test "$i" = "-c"; then
+        ADD_CFLAGS="0"
+        continue
+      fi
+      if test "x`echo $i|grep 'dummy'`" != "x"; then
+        continue
+      fi
+      if test "x`echo $i|grep ${IGNORE_CFLAGS}`" = "x"; then
+          if test "${ADD_NDK_TOOLCHAIN}" = "0" -a "x`echo $i|grep '\-gcc-toolchain'`" != "x"; then
+            ADD_NDK_TOOLCHAIN="1"
+          elif test "${ADD_NDK_TARGET}" = "0" -a "x`echo $i|grep '\-target'`" != "x"; then          
+            ADD_NDK_TARGET="1"
+          elif test "${ADD_NDK_TOOLCHAIN}" = "1"; then
+            NDK_TOOLCHAIN="$i"
+            ADD_NDK_TOOLCHAIN="2"
+          elif test "${ADD_NDK_TARGET}" = "1"; then
+            NDK_TARGET="$i"
+            ADD_NDK_TARGET="2"
+          fi
+          NDK_CFLAGS="${NDK_CFLAGS} $i"
+      fi
+      continue
+    fi
+
+    # Parse NDK LDFLAGS
+    if test "${ADD_LDFLAGS}" = "1"; then
+      if test "$i" = "-o"; then
+        ADD_LDFLAGS="0"
+        continue
+      fi
+      if test "x`echo $i|grep 'dummy'`" != "x"; then
+        continue
+      fi
+      if test "x`echo $i|grep '.so'`" != "x"; then
+        continue
+      fi
+      NDK_LDFLAGS="${NDK_LDFLAGS} $i"
+      continue
+    fi
+
+    # Find gcc or clang
+    if test "x${NDK_CC}" = "x"; then
+      if test "x`echo $i | grep 'gcc'`" != "x" -o "x`echo $i | grep 'clang'`" != "x"; then
+        NDK_CC=$i
+        ADD_CFLAGS="1"
+	if test "x`echo ${NDK_CC} | grep 'clang'`" != "x"; then
+	  IS_USING_LLVM="1"
+	  #echo "---using llvm"
+	fi
+	continue
+      fi
+    fi
+
+    # Find g++ or clang++
+    if test "x${NDK_CXX}" = "x"; then
+      if test "x`echo $i | grep 'g++'`" != "x"; then
+        NDK_CXX=$i
+        ADD_CXXFLAGS="1"
+	continue
+      fi
+    fi
+
+    # Find linking/LDFLAGS
+    if test "x${NDK_LDFLAGS}" = "x"; then
+      if test "x`echo $i | grep '\-\<shared\>'`" != "x"; then
+        ADD_LDFLAGS="1"
+	continue
+      fi
+    fi
+
+    # Find ar tool
+    if test "x${NDK_AR}" = "x" -a "x${NDK_CC}" != "x" -a "x`echo $i|grep '\-\<ar\>'`" != "x"; then
+      # In some NDKs, e.g: r17c, gcc/clang and ar have different path
+      #if test "$(dirname \"${NDK_CC}\")" = "$(dirname \"${i}\")"; then
+        NDK_AR=$i
+        #echo "--- found AR=${NDK_AR}"
+	continue
+      #fi
+    fi
+
+    # Find ranlib tool
+    if test "x${NDK_RANLIB}" = "x" -a "x${NDK_CC}" != "x" -a "x`echo $i|grep '\-\<ranlib\>'`" != "x"; then
+      #if test "$(dirname \"${NDK_CC}\")" = "$(dirname \"${i}\")"; then
+        NDK_RANLIB=$i
+        #echo "--- found RANLIB=${NDK_RANLIB}"
+      #fi
+    fi
+
+    # Get STD C++ lib path
+    if test "x${STD_CPP_LIB}" = "x"; then
+      if test "x`echo $i | grep 'libc++_shared.so'`" != "x"; then
+        MY_CONF_TMP=`echo ${i} | sed -e 's/\\\/\\//g' | sed -e 's/\\"//g'`
+        if test -e $MY_CONF_TMP; then
+          STD_CPP_LIB=$MY_CONF_TMP
+        #else
+          #echo "--- not good path for libc++_shared.so: ${MY_CONF_TMP}"
+        fi
+      fi
+    fi
+  done
+
+  # Get target host from NDK toolchain dir name
+  TARGET_HOST=`echo ${NDK_CC} | sed -e 's/.*\/toolchains\/\([^\/]*\).*/\1/'`
+  
+  # Remove version number suffix (otherwise config.sub will return error, perhaps it just doesn't like the format)
+  TARGET_HOST=`echo ${TARGET_HOST} | sed -e 's/\-[0-9\.]*$//'`
+
+  # Get target from '-target' param when TARGET_HOST is 'llvm'
+  if test "$TARGET_HOST" = "llvm"; then
+    TARGET_HOST=`echo ${NDK_CFLAGS} | sed -e 's/.*-target \([^- ]*\).*/\1/'`
+  fi
+
+  # Make sure target host string has 'linux-android' in it
+  if test "x`echo ${TARGET_HOST} | grep 'linux-android'`" = "x"; then
+    #TARGET_HOST=`echo ${TARGET_HOST} | sed -e 's/\(.*\)\-\([0-9\.]*\)/\1-linux-android-\2/'`
+    TARGET_HOST="${TARGET_HOST}-linux-android"
+  fi
+
+  # Set the binutils
+  if test "x${NDK_TOOLCHAIN}" = "x"; then
+    if test "x${NDK_AR}" = "x"; then
+      NDK_CC_DIR=$(dirname "${NDK_CC}")
+      NDK_AR=`find ${NDK_CC_DIR} -name "*ar" | grep -m 1 -v "gcc"`
+    fi
+    export LDFLAGS="${LDFLAGS}"
+  else
+    # find ar and ranlib
+    if test "x${NDK_AR}" = "x"; then
+      NDK_AR=`find ${NDK_TOOLCHAIN}/bin/ -name "*-ar" | grep -m 1 -v "gcc"`
+    fi
+    if test "x${NDK_RANLIB}" = "x"; then
+      NDK_RANLIB=`find ${NDK_TOOLCHAIN}/bin/ -name "*-ranlib" | grep -m 1 -v "gcc"`
+    fi
+    export LDFLAGS="${LDFLAGS} -target ${NDK_TARGET} -gcc-toolchain ${NDK_TOOLCHAIN}"
+  fi
+
+  if test "x${NDK_RANLIB}" = "x"; then
+    NDK_RANLIB="${NDK_AR} s"
+  fi
+
+  TC_AR=${NDK_AR}
+  TC_RANLIB=${NDK_RANLIB}
+  if test "x${TC_AR}" != "x" -a "x${TC_RANLIB}" != "x"; then
+    export AR="${TC_AR}"
+    export RANLIB="${TC_RANLIB}"
+  fi
+
+  export TARGET_ABI="${TARGET_ABI}"
+  export CC="${NDK_CC}"
+  export CXX="${NDK_CXX}"
+
+  export CPPFLAGS="${CPPFLAGS}"
+  export CFLAGS="${NDK_CFLAGS} ${CFLAGS} ${CPPFLAGS}"
+  export CXXFLAGS="${NDK_CXXFLAGS} ${CPPFLAGS}"
+  export LDFLAGS="${NDK_LDFLAGS} ${LDFLAGS}"
+  export LIBS="${LIBS}"
+
+else
+
+  if test "$TARGET_ABI" != "armeabi"; then
+    echo "$F error: For targets other than 'armeabi', specify --use-ndk-cflags"
+    exit 1
+  fi
+  
+  TARGET_HOST="arm-linux-androideabi"
+  
+  ANDROID_TC_VER=`ls -d ${ANDROID_NDK_ROOT}/toolchains/${TARGET_HOST}-* | sed 's/clang/0/' | sort -gr | head -1`
+  ANDROID_TC=`ls -d ${ANDROID_TC_VER}/prebuilt/* | grep -v gdbserver | head -1`
+  if test ! -d ${ANDROID_TC}; then
+    echo "$F error: unable to find directory ${ANDROID_TC} in Android NDK"
+    exit 1
+  fi
+
+  export ANDROID_SYSROOT="${ANDROID_NDK_ROOT}/platforms/${APP_PLATFORM}/arch-arm"
+  if test ! -d ${ANDROID_SYSROOT}; then
+    echo "$F error: unable to find sysroot dir ${ANDROID_SYSROOT} in Android NDK"
+    exit 1
+  fi
+
+  export TARGET_ABI="${TARGET_ABI}"
+  export CC="${ANDROID_TC}/bin/${TARGET_HOST}-gcc"
+  export CXX="${ANDROID_TC}/bin/${TARGET_HOST}-g++"
+  export AR="${ANDROID_TC}/bin/${TARGET_HOST}-ar"
+  export RANLIB="${ANDROID_TC}/bin/${TARGET_HOST}-ranlib"
+
+  export LDFLAGS="${LDFLAGS} --sysroot=${ANDROID_SYSROOT}"
+  export LIBS="${LIBS} -lc -lgcc"
+  export CFLAGS="${CFLAGS} --sysroot=${ANDROID_SYSROOT}"
+  export CPPFLAGS="${CFLAGS} -fexceptions -frtti"
+  export CXXFLAGS="${CXXFLAGS} -shared --sysroot=${ANDROID_SYSROOT} -fexceptions -frtti"
+
+fi
+
+if test "x${CC}" = "x" || test ! -e ${CC}; then
+  echo "$F error: compiler not found, please check environment settings (TARGET_ABI, etc)"
+  exit 1
+fi
+
+# C++ STL
+# Note: STL for pjsua2 sample app is specified in pjsip-apps/src/swig/java/android/jni/Application.mk
+
+if test "${IS_USING_LLVM}" = "1"; then
+  # llvm
+  STDCPP_TC="${ANDROID_NDK_ROOT}/sources/cxx-stl/llvm-libc++"
+  #STDCPP_CFLAGS="-I${STDCPP_TC}/include"
+  #STDCPP_LIBS="-lc++_static -lc++abi"
+  #STDCPP_LIBS="${STDCPP_TC}/libs/${TARGET_ABI}/libc++_shared.so"
+  STDCPP_LIBS="${STD_CPP_LIB}"
+  #STDCPP_LDFLAGS="-L${STDCPP_TC}/libs/${TARGET_ABI}/"
+else
+  # gnustl
+  STDCPP_TC_VER=`ls -d ${ANDROID_NDK_ROOT}/sources/cxx-stl/gnu-libstdc++/[0-9]* | sort -gr | head -1`
+  STDCPP_CFLAGS="-I${STDCPP_TC_VER}/include -I${STDCPP_TC_VER}/libs/${TARGET_ABI}/include"
+  STDCPP_LIBS="-lgnustl_static"
+  STDCPP_LDFLAGS="-L${STDCPP_TC_VER}/libs/${TARGET_ABI}/"
+fi
+
+if test "x$AR_FLAGS" = "x"; then
+  AR_FLAGS="rvc"
+fi
+
+# stlport
+#STDCPP_CFLAGS="-I${ANDROID_NDK_ROOT}/sources/cxx-stl/stlport/stlport"
+#STDCPP_LIBS="-lstlport_static -ldl"
+#STDCPP_LDFLAGS="-L${ANDROID_NDK_ROOT}/sources/cxx-stl/stlport/libs/${TARGET_ABI}"
+
+export CFLAGS="${CFLAGS}"
+export LIBS="${LIBS} ${STDCPP_LIBS}"
+export LDFLAGS="${LDFLAGS} ${STDCPP_LDFLAGS}"
+export CPPFLAGS="${CPPFLAGS}"
+export CXXFLAGS="${CXXFLAGS} ${STDCPP_CFLAGS}"
+export STD_CPP_LIB="${STD_CPP_LIB}"
+export AR_FLAGS="${AR_FLAGS}"
+
+# Print settings
+if test "1" = "1"; then
+  echo "$F: calling ./configure with env vars:"
+  echo " NDK_TOOLCHAIN = ${NDK_TOOLCHAIN}"
+  echo " CC = ${CC}"
+  echo " CXX = ${CXX}"
+  echo " CFLAGS = ${CFLAGS}"
+  echo " CXXFLAGS = ${CXXFLAGS}"
+  echo " STD_CPP_LIB = ${STD_CPP_LIB}"
+  echo " LDFLAGS = ${LDFLAGS}"
+  echo " LIBS = ${LIBS}"
+  echo " AR = ${AR}"
+  echo " AR_FLAGS = ${AR_FLAGS}"
+  echo " RANLIB = ${RANLIB}"
+  echo " TARGET_HOST = ${TARGET_HOST}"
+  echo " TARGET_ABI = ${TARGET_ABI}"
+fi
+
+./configure --host=${TARGET_HOST} $*

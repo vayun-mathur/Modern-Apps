@@ -199,7 +199,21 @@ dependencies {
 
     // OkHttp — WebSocket transport for Signal
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Ktor OkHttp engine — required for proper TLS hostname verification (fixes GVoice "hostname aware checkServerTrusted" error)
+    implementation("io.ktor:ktor-client-okhttp:3.2.3")
 
     // kotlinx.serialization — session data persistence
     implementation(libs.kotlinx.serialization.json)
+
+    // PJSIP — SIP stack for Google Voice calling
+    implementation(project(":pjsip"))
+
+    // Google Play Services — for RCS attestation (DroidGuard, SafetyNet, Firebase IID)
+    // Required for Google Jibe ACS provisioning per decompiled Google Messages code analysis
+    implementation(libs.play.services.base)
+    implementation(libs.play.services.auth)
+    implementation(libs.play.services.safetynet)
+    implementation(libs.play.integrity)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.installations)
 }

@@ -21,3 +21,5 @@ distribution_apks/
 .venv/
 __pycache__/
 scratch/LiteRT-LM/
+
+reverse-engineering/

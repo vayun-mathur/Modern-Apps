@@ -5,7 +5,7 @@ import android.util.Log
 import com.google.protobuf.Message
 import com.vayunmathur.messages.gmessages.PbLite
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.headers
 import io.ktor.client.request.preparePost
@@ -44,8 +44,14 @@ class GVoiceRpcClient(
 ) {
     var onCookiesChanged: ((Map<String, String>) -> Unit)? = null
 
-    private val normal: HttpClient = HttpClient(CIO) {
-        engine { requestTimeout = 120_000 }
+    private val normal: HttpClient = HttpClient(OkHttp) {
+        engine {
+            config {
+                // OkHttp properly handles hostname verification with SNI
+                // Required for Android domain-specific TLS configurations
+                retryOnConnectionFailure(true)
+            }
+        }
         install(HttpTimeout) {
             requestTimeoutMillis = 120_000
             connectTimeoutMillis = 15_000
@@ -53,9 +59,16 @@ class GVoiceRpcClient(
         }
     }
 
-    private val realtime: HttpClient = HttpClient(CIO) {
+    private val realtime: HttpClient = HttpClient(OkHttp) {
         // BrowserChannel long-polls can stay open for several minutes.
-        engine { requestTimeout = 0 }
+        engine {
+            config {
+                retryOnConnectionFailure(true)
+                // Extended timeouts for long polling
+                readTimeout(java.util.concurrent.TimeUnit.MINUTES.toMillis(6), java.util.concurrent.TimeUnit.MILLISECONDS)
+                connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            }
+        }
         install(HttpTimeout) {
             requestTimeoutMillis = 6 * 60 * 1000
             connectTimeoutMillis = 15_000

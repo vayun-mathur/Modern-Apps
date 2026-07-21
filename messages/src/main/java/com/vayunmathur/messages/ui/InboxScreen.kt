@@ -312,6 +312,7 @@ private fun sourceLabel(source: MessageSource): String = when (source) {
     MessageSource.WHATSAPP -> "WhatsApp"
     MessageSource.MESSENGER -> "Messenger"
     MessageSource.INSTAGRAM -> "Instagram"
+    MessageSource.RCS -> "RCS"
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -418,6 +419,7 @@ private fun SourceChip(source: MessageSource) {
         MessageSource.WHATSAPP -> "WhatsApp" to MaterialTheme.colorScheme.secondary
         MessageSource.MESSENGER -> "Messenger" to MaterialTheme.colorScheme.secondary
         MessageSource.INSTAGRAM -> "Instagram" to MaterialTheme.colorScheme.secondary
+        MessageSource.RCS -> "RCS" to MaterialTheme.colorScheme.primary
     }
     Surface(
         shape = RoundedCornerShape(8.dp),

@@ -379,7 +379,7 @@ fun AirlineDropdown(
             airlines.filter {
                 it.name.contains(query, ignoreCase = true) || it.iataCode.contains(query, ignoreCase = true)
             }
-        }.take(60)
+        }
     }
     ExposedDropdownMenuBox(
         expanded = expanded,

@@ -76,3 +76,35 @@ message RespLookupContacts {
 
     repeated Match matches = 1;
 }
+
+message RespGetSIPRegisterInfo {
+    SIPRegisterInfo sip_register_info = 1;
+    // Field 4 contains nested credentials based on live API response
+    SIPCredentials credentials = 4;
+}
+
+message SIPRegisterInfo {
+    // Actual structure from live API: fields 1 and 2 are integers
+    // Likely timestamps or IDs, not username/password as initially guessed
+    int64 field_1 = 1;  // 1784825405 in test response (possibly expiry timestamp?)
+    int64 field_2 = 2;  // 949940000 in test response
+}
+
+message SIPCredentials {
+    // Field 4 in response contains nested message with 2 string fields
+    // These appear to be the actual SIP auth tokens
+    string token_1 = 1;  // Long base64url-like token (~175 chars)
+    string token_2 = 2;  // Shorter base64 token (~24 chars, ends with ==)
+}
+
+// Legacy guessed structure kept for reference but not used by actual API
+message SIPRegisterInfoLegacy {
+    string username = 1;
+    string password = 2;
+    string domain = 3;
+    string proxy_server = 4;
+    int32 expires_seconds = 5;
+    string display_name = 6;
+    string authorization_id = 7;
+    string realm = 8;
+}

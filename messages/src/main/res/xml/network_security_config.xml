@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext HTTP traffic for RCS ACS servers per GSMA RCC.14 spec.
+         ACS URLs use HTTP (not HTTPS) by specification:
+         http://config.rcs.mnc<MNC>.mcc<MCC>.pub.3gppnetwork.org/
+         -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- GSMA standard ACS domains -->
+        <domain includeSubdomains="true">3gppnetwork.org</domain>
+        <domain includeSubdomains="true">pub.3gppnetwork.org</domain>
+        <!-- Google Jibe domains (may use HTTPS but allow HTTP fallback) -->
+        <domain includeSubdomains="true">telephony.goog</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+    </domain-config>
+
+    <!-- Default config allows cleartext for all domains during RCS development.
+         TODO: Restrict to specific ACS domains once Jibe endpoint is confirmed. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
