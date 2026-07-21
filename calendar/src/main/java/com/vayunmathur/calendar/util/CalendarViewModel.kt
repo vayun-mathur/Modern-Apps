@@ -66,6 +66,26 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    enum class ThemeMode(val prettyName: String) {
+        System("System default"),
+        Light("Light"),
+        Dark("Dark"),
+    }
+
+    private val _themeMode = MutableStateFlow(
+        dataStore.getString("theme_mode")
+            ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
+            ?: ThemeMode.System
+    )
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        viewModelScope.launch {
+            dataStore.setString("theme_mode", mode.name)
+        }
+    }
+
     // The last calendar the user actively picked in the event calendar picker.
     // Used as the default selection when creating a new event.
     fun getDefaultCalendarId(): Long? = dataStore.getLong("last_selected_calendar_id")
@@ -169,6 +189,11 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             dataStore.stringFlow("default_calendar_layout").collect { saved ->
                 runCatching { CalendarLayout.valueOf(saved) }.onSuccess { _currentLayout.value = it }
+            }
+        }
+        viewModelScope.launch {
+            dataStore.stringFlow("theme_mode").collect { saved ->
+                runCatching { ThemeMode.valueOf(saved) }.onSuccess { _themeMode.value = it }
             }
         }
     }

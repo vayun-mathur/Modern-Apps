@@ -52,7 +52,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val permissions = arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
             var hasPermissions by remember { mutableStateOf(permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) }
-            DynamicTheme {
+            val dataStore = remember { DataStoreUtils.getInstance(this) }
+            val themeName by dataStore.stringFlow("theme_mode").collectAsState(initial = dataStore.getString("theme_mode"))
+            val darkTheme = when (themeName?.let { runCatching { CalendarViewModel.ThemeMode.valueOf(it) }.getOrNull() }) {
+                CalendarViewModel.ThemeMode.Light -> false
+                CalendarViewModel.ThemeMode.Dark -> true
+                else -> null
+            }
+            DynamicTheme(darkTheme) {
                 if (!hasPermissions) {
                     NoPermissionsScreen(permissions) { hasPermissions = it }
                 } else {

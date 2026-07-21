@@ -54,16 +54,17 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
 
     /**
      * Ids of discovered items that can no longer create any *undiscovered* item:
-     * every recipe they're an input to (whose other inputs are also discovered)
-     * produces only already-discovered outputs. Items with no recipes at all
-     * (final items) are included since they can never create anything.
+     * every recipe they're an input to produces only already-discovered outputs.
+     * Items with no recipes at all (final items) are included since they can never
+     * create anything. Partner availability is intentionally ignored — an element
+     * is only "maxed out" if none of its recipes can ever yield something new.
      */
     val exhaustedItemIds: StateFlow<Set<Long>> =
         combine(itemIds, _recipes) { discovered, recipes ->
             if (discovered.isEmpty()) return@combine emptySet<Long>()
             val producesNew = HashSet<Long>()
             recipes.forEach { r ->
-                if (r.inputs.all { it in discovered } && r.outputs.any { it !in discovered }) {
+                if (r.outputs.any { it !in discovered }) {
                     producesNew.addAll(r.inputs)
                 }
             }

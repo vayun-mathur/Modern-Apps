@@ -96,10 +96,7 @@ class EmailManager {
                 this["mail.$proto.starttls.required"] = "true"
             }
         }
-        return Session.getInstance(properties).also {
-            registerProviders(it)
-            if (oauth) enableProtocolDebug(it)
-        }
+        return Session.getInstance(properties).also { registerProviders(it) }
     }
 
     private fun getSmtpSession(server: ServerConfig, oauth: Boolean = false): Session {
@@ -143,39 +140,6 @@ class EmailManager {
             android.util.Log.d("EmailManager", "Providers registered: ${session.providers.joinToString { it.protocol }}")
         } catch (t: Throwable) {
             android.util.Log.e("EmailManager", "registerProviders failed: ${t.javaClass.simpleName}: ${t.message}", t)
-        }
-    }
-
-    /**
-     * Routes JavaMail's protocol trace to Logcat (tag `EmailImap`) so we can see the
-     * exact server response to XOAUTH2 auth. The outgoing `AUTHENTICATE XOAUTH2 <token>`
-     * line is redacted; the server's (base64) error reply is kept — that's the useful part.
-     */
-    private fun enableProtocolDebug(session: Session) {
-        try {
-            session.debug = true
-            session.debugOut = java.io.PrintStream(LogcatDebugStream("EmailImap"), true)
-        } catch (t: Throwable) {
-            android.util.Log.e("EmailManager", "enableProtocolDebug failed", t)
-        }
-    }
-
-    private class LogcatDebugStream(private val tag: String) : java.io.OutputStream() {
-        private val line = StringBuilder()
-        override fun write(b: Int) {
-            if (b == '\n'.code) flush() else if (b != '\r'.code) line.append(b.toChar())
-        }
-        override fun write(b: ByteArray, off: Int, len: Int) {
-            for (i in off until off + len) write(b[i].toInt() and 0xFF)
-        }
-        override fun flush() {
-            if (line.isEmpty()) return
-            var text = line.toString()
-            line.setLength(0)
-            // Never log the bearer token that rides on the AUTHENTICATE command.
-            text = Regex("(AUTHENTICATE\\s+XOAUTH2\\s+)\\S+", RegexOption.IGNORE_CASE)
-                .replace(text) { it.groupValues[1] + "<redacted>" }
-            android.util.Log.d(tag, text)
         }
     }
 

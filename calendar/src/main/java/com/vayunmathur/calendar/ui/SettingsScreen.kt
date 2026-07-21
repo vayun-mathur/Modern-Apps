@@ -137,6 +137,37 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
                 }
 
                 item {
+                    val currentTheme by viewModel.themeMode.collectAsStateWithLifecycle()
+                    var showThemeMenu by remember { mutableStateOf(false) }
+
+                    ListItem(
+                        content = { Text("Theme") },
+                        trailingContent = {
+                            Box {
+                                TextButton(onClick = { showThemeMenu = true }) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(currentTheme.prettyName)
+                                        IconArrowDropDown()
+                                    }
+                                }
+                                DropdownMenu(expanded = showThemeMenu, onDismissRequest = { showThemeMenu = false }) {
+                                    CalendarViewModel.ThemeMode.entries.forEach { mode ->
+                                        DropdownMenuItem(
+                                            text = { Text(mode.prettyName) },
+                                            onClick = {
+                                                viewModel.setThemeMode(mode)
+                                                showThemeMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    )
+                    HorizontalDivider()
+                }
+
+                item {
                     ListItem(
                         content = { Text("Holiday calendars") },
                         supportingContent = { Text("Add public holidays for countries") },
