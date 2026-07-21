@@ -10,8 +10,11 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.IntentHelper
@@ -29,6 +32,7 @@ import com.vayunmathur.notes.data.NoteDao
 import com.vayunmathur.notes.data.NoteDatabase
 import com.vayunmathur.notes.ui.NotePage
 import com.vayunmathur.notes.ui.NotesListPage
+import com.vayunmathur.notes.ui.ExternalNoteScreen
 import com.vayunmathur.notes.util.NotesViewModel
 import com.vayunmathur.notes.util.NotesViewModelFactory
 import kotlinx.coroutines.Dispatchers
@@ -91,8 +95,14 @@ class MainActivity : ComponentActivity() {
         if (::noteDao.isInitialized) handleIntent(intent)
     }
 
+    /**
+     * External VIEW/EDIT/SEND opens are shown on their own [ExternalNoteScreen]
+     * (a standalone markdown editor) instead of being auto-added to the DB.
+     */
     private fun handleIntent(intent: Intent?) {
-        intent?.let { notesViewModel.importFiles(IntentHelper.getUrisFromIntent(it)) }
+        intent ?: return
+        val uris = IntentHelper.getUrisFromIntent(intent).ifEmpty { listOfNotNull(intent.data) }
+        notesViewModel.openExternal(uris)
     }
 
     companion object {
@@ -107,17 +117,29 @@ sealed interface Route: NavKey {
     data object NotesList: Route
     @Serializable
     data class Note(val id: Long): Route
+    @Serializable
+    data class ExternalNote(val uri: String): Route
 }
 
 @Composable
 fun Navigation(notesViewModel: NotesViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.NotesList)
+    val externalOpens by notesViewModel.externalOpens.collectAsStateWithLifecycle()
+    LaunchedEffect(externalOpens) {
+        externalOpens.firstOrNull()?.let { uri ->
+            notesViewModel.consumeExternal(uri)
+            backStack.add(Route.ExternalNote(uri))
+        }
+    }
     MainNavigation(backStack) {
         entry<Route.NotesList>(metadata = ListPage()) {
             NotesListPage(backStack, notesViewModel)
         }
         entry<Route.Note>(metadata = ListDetailPage()) {
             NotePage(backStack, notesViewModel, it.id)
+        }
+        entry<Route.ExternalNote>(metadata = ListDetailPage()) {
+            ExternalNoteScreen(backStack, notesViewModel, it.uri)
         }
     }
 }

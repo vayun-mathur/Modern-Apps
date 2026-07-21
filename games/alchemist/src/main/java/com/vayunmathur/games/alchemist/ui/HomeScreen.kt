@@ -26,6 +26,8 @@ import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconCheck
+import com.vayunmathur.library.ui.IconMoreVert
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Surface
@@ -72,6 +74,8 @@ fun HomeScreen(
     onOpenGameCenter: () -> Unit
 ) {
     val availableItems by viewModel.availableItems.collectAsState()
+    val paletteItems by viewModel.paletteItems.collectAsState()
+    val hideExhausted by viewModel.hideExhausted.collectAsState()
     val allItems by viewModel.allItems.collectAsState()
     val activeItems by viewModel.placedElements.collectAsState()
 
@@ -87,6 +91,7 @@ fun HomeScreen(
 
     var contextMenuElementId by remember { mutableStateOf<Long?>(null) }
     var contextMenuExpanded by remember { mutableStateOf(false) }
+    var overflowExpanded by remember { mutableStateOf(false) }
 
     val lazyList = rememberLazyListState()
 
@@ -108,6 +113,22 @@ fun HomeScreen(
                 IconButton(onClick = onOpenGameCenter) {
                     Icon(
                         painterResource(id = android.R.drawable.btn_star_big_on), "Achievements"
+                    )
+                }
+                IconButton(onClick = { overflowExpanded = true }) {
+                    IconMoreVert()
+                }
+                DropdownMenu(
+                    expanded = overflowExpanded,
+                    onDismissRequest = { overflowExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.hide_maxed_elements)) },
+                        trailingIcon = { if (hideExhausted) IconCheck() },
+                        onClick = {
+                            viewModel.setHideExhausted(!hideExhausted)
+                            overflowExpanded = false
+                        }
                     )
                 }
             })
@@ -170,8 +191,8 @@ fun HomeScreen(
                 )
 
                 // 2.2 A-Z LETTER BAR
-                val activeLetters = remember(availableItems) {
-                    availableItems.mapNotNull { it.name.firstOrNull()?.uppercaseChar() }.toSet()
+                val activeLetters = remember(paletteItems) {
+                    paletteItems.mapNotNull { it.name.firstOrNull()?.uppercaseChar() }.toSet()
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -185,7 +206,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .clickable {
-                                    val index = availableItems.indexOfFirst {
+                                    val index = paletteItems.indexOfFirst {
                                         it.name.firstOrNull()?.uppercaseChar() == letter
                                     }
                                     if (index >= 0) {
@@ -233,7 +254,7 @@ fun HomeScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(availableItems, key = { it.id }) { item ->
+                                items(paletteItems, key = { it.id }) { item ->
                                     var itemPosInWindow by remember { mutableStateOf(Offset.Zero) }
 
                                     Column(

@@ -83,6 +83,7 @@ class PlaybackService : MediaSessionService() {
                     val subtitleSources = mediaItem.localConfiguration?.subtitleConfigurations
                         ?.map { cfg ->
                             SingleSampleMediaSource.Factory(dataSourceFactory)
+                                .setTreatLoadErrorsAsEndOfStream(true)
                                 .createMediaSource(cfg, C.TIME_UNSET)
                         } ?: emptyList()
 

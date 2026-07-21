@@ -10,4 +10,5 @@
     <string name="locked_description">Unlock all outputs of these recipes to see them.</string>
     <string name="collection">Collection</string>
     <string name="discovered_counter">%1$d / %2$d discovered</string>
+    <string name="hide_maxed_elements">Hide maxed-out elements</string>
 </resources>

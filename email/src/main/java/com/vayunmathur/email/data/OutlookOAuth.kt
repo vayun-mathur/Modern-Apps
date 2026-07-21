@@ -11,6 +11,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 import java.security.SecureRandom
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -145,8 +147,8 @@ object OutlookOAuth {
         val idTokenEmail: String?,
     )
 
-    private fun exchange(form: Map<String, String>): Tokens? {
-        return try {
+    private suspend fun exchange(form: Map<String, String>): Tokens? = withContext(Dispatchers.IO) {
+        try {
             val body = form.entries.joinToString("&") {
                 "${Uri.encode(it.key)}=${Uri.encode(it.value)}"
             }
@@ -160,10 +162,10 @@ object OutlookOAuth {
                 conn.inputStream.bufferedReader().use { it.readText() }
             } else {
                 Log.e(TAG, "token endpoint ${conn.responseCode}: ${conn.errorStream?.bufferedReader()?.readText()}")
-                return null
+                return@withContext null
             }
-            val root = json.parseToJsonElement(text) as? JsonObject ?: return null
-            val access = root["access_token"]?.jsonPrimitive?.contentOrNull() ?: return null
+            val root = json.parseToJsonElement(text) as? JsonObject ?: return@withContext null
+            val access = root["access_token"]?.jsonPrimitive?.contentOrNull() ?: return@withContext null
             val expiresIn = root["expires_in"]?.jsonPrimitive?.contentOrNull()?.toLongOrNull() ?: 3600L
             Tokens(
                 accessToken = access,

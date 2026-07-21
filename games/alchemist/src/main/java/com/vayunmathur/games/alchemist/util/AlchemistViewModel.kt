@@ -52,6 +52,38 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
             items.filter { it.id in ids }.sortedBy { it.name }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * Ids of discovered items that can no longer create any *undiscovered* item:
+     * every recipe they're an input to (whose other inputs are also discovered)
+     * produces only already-discovered outputs. Items with no recipes at all
+     * (final items) are included since they can never create anything.
+     */
+    val exhaustedItemIds: StateFlow<Set<Long>> =
+        combine(itemIds, _recipes) { discovered, recipes ->
+            if (discovered.isEmpty()) return@combine emptySet<Long>()
+            val producesNew = HashSet<Long>()
+            recipes.forEach { r ->
+                if (r.inputs.all { it in discovered } && r.outputs.any { it !in discovered }) {
+                    producesNew.addAll(r.inputs)
+                }
+            }
+            discovered.filterTo(HashSet()) { it !in producesNew }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** Persisted toggle: hide discovered items that can't create anything new. */
+    val hideExhausted: StateFlow<Boolean> = ds.booleanFlow(HIDE_EXHAUSTED_KEY)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** The palette shown on the board: [availableItems] minus exhausted ones when the toggle is on. */
+    val paletteItems: StateFlow<List<AlchemyItem>> =
+        combine(availableItems, hideExhausted, exhaustedItemIds) { items, hide, exhausted ->
+            if (hide) items.filterNot { it.id in exhausted } else items
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setHideExhausted(value: Boolean) {
+        viewModelScope.launch { ds.setBoolean(HIDE_EXHAUSTED_KEY, value) }
+    }
+
     private val _placedElements = MutableStateFlow<List<PlacedItem>>(emptyList())
     val placedElements: StateFlow<List<PlacedItem>> = _placedElements.asStateFlow()
 
@@ -206,5 +238,6 @@ class AlchemistViewModel(application: Application) : AndroidViewModel(applicatio
         private const val TIME_ID = 41L
         private const val TIME_UNLOCK_THRESHOLD = 100
         private const val PLACED_ELEMENTS_KEY = "placed_elements"
+        private const val HIDE_EXHAUSTED_KEY = "hide_exhausted"
     }
 }

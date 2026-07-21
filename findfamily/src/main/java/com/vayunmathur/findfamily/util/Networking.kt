@@ -12,6 +12,8 @@ import com.vayunmathur.e2ee.E2eeKeyStore
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.io.encoding.Base64
@@ -35,6 +37,13 @@ object Networking {
     private lateinit var userDao: UserDao
     private lateinit var dataStoreUtils: DataStoreUtils
 
+    // init() is called from both the app UI (on launch) and the location
+    // foreground service (which may start first). Guard it so only one coroutine
+    // runs the identity/userid bootstrap at a time, and make it a no-op once done.
+    private val initMutex = Mutex()
+    @Volatile
+    private var initialized = false
+
     /** Adapts the app's encrypted DataStore to the e2ee module's storage abstraction. */
     private class DataStoreKeyStore(private val ds: DataStoreUtils) : E2eeKeyStore {
         override fun getBytes(name: String): ByteArray? = ds.getByteArray(name)
@@ -43,27 +52,32 @@ object Networking {
     }
 
     suspend fun init(userDao: UserDao, dataStoreUtils: DataStoreUtils, meName: String) {
-        Networking.dataStoreUtils = dataStoreUtils
-        Networking.userDao = userDao
-        // Loads the persisted keypair (or generates+stores one on first launch) using the same
-        // "publicKey"/"privateKey" datastore entries as before, so existing installs keep their key.
-        identity = E2eeIdentity.loadOrCreate(DataStoreKeyStore(dataStoreUtils))
-        dataStoreUtils.setLong("userid", Random.nextLong(), true)
-        userid = dataStoreUtils.getLong("userid")!!
+        if (initialized) return
+        initMutex.withLock {
+            if (initialized) return
+            Networking.dataStoreUtils = dataStoreUtils
+            Networking.userDao = userDao
+            // Loads the persisted keypair (or generates+stores one on first launch) using the same
+            // "publicKey"/"privateKey" datastore entries as before, so existing installs keep their key.
+            identity = E2eeIdentity.loadOrCreate(DataStoreKeyStore(dataStoreUtils))
+            dataStoreUtils.setLong("userid", Random.nextLong(), true)
+            userid = dataStoreUtils.getLong("userid")!!
 
-        if (userDao.getById(userid) == null) {
-            userDao.upsert(
-                User(
-                    meName,
-                    null,
-                    "Unnamed Location",
-                    true,
-                    RequestStatus.MUTUAL_CONNECTION,
-                    Clock.System.now(),
-                    null,
-                    userid,
+            if (userDao.getById(userid) == null) {
+                userDao.upsert(
+                    User(
+                        meName,
+                        null,
+                        "Unnamed Location",
+                        true,
+                        RequestStatus.MUTUAL_CONNECTION,
+                        Clock.System.now(),
+                        null,
+                        userid,
+                    )
                 )
-            )
+            }
+            initialized = true
         }
     }
 

@@ -14,6 +14,11 @@ class AppBackupAgent : BaseBackupAgent() {
             return listOf("passwords-db" to pass)
         }
 
+    // Back up the app's DataStore (userid + e2ee keypair live here) so a new
+    // device restore keeps a stable identity instead of regenerating one.
+    override val datastoreNames: List<String>
+        get() = listOf("datastore_default")
+
     override val extraFiles: List<File>
         get() = emptyList()
 }

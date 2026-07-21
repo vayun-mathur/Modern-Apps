@@ -68,7 +68,7 @@
             android:name=".ui.OutlookOAuthActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.NoDisplay">
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -27,6 +27,8 @@ import com.vayunmathur.findfamily.data.User
 import com.vayunmathur.findfamily.data.UserDao
 import com.vayunmathur.findfamily.data.Waypoint
 import com.vayunmathur.findfamily.data.WaypointDao
+import com.vayunmathur.findfamily.R
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.DatabaseHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -408,6 +410,13 @@ class FindFamilyViewModel(
     // ------------------------------------------------------------------
 
     init {
+        // Ensure the device identity (userid + keypair + self-user row) exists as
+        // soon as the app is opened, independent of location permission or the
+        // tracking service. Networking.init() is idempotent and mutex-guarded, so
+        // it's safe for the service to also call it (it may start before the UI).
+        viewModelScope.launch(Dispatchers.IO) {
+            Networking.init(userDao, DataStoreUtils.getInstance(ctx), ctx.getString(R.string.me_label))
+        }
         // Trim location history older than a week.
         viewModelScope.launch(Dispatchers.IO) {
             val cutoff = Clock.System.now() - 7.days

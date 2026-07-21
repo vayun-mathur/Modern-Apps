@@ -2,6 +2,7 @@ package com.vayunmathur.passwords.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import android.util.Base64
 import android.util.Log
 import androidx.credentials.CreatePublicKeyCredentialRequest
@@ -49,7 +50,8 @@ class PasskeyAuthActivity : FragmentActivity() {
                     db = applicationContext.buildDatabase<PasswordDatabase>(encryptionPassword = passphrase)
                     proceedWithFlow()
                 },
-                onFailure = {
+                onFailure = { message ->
+                    message?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
                     setResult(RESULT_CANCELED)
                     finish()
                 }

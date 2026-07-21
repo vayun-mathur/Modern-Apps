@@ -3,6 +3,7 @@ package com.vayunmathur.photos
 import android.Manifest
 import android.content.ContentUris
 import android.content.Context
+import android.widget.Toast
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -308,7 +309,12 @@ private fun SecureFolderEntry(
             secureFolderViewModel.unlock(
                 activity,
                 onSuccess = { _, _ -> },
-                onFailure = { backStack.pop() },
+                onFailure = { message ->
+                    if (message != null) {
+                        Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+                    }
+                    backStack.pop()
+                },
             )
         }
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

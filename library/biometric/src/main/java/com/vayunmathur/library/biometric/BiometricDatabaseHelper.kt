@@ -25,7 +25,10 @@ class BiometricDatabaseHelper(context: Context) : DatabaseHelper(context) {
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setUserAuthenticationRequired(true)
-            .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+            .setUserAuthenticationParameters(
+                0,
+                KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL,
+            )
             .setInvalidatedByBiometricEnrollment(false)
 
         keyGenerator.init(builder.build())
@@ -33,11 +36,31 @@ class BiometricDatabaseHelper(context: Context) : DatabaseHelper(context) {
     }
 }
 
+/**
+ * Prompts for a strong-biometric unlock of the encrypted database.
+ *
+ * [onFailure] receives an optional user-facing message: a non-null message when
+ * biometrics can't be used (none enrolled / no hardware / key setup failed) so the
+ * caller can show it; null for ordinary cancellations (back / negative button).
+ */
 fun unlockDatabaseWithBiometrics(
     activity: FragmentActivity,
     onSuccess: (String) -> Unit,
-    onFailure: () -> Unit
+    onFailure: (message: String?) -> Unit
 ) {
+    // Generating an auth-bound key throws IllegalStateException when the device has
+    // no way to authenticate the user. Allow either a strong biometric or the device
+    // credential (PIN / pattern / password), and check first so we can fail
+    // gracefully with a message instead of crashing.
+    val allowedAuthenticators =
+        BiometricManager.Authenticators.BIOMETRIC_STRONG or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    val status = BiometricManager.from(activity).canAuthenticate(allowedAuthenticators)
+    if (status != BiometricManager.BIOMETRIC_SUCCESS) {
+        onFailure(biometricUnavailableMessage(status))
+        return
+    }
+
     val helper = BiometricDatabaseHelper(activity)
     val executor = ContextCompat.getMainExecutor(activity)
 
@@ -48,22 +71,35 @@ fun unlockDatabaseWithBiometrics(
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                onFailure()
+                // Stay silent on ordinary user cancellation; surface real errors.
+                val message = when (errorCode) {
+                    BiometricPrompt.ERROR_USER_CANCELED,
+                    BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                    BiometricPrompt.ERROR_CANCELED -> null
+                    else -> errString.toString()
+                }
+                onFailure(message)
             }
         })
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            .setNegativeButtonText("Cancel")
+            // Allowing DEVICE_CREDENTIAL provides the built-in PIN/pattern/password
+            // fallback; a custom negative button is disallowed in that case.
+            .setAllowedAuthenticators(allowedAuthenticators)
             .build()
 
         biometricPrompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
     }
 
     if (!helper.isKeyGenerated()) {
-        helper.generateKey()
+        try {
+            helper.generateKey()
+        } catch (e: Exception) {
+            onFailure(biometricUnavailableMessage(status))
+            return
+        }
         prompt(
             "Setup Secure Database",
             "Authenticate to create your secure encryption key",
@@ -76,4 +112,15 @@ fun unlockDatabaseWithBiometrics(
             helper.getCipherForDecryption()
         ) { helper.decryptPassphrase(it) }
     }
+}
+
+/** User-facing reason why the device can't authenticate for the secure folder. */
+private fun biometricUnavailableMessage(status: Int): String = when (status) {
+    BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+        "Set up a screen lock (PIN, pattern, password, or biometric) to use the secure folder."
+    BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
+    BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ->
+        "Device authentication isn't available, so the secure folder can't be opened."
+    else ->
+        "Device authentication is required to use the secure folder."
 }

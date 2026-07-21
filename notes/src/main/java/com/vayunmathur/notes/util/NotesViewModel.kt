@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
@@ -211,6 +212,74 @@ class NotesViewModel(
                 NoteShare(uri, markdown)
             }
             _shareRequests.emit(share)
+        }
+    }
+
+    // Externally-opened files (VIEW/EDIT/SEND intents) waiting to be shown on the
+    // ExternalNoteScreen. Unlike [importFiles], these are NOT added to the DB;
+    // navigation drains this queue one URI at a time.
+    private val _externalOpens = MutableStateFlow<List<String>>(emptyList())
+    val externalOpens: StateFlow<List<String>> = _externalOpens.asStateFlow()
+
+    /** Queue external [uris] to open on the ExternalNoteScreen (no DB write). */
+    fun openExternal(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        _externalOpens.value = _externalOpens.value + uris.map { it.toString() }
+    }
+
+    /** Remove [uri] from the external-open queue once navigation has handled it. */
+    fun consumeExternal(uri: String) {
+        _externalOpens.value = _externalOpens.value.filterNot { it == uri }
+    }
+
+    /** Title (file name without extension) + raw markdown content of an external note. */
+    data class ExternalNoteContent(val title: String, val content: String)
+
+    /** Reads an externally-opened markdown file. Returns null if it can't be read. */
+    suspend fun readExternal(uriString: String): ExternalNoteContent? = withContext(Dispatchers.IO) {
+        val ctx = getApplication<Application>()
+        try {
+            val uri = Uri.parse(uriString)
+            val content = ctx.contentResolver.openInputStream(uri)
+                ?.bufferedReader()?.use { it.readText() } ?: return@withContext null
+            val name = IntentHelper.getFileName(ctx, uri) ?: "Untitled"
+            ExternalNoteContent(name.removeSuffix(".markdown").removeSuffix(".md"), content)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading external note: $uriString", e)
+            null
+        }
+    }
+
+    /**
+     * Writes [content] back to the external file [uriString]. Invokes [onResult]
+     * on the main thread with whether the write succeeded (read-only URIs fail).
+     */
+    fun saveExternal(uriString: String, content: String, onResult: (Boolean) -> Unit) {
+        val ctx = getApplication<Application>()
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                try {
+                    ctx.contentResolver.openOutputStream(Uri.parse(uriString), "wt")?.use {
+                        it.write(content.toByteArray())
+                    } ?: return@withContext false
+                    true
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error saving external note: $uriString", e)
+                    false
+                }
+            }
+            onResult(ok)
+        }
+    }
+
+    /**
+     * Imports an external note into the app DB as a new [Note] and invokes
+     * [onAdded] on the main thread with the new row id.
+     */
+    fun addExternalToApp(title: String, content: String, onAdded: (Long) -> Unit) {
+        viewModelScope.launch {
+            val id = withContext(Dispatchers.IO) { noteDao.upsert(Note(0, title, content)) }
+            onAdded(id)
         }
     }
 

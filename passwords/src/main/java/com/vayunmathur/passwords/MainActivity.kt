@@ -1,6 +1,7 @@
 package com.vayunmathur.passwords
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -53,7 +54,8 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             },
-            onFailure = {
+            onFailure = { message ->
+                message?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }
                 finish()
             }
         )

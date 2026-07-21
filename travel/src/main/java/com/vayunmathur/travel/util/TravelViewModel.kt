@@ -716,14 +716,18 @@ class TravelViewModel(
     private suspend fun persistStay(result: StayBookingResultDto) {
         val name = result.accommodationName.ifBlank { selectedStayName }
         val checkIn = result.checkInDate.ifBlank { selectedCheckIn }
+        // Stay bookings don't carry a total; fall back to the confirmed quote.
+        val (quoteAmount, quoteCurrency) = stayTotal()
+        val amount = result.totalAmount.takeIf { it.isNotBlank() && it != "0" } ?: quoteAmount
+        val currency = result.totalCurrency.takeIf { it.isNotBlank() } ?: quoteCurrency
         bookedTripDao.upsert(
             BookedTrip(
                 orderId = result.id,
                 bookingReference = result.reference,
                 route = name,
                 departDate = checkIn.take(10),
-                amount = result.totalAmount,
-                currency = result.totalCurrency,
+                amount = amount,
+                currency = currency,
                 status = result.status.ifBlank { "confirmed" },
                 type = "stay",
             )

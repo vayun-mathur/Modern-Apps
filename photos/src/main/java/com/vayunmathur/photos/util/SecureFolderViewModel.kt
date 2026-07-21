@@ -84,7 +84,7 @@ class SecureFolderViewModel(application: Application) : AndroidViewModel(applica
     fun unlock(
         activity: FragmentActivity,
         onSuccess: (VaultPhotoDao, String) -> Unit = { _, _ -> },
-        onFailure: () -> Unit = {},
+        onFailure: (message: String?) -> Unit = {},
     ) {
         val existingDao = _vaultPhotoDao.value
         if (existingDao != null) {
