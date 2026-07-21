@@ -114,16 +114,31 @@ fun ContactDetailsPage(
     onDelete: () -> Unit,
     showBackButton: Boolean = true
 ) {
-    val contact by remember { viewModel.getContactFlow(contactId).filterNotNull() }.collectAsStateWithLifecycle(initialValue = viewModel.getContact(contactId))
+    val context = LocalContext.current
+    val contactsList by viewModel.contacts.collectAsStateWithLifecycle()
+    val contactFromFlow by remember { viewModel.getContactFlow(contactId) }.collectAsStateWithLifecycle(initialValue = null)
+    // Fall back to direct provider query if not in memory list yet (e.g., cold start via intent, or hidden account filter race)
+    val contactFromProvider by produceState<Contact?>(initialValue = null, contactId, contactsList.size) {
+        value = withContext(Dispatchers.IO) {
+            viewModel.getContact(contactId) ?: com.vayunmathur.contacts.data.Contact.getContact(context, contactId)
+        }
+    }
+    val contact = contactFromFlow ?: contactFromProvider
     val details = contact?.details
 
     if (contact == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            Text(stringResource(R.string.contact_not_found))
+        // Show loading while contacts list is still populating, only show "not found" once list is loaded
+        if (contactsList.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Text(stringResource(R.string.contact_not_found))
+            }
         }
         return
     }
-    val context = LocalContext.current
     val platforms by produceState(ContactPlatforms(), contactId, details) {
         value = withContext(Dispatchers.IO) { PackageUtils.getContactPlatforms(context, contactId) }
     }

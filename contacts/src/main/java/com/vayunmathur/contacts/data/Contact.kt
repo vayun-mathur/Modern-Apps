@@ -249,7 +249,7 @@ data class Contact(
         } else {
             // Favorite
             ops += ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
-                .withSelection("${ContactsContract.Contacts._ID} = ?", arrayOf(id.toString()))
+                .withSelection("${ContactsContract.RawContacts._ID} = ?", arrayOf(id.toString()))
                 .withValue(ContactsContract.RawContacts.STARRED, if (isFavorite) 1 else 0)
                 .build()
 
@@ -409,7 +409,7 @@ data class Contact(
             try {
                 contentResolver.query(
                     ContactsContract.RawContacts.CONTENT_URI, projection,
-                    contactId?.let { "${ContactsContract.Contacts._ID} = ?" },
+                    contactId?.let { "${ContactsContract.RawContacts._ID} = ?" },
                     contactId?.let { arrayOf(it.toString()) },
                     null
                 )?.use { cursor ->

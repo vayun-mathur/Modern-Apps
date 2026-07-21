@@ -187,27 +187,33 @@ class MainActivity : ComponentActivity() {
         val path = uri.path ?: return null
 
         // For raw_contacts URIs, the last segment is already a raw contact ID
-        if (path.startsWith("/raw_contacts/")) {
+        if (path.startsWith("/raw_contacts/") || path.contains("/raw_contacts")) {
             return uri.lastPathSegment?.toLongOrNull()
         }
 
         // For contacts/lookup or contacts/<id> URIs, extract the aggregated contact ID
-        val aggregatedId: Long? = uri.lastPathSegment?.toLongOrNull()
-            ?: if (path.contains("/lookup/")) {
+        val aggregatedId: Long? = when {
+            path.contains("/lookup/") -> {
                 ContactsContract.Contacts.lookupContact(contentResolver, uri)?.let {
                     ContentUris.parseId(it)
                 }
-            } else null
+            }
+            path.startsWith("/contacts/") || path == "/contacts" -> {
+                uri.lastPathSegment?.toLongOrNull()
+            }
+            else -> uri.lastPathSegment?.toLongOrNull()
+        }
 
         if (aggregatedId == null) return null
 
-        // Convert aggregated contact ID to raw contact ID
+        // Convert aggregated contact ID to raw contact ID.
+        // Pick the most visible raw contact: prefer STARRED, then lowest _ID.
         contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
             arrayOf(ContactsContract.RawContacts._ID),
-            "${ContactsContract.RawContacts.CONTACT_ID} = ?",
+            "${ContactsContract.RawContacts.CONTACT_ID} = ? AND ${ContactsContract.RawContacts.DELETED} = 0",
             arrayOf(aggregatedId.toString()),
-            null
+            "${ContactsContract.RawContacts.STARRED} DESC, ${ContactsContract.RawContacts._ID} ASC"
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
                 return cursor.getLong(0)
