@@ -6,4 +6,11 @@
     <string name="city_name_hint">Stadt</string>
     <string name="weather_title">Wetter</string>
     <string name="add_location">Ort hinzufügen</string>
+    <string name="map_back"></string>
+    <string name="map_measure"></string>
+    <string name="weather_map_title"></string>
+    <string name="map_time"></string>
+    <string name="open_map"></string>
+    <string name="map_attribution"></string>
+    <string name="weather_widget_description"></string>
 </resources>
