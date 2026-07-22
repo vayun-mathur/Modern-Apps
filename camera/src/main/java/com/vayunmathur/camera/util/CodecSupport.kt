@@ -5,20 +5,14 @@ import android.media.MediaFormat
 import android.util.Log
 
 /**
- * Reports whether the device can encode with modern codecs. AV1 is only offered when a
- * true hardware encoder is present, because software AV1 encoding is too slow for realtime
- * capture; Opus only needs any available encoder.
+ * Reports whether the device can encode with modern video codecs. AV1 is only offered when a
+ * true hardware encoder is present, because software AV1 encoding is too slow for realtime capture.
  */
 object CodecSupport {
 
     /** A hardware-accelerated AV1 (`video/av01`) encoder exists on this device. */
     val isHardwareAv1EncoderAvailable: Boolean by lazy {
         hasEncoder(MediaFormat.MIMETYPE_VIDEO_AV1, requireHardware = true)
-    }
-
-    /** Any Opus (`audio/opus`) encoder exists on this device. */
-    val isOpusEncoderAvailable: Boolean by lazy {
-        hasEncoder(MediaFormat.MIMETYPE_AUDIO_OPUS, requireHardware = false)
     }
 
     /** An HEVC/H.265 (`video/hevc`) encoder exists on this device. */

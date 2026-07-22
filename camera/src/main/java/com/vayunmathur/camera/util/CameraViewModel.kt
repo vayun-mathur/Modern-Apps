@@ -202,7 +202,13 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val _aspectRatio = MutableStateFlow(AspectRatioOption.RATIO_4_3)
     val aspectRatio = _aspectRatio.asStateFlow()
 
-    private val _videoCodec = MutableStateFlow(VideoCodec.AVC)
+    private val _videoCodec = MutableStateFlow(
+        when {
+            CodecSupport.isHardwareAv1EncoderAvailable -> VideoCodec.AV1
+            CodecSupport.isHevcEncoderAvailable -> VideoCodec.HEVC
+            else -> VideoCodec.AVC
+        }
+    )
     val videoCodec = _videoCodec.asStateFlow()
 
     private val _isRecording = MutableStateFlow(false)
@@ -455,7 +461,13 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         ds.getString("camera_timer")?.let { _timerDuration.value = TimerDuration.valueOf(it) }
         ds.getString("camera_aspect_ratio")?.let { _aspectRatio.value = AspectRatioOption.valueOf(it) }
         ds.getString("camera_video_codec")?.let {
-            _videoCodec.value = try { VideoCodec.valueOf(it) } catch (_: Exception) { VideoCodec.AVC }
+            _videoCodec.value = try { VideoCodec.valueOf(it) } catch (_: Exception) {
+                when {
+                    CodecSupport.isHardwareAv1EncoderAvailable -> VideoCodec.AV1
+                    CodecSupport.isHevcEncoderAvailable -> VideoCodec.HEVC
+                    else -> VideoCodec.AVC
+                }
+            }
         }
         ds.getString("camera_location")?.let { _locationEnabled.value = it.toBoolean() }
         ds.getString("camera_last_capture")?.let { _lastCaptureUri.value = Uri.parse(it) }
@@ -1025,7 +1037,6 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 CodecSupport.isHardwareAv1EncoderAvailable && av1SupportedByCamera(cameraInfo)
             val useHevc = !useAv1 && selectedCodec != VideoCodec.AVC &&
                 CodecSupport.isHevcEncoderAvailable && hevcSupportedByCamera(cameraInfo)
-            // All codecs use AAC audio. Opus disabled to avoid CameraX raw-Opus-CSD muxing bug.
             val useOpus = false
             // HLG10 (10-bit HDR) when the camera's video pipeline supports it. Uses the default
             // HEVC/H.264 codec (AV1 stays off). Preview and VideoCapture must share the dynamic
