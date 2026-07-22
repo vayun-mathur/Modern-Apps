@@ -238,6 +238,21 @@ fun VideoPlayer(
     val historyVideo by historyFlow.collectAsState(initial = null)
     val timeWatched = historyVideo?.progress ?: 0
 
+    // PipePipe-style prewarm: when a SABR stream is selected (default or after a quality switch),
+    // warm the PoToken + SABR bootstrap for that exact itag so pressing play is instant. The
+    // itag parsed here matches what PlaybackService will parse from the same sabr:// URI, so the
+    // bootstrap cache key lines up.
+    LaunchedEffect(currentVideoStream) {
+        val uri = Uri.parse(currentVideoStream.url)
+        if (uri.scheme == "sabr") {
+            val vid = uri.host
+            val itag = uri.getQueryParameter("v")?.toIntOrNull()
+            if (vid != null && itag != null) {
+                com.vayunmathur.youpipe.util.sabr.SabrSessionStore.prewarm(context, vid, itag)
+            }
+        }
+    }
+
     // 3. Updated LaunchedEffect to pass audio URI through Metadata Extras
     LaunchedEffect(controller, currentVideoStream, currentAudioStream, videoInfo.name, videoInfo.author, subtitles) {
         val player = controller ?: return@LaunchedEffect

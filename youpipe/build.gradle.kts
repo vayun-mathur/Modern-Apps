@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.compose.runtime.livedata)
 
     implementation(project(":library:network"))
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
 }

@@ -1,16 +1,23 @@
 package org.schabi.newpipe.extractor.services.youtube;
 
-import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
-
+import com.grack.nanojson.JsonObject;
+import com.grack.nanojson.JsonParser;
+import com.grack.nanojson.JsonParserException;
+import org.schabi.newpipe.extractor.NewPipe;
+import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
-import org.schabi.newpipe.extractor.utils.JavaScript;
+import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
+import org.schabi.newpipe.extractor.localization.Localization;
+import org.schabi.newpipe.extractor.utils.Parser;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Manage the extraction and the usage of YouTube's player JavaScript needed data in the YouTube
@@ -25,31 +32,20 @@ import java.util.Objects;
  * <p>
  * This class provides access to methods which allows to get base JavaScript player's signature
  * timestamp and to deobfuscate streaming URLs' signature and/or throttling parameter of HTML5
- * clients.
+ * clients using the PipePipe API.
  * </p>
  */
 public final class YoutubeJavaScriptPlayerManager {
 
-    @Nonnull
-    private static final Map<String, String> CACHED_THROTTLING_PARAMETERS = new HashMap<>();
+    private static final Pattern THROTTLING_PARAM_PATTERN = Pattern.compile("[&?]n=([^&]+)");
 
-    private static String cachedJavaScriptPlayerCode;
-
-    @Nullable
-    private static Integer cachedSignatureTimestamp;
-    @Nullable
-    private static String cachedSignatureDeobfuscationFunction;
-    @Nullable
-    private static String cachedThrottlingDeobfuscationFunctionName;
-    @Nullable
-    private static String cachedThrottlingDeobfuscationFunction;
+    private static final String LATEST_PLAYER_URL =
+            "https://api.pipepipe.dev/decoder/latest-player";
+    private static final String USER_AGENT = "PipePipe/4.9.0";
+    private static final long PLAYER_METADATA_TTL_MILLIS = 24L * 60L * 60L * 1000L;
 
     @Nullable
-    private static ParsingException throttlingDeobfFuncExtractionEx;
-    @Nullable
-    private static ParsingException sigDeobFuncExtractionEx;
-    @Nullable
-    private static ParsingException sigTimestampExtractionEx;
+    private static PlayerMetadata playerMetadata;
 
     private YoutubeJavaScriptPlayerManager() {
     }
@@ -63,118 +59,53 @@ public final class YoutubeJavaScriptPlayerManager {
      * </p>
      *
      * <p>
-     * The base JavaScript player file will fetched if it is not already done.
+     * The signature timestamp is loaded together with the player ID from the decoder API.
      * </p>
      *
      * <p>
-     * The result of the extraction is cached until {@link #clearAllCaches()} is called, making
-     * subsequent calls faster.
+     * The metadata is reused for up to 24 hours before being refreshed from the API.
      * </p>
      *
      * @param videoId the video ID used to get the JavaScript base player file (an empty one can be
      *                passed, even it is not recommend in order to spoof better official YouTube
      *                clients)
      * @return the signature timestamp of the base JavaScript player file
-     * @throws ParsingException if the extraction of the base JavaScript player file or the
-     * signature timestamp failed
+     * @throws ParsingException if the extraction of the signature timestamp failed
      */
     @Nonnull
     public static Integer getSignatureTimestamp(@Nonnull final String videoId)
             throws ParsingException {
-        // Return the cached result if it is present
-        if (cachedSignatureTimestamp != null) {
-            return cachedSignatureTimestamp;
-        }
-
-        // If the signature timestamp has been not extracted on a previous call, this mean that we
-        // will fail to extract it on next calls too if the player code has been not changed
-        // Throw again the corresponding stored exception in this case to improve performance
-        if (sigTimestampExtractionEx != null) {
-            throw sigTimestampExtractionEx;
-        }
-
-        extractJavaScriptCodeIfNeeded(videoId);
-
-        try {
-            cachedSignatureTimestamp = Integer.valueOf(
-                    YoutubeSignatureUtils.getSignatureTimestamp(cachedJavaScriptPlayerCode));
-        } catch (final ParsingException e) {
-            // Store the exception for future calls of this method, in order to improve performance
-            sigTimestampExtractionEx = e;
-            throw e;
-        } catch (final NumberFormatException e) {
-            sigTimestampExtractionEx =
-                    new ParsingException("Could not convert signature timestamp to a number", e);
-        } catch (final Exception e) {
-            sigTimestampExtractionEx = new ParsingException("Could not get signature timestamp", e);
-            throw e;
-        }
-
-        return cachedSignatureTimestamp;
+        final long startedAtNanos = System.nanoTime();
+        final int signatureTimestamp = getPlayerMetadata(videoId).signatureTimestamp;
+        logPerformance(videoId, "ejs.signatureTimestamp", startedAtNanos);
+        return signatureTimestamp;
     }
 
     /**
-     * Deobfuscate a signature of a streaming URL using its corresponding JavaScript base player's
-     * function.
+     * Deobfuscate a signature of a streaming URL using the PipePipe API.
      *
      * <p>
      * Obfuscated signatures are only present on streaming URLs of some videos with HTML5 clients.
      * </p>
      *
-     * @param videoId             the video ID used to get the JavaScript base player file (an
+     * @param videoId             the video ID used to get the JavaScript base player ID (an
      *                            empty one can be passed, even it is not recommend in order to
      *                            spoof better official YouTube clients)
      * @param obfuscatedSignature the obfuscated signature of a streaming URL
      * @return the deobfuscated signature
-     * @throws ParsingException if the extraction of the base JavaScript player file or the
-     * signature deobfuscation function failed
+     * @throws ParsingException if the extraction of the player ID or the API call failed
      */
     @Nonnull
     public static String deobfuscateSignature(@Nonnull final String videoId,
                                               @Nonnull final String obfuscatedSignature)
             throws ParsingException {
-        // If the signature deobfuscation function has been not extracted on a previous call, this
-        // mean that we will fail to extract it on next calls too if the player code has been not
-        // changed
-        // Throw again the corresponding stored exception in this case to improve performance
-        if (sigDeobFuncExtractionEx != null) {
-            throw sigDeobFuncExtractionEx;
-        }
-
-        extractJavaScriptCodeIfNeeded(videoId);
-
-        if (cachedSignatureDeobfuscationFunction == null) {
-            try {
-                cachedSignatureDeobfuscationFunction = YoutubeSignatureUtils.getDeobfuscationCode(
-                        cachedJavaScriptPlayerCode);
-            } catch (final ParsingException e) {
-                // Store the exception for future calls of this method, in order to improve
-                // performance
-                sigDeobFuncExtractionEx = e;
-                throw e;
-            } catch (final Exception e) {
-                sigDeobFuncExtractionEx = new ParsingException(
-                        "Could not get signature parameter deobfuscation JavaScript function", e);
-                throw e;
-            }
-        }
-
-        try {
-            // Return an empty parameter in the case the function returns null
-            return Objects.requireNonNullElse(
-                    JavaScript.run(cachedSignatureDeobfuscationFunction,
-                            YoutubeSignatureUtils.DEOBFUSCATION_FUNCTION_NAME,
-                            obfuscatedSignature), "");
-        } catch (final Exception e) {
-            // This shouldn't happen as the function validity is checked when it is extracted
-            throw new ParsingException(
-                    "Could not run signature parameter deobfuscation JavaScript function", e);
-        }
+        return YoutubeApiDecoder.decodeSignature(
+                getPlayerMetadata(videoId).playerId, obfuscatedSignature);
     }
 
     /**
      * Return a streaming URL with the throttling parameter of a given one deobfuscated, if it is
-     * present, using its corresponding JavaScript base player's function.
+     * present, using the PipePipe API.
      *
      * <p>
      * The throttling parameter is present on all streaming URLs of HTML5 clients.
@@ -185,263 +116,188 @@ public final class YoutubeJavaScriptPlayerManager {
      * KB/s) and some streaming URLs could even lead to invalid HTTP responses such a 403 one.
      * </p>
      *
-     * <p>
-     * As throttling parameters can be common between multiple streaming URLs of the same player
-     * response, deobfuscated parameters are cached with their obfuscated variant, in order to
-     * improve performance with multiple calls of this method having the same obfuscated throttling
-     * parameter.
-     * </p>
-     *
-     * <p>
-     * The cache's size can be get using {@link #getThrottlingParametersCacheSize()} and the cache
-     * can be cleared using {@link #clearThrottlingParametersCache()} or {@link #clearAllCaches()}.
-     * </p>
-     *
-     * @param videoId      the video ID used to get the JavaScript base player file (an empty one
+     * @param videoId      the video ID used to get the JavaScript base player ID (an empty one
      *                     can be passed, even it is not recommend in order to spoof better
      *                     official YouTube clients)
      * @param streamingUrl a streaming URL
      * @return the original streaming URL if it has no throttling parameter or a URL with a
      * deobfuscated throttling parameter
-     * @throws ParsingException if the extraction of the base JavaScript player file or the
-     * throttling parameter deobfuscation function failed
+     * @throws ParsingException if the extraction of the player ID or the API call failed
      */
     @Nonnull
     public static String getUrlWithThrottlingParameterDeobfuscated(
             @Nonnull final String videoId,
             @Nonnull final String streamingUrl) throws ParsingException {
         final String obfuscatedThrottlingParameter =
-                YoutubeThrottlingParameterUtils.getThrottlingParameterFromStreamingUrl(
-                        streamingUrl);
+                getThrottlingParameterFromStreamingUrl(streamingUrl);
         // If the throttling parameter is not present, return the original streaming URL
         if (obfuscatedThrottlingParameter == null) {
             return streamingUrl;
         }
 
-        // Do not use the containsKey method of the Map interface in order to avoid a double
-        // element search, and so to improve performance
-        final String cacheResult = CACHED_THROTTLING_PARAMETERS.get(
-                obfuscatedThrottlingParameter);
-        if (cacheResult != null) {
-            // If the throttling parameter function has been already ran on the throttling parameter
-            // of the current streaming URL, replace directly the obfuscated throttling parameter
-            // with the cached result in the streaming URL
-            return streamingUrl.replace(obfuscatedThrottlingParameter, cacheResult);
-        }
+        final PlayerMetadata metadata = getPlayerMetadata(videoId);
 
-        extractJavaScriptCodeIfNeeded(videoId);
+        final String deobfuscatedThrottlingParameter = YoutubeApiDecoder.decodeThrottlingParameter(
+                metadata.playerId, obfuscatedThrottlingParameter);
 
-        // If the throttling parameter deobfuscation function has been not extracted on a previous
-        // call, this mean that we will fail to extract it on next calls too if the player code has
-        // been not changed
-        // Throw again the corresponding stored exception in this case to improve performance
-        if (throttlingDeobfFuncExtractionEx != null) {
-            throw throttlingDeobfFuncExtractionEx;
-        }
+        return streamingUrl.replace(
+                obfuscatedThrottlingParameter, deobfuscatedThrottlingParameter);
+    }
 
-        if (cachedThrottlingDeobfuscationFunction == null) {
-            try {
-                cachedThrottlingDeobfuscationFunctionName =
-                        YoutubeThrottlingParameterUtils.getDeobfuscationFunctionName(
-                                cachedJavaScriptPlayerCode);
+    /**
+     * Clear the cached player metadata.
+     *
+     * <p>
+     * The next access will fetch a fresh player ID and signature timestamp from the API.
+     * </p>
+     */
+    public static void clearAllCaches() {
+        playerMetadata = null;
+        YoutubeApiDecoder.clearCache();
+    }
 
-                cachedThrottlingDeobfuscationFunction =
-                        YoutubeThrottlingParameterUtils.getDeobfuscationFunction(
-                                cachedJavaScriptPlayerCode,
-                                cachedThrottlingDeobfuscationFunctionName);
-            } catch (final ParsingException e) {
-                // Store the exception for future calls of this method, in order to improve
-                // performance
-                throttlingDeobfFuncExtractionEx = e;
-                throw e;
-            } catch (final Exception e) {
-                throttlingDeobfFuncExtractionEx = new ParsingException(
-                        "Could not get throttling parameter deobfuscation JavaScript function", e);
-                throw e;
-            }
-        }
+    public static void clearThrottlingParametersCache() {
+        YoutubeApiDecoder.clearCache();
+    }
 
+    public static int getThrottlingParametersCacheSize() {
+        return YoutubeApiDecoder.getCacheSize();
+    }
+
+    @Nullable
+    public static String getThrottlingParameterFromStreamingUrl(
+            @Nonnull final String streamingUrl) {
         try {
-            final String deobfuscatedThrottlingParameter = JavaScript.run(
-                    cachedThrottlingDeobfuscationFunction,
-                    cachedThrottlingDeobfuscationFunctionName,
-                    obfuscatedThrottlingParameter);
-
-            if (isNullOrEmpty(deobfuscatedThrottlingParameter)) {
-                throw new IllegalStateException("Extracted n-parameter is empty");
-            }
-
-            CACHED_THROTTLING_PARAMETERS.put(
-                    obfuscatedThrottlingParameter, deobfuscatedThrottlingParameter);
-
-            return streamingUrl.replace(
-                    obfuscatedThrottlingParameter, deobfuscatedThrottlingParameter);
-        } catch (final Exception e) {
-            // This shouldn't happen as the function validity is checked when it is extracted
-            throw new ParsingException(
-                    "Could not run throttling parameter deobfuscation JavaScript function", e);
+            return Parser.matchGroup1(THROTTLING_PARAM_PATTERN, streamingUrl);
+        } catch (final Parser.RegexException e) {
+            return null;
         }
     }
 
     /**
-     * Batch-deobfuscate a set of signatures and raw throttling ({@code n}) parameters in one call,
-     * returning a {@link YoutubeApiDecoder.BatchDecodeResult}.
+     * Batch deobfuscate multiple signatures and throttling parameters in a single API call.
      *
-     * <p>This is the local-decoding equivalent of PipePipe's remote batch decoder: it reuses this
-     * fork's per-item rhino-based decoding ({@link #deobfuscateSignature} and the throttling
-     * function) so the {@code sabr} package can resolve SABR initialization URLs.</p>
+     * <p>
+     * This method is more efficient than calling {@link #deobfuscateSignature(String, String)}
+     * and {@link #getUrlWithThrottlingParameterDeobfuscated(String, String)} individually for
+     * each stream, as it combines all parameters into a single API request.
+     * </p>
      *
-     * @param videoId          the video ID used to fetch the base JavaScript player
-     * @param signatures       obfuscated signatures to decode (nullable/empty allowed)
-     * @param throttlingParams raw obfuscated {@code n} parameters to decode (nullable/empty allowed)
-     * @return a result mapping each obfuscated value to its decoded value
-     * @throws ParsingException if decoding fails
+     * @param videoId          the video ID used to get the JavaScript base player ID
+     * @param signatures       list of obfuscated signatures to decode (can be null or empty)
+     * @param throttlingParams list of obfuscated throttling parameters to decode (can be null or empty)
+     * @return a BatchDecodeResult containing decoded signatures and throttling parameters
+     * @throws ParsingException if the extraction of the player ID or the API call failed
      */
     @Nonnull
     public static YoutubeApiDecoder.BatchDecodeResult deobfuscateBatch(
             @Nonnull final String videoId,
             @Nullable final List<String> signatures,
             @Nullable final List<String> throttlingParams) throws ParsingException {
-        final Map<String, String> sigResults = new HashMap<>();
-        final Map<String, String> nResults = new HashMap<>();
-        if (signatures != null) {
-            for (final String sig : signatures) {
-                if (sig != null && !sig.isEmpty() && !sigResults.containsKey(sig)) {
-                    sigResults.put(sig, deobfuscateSignature(videoId, sig));
-                }
-            }
-        }
-        if (throttlingParams != null) {
-            for (final String n : throttlingParams) {
-                if (n != null && !n.isEmpty() && !nResults.containsKey(n)) {
-                    nResults.put(n, deobfuscateThrottlingParameterRaw(videoId, n));
-                }
-            }
-        }
-        return new YoutubeApiDecoder.BatchDecodeResult(sigResults, nResults);
+        final String playerId = getPlayerMetadata(videoId).playerId;
+        final long startedAtNanos = System.nanoTime();
+        final YoutubeApiDecoder.BatchDecodeResult result = YoutubeApiDecoder.decodeBatch(
+                playerId, signatures, throttlingParams);
+        logPerformanceIfSlow(videoId, "ejs.batch.decode", startedAtNanos);
+        return result;
     }
 
     /**
-     * Deobfuscate a raw throttling ({@code n}) parameter (not embedded in a URL) using the base
-     * JavaScript player's throttling function, caching the result.
+     * Load player metadata from memory or refresh it from the decoder API.
+     *
+     * @param videoId unused, kept to avoid changing public call sites
+     * @throws ParsingException if loading the player metadata failed
      */
     @Nonnull
-    private static String deobfuscateThrottlingParameterRaw(
-            @Nonnull final String videoId,
-            @Nonnull final String obfuscatedThrottlingParameter) throws ParsingException {
-        final String cacheResult = CACHED_THROTTLING_PARAMETERS.get(obfuscatedThrottlingParameter);
-        if (cacheResult != null) {
-            return cacheResult;
+    private static PlayerMetadata getPlayerMetadata(@Nonnull final String videoId)
+            throws ParsingException {
+        final PlayerMetadata currentMetadata = playerMetadata;
+        if (currentMetadata != null && !currentMetadata.isExpired()) {
+            return currentMetadata;
         }
 
-        extractJavaScriptCodeIfNeeded(videoId);
-
-        if (throttlingDeobfFuncExtractionEx != null) {
-            throw throttlingDeobfFuncExtractionEx;
+        final long startedAtNanos = System.nanoTime();
+        final YoutubeJavaScriptDecoder decoder = YoutubeApiDecoder.getLocalDecoder();
+        if (decoder != null) {
+            final YoutubeJavaScriptDecoder.PlayerData data = decoder.getPlayerData(videoId);
+            playerMetadata = new PlayerMetadata(data.getPlayerId(), data.getSignatureTimestamp(),
+                    System.currentTimeMillis() + PLAYER_METADATA_TTL_MILLIS);
+            logPerformance(videoId, "ejs.playerMetadata.local", startedAtNanos);
+            return playerMetadata;
         }
 
-        if (cachedThrottlingDeobfuscationFunction == null) {
-            try {
-                cachedThrottlingDeobfuscationFunctionName =
-                        YoutubeThrottlingParameterUtils.getDeobfuscationFunctionName(
-                                cachedJavaScriptPlayerCode);
-                cachedThrottlingDeobfuscationFunction =
-                        YoutubeThrottlingParameterUtils.getDeobfuscationFunction(
-                                cachedJavaScriptPlayerCode,
-                                cachedThrottlingDeobfuscationFunctionName);
-            } catch (final ParsingException e) {
-                throttlingDeobfFuncExtractionEx = e;
-                throw e;
-            } catch (final Exception e) {
-                throttlingDeobfFuncExtractionEx = new ParsingException(
-                        "Could not get throttling parameter deobfuscation JavaScript function", e);
-                throw e;
-            }
+        playerMetadata = fetchLatestPlayerMetadata();
+        logPerformance(videoId, "ejs.playerMetadata.remoteFallback", startedAtNanos);
+        return playerMetadata;
+    }
+
+    private static void logPerformance(@Nonnull final String videoId,
+                                       @Nonnull final String stage,
+                                       final long startedAtNanos) {
+        System.out.println("YT_PERF videoId=" + videoId + " stage=" + stage
+                + " durationMs="
+                + java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(
+                        System.nanoTime() - startedAtNanos));
+    }
+
+    private static void logPerformanceIfSlow(@Nonnull final String videoId,
+                                             @Nonnull final String stage,
+                                             final long startedAtNanos) {
+        final long durationMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(
+                System.nanoTime() - startedAtNanos);
+        if (durationMs >= 5) {
+            System.out.println("YT_PERF videoId=" + videoId + " stage=" + stage
+                    + " durationMs=" + durationMs);
         }
+    }
+
+    @Nonnull
+    private static PlayerMetadata fetchLatestPlayerMetadata() throws ParsingException {
+        final Map<String, List<String>> headers = new HashMap<>();
+        headers.put("User-Agent", Collections.singletonList(USER_AGENT));
 
         try {
-            final String deobfuscated = JavaScript.run(
-                    cachedThrottlingDeobfuscationFunction,
-                    cachedThrottlingDeobfuscationFunctionName,
-                    obfuscatedThrottlingParameter);
-            if (isNullOrEmpty(deobfuscated)) {
-                throw new IllegalStateException("Extracted n-parameter is empty");
+            final Response response = NewPipe.getDownloader().get(
+                    LATEST_PLAYER_URL, headers, Localization.DEFAULT);
+            final JsonObject responseJson = JsonParser.object().from(response.responseBody());
+
+            final String playerId = responseJson.getString("player", "");
+            if (playerId.isEmpty()) {
+                throw new ParsingException("latest-player response missing player");
             }
-            CACHED_THROTTLING_PARAMETERS.put(obfuscatedThrottlingParameter, deobfuscated);
-            return deobfuscated;
-        } catch (final Exception e) {
-            throw new ParsingException(
-                    "Could not run throttling parameter deobfuscation JavaScript function", e);
+
+            if (!responseJson.has("signatureTimestamp")) {
+                throw new ParsingException("latest-player response missing signatureTimestamp");
+            }
+
+            final int signatureTimestamp = responseJson.getInt("signatureTimestamp");
+            return new PlayerMetadata(playerId, signatureTimestamp,
+                    System.currentTimeMillis() + PLAYER_METADATA_TTL_MILLIS);
+        } catch (final IOException e) {
+            throw new ParsingException("Failed to fetch latest player metadata", e);
+        } catch (final ReCaptchaException e) {
+            throw new ParsingException("Failed to fetch latest player metadata", e);
+        } catch (final JsonParserException e) {
+            throw new ParsingException("Failed to parse latest player metadata", e);
         }
     }
 
-    /**
-     * Get the current cache size of throttling parameters.
-     *
-     * @return the current cache size of throttling parameters
-     */
-    public static int getThrottlingParametersCacheSize() {
-        return CACHED_THROTTLING_PARAMETERS.size();
-    }
+    private static final class PlayerMetadata {
+        @Nonnull
+        private final String playerId;
+        private final int signatureTimestamp;
+        private final long expiresAt;
 
-    /**
-     * Clear all caches.
-     *
-     * <p>
-     * This method will clear all cached JavaScript code and throttling parameters.
-     * </p>
-     *
-     * <p>
-     * The next time {@link #getSignatureTimestamp(String)},
-     * {@link #deobfuscateSignature(String, String)} or
-     * {@link #getUrlWithThrottlingParameterDeobfuscated(String, String)} is called, the JavaScript
-     * code will be fetched again and the corresponding extraction methods will be ran.
-     * </p>
-     */
-    public static void clearAllCaches() {
-        cachedJavaScriptPlayerCode = null;
-        cachedSignatureDeobfuscationFunction = null;
-        cachedThrottlingDeobfuscationFunctionName = null;
-        cachedThrottlingDeobfuscationFunction = null;
-        cachedSignatureTimestamp = null;
-        clearThrottlingParametersCache();
+        private PlayerMetadata(@Nonnull final String playerId,
+                               final int signatureTimestamp,
+                               final long expiresAt) {
+            this.playerId = playerId;
+            this.signatureTimestamp = signatureTimestamp;
+            this.expiresAt = expiresAt;
+        }
 
-        // Clear cached extraction exceptions, if applicable
-        throttlingDeobfFuncExtractionEx = null;
-        sigDeobFuncExtractionEx = null;
-        sigTimestampExtractionEx = null;
-    }
-
-    /**
-     * Clear all cached throttling parameters.
-     *
-     * <p>
-     * The throttling parameter deobfuscation function will be ran again on these parameters if
-     * streaming URLs containing them are passed in the future.
-     * </p>
-     *
-     * <p>
-     * This method doesn't clear the cached throttling parameter deobfuscation function, this can
-     * be done using {@link #clearAllCaches()}.
-     * </p>
-     */
-    public static void clearThrottlingParametersCache() {
-        CACHED_THROTTLING_PARAMETERS.clear();
-    }
-
-    /**
-     * Extract the JavaScript code if it isn't already cached.
-     *
-     * @param videoId the video ID used to get the JavaScript base player file (an empty one can be
-     *                passed, even it is not recommend in order to spoof better official YouTube
-     *                clients)
-     * @throws ParsingException if the extraction of the base JavaScript player file failed
-     */
-    private static void extractJavaScriptCodeIfNeeded(@Nonnull final String videoId)
-            throws ParsingException {
-        if (cachedJavaScriptPlayerCode == null) {
-            cachedJavaScriptPlayerCode = YoutubeJavaScriptExtractor.extractJavaScriptPlayerCode(
-                    videoId);
+        private boolean isExpired() {
+            return System.currentTimeMillis() >= expiresAt;
         }
     }
 }

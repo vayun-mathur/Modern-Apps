@@ -110,6 +110,40 @@ public final class SabrSessionStore {
         return EXTRACTOR_INFO.get(videoId);
     }
 
+    /**
+     * PipePipe-style detail-page prewarm: as soon as a SABR stream is selected, warm BOTH the
+     * content PoToken and the SABR bootstrap for the selected video itag, using the same format
+     * selection and cache key that {@link #createSourceSpec} will use at play time. This makes the
+     * first play effectively instant (the bootstrap is served from the cache / in-flight future
+     * rather than being started when the user presses play).
+     *
+     * <p>Mirrors PipePipe's {@code SabrSessionStore.prewarm(...)} which calls both
+     * {@code startTokenWarmup} and {@code startBootstrap}. Warming only the token (without the
+     * bootstrap) is NOT enough and previously regressed playback. Non-blocking: the work runs on
+     * background executors and is deduplicated per video id / bootstrap key.</p>
+     *
+     * @param selectedVideoItag the itag of the SABR video stream the user is about to play; must
+     *                          match what {@link #createSourceSpec} is later called with so the
+     *                          bootstrap cache key lines up
+     */
+    public static void prewarm(@NonNull final Context context,
+                               @NonNull final String videoId,
+                               final int selectedVideoItag) {
+        final YoutubeSabrInfo info = EXTRACTOR_INFO.get(videoId);
+        if (info == null || !isUsableExtractorInfo(info, videoId)) {
+            return;
+        }
+        final YoutubeSabrFormat audioFormat = pickAudioFormat(info, PREFERRED_AUDIO.get(videoId));
+        final YoutubeSabrFormat videoFormat = pickVideoFormat(info, selectedVideoItag);
+        if (audioFormat == null || videoFormat == null) {
+            return;
+        }
+        final Context appContext = context.getApplicationContext();
+        final Localization localization = new Localization("en", "US");
+        startTokenWarmup(appContext, info, audioFormat, videoFormat);
+        startBootstrap(appContext, info, audioFormat, videoFormat, localization);
+    }
+
     private static final class SessionKey {
         @NonNull private final String videoId;
         private final long sourceId;

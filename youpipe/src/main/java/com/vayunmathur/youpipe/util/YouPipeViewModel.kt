@@ -682,45 +682,61 @@ class YouPipeViewModel(
 
                         val sabrMethod =
                             org.schabi.newpipe.extractor.stream.DeliveryMethod.SABR
-                        // Progressive/adaptive URL streams are preferred over SABR when both are
-                        // present; SABR is only used when the video is SABR-only.
                         val progVideoOnly = rawVideoOnly.filter { it.deliveryMethod != sabrMethod }
                         val progAudio = rawAudio.filter { it.deliveryMethod != sabrMethod }
                         val sabrVideoOnly = rawVideoOnly.filter { it.deliveryMethod == sabrMethod }
                         val sabrAudio = rawAudio.filter { it.deliveryMethod == sabrMethod }
+                        val videoId = ex.id
 
-                        val useSabr = progVideoOnly.isEmpty() && sabrVideoOnly.isNotEmpty()
+                        android.util.Log.d(
+                            "YouPipeSabr",
+                            "video $videoId streams prog(v=${progVideoOnly.size}," +
+                                "a=${progAudio.size}) sabr(v=${sabrVideoOnly.size}," +
+                                "a=${sabrAudio.size})"
+                        )
 
-                        if (useSabr && sabrAudio.isNotEmpty()) {
-                            val videoId = ex.id
-                            // Hand the extractor-derived SABR metadata to the playback service.
+                        // Register SABR session metadata for the playback service if present.
+                        // NOTE: do NOT prewarm the content PoToken here — doing so regressed SABR
+                        // bootstrap (403 on init range / "no exact indexes"). The token is minted
+                        // at play time by createSourceSpec, which is the known-working ordering.
+                        if (sabrVideoOnly.isNotEmpty()) {
                             sabrVideoOnly.firstOrNull {
                                 it.deliveryMethodInfo is
                                     org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo
                             }?.let {
+                                val sabrInfo = it.deliveryMethodInfo as
+                                    org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo
                                 com.vayunmathur.youpipe.util.sabr.SabrSessionStore.putExtractorInfo(
-                                    videoId,
-                                    it.deliveryMethodInfo as
-                                        org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo
+                                    videoId, sabrInfo
                                 )
                             }
-                            videoStreams = sabrVideoOnly.map { it.toSabrDomain(videoId) }.sortedWith(
-                                compareByDescending<VideoStream> { it.height }
-                                    .thenByDescending { codecPriority(it.codec) }
-                            )
-                            audioStreams = sabrAudio.map { it.toSabrDomain(videoId) }.sortedWith(
-                                compareByDescending<AudioStream> { it.bitrate }
-                                    .thenByDescending { audioCodecPriority(it.codec) }
-                            )
-                        } else if (progVideoOnly.isNotEmpty() && progAudio.isNotEmpty()) {
-                            videoStreams = progVideoOnly.map { it.toDomain() }.sortedWith(
-                                compareByDescending<VideoStream> { it.height }
-                                    .thenByDescending { codecPriority(it.codec) }
-                            )
-                            audioStreams = progAudio.map { it.toDomain() }.sortedWith(
-                                compareByDescending<AudioStream> { it.bitrate }
-                                    .thenByDescending { audioCodecPriority(it.codec) }
-                            )
+                        }
+
+                        if (progVideoOnly.isNotEmpty() || sabrVideoOnly.isNotEmpty()) {
+                            // Combine progressive + SABR video-only options, but de-duplicate by
+                            // (codec, resolution): progressive is listed first and kept for any
+                            // combo it already offers, so SABR only contributes what's genuinely
+                            // new — notably AV1 (SABR-only) and any resolutions progressive lacks.
+                            // Without this, h264/vp9 would appear twice (once per source).
+                            videoStreams = (
+                                progVideoOnly.map { it.toDomain() } +
+                                    sabrVideoOnly.map { it.toSabrDomain(videoId) }
+                                )
+                                .distinctBy { it.codec to it.height }
+                                .sortedWith(
+                                    compareByDescending<VideoStream> { it.height }
+                                        .thenByDescending { codecPriority(it.codec) }
+                                )
+                            audioStreams = (
+                                if (progAudio.isNotEmpty()) {
+                                    progAudio.map { it.toDomain() }
+                                } else {
+                                    sabrAudio.map { it.toSabrDomain(videoId) }
+                                }
+                                ).sortedWith(
+                                    compareByDescending<AudioStream> { it.bitrate }
+                                        .thenByDescending { audioCodecPriority(it.codec) }
+                                )
                         } else {
                             videoStreams = ex.videoStreams.map { it.toDomain() }
                                 .sortedWith(compareByDescending { it.height })
