@@ -10,20 +10,4 @@
     <string name="next_level">Następny poziom</string>
     <string name="bonus_words">Dodatkowe słowa</string>
     <string name="settings">Ustawienia</string>
-    <string name="difficulty_hard"></string>
-    <string name="competitive_score"></string>
-    <string name="mode_casual"></string>
-    <string name="hint_confirmation"></string>
-    <string name="no"></string>
-    <string name="competitive_solved"></string>
-    <string name="yes"></string>
-    <string name="competitive_start"></string>
-    <string name="tap_to_spell_description"></string>
-    <string name="competitive_difficulty"></string>
-    <string name="competitive_time_limit"></string>
-    <string name="difficulty_easy"></string>
-    <string name="mode_competitive"></string>
-    <string name="competitive_timed_out"></string>
-    <string name="difficulty_medium"></string>
-    <string name="tap_to_spell"></string>
 </resources>

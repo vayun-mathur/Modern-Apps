@@ -2,28 +2,4 @@
 <resources>
     <string name="close">Schließen</string>
     <string name="settings">Einstellungen</string>
-    <string name="difficulty_hard"></string>
-    <string name="stay_tuned_new_levels"></string>
-    <string name="competitive_score"></string>
-    <string name="all_levels_completed"></string>
-    <string name="bonus_words"></string>
-    <string name="mode_casual"></string>
-    <string name="hint_confirmation"></string>
-    <string name="no"></string>
-    <string name="competitive_solved"></string>
-    <string name="level_number"></string>
-    <string name="yes"></string>
-    <string name="competitive_start"></string>
-    <string name="tap_to_spell_description"></string>
-    <string name="competitive_difficulty"></string>
-    <string name="competitive_time_limit"></string>
-    <string name="next_level"></string>
-    <string name="difficulty_easy"></string>
-    <string name="mode_competitive"></string>
-    <string name="competitive_timed_out"></string>
-    <string name="error_parse_level"></string>
-    <string name="difficulty_medium"></string>
-    <string name="tap_to_spell"></string>
-    <string name="error_load_level"></string>
-    <string name="app_name"></string>
 </resources>
