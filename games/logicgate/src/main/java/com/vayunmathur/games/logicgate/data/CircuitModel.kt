@@ -6,6 +6,7 @@ package com.vayunmathur.games.logicgate.data
  * - Gates: placed chips with generated unique ids
  * - Wires: connections from (sourceId, outputIdx) to (destId, inputIdx)
  * - OutputMappings: final outputs resolved
+ * - Input/output terminal positions are now draggable and persisted.
  */
 
 data class PlacedChip(
@@ -28,10 +29,17 @@ data class OutputMapping(
     val from: WireEnd
 )
 
+data class IoPos(
+    val x: Float,
+    val y: Float
+)
+
 data class Circuit(
     val gates: List<PlacedChip> = emptyList(),
     val wires: List<Wire> = emptyList(),
-    val outputMappings: List<OutputMapping> = emptyList()
+    val outputMappings: List<OutputMapping> = emptyList(),
+    val inputPositions: Map<Int, IoPos> = emptyMap(),
+    val outputPositions: Map<Int, IoPos> = emptyMap()
 ) {
     fun totalNandCost(): Int = gates.sumOf { ChipLibrary.get(it.chipId).nandCost }
 }
@@ -53,7 +61,6 @@ object CircuitEvaluator {
     /** Evaluate circuit for all input combos, but sample if inputCount > 10 to avoid explosion. */
     fun evaluate(level: LevelDef, circuit: Circuit): EvalResult {
         val inputCount = level.inputs.size
-        // If circuit has structural issues we still try one combo first to surface errors fast
         val quickCheck = evalCombo(level, circuit, List(inputCount) { false })
         if (quickCheck is ComboEval.Err) return EvalResult.Error(quickCheck.msg)
         if (quickCheck is ComboEval.Cycle) return EvalResult.Cycle(quickCheck.ids)
@@ -61,16 +68,13 @@ object CircuitEvaluator {
         val combos = if (inputCount <= 10) {
             (0 until (1 shl inputCount)).toList()
         } else {
-            // Sample: exhaustive for low bits + random
             val sampleSize = 256
             val rnd = java.util.Random(1234)
             val set = LinkedHashSet<Int>()
-            // include edges
             set.add(0); set.add((1 shl minOf(inputCount, 20)) - 1)
             while (set.size < sampleSize) {
                 var v = 0
                 for (b in 0 until inputCount) if (rnd.nextBoolean()) v = v or (1 shl b)
-                // clamp if inputCount > 30 we limited loops but still sample via bits
                 if (inputCount > 30) v = rnd.nextInt(1 shl 18)
                 set.add(v)
             }
@@ -91,7 +95,6 @@ object CircuitEvaluator {
         return EvalResult.Success(results)
     }
 
-    /** For full truth table comparison, generate expected rows matching the same sampled combos */
     fun evaluateFullCorrectness(level: LevelDef, circuit: Circuit): Pair<Boolean, List<Int>> {
         val targetDef = ChipLibrary.get(level.targetChipId)
         val inputCount = level.inputs.size
@@ -107,16 +110,11 @@ object CircuitEvaluator {
             while (set.size < sampleSize) {
                 var v = 0
                 for (b in 0 until minOf(inputCount, 18)) if (rnd.nextBoolean()) v = v or (1 shl b)
-                if (inputCount > 18) {
-                    for (b in 18 until inputCount) if (rnd.nextBoolean()) v = v or (1 shl (b % 18)) // overflow guard
-                    // Actually re-generate full bits sampled
-                }
                 set.add(v)
             }
             set.toList()
         }
 
-        // For large input counts we can't use combo as int for >30 bits; generate bit lists directly in sampled mode
         val testVectors: List<List<Boolean>> = if (inputCount <= 10) {
             combos.map { c -> List(inputCount) { i -> ((c shr i) and 1) == 1 } }
         } else {
@@ -137,7 +135,7 @@ object CircuitEvaluator {
         for ((idx, vec) in testVectors.withIndex()) {
             when (val r = evalCombo(level, circuit, vec)) {
                 is ComboEval.Ok -> actualRows.add(r.outputs)
-                else -> return false to listOf(idx) // structure error = incorrect
+                else -> return false to listOf(idx)
             }
         }
 
@@ -235,7 +233,6 @@ object CircuitEvaluator {
                 target.eval(inp).take(outputCount)
             }
         } else {
-            // Sampled truth table for large gates
             val rnd = java.util.Random(42)
             val vectors = mutableListOf<List<Boolean>>()
             vectors.add(List(inputCount) { false })
