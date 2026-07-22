@@ -50,4 +50,5 @@
     <string name="photo_widget_description">Fotod sinu galeriist - klõpsa ja seadista</string>
     <string name="openassistant_needs_update">Kui soovid kasutada tehisarupõhist fotootsingut, uuenda OpenAssistanti rakendus.</string>
     <string name="view_360">360° vaade</string>
+    <string name="view_panorama">Vaata panoraampilti</string>
 </resources>
