@@ -1,17 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="recording">Gravando…</string>
-    <string name="error_ai_engine_failed"></string>
-    <string name="perm_desc_inference"></string>
-    <string name="message_placeholder"></string>
-    <string name="new_conversation"></string>
-    <string name="mic_error_format"></string>
-    <string name="error_request_expired"></string>
-    <string name="error_ai_json_schema_mismatch"></string>
-    <string name="processing_ai_inference"></string>
-    <string name="voice_message"></string>
-    <string name="error_prefix"></string>
-    <string name="inference_service"></string>
-    <string name="error_inference_timeout"></string>
-    <string name="app_name"></string>
 </resources>

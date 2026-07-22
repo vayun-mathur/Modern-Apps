@@ -8,10 +8,4 @@
     <string name="voice_message">Sprachnachricht</string>
     <string name="error_prefix">Error: %1$s</string>
     <string name="app_name">OpenAssistant</string>
-    <string name="error_ai_engine_failed"></string>
-    <string name="error_request_expired"></string>
-    <string name="error_ai_json_schema_mismatch"></string>
-    <string name="processing_ai_inference"></string>
-    <string name="inference_service"></string>
-    <string name="error_inference_timeout"></string>
 </resources>
