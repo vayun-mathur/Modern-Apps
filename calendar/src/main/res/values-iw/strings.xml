@@ -46,4 +46,24 @@
     <string name="import_events_title">ייבוא אירועים</string>
     <string name="import_button">ייבוא</string>
     <string name="default_layout">פריסת ברירת מחדל</string>
+    <string name="choose_color"></string>
+    <string name="full_date_time_range_format"></string>
+    <string name="date_range_format"></string>
+    <string name="hour_am"></string>
+    <string name="create_new_calendar"></string>
+    <string name="twelve_pm"></string>
+    <string name="dropdown_freq_format"></string>
+    <string name="choose_timezone"></string>
+    <string name="select_calendar"></string>
+    <string name="date_time_range_format"></string>
+    <string name="select_calendar_to_import"></string>
+    <string name="on_days_of_week"></string>
+    <string name="change_color_for"></string>
+    <string name="hour_pm"></string>
+    <string name="calendar_widget_description"></string>
+    <string name="delete_calendar_name_confirm"></string>
+    <string name="twelve_am"></string>
+    <string name="month_year_format"></string>
+    <string name="open_location_in_navigation"></string>
+    <string name="delete_this_event"></string>
 </resources>
