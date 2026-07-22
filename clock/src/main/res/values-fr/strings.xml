@@ -25,7 +25,7 @@
     <string name="button_add_minute">+ 1:00</string>
     <string name="set_a_timer">Configurer un minuteur</string>
     <string name="timer_finished_title">Minuteur écoulé</string>
-    <string name="timer_finished_text">%1$s est écoulé !</string>
+    <string name="timer_finished_text">%1$s est écoulé !</string>
     <string name="label_new_timer">Nouveau minuteur</string>
     <string name="field_label">Libellé</string>
     <string name="field_hours">Heures</string>
