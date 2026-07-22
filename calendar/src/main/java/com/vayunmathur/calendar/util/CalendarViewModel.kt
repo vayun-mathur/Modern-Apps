@@ -378,7 +378,15 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     }
 
     // create a new local/offline calendar in the provider and refresh caches
-    fun createLocalCalendar(accountName: String, displayName: String, colorInt: Int, visible: Boolean, accessLevel: Int) {
+    // onComplete callback receives the new calendar ID (or null on failure) on main thread
+    fun createLocalCalendar(
+        accountName: String,
+        displayName: String,
+        colorInt: Int,
+        visible: Boolean,
+        accessLevel: Int,
+        onComplete: ((Long?) -> Unit)? = null,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             val app = getApplication<Application>()
 
@@ -402,12 +410,17 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 put(CalendarContract.Calendars.CALENDAR_TIME_ZONE, TimeZone.currentSystemDefault().id)
             }
 
+            var newId: Long? = null
             try {
-                app.contentResolver.insert(uri, values)
+                val resultUri = app.contentResolver.insert(uri, values)
+                newId = resultUri?.lastPathSegment?.toLongOrNull()
             } catch (e: Exception) {
                 Log.e("CalendarViewModel", "Error creating local calendar", e)
             }
             refreshCalendarsAndWidgets()
+            withContext(Dispatchers.Main) {
+                onComplete?.invoke(newId)
+            }
         }
     }
 

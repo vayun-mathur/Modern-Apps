@@ -30,6 +30,8 @@ import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.TopAppBar
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -62,6 +64,12 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
     var selectedCalendarId by remember { mutableStateOf<Long?>(null) }
 
     val grouped = calendars.groupBy { it.accountName }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            backStack.add(Route.Settings.ImportIcs(uris.map { it.toString() }))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -172,6 +180,29 @@ fun SettingsScreen(viewModel: CalendarViewModel, backStack: NavBackStack<Route>)
                         content = { Text("Holiday calendars") },
                         supportingContent = { Text("Add public holidays for countries") },
                         modifier = Modifier.clickable { backStack.add(Route.Settings.HolidayCalendars) },
+                        trailingContent = {
+                            IconArrowDropDown()
+                        },
+                    )
+                    HorizontalDivider()
+                }
+
+                item {
+                    ListItem(
+                        content = { Text(stringResource(R.string.import_ics_file)) },
+                        supportingContent = { Text("Import events from .ics files") },
+                        modifier = Modifier.clickable {
+                            importLauncher.launch(arrayOf(
+                                "text/calendar",
+                                "application/calendar",
+                                "application/ics",
+                                "text/x-vcalendar",
+                                "application/x-icalendar",
+                                "text/x-icalendar",
+                                "text/icalendar",
+                                "*/*"
+                            ))
+                        },
                         trailingContent = {
                             IconArrowDropDown()
                         },

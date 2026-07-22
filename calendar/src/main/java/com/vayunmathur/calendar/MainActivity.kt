@@ -42,7 +42,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 class MainActivity : ComponentActivity() {
-    private val importUris = mutableStateOf<List<Uri>>(emptyList())
+    private val importUris = mutableStateOf<List<String>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,11 +77,9 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     val uris by importUris
-                    if (uris.isNotEmpty()) {
-                        ImportIcsDialog(viewModel, uris) { importUris.value = emptyList() }
-                    }
 
                     val initialRoute = when {
+                        uris.isNotEmpty() -> Route.Settings.ImportIcs(uris)
                         intent.hasExtra("instance") -> {
                             Route.Event(Json.decodeFromString<Instance>(intent.getStringExtra("instance")!!))
                         }
@@ -98,8 +96,8 @@ class MainActivity : ComponentActivity() {
                         }
                         else -> null
                     }
-                    Box(Modifier.fillMaxSize().onFileDrop { importUris.value = it }) {
-                        Navigation(viewModel, initialRoute)
+                    Box(Modifier.fillMaxSize().onFileDrop { uris -> importUris.value = uris.map { it.toString() } }) {
+                        Navigation(viewModel, initialRoute) { importUris.value = emptyList() }
                     }
                 }
             }
@@ -118,7 +116,7 @@ class MainActivity : ComponentActivity() {
 
             val uris = IntentHelper.getUrisFromIntent(it)
             if (uris.isNotEmpty()) {
-                importUris.value = uris
+                importUris.value = uris.map { uri -> uri.toString() }
             }
         }
     }
@@ -172,6 +170,9 @@ sealed interface Route: NavKey {
 
         @Serializable
         data object HolidayCalendars: Route
+
+        @Serializable
+        data class ImportIcs(val uris: List<String>): Route
     }
 
     @Serializable
@@ -204,13 +205,20 @@ sealed interface Route: NavKey {
 }
 
 @Composable
-fun Navigation(viewModel: CalendarViewModel, initialRoute: Route?) {
+fun Navigation(viewModel: CalendarViewModel, initialRoute: Route?, onImportClear: () -> Unit = {}) {
     val backStack = rememberNavBackStack(listOfNotNull(Route.Calendar, initialRoute))
     LaunchedEffect(initialRoute) {
         if(initialRoute != null) {
             backStack.reset(Route.Calendar, initialRoute)
         } else {
             backStack.reset(Route.Calendar)
+        }
+    }
+
+    // Clear import URIs when leaving ImportIcs screen
+    LaunchedEffect(backStack.backStack) {
+        if (backStack.backStack.lastOrNull() !is Route.Settings.ImportIcs) {
+            onImportClear()
         }
     }
 
@@ -269,6 +277,10 @@ fun Navigation(viewModel: CalendarViewModel, initialRoute: Route?) {
 
         entry<Route.Settings.DeleteCalendar>(metadata = DialogPage()) { key ->
             SettingsDeleteCalendarDialog(viewModel, backStack, key.id)
+        }
+
+        entry<Route.Settings.ImportIcs> { key ->
+            ImportIcsScreen(viewModel, backStack, key.uris)
         }
     }
 }
