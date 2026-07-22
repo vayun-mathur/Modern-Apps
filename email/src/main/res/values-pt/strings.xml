@@ -13,4 +13,22 @@
     <string name="ssl_tls">SSL/TLS</string>
     <string name="starttls">STARTTLS</string>
     <string name="listening_for_new_mail">Ouvindo para novos emails</string>
+    <string name="test_connection_and_save"></string>
+    <string name="reply"></string>
+    <string name="save"></string>
+    <string name="port_label"></string>
+    <string name="testing_connection"></string>
+    <string name="cancel"></string>
+    <string name="send_now"></string>
+    <string name="host_label"></string>
+    <string name="selected_count"></string>
+    <string name="outbox_with_count"></string>
+    <string name="outbox"></string>
+    <string name="settings"></string>
+    <string name="all_accounts"></string>
+    <string name="email_address"></string>
+    <string name="app_name"></string>
+    <string name="drafts"></string>
+    <string name="email_widget_description"></string>
+    <string name="open_app_password_help"></string>
 </resources>
