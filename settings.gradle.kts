@@ -77,4 +77,3 @@ include(":astronomy")
 if (file("dooraccess").exists()) {
     include(":dooraccess")
 }
-include(":netcapture")
