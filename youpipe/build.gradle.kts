@@ -25,7 +25,7 @@ android {
 
 dependencies {
     implementation(libs.coil.compose)
-    implementation(libs.newpipeextractor)
+    implementation(project(":youpipe:extractor"))
 
     implementRoom(libs)
     implementation(project(":library:room"))
