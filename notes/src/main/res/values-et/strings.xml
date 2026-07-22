@@ -11,4 +11,7 @@
     <string name="move_down">Liiguta allapoole</string>
     <string name="shrink">Ahenda</string>
     <string name="enlarge">Suurenda</string>
+    <string name="external_saved">Salvestatud faili</string>
+    <string name="external_save_failed">Salvestamine ei õnnestunud (fail võib olla vaid lugemisõigustes)</string>
+    <string name="external_read_failed">Faili avamine ei õnnestunud</string>
 </resources>
