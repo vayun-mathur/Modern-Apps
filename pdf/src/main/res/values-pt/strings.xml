@@ -1,3 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="safe_pdf_error"></string>
+    <string name="open_pdf"></string>
+    <string name="share_pdf"></string>
+    <string name="unsupported_version"></string>
+    <string name="pdf_save"></string>
+    <string name="upload_image"></string>
+    <string name="request_camera_permission"></string>
+    <string name="capture_pdf"></string>
+    <string name="pdf_save_error"></string>
+    <string name="capture_pdf_title"></string>
+    <string name="search_label"></string>
+    <string name="pdf_save_as_copy"></string>
+    <string name="pdf_saved"></string>
+    <string name="continue_label"></string>
+    <string name="crop_image"></string>
+    <string name="auto_detect"></string>
+    <string name="app_name"></string>
+    <string name="safe_pdf_viewer_title"></string>
 </resources>
