@@ -46,4 +46,24 @@
     <string name="local_account">(Local)</string>
     <string name="until">Hasta</string>
     <string name="new_local_calendar">Nuevo calendario local</string>
+    <string name="until_date"></string>
+    <string name="count"></string>
+    <string name="import_button"></string>
+    <string name="full_date_time_range_format"></string>
+    <string name="add_reminder"></string>
+    <string name="hour_am"></string>
+    <string name="create_new_calendar"></string>
+    <string name="twelve_pm"></string>
+    <string name="dropdown_freq_format"></string>
+    <string name="new_local_calendar_title"></string>
+    <string name="loading_events"></string>
+    <string name="date_time_range_format"></string>
+    <string name="calendar_name_label"></string>
+    <string name="calendar_id_label"></string>
+    <string name="hour_pm"></string>
+    <string name="calendar_widget_description"></string>
+    <string name="twelve_am"></string>
+    <string name="no_account"></string>
+    <string name="default_layout"></string>
+    <string name="go_to_date"></string>
 </resources>
