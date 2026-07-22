@@ -36,6 +36,9 @@ import com.vayunmathur.library.ui.FilledTonalButton
 import com.vayunmathur.library.ui.FloatingActionButton
 import com.vayunmathur.library.ui.FloatingActionButtonMenu
 import com.vayunmathur.library.ui.FloatingActionButtonMenuItem
+import com.vayunmathur.library.ui.HistoryScrubberCard
+import com.vayunmathur.library.ui.HistoryStep
+import com.vayunmathur.library.ui.rememberHistoryScrubberState
 import com.vayunmathur.library.ui.IconLink
 import com.vayunmathur.library.ui.IconLocationOn
 import com.vayunmathur.library.ui.IconPerson
@@ -545,7 +548,7 @@ fun SectionHeader(title: String) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalTime::class)
 @Composable
 fun BoxScope.HistoryScrubber(
     backStack: NavBackStack<Route>,
@@ -553,86 +556,38 @@ fun BoxScope.HistoryScrubber(
     userid: Long,
     setHistoricalPosition: (org.maplibre.spatialk.geojson.Position) -> Unit
 ) {
-    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-    val currentDate = now.date
-    val currentTime = now.time
-    var pickedLocalDate by remember { mutableStateOf(currentDate) }
-    val sliderState = rememberSliderState(
-        currentTime.toSecondOfDay().toFloat(), valueRange = 0.0f..(24f * 60f * 60f - 0.1f)
+    val state = rememberHistoryScrubberState(
+        initialInstant = Clock.System.now(),
+        initialNowMode = true,
+        disallowFuture = true
     )
 
-    sliderState.onValueChange = {
-        val maximum = if (currentDate == pickedLocalDate) currentTime.toSecondOfDay().toFloat() else null
-        if (maximum != null && it > maximum) sliderState.value = maximum
-        else sliderState.value = it
-    }
-    val pickedLocalTime by remember {
-        derivedStateOf {
-            LocalTime.fromSecondOfDay(sliderState.value.toInt())
-        }
-    }
+    val steps = listOf(
+        HistoryStep(stringResource(R.string.history_step_minus_5m), -5 * 60L),
+        HistoryStep(stringResource(R.string.history_step_minus_1m), -60L),
+        HistoryStep(stringResource(R.string.history_step_minus_10s), -10L),
+        HistoryStep(stringResource(R.string.history_step_plus_10s), 10L),
+        HistoryStep(stringResource(R.string.history_step_plus_1m), 60L),
+        HistoryStep(stringResource(R.string.history_step_plus_5m), 5 * 60L)
+    )
 
-    Card(
-        Modifier.align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Slider(sliderState, Modifier.weight(1f))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    pickedLocalTime.format(DateFormats.TIME_SECOND_AM_PM),
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-            AssistChip(
-                { backStack.add(Route.UserPageHistoryDatePicker(pickedLocalDate)) },
-                { Text(pickedLocalDate.format(DateFormats.DATE_INPUT)) }
-            )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                StepButton(stringResource(R.string.history_step_minus_5m)) { sliderState.value -= 5 * 60 }
-                StepButton(stringResource(R.string.history_step_minus_1m)) { sliderState.value -= 60 }
-                StepButton(stringResource(R.string.history_step_minus_10s)) { sliderState.value -= 10 }
-                StepButton(stringResource(R.string.history_step_plus_10s)) { sliderState.value += 10 }
-                StepButton(stringResource(R.string.history_step_plus_1m)) { sliderState.value += 60 }
-                StepButton(stringResource(R.string.history_step_plus_5m)) { sliderState.value += 5 * 60 }
-            }
-        }
-    }
+    HistoryScrubberCard(
+        state = state,
+        steps = steps,
+        onDateChipClick = { backStack.add(Route.UserPageHistoryDatePicker(state.date)) }
+    )
 
     ResultEffect<LocalDate>("HistoryDatePicker") {
-        pickedLocalDate = it
+        state.setDate(it)
     }
-
-    val simulatedTimestamp = pickedLocalDate.atTime(pickedLocalTime)
-        .toInstant(TimeZone.currentSystemDefault())
 
     val locs by ffViewModel.locationHistory.collectAsState()
 
-    LaunchedEffect(simulatedTimestamp, locs) {
+    LaunchedEffect(state.instant, locs) {
         if (locs.isNotEmpty()) {
-            val closest = locs.minBy { (it.timestamp - simulatedTimestamp).absoluteValue }
+            val closest = locs.minBy { (it.timestamp - state.instant).absoluteValue }
             setHistoricalPosition(closest.coord.toPosition())
         }
-    }
-}
-
-@Composable
-private fun RowScope.StepButton(label: String, onClick: () -> Unit) {
-    FilledTonalButton(
-        onClick,
-        Modifier.weight(1f).heightIn(min = 36.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-    ) {
-        Text(label, fontSize = 12.sp, maxLines = 1)
     }
 }
 

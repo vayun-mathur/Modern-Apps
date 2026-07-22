@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.ForkRight
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Merge
 import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.NoPhotography
 import androidx.compose.material.icons.filled.RampLeft
 import androidx.compose.material.icons.filled.RampRight
 import androidx.compose.material.icons.filled.RoundaboutLeft
@@ -350,6 +351,10 @@ fun IconEraser(modifier: Modifier = Modifier, tint: Color = LocalContentColor.cu
 @Composable
 fun IconCamera(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.CameraAlt, "Camera", modifier, tint)
+
+@Composable
+fun IconCameraOff(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.NoPhotography, "Camera off", modifier, tint)
 
 @Composable
 fun IconBackup(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
