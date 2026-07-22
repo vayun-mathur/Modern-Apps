@@ -33,7 +33,7 @@ import kotlinx.serialization.Serializable
 import androidx.compose.ui.res.painterResource
 
 class MainActivity : ComponentActivity() {
-    private val importUris = mutableStateOf<List<Uri>>(emptyList())
+    private val importUris = mutableStateOf<List<String>>(emptyList())
     private val externalRoute = mutableStateOf<Route?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,9 +50,7 @@ class MainActivity : ComponentActivity() {
                     val viewModel: ContactViewModel = viewModel()
                     
                     val uris by importUris
-                    if (uris.isNotEmpty()) {
-                        ImportVcfDialog(viewModel, uris) { importUris.value = emptyList() }
-                    }
+                    val importRoute = if (uris.isNotEmpty()) Route.ImportVcf(uris) else null
 
                     // If the app was launched with ACTION_PICK/GET_CONTENT, forward to the picker flow.
                     if (intent.action == Intent.ACTION_PICK || intent.action == Intent.ACTION_GET_CONTENT) {
@@ -84,8 +82,9 @@ class MainActivity : ComponentActivity() {
                         }
                     } else {
                         val route by externalRoute
-                        Box(Modifier.fillMaxSize().onFileDrop { importUris.value = it }) {
-                            Navigation(viewModel, route, onExit = { finish() })
+                        val initialRoute = importRoute ?: route
+                        Box(Modifier.fillMaxSize().onFileDrop { uris -> importUris.value = uris.map { it.toString() } }) {
+                            Navigation(viewModel, initialRoute, onExit = { finish() }) { importUris.value = emptyList() }
                         }
                     }
                 }
@@ -121,7 +120,7 @@ class MainActivity : ComponentActivity() {
         if (isVcf) {
             val uris = IntentHelper.getUrisFromIntent(intent)
             if (uris.isNotEmpty()) {
-                importUris.value = uris
+                importUris.value = uris.map { it.toString() }
             }
         }
 
@@ -250,12 +249,19 @@ fun NoPermissionsScreen(permissions: Array<String>, setHasPermissions: (Boolean)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Navigation(viewModel: ContactViewModel, initialRoute: Route? = null, onExit: () -> Unit = {}) {
+fun Navigation(viewModel: ContactViewModel, initialRoute: Route? = null, onExit: () -> Unit = {}, onImportClear: () -> Unit = {}) {
     val backStack = rememberNavBackStack<Route>(initialRoute ?: Route.ContactsList)
 
     LaunchedEffect(initialRoute) {
         if (initialRoute != null && backStack.last() != initialRoute) {
             backStack.add(initialRoute)
+        }
+    }
+
+    // Clear import URIs when leaving ImportVcf screen
+    LaunchedEffect(backStack.backStack) {
+        if (backStack.backStack.lastOrNull() !is Route.ImportVcf) {
+            onImportClear()
         }
     }
 
@@ -365,6 +371,10 @@ fun Navigation(viewModel: ContactViewModel, initialRoute: Route? = null, onExit:
                 onCancel = { backStack.pop() }
             )
         }
+
+        entry<Route.ImportVcf> { key ->
+            ImportVcfScreen(viewModel, backStack, key.uris)
+        }
     }
 }
 
@@ -406,4 +416,7 @@ sealed interface Route: NavKey {
 
     @Serializable
     data class CropPhoto(val uri: String) : Route
+
+    @Serializable
+    data class ImportVcf(val uris: List<String>) : Route
 }

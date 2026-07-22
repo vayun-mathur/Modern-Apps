@@ -30,6 +30,7 @@ import com.vayunmathur.contacts.data.PhoneNumber
 import com.vayunmathur.contacts.data.Photo
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.Dispatchers
+import okio.source
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -116,6 +117,11 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     val accounts: StateFlow<List<ContactAccount>> = _accounts.asStateFlow()
 
     private val _lastSelectedAccount = MutableStateFlow<ContactAccount?>(null)
+
+    // Parsed-VCF state for the import screen. null = not yet parsed (or cleared);
+    // empty list = parsed and found nothing; non-empty = parsed contacts ready to import.
+    private val _parsedVcfContacts = MutableStateFlow<List<Contact>?>(null)
+    val parsedVcfContacts: StateFlow<List<Contact>?> = _parsedVcfContacts.asStateFlow()
 
     val isCalendarSyncEnabled: StateFlow<Boolean> = dataStore.booleanFlow("calendar_sync_enabled")
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -274,11 +280,71 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun createAccount(name: String, type: String = "com.vayunmathur.contacts.local") {
+    fun createAccount(name: String, type: String = "com.vayunmathur.contacts.local", onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
             if (dataStore.addStringToSetIfAbsent("extra_accounts_set", "$name|$type")) {
                 loadAccounts()
             }
+            withContext(Dispatchers.Main) {
+                onComplete?.invoke()
+            }
+        }
+    }
+
+    /** Parses every [uris] off the main thread and exposes the result via [parsedVcfContacts]. */
+    fun parseVcfUris(uris: List<android.net.Uri>) {
+        if (uris.isEmpty()) {
+            _parsedVcfContacts.value = emptyList()
+            return
+        }
+        val app = getApplication<Application>()
+        viewModelScope.launch(Dispatchers.IO) {
+            val allContacts = mutableListOf<Contact>()
+            uris.forEach { uri ->
+                try {
+                    app.contentResolver.openInputStream(uri)?.source()?.use { source ->
+                        allContacts.addAll(VcfUtils.parseContacts(source))
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ContactViewModel", "Error parsing VCF file: $uri", e)
+                }
+            }
+            _parsedVcfContacts.value = allContacts
+        }
+    }
+
+    /** Clears any parsed-VCF state held in the VM (called when the import screen dismisses). */
+    fun clearParsedVcf() {
+        _parsedVcfContacts.value = null
+    }
+
+    /**
+     * Bulk-imports the previously parsed [contacts] into the account with [accountName] and [accountType].
+     * Runs off the main thread; invokes [onDone] on the main thread when complete (or on failure).
+     */
+    fun importVcfContacts(
+        contacts: List<Contact>,
+        accountName: String,
+        accountType: String,
+        onDone: () -> Unit = {},
+    ) {
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    contacts.forEach { contact ->
+                        val toSave = contact.copy(
+                            accountName = accountName,
+                            accountType = accountType
+                        )
+                        toSave.save(app, toSave.details, ContactDetails.empty())
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ContactViewModel", "Error importing contacts", e)
+                }
+            }
+            loadContacts()
+            onDone()
         }
     }
 

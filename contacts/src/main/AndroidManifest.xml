@@ -129,21 +129,38 @@
             android:theme="@style/Theme.General">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:mimeType="text/x-vcard" />
-                <data android:mimeType="text/vcard" />
-                <data android:mimeType="application/vcard" />
-                <data android:mimeType="text/vcf" />
-            </intent-filter>
-
-            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
                 <action android:name="android.intent.action.GET_CONTENT" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
                 <data android:mimeType="text/x-vcard" />
                 <data android:mimeType="text/vcard" />
                 <data android:mimeType="application/vcard" />
                 <data android:mimeType="text/vcf" />
+                <data android:mimeType="text/directory" />
+                <data android:mimeType="text/x-vcard" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.vcf" />
+                <data android:pathPattern=".*\\.vcard" />
+                <data android:pathPattern=".*\\..*\\.vcf" />
+                <data android:pathPattern=".*\\..*\\.vcard" />
             </intent-filter>
         </activity>
 

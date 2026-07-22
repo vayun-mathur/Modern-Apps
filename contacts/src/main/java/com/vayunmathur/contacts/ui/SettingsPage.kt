@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -67,6 +68,12 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
             }
         }
     )
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            backStack.add(Route.ImportVcf(uris.map { it.toString() }))
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -155,6 +162,24 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                         IconButton(onClick = { exportLauncher.launch("contacts.vcf") }) {
                             IconDownload()
                         }
+                    }
+                )
+                HorizontalDivider()
+                SafeListItem(
+                    content = { Text(stringResource(R.string.import_vcf_file)) },
+                    supportingContent = { Text("Import contacts from .vcf files") },
+                    modifier = Modifier.clickable {
+                        importLauncher.launch(arrayOf(
+                            "text/vcard",
+                            "text/x-vcard",
+                            "text/directory",
+                            "text/x-vcard",
+                            "application/vcard",
+                            "*/*"
+                        ))
+                    },
+                    trailingContent = {
+                        IconArrowDropDown()
                     }
                 )
                 HorizontalDivider()
