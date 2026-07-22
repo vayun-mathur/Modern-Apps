@@ -1,3 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="moves">Déplacements</string>
+    <string name="previous_level">Puzzle précédent</string>
+    <string name="next_level">Puzzle suivant</string>
+    <string name="level_selector">Sélection de puzzles</string>
+    <string name="undo">Annuler</string>
+    <string name="restart">recommencer</string>
+    <string name="level">Puzzle</string>
+    <string name="completed">Terminé</string>
+    <string name="pack_selector">Sélection de packs</string>
 </resources>
