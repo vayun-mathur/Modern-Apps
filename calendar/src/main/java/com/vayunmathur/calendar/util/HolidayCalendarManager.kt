@@ -16,8 +16,8 @@ import kotlin.math.absoluteValue
  * country (never pre-populated for every country), and removing a country
  * deletes its calendar (which cascades its events).
  *
- * Calendars are tagged via [CalendarContract.Calendars.NAME] = "holiday::<CODE>"
- * so they can be found and mapped back to a country.
+ * Calendars are tagged via [CalendarContract.Calendars.NAME] = "holiday::<CODE>::<LANG>"
+ * (or legacy "holiday::<CODE>" treated as English) so they can be found and mapped back.
  */
 object HolidayCalendarManager {
     private const val ACCOUNT_NAME = "Holidays"
@@ -35,9 +35,9 @@ object HolidayCalendarManager {
         .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
         .build()
 
-    /** ISO codes of countries that currently have a holiday calendar. */
-    fun addedCountryCodes(context: Context): Set<String> {
-        val out = mutableSetOf<String>()
+    /** Country code + language pairs that currently have a holiday calendar. */
+    fun addedCalendars(context: Context): Set<Pair<String, String>> {
+        val out = mutableSetOf<Pair<String, String>>()
         runCatching {
             context.contentResolver.query(
                 CalendarContract.Calendars.CONTENT_URI,
@@ -49,36 +49,52 @@ object HolidayCalendarManager {
                 val nameIdx = c.getColumnIndexOrThrow(CalendarContract.Calendars.NAME)
                 while (c.moveToNext()) {
                     c.getString(nameIdx)?.takeIf { it.startsWith(NAME_PREFIX) }
-                        ?.let { out += it.removePrefix(NAME_PREFIX) }
+                        ?.let { full ->
+                            val rest = full.removePrefix(NAME_PREFIX)
+                            val parts = rest.split("::", limit = 2)
+                            val code = parts[0]
+                            val lang = if (parts.size > 1) parts[1] else "en"
+                            out += code to lang
+                        }
                 }
             }
-        }.onFailure { Log.e("HolidayCal", "addedCountryCodes failed", it) }
+        }.onFailure { Log.e("HolidayCal", "addedCalendars failed", it) }
         return out
     }
 
-    private fun calendarIdFor(context: Context, code: String): Long? {
+    /** ISO codes of countries that currently have a holiday calendar (backward compat). */
+    fun addedCountryCodes(context: Context): Set<String> =
+        addedCalendars(context).map { it.first }.toSet()
+
+    private fun calendarIdFor(context: Context, code: String, lang: String = "en"): Long? {
         return runCatching {
+            // Try new format first, then legacy format for backward compat
+            val newName = NAME_PREFIX + code + "::" + lang
+            val legacyName = NAME_PREFIX + code
             context.contentResolver.query(
                 CalendarContract.Calendars.CONTENT_URI,
-                arrayOf(CalendarContract.Calendars._ID),
-                "${CalendarContract.Calendars.ACCOUNT_TYPE} = ? AND ${CalendarContract.Calendars.NAME} = ?",
-                arrayOf(CalendarContract.ACCOUNT_TYPE_LOCAL, NAME_PREFIX + code),
+                arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.NAME),
+                "${CalendarContract.Calendars.ACCOUNT_TYPE} = ? AND (${CalendarContract.Calendars.NAME} = ? OR ${CalendarContract.Calendars.NAME} = ?)",
+                arrayOf(CalendarContract.ACCOUNT_TYPE_LOCAL, newName, legacyName),
                 null,
             )?.use { c -> if (c.moveToFirst()) c.getLong(0) else null }
         }.getOrNull()
     }
 
+    private fun calendarName(code: String, lang: String) = NAME_PREFIX + code + "::" + lang
+
     /** Add a read-only holiday calendar for [code] and bulk-insert its holidays. No-op if it already exists. */
-    fun addCountry(context: Context, code: String, displayName: String) {
-        if (calendarIdFor(context, code) != null) return
+    fun addCountry(context: Context, code: String, displayName: String, lang: String = "en", languageName: String = "English") {
+        if (calendarIdFor(context, code, lang) != null) return
         val color = COLORS[code.hashCode().absoluteValue % COLORS.size]
 
         val calValues = ContentValues().apply {
             put(CalendarContract.Calendars.ACCOUNT_NAME, ACCOUNT_NAME)
             put(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
             put(CalendarContract.Calendars.OWNER_ACCOUNT, ACCOUNT_NAME)
-            put(CalendarContract.Calendars.NAME, NAME_PREFIX + code)
-            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "$displayName holidays")
+            put(CalendarContract.Calendars.NAME, calendarName(code, lang))
+            val displaySuffix = if (lang == "en") "holidays" else "$languageName holidays"
+            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, "$displayName $displaySuffix")
             put(CalendarContract.Calendars.CALENDAR_COLOR, color)
             // Read-only: the user shouldn't edit holiday entries.
             put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL, CalendarContract.Calendars.CAL_ACCESS_READ)
@@ -92,7 +108,7 @@ object HolidayCalendarManager {
                 ?.let { ContentUris.parseId(it) }
         }.onFailure { Log.e("HolidayCal", "create calendar failed", it) }.getOrNull() ?: return
 
-        val rows = HolidayData.holidays(context, code).mapNotNull { h ->
+        val rows = HolidayData.holidays(context, code, lang).mapNotNull { h ->
             val date = runCatching { LocalDate.parse(h.d) }.getOrNull() ?: return@mapNotNull null
             val startMs = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
             ContentValues().apply {
@@ -113,9 +129,9 @@ object HolidayCalendarManager {
         }
     }
 
-    /** Remove the holiday calendar for [code] (deleting its events). No-op if absent. */
-    fun removeCountry(context: Context, code: String) {
-        val calId = calendarIdFor(context, code) ?: return
+    /** Remove the holiday calendar for [code] and [lang] (deleting its events). No-op if absent. */
+    fun removeCountry(context: Context, code: String, lang: String = "en") {
+        val calId = calendarIdFor(context, code, lang) ?: return
         runCatching {
             context.contentResolver.delete(
                 syncUri(CalendarContract.Calendars.CONTENT_URI),
@@ -123,5 +139,12 @@ object HolidayCalendarManager {
                 arrayOf(calId.toString()),
             )
         }.onFailure { Log.e("HolidayCal", "remove calendar failed", it) }
+    }
+
+    /** Remove all language variants for a country code (backward compat helper). */
+    fun removeCountry(context: Context, code: String) {
+        addedCalendars(context).filter { it.first == code }.forEach { (_, lang) ->
+            removeCountry(context, code, lang)
+        }
     }
 }

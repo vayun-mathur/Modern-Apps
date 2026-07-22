@@ -62,10 +62,41 @@
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <action android:name="android.intent.action.GET_CONTENT" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
                 <data android:mimeType="text/calendar" />
-                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/calendar" />
+                <data android:mimeType="text/x-vcalendar" />
+                <data android:mimeType="application/x-icalendar" />
+                <data android:mimeType="text/x-icalendar" />
+                <data android:mimeType="text/icalendar" />
                 <data android:mimeType="application/ics" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.ics" />
+                <data android:pathPattern=".*\\.ical" />
+                <data android:pathPattern=".*\\.ifb" />
+                <data android:pathPattern=".*\\..*\\.ics" />
+                <data android:pathPattern=".*\\..*\\.ical" />
+                <data android:pathPattern=".*\\..*\\.ifb" />
             </intent-filter>
         </activity>
 

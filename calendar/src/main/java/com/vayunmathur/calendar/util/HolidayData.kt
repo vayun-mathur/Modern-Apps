@@ -11,6 +11,9 @@ data class HolidayCountry(val code: String, val name: String)
 @Serializable
 data class HolidayEntry(val d: String, val n: String)
 
+@Serializable
+data class HolidayLanguage(val code: String, val name: String)
+
 /**
  * Reads the offline holiday data bundled under `assets/holidays/`
  * (`index.json` = country list, `<CODE>.json` = that country's holidays).
@@ -19,6 +22,9 @@ data class HolidayEntry(val d: String, val n: String)
 object HolidayData {
     private val json = Json { ignoreUnknownKeys = true }
     @Volatile private var countriesCache: List<HolidayCountry>? = null
+    @Volatile private var languagesCache: List<HolidayLanguage>? = null
+    @Volatile private var countryLanguagesCache: Map<String, List<String>>? = null
+    private val holidaysCache = mutableMapOf<String, List<HolidayEntry>>()
 
     fun countries(context: Context): List<HolidayCountry> {
         countriesCache?.let { return it }
@@ -31,10 +37,52 @@ object HolidayData {
         return loaded
     }
 
-    fun holidays(context: Context, code: String): List<HolidayEntry> =
-        runCatching {
-            val text = context.assets.open("holidays/$code.json").bufferedReader().use { it.readText() }
-            json.decodeFromString<List<HolidayEntry>>(text)
-        }.onFailure { Log.e("HolidayData", "Failed reading $code.json", it) }
+    fun languages(context: Context): List<HolidayLanguage> {
+        languagesCache?.let { return it }
+        val loaded = runCatching {
+            val text = context.assets.open("holidays/languages.json").bufferedReader().use { it.readText() }
+            json.decodeFromString<List<HolidayLanguage>>(text)
+        }.onFailure { Log.e("HolidayData", "Failed reading languages.json", it) }
             .getOrDefault(emptyList())
+        languagesCache = loaded
+        return loaded
+    }
+
+    fun countryLanguages(context: Context): Map<String, List<String>> {
+        countryLanguagesCache?.let { return it }
+        val loaded = runCatching {
+            val text = context.assets.open("holidays/country_languages.json").bufferedReader().use { it.readText() }
+            json.decodeFromString<Map<String, List<String>>>(text)
+        }.onFailure { Log.e("HolidayData", "Failed reading country_languages.json", it) }
+            .getOrDefault(emptyMap())
+        countryLanguagesCache = loaded
+        return loaded
+    }
+
+    fun languagesForCountry(context: Context, code: String): List<HolidayLanguage> {
+        val available = countryLanguages(context)[code] ?: listOf("en")
+        val all = languages(context).associateBy { it.code }
+        return available.mapNotNull { all[it] ?: HolidayLanguage(it, it.uppercase()) }
+    }
+
+    fun holidays(context: Context, code: String, lang: String = "en"): List<HolidayEntry> {
+        val key = "$lang/$code"
+        holidaysCache[key]?.let { return it }
+        val loaded = runCatching {
+            val text = try {
+                context.assets.open("holidays/$lang/$code.json").bufferedReader().use { it.readText() }
+            } catch (e: Exception) {
+                // Fallback to English, then old flat path
+                try {
+                    context.assets.open("holidays/en/$code.json").bufferedReader().use { it.readText() }
+                } catch (e2: Exception) {
+                    context.assets.open("holidays/$code.json").bufferedReader().use { it.readText() }
+                }
+            }
+            json.decodeFromString<List<HolidayEntry>>(text)
+        }.onFailure { Log.e("HolidayData", "Failed reading $key.json", it) }
+            .getOrDefault(emptyList())
+        holidaysCache[key] = loaded
+        return loaded
+    }
 }

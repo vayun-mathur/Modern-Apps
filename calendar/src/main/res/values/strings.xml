@@ -103,6 +103,12 @@
     <string name="select_calendar_to_import">Select calendar to import to:</string>
     <string name="create_new_calendar">+ Create new calendar</string>
     <string name="import_button">Import</string>
+    <string name="import_ics_file">Import .ics file</string>
+    <string name="import_events">Import events</string>
+    <string name="import_to_existing_calendar">Import to existing calendar</string>
+    <string name="create_new_calendar_option">Create new calendar</string>
+    <string name="no_events_found">No events found</string>
+    <string name="import_summary">%1$d events ready to import</string>
 
     <!-- Settings screen -->
     <string name="default_layout">Default Layout</string>
