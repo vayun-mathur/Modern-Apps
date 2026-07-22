@@ -62,4 +62,8 @@
     <string name="import_events_title">Importar Eventos</string>
     <string name="create_new_calendar">+ Criar novo calendário</string>
     <string name="import_button">Importar</string>
+    <string name="add_reminder"></string>
+    <string name="select_calendar_to_import"></string>
+    <string name="calendar_widget_description"></string>
+    <string name="default_layout"></string>
 </resources>
