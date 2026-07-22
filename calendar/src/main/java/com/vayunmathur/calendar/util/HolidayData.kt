@@ -60,7 +60,18 @@ object HolidayData {
     }
 
     fun languagesForCountry(context: Context, code: String): List<HolidayLanguage> {
-        val available = countryLanguages(context)[code] ?: listOf("en")
+        // Try country_languages.json first, fall back to scanning assets if missing
+        val fromMap = countryLanguages(context)[code]
+        val available = fromMap ?: run {
+            // Discover by checking which language folders contain this country's file
+            val allLangs = languages(context).map { it.code }
+            allLangs.filter { lang ->
+                try {
+                    context.assets.open("holidays/$lang/$code.json").close()
+                    true
+                } catch (_: Exception) { false }
+            }.ifEmpty { listOf("en") }
+        }
         val all = languages(context).associateBy { it.code }
         return available.mapNotNull { all[it] ?: HolidayLanguage(it, it.uppercase()) }
     }
