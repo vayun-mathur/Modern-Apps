@@ -83,10 +83,17 @@ public final class HolidayGen {
         .build();
 
     public static void main(String[] args) throws Exception {
+        String startSlug = args.length > 0 ? args[0] : null;
         File baseDir = new File("calendar/src/main/assets/holidays");
-        deleteRecursively(baseDir);
-        if (!baseDir.mkdirs()) {
+        boolean resume = startSlug != null && baseDir.exists();
+        if (!resume) {
+            deleteRecursively(baseDir);
+        }
+        if (!baseDir.exists() && !baseDir.mkdirs()) {
             throw new IllegalStateException("Could not create " + baseDir.getAbsolutePath());
+        }
+        if (resume) {
+            System.out.println("Resuming from slug: " + startSlug);
         }
 
         // Write languages.json at top level
@@ -143,13 +150,38 @@ public final class HolidayGen {
         java.util.Map<String, String> langCodeToName = new java.util.HashMap<>();
         for (String[] lp : LANGS) langCodeToName.put(lp[0], lp[1]);
 
+        // Load existing country_languages.json if resuming
+        if (resume) {
+            File clFile = new File(baseDir, "country_languages.json");
+            if (clFile.exists()) {
+                try {
+                    String clText = new String(Files.readAllBytes(clFile.toPath()), StandardCharsets.UTF_8);
+                    // Simple parse: {"Code":["en","fr"],...}
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"([^\"]+)\":\\[([^\\]]*)\\]").matcher(clText);
+                    while (m.find()) {
+                        String c = m.group(1);
+                        String[] langs = m.group(2).replace("\"", "").split(",");
+                        java.util.Set<String> set = new java.util.HashSet<>();
+                        for (String l : langs) if (!l.trim().isEmpty()) set.add(l.trim());
+                        if (!set.isEmpty()) countryLangs.put(c, set);
+                    }
+                    System.out.println("  Loaded existing progress for " + countryLangs.size() + " countries");
+                } catch (Exception e) { /* ignore */ }
+            }
+        }
+
         int totalWritten = 0;
         int totalRequests = 0;
         int totalCountries = slugToCode.size();
         int countryIdx = 0;
         int totalLangs = LANGS.length - 1; // excluding English
+        boolean started = (startSlug == null);
 
         for (String slug : SLUGS) {
+            if (!started) {
+                if (slug.equals(startSlug)) started = true;
+                else continue;
+            }
             String code = slugToCode.get(slug);
             if (code == null) continue;
             String displayName = codeToName.get(code);
