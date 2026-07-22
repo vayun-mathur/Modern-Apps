@@ -8,19 +8,9 @@ import com.vayunmathur.library.util.AchievementsManager
 
 class LogicAchievementsManager(context: Context, json: String, private val repo: LogicProgressRepository) : AchievementsManager(context, json) {
     override fun checkExistingAchievements() {
-        val stats = repo.getLevelStats()
-        val completedIds = stats.keys
+        val completedIds = repo.getLevelStats().keys
         if (completedIds.isNotEmpty()) onAchievementUnlocked("first_gate")
-
-        val optimalCount = completedIds.count { id ->
-            val best = stats[id]?.bestScore ?: 9999
-            val optimal = Levels.byId[id]?.optimalNands ?: 9999
-            best <= optimal
-        }
-
-        onProgressUpdated("optimal_5", optimalCount)
         onProgressUpdated("all_levels", completedIds.size)
-
         Levels.chapters.forEach { ch ->
             val count = completedIds.count { Levels.byId[it]?.chapter == ch.id }
             val key = when (ch.id) {

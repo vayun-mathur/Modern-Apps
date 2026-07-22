@@ -2,7 +2,7 @@ package com.vayunmathur.games.logicgate.data
 
 /**
  * Level progression DAG: max 2 open at any time, chapters separated.
- * Prereqs define unlock. Visual layout rows defined below for timeline.
+ * Prereqs define unlock. Optimality removed - pure completion gated.
  */
 
 enum class ChapterId { FOUNDATION, ROUTING, ARITH, MEMORY, CPU }
@@ -24,7 +24,6 @@ data class LevelDef(
     val outputs: List<String>,
     val targetChipId: String,
     val allowedChipIds: List<String>,
-    val optimalNands: Int,
     val flavor: String = "",
     val unlocksChipId: String? = null,
     val prereqs: List<String> = emptyList()
@@ -42,7 +41,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "NOT",
             allowedChipIds = listOf("NAND"),
-            optimalNands = 1,
             flavor = "Everything starts with NAND.",
             unlocksChipId = "NOT",
             prereqs = emptyList()
@@ -57,7 +55,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "AND",
             allowedChipIds = listOf("NAND", "NOT"),
-            optimalNands = 2,
             flavor = "NOT unlocked! Now combine.",
             unlocksChipId = "AND",
             prereqs = listOf("NOT")
@@ -72,7 +69,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "OR",
             allowedChipIds = listOf("NAND", "NOT", "AND"),
-            optimalNands = 3,
             flavor = "De Morgan is your friend.",
             unlocksChipId = "OR",
             prereqs = listOf("AND")
@@ -87,7 +83,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "XOR",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR"),
-            optimalNands = 4,
             flavor = "The key to addition.",
             unlocksChipId = "XOR",
             prereqs = listOf("OR")
@@ -102,7 +97,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "NOR",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR"),
-            optimalNands = 4,
             unlocksChipId = "NOR",
             prereqs = listOf("XOR")
         ),
@@ -116,7 +110,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "XNOR",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "NOR"),
-            optimalNands = 5,
             unlocksChipId = "XNOR",
             prereqs = listOf("XOR")
         ),
@@ -131,7 +124,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "MUX",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR"),
-            optimalNands = 4,
             flavor = "Choose between signals.",
             unlocksChipId = "MUX",
             prereqs = listOf("NOR", "XNOR")
@@ -146,7 +138,6 @@ object Levels {
             outputs = listOf("a", "b"),
             targetChipId = "DMUX",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "MUX"),
-            optimalNands = 3,
             unlocksChipId = "DMUX",
             prereqs = listOf("MUX")
         ),
@@ -160,7 +151,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "MUX4",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "MUX", "DMUX"),
-            optimalNands = 12,
             unlocksChipId = "MUX4",
             prereqs = listOf("MUX")
         ),
@@ -175,7 +165,6 @@ object Levels {
             outputs = listOf("sum", "carry"),
             targetChipId = "HALF_ADDER",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "MUX"),
-            optimalNands = 6,
             flavor = "1-bit addition.",
             unlocksChipId = "HALF_ADDER",
             prereqs = listOf("DMUX", "MUX4")
@@ -190,7 +179,6 @@ object Levels {
             outputs = listOf("sum", "cout"),
             targetChipId = "FULL_ADDER",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "MUX", "HALF_ADDER"),
-            optimalNands = 14,
             flavor = "Brick of binary addition.",
             unlocksChipId = "FULL_ADDER",
             prereqs = listOf("HALF_ADDER")
@@ -205,7 +193,6 @@ object Levels {
             outputs = listOf("s0","s1","s2","s3","cout"),
             targetChipId = "ADDER_4",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "HALF_ADDER", "FULL_ADDER"),
-            optimalNands = 56,
             unlocksChipId = "ADDER_4",
             prereqs = listOf("HALF_ADDER")
         ),
@@ -219,7 +206,6 @@ object Levels {
             outputs = (0..7).map { "s$it" } + listOf("cout"),
             targetChipId = "ADDER_8",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "HALF_ADDER", "FULL_ADDER", "ADDER_4"),
-            optimalNands = 112,
             flavor = "Heart of CPU.",
             unlocksChipId = "ADDER_8",
             prereqs = listOf("FULL_ADDER", "ADDER_4")
@@ -235,7 +221,6 @@ object Levels {
             outputs = listOf("q"),
             targetChipId = "DFF",
             allowedChipIds = listOf("NAND", "NOT", "AND", "OR", "XOR", "MUX"),
-            optimalNands = 6,
             flavor = "Time enters.",
             unlocksChipId = "DFF",
             prereqs = listOf("ADDER_8")
@@ -250,7 +235,6 @@ object Levels {
             outputs = listOf("out"),
             targetChipId = "BIT",
             allowedChipIds = ChipLibrary.all.keys.filter { it != "CPU_8" && it != "REG_8" && it != "ALU_8" }.toList(),
-            optimalNands = 12,
             unlocksChipId = "BIT",
             prereqs = listOf("DFF")
         ),
@@ -264,7 +248,6 @@ object Levels {
             outputs = (0..7).map { "out$it" },
             targetChipId = "REG_8",
             allowedChipIds = ChipLibrary.all.keys.filter { it != "CPU_8" && it != "ALU_8" }.toList(),
-            optimalNands = 96,
             unlocksChipId = "REG_8",
             prereqs = listOf("BIT")
         ),
@@ -279,7 +262,6 @@ object Levels {
             outputs = (0..7).map { "out$it" } + listOf("zero","carry"),
             targetChipId = "ALU_8",
             allowedChipIds = ChipLibrary.all.keys.filter { it != "CPU_8" }.toList(),
-            optimalNands = 200,
             flavor = "Calculator of CPU.",
             unlocksChipId = "ALU_8",
             prereqs = listOf("REG_8")
@@ -294,7 +276,6 @@ object Levels {
             outputs = (0..7).map { "out$it" } + (0..7).map { "addr$it" } + listOf("write"),
             targetChipId = "CPU_8",
             allowedChipIds = ChipLibrary.all.keys.toList(),
-            optimalNands = 2000,
             flavor = "NAND to computer. Done.",
             unlocksChipId = "CPU_8",
             prereqs = listOf("ALU_8")
@@ -312,7 +293,6 @@ object Levels {
     val byId: Map<String, LevelDef> = all.associateBy { it.id }
     fun get(id: String): LevelDef = byId[id] ?: error("Unknown level $id")
 
-    // Timeline rows for progression UI (1 or 2 nodes per row, max 2 open)
     val timelineRows: List<List<String>> = listOf(
         listOf("NOT"),
         listOf("AND"),

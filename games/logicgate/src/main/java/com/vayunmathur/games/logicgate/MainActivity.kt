@@ -158,7 +158,7 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
         ) {
             val status = uiState.evalStatus
             val statusText = when (status) {
-                is EvalStatus.Ok -> if (status.isFullyCorrect) "✓ CORRECT — ${uiState.circuit.gates.sumOf { com.vayunmathur.games.logicgate.data.ChipLibrary.get(it.chipId).nandCost }}N / ${level.optimalNands}N optimal"
+                is EvalStatus.Ok -> if (status.isFullyCorrect) "✓ CORRECT"
                 else "${status.passingRows}/${status.totalRows} passing — ${status.failingRows.size} failing"
 
                 is EvalStatus.Error -> "Error: ${status.msg}"
@@ -188,9 +188,9 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                         if (uiState.wiringFrom != null) {
                             Button(onClick = { viewModel.cancelWiring() }) { Text("Cancel Wire", fontSize = 10.sp) }
                         }
-                        val nandCost = uiState.circuit.gates.sumOf { com.vayunmathur.games.logicgate.data.ChipLibrary.get(it.chipId).nandCost }
+                        val gateCount = uiState.circuit.gates.size
                         Card(modifier = Modifier.padding(start = 4.dp)) {
-                            Text(" ${nandCost}N ", fontSize = 11.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            Text(" $gateCount gates ", fontSize = 11.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
                 }

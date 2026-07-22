@@ -7,14 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.logicgate.data.*
 import com.vayunmathur.library.util.DataStoreUtils
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -22,8 +17,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
-import kotlin.math.max
-import kotlin.random.Random
 
 // Serializable persistence of circuit per level
 @Serializable
@@ -69,17 +62,11 @@ class LogicViewModel(application: Application) : AndroidViewModel(application) {
     private val _completedIds = MutableStateFlow(repo.getCompletedLevelIds())
     val completedIds: StateFlow<Set<String>> = _completedIds.asStateFlow()
 
-    private val _bestNands = MutableStateFlow<Map<String, Int>>(repo.getLevelStats().mapValues { it.value.bestScore })
-    val bestNands: StateFlow<Map<String, Int>> = _bestNands.asStateFlow()
-
     private val _unlockedChips = MutableStateFlow(repo.unlockedChipIds())
     val unlockedChips: StateFlow<Set<String>> = _unlockedChips.asStateFlow()
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-
-    private val _nextLevelEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val nextLevelEvent: SharedFlow<String> = _nextLevelEvent.asSharedFlow()
 
     // persisted circuits cache
     private var allCircuits: MutableMap<String, Circuit> = mutableMapOf()
@@ -236,25 +223,17 @@ class LogicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun onLevelWon(level: LevelDef, circuit: Circuit) {
-        val cost = circuit.totalNandCost()
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                repo.updateBestScore(level.id, cost)
+                repo.markCompleted(level.id)
             }
             _completedIds.value = repo.getCompletedLevelIds()
-            _bestNands.value = repo.getLevelStats().mapValues { it.value.bestScore }
             _unlockedChips.value = repo.unlockedChipIds()
 
             repo.incCircuitsChecked()
             achievementsManager.onAchievementUnlocked("first_gate")
             val allCompleted = _completedIds.value
-            val optimalCount = _completedIds.value.mapNotNull { id -> Levels.byId[id] }.count { ld ->
-                val best = _bestNands.value[ld.id] ?: 9999
-                best <= ld.optimalNands
-            }
-            achievementsManager.onProgressUpdated("optimal_5", optimalCount)
             achievementsManager.onProgressUpdated("all_levels", repo.totalCompleted())
-            // per chapter progress
             Levels.chapters.forEach { ch ->
                 val count = allCompleted.count { Levels.byId[it]?.chapter == ch.id }
                 val key = when (ch.id) {
@@ -265,21 +244,6 @@ class LogicViewModel(application: Application) : AndroidViewModel(application) {
                     ChapterId.CPU -> "cpu_complete"
                 }
                 achievementsManager.onProgressUpdated(key, count)
-            }
-
-            // cache next level
-            val chapterLevelIds = Levels.chapters.find { it.id == level.chapter }?.levelIds ?: emptyList()
-            val idx = chapterLevelIds.indexOf(level.id)
-            if (idx >= 0 && idx < chapterLevelIds.lastIndex) {
-                val nextId = chapterLevelIds[idx + 1]
-                _nextLevelEvent.tryEmit(nextId)
-            } else {
-                // next chapter first uncompleted
-                val nextChapterIdx = Levels.chapters.indexOfFirst { it.id == level.chapter } + 1
-                if (nextChapterIdx < Levels.chapters.size) {
-                    val nextChap = Levels.chapters[nextChapterIdx]
-                    _nextLevelEvent.tryEmit(nextChap.levelIds.first())
-                }
             }
         }
     }

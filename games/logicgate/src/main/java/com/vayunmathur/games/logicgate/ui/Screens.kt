@@ -19,12 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import com.vayunmathur.games.logicgate.data.ChapterId
 import com.vayunmathur.games.logicgate.data.ChipCategory
 import com.vayunmathur.games.logicgate.data.ChipLibrary
@@ -32,7 +31,6 @@ import com.vayunmathur.games.logicgate.data.CircuitEvaluator
 import com.vayunmathur.games.logicgate.data.LevelDef
 import com.vayunmathur.games.logicgate.data.Levels
 import com.vayunmathur.games.logicgate.util.LogicViewModel
-import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
@@ -72,7 +70,6 @@ fun ProgressionScreen(
     viewModel: LogicViewModel
 ) {
     val completed by viewModel.completedIds.collectAsState()
-    val bestNands by viewModel.bestNands.collectAsState()
     val available = Levels.availableLevels(completed)
     val timelineItems = buildTimelineItems()
 
@@ -129,11 +126,9 @@ fun ProgressionScreen(
                     val item = timelineItems[idx]
                     when (item) {
                         is TimelineItem.ChapterHeader -> {
-                            // Connector from previous row into this chapter bar (merge)
                             if (idx > 0) {
                                 val prev = timelineItems[idx - 1]
                                 if (prev is TimelineItem.LevelRow) {
-                                    // Determine if any next level depends on prev – always draw merge visually
                                     MergeIntoChapterConnector(
                                         fromRow = prev,
                                         sideOffset = sideOffset,
@@ -153,7 +148,6 @@ fun ProgressionScreen(
                                     .padding(horizontal = 12.dp)
                             )
 
-                            // Connector out of chapter into next row
                             if (idx + 1 < timelineItems.size) {
                                 val next = timelineItems[idx + 1]
                                 if (next is TimelineItem.LevelRow) {
@@ -172,9 +166,7 @@ fun ProgressionScreen(
                                 row = item,
                                 completed = completed,
                                 available = available,
-                                bestNands = bestNands,
                                 nodeSize = nodeSize,
-                                sideOffset = sideOffset,
                                 onClickLevel = { lvlId ->
                                     if (lvlId in completed || lvlId in available) {
                                         backStack.add(com.vayunmathur.games.logicgate.Route.Game(lvlId))
@@ -182,7 +174,6 @@ fun ProgressionScreen(
                                 }
                             )
 
-                            // Connector to next level row (skip if next is header)
                             if (idx + 1 < timelineItems.size) {
                                 val next = timelineItems[idx + 1]
                                 if (next is TimelineItem.LevelRow) {
@@ -214,7 +205,7 @@ fun ProgressionScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "Progress is gated: you must finish prerequisites to unlock next. At most 2 paths run in parallel (NOR/XNOR, DMUX/MUX4, FULL_ADDER/ADDER_4). Each chapter starts with a thick bar.",
+                            "Progress is gated by prerequisites. At most 2 paths are open at once (NOR/XNOR, DMUX/MUX4, FULL_ADDER/ADDER_4). Each chapter starts with a thick bar.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -266,15 +257,13 @@ private fun LevelRowContent(
     row: TimelineItem.LevelRow,
     completed: Set<String>,
     available: Set<String>,
-    bestNands: Map<String, Int>,
     nodeSize: Dp,
-    sideOffset: Dp,
     onClickLevel: (String) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp),
+            .height(110.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -283,7 +272,6 @@ private fun LevelRowContent(
                 levelId = row.levelIds[0],
                 isCompleted = row.levelIds[0] in completed,
                 isAvailable = row.levelIds[0] in available,
-                bestNand = bestNands[row.levelIds[0]],
                 size = nodeSize,
                 onClick = onClickLevel
             )
@@ -293,7 +281,6 @@ private fun LevelRowContent(
                     levelId = lvlId,
                     isCompleted = lvlId in completed,
                     isAvailable = lvlId in available,
-                    bestNand = bestNands[lvlId],
                     size = nodeSize,
                     onClick = onClickLevel
                 )
@@ -308,7 +295,6 @@ private fun LevelNode(
     levelId: String,
     isCompleted: Boolean,
     isAvailable: Boolean,
-    bestNand: Int?,
     size: Dp,
     onClick: (String) -> Unit
 ) {
@@ -316,7 +302,6 @@ private fun LevelNode(
     val isLocked = !isCompleted && !isAvailable
 
     val bg = when {
-        isCompleted && (bestNand ?: 999) <= def.optimalNands -> Color(0xFF0F3D2E)
         isCompleted -> Color(0xFF1E3A2F)
         isAvailable -> Color(0xFF1B2E41)
         else -> Color(0xFF242A33)
@@ -350,13 +335,10 @@ private fun LevelNode(
                     }
                 )
                 Spacer(Modifier.height(2.dp))
-                if (isLocked) {
-                    Text("LOCK", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B7280))
-                } else if (isCompleted) {
-                    val star = if ((bestNand ?: 999) <= def.optimalNands) "★★★" else if ((bestNand ?: 999) <= (def.optimalNands * 1.5).toInt()) "★★" else "★"
-                    Text(star, fontSize = 10.sp, color = Color(0xFFFDE68A))
-                } else {
-                    Text("PLAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7FD8BE))
+                when {
+                    isLocked -> Text("LOCK", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B7280))
+                    isCompleted -> Text("DONE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF22C55E))
+                    else -> Text("PLAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7FD8BE))
                 }
             }
         }
@@ -367,30 +349,14 @@ private fun LevelNode(
             fontWeight = FontWeight.SemiBold,
             color = if (isLocked) Color(0xFF6B7280) else MaterialTheme.colorScheme.onBackground
         )
-        when {
-            isCompleted && bestNand != null -> {
-                Text(
-                    "${bestNand}N / ${def.optimalNands}N",
-                    fontSize = 10.sp,
-                    color = if (bestNand <= def.optimalNands) Color(0xFF22C55E) else Color(0xFF94A3B8)
-                )
-            }
-            isLocked -> {
-                val need = def.prereqs.joinToString(", ") { Levels.byId[it]?.displayName ?: it }
-                Text(
-                    "needs $need",
-                    fontSize = 9.sp,
-                    color = Color(0xFF6B7280),
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-            isAvailable -> {
-                Text(
-                    "${def.optimalNands}N optimal",
-                    fontSize = 10.sp,
-                    color = Color(0xFF7FD8BE).copy(alpha = 0.8f)
-                )
-            }
+        if (isLocked) {
+            val need = def.prereqs.joinToString(", ") { Levels.byId[it]?.displayName ?: it }
+            Text(
+                "needs $need",
+                fontSize = 9.sp,
+                color = Color(0xFF6B7280),
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
         }
     }
 }
@@ -417,33 +383,16 @@ private fun RowToRowConnector(
             else if (row.levelIds[0] == id) leftX else rightX
         }
 
-        // Draw each dependency edge fromRow -> toRow
         for (toId in toRow.levelIds) {
             val def = Levels.byId[toId] ?: continue
             val toX = xFor(toId, toRow)
-            var hasEdge = false
             for (pr in def.prereqs) {
                 if (pr in fromRow.levelIds) {
-                    hasEdge = true
                     val fromX = xFor(pr, fromRow)
-                    val bothDone = pr in completed && (toId in completed || pr in completed)
                     drawLine(
-                        color = if (bothDone) Color(0xFF7FD8BE) else Color(0xFF374151),
+                        color = if (pr in completed) Color(0xFF7FD8BE) else Color(0xFF374151),
                         start = Offset(fromX, 0f),
                         end = Offset(toX, size.height),
-                        strokeWidth = 6f
-                    )
-                }
-            }
-            // If this row's only prereq is in fromRow but we already handled, nothing extra
-            if (!hasEdge && fromRow.levelIds.size == 1 && toRow.levelIds.size == 1) {
-                // fallback for linear chain where prereq is immediate predecessor
-                val fromId = fromRow.levelIds[0]
-                if (def.prereqs.contains(fromId)) {
-                    drawLine(
-                        color = if (fromId in completed) Color(0xFF7FD8BE) else Color(0xFF374151),
-                        start = Offset(cx, 0f),
-                        end = Offset(cx, size.height),
                         strokeWidth = 6f
                     )
                 }
@@ -510,7 +459,7 @@ private fun BranchOutOfChapterConnector(
     }
 }
 
-// --- TruthTable + Inventory (kept minimal, game screen) ---
+// --- TruthTable + Inventory ---
 
 @Composable
 fun TruthTableView(
@@ -569,8 +518,10 @@ fun TruthTableView(
                 }
             }
         }
-        if (failingRows.isNotEmpty()) Spacer(Modifier.height(6.dp))
-        if (failingRows.isNotEmpty()) Text("${failingRows.size} failing", fontSize = 10.sp, color = Color(0xFFFF8A80))
+        if (failingRows.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text("${failingRows.size} failing", fontSize = 10.sp, color = Color(0xFFFF8A80))
+        }
     }
 }
 
@@ -600,7 +551,7 @@ fun InventoryBar(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(def.displayName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("${def.nandCost}N ${def.inputs.size}→${def.outputs.size}", fontSize = 9.sp, color = Color.White.copy(alpha = 0.6f))
+                        Text("${def.inputs.size}→${def.outputs.size}", fontSize = 9.sp, color = Color.White.copy(alpha = 0.6f))
                     }
                 }
             }

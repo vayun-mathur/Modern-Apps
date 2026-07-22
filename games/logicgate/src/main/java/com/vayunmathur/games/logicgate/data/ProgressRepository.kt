@@ -1,32 +1,45 @@
 package com.vayunmathur.games.logicgate.data
 
 import android.content.Context
-import com.vayunmathur.library.util.LevelStatsRepository
+import android.content.SharedPreferences
+import androidx.core.content.edit
 
-class LogicProgressRepository(context: Context) : LevelStatsRepository(context, "logicgate_stats") {
-    fun getCompletedLevelIds(): Set<String> = getLevelStats().keys
+class LogicProgressRepository(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("logicgate_stats", Context.MODE_PRIVATE)
 
-    fun isLevelComplete(id: String): Boolean = getLevelStats().containsKey(id)
+    fun getCompletedLevelIds(): Set<String> {
+        return prefs.getStringSet(KEY_COMPLETED, emptySet())?.toSet() ?: emptySet()
+    }
 
-    fun bestNandCount(levelId: String): Int? = getLevelStats()[levelId]?.bestScore
+    fun isLevelComplete(id: String): Boolean = id in getCompletedLevelIds()
 
-    // we reuse bestScore as nand count (lower is better, but LevelStatsRepository keeps min)
-    // so storing nand count directly works
+    fun markCompleted(id: String) {
+        val current = getCompletedLevelIds()
+        if (id !in current) {
+            prefs.edit { putStringSet(KEY_COMPLETED, (current + id).toMutableSet()) }
+        }
+    }
 
     fun unlockedChipIds(): Set<String> {
         val completed = getCompletedLevelIds()
         val chips = mutableSetOf("NAND")
         for (lvlId in completed) {
-            val lvl = Levels.byId[lvlId] ?: continue
-            lvl.unlocksChipId?.let { chips.add(it) }
+            Levels.byId[lvlId]?.unlocksChipId?.let { chips.add(it) }
         }
         return chips
     }
 
-    fun totalCompleted(): Int = getLevelStats().size
+    fun totalCompleted(): Int = getCompletedLevelIds().size
 
-    fun incCircuitsChecked() = incrementCounter("circuits_checked")
-    fun getCircuitsChecked(): Int = getCounter("circuits_checked")
+    fun incCircuitsChecked() { prefs.edit { putInt("circuits_checked", prefs.getInt("circuits_checked", 0) + 1) } }
+    fun getCircuitsChecked(): Int = prefs.getInt("circuits_checked", 0)
 
-    fun setChipHintUsed(chipId: String) = incrementCounter("hint_$chipId")
+    // For achievements compatibility
+    fun getLevelStats(): Map<String, DummyStat> = getCompletedLevelIds().associateWith { DummyStat() }
+
+    data class DummyStat(val bestScore: Int = 0)
+
+    companion object {
+        private const val KEY_COMPLETED = "completed_levels"
+    }
 }

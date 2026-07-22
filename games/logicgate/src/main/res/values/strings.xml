@@ -10,14 +10,10 @@
     <string name="check">Check</string>
     <string name="level_complete">Level Complete!</string>
     <string name="level_failed">Check Failed</string>
-    <string name="optimal">Optimal: %1$d Gates</string>
-    <string name="your_gates">Your Gates: %1$d</string>
-    <string name="nand_count">NANDs: %1$d</string>
     <string name="truth_table">Truth Table</string>
     <string name="info">Info</string>
     <string name="inventory">Inventory</string>
     <string name="chips">Chips</string>
-    <string name="settings">Settings</string>
     <string name="next">Next</string>
     <string name="prev">Prev</string>
     <string name="hint">Hint</string>

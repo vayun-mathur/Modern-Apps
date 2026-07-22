@@ -5,6 +5,5 @@
   {"id": "arith_complete", "name": "Arithmetician", "description": "Complete Arithmetic chapter (4 levels)", "targetProgress": 4},
   {"id": "memory_complete", "name": "Mnemosyne", "description": "Complete Memory chapter (3 levels)", "targetProgress": 3},
   {"id": "cpu_complete", "name": "CPU Architect", "description": "Complete CPU chapter (2 levels)", "targetProgress": 2},
-  {"id": "optimal_5", "name": "Perfectionist", "description": "Build 5 levels with optimal NAND count", "targetProgress": 5},
   {"id": "all_levels", "name": "NAND to CPU", "description": "Complete all 18 levels and build the 8-bit CPU", "targetProgress": 18}
 ]
