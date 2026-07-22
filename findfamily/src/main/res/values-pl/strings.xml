@@ -92,4 +92,19 @@
     <string name="uwb_status_failed">Nie udało się znaleźć w pobliżu (UWB).</string>
     <string name="uwb_direction_unavailable_hint">Poruszaj telefonem, aby znaleźć sygnał wskazujący kierunek</string>
     <string name="share_your_location"></string>
+    <string name="history_step_plus_10s"></string>
+    <string name="permission_upgrade_dialog_dismiss"></string>
+    <string name="permission_upgrade_dialog_confirm"></string>
+    <string name="history_step_plus_5m"></string>
+    <string name="permission_upgrade_dialog_message"></string>
+    <string name="permission_upgrade_dialog_title"></string>
+    <string name="history_hide_content_desc"></string>
+    <string name="permission_approximate_only_explanation"></string>
+    <string name="history_step_minus_5m"></string>
+    <string name="permission_reopen_upgrade_prompt"></string>
+    <string name="history_step_minus_10s"></string>
+    <string name="history_title"></string>
+    <string name="history_show_content_desc"></string>
+    <string name="history_step_minus_1m"></string>
+    <string name="history_step_plus_1m"></string>
 </resources>
