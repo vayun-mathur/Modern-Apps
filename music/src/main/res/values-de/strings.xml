@@ -38,4 +38,12 @@
     <string name="various_artists">Verschiedene Künstler</string>
     <string name="notification_shuffle">Mischen</string>
     <string name="notification_repeat">Wiederholen</string>
+    <string name="dialog_create_playlist"></string>
+    <string name="dialog_delete"></string>
+    <string name="playlist_name_hint"></string>
+    <string name="dialog_delete_playlist"></string>
+    <string name="dialog_delete_playlist_confirm"></string>
+    <string name="menu_delete_playlist"></string>
+    <string name="show_lyrics_on_lock_screen"></string>
+    <string name="dialog_create"></string>
 </resources>
