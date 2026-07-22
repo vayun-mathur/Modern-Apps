@@ -4,11 +4,4 @@
     <string name="search">Suchen</string>
     <string name="title">Titel</string>
     <string name="content">Inhalt</string>
-    <string name="add_image"></string>
-    <string name="drawing"></string>
-    <string name="add_drawing"></string>
-    <string name="shrink"></string>
-    <string name="move_up"></string>
-    <string name="move_down"></string>
-    <string name="enlarge"></string>
 </resources>
