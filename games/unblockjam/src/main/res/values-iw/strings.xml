@@ -1,13 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="moves"></string>
-    <string name="previous_level"></string>
-    <string name="next_level"></string>
-    <string name="level_selector"></string>
-    <string name="undo"></string>
-    <string name="restart"></string>
-    <string name="level"></string>
-    <string name="completed"></string>
-    <string name="pack_selector"></string>
-    <string name="app_name"></string>
-</resources>
+    </resources>
