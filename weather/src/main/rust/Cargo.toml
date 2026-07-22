@@ -10,9 +10,15 @@ name = "weather_om"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-omfiles = { git = "https://github.com/open-meteo/rust-omfiles" }
+omfiles = { git = "https://github.com/open-meteo/rust-omfiles", rev = "8ce3f893f444239a9d0e5db9af40895ba11e5bfc" }
 ureq = "2.12"
 jni = "0.21"
+
+# Reproducibility: patch upstream om-file-format-sys which had unsorted
+# read_dir() -> filesystem-order dependent archive/object order (ext4 vs APFS).
+# Vendor copy in third_party/om-file-format-sys fixes it with sorted file list.
+[patch."https://github.com/open-meteo/om-file-format"]
+om-file-format-sys = { path = "../../../../third_party/om-file-format-sys" }
 
 [profile.release]
 opt-level = 3

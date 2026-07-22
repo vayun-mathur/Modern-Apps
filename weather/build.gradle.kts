@@ -79,7 +79,12 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
 
         inputs.dir("src/main/rust/src")
         inputs.file("src/main/rust/Cargo.toml")
+        inputs.file("src/main/rust/Cargo.lock")
+        inputs.file("src/main/rust/rust-toolchain.toml")
         outputs.file(destSo)
+
+        val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
+        val rustSrc = file("src/main/rust").absolutePath
 
         // Prepend the rustup toolchain (has the Android targets) ahead of any
         // Homebrew rust on PATH.
@@ -102,14 +107,20 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
         // $HOME-specific paths in panic/debug strings, so F-Droid's /home/vagrant
         // and CI's /home/runner would produce different .so bytes. Each host remaps
         // its own paths to the same constants, yielding identical output.
-        val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
-        val rustSrc = file("src/main/rust").absolutePath
         environment(
             "RUSTFLAGS",
             "--remap-path-prefix=$cargoHome=/cargo --remap-path-prefix=$rustSrc=/weather",
         )
+        // Deterministic C/C++ compilation: the om-file-format-sys crate compiles C
+        // via cc crate, which would otherwise embed absolute paths via __FILE__.
+        // -ffile-prefix-map remaps them, and ZERO_AR_DATE makes ar deterministic.
+        environment("CFLAGS", "-ffile-prefix-map=$cargoHome=/cargo -ffile-prefix-map=$rustSrc=/weather")
+        environment("CXXFLAGS", "-ffile-prefix-map=$cargoHome=/cargo -ffile-prefix-map=$rustSrc=/weather")
+        environment("CPPFLAGS", "-ffile-prefix-map=$cargoHome=/cargo -ffile-prefix-map=$rustSrc=/weather")
+        environment("ZERO_AR_DATE", "1")
+        environment("CARGO_INCREMENTAL", "0")
 
-        commandLine("$cargoBin/cargo", "build", "--release", "--target", triple)
+        commandLine("$cargoBin/cargo", "build", "--locked", "--release", "--target", triple)
 
         doLast {
             destSo.parentFile.mkdirs()

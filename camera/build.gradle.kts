@@ -64,7 +64,12 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
 
         inputs.dir("src/main/rust/src")
         inputs.file("src/main/rust/Cargo.toml")
+        inputs.file("src/main/rust/Cargo.lock")
+        inputs.file("src/main/rust/rust-toolchain.toml")
         outputs.file(destSo)
+
+        val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
+        val rustSrc = file("src/main/rust").absolutePath
 
         environment("PATH", "$cargoBin:${System.getenv("PATH")}")
         environment("CC", clang)
@@ -77,14 +82,19 @@ val perAbiBuildTasks = rustAbis.map { (abiDir, triple) ->
         // $HOME-specific paths in panic/debug strings, so F-Droid's /home/vagrant
         // and CI's /home/runner would produce different .so bytes. Each host remaps
         // its own paths to the same constants, yielding identical output.
-        val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
-        val rustSrc = file("src/main/rust").absolutePath
         environment(
             "RUSTFLAGS",
             "--remap-path-prefix=$cargoHome=/cargo --remap-path-prefix=$rustSrc=/camera",
         )
+        // Deterministic C/C++ compilation for any cc crate or future native deps,
+        // plus ar(1) timestamp determinism. Also disable incremental for reproducibility.
+        environment("CFLAGS", "-ffile-prefix-map=$cargoHome=/cargo -ffile-prefix-map=$rustSrc=/camera")
+        environment("CXXFLAGS", "-ffile-prefix-map=$cargoHome=/cargo -ffile-prefix-map=$rustSrc=/camera")
+        environment("CPPFLAGS", "-ffile-prefix-map=$cargoHome=/cargo -ffile-prefix-map=$rustSrc=/camera")
+        environment("ZERO_AR_DATE", "1")
+        environment("CARGO_INCREMENTAL", "0")
 
-        commandLine("$cargoBin/cargo", "build", "--release", "--target", triple)
+        commandLine("$cargoBin/cargo", "build", "--locked", "--release", "--target", triple)
 
         doLast {
             destSo.parentFile.mkdirs()

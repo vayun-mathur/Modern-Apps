@@ -1,0 +1,28 @@
+[package]
+name = "om-file-format-sys"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-2.0-only"
+authors = ["Terraputix <terraputix@mailbox.org>"]
+readme = "README.md"
+categories = ["compression", "encoding"]
+keywords = ["meteo", "weather", "file-format", "bindings"]
+description = "Rust bindings for om-file-format C code"
+repository = "https://github.com/open-meteo/om-file-format"
+
+build = "build.rs"
+include = [
+    "c/include/**/*.h",
+    "c/src/**/*.c",
+    "src/**/*",
+    "Cargo.toml",
+    "build.rs",
+    "README.md",
+]
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+cc = { version = "1.2", features = ["parallel"] }
+bindgen = "0.72"
