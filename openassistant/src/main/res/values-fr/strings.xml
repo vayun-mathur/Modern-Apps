@@ -2,4 +2,16 @@
 <resources>
     <string name="app_name">OpenAssistant</string>
     <string name="recording">Enregistrement en cours…</string>
+    <string name="error_ai_engine_failed">Défaillance du moteur d\'IA</string>
+    <string name="perm_desc_inference">Permet à d\'autres applications d\'accéder au service d\'inférence IA intégré à l\'appareil afin d\'extraire des données structurées.</string>
+    <string name="message_placeholder">Message…</string>
+    <string name="new_conversation">Nouvelle conversation</string>
+    <string name="mic_error_format">Erreur de micro : %1$s</string>
+    <string name="error_request_expired">La requête a expiré dans la file d\'attente</string>
+    <string name="error_ai_json_schema_mismatch">L\'IA n\'a pas réussi à renvoyer un JSON valide correspondant au schéma.</string>
+    <string name="processing_ai_inference">Traitement de l\'inférence IA...</string>
+    <string name="voice_message">Message vocal</string>
+    <string name="error_prefix">Erreur : %1$s</string>
+    <string name="inference_service">Service d\'inférence</string>
+    <string name="error_inference_timeout">Délai d\'inférence écoulé</string>
 </resources>
