@@ -9,28 +9,35 @@ body:
       label: App Name
       description: Which app is experiencing the issue?
       options:
+        - alchemist
+        - astronomy
         - calendar
         - camera
+        - chess
         - clock
         - contacts
+        - education
         - email
+        - everysync
         - files
         - findfamily
-        - alchemist
-        - chess
-        - pipes
-        - solitaire
-        - unblockjam
-        - wordmaker
         - health
         - maps
+        - messages
         - music
         - notes
+        - office
         - openassistant
         - passwords
         - pdf
         - photos
+        - pipes
+        - solitaire
+        - things
+        - travel
+        - unblockjam
         - weather
+        - wordmaker
         - youpipe
     validations:
       required: true
