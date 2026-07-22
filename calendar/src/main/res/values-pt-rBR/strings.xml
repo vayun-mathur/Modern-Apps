@@ -50,20 +50,4 @@
     <string name="dropdown_freq_format">%1$s ▼</string>
     <string name="on_days_of_week">Nos dias da semana</string>
     <string name="end">Fim</string>
-    <string name="delete_all_events"></string>
-    <string name="import_button"></string>
-    <string name="add_reminder"></string>
-    <string name="create_new_calendar"></string>
-    <string name="new_local_calendar_title"></string>
-    <string name="loading_events"></string>
-    <string name="calendar_name_label"></string>
-    <string name="select_calendar_to_import"></string>
-    <string name="calendar_widget_description"></string>
-    <string name="delete_calendar_name_confirm"></string>
-    <string name="open_location_in_navigation"></string>
-    <string name="default_layout"></string>
-    <string name="import_events_title"></string>
-    <string name="delete_this_event"></string>
-    <string name="change_color_for"></string>
-    <string name="delete_calendar_confirm"></string>
 </resources>
