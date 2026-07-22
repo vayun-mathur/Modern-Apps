@@ -418,16 +418,71 @@ fun sendTimerNotification(context: Context, timer: Timer, isStarting: Boolean) {
     }
     val endTimestamp = System.currentTimeMillis() + remaining.inWholeMilliseconds
 
+    // Create action intents
+    val pauseIntent = PendingIntent.getBroadcast(
+        context, notificationId + 1,
+        Intent(context, com.vayunmathur.clock.util.TimerActionReceiver::class.java).apply {
+            action = com.vayunmathur.clock.util.TimerActionReceiver.ACTION_PAUSE
+            putExtra("timer_id", timer.id)
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    val resumeIntent = PendingIntent.getBroadcast(
+        context, notificationId + 2,
+        Intent(context, com.vayunmathur.clock.util.TimerActionReceiver::class.java).apply {
+            action = com.vayunmathur.clock.util.TimerActionReceiver.ACTION_RESUME
+            putExtra("timer_id", timer.id)
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    val cancelIntent = PendingIntent.getBroadcast(
+        context, notificationId + 3,
+        Intent(context, com.vayunmathur.clock.util.TimerActionReceiver::class.java).apply {
+            action = com.vayunmathur.clock.util.TimerActionReceiver.ACTION_CANCEL
+            putExtra("timer_id", timer.id)
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    val resetIntent = PendingIntent.getBroadcast(
+        context, notificationId + 4,
+        Intent(context, com.vayunmathur.clock.util.TimerActionReceiver::class.java).apply {
+            action = com.vayunmathur.clock.util.TimerActionReceiver.ACTION_RESET
+            putExtra("timer_id", timer.id)
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    // Content intent to open app
+    val contentIntent = PendingIntent.getActivity(
+        context, notificationId + 5,
+        Intent(context, com.vayunmathur.clock.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
     // 2. Create the Visual Notification (UI-driven)
-    val notification = NotificationCompat.Builder(context, "active_timers_channel")
+    val builder = NotificationCompat.Builder(context, "active_timers_channel")
         .setSmallIcon(R.drawable.outline_timer_24)
-        .setContentTitle(timer.name)
+        .setContentTitle(timer.name.ifBlank { context.getString(R.string.label_timer) })
         .setUsesChronometer(true)
         .setChronometerCountDown(true)
         .setWhen(endTimestamp)
         .setOngoing(true) // Makes it harder to swipe away accidentally
         .setCategory(NotificationCompat.CATEGORY_ALARM)
-        .build()
+        .setContentIntent(contentIntent)
+        .setOnlyAlertOnce(true)
+
+    // Add actions based on timer state
+    if (timer.isRunning) {
+        builder.addAction(R.drawable.ic_pause_24, context.getString(R.string.action_pause), pauseIntent)
+    } else {
+        builder.addAction(R.drawable.ic_play_24, context.getString(R.string.action_resume), resumeIntent)
+    }
+    builder.addAction(R.drawable.ic_cancel_24, context.getString(R.string.action_cancel), cancelIntent)
+    builder.addAction(R.drawable.ic_reset_24, context.getString(R.string.action_reset), resetIntent)
+
+    val notification = builder.build()
 
     nm.notify(notificationId, notification)
 

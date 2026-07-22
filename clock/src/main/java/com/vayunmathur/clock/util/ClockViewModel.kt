@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -140,6 +141,37 @@ class ClockViewModel(
 
     private val _lapTimes = MutableStateFlow<List<Duration>>(emptyList())
     val lapTimes: StateFlow<List<Duration>> = _lapTimes.asStateFlow()
+    
+    private fun loadStopwatchState() {
+        val ctx = getApplication<Application>()
+        val ds = DataStoreUtils.getInstance(ctx)
+        viewModelScope.launch(Dispatchers.IO) {
+            val isRunning = ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)
+            val totalMs = ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: 0L
+            val startMs = ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_START) ?: 0L
+            val lapsStr = ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS) ?: ""
+            
+            _stopwatchRunning.value = isRunning
+            _stopwatchTotal.value = totalMs.milliseconds
+            _stopwatchStart.value = if (startMs > 0) Instant.fromEpochMilliseconds(startMs) else Clock.System.now()
+            
+            if (lapsStr.isNotEmpty()) {
+                _lapTimes.value = lapsStr.split(",").mapNotNull { it.toLongOrNull()?.milliseconds }
+            }
+        }
+    }
+    
+    private fun persistStopwatchState() {
+        val ctx = getApplication<Application>()
+        val ds = DataStoreUtils.getInstance(ctx)
+        viewModelScope.launch(Dispatchers.IO) {
+            ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, _stopwatchRunning.value)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, _stopwatchTotal.value.inWholeMilliseconds)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_START, _stopwatchStart.value.toEpochMilliseconds())
+            val lapsStr = _lapTimes.value.joinToString(",") { it.inWholeMilliseconds.toString() }
+            ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, lapsStr)
+        }
+    }
 
     /**
      * Elapsed time the stopwatch should display. When running this includes the
@@ -160,6 +192,7 @@ class ClockViewModel(
     )
 
     fun toggleStopwatch() {
+        val ctx = getApplication<Application>()
         if (_stopwatchRunning.value) {
             _stopwatchTotal.value = _stopwatchTotal.value + (Clock.System.now() - _stopwatchStart.value)
             _stopwatchRunning.value = false
@@ -167,16 +200,24 @@ class ClockViewModel(
             _stopwatchStart.value = Clock.System.now()
             _stopwatchRunning.value = true
         }
+        persistStopwatchState()
+        StopwatchNotificationHelper.updateNotification(ctx)
     }
 
     fun resetStopwatch() {
+        val ctx = getApplication<Application>()
         _stopwatchRunning.value = false
         _stopwatchTotal.value = Duration.ZERO
         _lapTimes.value = emptyList()
+        persistStopwatchState()
+        StopwatchNotificationHelper.updateNotification(ctx)
     }
 
     fun addLap() {
+        val ctx = getApplication<Application>()
         _lapTimes.update { it + stopwatchCountingTime.value }
+        persistStopwatchState()
+        StopwatchNotificationHelper.updateNotification(ctx)
     }
 
     // --- Timer countdown helper ----------------------------------------------
@@ -255,6 +296,7 @@ class ClockViewModel(
 
     init {
         loadCities()
+        loadStopwatchState()
     }
 
     private fun loadCities() {

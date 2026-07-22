@@ -31,6 +31,12 @@ fun createNotificationChannels(context: Context) {
             setSound(null, null) // Service handles sound via MediaPlayer
             enableVibration(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        },
+        // 3. Stopwatch channel
+        NotificationChannel("stopwatch_channel", context.getString(R.string.channel_stopwatch_name), NotificationManager.IMPORTANCE_LOW).apply {
+            description = context.getString(R.string.channel_stopwatch_description)
+            setShowBadge(false)
+            setSound(null, null)
         }
     ))
 }

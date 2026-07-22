@@ -50,6 +50,14 @@
             android:enabled="true"
             android:exported="false" />
         <receiver
+            android:name=".util.TimerActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name=".util.StopwatchActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
             android:name=".util.AlarmReceiver"
             android:enabled="true"
             android:directBootAware="true"

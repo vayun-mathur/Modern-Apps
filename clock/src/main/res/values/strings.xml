@@ -26,6 +26,8 @@
     <string name="channel_completed_timers_description">Alerts when timers finish</string>
     <string name="channel_alarms_name">Alarms</string>
     <string name="channel_alarms_description">Notifications for scheduled alarms</string>
+    <string name="channel_stopwatch_name">Stopwatch</string>
+    <string name="channel_stopwatch_description">Stopwatch controls</string>
 
     <!-- StopwatchPage column headers -->
     <string name="header_laps">Laps</string>
@@ -43,6 +45,16 @@
     <!-- TimerReceiver notifications -->
     <string name="timer_finished_title">Timer Finished</string>
     <string name="timer_finished_text">%1$s has ended!</string>
+
+    <!-- Timer notification actions -->
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_reset">Reset</string>
+
+    <!-- Stopwatch notification actions -->
+    <string name="action_lap">Lap</string>
+    <string name="action_stop">Stop</string>
 
     <!-- NewTimerDialog -->
     <string name="label_new_timer">New Timer</string>
