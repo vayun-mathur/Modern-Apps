@@ -63,7 +63,7 @@
     <string name="select_calendar_to_import">Sélectionnez le calendrier dans lequel effectuer l\'importation :</string>
     <string name="create_new_calendar">+ Créer un nouveau calendrier</string>
     <string name="default_layout">Affichage par défaut</string>
-    <string name="open_location_in_navigation">Afficher l\'emplacement</string>
+    <string name="open_location_in_navigation">Ouvrir l\'emplacement</string>
     <string name="add_reminder">Définir un rappel</string>
     <string name="calendar_widget_description">Aperçu des événements à venir ― tapoter pour ouvrir le Calendrier</string>
 </resources>
