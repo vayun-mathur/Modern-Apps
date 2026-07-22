@@ -9,4 +9,5 @@
     <string name="level">Puzzle</string>
     <string name="completed">Terminé</string>
     <string name="pack_selector">Sélection de packs</string>
+    <string name="app_name"></string>
 </resources>
