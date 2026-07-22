@@ -680,12 +680,44 @@ class YouPipeViewModel(
                         val rawVideoOnly = ex.videoOnlyStreams
                         val rawAudio = ex.audioStreams
 
-                        if (rawVideoOnly.isNotEmpty() && rawAudio.isNotEmpty()) {
-                            videoStreams = rawVideoOnly.map { it.toDomain() }.sortedWith(
+                        val sabrMethod =
+                            org.schabi.newpipe.extractor.stream.DeliveryMethod.SABR
+                        // Progressive/adaptive URL streams are preferred over SABR when both are
+                        // present; SABR is only used when the video is SABR-only.
+                        val progVideoOnly = rawVideoOnly.filter { it.deliveryMethod != sabrMethod }
+                        val progAudio = rawAudio.filter { it.deliveryMethod != sabrMethod }
+                        val sabrVideoOnly = rawVideoOnly.filter { it.deliveryMethod == sabrMethod }
+                        val sabrAudio = rawAudio.filter { it.deliveryMethod == sabrMethod }
+
+                        val useSabr = progVideoOnly.isEmpty() && sabrVideoOnly.isNotEmpty()
+
+                        if (useSabr && sabrAudio.isNotEmpty()) {
+                            val videoId = ex.id
+                            // Hand the extractor-derived SABR metadata to the playback service.
+                            sabrVideoOnly.firstOrNull {
+                                it.deliveryMethodInfo is
+                                    org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo
+                            }?.let {
+                                com.vayunmathur.youpipe.util.sabr.SabrSessionStore.putExtractorInfo(
+                                    videoId,
+                                    it.deliveryMethodInfo as
+                                        org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo
+                                )
+                            }
+                            videoStreams = sabrVideoOnly.map { it.toSabrDomain(videoId) }.sortedWith(
                                 compareByDescending<VideoStream> { it.height }
                                     .thenByDescending { codecPriority(it.codec) }
                             )
-                            audioStreams = rawAudio.map { it.toDomain() }.sortedWith(
+                            audioStreams = sabrAudio.map { it.toSabrDomain(videoId) }.sortedWith(
+                                compareByDescending<AudioStream> { it.bitrate }
+                                    .thenByDescending { audioCodecPriority(it.codec) }
+                            )
+                        } else if (progVideoOnly.isNotEmpty() && progAudio.isNotEmpty()) {
+                            videoStreams = progVideoOnly.map { it.toDomain() }.sortedWith(
+                                compareByDescending<VideoStream> { it.height }
+                                    .thenByDescending { codecPriority(it.codec) }
+                            )
+                            audioStreams = progAudio.map { it.toDomain() }.sortedWith(
                                 compareByDescending<AudioStream> { it.bitrate }
                                     .thenByDescending { audioCodecPriority(it.codec) }
                             )
@@ -1163,10 +1195,36 @@ private fun org.schabi.newpipe.extractor.stream.VideoStream.toDomain() = VideoSt
     getVideoCodecName(codec ?: ""), itagItem?.contentLength ?: 0L
 )
 
+private fun org.schabi.newpipe.extractor.stream.VideoStream.toSabrDomain(videoId: String): VideoStream {
+    val itag = itagItem?.id ?: 0
+    val url = if (deliveryMethod == org.schabi.newpipe.extractor.stream.DeliveryMethod.SABR) {
+        "sabr://$videoId?v=$itag"
+    } else {
+        content
+    }
+    return VideoStream(
+        url, width, height, bitrate, fps, "${height}p",
+        getVideoCodecName(codec ?: ""), itagItem?.contentLength ?: 0L
+    )
+}
+
 private fun org.schabi.newpipe.extractor.stream.AudioStream.toDomain() = AudioStream(
     content, bitrate, audioLocale?.language ?: "Default",
     getAudioCodecName(codec ?: ""), itagItem?.contentLength ?: 0L
 )
+
+private fun org.schabi.newpipe.extractor.stream.AudioStream.toSabrDomain(videoId: String): AudioStream {
+    val itag = itagItem?.id ?: 0
+    val url = if (deliveryMethod == org.schabi.newpipe.extractor.stream.DeliveryMethod.SABR) {
+        "sabr://$videoId?a=$itag"
+    } else {
+        content
+    }
+    return AudioStream(
+        url, bitrate, audioLocale?.language ?: "Default",
+        getAudioCodecName(codec ?: ""), itagItem?.contentLength ?: 0L
+    )
+}
 
 private fun SubtitlesStream.toSubtitleTrack() = SubtitleTrack(
     url = content,

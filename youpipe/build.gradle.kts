@@ -26,12 +26,17 @@ android {
 dependencies {
     implementation(libs.coil.compose)
     implementation(project(":youpipe:extractor"))
+    implementation(libs.quickjs.kt)
+    implementation(libs.newpipe.nanojson)
+    implementation(libs.androidx.webkit)
+    implementation(project(":youpipe:ffmpeg"))
 
     implementRoom(libs)
     implementation(project(":library:room"))
 
     implementation(libs.androidx.media3.ui.compose.material3)
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.datasource.okhttp)
 

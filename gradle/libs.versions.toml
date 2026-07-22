@@ -1,4 +1,12 @@
 [versions]
+# rhino 1.9.0 requires Android minSDK >= 26; rhino-engine only published for 1.8.x
+rhino = "1.8.1"
+nanojson = "e9d656ddb49a412a5a0a5d5ef20ca7ef09549996"
+jsr305 = "3.0.2"
+protobufJavalite = "4.35.0"
+protobufPlugin = "0.10.0"
+quickjs = "1.0.5"
+brotli = "0.1.2"
 # Build & Core Language
 agp = "9.4.0-alpha04"
 # Google Play Services for RCS attestation (DroidGuard, SafetyNet, Firebase IID)
@@ -27,7 +35,6 @@ coreKtx = "1.19.0"
 kotlinxCoroutines = "1.11.0"
 lifecycle = "2.11.0"
 litertlmAndroid = "0.14.0"
-newpipeextractor = "v0.26.3"
 sqlcipherAndroid = "4.17.0"
 sqlite = "2.7.0"
 workRuntimeKtx = "2.11.2"
@@ -106,6 +113,14 @@ androidx-camera-compose = { group = "androidx.camera", name = "camera-compose", 
 androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
 geckoview = { module = "org.mozilla.geckoview:geckoview-arm64-v8a", version.ref = "geckoview" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
+rhino-engine = { module = "org.mozilla:rhino-engine", version.ref = "rhino" }
+newpipe-nanojson = { module = "com.github.TeamNewPipe:nanojson", version.ref = "nanojson" }
+google-jsr305 = { module = "com.google.code.findbugs:jsr305", version.ref = "jsr305" }
+protobuf-javalite = { module = "com.google.protobuf:protobuf-javalite", version.ref = "protobufJavalite" }
+quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjs" }
+brotli-dec = { module = "org.brotli:dec", version.ref = "brotli" }
+javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version = "1.3.2" }
 
 # Instrumented screenshot tests (metadata generation)
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -132,6 +147,7 @@ androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compo
 
 # Media3 (ExoPlayer & Session)
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3Exoplayer" }
+androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "media3Exoplayer" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3Exoplayer" }
 androidx-media3-ui-compose-material3 = { module = "androidx.media3:media3-ui-compose-material3", version.ref = "media3Exoplayer" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3Exoplayer" }
@@ -145,7 +161,6 @@ flatgeobuf = { module = "org.wololo:flatgeobuf", version.ref = "flatgeobuf" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlinGradlePlugin" }
 litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlmAndroid" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
-newpipeextractor = { module = "com.github.TeamNewPipe:NewPipeExtractor", version.ref = "newpipeextractor" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 
 # Maps
@@ -167,6 +182,7 @@ androidx-glance-material3 = { module = "androidx.glance:glance-material3", versi
 ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
 ktor-client-websockets = { group = "io.ktor", name = "ktor-client-websockets", version.ref = "ktor" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
@@ -231,3 +247,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }

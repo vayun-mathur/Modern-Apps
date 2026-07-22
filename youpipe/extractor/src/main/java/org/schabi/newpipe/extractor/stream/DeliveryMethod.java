@@ -49,5 +49,15 @@ public enum DeliveryMethod {
      * </a> and <a href="https://www.bittorrent.org">Bitorrent's website</a> for more information
      * about the BitTorrent protocol
      */
-    TORRENT
+    TORRENT,
+
+    /**
+     * Used for {@link Stream}s served using YouTube's SABR (Server Adaptive BitRate) protocol.
+     *
+     * <p>Unlike the other delivery methods, a SABR stream is not fetched from a single URL or a
+     * manifest. The client drives a stateful session, POSTing {@code VideoPlaybackAbrRequest}
+     * messages and receiving UMP responses that carry media segments and control policies until
+     * playback ends.</p>
+     */
+    SABR
 }

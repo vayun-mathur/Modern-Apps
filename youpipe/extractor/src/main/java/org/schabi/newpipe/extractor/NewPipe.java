@@ -24,6 +24,7 @@ import org.schabi.newpipe.extractor.downloader.Downloader;
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.localization.ContentCountry;
 import org.schabi.newpipe.extractor.localization.Localization;
+import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider;
 import org.schabi.newpipe.extractor.utils.ExtractorLogger;
 
 import java.util.List;
@@ -39,6 +40,8 @@ public final class NewPipe {
     private static Downloader downloader;
     private static Localization preferredLocalization;
     private static ContentCountry preferredContentCountry;
+    @Nullable
+    private static YoutubeSessionPoTokenProvider youtubeSessionPoTokenProvider;
 
     private NewPipe() {
     }
@@ -64,6 +67,20 @@ public final class NewPipe {
 
     public static Downloader getDownloader() {
         return downloader;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+    // YouTube SABR session PoToken SPI
+    //////////////////////////////////////////////////////////////////////////*/
+
+    public static void setYoutubeSessionPoTokenProvider(
+            @Nullable final YoutubeSessionPoTokenProvider provider) {
+        youtubeSessionPoTokenProvider = provider;
+    }
+
+    @Nullable
+    public static YoutubeSessionPoTokenProvider getYoutubeSessionPoTokenProvider() {
+        return youtubeSessionPoTokenProvider;
     }
 
     /*//////////////////////////////////////////////////////////////////////////

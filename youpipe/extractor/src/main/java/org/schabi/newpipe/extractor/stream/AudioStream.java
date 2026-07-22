@@ -80,6 +80,8 @@ public final class AudioStream extends Stream {
         private AudioTrackType audioTrackType;
         @Nullable
         private ItagItem itagItem;
+        @Nullable
+        private java.io.Serializable deliveryMethodInfo;
 
         /**
          * Create a new {@link Builder} instance with its default values.
@@ -276,6 +278,19 @@ public final class AudioStream extends Stream {
         }
 
         /**
+         * Set an optional delivery-method-specific info payload (e.g. a {@code YoutubeSabrInfo}
+         * for {@link DeliveryMethod#SABR}).
+         *
+         * @param deliveryMethodInfo the payload, or null
+         * @return this {@link Builder} instance
+         */
+        public Builder setDeliveryMethodInfo(
+                @Nullable final java.io.Serializable deliveryMethodInfo) {
+            this.deliveryMethodInfo = deliveryMethodInfo;
+            return this;
+        }
+
+        /**
          * Build an {@link AudioStream} using the builder's current values.
          *
          * <p>
@@ -328,7 +343,8 @@ public final class AudioStream extends Stream {
               builder.isUrl,
               builder.mediaFormat,
               builder.deliveryMethod,
-              builder.manifestUrl);
+              builder.manifestUrl,
+              builder.deliveryMethodInfo);
         if (builder.itagItem != null) {
             this.itagItem = builder.itagItem;
             this.itag = builder.itagItem.id;

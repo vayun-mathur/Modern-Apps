@@ -2,7 +2,7 @@ package com.vayunmathur.library.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
@@ -44,7 +44,7 @@ object NetworkClient {
         isLenient = true
     }
 
-    val client = HttpClient(CIO) {
+    val client = HttpClient(OkHttp) {
         install(HttpTimeout) {
             requestTimeoutMillis = 60_000
             connectTimeoutMillis = 30_000
@@ -86,6 +86,25 @@ object NetworkClient {
             body?.let { setBody(it) }
         }
         return response.status.value to response.body<ByteArray>()
+    }
+
+    /**
+     * Like [performRequestBytes] but also returns the response headers. Used by SABR streaming,
+     * which needs the raw (binary-safe) body plus headers (e.g. Content-Type) in one request.
+     */
+    suspend fun performRequestBytesFull(
+        url: String,
+        method: String = "GET",
+        headers: Map<String, *> = emptyMap<String, Any>(),
+        body: Any? = null
+    ): Triple<Int, Map<String, List<String>>, ByteArray> {
+        val response: HttpResponse = client.request(url) {
+            this.method = HttpMethod.parse(method)
+            applyHeaders(headers)
+            body?.let { setBody(it) }
+        }
+        val respHeaders = response.headers.entries().associate { it.key to it.value }
+        return Triple(response.status.value, respHeaders, response.body<ByteArray>())
     }
 
     suspend fun performRequest(

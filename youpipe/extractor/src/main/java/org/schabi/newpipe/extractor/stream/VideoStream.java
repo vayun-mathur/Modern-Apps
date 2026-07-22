@@ -69,11 +69,26 @@ public final class VideoStream extends Stream {
         private String resolution;
         @Nullable
         private ItagItem itagItem;
+        @Nullable
+        private java.io.Serializable deliveryMethodInfo;
 
         /**
          * Create a new {@link Builder} instance with its default values.
          */
         public Builder() {
+        }
+
+        /**
+         * Set an optional delivery-method-specific info payload (e.g. a {@code YoutubeSabrInfo}
+         * for {@link DeliveryMethod#SABR}).
+         *
+         * @param deliveryMethodInfo the payload, or null
+         * @return this {@link Builder} instance
+         */
+        public Builder setDeliveryMethodInfo(
+                @Nullable final java.io.Serializable deliveryMethodInfo) {
+            this.deliveryMethodInfo = deliveryMethodInfo;
+            return this;
         }
 
         /**
@@ -272,7 +287,7 @@ public final class VideoStream extends Stream {
             }
 
             return new VideoStream(id, content, isUrl, mediaFormat, deliveryMethod, resolution,
-                    isVideoOnly, manifestUrl, itagItem);
+                    isVideoOnly, manifestUrl, itagItem, deliveryMethodInfo);
         }
     }
 
@@ -302,8 +317,9 @@ public final class VideoStream extends Stream {
                         @Nonnull final String resolution,
                         final boolean isVideoOnly,
                         @Nullable final String manifestUrl,
-                        @Nullable final ItagItem itagItem) {
-        super(id, content, isUrl, format, deliveryMethod, manifestUrl);
+                        @Nullable final ItagItem itagItem,
+                        @Nullable final java.io.Serializable deliveryMethodInfo) {
+        super(id, content, isUrl, format, deliveryMethod, manifestUrl, deliveryMethodInfo);
         if (itagItem != null) {
             this.itagItem = itagItem;
             this.itag = itagItem.id;

@@ -1,6 +1,7 @@
 package com.vayunmathur.youpipe.util
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -12,8 +13,13 @@ import com.vayunmathur.library.room.buildDatabase
 import com.vayunmathur.youpipe.data.DownloadedVideo
 import com.vayunmathur.youpipe.data.SubscriptionDatabase
 import com.vayunmathur.youpipe.ui.VideoInfo
+import com.vayunmathur.youpipe.util.sabr.SabrDownloadHelper
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.NetworkDataStream
+import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.stream.DeliveryMethod
+import org.schabi.newpipe.extractor.stream.Stream
+import org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.RandomAccessFile
@@ -53,6 +59,13 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
         val db = applicationContext.buildDatabase<SubscriptionDatabase>()
         val dir = File(applicationContext.getExternalFilesDir(null), "downloads")
         if (!dir.exists()) dir.mkdirs()
+
+        // SABR streams are encoded by the UI as "sabr://<videoId>?v=<itag>" (video) and
+        // "sabr://<videoId>?a=<itag>" (audio). They cannot be fetched over plain HTTP; drive a
+        // SABR session instead, muxing audio+video into a single mp4.
+        if (Uri.parse(videoUrl).scheme == "sabr") {
+            return@coroutineScope runSabrDownload(videoID, videoUrl, audioUrl, videoInfo, db, dir)
+        }
 
         val videoFile = File(dir, "$videoID.mp4")
         val audioFile = if (audioUrl != null) File(dir, "$videoID.m4a") else null
@@ -114,6 +127,78 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
             if (isStopped) {
                 createdFiles.forEach { if (it.exists()) it.delete() }
             }
+            DownloadManager.finishDownload(videoID)
+        }
+    }
+
+    /**
+     * Fetches a SABR audio+video pair through a [SabrDownloadHelper] session and stores the muxed
+     * result as a single mp4. The [YoutubeSabrInfo] is not carried in WorkManager input data, so it
+     * is re-obtained by re-extracting the stream page (mirroring [YouPipeViewModel] loadVideo).
+     */
+    private suspend fun runSabrDownload(
+        videoID: Long,
+        videoUrl: String,
+        audioUrl: String?,
+        videoInfo: VideoInfo,
+        db: SubscriptionDatabase,
+        dir: File,
+    ): Result {
+        val videoUri = Uri.parse(videoUrl)
+        val youtubeId = videoUri.host
+        val videoItag = videoUri.getQueryParameter("v")?.toIntOrNull()
+        val audioItag = audioUrl?.let { Uri.parse(it).getQueryParameter("a")?.toIntOrNull() }
+        if (youtubeId.isNullOrEmpty() || videoItag == null || audioItag == null) {
+            Log.e("DownloadWorker", "Malformed SABR request video=$videoUrl audio=$audioUrl")
+            DownloadManager.finishDownload(videoID)
+            return Result.failure()
+        }
+
+        val outputFile = File(dir, "$videoID.mp4")
+        val workDir = File(dir, "sabr-tmp-$videoID")
+
+        return try {
+            withContext(Dispatchers.IO) {
+                // Re-extract the stream page to recover the SABR metadata for this video.
+                val ex = ServiceList.YouTube.getStreamExtractor(
+                    "https://www.youtube.com/watch?v=$youtubeId"
+                )
+                ex.fetchPage()
+                val sabrStreams: List<Stream> = ex.videoOnlyStreams + ex.audioStreams
+                val info = sabrStreams.firstOrNull {
+                    it.deliveryMethod == DeliveryMethod.SABR &&
+                        it.deliveryMethodInfo is YoutubeSabrInfo
+                }?.deliveryMethodInfo as? YoutubeSabrInfo
+                    ?: throw IllegalStateException("No SABR info available for $youtubeId")
+
+                SabrDownloadHelper.download(
+                    context = applicationContext,
+                    videoId = youtubeId,
+                    videoItag = videoItag,
+                    audioItag = audioItag,
+                    info = info,
+                    workDir = workDir,
+                    outputFile = outputFile,
+                ) { p -> DownloadManager.updateProgress(videoID, p) }
+            }
+
+            val download =
+                DownloadedVideo(
+                    id = videoID,
+                    videoItem = videoInfo,
+                    filePath = outputFile.absolutePath,
+                    audioPath = null,
+                    timestamp = Clock.System.now()
+                )
+            db.downloadedVideoDao().upsert(download)
+            Result.success()
+        } catch (e: Exception) {
+            Log.e("DownloadWorker", "SABR download failed for $videoID", e)
+            if (outputFile.exists()) outputFile.delete()
+            Result.failure()
+        } finally {
+            workDir.deleteRecursively()
+            if (isStopped && outputFile.exists()) outputFile.delete()
             DownloadManager.finishDownload(videoID)
         }
     }

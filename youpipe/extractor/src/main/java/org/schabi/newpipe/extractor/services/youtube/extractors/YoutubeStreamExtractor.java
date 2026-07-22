@@ -68,6 +68,9 @@ import org.schabi.newpipe.extractor.services.youtube.YoutubeJavaScriptPlayerMana
 import org.schabi.newpipe.extractor.services.youtube.YoutubeMetaInfoHelper;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper;
 import org.schabi.newpipe.extractor.services.youtube.YoutubeStreamHelper;
+import org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrClientProfile;
+import org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrInfo;
+import org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrProbe;
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeChannelLinkHandlerFactory;
 import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.stream.DeliveryMethod;
@@ -93,6 +96,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -154,6 +158,14 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     private String androidStreamingUrlsPoToken;
     @Nullable
     private String iosStreamingUrlsPoToken;
+
+    // SABR (Server Adaptive BitRate) session-based streams, built lazily from the ANDROID player
+    // response when it carries a serverAbrStreamingUrl.
+    private boolean sabrStreamsBuilt;
+    @Nonnull
+    private final List<AudioStream> sabrAudioStreams = new ArrayList<>();
+    @Nonnull
+    private final List<VideoStream> sabrVideoOnlyStreams = new ArrayList<>();
 
     public YoutubeStreamExtractor(final StreamingService service, final LinkHandler linkHandler) {
         super(service, linkHandler);
@@ -682,8 +694,11 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     @Override
     public List<AudioStream> getAudioStreams() throws ExtractionException {
         assertPageFetched();
-        return getItags(ADAPTIVE_FORMATS, ItagItem.ItagType.AUDIO,
+        final List<AudioStream> streams = getItags(ADAPTIVE_FORMATS, ItagItem.ItagType.AUDIO,
                 getAudioStreamBuilderHelper(), "audio");
+        buildSabrStreamsIfNeeded();
+        streams.addAll(sabrAudioStreams);
+        return streams;
     }
 
     @Override
@@ -696,8 +711,11 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     @Override
     public List<VideoStream> getVideoOnlyStreams() throws ExtractionException {
         assertPageFetched();
-        return getItags(ADAPTIVE_FORMATS, ItagItem.ItagType.VIDEO_ONLY,
+        final List<VideoStream> streams = getItags(ADAPTIVE_FORMATS, ItagItem.ItagType.VIDEO_ONLY,
                 getVideoStreamBuilderHelper(true), "video-only");
+        buildSabrStreamsIfNeeded();
+        streams.addAll(sabrVideoOnlyStreams);
+        return streams;
     }
 
     @Override
@@ -1124,6 +1142,156 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     }
 
     @Nonnull
+    private boolean hasSabrStreamingUrl() {
+        if (playerResponse == null) {
+            return false;
+        }
+        final JsonObject streamingData = playerResponse.getObject(STREAMING_DATA);
+        return streamingData != null
+                && !streamingData.getString("serverAbrStreamingUrl", "").isEmpty();
+    }
+
+    @Nullable
+    private YoutubeSabrInfo buildSabrInfo(@Nonnull final String videoId) {
+        if (playerResponse == null) {
+            return null;
+        }
+        try {
+            return YoutubeSabrProbe.fromPlayerResponse(videoId,
+                    YoutubeSabrClientProfile.ANDROID,
+                    androidCpn == null ? generateContentPlaybackNonce() : androidCpn,
+                    playerResponse, null);
+        } catch (final Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Build the SABR audio and video-only streams once, from the ANDROID player response's
+     * {@code adaptiveFormats}. Each stream uses {@link DeliveryMethod#SABR}, has {@code isUrl=false}
+     * (its content is the serverAbrStreamingUrl, for reference only), and carries the shared
+     * {@link YoutubeSabrInfo} as its delivery-method info so the client can drive a session.
+     */
+    private void buildSabrStreamsIfNeeded() {
+        if (sabrStreamsBuilt) {
+            return;
+        }
+        sabrStreamsBuilt = true;
+        if (!hasSabrStreamingUrl()) {
+            return;
+        }
+        final String videoId;
+        try {
+            videoId = getId();
+        } catch (final Exception e) {
+            return;
+        }
+        final YoutubeSabrInfo sabrInfo = buildSabrInfo(videoId);
+        if (sabrInfo == null) {
+            return;
+        }
+        final JsonObject streamingData = playerResponse.getObject(STREAMING_DATA);
+        final String serverAbrStreamingUrl =
+                streamingData.getString("serverAbrStreamingUrl", "");
+        final JsonArray adaptiveFormats = streamingData.getArray(ADAPTIVE_FORMATS);
+        if (adaptiveFormats == null) {
+            return;
+        }
+
+        for (int i = 0; i < adaptiveFormats.size(); i++) {
+            final JsonObject formatData = adaptiveFormats.getObject(i);
+            try {
+                final ItagItem itagItem = ItagItem.getItag(formatData.getInt("itag"));
+                fillSabrItagItem(itagItem, formatData);
+                final String id = String.valueOf(itagItem.id);
+
+                if (itagItem.itagType == ItagItem.ItagType.AUDIO) {
+                    final AudioStream.Builder builder = new AudioStream.Builder()
+                            .setContent(serverAbrStreamingUrl, false)
+                            .setMediaFormat(itagItem.getMediaFormat())
+                            .setAverageBitrate(itagItem.getAverageBitrate())
+                            .setItagItem(itagItem)
+                            .setDeliveryMethod(DeliveryMethod.SABR)
+                            .setDeliveryMethodInfo(sabrInfo);
+                    String streamId = id;
+                    if (formatData.has("audioTrack")) {
+                        final JsonObject audioTrack = formatData.getObject("audioTrack");
+                        if (audioTrack.has("id")) {
+                            final String trackId = audioTrack.getString("id");
+                            final String displayName = audioTrack.getString("displayName");
+                            final String langPart = trackId.split("\\.")[0];
+                            builder.setAudioTrackId(trackId)
+                                    .setAudioTrackName(displayName != null ? displayName : langPart)
+                                    .setAudioLocale(new Locale(langPart.split("-")[0]));
+                            streamId = id + "-" + trackId;
+                        }
+                    }
+                    final String audioStreamId = streamId;
+                    final AudioStream stream = builder.setId(audioStreamId).build();
+                    if (sabrAudioStreams.stream()
+                            .noneMatch(s -> audioStreamId.equals(s.getId()))) {
+                        sabrAudioStreams.add(stream);
+                    }
+                } else if (itagItem.itagType == ItagItem.ItagType.VIDEO_ONLY) {
+                    final String resolution = itagItem.getResolutionString();
+                    final VideoStream stream = new VideoStream.Builder()
+                            .setId(id)
+                            .setContent(serverAbrStreamingUrl, false)
+                            .setMediaFormat(itagItem.getMediaFormat())
+                            .setIsVideoOnly(true)
+                            .setItagItem(itagItem)
+                            .setResolution(resolution != null ? resolution : "")
+                            .setDeliveryMethod(DeliveryMethod.SABR)
+                            .setDeliveryMethodInfo(sabrInfo)
+                            .build();
+                    if (sabrVideoOnlyStreams.stream().noneMatch(s -> id.equals(s.getId()))) {
+                        sabrVideoOnlyStreams.add(stream);
+                    }
+                }
+            } catch (final Exception e) {
+                // Skip unknown itags or malformed formats; do not fail the whole extraction.
+            }
+        }
+
+        sabrAudioStreams.sort(Comparator.comparingInt(AudioStream::getAverageBitrate).reversed());
+    }
+
+    private static void fillSabrItagItem(@Nonnull final ItagItem itagItem,
+                                         @Nonnull final JsonObject formatData) {
+        final String mimeType = formatData.getString("mimeType", "");
+        final String codec = mimeType.contains("codecs") ? mimeType.split("\"")[1] : "";
+
+        itagItem.setBitrate(formatData.getInt("bitrate"));
+        itagItem.setWidth(formatData.getInt("width"));
+        itagItem.setHeight(formatData.getInt("height"));
+        if (formatData.has("initRange")) {
+            final JsonObject initRange = formatData.getObject("initRange");
+            itagItem.setInitStart(Integer.parseInt(initRange.getString("start", "-1")));
+            itagItem.setInitEnd(Integer.parseInt(initRange.getString("end", "-1")));
+        }
+        if (formatData.has("indexRange")) {
+            final JsonObject indexRange = formatData.getObject("indexRange");
+            itagItem.setIndexStart(Integer.parseInt(indexRange.getString("start", "-1")));
+            itagItem.setIndexEnd(Integer.parseInt(indexRange.getString("end", "-1")));
+        }
+        itagItem.setQuality(formatData.getString("quality"));
+        itagItem.setCodec(codec);
+        final int fps = formatData.getInt("fps", -1);
+        if (fps != -1) {
+            itagItem.setFps(fps);
+        }
+        if (itagItem.itagType == ItagItem.ItagType.AUDIO) {
+            if (formatData.has("audioSampleRate")) {
+                itagItem.setSampleRate(Integer.parseInt(formatData.getString("audioSampleRate")));
+            }
+            itagItem.setAudioChannels(formatData.getInt("audioChannels", 2));
+        }
+        itagItem.setContentLength(Long.parseLong(formatData.getString("contentLength",
+                String.valueOf(ItagItem.CONTENT_LENGTH_UNKNOWN))));
+        itagItem.setApproxDurationMs(Long.parseLong(formatData.getString("approxDurationMs",
+                String.valueOf(ItagItem.APPROX_DURATION_MS_UNKNOWN))));
+    }
+
     private <T extends Stream> List<T> getItags(
             final String streamingDataKey,
             final ItagItem.ItagType itagTypeWanted,

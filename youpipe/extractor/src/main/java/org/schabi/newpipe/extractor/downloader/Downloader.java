@@ -6,6 +6,7 @@ import org.schabi.newpipe.extractor.localization.Localization;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -243,6 +244,50 @@ public abstract class Downloader {
      */
     public abstract Response execute(@Nonnull Request request)
             throws IOException, ReCaptchaException;
+
+    /**
+     * Do a streaming GET request: the response body is exposed as an {@link java.io.InputStream}
+     * instead of a buffered {@code byte[]}, so large SABR media batches are not held whole in
+     * memory. The compatibility default buffers the whole response; implementations backed by a
+     * real streaming HTTP client should override this to return the connection's body stream.
+     */
+    public StreamingResponse getStreaming(final String url,
+                                          @Nullable final Map<String, List<String>> headers,
+                                          @Nullable final Localization localization)
+            throws IOException, ReCaptchaException {
+        final Response response = get(url, headers, localization);
+        final byte[] raw = response.responseBody() == null
+                ? new byte[0] : response.responseBody().getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        return new StreamingResponse(response.responseCode(), response.responseHeaders(),
+                new ByteArrayInputStream(raw));
+    }
+
+    /**
+     * Streaming GET with a caller-supplied deadline. Implementations that support per-call
+     * timeouts should override this; the compatibility default preserves the regular behavior.
+     */
+    public StreamingResponse getStreaming(final String url,
+                                          @Nullable final Map<String, List<String>> headers,
+                                          @Nullable final Localization localization,
+                                          final long timeoutMs)
+            throws IOException, ReCaptchaException {
+        return getStreaming(url, headers, localization);
+    }
+
+    /**
+     * Do a streaming POST request. See {@link #getStreaming(String, Map, Localization)}.
+     */
+    public StreamingResponse postStreaming(final String url,
+                                           @Nullable final Map<String, List<String>> headers,
+                                           @Nullable final byte[] dataToSend,
+                                           @Nullable final Localization localization)
+            throws IOException, ReCaptchaException {
+        final Response response = post(url, headers, dataToSend, localization);
+        final byte[] raw = response.responseBody() == null
+                ? new byte[0] : response.responseBody().getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        return new StreamingResponse(response.responseCode(), response.responseHeaders(),
+                new ByteArrayInputStream(raw));
+    }
 
     @Override
     public String toString() {

@@ -33,6 +33,7 @@ public abstract class Stream implements Serializable {
     private final boolean isUrl;
     private final DeliveryMethod deliveryMethod;
     @Nullable private final String manifestUrl;
+    @Nullable private final Serializable deliveryMethodInfo;
 
     /**
      * Instantiates a new {@code Stream} object.
@@ -53,12 +54,30 @@ public abstract class Stream implements Serializable {
                   @Nullable final MediaFormat format,
                   final DeliveryMethod deliveryMethod,
                   @Nullable final String manifestUrl) {
+        this(id, content, isUrl, format, deliveryMethod, manifestUrl, null);
+    }
+
+    /**
+     * Instantiates a new {@code Stream} object carrying delivery-method-specific info.
+     *
+     * @param deliveryMethodInfo an optional {@link Serializable} payload describing how to fetch
+     *                           the stream for its {@link DeliveryMethod} (e.g. a
+     *                           {@code YoutubeSabrInfo} for {@link DeliveryMethod#SABR}), or null
+     */
+    public Stream(final String id,
+                  final String content,
+                  final boolean isUrl,
+                  @Nullable final MediaFormat format,
+                  final DeliveryMethod deliveryMethod,
+                  @Nullable final String manifestUrl,
+                  @Nullable final Serializable deliveryMethodInfo) {
         this.id = id;
         this.content = content;
         this.isUrl = isUrl;
         this.mediaFormat = format;
         this.deliveryMethod = deliveryMethod;
         this.manifestUrl = manifestUrl;
+        this.deliveryMethodInfo = deliveryMethodInfo;
     }
 
     /**
@@ -180,6 +199,20 @@ public abstract class Stream implements Serializable {
     @Nonnull
     public DeliveryMethod getDeliveryMethod() {
         return deliveryMethod;
+    }
+
+    /**
+     * Gets the delivery-method-specific info payload, if any.
+     *
+     * <p>For {@link DeliveryMethod#SABR} streams this is a {@code YoutubeSabrInfo} describing the
+     * session the client must drive to fetch media; for other delivery methods it is normally
+     * {@code null}.</p>
+     *
+     * @return the delivery method info payload or {@code null}
+     */
+    @Nullable
+    public Serializable getDeliveryMethodInfo() {
+        return deliveryMethodInfo;
     }
 
     /**

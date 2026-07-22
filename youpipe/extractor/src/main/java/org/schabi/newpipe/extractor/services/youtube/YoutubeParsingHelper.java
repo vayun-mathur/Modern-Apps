@@ -1207,6 +1207,50 @@ public final class YoutubeParsingHelper {
         return Map.of("Cookie", List.of(generateConsentCookie()));
     }
 
+    /**
+     * Add the YouTube consent cookie to an existing mutable headers map (used by SABR requests).
+     */
+    public static void addCookieHeader(@Nonnull final Map<String, List<String>> headers) {
+        if (headers.get("Cookie") == null) {
+            headers.put("Cookie", new java.util.ArrayList<>(List.of(generateConsentCookie())));
+        } else {
+            headers.get("Cookie").add(generateConsentCookie());
+        }
+    }
+
+    /**
+     * Add logged-in (cookie/authorization) headers for SABR requests. This fork does not support
+     * an authenticated YouTube session, so this is a no-op kept for API compatibility with the
+     * ported {@code sabr} package.
+     */
+    public static void addLoggedInHeaders(@Nonnull final Map<String, List<String>> headers) {
+        // No authenticated session in this fork.
+    }
+
+    /**
+     * Obtain a session-bound PO token via the configured
+     * {@link org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider}, or
+     * {@code null} if none is configured or minting fails.
+     */
+    @javax.annotation.Nullable
+    public static YoutubeSessionPoToken getSessionPoToken(
+            @Nonnull final String clientName,
+            @Nonnull final Localization localization,
+            @Nonnull final ContentCountry contentCountry) {
+        final YoutubeSessionPoTokenProvider provider =
+                org.schabi.newpipe.extractor.NewPipe.getYoutubeSessionPoTokenProvider();
+        if (provider == null) {
+            return null;
+        }
+        try {
+            return provider.getSessionPoToken(clientName, localization, contentCountry, false);
+        } catch (final Exception error) {
+            System.err.println("Could not obtain session-bound YouTube PO token: "
+                    + error.getClass().getSimpleName() + ": " + error.getMessage());
+            return null;
+        }
+    }
+
     @Nonnull
     public static String generateConsentCookie() {
         return "SOCS=" + (isConsentAccepted()

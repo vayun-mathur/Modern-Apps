@@ -8,6 +8,7 @@ import org.schabi.newpipe.extractor.utils.JavaScript;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -277,6 +278,98 @@ public final class YoutubeJavaScriptPlayerManager {
                     obfuscatedThrottlingParameter, deobfuscatedThrottlingParameter);
         } catch (final Exception e) {
             // This shouldn't happen as the function validity is checked when it is extracted
+            throw new ParsingException(
+                    "Could not run throttling parameter deobfuscation JavaScript function", e);
+        }
+    }
+
+    /**
+     * Batch-deobfuscate a set of signatures and raw throttling ({@code n}) parameters in one call,
+     * returning a {@link YoutubeApiDecoder.BatchDecodeResult}.
+     *
+     * <p>This is the local-decoding equivalent of PipePipe's remote batch decoder: it reuses this
+     * fork's per-item rhino-based decoding ({@link #deobfuscateSignature} and the throttling
+     * function) so the {@code sabr} package can resolve SABR initialization URLs.</p>
+     *
+     * @param videoId          the video ID used to fetch the base JavaScript player
+     * @param signatures       obfuscated signatures to decode (nullable/empty allowed)
+     * @param throttlingParams raw obfuscated {@code n} parameters to decode (nullable/empty allowed)
+     * @return a result mapping each obfuscated value to its decoded value
+     * @throws ParsingException if decoding fails
+     */
+    @Nonnull
+    public static YoutubeApiDecoder.BatchDecodeResult deobfuscateBatch(
+            @Nonnull final String videoId,
+            @Nullable final List<String> signatures,
+            @Nullable final List<String> throttlingParams) throws ParsingException {
+        final Map<String, String> sigResults = new HashMap<>();
+        final Map<String, String> nResults = new HashMap<>();
+        if (signatures != null) {
+            for (final String sig : signatures) {
+                if (sig != null && !sig.isEmpty() && !sigResults.containsKey(sig)) {
+                    sigResults.put(sig, deobfuscateSignature(videoId, sig));
+                }
+            }
+        }
+        if (throttlingParams != null) {
+            for (final String n : throttlingParams) {
+                if (n != null && !n.isEmpty() && !nResults.containsKey(n)) {
+                    nResults.put(n, deobfuscateThrottlingParameterRaw(videoId, n));
+                }
+            }
+        }
+        return new YoutubeApiDecoder.BatchDecodeResult(sigResults, nResults);
+    }
+
+    /**
+     * Deobfuscate a raw throttling ({@code n}) parameter (not embedded in a URL) using the base
+     * JavaScript player's throttling function, caching the result.
+     */
+    @Nonnull
+    private static String deobfuscateThrottlingParameterRaw(
+            @Nonnull final String videoId,
+            @Nonnull final String obfuscatedThrottlingParameter) throws ParsingException {
+        final String cacheResult = CACHED_THROTTLING_PARAMETERS.get(obfuscatedThrottlingParameter);
+        if (cacheResult != null) {
+            return cacheResult;
+        }
+
+        extractJavaScriptCodeIfNeeded(videoId);
+
+        if (throttlingDeobfFuncExtractionEx != null) {
+            throw throttlingDeobfFuncExtractionEx;
+        }
+
+        if (cachedThrottlingDeobfuscationFunction == null) {
+            try {
+                cachedThrottlingDeobfuscationFunctionName =
+                        YoutubeThrottlingParameterUtils.getDeobfuscationFunctionName(
+                                cachedJavaScriptPlayerCode);
+                cachedThrottlingDeobfuscationFunction =
+                        YoutubeThrottlingParameterUtils.getDeobfuscationFunction(
+                                cachedJavaScriptPlayerCode,
+                                cachedThrottlingDeobfuscationFunctionName);
+            } catch (final ParsingException e) {
+                throttlingDeobfFuncExtractionEx = e;
+                throw e;
+            } catch (final Exception e) {
+                throttlingDeobfFuncExtractionEx = new ParsingException(
+                        "Could not get throttling parameter deobfuscation JavaScript function", e);
+                throw e;
+            }
+        }
+
+        try {
+            final String deobfuscated = JavaScript.run(
+                    cachedThrottlingDeobfuscationFunction,
+                    cachedThrottlingDeobfuscationFunctionName,
+                    obfuscatedThrottlingParameter);
+            if (isNullOrEmpty(deobfuscated)) {
+                throw new IllegalStateException("Extracted n-parameter is empty");
+            }
+            CACHED_THROTTLING_PARAMETERS.put(obfuscatedThrottlingParameter, deobfuscated);
+            return deobfuscated;
+        } catch (final Exception e) {
             throw new ParsingException(
                     "Could not run throttling parameter deobfuscation JavaScript function", e);
         }

@@ -19,6 +19,8 @@ import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import okhttp3.OkHttpClient
+import com.vayunmathur.youpipe.util.sabr.SabrDashMediaSource
+import com.vayunmathur.youpipe.util.sabr.SabrSessionStore
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.isAndroidStreamingUrl
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.isIosStreamingUrl
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.isVisionOsStreamingUrl
@@ -69,17 +71,38 @@ class PlaybackService : MediaSessionService() {
         val customMediaSourceFactory = object : MediaSource.Factory {
             @Suppress("DEPRECATION")
             override fun createMediaSource(mediaItem: MediaItem): MediaSource {
-                // Check if we passed an audio URI in the tag (via onAddMediaItems)
-                // or in the extras (fallback)
-                val audioUriString = mediaItem.localConfiguration?.tag as? String
-                    ?: mediaItem.mediaMetadata.extras?.getString(EXTRA_AUDIO_URI)
-
                 val subtitleSources = mediaItem.localConfiguration?.subtitleConfigurations
                     ?.map { cfg ->
                         SingleSampleMediaSource.Factory(dataSourceFactory)
                             .setTreatLoadErrorsAsEndOfStream(true)
                             .createMediaSource(cfg, C.TIME_UNSET)
                     } ?: emptyList()
+
+                // SABR: the sabr:// video URI carries both audio and video via one MediaSource.
+                val vUri = mediaItem.localConfiguration?.uri
+                if (vUri != null && vUri.scheme == "sabr") {
+                    val videoId = vUri.host
+                        ?: throw RuntimeException("SABR media item is missing a video id: $vUri")
+                    val vitag = vUri.getQueryParameter("v")?.toIntOrNull() ?: 0
+                    val info = SabrSessionStore.getExtractorInfo(videoId)
+                    val sabrSource = try {
+                        // Blocking network bootstrap; media3 calls this off the main thread.
+                        val spec = SabrSessionStore.createSourceSpec(videoId, vitag, info)
+                        SabrDashMediaSource(this@PlaybackService, mediaItem, spec)
+                    } catch (e: Exception) {
+                        throw RuntimeException("Failed to create SABR media source for $videoId", e)
+                    }
+                    return if (subtitleSources.isNotEmpty()) {
+                        MergingMediaSource(sabrSource, *subtitleSources.toTypedArray())
+                    } else {
+                        sabrSource
+                    }
+                }
+
+                // Check if we passed an audio URI in the tag (via onAddMediaItems)
+                // or in the extras (fallback)
+                val audioUriString = mediaItem.localConfiguration?.tag as? String
+                    ?: mediaItem.mediaMetadata.extras?.getString(EXTRA_AUDIO_URI)
 
                 return if (audioUriString != null) {
                     val videoSource = ProgressiveMediaSource.Factory(dataSourceFactory)
