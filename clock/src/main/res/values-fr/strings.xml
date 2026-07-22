@@ -9,7 +9,7 @@
     <string name="set_an_alarm">Configurer une alarme</string>
     <string name="button_stop">ARRÊT</string>
     <string name="button_snooze">REPORTER (5 MIN)</string>
-    <string name="alarm_notification_wake_up">Debout !</string>
+    <string name="alarm_notification_wake_up">Réveille-toi !</string>
     <string name="alarm_ringing_notification_title">L\'alarme sonne</string>
     <string name="channel_ongoing_timers_name">Minuteurs actifs</string>
     <string name="channel_completed_timers_name">Minuteurs écoulés</string>
@@ -19,7 +19,7 @@
     <string name="lap_number_format"># %1$d</string>
     <string name="duration_ms_format">%1$d.%2$02d</string>
     <string name="duration_m_s_ms_format">%1$d:%2$02d.%3$02d</string>
-    <string name="header_split">Écart</string>
+    <string name="header_split">Diviser</string>
     <string name="header_total">Total</string>
     <string name="stopwatch_time_format">%1$d:%2$02d</string>
     <string name="button_add_minute">+ 1:00</string>
@@ -37,9 +37,9 @@
     <string name="search_city_hint">Rechercher une ville ou région…</string>
     <string name="time_am">AM</string>
     <string name="time_pm">PM</string>
-    <string name="grant_notifications_permission">Autoriser l\'envoi de notifications</string>
-    <string name="channel_ongoing_timers_description">Décomptes en cours</string>
+    <string name="grant_notifications_permission">Autoriser les notifications</string>
+    <string name="channel_ongoing_timers_description">Compte à rebours en cours</string>
     <string name="channel_completed_timers_description">Alertes lorsque les minuteurs sont écoulés</string>
     <string name="analog_clock_widget_label">Horloge analogique</string>
-    <string name="analog_clock_widget_description">Horloge analogique Material You — tapotez pour ouvrir l\'horloge</string>
+    <string name="analog_clock_widget_description">Horloge analogique Material You — appuyez pour ouvrir l\'horloge</string>
 </resources>
