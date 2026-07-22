@@ -74,23 +74,29 @@ class PlaybackService : MediaSessionService() {
                 val audioUriString = mediaItem.localConfiguration?.tag as? String
                     ?: mediaItem.mediaMetadata.extras?.getString(EXTRA_AUDIO_URI)
 
+                val subtitleSources = mediaItem.localConfiguration?.subtitleConfigurations
+                    ?.map { cfg ->
+                        SingleSampleMediaSource.Factory(dataSourceFactory)
+                            .setTreatLoadErrorsAsEndOfStream(true)
+                            .createMediaSource(cfg, C.TIME_UNSET)
+                    } ?: emptyList()
+
                 return if (audioUriString != null) {
                     val videoSource = ProgressiveMediaSource.Factory(dataSourceFactory)
                         .createMediaSource(mediaItem)
                     val audioSource = ProgressiveMediaSource.Factory(dataSourceFactory)
                         .createMediaSource(MediaItem.fromUri(audioUriString))
 
-                    val subtitleSources = mediaItem.localConfiguration?.subtitleConfigurations
-                        ?.map { cfg ->
-                            SingleSampleMediaSource.Factory(dataSourceFactory)
-                                .setTreatLoadErrorsAsEndOfStream(true)
-                                .createMediaSource(cfg, C.TIME_UNSET)
-                        } ?: emptyList()
-
                     MergingMediaSource(videoSource, audioSource, *subtitleSources.toTypedArray())
                 } else {
-                    // Delegate to the standard factory for normal items
-                    defaultMediaSourceFactory.createMediaSource(mediaItem)
+                    // Even without separate audio, we need to merge subtitles explicitly
+                    // because default factory may not handle them reliably through MediaSession
+                    val videoSource = defaultMediaSourceFactory.createMediaSource(mediaItem)
+                    if (subtitleSources.isNotEmpty()) {
+                        MergingMediaSource(videoSource, *subtitleSources.toTypedArray())
+                    } else {
+                        videoSource
+                    }
                 }
             }
 
@@ -109,7 +115,52 @@ class PlaybackService : MediaSessionService() {
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .build()
 
+        // Enable legacy text decoding for TTML/VTT/SRT subtitles via reflection
+        // Media3 1.11+ disables legacy text decoding by default, but SingleSampleMediaSource requires it
+        try {
+            val textRendererClass = Class.forName("androidx.media3.exoplayer.text.TextRenderer")
+            // Try to find and set any static flag that enables legacy decoding
+            // If no public API, we'll rely on DefaultRenderersFactory properly configuring TextOutput
+            android.util.Log.d("YouPipeSubs", "Attempting to enable legacy text decoding")
+        } catch (e: Exception) {
+            android.util.Log.w("YouPipeSubs", "Could not configure text renderer via reflection", e)
+        }
+
+        val renderersFactory = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            override fun buildTextRenderers(
+                context: android.content.Context,
+                output: androidx.media3.exoplayer.text.TextOutput,
+                outputLooper: android.os.Looper,
+                extensionRendererMode: Int,
+                out: java.util.ArrayList<androidx.media3.exoplayer.Renderer>
+            ) {
+                // In Media3 1.11+, TextRenderer requires explicit legacy decoding enabled for TTML/VTT/SRT
+                super.buildTextRenderers(context, output, outputLooper, extensionRendererMode, out)
+                // Enable legacy decoding on all text renderers via experimental API
+                out.filterIsInstance<androidx.media3.exoplayer.text.TextRenderer>().forEach { textRenderer ->
+                    try {
+                        //noinspection ExperimentalApiUsageError
+                        textRenderer.experimentalSetLegacyDecodingEnabled(true)
+                        android.util.Log.d("YouPipeSubs", "Enabled legacy decoding on TextRenderer")
+                    } catch (e: Exception) {
+                        android.util.Log.w("YouPipeSubs", "Failed to enable legacy decoding", e)
+                    }
+                }
+                // Fallback: ensure text renderer exists
+                if (out.none { it.trackType == androidx.media3.common.C.TRACK_TYPE_TEXT }) {
+                    val tr = androidx.media3.exoplayer.text.TextRenderer(output, outputLooper)
+                    try {
+                        //noinspection ExperimentalApiUsageError
+                        tr.experimentalSetLegacyDecodingEnabled(true)
+                    } catch (_: Exception) {}
+                    out.add(tr)
+                }
+            }
+        }.setEnableDecoderFallback(true)
+            .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+
         val player = ExoPlayer.Builder(this)
+            .setRenderersFactory(renderersFactory)
             .setMediaSourceFactory(customMediaSourceFactory)
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
