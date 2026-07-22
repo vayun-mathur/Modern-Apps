@@ -1,3 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="locked"></string>
+    <string name="see_details"></string>
+    <string name="recipes"></string>
+    <string name="discovered_counter"></string>
+    <string name="collection"></string>
+    <string name="used_in"></string>
+    <string name="alchemy_icon_content_description"></string>
+    <string name="item_details"></string>
+    <string name="app_name"></string>
+    <string name="locked_description"></string>
+    <string name="counter"></string>
 </resources>
