@@ -1,3 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="title"></string>
+    <string name="add_image"></string>
+    <string name="drawing"></string>
+    <string name="add_drawing"></string>
+    <string name="shrink"></string>
+    <string name="move_up"></string>
+    <string name="move_down"></string>
+    <string name="content"></string>
+    <string name="search"></string>
+    <string name="enlarge"></string>
+    <string name="app_name"></string>
 </resources>
