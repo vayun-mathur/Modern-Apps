@@ -104,4 +104,6 @@
     <string name="select_account">Select account</string>
     <string name="no_name">(No name)</string>
     <string name="contacts_count">%1$d contacts</string>
+    <string name="add_number_to_contact">Add number to contact</string>
+    <string name="create_new_contact">Create new contact</string>
 </resources>

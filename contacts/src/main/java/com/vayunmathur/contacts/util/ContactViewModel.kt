@@ -506,6 +506,10 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
      * and/or prefilled fields from a navigation intent. No-op if a draft for the same
      * [contactId] already exists — so the user's unsaved edits survive rotation.
      */
+    private fun normalizePhoneForCompare(raw: String): String {
+        return raw.filter { it.isDigit() || it == '+' }.trim()
+    }
+
     fun initEditDraft(
         contactId: Long?,
         prefillName: String? = null,
@@ -536,19 +540,59 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
             accountName = contact?.accountName ?: _lastSelectedAccount.value?.name ?: "",
             accountType = contact?.accountType ?: _lastSelectedAccount.value?.type ?: "",
             phoneNumbers = (details?.phoneNumbers ?: emptyList()).let { list ->
-                if (list.isEmpty() && prefillPhone != null)
-                    listOf(PhoneNumber(0, prefillPhone, CDKPhone.TYPE_MOBILE))
-                else list
+                if (prefillPhone != null) {
+                    val normalizedPrefill = normalizePhoneForCompare(prefillPhone)
+                    val exists = list.any { normalizePhoneForCompare(it.number) == normalizedPrefill }
+                    if (!exists) list + PhoneNumber(0, prefillPhone, CDKPhone.TYPE_MOBILE) else list
+                } else list
             },
             emails = (details?.emails ?: emptyList()).let { list ->
-                if (list.isEmpty() && prefillEmail != null)
-                    listOf(Email(0, prefillEmail, CDKEmail.TYPE_HOME))
-                else list
+                if (prefillEmail != null) {
+                    val exists = list.any { it.address.trim().equals(prefillEmail.trim(), ignoreCase = true) }
+                    if (!exists) list + Email(0, prefillEmail, CDKEmail.TYPE_HOME) else list
+                } else list
             },
             dates = details?.dates ?: emptyList(),
             addresses = details?.addresses ?: emptyList(),
             groupMemberships = details?.groups ?: emptyList(),
         )
+    }
+
+    /**
+     * Used by INSERT_OR_EDIT / SHOW_OR_CREATE_CONTACT flow when the user picks an existing
+     * contact from the dialer. Directly appends [phone] (if not already present) and saves,
+     * without opening the full editor.
+     */
+    fun addPhoneNumberToContact(
+        contactId: Long,
+        phone: String,
+        type: Int = CDKPhone.TYPE_MOBILE,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val app = getApplication<Application>()
+                // Fetch fresh from provider to avoid stale filtered list.
+                val existing = Contact.getContact(app, contactId) ?: _allContacts.value.find { it.id == contactId }
+                if (existing == null) {
+                    withContext(Dispatchers.Main) { onComplete() }
+                    return@launch
+                }
+                val normalizedNew = normalizePhoneForCompare(phone)
+                val alreadyHas = existing.details.phoneNumbers.any { normalizePhoneForCompare(it.number) == normalizedNew }
+                if (alreadyHas) {
+                    withContext(Dispatchers.Main) { onComplete() }
+                    return@launch
+                }
+                val newDetails = existing.details.copy(
+                    phoneNumbers = existing.details.phoneNumbers + PhoneNumber(0, phone, type)
+                )
+                existing.save(app, newDetails, existing.details)
+            } catch (e: Exception) {
+                Log.e("ContactViewModel", "Failed to add phone to contact $contactId", e)
+            }
+            withContext(Dispatchers.Main) { onComplete() }
+        }
     }
 
     /** Applies [transform] to the current draft, if any. */

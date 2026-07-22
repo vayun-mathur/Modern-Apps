@@ -125,15 +125,30 @@ class MainActivity : ComponentActivity() {
         }
 
         val action = intent.action
-        if (action == Intent.ACTION_VIEW || action == Intent.ACTION_EDIT || action == Intent.ACTION_INSERT
+        if (action == Intent.ACTION_VIEW
+            || action == Intent.ACTION_EDIT
+            || action == Intent.ACTION_INSERT
+            || action == Intent.ACTION_INSERT_OR_EDIT
+            || action == ContactsContract.Intents.SHOW_OR_CREATE_CONTACT
             || action == ContactsContract.QuickContact.ACTION_QUICK_CONTACT
-            || action == "com.android.contacts.action.QUICK_CONTACT") {
+            || action == "com.android.contacts.action.QUICK_CONTACT"
+        ) {
             externalRoute.value = when (action) {
                 Intent.ACTION_INSERT -> {
                     Route.EditContact(
                         contactId = null,
                         name = intent.getStringExtra(ContactsContract.Intents.Insert.NAME),
                         phone = intent.getStringExtra(ContactsContract.Intents.Insert.PHONE),
+                        email = intent.getStringExtra(ContactsContract.Intents.Insert.EMAIL),
+                        company = intent.getStringExtra(ContactsContract.Intents.Insert.COMPANY),
+                        jobTitle = intent.getStringExtra(ContactsContract.Intents.Insert.JOB_TITLE),
+                        notes = intent.getStringExtra(ContactsContract.Intents.Insert.NOTES)
+                    )
+                }
+                Intent.ACTION_INSERT_OR_EDIT, ContactsContract.Intents.SHOW_OR_CREATE_CONTACT -> {
+                    Route.InsertOrEditContact(
+                        phone = extractPhoneNumber(intent),
+                        name = intent.getStringExtra(ContactsContract.Intents.Insert.NAME),
                         email = intent.getStringExtra(ContactsContract.Intents.Insert.EMAIL),
                         company = intent.getStringExtra(ContactsContract.Intents.Insert.COMPANY),
                         jobTitle = intent.getStringExtra(ContactsContract.Intents.Insert.JOB_TITLE),
@@ -333,6 +348,15 @@ fun Navigation(viewModel: ContactViewModel, initialRoute: Route? = null, onExit:
             EditContactPage(backStack, viewModel, key, onExit = { goBack() })
         }
 
+        entry<Route.InsertOrEditContact>(metadata = ListDetailPage()) { key ->
+            InsertOrEditContactScreen(
+                viewModel = viewModel,
+                backStack = backStack,
+                insertOrEditRoute = key,
+                onExit = { goBack() }
+            )
+        }
+
         entry<Route.Settings>(metadata = ListDetailPage()) {
             SettingsPage(viewModel, backStack)
         }
@@ -396,6 +420,16 @@ sealed interface Route: NavKey {
         val contactId: Long?,
         val name: String? = null,
         val phone: String? = null,
+        val email: String? = null,
+        val company: String? = null,
+        val jobTitle: String? = null,
+        val notes: String? = null
+    ) : Route
+
+    @Serializable
+    data class InsertOrEditContact(
+        val phone: String? = null,
+        val name: String? = null,
         val email: String? = null,
         val company: String? = null,
         val jobTitle: String? = null,
