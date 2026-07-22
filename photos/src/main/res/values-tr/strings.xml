@@ -1,4 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="close">Kapat</string>
+    <string name="image_understanding_title"></string>
+    <string name="search_placeholder"></string>
+    <string name="indexing_photos"></string>
+    <string name="enable_ai_search_description"></string>
+    <string name="label_people"></string>
+    <string name="face_indexing_progress"></string>
+    <string name="enable_ai_search_button"></string>
+    <string name="search_photos"></string>
+    <string name="action_save_as_copy"></string>
+    <string name="model_downloading_title"></string>
+    <string name="image_understanding_description"></string>
+    <string name="enable_ai_search_title"></string>
+    <string name="label_map"></string>
+    <string name="title_edit_photo"></string>
+    <string name="people_scanning"></string>
+    <string name="taken_on"></string>
+    <string name="grant_image_video_permissions"></string>
+    <string name="secure_folder_auth_title"></string>
+    <string name="detecting"></string>
+    <string name="people_model_missing"></string>
+    <string name="indexing_progress_details"></string>
+    <string name="location"></string>
+    <string name="action_restore_from_secure"></string>
+    <string name="openassistant_not_found"></string>
+    <string name="secure_folder_auth_subtitle"></string>
+    <string name="people_empty"></string>
+    <string name="action_undo"></string>
+    <string name="label_gallery"></string>
+    <string name="label_trash"></string>
+    <string name="items_selected"></string>
+    <string name="enable_feature"></string>
+    <string name="photo_widget_description"></string>
+    <string name="label_secure_folder"></string>
+    <string name="action_move_to_secure"></string>
+    <string name="action_save"></string>
+    <string name="openassistant_needs_update"></string>
+    <string name="model_downloading_description"></string>
+    <string name="month_year_format"></string>
+    <string name="date_format"></string>
+    <string name="app_name"></string>
+    <string name="resolution"></string>
+    <string name="people_photo_count"></string>
+    <string name="view_360"></string>
+    <plurals name="people_in_photo">
+    </plurals>
+    <string name="grant_storage_permission"></string>
+    <string name="disable_ocr"></string>
 </resources>
