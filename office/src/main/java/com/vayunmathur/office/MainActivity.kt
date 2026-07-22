@@ -291,10 +291,10 @@ fun InitialScreen(viewModel: OfficeViewModel, onOpenDocument: () -> Unit, onNavi
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             Spacer(Modifier.height(16.dp))
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { viewModel.createNewTextDocument(); onNavigateEditor() }, Modifier.weight(1f)) { Text("New Doc") }
-                OutlinedButton(onClick = { viewModel.createNewSpreadsheet(); onNavigateEditor() }, Modifier.weight(1f)) { Text("New Sheet") }
-                OutlinedButton(onClick = { viewModel.createNewPresentation(); onNavigateEditor() }, Modifier.weight(1f)) { Text("New Slides") }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { viewModel.createNewTextDocument(); onNavigateEditor() }, modifier = Modifier.fillMaxWidth()) { Text("New Doc") }
+                OutlinedButton(onClick = { viewModel.createNewSpreadsheet(); onNavigateEditor() }, modifier = Modifier.fillMaxWidth()) { Text("New Sheet") }
+                OutlinedButton(onClick = { viewModel.createNewPresentation(); onNavigateEditor() }, modifier = Modifier.fillMaxWidth()) { Text("New Slides") }
             }
         }
     }
