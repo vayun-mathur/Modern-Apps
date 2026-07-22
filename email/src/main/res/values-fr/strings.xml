@@ -1,3 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="body_label">Corps</string>
+    <string name="test_connection_and_save">Tester la connexion et enregistrer</string>
+    <string name="reply">Répondre</string>
+    <string name="subject_label">Sujet</string>
+    <string name="save">Enregistrer</string>
+    <string name="ssl_tls">SSL/TLS</string>
+    <string name="select_account">Sélectionnez un compte</string>
+    <string name="logout_current_account">Déconnexion du compte actuel</string>
+    <string name="select_sender">Sélectionner un destinataire</string>
+    <string name="port_label">Port</string>
+    <string name="listening_for_new_mail">En attente de nouveaux messages</string>
+    <string name="starttls">STARTTLS</string>
+    <string name="to_label">À</string>
+    <string name="testing_connection">Test de connexion…</string>
+    <string name="forward">Transférer</string>
+    <string name="cancel">Annuler</string>
+    <string name="send_now">Envoyer maintenant</string>
+    <string name="host_label">Hébergeur</string>
+    <string name="selected_count">%1$d sélectionnés</string>
+    <string name="outbox_with_count">Boîte d\'envoi (%1$d)</string>
+    <string name="outbox">Boîte d\'envoi</string>
+    <string name="compose">Écrire</string>
+    <string name="from_label">De</string>
+    <string name="settings">Paramètres</string>
+    <string name="all_accounts">Tous les comptes</string>
+    <string name="email_address">Adresse e-mail</string>
+    <string name="app_name">E-mail</string>
+    <string name="add_account">Ajouter un compte</string>
+    <string name="drafts">Brouillons</string>
+    <string name="email_widget_description">Messages récents de votre boîte de réception unifiée — appuyez pour ouvrir l\'e-mail</string>
+    <string name="open_app_password_help">Ouvrir %1$s l\'aide sur les mots de passe d\'application</string>
 </resources>
