@@ -11,7 +11,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -20,6 +23,7 @@ import com.vayunmathur.astronomy.domain.engine.AltAz
 import com.vayunmathur.astronomy.domain.projection.StereographicProjection
 import com.vayunmathur.astronomy.domain.projection.ViewState
 import com.vayunmathur.astronomy.ui.TrajectoryPoint
+import com.vayunmathur.astronomy.ui.VisibleArt
 import com.vayunmathur.astronomy.ui.VisibleSky
 import kotlin.math.*
 
@@ -28,6 +32,7 @@ fun SkyCanvas(
     visibleSky: VisibleSky,
     viewState: ViewState,
     showConstellationLines: Boolean,
+    showConstellationArt: Boolean = false,
     showGrid: Boolean,
     showDeepSky: Boolean,
     showPlanets: Boolean,
@@ -38,10 +43,37 @@ fun SkyCanvas(
     onZoom: (Float) -> Unit,
     onTap: (Offset) -> Unit,
     onObjectTap: (String) -> Unit,
+    onObjectOpen: (String) -> Unit = onObjectTap,
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
     val projection = remember(viewState) { StereographicProjection(viewState) }
+
+    // Constellation-art bitmaps, decoded from assets on demand and cached.
+    val context = LocalContext.current
+    val artCache = remember { mutableMapOf<String, android.graphics.Bitmap?>() }
+    val artPaint = remember {
+        // Stellarium figure art is on a black background; additive blend makes the
+        // black vanish and only the artwork glows over the sky.
+        android.graphics.Paint().apply {
+            isFilterBitmap = true
+            isAntiAlias = true
+            alpha = 130
+            blendMode = android.graphics.BlendMode.PLUS
+        }
+    }
+    fun artBitmap(name: String): android.graphics.Bitmap? = artCache.getOrPut(name) {
+        runCatching {
+            context.assets.open("constellation_art/$name").use { android.graphics.BitmapFactory.decodeStream(it) }
+        }.getOrNull()
+    }
+
+    // Kept fresh so the pointer handler (keyed on projection/geometry, not these)
+    // always sees the latest selection + callbacks.
+    val currentSelectedId by rememberUpdatedState(selectedId)
+    val currentOnObjectTap by rememberUpdatedState(onObjectTap)
+    val currentOnObjectOpen by rememberUpdatedState(onObjectOpen)
+    val currentOnTap by rememberUpdatedState(onTap)
 
     val projectedStars = remember(visibleSky.stars, projection) {
         visibleSky.stars.mapNotNull { vs -> projection.project(vs.altAz)?.let { Triple(vs, it, vs.star.mag) } }
@@ -85,22 +117,27 @@ fun SkyCanvas(
                         if (!change.pressed && change.previousPressed) {
                             val pos = change.position
                             fun dist(a: Offset, b: Offset): Float { val dx = a.x - b.x; val dy = a.y - b.y; return sqrt(dx*dx+dy*dy) }
+                            // First tap selects/highlights an object; a second tap on the
+                            // already-selected object opens its detail page.
+                            fun handleHit(id: String) {
+                                if (id == currentSelectedId) currentOnObjectOpen(id) else currentOnObjectTap(id)
+                            }
                             val hitPlanet = projectedPlanets.firstOrNull { (_, off) -> dist(off, pos) < 48f }
                             if (hitPlanet != null) {
-                                onObjectTap("PLANET_${hitPlanet.first.id}")
+                                handleHit("PLANET_${hitPlanet.first.id}")
                             } else {
                                 val closest = projectedStars.minByOrNull { (_, off, _) -> dist(off, pos) }
                                 val hitStar = if (closest != null && dist(closest.second, pos) < 36f) closest else null
-                                if (hitStar != null) onObjectTap("STAR_${hitStar.first.star.id}")
+                                if (hitStar != null) handleHit("STAR_${hitStar.first.star.id}")
                                 else {
                                     val hitDeep = projectedDeep.firstOrNull { (_, off) -> dist(off, pos) < 40f }
-                                    if (hitDeep != null) onObjectTap(hitDeep.first.obj.id)
+                                    if (hitDeep != null) handleHit(hitDeep.first.obj.id)
                                     else {
                                         val sp = sunProj?.second
                                         val mp = moonProj?.second
-                                        if (sp != null && dist(sp, pos) < 40f) onObjectTap("SUN")
-                                        else if (mp != null && dist(mp, pos) < 40f) onObjectTap("MOON")
-                                        else onTap(pos)
+                                        if (sp != null && dist(sp, pos) < 40f) handleHit("SUN")
+                                        else if (mp != null && dist(mp, pos) < 40f) handleHit("MOON")
+                                        else currentOnTap(pos)
                                     }
                                 }
                             }
@@ -114,15 +151,37 @@ fun SkyCanvas(
         if (showGrid) drawGrid(projection, viewState)
         drawHorizon(projection, viewState)
 
+        // Constellation figure art, draped over the sphere: each image is warped
+        // through a subdivided mesh so its interior follows the same projection as
+        // the stars (not a flat triangle), keeping it glued to the stars on pan.
+        if (showConstellationArt) {
+            visibleSky.art.forEach { art ->
+                if (art.anchors.size < 3) return@forEach
+                if (art.anchors.none { projection.project(it.altAz) != null }) return@forEach
+                val bmp = artBitmap(art.image) ?: return@forEach
+                drawConstellationArt(projection, bmp, art, artPaint)
+            }
+        }
+
         if (showConstellationLines) {
             val starMap = projectedStars.associate { (vs, off, _) -> vs.star.id to off }
             visibleSky.constellations.forEach { const ->
+                var sx = 0f; var sy = 0f; var n = 0
                 const.segments.forEach { seg ->
                     if (seg.size < 2) return@forEach
                     val a = seg[0]; val b = seg[1]
                     val oa = starMap[a] ?: return@forEach
                     val ob = starMap[b] ?: return@forEach
                     drawLine(Color(0x66FFFFFF), oa, ob, 1f)
+                    sx += oa.x + ob.x; sy += oa.y + ob.y; n += 2
+                }
+                // Label the constellation near the centroid of its drawn stars.
+                if (n > 0) {
+                    drawText(
+                        textMeasurer, const.name,
+                        topLeft = Offset(sx / n, sy / n),
+                        style = TextStyle(Color(0x99B0C4FF), fontSize = 11.sp)
+                    )
                 }
             }
         }
@@ -272,6 +331,82 @@ private fun DrawScope.drawCardinalLabels(projection: com.vayunmathur.astronomy.d
         val off = projection.project(aa) ?: return@forEach
         drawText(measurer, label, topLeft = off + Offset(-6f, 6f), style = TextStyle(Color(0xFF9E9E9E), fontSize = 12.sp))
     }
+}
+
+private const val ART_MESH = 12
+
+/**
+ * Draw a constellation figure so it lies on the celestial sphere. The 3 anchors
+ * define an affine map from image pixels to 3D sky direction; a subdivided mesh
+ * of that map is then run through the real sphere projection, so the artwork
+ * curves and tracks with the stars instead of being a flat plane.
+ */
+private fun DrawScope.drawConstellationArt(
+    projection: StereographicProjection,
+    bmp: android.graphics.Bitmap,
+    art: VisibleArt,
+    paint: android.graphics.Paint
+) {
+    val a0 = art.anchors[0]; val a1 = art.anchors[1]; val a2 = art.anchors[2]
+    val v0 = altAzToVec(a0.altAz); val v1 = altAzToVec(a1.altAz); val v2 = altAzToVec(a2.altAz)
+    val inv = invert3x3(
+        a0.srcX.toDouble(), a0.srcY.toDouble(), 1.0,
+        a1.srcX.toDouble(), a1.srcY.toDouble(), 1.0,
+        a2.srcX.toDouble(), a2.srcY.toDouble(), 1.0
+    ) ?: return
+    // Per-component coefficients (a,b,c) with comp(px,py) = a*px + b*py + c.
+    fun coef(c0: Double, c1: Double, c2: Double) = doubleArrayOf(
+        inv[0]*c0 + inv[1]*c1 + inv[2]*c2,
+        inv[3]*c0 + inv[4]*c1 + inv[5]*c2,
+        inv[6]*c0 + inv[7]*c1 + inv[8]*c2
+    )
+    val cx = coef(v0[0], v1[0], v2[0])
+    val cy = coef(v0[1], v1[1], v2[1])
+    val cz = coef(v0[2], v1[2], v2[2])
+
+    val bw = bmp.width.toFloat(); val bh = bmp.height.toFloat()
+    val n = ART_MESH
+    val verts = FloatArray((n + 1) * (n + 1) * 2)
+    var k = 0
+    for (j in 0..n) {
+        val py = bh * j / n
+        for (i in 0..n) {
+            val px = bw * i / n
+            var vx = cx[0]*px + cx[1]*py + cx[2]
+            var vy = cy[0]*px + cy[1]*py + cy[2]
+            var vz = cz[0]*px + cz[1]*py + cz[2]
+            val len = sqrt(vx*vx + vy*vy + vz*vz)
+            if (len < 1e-9) return
+            vx /= len; vy /= len; vz /= len
+            val alt = asin(vz.coerceIn(-1.0, 1.0))
+            val az = atan2(vx, vy).let { if (it < 0) it + 2*PI else it }
+            val off = projection.projectMesh(AltAz(az, alt)) ?: return
+            verts[k++] = off.x; verts[k++] = off.y
+        }
+    }
+    drawIntoCanvas { canvas ->
+        canvas.nativeCanvas.drawBitmapMesh(bmp, n, n, verts, 0, null, 0, paint)
+    }
+}
+
+private fun altAzToVec(a: AltAz): DoubleArray {
+    val ca = cos(a.altRad)
+    return doubleArrayOf(ca * sin(a.azRad), ca * cos(a.azRad), sin(a.altRad))
+}
+
+private fun invert3x3(
+    m0: Double, m1: Double, m2: Double,
+    m3: Double, m4: Double, m5: Double,
+    m6: Double, m7: Double, m8: Double
+): DoubleArray? {
+    val det = m0*(m4*m8 - m5*m7) - m1*(m3*m8 - m5*m6) + m2*(m3*m7 - m4*m6)
+    if (abs(det) < 1e-12) return null
+    val id = 1.0 / det
+    return doubleArrayOf(
+        (m4*m8 - m5*m7)*id, (m2*m7 - m1*m8)*id, (m1*m5 - m2*m4)*id,
+        (m5*m6 - m3*m8)*id, (m0*m8 - m2*m6)*id, (m2*m3 - m0*m5)*id,
+        (m3*m7 - m4*m6)*id, (m1*m6 - m0*m7)*id, (m0*m4 - m1*m3)*id
+    )
 }
 
 private fun starRadius(mag: Double): Float = (4.2 - mag * 0.55).toFloat().coerceIn(0.9f, 5.5f)

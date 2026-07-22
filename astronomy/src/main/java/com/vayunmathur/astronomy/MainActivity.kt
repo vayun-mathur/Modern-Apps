@@ -8,18 +8,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import com.vayunmathur.astronomy.ui.AstronomyViewModel
-import com.vayunmathur.astronomy.ui.pages.ArSkyPage
 import com.vayunmathur.astronomy.ui.pages.ObjectDetailPage
 import com.vayunmathur.astronomy.ui.pages.SearchPage
 import com.vayunmathur.astronomy.ui.pages.SettingsPage
 import com.vayunmathur.astronomy.ui.pages.SkyMapPage
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.PermissionsChecker
+import com.vayunmathur.library.ui.dialog.DatePickerDialog
 import com.vayunmathur.library.util.DialogPage
 import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
@@ -48,10 +49,10 @@ class MainActivity : ComponentActivity() {
 @Serializable
 sealed interface Route : NavKey {
     @Serializable data object SkyMap : Route
-    @Serializable data object ArSky : Route
     @Serializable data class ObjectDetail(val id: String) : Route
     @Serializable data object Search : Route
     @Serializable data object Settings : Route
+    @Serializable data class HistoryDatePicker(val initialDate: LocalDate) : Route
 }
 
 @Composable
@@ -59,9 +60,11 @@ fun Navigation(viewModel: AstronomyViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.SkyMap)
     MainNavigation(backStack) {
         entry<Route.SkyMap>(metadata = ListPage()) { SkyMapPage(backStack, viewModel) }
-        entry<Route.ArSky>(metadata = ListPage()) { ArSkyPage(backStack, viewModel) }
         entry<Route.ObjectDetail>(metadata = DialogPage()) { route -> ObjectDetailPage(backStack, viewModel, route.id) }
-        entry<Route.Search>(metadata = DialogPage()) { SearchPage(backStack, viewModel) }
+        entry<Route.Search>(metadata = ListPage()) { SearchPage(backStack, viewModel) }
         entry<Route.Settings>(metadata = DialogPage()) { SettingsPage(backStack, viewModel) }
+        entry<Route.HistoryDatePicker>(metadata = DialogPage()) { route ->
+            DatePickerDialog(backStack, "AstroHistoryDatePicker", route.initialDate)
+        }
     }
 }

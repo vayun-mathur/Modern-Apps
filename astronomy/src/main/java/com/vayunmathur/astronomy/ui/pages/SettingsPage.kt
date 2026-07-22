@@ -8,12 +8,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.astronomy.Route
 import com.vayunmathur.astronomy.ui.AstronomyViewModel
+import com.vayunmathur.astronomy.ui.ConstellationMode
 import com.vayunmathur.library.ui.*
 import com.vayunmathur.library.util.NavBackStack
 
 @Composable
 fun SettingsPage(backStack: NavBackStack<Route>, viewModel: AstronomyViewModel) {
-    val showConst by viewModel.showConstellations.collectAsState()
+    val showConst by viewModel.constellationMode.collectAsState()
     val showGrid by viewModel.showGrid.collectAsState()
     val showDeep by viewModel.showDeepSky.collectAsState()
     val showPlanets by viewModel.showPlanets.collectAsState()
@@ -31,7 +32,26 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: AstronomyViewModel) 
     }) { padding ->
         Column(Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Display", style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Constellation lines"); Switch(checked = showConst, onCheckedChange = { viewModel.setShowConstellations(it) }) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("Constellations")
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    TextButton(onClick = { expanded = true }) {
+                        Text(
+                            when (showConst) {
+                                ConstellationMode.OFF -> "Off"
+                                ConstellationMode.LINES -> "Lines only"
+                                ConstellationMode.LINES_AND_ART -> "Lines + art"
+                            }
+                        )
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        DropdownMenuItem(text = { Text("Off") }, onClick = { viewModel.setShowConstellations(ConstellationMode.OFF); expanded = false })
+                        DropdownMenuItem(text = { Text("Lines only") }, onClick = { viewModel.setShowConstellations(ConstellationMode.LINES); expanded = false })
+                        DropdownMenuItem(text = { Text("Lines + art") }, onClick = { viewModel.setShowConstellations(ConstellationMode.LINES_AND_ART); expanded = false })
+                    }
+                }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Coordinate grid (whole sphere)"); Switch(checked = showGrid, onCheckedChange = { viewModel.setShowGrid(it) }) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Deep sky (Messier)"); Switch(checked = showDeep, onCheckedChange = { viewModel.setShowDeepSky(it) }) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("Planets / Sun / Moon"); Switch(checked = showPlanets, onCheckedChange = { viewModel.setShowPlanets(it) }) }

@@ -10,6 +10,7 @@ class CatalogRepository(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     var stars: List<Star> = emptyList(); private set
     var constellations: List<Constellation> = emptyList(); private set
+    var constellationArt: List<ConstellationArt> = emptyList(); private set
     var deepSky: List<DeepSkyObject> = emptyList(); private set
     var planets: List<OrbitalElements> = emptyList(); private set
     var earth: OrbitalElements? = null; private set
@@ -19,6 +20,7 @@ class CatalogRepository(private val context: Context) {
         if (loaded) return@withContext
         stars = loadStars()
         constellations = loadConstellations()
+        constellationArt = loadConstellationArt()
         deepSky = loadDeepSky()
         val orbital = loadOrbital()
         planets = orbital.planets
@@ -38,6 +40,12 @@ class CatalogRepository(private val context: Context) {
         val text = loadJsonAsset("catalog/constellations.json") ?: return BuiltInCatalogs.constellations
         return try { json.decodeFromString<ConstellationsCatalog>(text).constellations } catch (_: Exception) {
             try { json.decodeFromString<List<Constellation>>(text) } catch (_: Exception) { BuiltInCatalogs.constellations }
+        }
+    }
+    private fun loadConstellationArt(): List<ConstellationArt> {
+        val text = loadJsonAsset("catalog/constellation_art.json") ?: return emptyList()
+        return try { json.decodeFromString<ConstellationArtCatalog>(text).art } catch (_: Exception) {
+            try { json.decodeFromString<List<ConstellationArt>>(text) } catch (_: Exception) { emptyList() }
         }
     }
     private fun loadDeepSky(): List<DeepSkyObject> {

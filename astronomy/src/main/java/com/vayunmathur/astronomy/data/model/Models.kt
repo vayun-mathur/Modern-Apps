@@ -26,6 +26,20 @@ data class Constellation(
 )
 
 @Serializable
+data class ArtAnchor(
+    val x: Int, // pixel x in the figure image
+    val y: Int, // pixel y in the figure image
+    val hip: Int // star (catalog id) this pixel should align to
+)
+
+@Serializable
+data class ConstellationArt(
+    val abbr: String,
+    val image: String, // asset filename under constellation_art/
+    val anchors: List<ArtAnchor> // exactly 3, defines the affine placement
+)
+
+@Serializable
 data class DeepSkyObject(
     val id: String,
     val name: String,
@@ -59,6 +73,9 @@ data class StarsCatalog(val stars: List<Star>)
 
 @Serializable
 data class ConstellationsCatalog(val constellations: List<Constellation>)
+
+@Serializable
+data class ConstellationArtCatalog(val art: List<ConstellationArt>)
 
 @Serializable
 data class DeepSkyCatalog(val objects: List<DeepSkyObject>)

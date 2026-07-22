@@ -35,6 +35,12 @@ data class VisibleSun(val altAz: AltAz, val raDec: RaDec, val distanceAu: Double
 data class VisibleMoon(val altAz: AltAz, val raDec: RaDec, val phase: Double, val illumination: Double, val ageDays: Double)
 data class VisibleDeepSky(val obj: com.vayunmathur.astronomy.data.model.DeepSkyObject, val altAz: AltAz, val raDec: RaDec)
 
+enum class ConstellationMode { OFF, LINES, LINES_AND_ART }
+
+/** One anchor of a constellation figure: the image pixel and where it currently sits on the sky. */
+data class VisibleArtAnchor(val srcX: Float, val srcY: Float, val altAz: AltAz)
+data class VisibleArt(val abbr: String, val image: String, val anchors: List<VisibleArtAnchor>)
+
 @OptIn(ExperimentalTime::class)
 data class VisibleSky(
     val stars: List<VisibleStar> = emptyList(),
@@ -46,7 +52,8 @@ data class VisibleSky(
     val jd: Double = 0.0,
     val observer: ObserverLocation? = null,
     val time: Instant = Clock.System.now(),
-    val constellations: List<ConstellationLine> = emptyList()
+    val constellations: List<ConstellationLine> = emptyList(),
+    val art: List<VisibleArt> = emptyList()
 )
 
 data class ConstellationLine(val abbr: String, val name: String, val segments: List<List<Int>>)
@@ -57,6 +64,7 @@ data class SearchResult(val id: String, val title: String, val subtitle: String,
 class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
     private val context = getApplication<Application>()
     private val catalog = CatalogRepository(context)
+    private var starIndex: Map<Int, com.vayunmathur.astronomy.data.model.Star> = emptyMap()
     private val ds = DataStoreUtils.getInstance(context)
     private val orientationMgr = OrientationManager(context)
 
@@ -73,8 +81,8 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
     private val _fovDeg = MutableStateFlow(70f)
     val fovDeg: StateFlow<Float> = _fovDeg
 
-    private val _showConstellations = MutableStateFlow(true)
-    val showConstellations: StateFlow<Boolean> = _showConstellations
+    private val _constellationMode = MutableStateFlow(ConstellationMode.LINES)
+    val constellationMode: StateFlow<ConstellationMode> = _constellationMode
     private val _showGrid = MutableStateFlow(false)
     val showGrid: StateFlow<Boolean> = _showGrid
     private val _showDeepSky = MutableStateFlow(true)
@@ -130,6 +138,14 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
             ConstellationLine(c.abbr, c.name, c.lines)
         }
 
+        val art = catalog.constellationArt.mapNotNull { a ->
+            val resolved = a.anchors.map { an -> an to starIndex[an.hip] }
+            if (resolved.any { it.second == null }) return@mapNotNull null
+            VisibleArt(a.abbr, a.image, resolved.map { (an, st) ->
+                VisibleArtAnchor(an.x.toFloat(), an.y.toFloat(), CoordinateTransforms.raDecToAltAz(RaDec(st!!.ra, st.dec), lst, obs.latRad))
+            })
+        }
+
         val deep = catalog.deepSky.map { obj ->
             val rd = RaDec(obj.ra, obj.dec)
             val aa = CoordinateTransforms.raDecToAltAz(rd, lst, obs.latRad)
@@ -164,7 +180,8 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
             jd = jd,
             observer = obs,
             time = time,
-            constellations = constLines
+            constellations = constLines,
+            art = art
         )
     }
 
@@ -243,7 +260,7 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         loadPrefs()
-        viewModelScope.launch { catalog.loadAll(); _catalogReady.value = true }
+        viewModelScope.launch { catalog.loadAll(); starIndex = catalog.stars.associateBy { it.id }; _catalogReady.value = true }
         viewModelScope.launch { orientationMgr.orientation.collect { _deviceOrientation.value = it } }
         orientationMgr.start()
         _viewCenter.value = CenterOption.DevicePointing
@@ -253,7 +270,7 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun loadPrefs() {
-        _showConstellations.value = ds.getBoolean("astro_show_const", true)
+        _constellationMode.value = runCatching { ConstellationMode.valueOf(ds.getString("astro_const_mode") ?: "LINES") }.getOrDefault(ConstellationMode.LINES)
         _showGrid.value = ds.getBoolean("astro_show_grid", true) // full-sphere grid per request
         _showDeepSky.value = ds.getBoolean("astro_show_deep", true)
         _showPlanets.value = ds.getBoolean("astro_show_planets", true)
@@ -271,8 +288,9 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun saveBool(key: String, v: Boolean) { viewModelScope.launch { ds.setBoolean(key, v) } }
     private fun saveDouble(key: String, v: Double) { viewModelScope.launch { ds.setDouble(key, v) } }
+    private fun saveString(key: String, v: String) { viewModelScope.launch { ds.setString(key, v) } }
 
-    fun setShowConstellations(v: Boolean) { _showConstellations.value = v; saveBool("astro_show_const", v) }
+    fun setShowConstellations(mode: ConstellationMode) { _constellationMode.value = mode; saveString("astro_const_mode", mode.name) }
     fun setShowGrid(v: Boolean) { _showGrid.value = v; saveBool("astro_show_grid", v) }
     fun setShowDeepSky(v: Boolean) { _showDeepSky.value = v; saveBool("astro_show_deep", v) }
     fun setShowPlanets(v: Boolean) { _showPlanets.value = v; saveBool("astro_show_planets", v) }

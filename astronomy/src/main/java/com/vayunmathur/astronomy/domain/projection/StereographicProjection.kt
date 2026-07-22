@@ -9,10 +9,20 @@ class StereographicProjection(private val viewState: ViewState) : SkyProjection 
     private val cosCenterAlt = cos(viewState.centerAltRad)
     private val centerAz = viewState.centerAzRad
     private val fovRad = viewState.fovRad.coerceIn(Math.toRadians(1.0), Math.toRadians(150.0))
-    private val halfFov = fovRad / 2.0 + 0.15
     private val scale: Double = run {
         val rhoEdge = 2.0 * tan(fovRad / 2.0 / 2.0)
         if (rhoEdge < 1e-9) 1.0 else (viewState.screenW * 0.5) / rhoEdge
+    }
+    // Cull to the disk that circumscribes the whole screen rectangle so the sky
+    // fills the entire viewport (no circular cutout / vignette). Since
+    // rho(theta) = 2*tan(theta/2)*scale, invert at the screen-corner radius to
+    // get the limiting angular distance that still reaches the corners.
+    private val halfFov = run {
+        val w = viewState.screenW.toDouble()
+        val h = viewState.screenH.toDouble()
+        val cornerRho = 0.5 * sqrt(w * w + h * h)
+        val thetaCorner = 2.0 * atan((cornerRho / scale) / 2.0)
+        (thetaCorner + Math.toRadians(2.0)).coerceIn(Math.toRadians(1.0), Math.toRadians(179.0))
     }
 
     // Full sphere: always include below-horizon for grid + user request to keep below-horizon objects visible
@@ -24,6 +34,19 @@ class StereographicProjection(private val viewState: ViewState) : SkyProjection 
     override fun project(altAz: AltAz): Offset? {
         val theta = angularDist(altAz)
         if (theta > halfFov) return null
+        return projectCore(altAz, theta)
+    }
+
+    // Like [project] but without the on-screen FOV cull, so constellation-art mesh
+    // vertices stay continuous even where they run past the visible disk. Only the
+    // antipode (where stereographic projection diverges) is rejected.
+    fun projectMesh(altAz: AltAz): Offset? {
+        val theta = angularDist(altAz)
+        if (theta > Math.toRadians(175.0)) return null
+        return projectCore(altAz, theta)
+    }
+
+    private fun projectCore(altAz: AltAz, theta: Double): Offset {
         if (theta < 1e-9) return Offset(viewState.screenW / 2, viewState.screenH / 2)
         val rho = 2.0 * tan(theta / 2.0) * scale
         val sinAlt = sin(altAz.altRad); val cosAlt = cos(altAz.altRad)

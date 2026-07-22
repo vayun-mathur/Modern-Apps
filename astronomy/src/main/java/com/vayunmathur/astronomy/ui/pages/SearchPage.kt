@@ -31,7 +31,10 @@ fun SearchPage(backStack: NavBackStack<Route>, viewModel: AstronomyViewModel) {
                         trailingContent = { IconChevronRight() },
                         modifier = Modifier.clickable {
                             if (!r.id.startsWith("CONST_")) {
-                                                                viewModel.selectObject(r.id)
+                                viewModel.selectObject(r.id)
+                                // Drop the search page from the stack so back from the
+                                // detail page returns straight to the sky map.
+                                backStack.pop()
                                 backStack.add(Route.ObjectDetail(r.id))
                             }
                         }
