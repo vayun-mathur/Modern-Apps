@@ -24,7 +24,7 @@
     <string name="does_not_repeat">Ne pas répéter</string>
     <string name="repeats">Se répète</string>
     <string name="no_account">(Sans compte)</string>
-    <string name="calendar_id_label">ID : %1$d</string>
+    <string name="calendar_id_label">ID : %1$d</string>
     <string name="choose_calendar">Sélectionner le calendrier</string>
     <string name="local_account">(Local)</string>
     <string name="go_to_date">Aller à la date</string>
@@ -33,15 +33,15 @@
     <string name="dropdown_freq_format">%1$s ▼</string>
     <string name="never">Jamais</string>
     <string name="until">Jusque</string>
-    <string name="until_date">Jusque : %1$s</string>
+    <string name="until_date">Jusque : %1$s</string>
     <string name="new_local_calendar">Nouveau calendrier local</string>
     <string name="calendar_name">Nom du calendrier</string>
-    <string name="choose_color">Couleur :</string>
+    <string name="choose_color">Couleur :</string>
     <string name="change_color_for">Modifier la couleur de ce calendrier</string>
     <string name="change_color">Modifier la couleur</string>
     <string name="delete_calendar">Supprimer le calendrier</string>
-    <string name="delete_calendar_confirm">Voulez-vous vraiment supprimer ce calendrier ? Cela supprimera tous les événements de ce calendrier.</string>
-    <string name="delete_calendar_name_confirm">Voulez-vous vraiment supprimer \"%1$s\" ? Cela supprimera tous les événements de ce calendrier.</string>
+    <string name="delete_calendar_confirm">Voulez-vous vraiment supprimer ce calendrier ? Cela supprimera tous les événements de ce calendrier.</string>
+    <string name="delete_calendar_name_confirm">Voulez-vous vraiment supprimer \"%1$s\" ? Cela supprimera tous les événements de ce calendrier.</string>
     <string name="rename_calendar">Renommer le calendrier</string>
     <string name="new_name">Nouveau nom</string>
     <string name="create_a_calendar">Créer un calendrier</string>
@@ -60,7 +60,7 @@
     <string name="calendar_name_label">Nom du calendrier</string>
     <string name="loading_events">Chargement des événements…</string>
     <string name="import_events_title">Importer des événements</string>
-    <string name="select_calendar_to_import">Sélectionnez le calendrier dans lequel effectuer l\'importation :</string>
+    <string name="select_calendar_to_import">Sélectionnez le calendrier dans lequel effectuer l\'importation :</string>
     <string name="create_new_calendar">+ Créer un nouveau calendrier</string>
     <string name="default_layout">Affichage par défaut</string>
     <string name="open_location_in_navigation">Afficher l\'emplacement</string>
