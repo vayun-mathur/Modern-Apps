@@ -36,16 +36,4 @@
     <string name="enable_ai_search_button">Einschalten</string>
     <string name="model_downloading_title">Lade KI Modell herunter</string>
     <string name="model_downloading_description">Das KI Modell wird herungergeladen, dies könne je nach Verbindung einige Minuten dauern.</string>
-    <string name="label_people"></string>
-    <string name="face_indexing_progress"></string>
-    <string name="people_scanning"></string>
-    <string name="people_model_missing"></string>
-    <string name="people_empty"></string>
-    <string name="enable_feature"></string>
-    <string name="photo_widget_description"></string>
-    <string name="openassistant_needs_update"></string>
-    <string name="people_photo_count"></string>
-    <string name="view_360"></string>
-    <plurals name="people_in_photo">
-    </plurals>
 </resources>
