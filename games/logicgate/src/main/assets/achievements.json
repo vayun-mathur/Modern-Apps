@@ -1,15 +1,10 @@
 [
   {"id": "first_gate", "name": "First Light", "description": "Complete your first gate"},
-  {"id": "not_complete", "name": "Inverter", "description": "Build NOT from NAND"},
-  {"id": "and_complete", "name": "Conjunction", "description": "Build AND"},
-  {"id": "or_complete", "name": "Disjunction", "description": "Build OR"},
-  {"id": "xor_complete", "name": "Difference Engine", "description": "Build XOR"},
-  {"id": "foundation_complete", "name": "Foundation", "description": "Complete Foundation chapter", "targetProgress": 6},
-  {"id": "routing_complete", "name": "Router", "description": "Complete Routing chapter", "targetProgress": 3},
-  {"id": "arith_complete", "name": "Arithmetician", "description": "Complete Arithmetic chapter", "targetProgress": 4},
-  {"id": "memory_complete", "name": "Mnemosyne", "description": "Complete Memory chapter", "targetProgress": 3},
-  {"id": "all_levels", "name": "NAND to CPU", "description": "Build the 8-bit CPU", "targetProgress": 18},
-  {"id": "optimal_not", "name": "Optimal NOT", "description": "NOT with optimal NANDs"},
-  {"id": "optimal_xor", "name": "Optimal XOR", "description": "XOR with optimal NANDs"},
-  {"id": "cpu_complete", "name": "Computer", "description": "Complete CPU level"}
+  {"id": "foundation_complete", "name": "Foundation", "description": "Complete Foundation chapter (6 levels)", "targetProgress": 6},
+  {"id": "routing_complete", "name": "Router", "description": "Complete Routing chapter (3 levels)", "targetProgress": 3},
+  {"id": "arith_complete", "name": "Arithmetician", "description": "Complete Arithmetic chapter (4 levels)", "targetProgress": 4},
+  {"id": "memory_complete", "name": "Mnemosyne", "description": "Complete Memory chapter (3 levels)", "targetProgress": 3},
+  {"id": "cpu_complete", "name": "CPU Architect", "description": "Complete CPU chapter (2 levels)", "targetProgress": 2},
+  {"id": "optimal_5", "name": "Perfectionist", "description": "Build 5 levels with optimal NAND count", "targetProgress": 5},
+  {"id": "all_levels", "name": "NAND to CPU", "description": "Complete all 18 levels and build the 8-bit CPU", "targetProgress": 18}
 ]

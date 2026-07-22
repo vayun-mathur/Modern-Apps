@@ -247,13 +247,25 @@ class LogicViewModel(application: Application) : AndroidViewModel(application) {
 
             repo.incCircuitsChecked()
             achievementsManager.onAchievementUnlocked("first_gate")
-            achievementsManager.onProgressUpdated("all_levels", repo.totalCompleted())
-            achievementsManager.onProgressUpdated("foundation_complete", _completedIds.value.count { Levels.byId[it]?.chapter == ChapterId.FOUNDATION })
-            achievementsManager.onProgressUpdated("arith_complete", _completedIds.value.count { Levels.byId[it]?.chapter == ChapterId.ARITH })
-            if (cost <= level.optimalNands) {
-                achievementsManager.onAchievementUnlocked("optimal_${level.id.lowercase()}")
+            val allCompleted = _completedIds.value
+            val optimalCount = _completedIds.value.mapNotNull { id -> Levels.byId[id] }.count { ld ->
+                val best = _bestNands.value[ld.id] ?: 9999
+                best <= ld.optimalNands
             }
-            achievementsManager.onAchievementUnlocked("${level.id.lowercase()}_complete")
+            achievementsManager.onProgressUpdated("optimal_5", optimalCount)
+            achievementsManager.onProgressUpdated("all_levels", repo.totalCompleted())
+            // per chapter progress
+            Levels.chapters.forEach { ch ->
+                val count = allCompleted.count { Levels.byId[it]?.chapter == ch.id }
+                val key = when (ch.id) {
+                    ChapterId.FOUNDATION -> "foundation_complete"
+                    ChapterId.ROUTING -> "routing_complete"
+                    ChapterId.ARITH -> "arith_complete"
+                    ChapterId.MEMORY -> "memory_complete"
+                    ChapterId.CPU -> "cpu_complete"
+                }
+                achievementsManager.onProgressUpdated(key, count)
+            }
 
             // cache next level
             val chapterLevelIds = Levels.chapters.find { it.id == level.chapter }?.levelIds ?: emptyList()
