@@ -1,4 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Reloj</string>
+    <string name="alarm_ringing_notification_title"></string>
+    <string name="button_add_minute"></string>
+    <string name="button_cancel"></string>
+    <string name="label_timer"></string>
+    <string name="header_total"></string>
+    <string name="timer_finished_text"></string>
+    <string name="time_am"></string>
+    <string name="label_new_timer"></string>
+    <string name="analog_clock_widget_description"></string>
+    <string name="alarm_notification_wake_up"></string>
+    <string name="channel_completed_timers_description"></string>
+    <string name="label_clock"></string>
+    <string name="search_city_hint"></string>
+    <string name="select_cities_title"></string>
+    <string name="button_save"></string>
+    <string name="time_pm"></string>
+    <string name="analog_clock_widget_label"></string>
+    <string name="channel_alarms_name"></string>
+    <string name="button_stop"></string>
+    <string name="field_label"></string>
+    <string name="button_snooze"></string>
+    <string name="set_an_alarm"></string>
+    <string name="stopwatch_time_format"></string>
+    <string name="field_minutes"></string>
+    <string name="lap_number_format"></string>
+    <string name="timer_finished_title"></string>
+    <string name="set_a_timer"></string>
+    <string name="field_hours"></string>
+    <string name="field_seconds"></string>
+    <string name="duration_ms_format"></string>
+    <string name="channel_ongoing_timers_name"></string>
+    <string name="label_alarm"></string>
+    <string name="header_split"></string>
+    <string name="label_stopwatch"></string>
+    <string name="grant_notifications_permission"></string>
+    <string name="duration_m_s_ms_format"></string>
+    <string name="channel_alarms_description"></string>
+    <string name="channel_completed_timers_name"></string>
+    <string name="header_laps"></string>
+    <string name="channel_ongoing_timers_description"></string>
+    <string name="no_alarms"></string>
 </resources>
