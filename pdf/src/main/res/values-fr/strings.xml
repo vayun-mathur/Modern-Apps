@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PDF</string>
+    <string name="safe_pdf_error">Ce PDF n\'a pas pu être ouvert par la visionneuse sécurisée. Il est peut-être chiffré ou utilise des fonctionnalités non prises en charge.</string>
+    <string name="open_pdf">Ouvrir le PDF</string>
+    <string name="share_pdf">Partager le PDF</string>
+    <string name="unsupported_version">Cette application nécessite soit Android 15, soit une version entièrement mise à jour des services Google Play. Si vous ne pouvez satisfaire à aucune de ces conditions, votre appareil n\'est malheureusement pas pris en charge.</string>
+    <string name="pdf_save">Sauvegarder</string>
+    <string name="upload_image">Télécharger une image</string>
+    <string name="request_camera_permission">Demande d\'autorisation d\'accès à la caméra</string>
+    <string name="capture_pdf">Créer un fichier PDF</string>
+    <string name="pdf_save_error">Erreur lors de l\'enregistrement du PDF</string>
+    <string name="capture_pdf_title">Créer un fichier PDF</string>
+    <string name="search_label">Trouver</string>
+    <string name="pdf_save_as_copy">Enregistrer une copie</string>
+    <string name="pdf_saved">PDF enregistré avec succès</string>
+    <string name="continue_label">Continuer</string>
+    <string name="crop_image">Recadrer l\'image</string>
+    <string name="auto_detect">Détection automatique</string>
+    <string name="safe_pdf_viewer_title">Visionneuse PDF (sécurisé)</string>
 </resources>
