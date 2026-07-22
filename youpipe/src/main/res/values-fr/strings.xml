@@ -89,4 +89,9 @@
     <string name="action_update">Actualiser</string>
     <string name="label_hide_shorts">Masquer les shorts</string>
     <string name="action_more_like_this">Autres articles similaires</string>
+    <string name="preset_discover_more"></string>
+    <string name="label_dial_fresh"></string>
+    <string name="label_hide_live"></string>
+    <string name="label_no_channels"></string>
+    <string name="preset_mostly_subscriptions"></string>
 </resources>
