@@ -388,23 +388,25 @@ fun VideoPlayer(
                     }
 
                     if (hasAudio) {
-                        Box {
-                            Surface(
-                                onClick = { isLanguageMenuExpanded = true },
-                                color = Color.Black.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = language, color = Color.White, style = MaterialTheme.typography.labelMedium)
-                                    IconArrowDropDown(tint = Color.White)
+                        if (languages.size > 1) {
+                            Box {
+                                Surface(
+                                    onClick = { isLanguageMenuExpanded = true },
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(text = language, color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                        IconArrowDropDown(tint = Color.White)
+                                    }
                                 }
-                            }
-                            DropdownMenu(expanded = isLanguageMenuExpanded, onDismissRequest = { isLanguageMenuExpanded = false }) {
-                                languages.forEach { stream ->
-                                    DropdownMenuItem(
-                                        text = { Text(stream) },
-                                        onClick = { language = stream; currentAudioStream = audioStreams.find { it.language == stream && it.bitrate == currentAudioStream?.bitrate } ?: audioStreams.first { it.language == stream }; isLanguageMenuExpanded = false }
-                                    )
+                                DropdownMenu(expanded = isLanguageMenuExpanded, onDismissRequest = { isLanguageMenuExpanded = false }) {
+                                    languages.forEach { stream ->
+                                        DropdownMenuItem(
+                                            text = { Text(stream) },
+                                            onClick = { language = stream; currentAudioStream = audioStreams.find { it.language == stream && it.bitrate == currentAudioStream?.bitrate } ?: audioStreams.first { it.language == stream }; isLanguageMenuExpanded = false }
+                                        )
+                                    }
                                 }
                             }
                         }
