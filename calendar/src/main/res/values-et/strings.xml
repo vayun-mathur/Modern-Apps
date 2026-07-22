@@ -66,4 +66,11 @@
     <string name="default_layout">Vaikimisi paigutus</string>
     <string name="add_reminder">Lisa meeldetuletus</string>
     <string name="calendar_widget_description">Tulevaset sündmused ühe vaatena - klõpsa ja ava Kalender</string>
+    <string name="on_label">Aeg</string>
+    <string name="month_option_day_of_month">Kuu %1$d-ndal päeval</string>
+    <string name="month_option_nth_weekday">%1$s %2$s</string>
+    <string name="year_option_month_day">%1$s %2$d</string>
+    <string name="month_option_last_weekday">Viimane %1$s</string>
+    <string name="year_option_day_of_year">Aasta %1$d-l päeval</string>
+    <string name="year_option_week">Aasta %1$d-l nädalal, %2$s</string>
 </resources>
