@@ -64,4 +64,6 @@
     <string name="default_layout"></string>
     <string name="import_events_title"></string>
     <string name="delete_this_event"></string>
+    <string name="change_color_for"></string>
+    <string name="delete_calendar_confirm"></string>
 </resources>
