@@ -129,25 +129,4 @@
     <string name="section_last_night">Letzte Nacht</string>
     <string name="section_quick_stats">Schnellstatistik</string>
     <string name="section_today_activity">Heute</string>
-    <string name="label_hrv_rmssd"></string>
-    <string name="label_workouts"></string>
-    <string name="nutrition_breakdown"></string>
-    <string name="label_lean_body_mass"></string>
-    <string name="metric_body_water_mass"></string>
-    <string name="label_mindfulness"></string>
-    <string name="label_exercise"></string>
-    <string name="label_body_water_mass"></string>
-    <string name="no_workouts"></string>
-    <string name="label_total_exercise"></string>
-    <string name="nutrient_progress_format"></string>
-    <string name="unit_fl"></string>
-    <string name="metric_exercise_duration"></string>
-    <string name="value_unit_space_format"></string>
-    <string name="label_basal"></string>
-    <string name="unit_brpm"></string>
-    <string name="metric_lean_body_mass"></string>
-    <string name="label_bone_mass"></string>
-    <string name="section_workouts"></string>
-    <string name="k_format"></string>
-    <string name="log_meal"></string>
 </resources>
