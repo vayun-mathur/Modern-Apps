@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Astronomy</string>
+    <string name="search">Search sky</string>
+    <string name="settings">Settings</string>
+    <string name="ar_mode">AR Mode</string>
+    <string name="time_travel">Time</string>
+    <string name="now">Now</string>
+    <string name="grant_location">Grant Location Permission</string>
+    <string name="grant_camera">Grant Camera Permission</string>
+    <string name="no_location">Location unavailable — set manually in settings</string>
+    <string name="mag_limit">Magnitude limit</string>
+    <string name="show_constellation_lines">Constellation lines</string>
+    <string name="show_grid">Coordinate grid</string>
+    <string name="show_deep_sky">Deep sky (Messier)</string>
+    <string name="show_planets">Planets &amp; Moon &amp; Sun</string>
+    <string name="night_mode">Night mode (red)</string>
+    <string name="device_pointing">Device pointing</string>
+    <string name="rise">Rise</string>
+    <string name="transit">Transit</string>
+    <string name="set">Set</string>
+    <string name="never_up">Never rises</string>
+    <string name="circumpolar">Circumpolar</string>
+    <string name="object_detail">Details</string>
+    <string name="center_on_object">Center</string>
+    <string name="azimuth">Az</string>
+    <string name="altitude">Alt</string>
+</resources>
