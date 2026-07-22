@@ -214,6 +214,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _timerCountdown = MutableStateFlow(0)
     val timerCountdown = _timerCountdown.asStateFlow()
+    private var timerCountdownJob: kotlinx.coroutines.Job? = null
 
     private val _qrResult = MutableStateFlow<String?>(null)
     val qrResult = _qrResult.asStateFlow()
@@ -1281,7 +1282,13 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     @android.annotation.SuppressLint("MissingPermission")
     fun toggleHighSpeedRecording() {
-        val videoCapture = highSpeedVideoCapture ?: return
+        // Cancel countdown if active
+        if (_timerCountdown.value > 0) {
+            timerCountdownJob?.cancel()
+            timerCountdownJob = null
+            _timerCountdown.value = 0
+            return
+        }
 
         if (_isRecording.value) {
             highSpeedRecording?.stop()
@@ -1289,6 +1296,28 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             stopRecordingTimer()
             return
         }
+
+        val timer = _timerDuration.value
+        if (timer.seconds > 0) {
+            // Start countdown before recording
+            timerCountdownJob = viewModelScope.launch {
+                for (i in timer.seconds downTo 1) {
+                    _timerCountdown.value = i
+                    delay(1000)
+                }
+                _timerCountdown.value = 0
+                timerCountdownJob = null
+                startHighSpeedRecording()
+            }
+            return
+        }
+
+        startHighSpeedRecording()
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun startHighSpeedRecording() {
+        val videoCapture = highSpeedVideoCapture ?: return
 
         val contentValues = MediaStoreSaver.videoValues("SLOMO_${MediaStoreSaver.timestamp()}")
 
@@ -1959,6 +1988,14 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     @android.annotation.SuppressLint("MissingPermission")
     fun toggleRecording() {
+        // Cancel countdown if active
+        if (_timerCountdown.value > 0) {
+            timerCountdownJob?.cancel()
+            timerCountdownJob = null
+            _timerCountdown.value = 0
+            return
+        }
+
         if (_isRecording.value) {
             currentRecording?.stop()
             currentRecording = null
@@ -1966,6 +2003,26 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             return
         }
 
+        val timer = _timerDuration.value
+        if (timer.seconds > 0) {
+            // Start countdown before recording
+            timerCountdownJob = viewModelScope.launch {
+                for (i in timer.seconds downTo 1) {
+                    _timerCountdown.value = i
+                    delay(1000)
+                }
+                _timerCountdown.value = 0
+                timerCountdownJob = null
+                startRecording()
+            }
+            return
+        }
+
+        startRecording()
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun startRecording() {
         val capture = videoCapture ?: return
 
         val timestamp = MediaStoreSaver.timestamp()

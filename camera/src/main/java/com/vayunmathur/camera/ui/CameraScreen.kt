@@ -916,29 +916,29 @@ private fun TopBar(
                     Color.White
                 )
             }
+        }
 
-            Spacer(Modifier.width(4.dp))
+        Spacer(Modifier.width(4.dp))
 
-            val timerBg = if (timerDuration != TimerDuration.NONE) Color(0xFF3C3C3C) else Color.Transparent
-            IconButton(
-                onClick = onTimerCycle,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(timerBg, CircleShape)
-            ) {
-                if (timerDuration == TimerDuration.NONE) {
-                    IconTimer(Modifier.size(22.dp).rotate(iconRotation), Color.White)
-                } else {
-                    val timerLabel = when (timerDuration) {
-                        TimerDuration.NONE -> ""
-                        TimerDuration.THREE -> "3"
-                        TimerDuration.FIVE -> "5"
-                        TimerDuration.TEN -> "10"
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        IconTimer(Modifier.size(14.dp).rotate(iconRotation), Color.White)
-                        Text(timerLabel, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, lineHeight = 10.sp)
-                    }
+        val timerBg = if (timerDuration != TimerDuration.NONE) Color(0xFF3C3C3C) else Color.Transparent
+        IconButton(
+            onClick = onTimerCycle,
+            modifier = Modifier
+                .size(40.dp)
+                .background(timerBg, CircleShape)
+        ) {
+            if (timerDuration == TimerDuration.NONE) {
+                IconTimer(Modifier.size(22.dp).rotate(iconRotation), Color.White)
+            } else {
+                val timerLabel = when (timerDuration) {
+                    TimerDuration.NONE -> ""
+                    TimerDuration.THREE -> "3"
+                    TimerDuration.FIVE -> "5"
+                    TimerDuration.TEN -> "10"
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconTimer(Modifier.size(14.dp).rotate(iconRotation), Color.White)
+                    Text(timerLabel, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, lineHeight = 10.sp)
                 }
             }
         }
