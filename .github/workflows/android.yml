@@ -62,12 +62,33 @@ jobs:
 
           echo "Using Version Name: $VERSION_NAME"
           echo "Using Version Code: $VERSION_CODE"
-          
-          find . -mindepth 2 -name "build.gradle.kts" | \
-            grep -vE '^\./(library/|watch/shared/)' | while read file; do
-            sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
-            sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
-            sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
+
+          # Only inject version into real app modules (those using common-conventions-app).
+          # Explicitly exclude non-app modules: pjsip is an Android library,
+          # sdk/*, youpipe/extractor|ffmpeg, whatsapp-signal, tools/* are
+          # java/android libraries or host tools — injecting versionCode would break them.
+          # Also exclude .git and build caches.
+          find . -mindepth 2 -name "build.gradle.kts" \
+            -not -path "./.git/*" \
+            -not -path "./.gradle/*" \
+            -not -path "*/build/*" \
+            -not -path "./library/*" \
+            -not -path "./pjsip/*" \
+            -not -path "./sdk/*" \
+            -not -path "./tools/*" \
+            -not -path "./whatsapp-signal/*" \
+            -not -path "./youpipe/extractor/*" \
+            -not -path "./youpipe/ffmpeg/*" \
+            -not -path "./watch/*" \
+            -not -path "./build-logic/*" | while read -r file; do
+            if grep -q "common-conventions-app" "$file"; then
+              echo "Injecting version into $file"
+              sed -i '/versionCode[[:space:]]*=[[:space:]]*/d' "$file"
+              sed -i '/versionName[[:space:]]*=[[:space:]]*/d' "$file"
+              sed -i "/defaultConfig[[:space:]]*{/a \        versionCode = $VERSION_CODE\n        versionName = \"$VERSION_NAME\"" "$file"
+            else
+              echo "Skipping non-app module: $file"
+            fi
           done
 
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
@@ -75,11 +96,28 @@ jobs:
 
       - name: Detect App Modules
         run: |
-          RAW_DIRS=$(grep -rl "versionCode" . --include="build.gradle.kts" | \
-            grep -vE "^\./build.gradle.kts$" | \
-            sed 's|^\./||; s|/build.gradle.kts$||' | \
-            grep -vE '^library(/|$)|^watch/shared$' | sort -u)
-          
+          # App modules are identified by the common-conventions-app plugin,
+          # not by the presence of versionCode.
+          # Using find + grep is more robust than grep -r with exclude-dir on different platforms.
+          RAW_DIRS=$(find . -name "build.gradle.kts" \
+            -not -path "./.git/*" \
+            -not -path "./.gradle/*" \
+            -not -path "*/build/*" \
+            -not -path "./build-logic/*" \
+            -not -path "./library/*" \
+            -not -path "./pjsip/*" \
+            -not -path "./sdk/*" \
+            -not -path "./tools/*" \
+            -not -path "./whatsapp-signal/*" \
+            -not -path "./youpipe/extractor/*" \
+            -not -path "./youpipe/ffmpeg/*" \
+            -not -path "./watch/*" \
+            -exec grep -l "common-conventions-app" {} \; | \
+            sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
+
+          echo "Detected app modules:"
+          echo "$RAW_DIRS"
+
           REVERSED_DIRS=$(echo "$RAW_DIRS" | tac | tr '\n' ' ')
           echo "module_dirs=$REVERSED_DIRS" >> $GITHUB_ENV
 
