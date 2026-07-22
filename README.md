@@ -114,7 +114,7 @@ If you are curious about how word processors / office software works, I would *h
 ## Messages
 The private aggregator for messaging apps. There exist other aggregators, but those apps run bridges on their own servers (privacy risk because your messages are or can be decrypted by the server), while this app runs the bridges on-device, preserving end-to-end encryption.
 
-Currently supports Google Messages and Google Voice with more services in development.
+Currently supports Google Messages, Whatsapp, and Google Voice with more services in development.
 
 ## OpenAssistant
 A 100% offline AI app that supports text, image, and audio input using the Gemma 4 models
