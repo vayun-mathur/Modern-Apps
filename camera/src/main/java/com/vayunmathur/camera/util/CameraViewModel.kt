@@ -69,6 +69,11 @@ enum class CameraMode { PHOTO, PORTRAIT, PANORAMA, PHOTOSPHERE, VIDEO, SLOW_MO, 
 enum class FlashMode { ON, OFF, AUTO }
 enum class TimerDuration(val seconds: Int) { NONE(0), THREE(3), FIVE(5), TEN(10) }
 enum class AspectRatioOption(val label: String) { RATIO_16_9("16:9"), RATIO_4_3("4:3"), RATIO_1_1("1:1") }
+enum class VideoCodec(val label: String, val description: String) {
+    AVC("H.264 / AVC", "Most compatible"),
+    HEVC("H.265 / HEVC", "More efficient"),
+    AV1("AV1", "Most efficient"),
+}
 
 /** Formats a zoom ratio for the zoom bar: ".5", "1x", "2x", or "1.5x". */
 fun formatZoomLabel(ratio: Float): String = when {
@@ -97,14 +102,6 @@ fun buildColorAdjustmentMatrix(warmth: Float, shadows: Float): ColorMatrix = Col
 
 class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     companion object {
-        /**
-         * AV1/Opus recording is disabled: CameraX's Recorder muxes an incomplete `av1C`
-         * (empty configOBUs — no sequence-header OBU) and Android raw Opus CSD, producing
-         * files the system thumbnailer and ExoPlayer can't decode (0x0 playback, no
-         * thumbnail) even on hardware that supports AV1. Falls back to the default
-         * H.264 + AAC. Flip to true to re-enable once the muxing writes a complete av1C.
-         */
-        private const val ENABLE_AV1_OPUS_RECORDING = false
 
         // Night-mode auto-detection tuning. Engage once average Y stays below ENGAGE for a few
         // frames; disengage once it climbs above DISENGAGE for a few frames. The gap between the
@@ -204,6 +201,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private val _aspectRatio = MutableStateFlow(AspectRatioOption.RATIO_4_3)
     val aspectRatio = _aspectRatio.asStateFlow()
+
+    private val _videoCodec = MutableStateFlow(VideoCodec.AVC)
+    val videoCodec = _videoCodec.asStateFlow()
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording = _isRecording.asStateFlow()
@@ -423,6 +423,10 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     var recordingWithAv1: Boolean = false
         private set
 
+    /** True when the active video session is encoding HEVC/H.265. */
+    var recordingWithHevc: Boolean = false
+        private set
+
     fun setSloMoFps(fps: Int) {
         sloMoFps = fps
     }
@@ -450,6 +454,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         ds.getString("camera_flash")?.let { _flashMode.value = FlashMode.valueOf(it) }
         ds.getString("camera_timer")?.let { _timerDuration.value = TimerDuration.valueOf(it) }
         ds.getString("camera_aspect_ratio")?.let { _aspectRatio.value = AspectRatioOption.valueOf(it) }
+        ds.getString("camera_video_codec")?.let {
+            _videoCodec.value = try { VideoCodec.valueOf(it) } catch (_: Exception) { VideoCodec.AVC }
+        }
         ds.getString("camera_location")?.let { _locationEnabled.value = it.toBoolean() }
         ds.getString("camera_last_capture")?.let { _lastCaptureUri.value = Uri.parse(it) }
         ds.getString("camera_grid")?.let { _gridEnabled.value = it.toBoolean() }
@@ -491,6 +498,11 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setLocationEnabled(enabled: Boolean) {
         _locationEnabled.value = enabled
         viewModelScope.launch { ds.setString("camera_location", enabled.toString()) }
+    }
+
+    fun setVideoCodec(codec: VideoCodec) {
+        _videoCodec.value = codec
+        viewModelScope.launch { ds.setString("camera_video_codec", codec.name) }
     }
 
     fun toggleGrid() {
@@ -1006,14 +1018,20 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 .build()
             val cameraInfo = provider.getCameraInfo(selector)
 
-            val useAv1 = ENABLE_AV1_OPUS_RECORDING &&
+            val selectedCodec = _videoCodec.value
+            // Respect user setting with fallback: AV1 > HEVC > AVC priority for availability check.
+            // If selected codec isn't available, fall back to next best available.
+            val useAv1 = selectedCodec == VideoCodec.AV1 &&
                 CodecSupport.isHardwareAv1EncoderAvailable && av1SupportedByCamera(cameraInfo)
-            val useOpus = ENABLE_AV1_OPUS_RECORDING && CodecSupport.isOpusEncoderAvailable
+            val useHevc = !useAv1 && selectedCodec != VideoCodec.AVC &&
+                CodecSupport.isHevcEncoderAvailable && hevcSupportedByCamera(cameraInfo)
+            // All codecs use AAC audio. Opus disabled to avoid CameraX raw-Opus-CSD muxing bug.
+            val useOpus = false
             // HLG10 (10-bit HDR) when the camera's video pipeline supports it. Uses the default
             // HEVC/H.264 codec (AV1 stays off). Preview and VideoCapture must share the dynamic
             // range or the bind fails, so both are gated together.
             val hlgSupported = hlgSupportedByCamera(cameraInfo)
-            Log.d("VideoSession", "Codec selection: av1=$useAv1, opus=$useOpus, hlg10=$hlgSupported")
+            Log.d("VideoSession", "Codec selection: av1=$useAv1, hevc=$useHevc, opus=$useOpus, hlg10=$hlgSupported")
 
             // Cinematic mode enables video stabilization; all video modes always record at max
             // quality/fps (no UI picker).
@@ -1032,7 +1050,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             owner.start()
             sessionLifecycleOwner = owner
 
-            fun bind(av1: Boolean, opus: Boolean, hlg: Boolean, snapshot: Boolean): Camera {
+            fun bind(av1: Boolean, hevc: Boolean, opus: Boolean, hlg: Boolean, snapshot: Boolean): Camera {
                 val dynamicRange = if (hlg) androidx.camera.core.DynamicRange.HLG_10_BIT
                     else androidx.camera.core.DynamicRange.SDR
                 val previewBuilder = Preview.Builder()
@@ -1043,6 +1061,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 val recorderBuilder = Recorder.Builder()
                     .setQualitySelector(qualitySelector)
                 if (av1) recorderBuilder.setVideoMimeType(MediaFormat.MIMETYPE_VIDEO_AV1)
+                else if (hevc) recorderBuilder.setVideoMimeType(MediaFormat.MIMETYPE_VIDEO_HEVC)
                 if (opus) recorderBuilder.setAudioMimeType(MediaFormat.MIMETYPE_AUDIO_OPUS)
                 val captureBuilder = VideoCapture.Builder(recorderBuilder.build())
                     .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
@@ -1052,6 +1071,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 capture.targetRotation = targetRotation
                 videoCapture = capture
                 recordingWithAv1 = av1
+                recordingWithHevc = hevc
                 return if (snapshot) {
                     // Extra ImageCapture use case enables taking a still while recording (SDR JPEG).
                     val still = ImageCapture.Builder()
@@ -1080,7 +1100,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             for ((hlg, snapshot) in attempts) {
                 try {
                     provider.unbindAll()
-                    bound = bind(useAv1, useOpus, hlg, snapshot)
+                    bound = bind(useAv1, useHevc, useOpus, hlg, snapshot)
                     break
                 } catch (e: Exception) {
                     lastError = e
@@ -1107,6 +1127,14 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         caps?.getSupportedQualities(androidx.camera.core.DynamicRange.SDR)?.isNotEmpty() == true
     } catch (e: Exception) {
         Log.w("VideoSession", "Could not query AV1 video capabilities", e)
+        false
+    }
+
+    private fun hevcSupportedByCamera(cameraInfo: androidx.camera.core.CameraInfo): Boolean = try {
+        val caps = Recorder.getVideoCapabilities(cameraInfo, MediaFormat.MIMETYPE_VIDEO_HEVC)
+        caps?.getSupportedQualities(androidx.camera.core.DynamicRange.SDR)?.isNotEmpty() == true
+    } catch (e: Exception) {
+        Log.w("VideoSession", "Could not query HEVC video capabilities", e)
         false
     }
 

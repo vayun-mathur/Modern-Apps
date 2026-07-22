@@ -21,6 +21,11 @@ object CodecSupport {
         hasEncoder(MediaFormat.MIMETYPE_AUDIO_OPUS, requireHardware = false)
     }
 
+    /** An HEVC/H.265 (`video/hevc`) encoder exists on this device. */
+    val isHevcEncoderAvailable: Boolean by lazy {
+        hasEncoder(MediaFormat.MIMETYPE_VIDEO_HEVC, requireHardware = false)
+    }
+
     private fun hasEncoder(mimeType: String, requireHardware: Boolean): Boolean {
         return try {
             MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->

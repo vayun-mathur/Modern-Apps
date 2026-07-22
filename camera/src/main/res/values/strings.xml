@@ -33,6 +33,9 @@
     <string name="settings_location">Location</string>
     <string name="settings_location_description">Save location in photo metadata</string>
 
+    <string name="settings_video_codec">Video codec</string>
+    <string name="settings_video_codec_label">Video codec</string>
+
     <string name="mode_portrait">Portrait</string>
 
     <string name="qr_result">QR Code</string>
