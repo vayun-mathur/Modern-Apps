@@ -1,3 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="confirm_delete">Confirmer la suppression</string>
+    <string name="weather_title">Météo</string>
+    <string name="add_location">Ajouter un lieu</string>
+    <string name="map_back">Retour</string>
+    <string name="city_name_hint">Nom de la ville</string>
+    <string name="map_measure">Mesure</string>
+    <string name="weather_map_title">Carte météo</string>
+    <string name="map_time">Heure</string>
+    <string name="search_location">Rechercher un lieu</string>
+    <string name="open_map">Ouvrir la carte</string>
+    <string name="app_name">Météo</string>
+    <string name="map_attribution">© OpenStreetMap · © CARTO</string>
+    <string name="weather_widget_description">L\'heure, la date et la météo du moment en un coup d\'œil — appuyez pour consulter les prévisions</string>
 </resources>
