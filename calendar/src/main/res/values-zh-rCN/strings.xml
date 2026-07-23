@@ -35,7 +35,7 @@
     <string name="repeat">重复</string>
     <string name="every">每</string>
     <string name="dropdown_freq_format">%1$s ▼</string>
-    <string name="on_days_of_week">每周的某几天</string>
+    <string name="on_days_of_week">在每周的某几天</string>
     <string name="end">结束</string>
     <string name="never">从不</string>
     <string name="count">计数</string>
@@ -66,4 +66,11 @@
     <string name="default_layout">默认布局</string>
     <string name="add_reminder">添加提醒</string>
     <string name="calendar_widget_description">一览即将进行的活动 — 点按即可打开 Calendar</string>
+    <string name="on_label">在</string>
+    <string name="month_option_day_of_month">在每月的第 %1$d 天</string>
+    <string name="month_option_nth_weekday">在 %1$s %2$s</string>
+    <string name="month_option_last_weekday">在最后一个 %1$s</string>
+    <string name="year_option_month_day">在 %1$s %2$d</string>
+    <string name="year_option_week">在每年的第 %1$d 周的 %2$s</string>
+    <string name="year_option_day_of_year">在每年的第 %1$d 天</string>
 </resources>
