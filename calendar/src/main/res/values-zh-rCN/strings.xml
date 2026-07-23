@@ -73,4 +73,10 @@
     <string name="year_option_month_day">在 %1$s %2$d</string>
     <string name="year_option_week">在每年的第 %1$d 周的 %2$s</string>
     <string name="year_option_day_of_year">在每年的第 %1$d 天</string>
+    <string name="import_ics_file">导入 .ics 文件</string>
+    <string name="import_events">导入活动</string>
+    <string name="import_to_existing_calendar">导入到现有日历</string>
+    <string name="create_new_calendar_option">创建新日历</string>
+    <string name="no_events_found">未找到活动</string>
+    <string name="import_summary">%1$d 个活动已准备好导入</string>
 </resources>
