@@ -82,7 +82,6 @@ inline fun <reified T : RoomDatabase> Context.buildDatabase(
             T::class.java,
             dbName
         ).addMigrations(*resolvedMigrations.toTypedArray())
-            .fallbackToDestructiveMigration()
 
         builder.openHelperFactory(SupportOpenHelperFactory(password.toByteArray(StandardCharsets.UTF_8)))
 
