@@ -11,4 +11,7 @@
     <string name="move_up">Monter</string>
     <string name="move_down">Descendre</string>
     <string name="enlarge">Agrandir</string>
+    <string name="external_saved">Enregistré dans un fichier</string>
+    <string name="external_save_failed">Impossible d\'enregistrer (le fichier est peut-être en lecture seule)</string>
+    <string name="external_read_failed">Impossible d\'ouvrir le fichier</string>
 </resources>
