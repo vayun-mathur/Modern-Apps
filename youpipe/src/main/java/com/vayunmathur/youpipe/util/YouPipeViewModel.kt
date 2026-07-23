@@ -713,25 +713,25 @@ class YouPipeViewModel(
                         }
 
                         if (progVideoOnly.isNotEmpty() || sabrVideoOnly.isNotEmpty()) {
-                            // Combine progressive + SABR video-only. Deduplicate by height and prefer
-                            // vp9 over avc for same resolution (per user request). AV1 is kept when
-                            // present as distinct quality. Opus-only audio. Do NOT filter >1080p.
+                            // Combine progressive + SABR video-only. For same resolution+fps,
+                            // if vp9 and avc both exist, keep only vp9 (user request). This preserves
+                            // 60fps streams even when only avc has 60fps and vp9 has 30fps.
+                            // AV1 is kept as distinct codec. Do NOT filter >1080p.
                             val combinedVideo = (
                                 progVideoOnly.map { it.toDomain() } +
                                     sabrVideoOnly.map { it.toSabrDomain(videoId) }
                                 )
-                                .groupBy { it.height }
-                                .flatMap { (_, streamsAtHeight) ->
-                                    val vp9 = streamsAtHeight.filter { it.codec == "vp9" }
-                                    val avc = streamsAtHeight.filter { it.codec == "avc" }
-                                    // If both vp9 and avc exist at same height, keep only vp9
-                                    if (vp9.isNotEmpty() && avc.isNotEmpty()) {
-                                        streamsAtHeight.filter { it.codec != "avc" }
+                                .groupBy { it.height to it.fps }
+                                .flatMap { (_, streamsAtResFps) ->
+                                    val hasVp9 = streamsAtResFps.any { it.codec == "vp9" }
+                                    val hasAvc = streamsAtResFps.any { it.codec == "avc" }
+                                    if (hasVp9 && hasAvc) {
+                                        streamsAtResFps.filter { it.codec != "avc" }
                                     } else {
-                                        streamsAtHeight
+                                        streamsAtResFps
                                     }
                                 }
-                                // Keep different fps as distinct (e.g. 1080p30 vs 1080p60)
+                                // Keep different codec at same height/fps as distinct (e.g. av1 vs vp9 at 1080p60)
                                 .distinctBy { Triple(it.codec, it.height, it.fps) }
                                 .sortedWith(
                                     compareByDescending<VideoStream> { it.height }
