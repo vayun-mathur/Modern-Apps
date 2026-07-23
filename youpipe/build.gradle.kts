@@ -29,7 +29,6 @@ dependencies {
     implementation(libs.quickjs.kt)
     implementation(libs.newpipe.nanojson)
     implementation(libs.androidx.webkit)
-    implementation(project(":youpipe:ffmpeg"))
 
     implementRoom(libs)
     implementation(project(":library:room"))

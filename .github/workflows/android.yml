@@ -78,7 +78,6 @@ jobs:
             -not -path "./tools/*" \
             -not -path "./whatsapp-signal/*" \
             -not -path "./youpipe/extractor/*" \
-            -not -path "./youpipe/ffmpeg/*" \
             -not -path "./watch/*" \
             -not -path "./build-logic/*" | while read -r file; do
             if grep -q "common-conventions-app" "$file"; then
@@ -110,7 +109,6 @@ jobs:
             -not -path "./tools/*" \
             -not -path "./whatsapp-signal/*" \
             -not -path "./youpipe/extractor/*" \
-            -not -path "./youpipe/ffmpeg/*" \
             -not -path "./watch/*" \
             -exec grep -l "common-conventions-app" {} \; | \
             sed 's|^\./||; s|/build.gradle.kts$||' | sort -u)
