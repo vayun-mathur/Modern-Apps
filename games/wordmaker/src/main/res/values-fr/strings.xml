@@ -2,4 +2,7 @@
 <resources>
     <string name="close">Fermer</string>
     <string name="settings">Paramètres</string>
+    <string name="difficulty_easy">Facile</string>
+    <string name="difficulty_medium">Moyen</string>
+    <string name="difficulty_hard">Difficile</string>
 </resources>
