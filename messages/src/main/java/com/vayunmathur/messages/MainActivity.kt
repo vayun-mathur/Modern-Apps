@@ -47,8 +47,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Register Google Voice PhoneAccount for Telecom integration on app startup
-        com.vayunmathur.messages.gvoice.voice.GVoicePhoneAccountRegistrar.register(this)
         pendingIntent.value = intent
         setContent {
             DynamicTheme {
@@ -96,7 +94,6 @@ sealed interface Route : NavKey {
     @Serializable data object LoginWhatsApp : Route
     @Serializable data object LoginMessenger : Route
     @Serializable data object LoginInstagram : Route
-    @Serializable data object LoginRcs : Route
 
     /**
      * "Compose new" screen — recipient picker + body + media preview.
@@ -168,9 +165,6 @@ private fun Navigation(
         }
         entry<Route.LoginInstagram> {
             com.vayunmathur.messages.ui.setup.InstagramLoginScreen(backStack)
-        }
-        entry<Route.LoginRcs> {
-            com.vayunmathur.messages.ui.setup.RcsLoginScreen(backStack)
         }
         entry<Route.Compose> { route ->
             ComposeScreen(

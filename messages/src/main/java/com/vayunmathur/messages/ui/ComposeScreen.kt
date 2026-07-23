@@ -448,5 +448,4 @@ private fun labelFor(source: MessageSource): String = when (source) {
     MessageSource.WHATSAPP -> "WhatsApp"
     MessageSource.MESSENGER -> "Messenger"
     MessageSource.INSTAGRAM -> "Instagram"
-    MessageSource.RCS -> "RCS"
 }

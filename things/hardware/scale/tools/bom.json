@@ -1,0 +1,236 @@
+[
+  {
+    "lcsc": "C528638",
+    "mpn": "AFE4300PNR",
+    "refs": [
+      "U2"
+    ],
+    "qty": 1,
+    "kind": "AFE"
+  },
+  {
+    "lcsc": "C190794",
+    "mpn": "NRF52840-QIAA-R",
+    "refs": [
+      "U1"
+    ],
+    "qty": 1,
+    "kind": "MCU"
+  },
+  {
+    "lcsc": "C7465513",
+    "mpn": "ETA9741E8A",
+    "refs": [
+      "U3"
+    ],
+    "qty": 1,
+    "kind": "PMIC"
+  },
+  {
+    "lcsc": "C110926",
+    "mpn": "LIS2DH12TR",
+    "refs": [
+      "U4"
+    ],
+    "qty": 1,
+    "kind": "ACC"
+  },
+  {
+    "lcsc": "C84374",
+    "mpn": "PESD5V0S1BL,315",
+    "refs": [
+      "D1-D4"
+    ],
+    "qty": 4,
+    "kind": "ESD"
+  },
+  {
+    "lcsc": "C32346",
+    "mpn": "Q13FC13500004 32MHz",
+    "refs": [
+      "Y1"
+    ],
+    "qty": 1,
+    "kind": "XTAL 32M"
+  },
+  {
+    "lcsc": "C12674",
+    "mpn": "32.768kHz",
+    "refs": [
+      "Y2"
+    ],
+    "qty": 1,
+    "kind": "XTAL 32k"
+  },
+  {
+    "lcsc": "C5832372",
+    "mpn": "FTC252012S2R2MBCA 2.2uH",
+    "refs": [
+      "L1"
+    ],
+    "qty": 1,
+    "kind": "IND"
+  },
+  {
+    "lcsc": "C1002",
+    "mpn": "GZ1608D601TF",
+    "refs": [
+      "FB1"
+    ],
+    "qty": 1,
+    "kind": "FERRITE"
+  },
+  {
+    "lcsc": "C165948",
+    "mpn": "TYPE-C-31-M-12",
+    "refs": [
+      "J1"
+    ],
+    "qty": 1,
+    "kind": "USB-C"
+  },
+  {
+    "lcsc": "C318884",
+    "mpn": "TL3342",
+    "refs": [
+      "SW1"
+    ],
+    "qty": 1,
+    "kind": "SW"
+  },
+  {
+    "lcsc": "C307331",
+    "mpn": "100nF 50V 0402",
+    "refs": [
+      "C1-C4, C9-C15 etc"
+    ],
+    "qty": 11,
+    "kind": "CAP 100n"
+  },
+  {
+    "lcsc": "C15195",
+    "mpn": "10nF 50V 0402",
+    "refs": [
+      "C14-15 etc"
+    ],
+    "qty": 6,
+    "kind": "CAP 10n"
+  },
+  {
+    "lcsc": "C23733",
+    "mpn": "4.7uF 10V 0402",
+    "refs": [
+      "C"
+    ],
+    "qty": 5,
+    "kind": "CAP 4.7u"
+  },
+  {
+    "lcsc": "C15525",
+    "mpn": "10uF 6.3V 0402",
+    "refs": [
+      "C"
+    ],
+    "qty": 3,
+    "kind": "CAP 10u"
+  },
+  {
+    "lcsc": "C59461",
+    "mpn": "22uF 10V 0603",
+    "refs": [
+      "C26-C27"
+    ],
+    "qty": 2,
+    "kind": "CAP 22u"
+  },
+  {
+    "lcsc": "C12530",
+    "mpn": "2.2uF 10V 0402",
+    "refs": [
+      "C"
+    ],
+    "qty": 1,
+    "kind": "CAP 2.2u"
+  },
+  {
+    "lcsc": "C52923",
+    "mpn": "1uF 16V 0402",
+    "refs": [
+      "C"
+    ],
+    "qty": 2,
+    "kind": "CAP 1u"
+  },
+  {
+    "lcsc": "C11702",
+    "mpn": "1k 1% 0402",
+    "refs": [
+      "R"
+    ],
+    "qty": 6,
+    "kind": "RES 1k"
+  },
+  {
+    "lcsc": "C22978",
+    "mpn": "3.3k 1% 0603",
+    "refs": [
+      "R7-R10"
+    ],
+    "qty": 4,
+    "kind": "RES 3.3k"
+  },
+  {
+    "lcsc": "C25900",
+    "mpn": "4.7k 0402",
+    "refs": [
+      "R11-R12"
+    ],
+    "qty": 2,
+    "kind": "RES 4.7k"
+  },
+  {
+    "lcsc": "C25905",
+    "mpn": "5.1k 0402",
+    "refs": [
+      "R13-R14"
+    ],
+    "qty": 2,
+    "kind": "RES 5.1k"
+  },
+  {
+    "lcsc": "C25744",
+    "mpn": "10k 0402",
+    "refs": [
+      "R15-R20"
+    ],
+    "qty": 6,
+    "kind": "RES 10k"
+  },
+  {
+    "lcsc": "C26083",
+    "mpn": "1M 0402",
+    "refs": [
+      "R21-R22"
+    ],
+    "qty": 2,
+    "kind": "RES 1M"
+  },
+  {
+    "lcsc": "C4109",
+    "mpn": "2k 0402",
+    "refs": [
+      "R23"
+    ],
+    "qty": 1,
+    "kind": "RES 2k ISET"
+  },
+  {
+    "lcsc": "C852624",
+    "mpn": "1k 0.1% 0402",
+    "refs": [
+      "R2"
+    ],
+    "qty": 1,
+    "kind": "RES 1k 0.1%"
+  }
+]

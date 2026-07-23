@@ -93,7 +93,13 @@ class MessagesConverters {
     @TypeConverter
     fun fromSource(value: MessageSource): String = value.name
     @TypeConverter
-    fun toSource(value: String): MessageSource = MessageSource.valueOf(value)
+    fun toSource(value: String): MessageSource = try {
+        MessageSource.valueOf(value)
+    } catch (_: IllegalArgumentException) {
+        // Handles stale RCS rows after Phase 2 removal (DB version 9 -> 10)
+        android.util.Log.w("MessagesConverters", "Unknown MessageSource $value, falling back to MESSAGES_WEB")
+        MessageSource.MESSAGES_WEB
+    }
 
     @TypeConverter
     fun fromDirection(value: MessageDirection): String = value.name
@@ -108,7 +114,7 @@ class MessagesConverters {
 
 @androidx.room.Database(
     entities = [Conversation::class, Message::class],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 @TypeConverters(MessagesConverters::class)

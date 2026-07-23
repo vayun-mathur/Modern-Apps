@@ -1,10 +1,5 @@
 package com.vayunmathur.messages.ui
 
-import android.accounts.AccountManager
-import android.app.Activity
-import android.content.Context
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,27 +26,19 @@ import com.vayunmathur.library.ui.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.ui.IconInbox
-import com.vayunmathur.library.ui.IconMail
-import com.vayunmathur.library.ui.IconNavigationArrow
 import com.vayunmathur.library.ui.IconRestore
-import com.vayunmathur.library.ui.IconSend
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.messages.R
 import com.vayunmathur.messages.Route
 import com.vayunmathur.messages.data.MessageSource
-import com.vayunmathur.messages.gvoice.GVoiceClient
 import com.vayunmathur.messages.util.MessagesSessionManager
 import com.vayunmathur.messages.util.MessagesViewModel
 import com.vayunmathur.messages.util.SourceConnectionState
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,29 +47,6 @@ fun SettingsScreen(
     vm: MessagesViewModel,
 ) {
     val states by vm.connectionStates.collectAsState()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    // Account picker launcher for OAuth token access
-    val accountPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val accountName = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
-            if (accountName != null) {
-                // Store selected account for OAuth token fetching
-                val prefs = context.getSharedPreferences("gvoice_oauth", Context.MODE_PRIVATE)
-                prefs.edit().putString("selected_account", accountName).apply()
-                android.util.Log.i("SettingsScreen", "Selected Google account: $accountName")
-                // Now run the SIP test with the selected account
-                scope.launch {
-                    vm.testSIPRegisterInfo { result ->
-                        android.util.Log.i("SIP_TEST", "=== SIP TEST RESULT ===\n$result")
-                    }
-                }
-            }
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -170,13 +134,6 @@ fun SettingsScreen(
                 onConfigure = { backStack.add(Route.LoginInstagram) },
                 onDisconnect = { MessagesSessionManager.stop(MessageSource.INSTAGRAM) },
             )
-            Spacer(Modifier.height(8.dp))
-            SourceCard(
-                title = "RCS",
-                state = states[MessageSource.RCS] ?: SourceConnectionState.Idle,
-                onConfigure = { backStack.add(Route.LoginRcs) },
-                onDisconnect = { MessagesSessionManager.stop(MessageSource.RCS) },
-            )
             Spacer(Modifier.height(16.dp))
             OutlinedButton(
                 onClick = { vm.forceResync() },
@@ -185,29 +142,6 @@ fun SettingsScreen(
                 IconRestore(Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.settings_resync))
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
-                    // Check if account already selected, otherwise launch picker
-                    val prefs = context.getSharedPreferences("gvoice_oauth", Context.MODE_PRIVATE)
-                    val savedAccount = prefs.getString("selected_account", null)
-                    if (savedAccount == null) {
-                        // Launch account picker to grant app access to Google account
-                        val intent = AccountManager.newChooseAccountIntent(
-                            null, null, arrayOf("com.google"), null, null, null, null
-                        )
-                        accountPickerLauncher.launch(intent)
-                    } else {
-                        // Account already selected, run SIP test directly
-                        vm.testSIPRegisterInfo { result ->
-                            android.util.Log.i("SIP_TEST", "=== SIP TEST RESULT ===\n$result")
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Test SIP Register Info (Phase 1)")
             }
         }
     }

@@ -30,11 +30,7 @@ enum class MessageSource {
     MESSENGER,
 
     /** Conversations on Instagram Direct, accessed via MQTT. */
-    INSTAGRAM,
-
-    /** Conversations via RCS (Rich Communication Services) using Google Jibe
-     *  backend over Tachyon gRPC protocol with SIP for messaging. */
-    RCS;
+    INSTAGRAM;
 
     /** Prefix for compound primary keys (e.g. "msgs:<id>"). */
     val idPrefix: String get() = when (this) {
@@ -45,7 +41,6 @@ enum class MessageSource {
         WHATSAPP -> "wa"
         MESSENGER -> "fb"
         INSTAGRAM -> "ig"
-        RCS -> "rcs"
     }
 }
 

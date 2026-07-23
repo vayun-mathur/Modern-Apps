@@ -9,13 +9,6 @@ quickjs = "1.0.5"
 brotli = "0.1.2"
 # Build & Core Language
 agp = "9.4.0-alpha04"
-# Google Play Services for RCS attestation (DroidGuard, SafetyNet, Firebase IID)
-playServicesBase = "18.6.0"
-playServicesAuth = "21.3.0"
-playServicesSafetyNet = "18.1.0"
-playIntegrity = "1.4.0"
-firebaseMessaging = "24.1.0"
-firebaseInstallations = "18.0.0"
 fhirModel = "1.0.0-beta02"
 flatgeobuf = "3.29.0"
 kotlin = "2.4.0"
@@ -234,12 +227,6 @@ zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 keepassjava2-dom = { module = "org.linguafranca.pwdb:KeePassJava2-dom", version.ref = "keepassJava2" }
 bouncycastle = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
-play-services-base = { group = "com.google.android.gms", name = "play-services-base", version.ref = "playServicesBase" }
-play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
-play-services-safetynet = { group = "com.google.android.gms", name = "play-services-safetynet", version.ref = "playServicesSafetyNet" }
-play-integrity = { group = "com.google.android.play", name = "integrity", version.ref = "playIntegrity" }
-firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
-firebase-installations = { group = "com.google.firebase", name = "firebase-installations", version.ref = "firebaseInstallations" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

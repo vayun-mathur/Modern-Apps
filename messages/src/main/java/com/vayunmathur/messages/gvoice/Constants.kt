@@ -45,7 +45,6 @@ object VoiceEndpoints {
     const val EndpointGetAccount = "$ApiBaseUrl/account/get"
     const val EndpointGetThread = "$ApiBaseUrl/api2thread/get"
     const val EndpointListThreads = "$ApiBaseUrl/api2thread/list"
-    const val EndpointGetSIPRegisterInfo = "$ApiBaseUrl/sipregisterinfo/get"
     const val EndpointSendSms = "$ApiBaseUrl/api2thread/sendsms"
     const val EndpointGetThreadingInfo = "$ApiBaseUrl/threadinginfo/get"
     const val EndpointUpdateAttributes = "$ApiBaseUrl/thread/updateattributes"

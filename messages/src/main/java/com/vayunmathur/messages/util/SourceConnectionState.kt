@@ -4,7 +4,6 @@ import com.vayunmathur.messages.gmessages.GMessagesClient
 import com.vayunmathur.messages.gvoice.GVoiceClient
 import com.vayunmathur.messages.meta.InstagramClient
 import com.vayunmathur.messages.meta.MetaClient
-import com.vayunmathur.messages.rcs.RcsClient
 import com.vayunmathur.messages.signal.SignalClient
 import com.vayunmathur.messages.telegram.TelegramClient
 import com.vayunmathur.messages.whatsapp.WhatsAppClient
@@ -93,12 +92,3 @@ fun InstagramClient.State.toUnified(): SourceConnectionState = when (this) {
     is InstagramClient.State.Disconnected -> SourceConnectionState.Disconnected(reason)
 }
 
-fun RcsClient.State.toUnified(): SourceConnectionState = when (this) {
-    RcsClient.State.Idle -> SourceConnectionState.Idle
-    RcsClient.State.NeedsSetup -> SourceConnectionState.NeedsSetup("Set up")
-    RcsClient.State.Provisioning -> SourceConnectionState.Connecting
-    RcsClient.State.AwaitingOtp -> SourceConnectionState.Connecting
-    RcsClient.State.Connecting -> SourceConnectionState.Connecting
-    RcsClient.State.Connected -> SourceConnectionState.Connected
-    is RcsClient.State.Disconnected -> SourceConnectionState.Disconnected(reason)
-}

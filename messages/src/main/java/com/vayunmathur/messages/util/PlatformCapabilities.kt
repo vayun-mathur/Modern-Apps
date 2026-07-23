@@ -29,13 +29,12 @@ enum class MediaCapability {
  * - FILE: every platform except Google Voice (Voice only sends a fixed
  *   set of inline image types — no arbitrary attachments).
  * - POLL: only platforms whose protocol supports polls. Google
- *   Messages / Voice (SMS/RCS) have no poll concept.
+ *   Messages / Voice (SMS) have no poll concept.
  * - LOCATION: universal — the payload is a FindFamily share URL sent as
  *   a normal text message, so any text-capable platform qualifies.
  */
 fun MessageSource.mediaCapabilities(): Set<MediaCapability> = when (this) {
-    MessageSource.MESSAGES_WEB,
-    MessageSource.RCS -> setOf(
+    MessageSource.MESSAGES_WEB -> setOf(
         MediaCapability.IMAGE,
         MediaCapability.FILE,
         MediaCapability.LOCATION,

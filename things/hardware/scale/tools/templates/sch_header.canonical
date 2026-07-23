@@ -1,0 +1,16 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "00000000-0000-0000-0000-000000000001")
+	(paper "A3")
+	(title_block
+		(title "Smart Scale AFE4300 + nRF52840 + ETA9741")
+		(date "2026-07-22")
+		(company "Things")
+		(comment 1 "LCSC sourced footprints via easyeda2kicad")
+		(comment 2 "130x90 4L ENIG")
+		(comment 3 "Wired per scale.md")
+		(comment 4 "BOARD_NAME=Smart Scale")
+	)
+	(lib_symbols

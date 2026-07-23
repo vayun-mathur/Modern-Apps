@@ -67,7 +67,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.vayunmathur.library.ui.IconAttachment
-import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconEdit
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconPlay
@@ -263,21 +262,6 @@ fun ConversationScreen(
                 actions = {
                     val conv = conversation
                     if (conv != null && !conv.isGroup && conv.peerPhoneE164 != null) {
-                        // Call button for Voice conversations only
-                        if (conv.source == MessageSource.VOICE) {
-                            val ctx = LocalContext.current
-                            IconButton(onClick = {
-                                vm.startVoiceCall(conv.id) { ok ->
-                                    if (!ok) {
-                                        scope.launch {
-                                            snackbar?.showSnackbar("Failed to start call")
-                                        }
-                                    }
-                                }
-                            }) {
-                                IconCall()
-                            }
-                        }
                         val ctx = LocalContext.current
                         IconButton(onClick = {
                             val phone = conv.peerPhoneE164

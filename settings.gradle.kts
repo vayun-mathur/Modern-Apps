@@ -24,7 +24,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "apps"
-include(":pjsip")
 include(":library")
 include(":library:network")
 include(":library:biometric")

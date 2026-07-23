@@ -15,7 +15,6 @@ import com.vayunmathur.messages.gmessages.GMessagesClient
 import com.vayunmathur.messages.gvoice.GVoiceClient
 import com.vayunmathur.messages.meta.InstagramClient
 import com.vayunmathur.messages.meta.MetaClient
-import com.vayunmathur.messages.rcs.RcsClient
 import com.vayunmathur.messages.signal.SignalClient
 import com.vayunmathur.messages.telegram.TelegramClient
 import com.vayunmathur.messages.whatsapp.WhatsAppClient
@@ -63,9 +62,7 @@ object MessagesSessionManager {
             MessageSource.SIGNAL to SourceConnectionState.Idle,
             MessageSource.WHATSAPP to SourceConnectionState.Idle,
             MessageSource.MESSENGER to SourceConnectionState.Idle,
-            MessageSource.INSTAGRAM to SourceConnectionState.Idle,
-            MessageSource.RCS to SourceConnectionState.Idle,
-        )
+            MessageSource.INSTAGRAM to SourceConnectionState.Idle,        )
     )
     val connectionStates: StateFlow<Map<MessageSource, SourceConnectionState>> =
         _connectionStates.asStateFlow()
@@ -85,9 +82,7 @@ object MessagesSessionManager {
         MessageSource.SIGNAL to false,
         MessageSource.WHATSAPP to false,
         MessageSource.MESSENGER to false,
-        MessageSource.INSTAGRAM to false,
-        MessageSource.RCS to false,
-    )
+        MessageSource.INSTAGRAM to false,    )
 
     fun init(context: Context) {
         if (!initialized.compareAndSet(false, true)) return
@@ -100,7 +95,6 @@ object MessagesSessionManager {
         com.vayunmathur.messages.whatsapp.WhatsAppClient.init(appContext)
         com.vayunmathur.messages.meta.MetaClient.init(appContext)
         com.vayunmathur.messages.meta.InstagramClient.init(appContext)
-        RcsClient.init(appContext)
         Log.i(TAG, "init")
         wireCollectors()
     }
@@ -116,7 +110,6 @@ object MessagesSessionManager {
         com.vayunmathur.messages.whatsapp.WhatsAppClient.start()
         com.vayunmathur.messages.meta.MetaClient.start()
         com.vayunmathur.messages.meta.InstagramClient.start()
-        RcsClient.start()
     }
 
     fun stop() {
@@ -127,7 +120,6 @@ object MessagesSessionManager {
         com.vayunmathur.messages.whatsapp.WhatsAppClient.stop()
         com.vayunmathur.messages.meta.MetaClient.stop()
         com.vayunmathur.messages.meta.InstagramClient.stop()
-        RcsClient.stop()
         backfillComplete[MessageSource.MESSAGES_WEB] = false
         backfillComplete[MessageSource.VOICE] = false
         backfillComplete[MessageSource.TELEGRAM] = false
@@ -135,7 +127,6 @@ object MessagesSessionManager {
         backfillComplete[MessageSource.WHATSAPP] = false
         backfillComplete[MessageSource.MESSENGER] = false
         backfillComplete[MessageSource.INSTAGRAM] = false
-        backfillComplete[MessageSource.RCS] = false
     }
 
     /** Stop one source independently — used from the per-source
@@ -148,9 +139,7 @@ object MessagesSessionManager {
             MessageSource.SIGNAL -> SignalClient.stop()
             MessageSource.WHATSAPP -> com.vayunmathur.messages.whatsapp.WhatsAppClient.stop()
             MessageSource.MESSENGER -> com.vayunmathur.messages.meta.MetaClient.stop()
-            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.stop()
-            MessageSource.RCS -> RcsClient.stop()
-        }
+            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.stop()        }
         backfillComplete[source] = false
         // Drop the disconnected source's cached threads so stale conversations don't linger.
         scope.launch {
@@ -183,9 +172,7 @@ object MessagesSessionManager {
             MessageSource.SIGNAL -> SignalClient.sendMessage(conversationId, body)
             MessageSource.WHATSAPP -> com.vayunmathur.messages.whatsapp.WhatsAppClient.sendMessage(conversationId, body)
             MessageSource.MESSENGER -> com.vayunmathur.messages.meta.MetaClient.sendMessage(conversationId, body)
-            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.sendMessage(conversationId, body)
-            MessageSource.RCS -> RcsClient.sendMessage(conversationId, body)
-        }
+            MessageSource.INSTAGRAM -> com.vayunmathur.messages.meta.InstagramClient.sendMessage(conversationId, body)        }
         db.messageDao().updateState(
             pendingId,
             if (ok) MessageState.SENT else MessageState.FAILED,
@@ -272,9 +259,7 @@ object MessagesSessionManager {
                 bytes = bytes,
                 mimeType = mime,
                 fileName = fileName
-            )
-            MessageSource.RCS -> RcsClient.sendMedia(conversationId, bytes, mime, fileName, caption)
-        }
+            )        }
         db.messageDao().updateState(
             pendingId,
             if (ok) MessageState.SENT else MessageState.FAILED,
@@ -337,9 +322,7 @@ object MessagesSessionManager {
             MessageSource.SIGNAL -> SignalClient.sendPoll(conversationId, question, options, allowMultiple)
             MessageSource.WHATSAPP -> false // handled above
             MessageSource.MESSENGER -> MetaClient.sendPoll(conversationId, question, options, allowMultiple)
-            MessageSource.INSTAGRAM -> InstagramClient.sendPoll(conversationId, question, options, allowMultiple)
-            MessageSource.RCS -> RcsClient.sendPoll(conversationId, question, options, allowMultiple)
-        }
+            MessageSource.INSTAGRAM -> InstagramClient.sendPoll(conversationId, question, options, allowMultiple)        }
         db.messageDao().updateState(pendingId, if (ok) MessageState.SENT else MessageState.FAILED)
         return ok
     }
@@ -400,10 +383,7 @@ object MessagesSessionManager {
             MessageSource.MESSENGER ->
                 MetaClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
             MessageSource.INSTAGRAM ->
-                InstagramClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
-            MessageSource.RCS ->
-                RcsClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)
-        }
+                InstagramClient.sendReadReceipt(conversationId, lastMessageId, lastTimestamp)        }
     }
 
     /**
@@ -430,9 +410,7 @@ object MessagesSessionManager {
             }
             MessageSource.WHATSAPP -> false
             MessageSource.MESSENGER -> false
-            MessageSource.INSTAGRAM -> false
-            MessageSource.RCS -> RcsClient.deleteThread(conversationId)
-        }
+            MessageSource.INSTAGRAM -> false        }
         if (ok) db.conversationDao().deleteById(conversationId)
         return ok
     }
@@ -448,9 +426,7 @@ object MessagesSessionManager {
         val ok = when (source) {
             MessageSource.SIGNAL -> SignalClient.acceptMessageRequest(conversationId)
             MessageSource.MESSENGER -> MetaClient.acceptMessageRequest(conversationId)
-            MessageSource.INSTAGRAM -> InstagramClient.acceptMessageRequest(conversationId)
-            MessageSource.RCS -> RcsClient.acceptMessageRequest(conversationId)
-            MessageSource.RCS -> false
+            MessageSource.INSTAGRAM -> InstagramClient.acceptMessageRequest(conversationId)            else -> false
             else -> false
         }
         if (ok) {
@@ -474,9 +450,7 @@ object MessagesSessionManager {
         val source = sourceFor(conversationId) ?: return false
         val ok = when (source) {
             MessageSource.SIGNAL ->
-                SignalClient.deleteThread(conversationId, fromMessageRequest = true)
-            MessageSource.RCS -> false
-            else -> false
+                SignalClient.deleteThread(conversationId, fromMessageRequest = true)            else -> false
         }
         if (ok) db.conversationDao().deleteById(conversationId)
         return ok
@@ -547,9 +521,7 @@ object MessagesSessionManager {
                     emoji
                 )
                 true
-            }
-            MessageSource.RCS -> RcsClient.sendReaction(messageId, msg.conversationId, emoji, action == ReactionAction.ADD || action == ReactionAction.SWITCH)
-        }
+            }        }
     }
 
     /**
@@ -567,9 +539,7 @@ object MessagesSessionManager {
                 pollCreatorJid = msg.senderId ?: "",
                 pollFromMe = msg.direction == MessageDirection.OUTGOING,
                 selectedOptionNames = optionNames,
-            )
-            MessageSource.RCS -> false
-            else -> false
+            )            else -> false
         }
         if (ok) {
             db.messageDao().upsert(
@@ -592,9 +562,7 @@ object MessagesSessionManager {
             MessageSource.SIGNAL -> SignalClient.sendTyping(conversationId)
             MessageSource.WHATSAPP -> false
             MessageSource.MESSENGER -> false
-            MessageSource.INSTAGRAM -> false
-            MessageSource.RCS -> RcsClient.deleteThread(conversationId)
-        }
+            MessageSource.INSTAGRAM -> false        }
     }
 
     /**
@@ -723,26 +691,6 @@ object MessagesSessionManager {
      *
      * Returns the new conversation id on success, or null on failure.
      */
-    /**
-     * Phase 1 discovery: fetch SIP register info for VoIP calling.
-     * Returns formatted string with credentials for logging/analysis.
-     */
-    suspend fun getSIPRegisterInfo(): String {
-        return GVoiceClient.getSIPRegisterInfo()
-    }
-
-    /**
-     * Start a voice call for a Voice conversation.
-     * Fetches the conversation's phone number and initiates the call via GVoiceClient.
-     */
-    suspend fun startVoiceCall(conversationId: String): Boolean {
-        val source = sourceFor(conversationId) ?: return false
-        if (source != MessageSource.VOICE) return false
-        val conv = db.conversationDao().get(conversationId) ?: return false
-        val phoneNumber = conv.peerPhoneE164 ?: return false
-        return GVoiceClient.startVoiceCall(phoneNumber)
-    }
-
     suspend fun sendNewMessage(
         source: MessageSource,
         recipients: List<String>,
@@ -815,7 +763,6 @@ object MessagesSessionManager {
             MessageSource.WHATSAPP -> null
             MessageSource.MESSENGER -> null
             MessageSource.INSTAGRAM -> null
-            MessageSource.RCS -> null // TODO: implement RCS new thread creation
         }
     }
 
@@ -836,7 +783,6 @@ object MessagesSessionManager {
         TelegramClient.forceResync()
         SignalClient.forceResync()
         com.vayunmathur.messages.whatsapp.WhatsAppClient.forceResync()
-        RcsClient.forceResync()
     }
 
     fun fetchMessages(conversationId: String) {
@@ -847,9 +793,7 @@ object MessagesSessionManager {
             MessageSource.SIGNAL -> SignalClient.fetchMessages(conversationId)
             MessageSource.WHATSAPP -> Unit
             MessageSource.MESSENGER -> Unit
-            MessageSource.INSTAGRAM -> Unit
-            MessageSource.RCS -> RcsClient.fetchMessages(conversationId)
-            null -> Unit
+            MessageSource.INSTAGRAM -> Unit            null -> Unit
         }
     }
 
@@ -912,12 +856,6 @@ object MessagesSessionManager {
             }
         }
         collectorJobs += scope.launch {
-            RcsClient.state.collect { s ->
-                _connectionStates.value =
-                    _connectionStates.value + (MessageSource.RCS to s.toUnified())
-            }
-        }
-        collectorJobs += scope.launch {
             WhatsAppClient.events.collect { handleEvent(it) }
         }
         collectorJobs += scope.launch {
@@ -926,161 +864,6 @@ object MessagesSessionManager {
         collectorJobs += scope.launch {
             InstagramClient.events.collect { handleEvent(it) }
         }
-        collectorJobs += scope.launch {
-            RcsClient.events.collect { handleEvent(it) }
-        }
-    }
-
-    private suspend fun handleEvent(event: GMEvent) {
-        // Never let a single bad event crash the whole app: this pipeline persists to Room, and a
-        // malformed/edge-case event would otherwise take down the process and crash-loop on replay
-        // of the offline queue. Log and skip instead.
-        try {
-        when (event) {
-            is GMEvent.ConversationUpdate -> {
-                val id = "${event.source.idPrefix}:${event.conversationId}"
-                val existing = db.conversationDao().get(id)
-                // Persist the message-request flag into serviceData JSON
-                // (no schema bump). Sources that signal via serviceData
-                // directly (Signal) already carry it; honor the dedicated
-                // event field too without clobbering an existing flag.
-                // Merge serviceData key-by-key so independent producers
-                // (group participantNames vs. the message-request flag from a
-                // separate event) don't clobber each other. Incoming wins.
-                val baseServiceData = mergeServiceData(existing?.serviceData, event.serviceData)
-                val mergedServiceData = if (event.isMessageRequest) {
-                    withMessageRequestFlag(baseServiceData, true)
-                } else {
-                    baseServiceData
-                }
-                val merged = Conversation(
-                    id = id,
-                    source = event.source,
-                    peerName = event.peerName ?: existing?.peerName,
-                    peerPhoneE164 = event.peerPhone ?: existing?.peerPhoneE164,
-                    avatarUrl = event.avatarUrl ?: existing?.avatarUrl,
-                    lastMessagePreview = event.lastPreview ?: existing?.lastMessagePreview,
-                    unreadCount = event.unreadCount,
-                    isGroup = event.isGroup,
-                    participantCount = event.participantCount,
-                    conversationType = event.conversationType,
-                    outgoingId = event.outgoingId ?: existing?.outgoingId,
-                    serviceData = mergedServiceData,
-                )
-                db.conversationDao().upsert(merged)
-                backfillComplete[event.source] = true
-            }
-            is GMEvent.MessageUpdate -> {
-                val convId = "${event.source.idPrefix}:${event.conversationId}"
-                val msgId = "${event.source.idPrefix}:${event.messageId}"
-                // Ensure the parent conversation row exists before inserting the message (the
-                // messages table FKs to it). Unlike IncomingMessage, a MessageUpdate is NOT preceded
-                // by a guaranteed ConversationUpdate — e.g. own messages synced from another linked
-                // device (fromMe), or history backfill for a chat not yet persisted — so without
-                // this the insert throws SQLiteConstraintException and crashes the app. Preview is
-                // refreshed but unread is NOT bumped (these are backfill / outgoing, not new unread).
-                val existingConv = db.conversationDao().get(convId)
-                db.conversationDao().upsert(
-                    existingConv?.copy(
-                        lastMessagePreview = event.body.ifEmpty { existingConv.lastMessagePreview },
-                    ) ?: Conversation(
-                        id = convId,
-                        source = event.source,
-                        peerName = null,
-                        peerPhoneE164 = null,
-                        avatarUrl = null,
-                        lastMessagePreview = event.body,
-                        unreadCount = 0,
-                    )
-                )
-                db.messageDao().upsert(
-                    Message(
-                        id = msgId,
-                        conversationId = convId,
-                        body = event.body,
-                        direction = if (event.outgoing) MessageDirection.OUTGOING else MessageDirection.INCOMING,
-                        state = if (event.outgoing) MessageState.SENT else MessageState.DELIVERED,
-                        timestamp = toEpochMillis(event.timestamp),
-                        senderName = event.senderName,
-                        senderId = event.senderId,
-                        reactionsJson = event.reactionsJson,
-                        serviceData = event.serviceData,
-                        mediaJson = attachmentsToJson(event.attachments),
-                    )
-                )
-            }
-            is GMEvent.IncomingMessage -> {
-                val convId = "${event.source.idPrefix}:${event.conversationId}"
-                val msgId = "${event.source.idPrefix}:${event.messageId}"
-                // Whether we've already stored this exact message. Meta platforms
-                // (Instagram/Messenger) re-inject their entire history through
-                // IncomingMessage on every reconnect/backfill, so without this we
-                // re-notify for the whole message history. Only genuinely new
-                // messages (not yet in the DB) should fire a notification below.
-                val alreadySeen = db.messageDao().get(msgId) != null
-                // Ensure the conversation row exists (messages FK to it) and refresh its preview /
-                // unread, otherwise the insert crashes and the message never shows in the thread.
-                val existing = db.conversationDao().get(convId)
-                db.conversationDao().upsert(
-                    Conversation(
-                        id = convId,
-                        source = event.source,
-                        // ConversationUpdate is the authoritative source for the
-                        // conversation title (group name / peer). An incoming
-                        // message must NOT rename an established conversation to
-                        // its per-message sender — otherwise a named group gets
-                        // retitled to whoever sent last, and a chat where you sent
-                        // last gets named after you. Only use the event's name as
-                        // a first-time fallback when there is no existing title.
-                        peerName = existing?.peerName ?: event.peerName,
-                        peerPhoneE164 = event.peerPhone ?: existing?.peerPhoneE164,
-                        avatarUrl = existing?.avatarUrl,
-                        lastMessagePreview = event.body,
-                        // Don't re-count a message we've already seen — otherwise a
-                        // history re-sync inflates the unread badge on every reconnect.
-                        unreadCount = (existing?.unreadCount ?: 0) + if (alreadySeen) 0 else 1,
-                        isGroup = existing?.isGroup ?: false,
-                        participantCount = existing?.participantCount ?: 0,
-                        conversationType = existing?.conversationType,
-                        outgoingId = existing?.outgoingId,
-                        serviceData = existing?.serviceData,
-                    )
-                )
-                db.messageDao().upsert(
-                    Message(
-                        id = msgId,
-                        conversationId = convId,
-                        body = event.body,
-                        direction = MessageDirection.INCOMING,
-                        state = MessageState.DELIVERED,
-                        timestamp = toEpochMillis(event.timestamp),
-                        // Per-message sender (shown in group bubbles). Never fall
-                        // back to the conversation/group name here — an unknown
-                        // sender leaves this null rather than mislabeling the
-                        // message as being from the group/peer.
-                        senderName = event.senderName,
-                        senderId = event.senderId,
-                        mediaJson = attachmentsToJson(event.attachments),
-                        // Poll messages carry their structure so the UI renders interactive
-                        // options; votes get merged into this JSON as they arrive.
-                        serviceData = if (event.pollQuestion != null) {
-                            buildPollServiceData(
-                                db.messageDao().get(msgId)?.serviceData,
-                                event.pollQuestion,
-                                event.pollOptions,
-                                // selectable count isn't carried on the event; default to
-                                // single-choice unless the poll clearly allows more.
-                                1,
-                            )
-                        } else {
-                            db.messageDao().get(msgId)?.serviceData
-                        },
-                    )
-                )
-                if (backfillComplete[event.source] == true && !alreadySeen) {
-                    _incoming.tryEmit(event)
-                }
-            }
             is GMEvent.ConversationDeleted -> {
                 db.conversationDao().deleteById("${event.source.idPrefix}:${event.conversationId}")
             }
@@ -1151,9 +934,7 @@ object MessagesSessionManager {
         conversationId.startsWith("${MessageSource.SIGNAL.idPrefix}:") -> MessageSource.SIGNAL
         conversationId.startsWith("${MessageSource.WHATSAPP.idPrefix}:") -> MessageSource.WHATSAPP
         conversationId.startsWith("${MessageSource.MESSENGER.idPrefix}:") -> MessageSource.MESSENGER
-        conversationId.startsWith("${MessageSource.INSTAGRAM.idPrefix}:") -> MessageSource.INSTAGRAM
-        conversationId.startsWith("${MessageSource.RCS.idPrefix}:") -> MessageSource.RCS
-        else -> null
+        conversationId.startsWith("${MessageSource.INSTAGRAM.idPrefix}:") -> MessageSource.INSTAGRAM        else -> null
     }
 
     private fun attachmentsToJson(attachments: List<MessageAttachment>): String? =
