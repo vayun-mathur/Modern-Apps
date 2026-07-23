@@ -714,15 +714,27 @@ public final class SabrSessionStore {
                                                   final int preferredVideoItag,
                                                   @Nullable final YoutubeSabrInfo extractorInfo)
             throws IOException, ExtractionException {
+        return createSourceSpec(videoId, preferredVideoItag, 0, null, extractorInfo);
+    }
+
+    @NonNull
+    public static SabrSourceSpec createSourceSpec(@NonNull final String videoId,
+                                                  final int preferredVideoItag,
+                                                  final int preferredAudioItag,
+                                                  @Nullable final String preferredAudioTrackIdOverride,
+                                                  @Nullable final YoutubeSabrInfo extractorInfo)
+            throws IOException, ExtractionException {
         PlaybackStartupTrace.markForVideoId(videoId, "sabr_source_spec_started");
         final Context appContext = YouPipeApplication.getAppContext();
-        final String preferredAudioTrackId = PREFERRED_AUDIO.get(videoId);
+        final String preferredAudioTrackId = preferredAudioTrackIdOverride != null
+                ? preferredAudioTrackIdOverride
+                : PREFERRED_AUDIO.get(videoId);
         final Localization localization = new Localization("en", "US");
         final ContentCountry contentCountry = new ContentCountry("US");
         final YoutubeSabrInfo info = isUsableExtractorInfo(extractorInfo, videoId)
                 ? extractorInfo
                 : YoutubeSabrProbeFetch(videoId, localization, contentCountry);
-        final YoutubeSabrFormat audioFormat = pickAudioFormat(info, preferredAudioTrackId);
+        final YoutubeSabrFormat audioFormat = pickAudioFormat(info, preferredAudioTrackId, preferredAudioItag);
         final YoutubeSabrFormat videoFormat = pickVideoFormat(info, preferredVideoItag);
         if (audioFormat == null || videoFormat == null) {
             throw new IOException("SABR: could not select audio/video formats for " + videoId);
@@ -1096,6 +1108,20 @@ public final class SabrSessionStore {
 
     private static YoutubeSabrFormat pickAudioFormat(@NonNull final YoutubeSabrInfo info,
                                                      @Nullable final String preferredTrackId) {
+        return pickAudioFormat(info, preferredTrackId, 0);
+    }
+
+    private static YoutubeSabrFormat pickAudioFormat(@NonNull final YoutubeSabrInfo info,
+                                                     @Nullable final String preferredTrackId,
+                                                     final int preferredAudioItag) {
+        // Direct itag selection (from UI: sabr://videoId?a=itag) takes precedence.
+        if (preferredAudioItag > 0) {
+            for (final YoutubeSabrFormat f : info.getFormats()) {
+                if (f.isAudio() && f.getItag() == preferredAudioItag) {
+                    return f;
+                }
+            }
+        }
         if (preferredTrackId == null) {
             return info.findBestAudioFormat();
         }

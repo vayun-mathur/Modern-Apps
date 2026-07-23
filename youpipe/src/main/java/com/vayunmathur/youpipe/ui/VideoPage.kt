@@ -85,7 +85,15 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 data class VideoChapter(val time: Int, val title: String, val previewURL: String?)
-data class AudioStream(val url: String, val bitrate: Int, val language: String, val codec: String, val size: Long)
+data class AudioStream(
+    val url: String,
+    val bitrate: Int,
+    val language: String,
+    val codec: String,
+    val size: Long,
+    val audioTrackId: String? = null,
+    val displayName: String? = null,
+)
 data class VideoStream(val url: String, val width: Int, val height: Int, val bitrate: Int, val fps: Int, val quality: String, val codec: String, val size: Long)
 data class SubtitleTrack(
     val url: String,
@@ -258,7 +266,12 @@ fun VideoDetails(
         var selectedVideoStream by remember { mutableStateOf(videoStreams.maxByOrNull { it.height } ?: videoStreams.first()) }
         var selectedAudioStream by remember { mutableStateOf(audioStreams.firstOrNull()) }
 
-        val languages = remember(audioStreams) { audioStreams.map { it.language }.distinct().sorted() }
+        val languageEntriesDownload = remember(audioStreams) {
+            audioStreams.map { it.language to (it.displayName ?: it.language) }
+                .distinctBy { it.first }
+                .sortedBy { it.first }
+        }
+        val languages = languageEntriesDownload.map { it.first }
         var selectedLanguage by remember { mutableStateOf(selectedAudioStream?.language ?: languages.firstOrNull() ?: "Default") }
         val filteredAudioStreams = remember(selectedLanguage, audioStreams) { audioStreams.filter { it.language == selectedLanguage } }
 
@@ -311,7 +324,7 @@ fun VideoDetails(
                             onExpandedChange = { languageExpanded = it }
                         ) {
                             OutlinedTextField(
-                                value = selectedLanguage,
+                                value = languageEntriesDownload.find { it.first == selectedLanguage }?.second ?: selectedLanguage,
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded) },
@@ -322,12 +335,12 @@ fun VideoDetails(
                                 expanded = languageExpanded,
                                 onDismissRequest = { languageExpanded = false }
                             ) {
-                                languages.forEach { lang ->
+                                languageEntriesDownload.forEach { (code, display) ->
                                     DropdownMenuItem(
-                                        text = { Text(lang) },
+                                        text = { Text(display) },
                                         onClick = {
-                                            selectedLanguage = lang
-                                            selectedAudioStream = audioStreams.firstOrNull { it.language == lang }
+                                            selectedLanguage = code
+                                            selectedAudioStream = audioStreams.firstOrNull { it.language == code }
                                             languageExpanded = false
                                         }
                                     )

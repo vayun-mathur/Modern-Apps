@@ -1226,7 +1226,9 @@ private fun org.schabi.newpipe.extractor.stream.VideoStream.toSabrDomain(videoId
 
 private fun org.schabi.newpipe.extractor.stream.AudioStream.toDomain() = AudioStream(
     content, bitrate, audioLocale?.language ?: "Default",
-    getAudioCodecName(codec ?: ""), itagItem?.contentLength ?: 0L
+    getAudioCodecName(codec ?: ""), itagItem?.contentLength ?: 0L,
+    audioTrackId = audioTrackId,
+    displayName = audioTrackName ?: audioLocale?.displayLanguage,
 )
 
 private fun org.schabi.newpipe.extractor.stream.AudioStream.toSabrDomain(videoId: String): AudioStream {
@@ -1237,8 +1239,10 @@ private fun org.schabi.newpipe.extractor.stream.AudioStream.toSabrDomain(videoId
         content
     }
     return AudioStream(
-        url, bitrate, audioLocale?.language ?: "Default",
-        getAudioCodecName(codec ?: ""), itagItem?.contentLength ?: 0L
+        url, bitrate, audioLocale?.language ?: audioLocale?.toLanguageTag() ?: "Default",
+        getAudioCodecName(codec ?: ""), itagItem?.contentLength ?: 0L,
+        audioTrackId = audioTrackId,
+        displayName = audioTrackName ?: audioLocale?.displayLanguage,
     )
 }
 

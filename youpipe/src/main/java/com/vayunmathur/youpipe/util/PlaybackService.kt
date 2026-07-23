@@ -35,6 +35,8 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val EXTRA_AUDIO_URI = "extra_audio_uri"
+        const val EXTRA_AUDIO_TRACK_ID = "extra_audio_track_id"
+        const val EXTRA_AUDIO_ITAG = "extra_audio_itag"
     }
 
     override fun onCreate() {
@@ -84,10 +86,28 @@ class PlaybackService : MediaSessionService() {
                     val videoId = vUri.host
                         ?: throw RuntimeException("SABR media item is missing a video id: $vUri")
                     val vitag = vUri.getQueryParameter("v")?.toIntOrNull() ?: 0
+                    // Audio selection for SABR: user may have picked a different language/track.
+                    // The audio URI is sabr://videoId?a=itag or progressive https://... ; we parse
+                    // itag here. We also honor explicit track id if provided.
+                    val extras = mediaItem.mediaMetadata.extras
+                    val rawAudioUri = mediaItem.localConfiguration?.tag as? String
+                        ?: extras?.getString(EXTRA_AUDIO_URI)
+                    var audioItag = extras?.getInt(EXTRA_AUDIO_ITAG, 0) ?: 0
+                    var audioTrackIdOverride: String? = extras?.getString(EXTRA_AUDIO_TRACK_ID)
+                    if (audioItag == 0 && rawAudioUri != null) {
+                        try {
+                            val aUri = android.net.Uri.parse(rawAudioUri)
+                            if (aUri.scheme == "sabr") {
+                                audioItag = aUri.getQueryParameter("a")?.toIntOrNull() ?: 0
+                            }
+                        } catch (_: Exception) {}
+                    }
                     val info = SabrSessionStore.getExtractorInfo(videoId)
                     val sabrSource = try {
                         // Blocking network bootstrap; media3 calls this off the main thread.
-                        val spec = SabrSessionStore.createSourceSpec(videoId, vitag, info)
+                        val spec = SabrSessionStore.createSourceSpec(
+                            videoId, vitag, audioItag, audioTrackIdOverride, info
+                        )
                         SabrDashMediaSource(this@PlaybackService, mediaItem, spec)
                     } catch (e: Exception) {
                         throw RuntimeException("Failed to create SABR media source for $videoId", e)
@@ -190,6 +210,8 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         // 2. Set up the MediaSession Callback to ensure the Audio URI reaches the Factory
+        // We preserve the full extras bundle (audio URI + trackId + itag) so SABR can pick the
+        // correct audio track when language is changed.
         val callback = object : MediaSession.Callback {
             override fun onAddMediaItems(
                 mediaSession: MediaSession,
@@ -197,9 +219,11 @@ class PlaybackService : MediaSessionService() {
                 mediaItems: MutableList<MediaItem>
             ): ListenableFuture<MutableList<MediaItem>> {
                 val updatedItems = mediaItems.map { item ->
-                    val audioUri = item.mediaMetadata.extras?.getString(EXTRA_AUDIO_URI)
+                    val extras = item.mediaMetadata.extras
+                    val audioUri = extras?.getString(EXTRA_AUDIO_URI)
+                    // Keep extras intact; tag is fallback for progressive path
                     item.buildUpon()
-                        .setTag(audioUri) // The 'tag' is preserved and readable by the Factory
+                        .setTag(audioUri)
                         .build()
                 }.toMutableList()
                 return Futures.immediateFuture(updatedItems)

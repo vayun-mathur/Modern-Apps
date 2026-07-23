@@ -117,13 +117,33 @@ fun VideoPlayer(
     if (videoStreams.isEmpty()) return
 
     val hasAudio = audioStreams.isNotEmpty()
-    val languages = remember(audioStreams) { audioStreams.map { it.language }.distinct().sorted() }
-    var language by remember { mutableStateOf(if("en" in languages) "en" else languages.firstOrNull() ?: "") }
-    val audioStreamOptions = audioStreams.filter { it.language == language }
+    // Use displayName for language UI when available (audioTrackName like "English", "Original"), fallback to language code
+    val languageEntries = remember(audioStreams) {
+        audioStreams.map { it.language to (it.displayName ?: it.language) }
+            .distinctBy { it.first }
+            .sortedBy { it.first }
+    }
+    val languages = languageEntries.map { it.first }
+    var language by remember(audioStreams) { mutableStateOf(if("en" in languages) "en" else languages.firstOrNull() ?: "") }
+    // Keep language valid when audioStreams change (new video)
+    LaunchedEffect(languages) {
+        if (language !in languages) {
+            language = if ("en" in languages) "en" else languages.firstOrNull() ?: ""
+        }
+    }
+    val audioStreamOptions = remember(audioStreams, language) {
+        audioStreams.filter { it.language == language }
+    }
 
     var controller by remember { mutableStateOf<MediaController?>(null) }
-    var currentVideoStream by remember { mutableStateOf(videoStreams.first()) }
-    var currentAudioStream by remember { mutableStateOf(audioStreamOptions.firstOrNull()) }
+    var currentVideoStream by remember(videoStreams) { mutableStateOf(videoStreams.first()) }
+    var currentAudioStream by remember(audioStreamOptions) { mutableStateOf(audioStreamOptions.firstOrNull()) }
+    // Ensure currentAudioStream stays consistent with language filter
+    LaunchedEffect(language) {
+        val filtered = audioStreams.filter { it.language == language }
+        currentAudioStream = filtered.find { it.bitrate == currentAudioStream?.bitrate }
+            ?: filtered.firstOrNull()
+    }
     var isControlsVisible by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var bufferedPosition by remember { mutableLongStateOf(0L) }
@@ -264,6 +284,12 @@ fun VideoPlayer(
         currentAudioStream?.let { audio ->
             val extras = Bundle().apply {
                 putString("extra_audio_uri", audio.url)
+                putString("extra_audio_track_id", audio.audioTrackId)
+                // Parse itag from sabr:// URL for direct selection
+                try {
+                    val aUri = Uri.parse(audio.url)
+                    aUri.getQueryParameter("a")?.toIntOrNull()?.let { putInt("extra_audio_itag", it) }
+                } catch (_: Exception) {}
             }
             metadataBuilder.setExtras(extras)
         }
@@ -411,15 +437,16 @@ fun VideoPlayer(
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(text = language, color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                        val displayLabel = languageEntries.find { it.first == language }?.second ?: language
+                                        Text(text = displayLabel, color = Color.White, style = MaterialTheme.typography.labelMedium)
                                         IconArrowDropDown(tint = Color.White)
                                     }
                                 }
                                 DropdownMenu(expanded = isLanguageMenuExpanded, onDismissRequest = { isLanguageMenuExpanded = false }) {
-                                    languages.forEach { stream ->
+                                    languageEntries.forEach { (code, display) ->
                                         DropdownMenuItem(
-                                            text = { Text(stream) },
-                                            onClick = { language = stream; currentAudioStream = audioStreams.find { it.language == stream && it.bitrate == currentAudioStream?.bitrate } ?: audioStreams.first { it.language == stream }; isLanguageMenuExpanded = false }
+                                            text = { Text(display) },
+                                            onClick = { language = code; isLanguageMenuExpanded = false }
                                         )
                                     }
                                 }
