@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <queries>
+        <!-- Allow packageManager.getPackageInfo + getLaunchIntentForPackage to see installed games -->
+        <package android:name="com.vayunmathur.games.chess" />
+        <package android:name="com.vayunmathur.games.alchemist" />
+        <package android:name="com.vayunmathur.games.pipes" />
+        <package android:name="com.vayunmathur.games.solitaire" />
+        <package android:name="com.vayunmathur.games.unblockjam" />
+        <package android:name="com.vayunmathur.games.wordmaker" />
+        <package android:name="com.vayunmathur.games.logicgate" />
+        <package android:name="com.vayunmathur.games" />
+        <!-- Also allow generic launcher query as fallback for any com.vayunmathur.games.* -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:backupAgent=".util.AppBackupAgent"
