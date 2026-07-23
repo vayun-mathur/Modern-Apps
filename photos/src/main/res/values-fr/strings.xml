@@ -18,13 +18,13 @@
     <string name="label_map">Carte</string>
     <string name="title_edit_photo">Modifier la photo</string>
     <string name="people_scanning">Regroupement des visages… Les personnes apparaîtront ici au fur et à mesure qu’elles seront identifiées.</string>
-    <string name="taken_on">Date de prise de vue: %1$s</string>
+    <string name="taken_on">Date de prise de vue : %1$s</string>
     <string name="grant_image_video_permissions">Accorder les autorisations aux images et aux vidéos</string>
     <string name="secure_folder_auth_title">Déverrouiller le dossier sécurisé</string>
     <string name="detecting">Détection en cours…</string>
     <string name="people_model_missing">Le regroupement de visages nécessite un modèle MobileFaceNet. Ajoutez le fichier mobilefacenet.tflite, sous licence permissive, dans le répertoire photos/src/main/assets (voir FaceRecognizer).</string>
     <string name="indexing_progress_details">%1$d photos sur %2$d ont été traitées</string>
-    <string name="location">Lieu: %1$s</string>
+    <string name="location">Lieu : %1$s</string>
     <string name="action_restore_from_secure">Restaurer à partir du dossier sécurisé</string>
     <string name="openassistant_not_found">L\'application OpenAssistant n\'est pas installée. Veuillez l\'installer pour activer cette fonctionnalité.</string>
     <string name="secure_folder_auth_subtitle">Connectez-vous pour accéder à vos photos protégées</string>
@@ -41,7 +41,7 @@
     <string name="openassistant_needs_update">Mettez à jour l\'application OpenAssistant pour activer la recherche de photos par IA.</string>
     <string name="model_downloading_description">Le téléchargement du modèle d\'IA est en cours. Cela peut prendre quelques minutes, selon votre connexion.</string>
     <string name="date_format">%1$d %2$s %3$d</string>
-    <string name="resolution">Résolution: %1$d × %2$d</string>
+    <string name="resolution">Résolution : %1$d × %2$d</string>
     <string name="people_photo_count">%1$d photos</string>
     <string name="view_360">Vue à 360°</string>
     <plurals name="people_in_photo">
