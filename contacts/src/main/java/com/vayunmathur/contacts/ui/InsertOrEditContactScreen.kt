@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.Route
+import com.vayunmathur.contacts.util.ContactSorting.groupKey
+import com.vayunmathur.contacts.util.ContactSorting.sortedLocale
 import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.MaterialTheme
@@ -114,8 +116,8 @@ fun InsertOrEditContactScreen(
                 }
             } else {
                 val grouped = remember(contacts) {
-                    contacts.groupBy { it.name.value.firstOrNull()?.uppercaseChar() ?: '#' }
-                        .mapValues { (_, c) -> c.sortedBy { it.name.value } }
+                    contacts.groupBy { groupKey(it.name.value) }
+                        .mapValues { (_, c) -> c.sortedLocale() }
                         .toSortedMap()
                 }
 

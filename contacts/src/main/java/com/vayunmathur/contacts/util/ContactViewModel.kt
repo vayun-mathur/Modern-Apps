@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.vayunmathur.contacts.util.ContactSorting.sortedByNameLocale
 import kotlinx.datetime.LocalDate
 import kotlin.io.encoding.Base64
 
@@ -102,7 +103,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
                 list.add(ContactGroup(cursor.getLong(idIdx), cursor.getString(titleIdx) ?: "Unnamed"))
             }
         }
-        return list.sortedBy { it.name }
+        return list.sortedByNameLocale { it.name }
     }
 
     val contactGroupMemberships: StateFlow<List<ContactGroupMembership>> = contacts.map { contactList ->
@@ -254,7 +255,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
 
-            _accounts.value = (accountSet + savedAccounts).toList().sortedBy { it.name }
+            _accounts.value = (accountSet + savedAccounts).toList().sortedByNameLocale { it.name }
         }
     }
 

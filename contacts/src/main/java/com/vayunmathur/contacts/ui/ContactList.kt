@@ -58,6 +58,8 @@ import com.vayunmathur.contacts.data.CDKEmail
 import com.vayunmathur.contacts.data.CDKPhone
 import com.vayunmathur.contacts.data.CDKStructuredPostal
 import com.vayunmathur.contacts.data.Contact
+import com.vayunmathur.contacts.util.ContactSorting.groupKey
+import com.vayunmathur.contacts.util.ContactSorting.sortedLocale
 import com.vayunmathur.contacts.util.ContactViewModel
 import com.vayunmathur.library.ui.IconAdd
 import com.vayunmathur.library.ui.IconSettings
@@ -106,8 +108,8 @@ fun ContactList(
 
     val (favorites, otherContacts) = remember(contacts) { contacts.partition { it.isFavorite } }
     val groupedContacts = remember(otherContacts) {
-        otherContacts.groupBy { it.name.value.firstOrNull()?.uppercaseChar() ?: '#' }
-            .mapValues { (_, c) -> c.sortedBy { it.name.value } }
+        otherContacts.groupBy { groupKey(it.name.value) }
+            .mapValues { (_, c) -> c.sortedLocale() }
             .toSortedMap()
     }
 
@@ -309,7 +311,7 @@ fun ContactListPick(
 
     val groupedContacts = remember(otherContacts) {
         otherContacts
-            .groupBy { it.name.value.firstOrNull()?.uppercaseChar() ?: '#' }
+            .groupBy { groupKey(it.name.value) }
             .toSortedMap()
     }
 
