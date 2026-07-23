@@ -42,4 +42,12 @@
     <string name="grant_notifications_permission">授予通知权限</string>
     <string name="analog_clock_widget_label">指针时钟</string>
     <string name="analog_clock_widget_description">Material You 指针时钟 — 点按即可打开时钟</string>
+    <string name="channel_stopwatch_name">秒表</string>
+    <string name="channel_stopwatch_description">秒表控制</string>
+    <string name="action_pause">暂停</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_resume">继续</string>
+    <string name="action_reset">重置</string>
+    <string name="action_lap">一圈</string>
+    <string name="action_stop">停止</string>
 </resources>
