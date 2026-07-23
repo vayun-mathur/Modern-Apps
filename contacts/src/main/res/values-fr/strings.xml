@@ -106,4 +106,5 @@
     <string name="import_summary_contacts">%1$d contacts prêts à être importés</string>
     <string name="add_number_to_contact">Ajouter un numéro à un contact</string>
     <string name="create_new_contact">Créer un nouveau contact</string>
+    <string name="no_name">(Sans nom)</string>
 </resources>
