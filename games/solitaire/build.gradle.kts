@@ -12,3 +12,7 @@ android {
         applicationId = "com.vayunmathur.games.solitaire"
     }
 }
+
+dependencies {
+    implementation(project(":sdk:games"))
+}

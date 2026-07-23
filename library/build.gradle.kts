@@ -18,5 +18,8 @@ dependencies {
     // datastore
     implementation(libs.androidx.datastore.preferences)
 
+    // GameHub SDK — GameHubReporter bridge
+    implementation(project(":sdk:games"))
+
     api(libs.material)
 }

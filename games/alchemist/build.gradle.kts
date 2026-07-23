@@ -14,4 +14,5 @@ android {
 }
 
 dependencies {
+    implementation(project(":sdk:games"))
 }

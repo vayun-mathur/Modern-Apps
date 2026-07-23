@@ -12,3 +12,7 @@ android {
         applicationId = "com.vayunmathur.games.pipes"
     }
 }
+
+dependencies {
+    implementation(project(":sdk:games"))
+}

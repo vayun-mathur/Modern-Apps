@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <queries>
+        <package android:name="com.vayunmathur.games.hub" />
         <package android:name="com.vayunmathur.games" />
     </queries>
 </manifest>

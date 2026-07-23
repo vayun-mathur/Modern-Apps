@@ -15,5 +15,6 @@ android {
 }
 
 dependencies {
+    implementation(project(":sdk:games"))
     implementation(libs.androidx.datastore.preferences)
 }
