@@ -11,4 +11,7 @@
     <string name="move_down">下移</string>
     <string name="shrink">缩小</string>
     <string name="enlarge">放大</string>
+    <string name="external_saved">已保存到文件</string>
+    <string name="external_save_failed">无法保存（文件可能是只读的）</string>
+    <string name="external_read_failed">无法打开文件</string>
 </resources>
