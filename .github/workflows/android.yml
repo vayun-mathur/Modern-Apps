@@ -175,6 +175,23 @@ jobs:
               head -n 1 "$metadata_src" > "$target_path/short-description.txt"
               cp "$metadata_src" "$target_path/full-description.txt"
             fi
+
+            # --- Generate title.txt with MA branding (except FindFamily) ---
+            app_name=$(grep -m1 '<string name="app_name">' "$dir/src/main/res/values/strings.xml" 2>/dev/null | sed -E 's/.*<string name="app_name">(.*)<\/string>.*/\1/' | xargs)
+            if [ -z "$app_name" ]; then
+              # Fallback: derive from module_key
+              app_name=$(echo "$module_key" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+            fi
+            if [ "$module_key" = "findfamily" ]; then
+              title="$app_name"
+            else
+              case "$app_name" in
+                MA\ *) title="$app_name" ;;
+                *) title="MA $app_name" ;;
+              esac
+            fi
+            echo "$title" > "$target_path/title.txt"
+            echo "Generated title.txt for $dir: $title"
           done
 
       - name: Local Git Commit and Tag
