@@ -20,8 +20,6 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.vayunmathur.games.logicgate.data.ChipLibrary
-import com.vayunmathur.games.logicgate.data.Levels
 import com.vayunmathur.games.logicgate.ui.CircuitCanvas
 import com.vayunmathur.games.logicgate.ui.InventoryBar
 import com.vayunmathur.games.logicgate.ui.LogicGateTheme
@@ -84,7 +82,7 @@ fun Navigation(viewModel: LogicViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelId: String) {
-    val level = Levels.get(levelId)
+    val level = com.vayunmathur.games.logicgate.data.Levels.get(levelId)
     val uiState by viewModel.uiState.collectAsState()
     val unlocked by viewModel.unlockedChips.collectAsState()
     val completed by viewModel.completedIds.collectAsState()
@@ -103,6 +101,8 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                 navigationIcon = { IconNavigation(backStack) },
                 actions = {
                     Row(modifier = Modifier.padding(end = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (uiState.canUndo) Button(onClick = { viewModel.undo() }) { Text(text = "Undo", fontSize = 10.sp) }
+                        if (uiState.canRedo) Button(onClick = { viewModel.redo() }) { Text(text = "Redo", fontSize = 10.sp) }
                         Button(onClick = { viewModel.toggleTruthTable() }) { Text(text = if (uiState.showTruthTable) "Hide TT" else "Show TT", fontSize = 10.sp) }
                     }
                 }
@@ -124,7 +124,6 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                     onChipDrop = { chipId, global ->
                         val local = Offset(global.x - canvasRect.left, global.y - canvasRect.top)
                         if (canvasRect.contains(global)) {
-                            // Free placement – wherever finger lifted, no grid snap
                             viewModel.addGateAt(chipId, local.x, local.y)
                         }
                         draggingChipId = null
@@ -145,8 +144,8 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                 is EvalStatus.Ok -> if (s.isFullyCorrect) "✓ CORRECT — ${level.unlocksChipId?.let { "Unlocked $it!" } ?: "Done!"}"
                 else "${s.passingRows}/${s.totalRows} passing — ${s.failingRows.size} failing"
                 is EvalStatus.Error -> "Error: ${s.msg}"
-                is EvalStatus.Cycle -> "Cycle: ${s.ids.take(3).joinToString()}"
-                else -> "Drag chip onto board to place • Drag gates & I/O to move • Drag output dot → input dot to wire • Tap wire to delete • Long-press gate to delete"
+                is EvalStatus.Cycle -> "Cycle: ${s.ids.take(3).joinToString()} — SR_LATCH needs 2 NOR cross-coupled feedback"
+                else -> "Drag chip onto board • Drag gates & I/O to move • Drag output dot → input dot to wire • Tap wire to delete • Long-press gate to delete • Undo/Redo in top bar"
             }
             val statusColor = when {
                 uiState.evalStatus is EvalStatus.Ok && (uiState.evalStatus as EvalStatus.Ok).isFullyCorrect -> Color(0xFF22C55E)
@@ -169,7 +168,6 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                 }
             }
 
-            // Canvas container – NO scroll wrapper that would steal drags. Full freeform.
             BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 val wide = maxWidth > maxHeight
                 Box(
@@ -193,8 +191,11 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                                     onStartWiring = { viewModel.startWiring(it) },
                                     onCancelWiring = { viewModel.cancelWiring() },
                                     onGateMove = { id, x, y -> viewModel.onGateMoved(id, x, y) },
+                                    onGateMoveFinished = { id, x, y -> viewModel.onGateMoveFinished(id, x, y) },
                                     onInputTermMove = { idx, x, y -> viewModel.onInputMoved(idx, x, y) },
+                                    onInputTermMoveFinished = { idx, x, y -> viewModel.onInputMoveFinished(idx, x, y) },
                                     onOutputTermMove = { idx, x, y -> viewModel.onOutputMoved(idx, x, y) },
+                                    onOutputTermMoveFinished = { idx, x, y -> viewModel.onOutputMoveFinished(idx, x, y) },
                                     onGateDelete = { viewModel.removeGate(it) },
                                     onWireDelete = { viewModel.removeWire(it) },
                                     onOutputMapDelete = { viewModel.removeOutputMapping(it) },
@@ -205,14 +206,14 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                             }
                             if (uiState.showTruthTable) {
                                 val failing = (uiState.evalStatus as? EvalStatus.Ok)?.failingRows ?: emptyList()
-                                TruthTableView(level, failing, modifier = Modifier.width(210.dp).fillMaxHeight().background(Color(0xFF0E141B)))
+                                TruthTableView(level, failing, modifier = Modifier.width(260.dp).fillMaxHeight().background(Color(0xFF0E141B)))
                             }
                         }
                     } else {
                         Column(modifier = Modifier.fillMaxSize()) {
                             if (uiState.showTruthTable) {
                                 val failing = (uiState.evalStatus as? EvalStatus.Ok)?.failingRows ?: emptyList()
-                                TruthTableView(level, failing, modifier = Modifier.fillMaxWidth().height(180.dp).background(Color(0xFF0E141B)))
+                                TruthTableView(level, failing, modifier = Modifier.fillMaxWidth().height(200.dp).background(Color(0xFF0E141B)))
                             }
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 CircuitCanvas(
@@ -227,8 +228,11 @@ fun GameScreen(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelI
                                     onStartWiring = { viewModel.startWiring(it) },
                                     onCancelWiring = { viewModel.cancelWiring() },
                                     onGateMove = { id, x, y -> viewModel.onGateMoved(id, x, y) },
+                                    onGateMoveFinished = { id, x, y -> viewModel.onGateMoveFinished(id, x, y) },
                                     onInputTermMove = { idx, x, y -> viewModel.onInputMoved(idx, x, y) },
+                                    onInputTermMoveFinished = { idx, x, y -> viewModel.onInputMoveFinished(idx, x, y) },
                                     onOutputTermMove = { idx, x, y -> viewModel.onOutputMoved(idx, x, y) },
+                                    onOutputTermMoveFinished = { idx, x, y -> viewModel.onOutputMoveFinished(idx, x, y) },
                                     onGateDelete = { viewModel.removeGate(it) },
                                     onWireDelete = { viewModel.removeWire(it) },
                                     onOutputMapDelete = { viewModel.removeOutputMapping(it) },

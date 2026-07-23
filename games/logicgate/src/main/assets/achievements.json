@@ -1,9 +1,9 @@
 [
   {"id": "first_gate", "name": "First Light", "description": "Complete your first gate"},
   {"id": "foundation_complete", "name": "Foundation", "description": "Complete Foundation chapter (6 levels)", "targetProgress": 6},
-  {"id": "routing_complete", "name": "Router", "description": "Complete Routing chapter (3 levels)", "targetProgress": 3},
-  {"id": "arith_complete", "name": "Arithmetician", "description": "Complete Arithmetic chapter (4 levels)", "targetProgress": 4},
-  {"id": "memory_complete", "name": "Mnemosyne", "description": "Complete Memory chapter (3 levels)", "targetProgress": 3},
-  {"id": "cpu_complete", "name": "CPU Architect", "description": "Complete CPU chapter (2 levels)", "targetProgress": 2},
-  {"id": "all_levels", "name": "NAND to CPU", "description": "Complete all 18 levels and build the 8-bit CPU", "targetProgress": 18}
+  {"id": "routing_complete", "name": "Router", "description": "Complete Routing chapter (12 levels)", "targetProgress": 12},
+  {"id": "arith_complete", "name": "Arithmetician", "description": "Complete Arithmetic chapter (6 levels)", "targetProgress": 6},
+  {"id": "memory_complete", "name": "Mnemosyne", "description": "Complete Memory chapter (8 levels)", "targetProgress": 8},
+  {"id": "cpu_complete", "name": "CPU Architect", "description": "Complete CPU chapter (4 levels)", "targetProgress": 4},
+  {"id": "all_levels", "name": "NAND to CPU", "description": "Complete all 36 levels and build the stored-program computer", "targetProgress": 36}
 ]
