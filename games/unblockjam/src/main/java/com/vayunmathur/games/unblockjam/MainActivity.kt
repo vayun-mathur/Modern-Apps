@@ -68,6 +68,7 @@ import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconNavigation
 import com.vayunmathur.library.ui.IconStar
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -105,6 +106,8 @@ sealed interface Route: NavKey {
 fun Navigation(viewModel: UnblockJamViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.PackSelector)
     val newAchievement by viewModel.achievementsManager.newAchievement.collectAsState()
+
+    GameHubComposeHook("unblockjam", viewModel.achievementsManager)
 
     Box(Modifier.fillMaxSize()) {
         MainNavigation(backStack) {

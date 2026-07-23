@@ -92,6 +92,7 @@ import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.util.AchievementsManager
+import com.vayunmathur.library.util.GameHubSessionHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -127,6 +128,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DynamicTheme {
                 val backStack = rememberNavBackStack<Route>(Route.Game)
+                GameHubSessionHook("wordmaker", "Wordmaker")
                 MainNavigation(backStack) {
                     entry<Route.Game> {
                         WordMakerGameLoader(backStack, viewModel)

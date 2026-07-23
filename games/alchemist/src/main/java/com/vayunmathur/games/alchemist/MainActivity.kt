@@ -29,6 +29,7 @@ import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.util.AchievementsManager
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -69,6 +70,7 @@ sealed interface Route: NavKey {
 fun Navigation(viewModel: AlchemistViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Home)
     val achievementsManager = rememberAchievementsManager()
+    GameHubComposeHook("alchemist", achievementsManager)
     val newAchievement = achievementsManager?.newAchievement?.collectAsState()?.value
 
     var showingUnlock by remember { mutableStateOf(false) }

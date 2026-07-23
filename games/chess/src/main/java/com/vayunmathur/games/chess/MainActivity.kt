@@ -89,6 +89,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.BottomBarItem
 import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.ui.AchievementNotification
 import androidx.compose.runtime.produceState
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
             DynamicTheme {
                 val backStack = rememberNavBackStack<Route>(Route.Game)
                 val achievementsManager = rememberAchievementsManager()
+                GameHubComposeHook("chess", achievementsManager)
                 if (achievementsManager == null) {
                     Box(Modifier.fillMaxSize())
                     return@DynamicTheme

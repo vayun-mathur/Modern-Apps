@@ -6,5 +6,5 @@ class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String>
         get() = listOf("logicgate_stats")
     override val datastoreNames: List<String>
-        get() = listOf("logic_gate_datastore")
+        get() = listOf("datastore_default", "logic_gate_datastore", "logicgate_circuits_v1")
 }

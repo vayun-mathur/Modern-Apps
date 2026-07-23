@@ -60,6 +60,7 @@ import com.vayunmathur.games.solitaire.util.SolitaireViewModel
 import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.GameCenterScreen
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.NavKey
@@ -106,6 +107,8 @@ fun GameMode.displayName(): String = when (this) {
 fun Navigation(viewModel: SolitaireViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Home)
     val newAchievement by viewModel.achievementsManager.newAchievement.collectAsState()
+
+    GameHubComposeHook("solitaire", viewModel.achievementsManager)
 
     Box(Modifier.fillMaxSize()) {
         MainNavigation(backStack) {

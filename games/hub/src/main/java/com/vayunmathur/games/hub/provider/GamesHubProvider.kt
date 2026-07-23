@@ -77,7 +77,7 @@ open class GamesHubProvider : ContentProvider() {
             try {
                 when (uriMatcher.match(uri)) {
                     CODE_GAME_ITEM, CODE_GAMES -> {
-                        val entity = valuesToGame(v, uri)
+                        val entity = valuesToGameMerged(v, uri, database)
                         database.gameDao().upsert(entity)
                         database.activityDao().upsert(
                             ActivityEventEntity(
@@ -159,12 +159,14 @@ open class GamesHubProvider : ContentProvider() {
                     }
                     CODE_SESSIONS_BY_GAME -> {
                         val session = valuesToSession(v, uri)
+                        ensureGameExists(session.gameId, database)
                         database.gameDao().markPlayed(session.gameId, session.startTime)
                         database.sessionDao().upsert(session)
                         uri
                     }
                     CODE_SESSION_ITEM -> {
                         val session = valuesToSession(v, uri)
+                        ensureGameExists(session.gameId, database)
                         if (database.sessionDao().getBySessionId(session.sessionId) == null) {
                             database.gameDao().markPlayed(session.gameId, session.startTime)
                         }
@@ -320,6 +322,34 @@ open class GamesHubProvider : ContentProvider() {
             registeredAt = v.getAsLong(GameHubContract.Games.REGISTERED_AT) ?: v.getAsLong("registered_at") ?: System.currentTimeMillis(),
             lastSeenAt = v.getAsLong(GameHubContract.Games.LAST_SEEN_AT) ?: v.getAsLong("last_seen_at") ?: System.currentTimeMillis()
         )
+    }
+
+    private suspend fun valuesToGameMerged(v: ContentValues, uri: Uri, database: GamesHubDatabase): HubGameEntity {
+        val segGameId = uri.pathSegments.getOrNull(1)
+        val gameId = v.getAsString(GameHubContract.Games.GAME_ID) ?: v.getAsString("game_id") ?: segGameId ?: error("gameId missing")
+        val existing = database.gameDao().getById(gameId)
+        if (existing == null) return valuesToGame(v, uri)
+        return existing.copy(
+            packageName = v.getAsString(GameHubContract.Games.PACKAGE_NAME) ?: v.getAsString("package_name") ?: existing.packageName,
+            displayName = v.getAsString(GameHubContract.Games.DISPLAY_NAME) ?: v.getAsString("display_name") ?: existing.displayName,
+            description = v.getAsString(GameHubContract.Games.DESCRIPTION) ?: v.getAsString("description") ?: existing.description,
+            versionName = v.getAsString(GameHubContract.Games.VERSION_NAME) ?: v.getAsString("version_name") ?: existing.versionName,
+            versionCode = v.getAsLong(GameHubContract.Games.VERSION_CODE) ?: v.getAsLong("version_code") ?: existing.versionCode,
+            lastSeenAt = v.getAsLong(GameHubContract.Games.LAST_SEEN_AT) ?: v.getAsLong("last_seen_at") ?: System.currentTimeMillis()
+        )
+    }
+
+    private suspend fun ensureGameExists(gameId: String, database: GamesHubDatabase) {
+        if (database.gameDao().getById(gameId) == null) {
+            database.gameDao().upsert(
+                HubGameEntity(
+                    gameId = gameId,
+                    packageName = "unknown",
+                    displayName = gameId.replaceFirstChar { it.uppercase() },
+                    lastSeenAt = System.currentTimeMillis()
+                )
+            )
+        }
     }
 
     private fun valuesToAchievementDef(v: ContentValues, uri: Uri): AchievementDefEntity {
