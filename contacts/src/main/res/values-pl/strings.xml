@@ -98,4 +98,13 @@
     <string name="no_groups_found">Nie znaleziono grup. Utwórz grupę w zakładce Grupy.</string>
     <string name="contacts_count">%1$d kontaktów</string>
     <string name="done">Zrobione</string>
+    <string name="import_vcf_file">Importuj plik .vcf</string>
+    <string name="import_to_existing_account">Importuj do istniejącego konta</string>
+    <string name="create_new_account_option">Utwórz nowe konto</string>
+    <string name="no_contacts_found">Nie znaleziono kontaktów</string>
+    <string name="import_summary_contacts">%1$d kontaktów gotowych do zaimportowania</string>
+    <string name="select_account">Wybierz konto</string>
+    <string name="no_name">(Bez nazwy)</string>
+    <string name="add_number_to_contact">Dodaj numer do kontaktu</string>
+    <string name="create_new_contact">Utwórz nowy kontakt</string>
 </resources>
