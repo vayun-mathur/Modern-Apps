@@ -51,4 +51,5 @@
     </plurals>
     <string name="grant_storage_permission">Accorder l\'autorisation d\'accès au stockage</string>
     <string name="disable_ocr">Désactiver l\'indexation par IA</string>
+    <string name="view_panorama">Voir le panorama</string>
 </resources>
