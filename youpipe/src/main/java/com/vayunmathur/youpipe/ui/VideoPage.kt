@@ -264,7 +264,8 @@ fun VideoDetails(
 
     if (isDownloadDialogVisible) {
         var selectedVideoStream by remember { mutableStateOf(videoStreams.maxByOrNull { it.height } ?: videoStreams.first()) }
-        var selectedAudioStream by remember { mutableStateOf(audioStreams.firstOrNull()) }
+        // Always highest quality opus for selected language in download as well
+        var selectedAudioStream by remember { mutableStateOf(audioStreams.maxByOrNull { it.bitrate }) }
 
         val languageEntriesDownload = remember(audioStreams) {
             audioStreams.map { it.language to (it.displayName ?: it.language) }
@@ -273,11 +274,9 @@ fun VideoDetails(
         }
         val languages = languageEntriesDownload.map { it.first }
         var selectedLanguage by remember { mutableStateOf(selectedAudioStream?.language ?: languages.firstOrNull() ?: "Default") }
-        val filteredAudioStreams = remember(selectedLanguage, audioStreams) { audioStreams.filter { it.language == selectedLanguage } }
 
         var videoExpanded by remember { mutableStateOf(false) }
         var languageExpanded by remember { mutableStateOf(false) }
-        var audioExpanded by remember { mutableStateOf(false) }
 
         Dialog(onDismissRequest = { isDownloadDialogVisible = false }) {
             Card {
@@ -340,7 +339,7 @@ fun VideoDetails(
                                         text = { Text(display) },
                                         onClick = {
                                             selectedLanguage = code
-                                            selectedAudioStream = audioStreams.firstOrNull { it.language == code }
+                                            selectedAudioStream = audioStreams.filter { it.language == code }.maxByOrNull { it.bitrate }
                                             languageExpanded = false
                                         }
                                     )
@@ -349,39 +348,6 @@ fun VideoDetails(
                         }
                     }
 
-                    if (filteredAudioStreams.isNotEmpty()) {
-                        Spacer(Modifier.height(16.dp))
-                        Text("Audio Bitrate", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
-                        ExposedDropdownMenuBox(
-                            expanded = audioExpanded,
-                            onExpandedChange = { audioExpanded = it }
-                        ) {
-                            OutlinedTextField(
-                                value = selectedAudioStream?.let { "${it.bitrate / 1000} kbps - ${Formatter.formatShortFileSize(context, it.size)}" } ?: "None",
-                                onValueChange = {},
-                                readOnly = true,
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = audioExpanded) },
-                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                            )
-                            ExposedDropdownMenu(
-                                expanded = audioExpanded,
-                                onDismissRequest = { audioExpanded = false }
-                            ) {
-                                filteredAudioStreams.forEach { stream ->
-                                    DropdownMenuItem(
-                                        text = { Text("${stream.bitrate / 1000} kbps - ${Formatter.formatShortFileSize(context, stream.size)}") },
-                                        onClick = {
-                                            selectedAudioStream = stream
-                                            audioExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
                     Spacer(Modifier.height(24.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { isDownloadDialogVisible = false }) { Text("Cancel") }

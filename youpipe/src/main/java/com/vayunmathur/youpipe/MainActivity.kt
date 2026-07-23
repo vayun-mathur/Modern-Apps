@@ -110,20 +110,17 @@ class MainActivity : ComponentActivity() {
         newConfig: Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-
-        // If we were in PiP, and we are no longer in it, and the activity is
-        // finishing, it means the user closed the PiP window.
-        if (!isInPictureInPictureMode && isFinishing) {
-            val intent = Intent(this, PlaybackService::class.java)
-            stopService(intent) // This forces the service to die immediately
-        }
+        // Previously we stopped PlaybackService when PiP closed (isFinishing). New behavior:
+        // Keep audio playing and switch to audio-only when PiP is dismissed. PlaybackService
+        // handles the audio-only switch via track selection override; we do NOT stop it here.
     }
 
     override fun onDestroy() {
-        // If the activity is destroyed (closing PiP window), stop the service.
-        // This is the most reliable "kill switch" for the audio.
-        val intent = Intent(this, PlaybackService::class.java)
-        stopService(intent)
+        // Only stop service when truly destroying the whole activity, not when entering PiP.
+        // When the user swipes away PiP window, system destroys activity with isFinishing=true,
+        // but we want to KEEP audio (background playback). So we do NOT stop service here.
+        // PlaybackService's own onTaskRemoved will handle final cleanup when notification is
+        // dismissed or user explicitly stops.
         super.onDestroy()
     }
 }

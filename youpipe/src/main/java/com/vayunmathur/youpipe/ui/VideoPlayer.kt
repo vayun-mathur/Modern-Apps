@@ -131,18 +131,19 @@ fun VideoPlayer(
             language = if ("en" in languages) "en" else languages.firstOrNull() ?: ""
         }
     }
+    // Highest quality opus per language (sorted desc bitrate in VM), so first is best.
     val audioStreamOptions = remember(audioStreams, language) {
         audioStreams.filter { it.language == language }
     }
 
     var controller by remember { mutableStateOf<MediaController?>(null) }
     var currentVideoStream by remember(videoStreams) { mutableStateOf(videoStreams.first()) }
-    var currentAudioStream by remember(audioStreamOptions) { mutableStateOf(audioStreamOptions.firstOrNull()) }
-    // Ensure currentAudioStream stays consistent with language filter
+    // Always highest quality audio for selected language (user request: remove bitrate chooser)
+    var currentAudioStream by remember(audioStreamOptions) { mutableStateOf(audioStreamOptions.maxByOrNull { it.bitrate }) }
+    // Ensure currentAudioStream stays consistent with language filter = best quality
     LaunchedEffect(language) {
         val filtered = audioStreams.filter { it.language == language }
-        currentAudioStream = filtered.find { it.bitrate == currentAudioStream?.bitrate }
-            ?: filtered.firstOrNull()
+        currentAudioStream = filtered.maxByOrNull { it.bitrate } ?: filtered.firstOrNull()
     }
     var isControlsVisible by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
@@ -153,12 +154,19 @@ fun VideoPlayer(
 
     var isVideoMenuExpanded by remember { mutableStateOf(false) }
     var isLanguageMenuExpanded by remember { mutableStateOf(false) }
-    var isAudioMenuExpanded by remember { mutableStateOf(false) }
     var isChapterMenuVisible by remember { mutableStateOf(false) }
     var isCaptionMenuExpanded by remember { mutableStateOf(false) }
 
     var selectedSubtitle by remember { mutableStateOf<SubtitleTrack?>(null) }
     var cues by remember { mutableStateOf<List<Cue>>(emptyList()) }
+
+    // Track if we are in PiP to avoid stopping playback on dispose when PiP is active or
+    // when PiP is closed and we want to keep audio-only.
+    val isPipModeForLifecycle = rememberIsInPipMode()
+    var wasInPipMode by remember { mutableStateOf(false) }
+    LaunchedEffect(isPipModeForLifecycle) {
+        if (isPipModeForLifecycle) wasInPipMode = true
+    }
 
     DisposableEffect(Unit) {
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
@@ -169,9 +177,26 @@ fun VideoPlayer(
         }, MoreExecutors.directExecutor())
 
         onDispose {
-            controller?.let {
-                it.stop() // This is critical!
-                it.release()
+            // If we were ever in PiP (including PiP closed -> background audio), don't stop the
+            // ExoPlayer inside the service. Just release the controller connection. The service
+            // will itself switch to audio-only when PiP is dismissed to save bandwidth.
+            val activity = try { context.findActivity() } catch (_: Exception) { null }
+            val keepPlaying = wasInPipMode || activity?.isInPictureInPictureMode == true
+            if (keepPlaying) {
+                controller?.let {
+                    // Disable video track to stop streaming video (audio-only background)
+                    try {
+                        it.trackSelectionParameters = it.trackSelectionParameters.buildUpon()
+                            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+                            .build()
+                    } catch (_: Exception) {}
+                    it.release()
+                }
+            } else {
+                controller?.let {
+                    it.stop()
+                    it.release()
+                }
             }
             MediaController.releaseFuture(controllerFuture)
         }
@@ -454,27 +479,6 @@ fun VideoPlayer(
                             }
                         }
 
-                        // Audio is opus-only now, so no need to surface codec to user. Only bitrate matters.
-                        Box {
-                            Surface(
-                                onClick = { isAudioMenuExpanded = true },
-                                color = Color.Black.copy(alpha = 0.5f),
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = stringResource(R.string.audio_bitrate, (currentAudioStream?.bitrate ?: 0) / 1000), color = Color.White, style = MaterialTheme.typography.labelMedium)
-                                    IconArrowDropDown(tint = Color.White)
-                                }
-                            }
-                        DropdownMenu(expanded = isAudioMenuExpanded, onDismissRequest = { isAudioMenuExpanded = false }) {
-                                audioStreamOptions.forEach { stream ->
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.audio_bitrate, stream.bitrate / 1000)) },
-                                        onClick = { currentAudioStream = stream; isAudioMenuExpanded = false }
-                                    )
-                                }
-                            }
-                        }
                     }
 
                     if (subtitles.isNotEmpty()) {

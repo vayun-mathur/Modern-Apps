@@ -249,16 +249,27 @@ class PlaybackService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
-        // Stop the player and release everything
+        // When app is swiped away while playing, keep audio-only background playback.
+        // User request: video should keep playing even if PiP is closed (audio only).
+        // So don't stop here; switch to audio-only to save bandwidth.
+        if (player?.isPlaying == true) {
+            try {
+                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+                    .build()
+            } catch (_: Exception) {}
+            // Don't stopSelf() - keep foreground notification for audio
+            return
+        }
         player?.let {
             it.pause()
             it.stop()
         }
-        stopSelf() // This will trigger onDestroy() in the service
+        stopSelf()
     }
 
     override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
-        // If the player is stopped or the activity has disconnected,
+        // If the player is stopped or the activity has disconnected and not playing,
         // we stop the service from being a foreground service.
         if (session.player.playbackState == Player.STATE_IDLE ||
             session.player.playbackState == Player.STATE_ENDED) {
