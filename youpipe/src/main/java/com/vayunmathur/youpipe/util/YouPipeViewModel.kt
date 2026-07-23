@@ -715,7 +715,7 @@ class YouPipeViewModel(
                         if (progVideoOnly.isNotEmpty() || sabrVideoOnly.isNotEmpty()) {
                             // Combine progressive + SABR video-only. Deduplicate by height and prefer
                             // vp9 over avc for same resolution (per user request). AV1 is kept when
-                            // present as distinct quality. Opus-only audio.
+                            // present as distinct quality. Opus-only audio. Do NOT filter >1080p.
                             val combinedVideo = (
                                 progVideoOnly.map { it.toDomain() } +
                                     sabrVideoOnly.map { it.toSabrDomain(videoId) }
@@ -731,9 +731,11 @@ class YouPipeViewModel(
                                         streamsAtHeight
                                     }
                                 }
-                                .distinctBy { it.codec to it.height }
+                                // Keep different fps as distinct (e.g. 1080p30 vs 1080p60)
+                                .distinctBy { Triple(it.codec, it.height, it.fps) }
                                 .sortedWith(
                                     compareByDescending<VideoStream> { it.height }
+                                        .thenByDescending { it.fps }
                                         .thenByDescending { codecPriority(it.codec) }
                                 )
                             videoStreams = combinedVideo
