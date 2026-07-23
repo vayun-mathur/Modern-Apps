@@ -66,8 +66,17 @@
     <string name="open_location_in_navigation">Ouvrir l\'emplacement</string>
     <string name="add_reminder">Définir un rappel</string>
     <string name="calendar_widget_description">Aperçu des événements à venir ― tapoter pour ouvrir le Calendrier</string>
-    <string name="month_option_day_of_month">Le %1$d du mois</string>
-    <string name="month_option_last_weekday">Au cours des %1$s derniers</string>
+    <string name="month_option_day_of_month">Le %1$de jour du mois</string>
+    <string name="month_option_last_weekday">Chaque dernier %1$s du mois</string>
     <string name="year_option_week">La %1$de semaine de l\'année, le %2$s</string>
     <string name="year_option_day_of_year">Le %1$de jour de l\'année</string>
+    <string name="on_label">Chaque</string>
+    <string name="month_option_nth_weekday">Chaque %1$s %2$s</string>
+    <string name="year_option_month_day">Chaque %2$d %1$s</string>
+    <string name="import_ics_file">Importer à partir d\'un fichier .ics</string>
+    <string name="import_events">Importer des événements</string>
+    <string name="import_to_existing_calendar">Importer vers un calendrier existant</string>
+    <string name="create_new_calendar_option">Créer un nouveau calendrier</string>
+    <string name="no_events_found">Aucun événement trouvé</string>
+    <string name="import_summary">%1$d événements sont prêts à être importés</string>
 </resources>
