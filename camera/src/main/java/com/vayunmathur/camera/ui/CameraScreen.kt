@@ -262,6 +262,7 @@ fun CameraScreen(
 
     var activeSetting by remember { mutableStateOf<CameraSetting?>(null) }
     var maskBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    val sloMoSupported by viewModel.sloMoSupported.collectAsState()
     val isPhotoType = cameraMode in listOf(CameraMode.PHOTO, CameraMode.PORTRAIT, CameraMode.PANORAMA, CameraMode.PHOTOSPHERE)
     val isSloMo = cameraMode == CameraMode.SLOW_MO
     val isVideoType = cameraMode == CameraMode.VIDEO || cameraMode == CameraMode.TIMELAPSE || cameraMode == CameraMode.CINEMATIC
@@ -741,12 +742,14 @@ fun CameraScreen(
                         } ?: Intent(Intent.ACTION_VIEW, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
                         context.startActivity(Intent.createChooser(intent, null))
                     },
-                    iconRotation = animatedRotation
+                    iconRotation = animatedRotation,
+                    flipEnabled = !isSloMo
                 )
 
                 ModeSelector(
                     cameraMode = cameraMode,
                     isPhotoType = isPhotoType,
+                    sloMoSupported = sloMoSupported,
                     onModeSelected = { viewModel.switchCameraMode(it) }
                 )
 
@@ -1187,7 +1190,8 @@ private fun ShutterRow(
     onSnapshot: () -> Unit,
     onFlipCamera: () -> Unit,
     onGallery: () -> Unit,
-    iconRotation: Float
+    iconRotation: Float,
+    flipEnabled: Boolean = true
 ) {
     val shutterScale by animateFloatAsState(
         targetValue = if (isCapturing) 0.8f else 1f,
@@ -1282,6 +1286,7 @@ private fun ShutterRow(
         }
 
         // Right slot: video snapshot while recording (if supported), otherwise flip camera.
+        // No flip in Slo-Mo — back camera only.
         if (isRecording) {
             if (videoSnapshotSupported) {
                 Box(
@@ -1297,14 +1302,18 @@ private fun ShutterRow(
                 Spacer(Modifier.size(48.dp))
             }
         } else {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xFF3C3C3C), CircleShape)
-                    .clickable(onClick = onFlipCamera),
-                contentAlignment = Alignment.Center
-            ) {
-                    IconFlipCamera(Modifier.size(24.dp).rotate(iconRotation), Color.White)
+            if (flipEnabled) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color(0xFF3C3C3C), CircleShape)
+                        .clickable(onClick = onFlipCamera),
+                    contentAlignment = Alignment.Center
+                ) {
+                        IconFlipCamera(Modifier.size(24.dp).rotate(iconRotation), Color.White)
+                }
+            } else {
+                Spacer(Modifier.size(48.dp))
             }
         }
     }
@@ -1314,6 +1323,7 @@ private fun ShutterRow(
 private fun ModeSelector(
     cameraMode: CameraMode,
     isPhotoType: Boolean,
+    sloMoSupported: Boolean?,
     onModeSelected: (CameraMode) -> Unit
 ) {
     Row(
@@ -1329,12 +1339,15 @@ private fun ModeSelector(
                 CameraMode.PHOTOSPHERE to "Sphere"
             )
         } else {
-            listOf(
-                CameraMode.SLOW_MO to "Slo-Mo",
-                CameraMode.VIDEO to "Video",
-                CameraMode.CINEMATIC to "Cinematic",
-                CameraMode.TIMELAPSE to "Timelapse"
-            )
+            // Only include Slo-Mo when the device's back camera actually supports true HFR.
+            buildList {
+                if (sloMoSupported != false) {
+                    add(CameraMode.SLOW_MO to "Slo-Mo")
+                }
+                add(CameraMode.VIDEO to "Video")
+                add(CameraMode.CINEMATIC to "Cinematic")
+                add(CameraMode.TIMELAPSE to "Timelapse")
+            }
         }
         modes.forEach { (mode, label) ->
             val isSelected = cameraMode == mode

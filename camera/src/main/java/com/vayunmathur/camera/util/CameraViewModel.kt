@@ -412,12 +412,16 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     private val motionFrames = ArrayDeque<MotionFrame>()
     private val motionLock = Any()
 
-    // High-speed session state
+    // High-speed session state — Slo-Mo-only (back camera, true HFR, no fallbacks)
     private var highSpeedVideoCapture: VideoCapture<Recorder>? = null
     private var highSpeedRecording: Recording? = null
 
     private val _highSpeedActive = MutableStateFlow(false)
     val highSpeedActive = _highSpeedActive.asStateFlow()
+
+    /** Whether the back camera supports true HFR slo-mo on this device. */
+    private val _sloMoSupported = MutableStateFlow<Boolean?>(null)
+    val sloMoSupported = _sloMoSupported.asStateFlow()
 
     // Manual video session state (VIDEO / TIMELAPSE modes)
     private var videoCapture: VideoCapture<Recorder>? = null
@@ -442,6 +446,46 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         panoramaEngine.onSweepComplete = { finishPanoramaSweep() }
         viewModelScope.launch {
             _lastCaptureUri.collect { uri -> _galleryThumbnail.value = loadThumbnail(uri) }
+        }
+        // Probe Slo-Mo capability once (back camera only). UI hides Slo-Mo if unsupported.
+        viewModelScope.launch {
+            _sloMoSupported.value = probeSloMoSupport()
+        }
+    }
+
+    /**
+     * Probe whether the BACK lens supports true high-speed video. Runs once at startup.
+     * Does not affect other modes' quality.
+     */
+    private suspend fun probeSloMoSupport(): Boolean {
+        return try {
+            val provider = ProcessCameraProvider.awaitInstance(app)
+            val selector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .build()
+            val cameraInfo = provider.getCameraInfo(selector)
+            val caps = Recorder.getHighSpeedVideoCapabilities(cameraInfo) ?: return false
+            val quals = caps.getSupportedQualities(androidx.camera.core.DynamicRange.SDR)
+            if (quals.isEmpty()) return false
+            // Need at least one FHD/HD HFR range
+            val preview = Preview.Builder().build()
+            val qualitySelector = QualitySelector.fromOrderedList(
+                listOf(Quality.FHD, Quality.HD),
+                FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)
+            )
+            val recorder = Recorder.Builder().setQualitySelector(qualitySelector).build()
+            val vc = VideoCapture.Builder(recorder).build()
+            val tempConfig = HighSpeedVideoSessionConfig.Builder(vc)
+                .setPreview(preview)
+                .setSlowMotionEnabled(true)
+                .build()
+            val ranges = try {
+                cameraInfo.getSupportedFrameRateRanges(tempConfig)
+            } catch (_: Exception) { emptyList() }
+            ranges.isNotEmpty() && ranges.any { it.upper >= 60 }
+        } catch (e: Exception) {
+            Log.w("SloMo", "Slo-Mo probe failed", e)
+            false
         }
     }
 
@@ -672,10 +716,19 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun switchCameraMode(newMode: CameraMode) {
+        // Slo-Mo is back-camera only; enforce it when entering Slo-Mo.
+        if (newMode == CameraMode.SLOW_MO) {
+            if (_lensFacing.value != CameraSelector.LENS_FACING_BACK) {
+                _lensFacing.value = CameraSelector.LENS_FACING_BACK
+                resetNightModeDetection()
+            }
+        }
         _cameraMode.value = newMode
     }
 
     fun flipCamera() {
+        // Disallow flipping while in Slo-Mo — it's back-camera only, true HFR.
+        if (_cameraMode.value == CameraMode.SLOW_MO) return
         _lensFacing.value = if (_lensFacing.value == CameraSelector.LENS_FACING_BACK)
             CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
         resetNightModeDetection()
@@ -733,59 +786,140 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Sets up a true high-speed (HFR) session for Slo-Mo.
+     *
+     * Requirements per product spec:
+     * - Back camera only (no front-camera / selfie Slo-Mo)
+     * - No normal-speed fallbacks: only bind true HFR (slowMotionEnabled=true); if it fails,
+     *   return false so the caller knows the device can't do Slo-Mo.
+     * - Quality handling is Slo-Mo-only and does NOT affect VIDEO/PHOTO/etc (those use their own
+     *   QualitySelector in setupVideoSession/setupPhotoSession). This method's quality selection
+     *   only touches the HFR Recorder built here.
+     */
     suspend fun setupHighSpeedSession(): Boolean {
         return try {
             val provider = ProcessCameraProvider.awaitInstance(app)
             cameraProvider = provider
             provider.unbindAll()
 
+            // Enforce back camera — Slo-Mo is disallowed on front.
+            if (_lensFacing.value != CameraSelector.LENS_FACING_BACK) {
+                _lensFacing.value = CameraSelector.LENS_FACING_BACK
+            }
             val selector = CameraSelector.Builder()
-                .requireLensFacing(_lensFacing.value)
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build()
 
             val cameraInfo = provider.getCameraInfo(selector)
             val capabilities = Recorder.getHighSpeedVideoCapabilities(cameraInfo)
             if (capabilities == null) {
-                Log.d("SloMo", "High-speed video not supported by this camera")
+                Log.d("SloMo", "High-speed video not supported on back camera on this device")
+                _sloMoSupported.value = false
                 return false
             }
 
+            // Only look at SDR qualities supported by the HFR path — this is Slo-Mo-local.
+            // Bug fix for Pixel 8 black screen: default VideoCapture quality (often UHD) is
+            // not supported for HFR on many devices; filtering to supported HFR qualities fixes bind.
             val supportedQualities = capabilities.getSupportedQualities(
                 androidx.camera.core.DynamicRange.SDR
             )
-            Log.d("SloMo", "High-speed supported qualities: $supportedQualities")
+            Log.d("SloMo", "High-speed supported qualities (back): $supportedQualities")
+
+            if (supportedQualities.isEmpty()) {
+                Log.e("SloMo", "High-speed reports no supported qualities")
+                _sloMoSupported.value = false
+                return false
+            }
+
+            // Build a QualitySelector using ONLY qualities that HFR actually supports.
+            // Prefer FHD/HD which are the typical slo-mo resolutions on Pixel 8 (1080p 120/240fps).
+            // This never touches other modes' quality selectors.
+            val preferredOrder = listOf(Quality.FHD, Quality.HD, Quality.UHD, Quality.SD)
+            val orderedQualities = preferredOrder.filter { it in supportedQualities }
+                .ifEmpty { supportedQualities.toList() }
+            val qualitySelector = QualitySelector.fromOrderedList(
+                orderedQualities,
+                FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)
+            )
 
             val preview = Preview.Builder().build()
             preview.setSurfaceProvider { request -> _surfaceRequest.value = request }
 
-            val recorder = Recorder.Builder().build()
+            val recorder = Recorder.Builder()
+                .setQualitySelector(qualitySelector)
+                .build()
             val videoCapture = VideoCapture.Builder(recorder)
                 .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
                 .build()
             videoCapture.targetRotation = targetRotation
             highSpeedVideoCapture = videoCapture
 
-            val configBuilder = HighSpeedVideoSessionConfig.Builder(videoCapture)
+            // Query available HFR frame-rate ranges via a temp config.
+            val tempConfig = HighSpeedVideoSessionConfig.Builder(videoCapture)
                 .setPreview(preview)
                 .setSlowMotionEnabled(true)
-
-            val ranges = cameraInfo.getSupportedFrameRateRanges(configBuilder.build())
+                .build()
+            val ranges = try {
+                cameraInfo.getSupportedFrameRateRanges(tempConfig)
+            } catch (e: Exception) {
+                Log.w("SloMo", "Failed to query HFR ranges", e)
+                emptyList()
+            }
             Log.d("SloMo", "High-speed supported frame rate ranges: $ranges")
 
-            val bestRange = ranges.maxByOrNull { it.upper }
-            if (bestRange == null) {
+            if (ranges.isEmpty()) {
                 Log.e("SloMo", "No high-speed frame rate ranges available")
+                _sloMoSupported.value = false
                 return false
             }
 
-            configBuilder.setFrameRateRange(bestRange)
-            sloMoFps = bestRange.upper
-            Log.d("SloMo", "High-speed session configured at ${bestRange.upper}fps, slow-mo baked in")
+            // Try ranges from highest fps downwards — Pixel 8 back: 240fps, 120fps.
+            // No normal-speed (<=30fps) fallbacks allowed; only true HFR >= 60fps.
+            val hfrRanges = ranges.filter { it.upper >= 60 }.sortedByDescending { it.upper }
+            if (hfrRanges.isEmpty()) {
+                Log.e("SloMo", "No true HFR (>=60fps) ranges found")
+                _sloMoSupported.value = false
+                return false
+            }
 
-            val owner = ManualLifecycleOwner()
-            owner.start()
-            sessionLifecycleOwner = owner
-            boundCamera = provider.bindToLifecycle(owner, selector, configBuilder.build())
+            var bound = false
+            var lastError: Exception? = null
+            for (range in hfrRanges) {
+                try {
+                    provider.unbindAll()
+                    // Re-attach surface provider after unbindAll for preview to re-emit request
+                    preview.setSurfaceProvider { request -> _surfaceRequest.value = request }
+
+                    val configBuilder = HighSpeedVideoSessionConfig.Builder(videoCapture)
+                        .setPreview(preview)
+                        .setSlowMotionEnabled(true)
+                        .setFrameRateRange(range)
+
+                    val owner = ManualLifecycleOwner()
+                    owner.start()
+                    sessionLifecycleOwner?.destroy()
+                    sessionLifecycleOwner = owner
+
+                    boundCamera = provider.bindToLifecycle(owner, selector, configBuilder.build())
+                    sloMoFps = range.upper
+                    Log.d("SloMo", "High-speed session bound at ${range.upper}fps (range=$range), quality=$orderedQualities")
+                    bound = true
+                    break
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.w("SloMo", "Failed to bind HFR at $range, trying next", e)
+                    sessionLifecycleOwner?.destroy()
+                    sessionLifecycleOwner = null
+                }
+            }
+
+            if (!bound) {
+                Log.e("SloMo", "All HFR ranges failed, last error: $lastError")
+                _sloMoSupported.value = false
+                return false
+            }
 
             // Set anti-banding to reduce flicker under artificial light
             try {
@@ -808,6 +942,7 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
                 updateZoomLevels(it.minZoomRatio, it.maxZoomRatio)
                 _zoomRatio.value = it.zoomRatio
             }
+            _sloMoSupported.value = true
             _highSpeedActive.value = true
             true
         } catch (e: Exception) {
