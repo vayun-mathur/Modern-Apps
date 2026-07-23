@@ -11,4 +11,5 @@
     <string name="locked_description">解锁这些配方的所有产出即可查看。</string>
     <string name="collection">收藏</string>
     <string name="discovered_counter">%1$d / %2$d 已发现</string>
+    <string name="hide_maxed_elements">隐藏已达到最大值的元素</string>
 </resources>
