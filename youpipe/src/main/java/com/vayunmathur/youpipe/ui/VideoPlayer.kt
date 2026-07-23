@@ -414,7 +414,8 @@ fun VideoPlayer(
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = stringResource(R.string.video_quality_codec, currentVideoStream.quality, getVideoCodecName(currentVideoStream.codec)), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                // Per user request: button shows only quality, codec only in dropdown
+                                Text(text = currentVideoStream.quality, color = Color.White, style = MaterialTheme.typography.labelMedium)
                                 IconArrowDropDown(tint = Color.White)
                             }
                         }
@@ -453,6 +454,7 @@ fun VideoPlayer(
                             }
                         }
 
+                        // Audio is opus-only now, so no need to surface codec to user. Only bitrate matters.
                         Box {
                             Surface(
                                 onClick = { isAudioMenuExpanded = true },
@@ -460,14 +462,14 @@ fun VideoPlayer(
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = stringResource(R.string.audio_bitrate_codec, (currentAudioStream?.bitrate ?: 0) / 1000, getAudioCodecName(currentAudioStream?.codec ?: "")), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                                    Text(text = stringResource(R.string.audio_bitrate, (currentAudioStream?.bitrate ?: 0) / 1000), color = Color.White, style = MaterialTheme.typography.labelMedium)
                                     IconArrowDropDown(tint = Color.White)
                                 }
                             }
                         DropdownMenu(expanded = isAudioMenuExpanded, onDismissRequest = { isAudioMenuExpanded = false }) {
                                 audioStreamOptions.forEach { stream ->
                                     DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.audio_bitrate_codec, stream.bitrate / 1000, getAudioCodecName(stream.codec))) },
+                                        text = { Text(stringResource(R.string.audio_bitrate, stream.bitrate / 1000)) },
                                         onClick = { currentAudioStream = stream; isAudioMenuExpanded = false }
                                     )
                                 }

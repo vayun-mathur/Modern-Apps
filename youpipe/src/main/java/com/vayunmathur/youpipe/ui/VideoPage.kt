@@ -292,7 +292,7 @@ fun VideoDetails(
                         onExpandedChange = { videoExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = "${selectedVideoStream.quality} (${getVideoCodecName(selectedVideoStream.codec)}) - ${Formatter.formatShortFileSize(context, selectedVideoStream.size)}",
+                            value = "${selectedVideoStream.quality} - ${Formatter.formatShortFileSize(context, selectedVideoStream.size)}",
                             onValueChange = {},
                             readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = videoExpanded) },
@@ -358,7 +358,7 @@ fun VideoDetails(
                             onExpandedChange = { audioExpanded = it }
                         ) {
                             OutlinedTextField(
-                                value = selectedAudioStream?.let { "${it.bitrate / 1000} kbps (${getAudioCodecName(it.codec)}) - ${Formatter.formatShortFileSize(context, it.size)}" } ?: "None",
+                                value = selectedAudioStream?.let { "${it.bitrate / 1000} kbps - ${Formatter.formatShortFileSize(context, it.size)}" } ?: "None",
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = audioExpanded) },
@@ -371,7 +371,7 @@ fun VideoDetails(
                             ) {
                                 filteredAudioStreams.forEach { stream ->
                                     DropdownMenuItem(
-                                        text = { Text("${stream.bitrate / 1000} kbps (${getAudioCodecName(stream.codec)}) - ${Formatter.formatShortFileSize(context, stream.size)}") },
+                                        text = { Text("${stream.bitrate / 1000} kbps - ${Formatter.formatShortFileSize(context, stream.size)}") },
                                         onClick = {
                                             selectedAudioStream = stream
                                             audioExpanded = false

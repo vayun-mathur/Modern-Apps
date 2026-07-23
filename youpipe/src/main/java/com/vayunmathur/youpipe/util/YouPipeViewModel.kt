@@ -713,29 +713,45 @@ class YouPipeViewModel(
                         }
 
                         if (progVideoOnly.isNotEmpty() || sabrVideoOnly.isNotEmpty()) {
-                            // Combine progressive + SABR video-only options, but de-duplicate by
-                            // (codec, resolution): progressive is listed first and kept for any
-                            // combo it already offers, so SABR only contributes what's genuinely
-                            // new — notably AV1 (SABR-only) and any resolutions progressive lacks.
-                            // Without this, h264/vp9 would appear twice (once per source).
-                            videoStreams = (
+                            // Combine progressive + SABR video-only. Deduplicate by height and prefer
+                            // vp9 over avc for same resolution (per user request). AV1 is kept when
+                            // present as distinct quality. Opus-only audio.
+                            val combinedVideo = (
                                 progVideoOnly.map { it.toDomain() } +
                                     sabrVideoOnly.map { it.toSabrDomain(videoId) }
                                 )
+                                .groupBy { it.height }
+                                .flatMap { (_, streamsAtHeight) ->
+                                    val vp9 = streamsAtHeight.filter { it.codec == "vp9" }
+                                    val avc = streamsAtHeight.filter { it.codec == "avc" }
+                                    // If both vp9 and avc exist at same height, keep only vp9
+                                    if (vp9.isNotEmpty() && avc.isNotEmpty()) {
+                                        streamsAtHeight.filter { it.codec != "avc" }
+                                    } else {
+                                        streamsAtHeight
+                                    }
+                                }
                                 .distinctBy { it.codec to it.height }
                                 .sortedWith(
                                     compareByDescending<VideoStream> { it.height }
                                         .thenByDescending { codecPriority(it.codec) }
                                 )
-                            audioStreams = (
-                                if (progAudio.isNotEmpty()) {
-                                    progAudio.map { it.toDomain() }
-                                } else {
-                                    sabrAudio.map { it.toSabrDomain(videoId) }
+                            videoStreams = combinedVideo
+
+                            // Audio: opus only (F-Droid friendly, higher quality). Filter before sort.
+                            val rawAudioCandidates = if (progAudio.isNotEmpty()) {
+                                progAudio.map { it.toDomain() }
+                            } else {
+                                sabrAudio.map { it.toSabrDomain(videoId) }
+                            }
+                            audioStreams = rawAudioCandidates
+                                .filter { it.codec == "opus" }
+                                .let { opusList ->
+                                    // Fallback to all if no opus (rare, but avoid empty track list)
+                                    if (opusList.isEmpty()) rawAudioCandidates else opusList
                                 }
-                                ).sortedWith(
+                                .sortedWith(
                                     compareByDescending<AudioStream> { it.bitrate }
-                                        .thenByDescending { audioCodecPriority(it.codec) }
                                 )
                         } else {
                             videoStreams = ex.videoStreams.map { it.toDomain() }
@@ -840,7 +856,8 @@ class YouPipeViewModel(
 
     private fun downloadedStreams(dv: DownloadedVideo): Pair<List<VideoStream>, List<AudioStream>> {
         val video = listOf(VideoStream(dv.filePath, 1920, 1080, 0, 30, "Downloaded", "avc", 0L))
-        val audio = if (dv.audioPath != null) listOf(AudioStream(dv.audioPath, 0, "Default", "aac", 0L)) else emptyList()
+        // Keep as opus for consistency with opus-only filter in UI
+        val audio = if (dv.audioPath != null) listOf(AudioStream(dv.audioPath, 0, "Default", "opus", 0L)) else emptyList()
         return video to audio
     }
 
@@ -1265,10 +1282,6 @@ fun youtubeLocalization(code: String): Localization =
 
 private fun codecPriority(codec: String): Int = when (codec) {
     "av1" -> 3; "vp9" -> 2; "avc" -> 1; else -> 0
-}
-
-private fun audioCodecPriority(codec: String): Int = when (codec) {
-    "opus" -> 2; "aac" -> 1; else -> 0
 }
 
 /** Factory for constructing [YouPipeViewModel] with the DAOs. */
