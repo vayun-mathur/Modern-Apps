@@ -5,4 +5,15 @@
     <string name="difficulty_easy">Facile</string>
     <string name="difficulty_medium">Moyen</string>
     <string name="difficulty_hard">Difficile</string>
+    <string name="app_name">Word Maker</string>
+    <string name="next_level">Niveau suivant</string>
+    <string name="yes">Oui</string>
+    <string name="no">Non</string>
+    <string name="mode_casual">Décontracté</string>
+    <string name="mode_competitive">Compétitif</string>
+    <string name="competitive_score">Score : %1$d</string>
+    <string name="competitive_start">Démarrer</string>
+    <string name="competitive_difficulty">Difficulté</string>
+    <string name="competitive_time_limit">%1$d secondes par niveau</string>
+    <string name="competitive_solved">Résolu ! +%1$d points</string>
 </resources>
