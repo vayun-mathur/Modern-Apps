@@ -49,4 +49,5 @@
     <string name="photo_widget_description">轮换展示来自图库的照片 — 点按即可随机显示</string>
     <string name="openassistant_needs_update">更新 OpenAssistant 应用以启用 AI 照片搜索。</string>
     <string name="view_360">查看全景照片</string>
+    <string name="view_panorama">查看全景照片</string>
 </resources>
