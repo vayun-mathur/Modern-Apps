@@ -10,6 +10,8 @@ launcherIcon {
 android {
     namespace = "com.vayunmathur.email"
     defaultConfig {
+        versionCode = 20260723
+        versionName = "v2.6.1"
         applicationId = "com.vayunmathur.email"
 
         // Outlook / Microsoft 365 OAuth. Public values (client ID is an

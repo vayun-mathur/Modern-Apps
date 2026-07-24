@@ -11,6 +11,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20260723
+        versionName = "v2.6.1"
         applicationId = "com.vayunmathur.pdf"
     }
     // The Rust build drops <abi>/libpdf_render.so under this dir; register it as

@@ -11,6 +11,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20260723
+        versionName = "v2.6.1"
         applicationId = "com.vayunmathur.camera"
     }
     // The Rust stitcher drops <abi>/libcamera_stitch.so under this dir; register
