@@ -153,7 +153,7 @@ class LocationTrackingService : Service(), SensorEventListener {
             )
         }
 
-        currentUsers.filter { it.id != Networking.userid }.forEach { Networking.publishLocation(locationValue, it) }
+        currentUsers.filter { it.id != Networking.userid && it.sendingEnabled }.forEach { Networking.publishLocation(locationValue, it) }
         currentLinks.filter { now < it.deleteAt }.forEach { Networking.publishLocation(locationValue, it) }
         currentLinks.filter { now >= it.deleteAt }.forEach { temporaryLinkDao.delete(it) }
 
@@ -630,11 +630,13 @@ class ServiceRestartWorker(
  * Single source of truth for whether the [LocationTrackingService] should be
  * running and for (re)starting / stopping it accordingly.
  *
- * The service must only run when BOTH conditions hold:
- *  - fine (precise) location permission is granted (the app does not work with
- *    approximate-only location), and
- *  - location sharing is enabled for at least one connected person (the
- *    per-person "share your location with this person" toggle).
+ * The service must run whenever fine (precise) location permission is granted,
+ * regardless of whether location sharing is enabled. Sharing toggles are
+ * enforced inside the heartbeat (we only publish to users with
+ * sendingEnabled=true) rather than by stopping the service, so that UWB
+ * inbox draining, waypoint entry/exit, low-battery alerts, and receiving peers'
+ * locations continue to work even when the user pauses sharing or on fresh
+ * install before any contact is added.
  */
 object LocationServiceController {
 
@@ -661,7 +663,7 @@ object LocationServiceController {
      */
     suspend fun syncServiceState(context: Context) {
         val appContext = context.applicationContext
-        val eligible = hasFineLocationPermission(appContext) && isSharingEnabled(appContext)
+        val eligible = hasFineLocationPermission(appContext)
         val intent = Intent(appContext, LocationTrackingService::class.java)
         withContext(Dispatchers.Main) {
             if (eligible) {
