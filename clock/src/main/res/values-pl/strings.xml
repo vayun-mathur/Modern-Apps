@@ -42,4 +42,12 @@
     <string name="field_hours">Godziny</string>
     <string name="analog_clock_widget_label">Zegar analogowy</string>
     <string name="analog_clock_widget_description">Zegar analogowy Material You — dotknij, aby otworzyć zegar</string>
+    <string name="channel_stopwatch_name">Stoper</string>
+    <string name="channel_stopwatch_description">Sterowanie stoperem</string>
+    <string name="action_pause">Pauza</string>
+    <string name="action_resume">Wznów</string>
+    <string name="action_cancel">Anuluj</string>
+    <string name="action_reset">Resetuj</string>
+    <string name="action_lap">Okrążenie</string>
+    <string name="action_stop">Zatrzymaj</string>
 </resources>
