@@ -850,9 +850,9 @@ class CameraViewModel(private val app: Application) : AndroidViewModel(app) {
             val recorder = Recorder.Builder()
                 .setQualitySelector(qualitySelector)
                 .build()
-            val videoCapture = VideoCapture.Builder(recorder)
-                .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY)
-                .build()
+            // MirrorMode is not allowed for high-speed video (HighSpeedVideoSessionConfig
+            // validates and throws IllegalArgumentException). Slo-Mo is back-only anyway.
+            val videoCapture = VideoCapture.Builder(recorder).build()
             videoCapture.targetRotation = targetRotation
             highSpeedVideoCapture = videoCapture
 
