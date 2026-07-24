@@ -98,4 +98,13 @@
     <string name="no_groups_found">Ühtegi gruppi ei leidu. Saad mõne luua gruppide vahekaardilt.</string>
     <string name="contacts_count">%1$d kontakti</string>
     <string name="done">Valmis</string>
+    <string name="import_vcf_file">Impordi vcf-fail</string>
+    <string name="import_to_existing_account">Impordi olemasoleva kasutajakonto jaoks</string>
+    <string name="create_new_account_option">Loo uus kasutajakonto</string>
+    <string name="no_contacts_found">Kontakte ei leidu</string>
+    <string name="import_summary_contacts">%1$d kontakti on importimiseks valmis</string>
+    <string name="select_account">Vali kasutajakonto</string>
+    <string name="no_name">(Nimi puudub)</string>
+    <string name="add_number_to_contact">Lisa telefoninumber kontaktile</string>
+    <string name="create_new_contact">Lisa uus kontakt</string>
 </resources>
