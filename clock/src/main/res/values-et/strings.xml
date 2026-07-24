@@ -42,4 +42,12 @@
     <string name="field_hours">Tunnid</string>
     <string name="analog_clock_widget_label">Sihverplaadiga kell</string>
     <string name="analog_clock_widget_description">Material You kujunduskeelega sihverplaadiga kell - avamiseks klõpsa</string>
+    <string name="channel_stopwatch_name">Stopper</string>
+    <string name="channel_stopwatch_description">Stopperi juhtnupud</string>
+    <string name="action_pause">Peata</string>
+    <string name="action_resume">Jätka</string>
+    <string name="action_cancel">Katkesta</string>
+    <string name="action_reset">Lähtesta</string>
+    <string name="action_lap">Ringi aeg</string>
+    <string name="action_stop">Lõpeta</string>
 </resources>
