@@ -89,4 +89,9 @@
     <string name="action_update">Actualiser</string>
     <string name="label_hide_shorts">Masquer les shorts</string>
     <string name="action_more_like_this">Autres articles similaires</string>
+    <string name="label_dial_fresh">Intemporel ↔ Récent</string>
+    <string name="label_hide_live">Masquer les diffusions en direct / durées inconnues</string>
+    <string name="preset_discover_more">En découvrir plus</string>
+    <string name="preset_mostly_subscriptions">Le plus grand nombre d\'abonnés</string>
+    <string name="label_no_channels">Aucune chaîne déduite pour le moment</string>
 </resources>
