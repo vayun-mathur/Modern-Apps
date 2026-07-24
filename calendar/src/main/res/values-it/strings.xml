@@ -66,4 +66,6 @@
     <string name="default_layout">Layout predefinito</string>
     <string name="add_reminder">Aggiungi promemoria</string>
     <string name="calendar_widget_description">Un riepilogo dei prossimi eventi — tocca per aprire il Calendario</string>
+    <string name="on_label"></string>
+    <string name="month_option_day_of_month">Il giorno %1$d del mese</string>
 </resources>
