@@ -94,4 +94,6 @@
     <string name="label_youtube_language">Sisu keel</string>
     <string name="label_youtube_language_description">Videote pealkirjade, kirjelduste, kommentaaride ja otsingutulemuste keel</string>
     <string name="label_system_default">Süsteemi vaikeseadistus</string>
+    <string name="video_quality">%1$s</string>
+    <string name="audio_bitrate">%1$d kbps</string>
 </resources>
