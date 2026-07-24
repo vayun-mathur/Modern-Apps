@@ -15,6 +15,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
+        val nonInboxOnly = inputData.getBoolean(KEY_NON_INBOX_ONLY, false)
         val db = EmailDatabase.getInstance(applicationContext)
         val dao = db.emailDao()
         val accounts = dao.getAccounts()
@@ -31,7 +32,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
 
         for (account in accounts) {
             try {
-                Log.d("EmailSync", ">>> Starting sync for account: ${account.email}")
+                Log.d("EmailSync", ">>> Starting sync for account: ${account.email} (nonInboxOnly=$nonInboxOnly)")
                 val auth = account.resolveAuth(applicationContext)
 
                 manager.withStore(account.imapServer(), account.loginUser(), auth) { store ->
@@ -43,8 +44,14 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
                     val skipSet = if (account.provider == PROVIDER_GMAIL) {
                         GMAIL_VIRTUAL_FOLDERS
                     } else emptySet()
-                    val messageFolders = folders.filter { folder ->
-                        folder.holdsMessages && folder.fullName !in skipSet
+                    val messageFolders = if (nonInboxOnly) {
+                        folders.filter { folder ->
+                            folder.holdsMessages && folder.fullName !in skipSet && folder.fullName != "INBOX"
+                        }
+                    } else {
+                        folders.filter { folder ->
+                            folder.holdsMessages && folder.fullName !in skipSet
+                        }
                     }
                     val totalUnits = (accounts.size * messageFolders.size).coerceAtLeast(1)
 
@@ -63,24 +70,27 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
                             if (messages.isNotEmpty()) dao.insertMessages(messages)
                             if (attachments.isNotEmpty()) dao.insertAttachments(attachments)
 
-                            if (knownUids.isNotEmpty() && folder.fullName == "INBOX") {
-                                syncReadStatus(store, account.email, folder.fullName, knownUids)
-                            }
-
-                            if (folder.fullName == "INBOX" && messages.isNotEmpty()) {
-                                val lastSeen = lastSeenPrefs(applicationContext)
-                                    .getLong(lastSeenKey(account.email, folder.fullName), -1L)
-                                if (lastSeen >= 0L && !com.vayunmathur.email.util.AppLifecycleTracker.isAppInForeground) {
-                                    val notifiable = messages.filter { it.id > lastSeen }
-                                    com.vayunmathur.email.util.EmailNotifications.postForNewMessages(
-                                        applicationContext, account.email, notifiable,
-                                    )
+                            // INBOX-only: read-status sync + foreground notification (skip when nonInboxOnly)
+                            if (!nonInboxOnly) {
+                                if (knownUids.isNotEmpty() && folder.fullName == "INBOX") {
+                                    syncReadStatus(store, account.email, folder.fullName, knownUids)
                                 }
-                                val maxUid = messages.maxOf { it.id }
-                                if (maxUid > lastSeen) {
-                                    lastSeenPrefs(applicationContext).edit()
-                                        .putLong(lastSeenKey(account.email, folder.fullName), maxUid)
-                                        .apply()
+
+                                if (folder.fullName == "INBOX" && messages.isNotEmpty()) {
+                                    val lastSeen = lastSeenPrefs(applicationContext)
+                                        .getLong(lastSeenKey(account.email, folder.fullName), -1L)
+                                    if (lastSeen >= 0L && !com.vayunmathur.email.util.AppLifecycleTracker.isAppInForeground) {
+                                        val notifiable = messages.filter { it.id > lastSeen }
+                                        com.vayunmathur.email.util.EmailNotifications.postForNewMessages(
+                                            applicationContext, account.email, notifiable,
+                                        )
+                                    }
+                                    val maxUid = messages.maxOf { it.id }
+                                    if (maxUid > lastSeen) {
+                                        lastSeenPrefs(applicationContext).edit()
+                                            .putLong(lastSeenKey(account.email, folder.fullName), maxUid)
+                                            .apply()
+                                    }
                                 }
                             }
 
@@ -92,38 +102,41 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
                         EmailSyncState.setProgress(unitsDone.toFloat() / totalUnits)
                     }
 
-                    val missing = dao.getMessagesWithoutBody(account.email, BACKFILL_LIMIT)
-                    if (missing.isNotEmpty()) {
-                        Log.d("EmailSync", "Body backfill: ${missing.size} message(s)")
-                        EmailSyncState.setProgress(0f)
-                        for ((idx, msg) in missing.withIndex()) {
-                            if (isStopped) {
-                                Log.d("EmailSync", "Backfill stopped at ${idx}/${missing.size}")
-                                break
-                            }
-                            try {
-                                val current = dao.getMessage(msg.accountEmail, msg.folderName, msg.id) ?: continue
-                                if (current.body != null) continue
-                                val (body, isHtml, attachments) = manager.fetchMessageBodyInStore(
-                                    store = store,
-                                    user = account.loginUser(),
-                                    folderName = msg.folderName,
-                                    uid = msg.id,
-                                )
-                                if (body != null || attachments.isNotEmpty()) {
-                                    dao.insertMessages(listOf(current.copy(
-                                        body = body,
-                                        isHtml = isHtml,
-                                        hasAttachments = attachments.isNotEmpty(),
-                                    )))
-                                    if (attachments.isNotEmpty()) dao.insertAttachments(attachments)
+                    // Body backfill only for full sync (on-demand / initial) — skip for hourly non-INBOX to save battery.
+                    if (!nonInboxOnly) {
+                        val missing = dao.getMessagesWithoutBody(account.email, BACKFILL_LIMIT)
+                        if (missing.isNotEmpty()) {
+                            Log.d("EmailSync", "Body backfill: ${missing.size} message(s)")
+                            EmailSyncState.setProgress(0f)
+                            for ((idx, msg) in missing.withIndex()) {
+                                if (isStopped) {
+                                    Log.d("EmailSync", "Backfill stopped at ${idx}/${missing.size}")
+                                    break
                                 }
-                            } catch (e: Exception) {
-                                Log.w("EmailSync", "   x Backfill failed for UID ${msg.id}: ${e.message}")
+                                try {
+                                    val current = dao.getMessage(msg.accountEmail, msg.folderName, msg.id) ?: continue
+                                    if (current.body != null) continue
+                                    val (body, isHtml, attachments) = manager.fetchMessageBodyInStore(
+                                        store = store,
+                                        user = account.loginUser(),
+                                        folderName = msg.folderName,
+                                        uid = msg.id,
+                                    )
+                                    if (body != null || attachments.isNotEmpty()) {
+                                        dao.insertMessages(listOf(current.copy(
+                                            body = body,
+                                            isHtml = isHtml,
+                                            hasAttachments = attachments.isNotEmpty(),
+                                        )))
+                                        if (attachments.isNotEmpty()) dao.insertAttachments(attachments)
+                                    }
+                                } catch (e: Exception) {
+                                    Log.w("EmailSync", "   x Backfill failed for UID ${msg.id}: ${e.message}")
+                                }
+                                EmailSyncState.setProgress((idx + 1f) / missing.size)
                             }
-                            EmailSyncState.setProgress((idx + 1f) / missing.size)
+                            Log.d("EmailSync", "Backfill done for ${account.email}")
                         }
-                        Log.d("EmailSync", "Backfill done for ${account.email}")
                     }
                 }
 
@@ -135,7 +148,9 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
             accountsProcessed++
         }
 
-        EmailWidget().updateAll(applicationContext)
+        if (!nonInboxOnly) {
+            EmailWidget().updateAll(applicationContext)
+        }
         EmailSyncState.finish()
 
         return if (hasErrors) Result.retry() else Result.success()
@@ -143,6 +158,8 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
 
     companion object {
         private const val SYNC_WORK_NAME = "EmailSyncWorker"
+        private const val HOURLY_NON_INBOX_WORK_NAME = "EmailNonInboxHourlySync"
+        private const val KEY_NON_INBOX_ONLY = "non_inbox_only"
 
         /**
          * Sync read/unread flags from the IMAP server for messages we already
@@ -199,31 +216,55 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
         private fun lastSeenKey(accountEmail: String, folderName: String) =
             "$accountEmail::$folderName"
 
+        /**
+         * Legacy 15-min periodic polling — removed in IDLE-only model.
+         * Kept as a no-op that cancels any previously scheduled periodic work
+         * so upgrades from older APKs stop polling.
+         */
+        @Deprecated("IDLE-only push: periodic polling removed. This now cancels legacy periodic work.", ReplaceWith("cancelSync(context)"))
         fun schedulePeriodicSync(context: Context) {
+            WorkManager.getInstance(context).cancelUniqueWork(SYNC_WORK_NAME)
+            WorkManager.getInstance(context).cancelUniqueWork(HOURLY_NON_INBOX_WORK_NAME)
+        }
+
+        /**
+         * Hourly non-INBOX sync: polls only non-INBOX folders (e.g. Sent, custom labels)
+         * once per hour via WorkManager. INBOX stays IDLE-only push — no polling.
+         * Cheap: skips body backfill, skip SEEN sync, skips notifications.
+         */
+        fun scheduleHourlyNonInboxSync(context: Context) {
+            // Purge legacy 15-min full polling work that may still be scheduled.
+            WorkManager.getInstance(context).cancelUniqueWork(SYNC_WORK_NAME)
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
-
-            val syncRequest = PeriodicWorkRequestBuilder<EmailSyncWorker>(15, TimeUnit.MINUTES)
+            val data = Data.Builder().putBoolean(KEY_NON_INBOX_ONLY, true).build()
+            val req = PeriodicWorkRequestBuilder<EmailSyncWorker>(1, TimeUnit.HOURS)
                 .setConstraints(constraints)
+                .setInputData(data)
                 .build()
-
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                SYNC_WORK_NAME,
+                HOURLY_NON_INBOX_WORK_NAME,
                 ExistingPeriodicWorkPolicy.KEEP,
-                syncRequest
+                req,
             )
         }
 
+        /**
+         * One-off catch-up: folder discovery + all-folder header fetch + body backfill.
+         * Used for initial sync after account add, manual pull-to-refresh, boot recovery, and
+         * non-INBOX folder catch-up. Not periodic — INBOX live push is handled by [ImapIdleService].
+         */
         fun runOneOffSync(context: Context) {
             val syncRequest = OneTimeWorkRequestBuilder<EmailSyncWorker>()
+                .setInputData(Data.Builder().putBoolean(KEY_NON_INBOX_ONLY, false).build())
                 .build()
-
             WorkManager.getInstance(context).enqueue(syncRequest)
         }
-        
+
         fun cancelSync(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(SYNC_WORK_NAME)
+            WorkManager.getInstance(context).cancelUniqueWork(HOURLY_NON_INBOX_WORK_NAME)
         }
     }
 }

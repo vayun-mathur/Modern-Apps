@@ -108,7 +108,8 @@ object OutlookOAuth {
             expiresAt = tokens.expiresAtMs,
         )
         EmailDatabase.getInstance(context).emailDao().insertAccount(account)
-        EmailSyncWorker.schedulePeriodicSync(context)
+        // IDLE push for INBOX, hourly non-INBOX poll, pull-to-refresh on-demand.
+        EmailSyncWorker.scheduleHourlyNonInboxSync(context)
         EmailSyncWorker.runOneOffSync(context)
         ImapIdleService.start(context)
         return email

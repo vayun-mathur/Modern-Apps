@@ -263,7 +263,7 @@ private fun EmailMessage.findUnsubscribeLinkInBody(): String? {
 /// background sender. Attachments are copied to app-private storage at queue time
 /// (the original `content://` URIs aren't reliably readable across process
 /// restarts) and `attachmentLocalPaths` is a JSON-encoded `List<String>` of those
-/// absolute file paths.
+/// absolute file paths. [inlineImageJson] stores JSON array of {cid,path,mime,name}.
 @Serializable
 @Entity
 data class OutboxEntry(
@@ -275,6 +275,8 @@ data class OutboxEntry(
     val subject: String,
     val body: String,
     val attachmentLocalPaths: String = "[]",
+    @ColumnInfo(defaultValue = "[]")
+    val inlineImageJson: String = "[]",
     val inReplyTo: String? = null,
     val references: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
@@ -294,5 +296,7 @@ data class DraftEntry(
     val bcc: String = "",
     val subject: String = "",
     val body: String = "",
+    @ColumnInfo(defaultValue = "[]")
+    val inlineImageJson: String = "[]",
     val updatedAt: Long = System.currentTimeMillis(),
 )

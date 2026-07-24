@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.FormatIndentDecrease
+import androidx.compose.material.icons.automirrored.filled.FormatIndentIncrease
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListBulleted
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatStrikethrough
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.Link
@@ -33,7 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /** The base formatting actions every editor toolbar can offer. */
-enum class EditorFormat { BOLD, ITALIC, UNDERLINE, STRIKETHROUGH, BULLET, LINK }
+enum class EditorFormat { BOLD, ITALIC, UNDERLINE, STRIKETHROUGH, BULLET, ORDERED_LIST, INDENT, OUTDENT, LINK }
 
 /**
  * Polymorphic contract for an editor's formatting toolbar. Markdown, HTML and
@@ -72,7 +75,8 @@ interface EditorFormatter {
 
 private val BASE_ORDER = listOf(
     EditorFormat.BOLD, EditorFormat.ITALIC, EditorFormat.UNDERLINE,
-    EditorFormat.STRIKETHROUGH, EditorFormat.BULLET,
+    EditorFormat.STRIKETHROUGH, EditorFormat.BULLET, EditorFormat.ORDERED_LIST,
+    EditorFormat.OUTDENT, EditorFormat.INDENT,
 )
 
 private fun baseIcon(format: EditorFormat): Pair<ImageVector, String> = when (format) {
@@ -81,6 +85,9 @@ private fun baseIcon(format: EditorFormat): Pair<ImageVector, String> = when (fo
     EditorFormat.UNDERLINE -> Icons.Filled.FormatUnderlined to "Underline"
     EditorFormat.STRIKETHROUGH -> Icons.Filled.FormatStrikethrough to "Strikethrough"
     EditorFormat.BULLET -> Icons.Filled.FormatListBulleted to "Bulleted list"
+    EditorFormat.ORDERED_LIST -> Icons.Filled.FormatListNumbered to "Numbered list"
+    EditorFormat.INDENT -> Icons.AutoMirrored.Filled.FormatIndentIncrease to "Indent"
+    EditorFormat.OUTDENT -> Icons.AutoMirrored.Filled.FormatIndentDecrease to "Outdent"
     EditorFormat.LINK -> Icons.Filled.Link to "Link"
 }
 

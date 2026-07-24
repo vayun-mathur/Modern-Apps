@@ -91,6 +91,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
         cc: String? = null,
         bcc: String? = null,
         attachments: List<Uri> = emptyList(),
+        inlineImages: List<com.vayunmathur.email.composer.InlineAttachment> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
         scheduledAt: Long,
@@ -103,6 +104,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                 accountEmail = account.email,
                 to = to, subject = subject, body = body,
                 cc = cc, bcc = bcc, attachments = attachments,
+                inlineImages = inlineImages,
                 inReplyTo = inReplyTo, references = references,
                 scheduledAt = scheduledAt,
                 isHtml = asHtml,
@@ -353,6 +355,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
         cc: String? = null,
         bcc: String? = null,
         attachments: List<Uri> = emptyList(),
+        inlineImages: List<com.vayunmathur.email.composer.InlineAttachment> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
         asHtml: Boolean = false,
@@ -372,6 +375,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                     cc = cc,
                     bcc = bcc,
                     attachments = attachments,
+                    inlineImages = inlineImages,
                     inReplyTo = inReplyTo,
                     references = references,
                     from = account.email,
@@ -390,6 +394,7 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                         cc = cc,
                         bcc = bcc,
                         attachments = attachments,
+                        inlineImages = inlineImages,
                         inReplyTo = inReplyTo,
                         references = references,
                         initialError = msg,
@@ -409,19 +414,24 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
      * MessageItem when a stored row has `body == null` (the sync only fetches
      * headers — bodies are downloaded on first open). Updates the row in the
      * DB; the Flow-based UI will recompose automatically.
+     * Also extracts inline CID images to cache/cid/<uid>/ for viewer rendering.
      */
     fun fetchBodyIfNeeded(message: EmailMessage) {
         if (message.body != null) return
         viewModelScope.launch {
             val account = dao.getAccountByEmail(message.accountEmail) ?: return@launch
             try {
-                val (body, isHtml, attachments) = emailManager.fetchMessageBody(
+                // We need raw mime to extract CID files
+                val ctx = getApplication<Application>()
+                val full = emailManager.fetchFullForBody(
+                    context = ctx,
                     server = account.imapServer(),
                     user = account.loginUser(),
                     auth = account.resolveAuth(appContext),
                     folderName = message.folderName,
                     uid = message.id,
                 )
+                val (body, isHtml, attachments) = full.contentTriple
                 if (body != null || attachments.isNotEmpty()) {
                     dao.insertMessages(listOf(message.copy(body = body, isHtml = isHtml, hasAttachments = attachments.isNotEmpty())))
                     if (attachments.isNotEmpty()) dao.insertAttachments(attachments)
@@ -429,6 +439,25 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 android.util.Log.w("EmailViewModel", "fetchBodyIfNeeded for ${message.id} failed: ${e.message}")
             }
+        }
+    }
+
+    /** CID map loader for already-fetched message – extracts inline files to cache and returns map */
+    suspend fun loadCidMap(context: android.content.Context, message: EmailMessage): Map<String, java.io.File> {
+        return try {
+            val account = dao.getAccountByEmail(message.accountEmail) ?: return emptyMap()
+            val auth = account.resolveAuth(appContext)
+            emailManager.fetchCidMap(
+                context = context,
+                server = account.imapServer(),
+                user = account.loginUser(),
+                auth = auth,
+                folderName = message.folderName,
+                uid = message.id,
+            )
+        } catch (e: Exception) {
+            android.util.Log.w("EmailViewModel", "loadCidMap failed: ${e.message}")
+            emptyMap()
         }
     }
 
@@ -496,6 +525,42 @@ class EmailViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess(path)
             } catch (e: Exception) {
                 onError(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    /**
+     * Export a single email as a .eml file to a SAF [targetUri] (from CreateDocument).
+     * Streams the raw RFC822 bytes directly to avoid OOM on large messages.
+     */
+    fun exportEml(
+        accountEmail: String,
+        folderName: String,
+        uid: Long,
+        targetUri: Uri,
+        onResult: (Boolean, String?) -> Unit,
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val account = dao.getAccountByEmail(accountEmail)
+                    ?: run {
+                        withContext(Dispatchers.Main) { onResult(false, "Account not found") }
+                        return@launch
+                    }
+                val server = account.imapServer()
+                val user = account.loginUser()
+                val auth = account.resolveAuth(appContext)
+                val ctx = getApplication<Application>()
+                ctx.contentResolver.openOutputStream(targetUri)?.use { out ->
+                    emailManager.fetchRawMessageTo(server, user, auth, folderName, uid, out)
+                } ?: run {
+                    withContext(Dispatchers.Main) { onResult(false, "Could not open destination") }
+                    return@launch
+                }
+                withContext(Dispatchers.Main) { onResult(true, null) }
+            } catch (e: Exception) {
+                android.util.Log.w("EmailViewModel", "exportEml failed: ${e.message}", e)
+                withContext(Dispatchers.Main) { onResult(false, e.message ?: e.javaClass.simpleName) }
             }
         }
     }

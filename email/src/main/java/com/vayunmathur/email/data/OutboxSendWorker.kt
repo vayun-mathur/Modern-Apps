@@ -13,21 +13,15 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.vayunmathur.email.EmailManager
 import com.vayunmathur.email.OutboxEntry
+import com.vayunmathur.email.composer.InlineAttachment
 import com.vayunmathur.email.loginUser
 import com.vayunmathur.email.resolveAuth
 import com.vayunmathur.email.smtpServer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/**
- * Worker that flushes [OutboxEntry] rows. Re-runs itself every
- * [RETRY_INTERVAL_MINUTES] minutes while the outbox is non-empty.
- *
- * `PeriodicWorkRequest` has a 15-minute minimum interval; we want 5 minutes,
- * so we chain `OneTimeWorkRequest`s instead. A successful flush stops the
- * chain — there's no need to wake up if there's nothing to send.
- */
 class OutboxSendWorker(
     appContext: Context,
     workerParams: WorkerParameters,
@@ -50,7 +44,6 @@ class OutboxSendWorker(
         val now = System.currentTimeMillis()
 
         for (entry in pending) {
-            // Scheduled-send: not due yet — leave it queued and remember when to wake.
             if (entry.scheduledAt > now) {
                 soonestFutureMs = minOf(soonestFutureMs, entry.scheduledAt - now)
                 continue
@@ -67,7 +60,10 @@ class OutboxSendWorker(
                 continue
             }
             val uris = decodePaths(entry.attachmentLocalPaths).map { Uri.fromFile(File(it)) }
-            when (val sendResult = trySend(manager, account, entry, uris)) {
+            val inline = decodeInline(entry.inlineImageJson).map {
+                InlineAttachment(cid = it.cid, uri = Uri.fromFile(File(it.path)), mimeType = it.mime, fileName = it.name)
+            }
+            when (val sendResult = trySend(manager, account, entry, uris, inline)) {
                 is SendResult.Success -> {
                     Log.d(TAG, "Sent outbox entry #${entry.id} to ${entry.to}")
                     attachmentDirFor(applicationContext, entry.id).deleteRecursively()
@@ -86,7 +82,6 @@ class OutboxSendWorker(
             }
         }
 
-        // Reschedule if there's failed work to retry or a scheduled message still pending.
         val retryDue = anyFailed && dao.getOutboxCount() > 0
         if (retryDue || soonestFutureMs != Long.MAX_VALUE) {
             val delayMs = when {
@@ -104,15 +99,12 @@ class OutboxSendWorker(
         data class Failure(val message: String, val cause: Throwable?) : SendResult()
     }
 
-    /**
-     * Send the entry once. Returns either Success or Failure with the
-     * underlying error message.
-     */
     private suspend fun trySend(
         manager: EmailManager,
         account: com.vayunmathur.email.EmailAccount,
         entry: com.vayunmathur.email.OutboxEntry,
         uris: List<android.net.Uri>,
+        inline: List<InlineAttachment>,
     ): SendResult = runCatching {
         manager.sendMessage(
             context = applicationContext,
@@ -125,6 +117,7 @@ class OutboxSendWorker(
             cc = entry.cc,
             bcc = entry.bcc,
             attachments = uris,
+            inlineImages = inline,
             inReplyTo = entry.inReplyTo,
             references = entry.references,
             asHtml = entry.isHtml,
@@ -146,16 +139,25 @@ class OutboxSendWorker(
         const val WORK_NAME = "OutboxSendWorker"
         const val RETRY_INTERVAL_MINUTES = 5L
 
-        private val json = Json { ignoreUnknownKeys = true }
+        private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        @Serializable
+        data class InlineJsonEntry(val cid: String, val path: String, val mime: String, val name: String)
 
         fun encodePaths(paths: List<String>): String = json.encodeToString(paths)
         fun decodePaths(encoded: String): List<String> =
             runCatching { json.decodeFromString<List<String>>(encoded) }.getOrDefault(emptyList())
 
+        fun encodeInline(entries: List<InlineJsonEntry>): String = json.encodeToString(entries)
+        fun decodeInline(encoded: String): List<InlineJsonEntry> =
+            runCatching { json.decodeFromString<List<InlineJsonEntry>>(encoded) }.getOrDefault(emptyList())
+
         fun attachmentDirFor(context: Context, entryId: Long): File =
             File(context.filesDir, "outbox/$entryId")
 
-        /** Run immediately, cancelling any pending delayed retry. */
+        fun inlineDirFor(context: Context, entryId: Long): File =
+            File(context.filesDir, "outbox/$entryId/inline")
+
         fun runNow(context: Context) {
             val req = OneTimeWorkRequestBuilder<OutboxSendWorker>()
                 .setConstraints(networkConstraints())
@@ -164,7 +166,6 @@ class OutboxSendWorker(
                 .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, req)
         }
 
-        /** Run after `delay` units. Replaces any existing schedule. */
         fun scheduleNext(context: Context, delay: Long, unit: TimeUnit) {
             val req = OneTimeWorkRequestBuilder<OutboxSendWorker>()
                 .setInitialDelay(delay, unit)
@@ -184,10 +185,6 @@ class OutboxSendWorker(
     }
 }
 
-/**
- * Helper for enqueueing outgoing messages and managing their on-disk attachment
- * copies. Call [enqueue] from the UI/ViewModel layer.
- */
 object OutboxManager {
 
     suspend fun enqueue(
@@ -199,6 +196,7 @@ object OutboxManager {
         cc: String? = null,
         bcc: String? = null,
         attachments: List<Uri> = emptyList(),
+        inlineImages: List<InlineAttachment> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
         initialError: String? = null,
@@ -206,8 +204,6 @@ object OutboxManager {
         isHtml: Boolean = false,
     ): OutboxEntry {
         val dao = EmailDatabase.getInstance(context).emailDao()
-        // First insert to get an autogenerated id; we'll then copy attachments
-        // into a dir named after that id and update the row with their paths.
         val base = OutboxEntry(
             accountEmail = accountEmail,
             to = to,
@@ -216,6 +212,7 @@ object OutboxManager {
             subject = subject,
             body = body,
             attachmentLocalPaths = "[]",
+            inlineImageJson = "[]",
             inReplyTo = inReplyTo,
             references = references,
             lastError = initialError,
@@ -224,12 +221,13 @@ object OutboxManager {
         )
         val pendingId = dao.insertOutboxEntry(base)
         val localPaths = copyAttachmentsToOutbox(context, pendingId, attachments)
+        val inlineEntries = copyInlineToOutbox(context, pendingId, inlineImages)
         val updated = base.copy(
             id = pendingId,
             attachmentLocalPaths = OutboxSendWorker.encodePaths(localPaths),
+            inlineImageJson = OutboxSendWorker.encodeInline(inlineEntries),
         )
         dao.insertOutboxEntry(updated)
-        // Send now, or wake the worker at the scheduled time.
         if (scheduledAt > System.currentTimeMillis()) {
             OutboxSendWorker.scheduleNext(
                 context,
@@ -246,7 +244,6 @@ object OutboxManager {
         val dao = EmailDatabase.getInstance(context).emailDao()
         OutboxSendWorker.attachmentDirFor(context, entry.id).deleteRecursively()
         dao.deleteOutboxEntry(entry)
-        // If we just emptied the outbox, no need to keep the retry chain alive.
         if (dao.getOutboxCount() == 0) {
             OutboxSendWorker.cancel(context)
         }
@@ -266,13 +263,48 @@ object OutboxManager {
                 val outFile = File(dir, "${System.currentTimeMillis()}-$index-$displayName")
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     outFile.outputStream().use { output -> input.copyTo(output) }
-                }
+                } ?: copyFromFilePath(uri, outFile)
                 if (outFile.exists() && outFile.length() > 0) outFile.absolutePath else null
             } catch (e: Exception) {
                 Log.w("OutboxManager", "Could not copy attachment $uri", e)
                 null
             }
         }
+    }
+
+    private fun copyInlineToOutbox(
+        context: Context,
+        entryId: Long,
+        inline: List<InlineAttachment>,
+    ): List<OutboxSendWorker.Companion.InlineJsonEntry> {
+        if (inline.isEmpty()) return emptyList()
+        val dir = OutboxSendWorker.inlineDirFor(context, entryId)
+        dir.mkdirs()
+        return inline.mapIndexedNotNull { index, att ->
+            try {
+                val safeName = att.fileName.replace(Regex("[/\\\\]"), "_").ifBlank { "inline-$index.jpg" }
+                val outFile = File(dir, "${System.currentTimeMillis()}-$index-$safeName")
+                try {
+                    context.contentResolver.openInputStream(att.uri)?.use { input ->
+                        outFile.outputStream().use { output -> input.copyTo(output) }
+                    } ?: copyFromFilePath(att.uri, outFile)
+                } catch (_: Exception) {
+                    copyFromFilePath(att.uri, outFile)
+                }
+                if (outFile.exists() && outFile.length() > 0) {
+                    OutboxSendWorker.Companion.InlineJsonEntry(cid = att.cid, path = outFile.absolutePath, mime = att.mimeType, name = att.fileName)
+                } else null
+            } catch (e: Exception) {
+                Log.w("OutboxManager", "Could not copy inline $att", e)
+                null
+            }
+        }
+    }
+
+    private fun copyFromFilePath(uri: Uri, outFile: File) {
+        val path = uri.path ?: return
+        val src = File(path)
+        if (src.exists()) src.inputStream().use { input -> outFile.outputStream().use { out -> input.copyTo(out) } }
     }
 
     private fun queryDisplayName(context: Context, uri: Uri): String? {

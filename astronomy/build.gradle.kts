@@ -13,6 +13,15 @@ android {
     }
 }
 
+metadataScreenshots {
+    // SkyMapPage gates behind location via PermissionsChecker — grant so first-run
+    // system prompt doesn't hijack the screenshots. Camera is optional AR overlay.
+    permissions.addAll(
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+    )
+}
+
 dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)

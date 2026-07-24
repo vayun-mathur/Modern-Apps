@@ -13,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap
  * [PdfNative.openDocument], and exposes the [pageCount] plus a per-page
  * [renderPage]. Rendered pages are cached so scrolling back does not re-decode.
  * All native work happens on [Dispatchers.IO]; callers must [close] when done.
+ *
+ * v2: adds saveCompressed, flattenDocument, extractPage, extractText wrappers and cache invalidation for wire version upgrades.
  */
 class SafePdfDocument private constructor(
     private val handle: Long,
@@ -169,6 +171,26 @@ class SafePdfDocument private constructor(
     /** Serialize the (possibly edited) document to PDF bytes. */
     suspend fun save(): ByteArray? = withContext(Dispatchers.IO) { PdfNative.saveDocument(handle) }
 
+    /** Serialize with streams compressed + unused objects pruned - wrapper for saveCompressed native */
+    suspend fun saveCompressed(): ByteArray? = withContext(Dispatchers.IO) {
+        PdfNative.saveCompressed(handle).also { cache.clear() }
+    }
+
+    /** Flatten annotations into page content - wrapper for flattenDocument native */
+    suspend fun flattenDocument(): Boolean = withContext(Dispatchers.IO) {
+        PdfNative.flattenDocument(handle).also { cache.clear() }
+    }
+
+    /** Extract page [index] into standalone one-page PDF bytes */
+    suspend fun extractPage(index: Int): ByteArray? = withContext(Dispatchers.IO) {
+        PdfNative.extractPage(handle, index)
+    }
+
+    /** Extract document's visible text */
+    suspend fun extractText(): String? = withContext(Dispatchers.IO) {
+        PdfNative.extractText(handle)
+    }
+
     /** Digitally sign the document (self-signed cert) and return the signed bytes. */
     suspend fun sign(name: String): ByteArray? = withContext(Dispatchers.IO) {
         val prepared = PdfNative.prepareSignature(handle, name, PdfSigner.CONTENTS_BYTES) ?: return@withContext null
@@ -195,12 +217,21 @@ class SafePdfDocument private constructor(
         PdfNative.listOutline(handle)?.let { SafePdfParser.parseOutline(it) } ?: emptyList()
     }
 
-    /** Case-insensitive full-text search across all pages. */
-    suspend fun search(query: String): List<SafeSearchMatch> = withContext(Dispatchers.IO) {
+    /** Full-text search across all pages with case-sensitive toggle (Phase 7). Default case-insensitive for backward compat. */
+    suspend fun search(query: String, caseSensitive: Boolean = false): List<SafeSearchMatch> = withContext(Dispatchers.IO) {
         if (query.isBlank()) emptyList()
-        else PdfNative.searchDocument(handle, query)?.let { SafePdfParser.parseSearchMatches(it) }
-            ?: emptyList()
+        else {
+            val bytes = if (caseSensitive) {
+                PdfNative.searchDocumentCaseSensitive(handle, query)
+            } else {
+                PdfNative.searchDocument(handle, query)
+            }
+            bytes?.let { SafePdfParser.parseSearchMatches(it) } ?: emptyList()
+        }
     }
+
+    /** Case-insensitive full-text search across all pages. */
+    suspend fun searchLegacy(query: String): List<SafeSearchMatch> = search(query, false)
 
     /** Prebuild the search text index so the first query is instant. */
     suspend fun prewarmSearch() = withContext(Dispatchers.IO) {

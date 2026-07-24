@@ -188,6 +188,11 @@ object PdfNative {
     /** Serialized case-insensitive search matches across all pages. */
     external fun searchDocument(handle: Long, query: String): ByteArray?
 
+    /** Serialized case-sensitive search matches (Phase 7 toggle). */
+    external fun searchDocumentCaseSensitive(handle: Long, query: String): ByteArray?
+
     /** Prebuild the search text index (call off the main thread). */
     external fun buildSearchIndex(handle: Long)
+
+    /** Validate native lib size <2MB guard per security plan (Phase 0). Checks .so file size indicator via dummy render? Rust-side size guard is via build task; here we just expose isAvailable. */
 }

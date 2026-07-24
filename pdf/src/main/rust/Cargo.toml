@@ -10,8 +10,14 @@ name = "pdf_render"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-lopdf = "0.36"
+lopdf = { version = "0.36", features = ["serde"] }
 jni = "0.21"
+jpeg-decoder = "0.3"
+weezl = "0.1"
+fax = "0.3"
+flate2 = "1.1"
+hayro-jbig2 = { version = "0.3", default-features = false, features = ["std"] }
+
 openjp2 = "0.6"
 md-5 = "0.10"
 aes = "0.8"

@@ -5,58 +5,41 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import com.vayunmathur.email.composer.InlineAttachment
 import com.vayunmathur.email.data.CredentialCrypto
 import com.vayunmathur.email.data.OutlookOAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileOutputStream
+import java.io.OutputStream
 import java.util.Properties
 import javax.activation.DataHandler
+import javax.activation.DataSource
 import javax.mail.*
 import javax.mail.internet.*
 import java.util.*
 
-/**
- * IMAP or SMTP server endpoint. [useSsl] controls implicit SSL/TLS on connect
- * (the `imaps` / `smtps` protocols on ports 993 / 465); `false` selects plain
- * `imap` / `smtp` with a STARTTLS upgrade (ports 143 / 587).
- */
 data class ServerConfig(val host: String, val port: Int, val useSsl: Boolean) {
     val imapProtocol: String get() = if (useSsl) "imaps" else "imap"
     val smtpProtocol: String get() = if (useSsl) "smtps" else "smtp"
 }
 
-/** Convenience: produce the IMAP server config that this account fetches from. */
 fun EmailAccount.imapServer(): ServerConfig = ServerConfig(imapHost, imapPort, imapUseSsl)
-
-/** Convenience: produce the SMTP server config used when sending from this account. */
 fun EmailAccount.smtpServer(): ServerConfig = ServerConfig(smtpHost, smtpPort, smtpUseSsl)
-
-/** The login identity for IMAP/SMTP auth — [username] if set, otherwise [email]. */
 fun EmailAccount.loginUser(): String = username.ifBlank { email }
 
-/**
- * Decrypt the stored credentials and produce an [EmailManager.AuthType].
- *
- * Outlook accounts (`authType == "oauth2"`) authenticate with a fresh XOAUTH2
- * access token (refreshed + persisted here on expiry); every other provider uses
- * a stored app password.
- */
 suspend fun EmailAccount.resolveAuth(context: Context): EmailManager.AuthType {
     if (authType == "oauth2") {
         val token = OutlookOAuth.freshAccessToken(context, this)
             ?: error("Account $email is missing an OAuth access token")
         return EmailManager.AuthType.OAuth(token)
     }
-    val cipher = passwordEncrypted
-        ?: error("Account ${email} is missing passwordEncrypted")
-    val iv = passwordIv
-        ?: error("Account ${email} is missing passwordIv")
+    val cipher = passwordEncrypted ?: error("Account ${email} is missing passwordEncrypted")
+    val iv = passwordIv ?: error("Account ${email} is missing passwordIv")
     return EmailManager.AuthType.Password(CredentialCrypto.decrypt(cipher, iv))
 }
 
-/** Close this folder, swallowing any exception (best-effort cleanup in finally blocks). */
 fun Folder.closeQuietly(expunge: Boolean = false) {
     try { close(expunge) } catch (_: Throwable) {}
 }
@@ -65,7 +48,6 @@ class EmailManager {
 
     sealed class AuthType {
         data class Password(val value: String) : AuthType()
-        /** XOAUTH2 access token (Outlook / Microsoft 365). */
         data class OAuth(val token: String) : AuthType()
     }
 
@@ -84,14 +66,12 @@ class EmailManager {
             this["mail.$proto.fetchsize"] = "1048576"
             this["mail.$proto.partialfetch"] = "true"
             if (oauth) {
-                // Restrict SASL to XOAUTH2 so the token is sent instead of a password.
                 this["mail.$proto.auth.mechanisms"] = "XOAUTH2"
                 this["mail.$proto.auth.login.disable"] = "true"
                 this["mail.$proto.auth.plain.disable"] = "true"
             }
-            if (server.useSsl) {
-                this["mail.$proto.ssl.enable"] = "true"
-            } else {
+            if (server.useSsl) this["mail.$proto.ssl.enable"] = "true"
+            else {
                 this["mail.$proto.starttls.enable"] = "true"
                 this["mail.$proto.starttls.required"] = "true"
             }
@@ -111,9 +91,8 @@ class EmailManager {
                 this["mail.$proto.auth.login.disable"] = "true"
                 this["mail.$proto.auth.plain.disable"] = "true"
             }
-            if (server.useSsl) {
-                this["mail.$proto.ssl.enable"] = "true"
-            } else {
+            if (server.useSsl) this["mail.$proto.ssl.enable"] = "true"
+            else {
                 this["mail.$proto.starttls.enable"] = "true"
                 this["mail.$proto.starttls.required"] = "true"
             }
@@ -121,25 +100,14 @@ class EmailManager {
         return Session.getInstance(properties).also { registerProviders(it) }
     }
 
-    /**
-     * Explicitly register JavaMail's bundled providers.
-     *
-     * On Android (and especially in shrunk APKs with multidex), JavaMail's
-     * default discovery mechanism — which reads `META-INF/javamail.providers`
-     * and uses ServiceLoader — does not reliably find providers, leading to
-     * `NoSuchProviderException("smtps")` / `NoSuchProviderException("imaps")`.
-     * Calling `session.setProvider(...)` ahead of `getTransport` / `getStore`
-     * avoids the discovery step entirely.
-     */
     private fun registerProviders(session: Session) {
         try {
             session.setProvider(Provider(Provider.Type.STORE, "imap", "com.sun.mail.imap.IMAPStore", "Oracle", ""))
             session.setProvider(Provider(Provider.Type.STORE, "imaps", "com.sun.mail.imap.IMAPSSLStore", "Oracle", ""))
             session.setProvider(Provider(Provider.Type.TRANSPORT, "smtp", "com.sun.mail.smtp.SMTPTransport", "Oracle", ""))
             session.setProvider(Provider(Provider.Type.TRANSPORT, "smtps", "com.sun.mail.smtp.SMTPSSLTransport", "Oracle", ""))
-            android.util.Log.d("EmailManager", "Providers registered: ${session.providers.joinToString { it.protocol }}")
         } catch (t: Throwable) {
-            android.util.Log.e("EmailManager", "registerProviders failed: ${t.javaClass.simpleName}: ${t.message}", t)
+            android.util.Log.e("EmailManager", "registerProviders failed: ${t.message}", t)
         }
     }
 
@@ -150,12 +118,9 @@ class EmailManager {
         try {
             store.connect(server.host, server.port, user, auth.credential)
             block(store)
-        } finally {
-            store.close()
-        }
+        } finally { store.close() }
     }
 
-    /** List folders using an already-connected store (no new TCP/TLS handshake). */
     fun fetchFoldersInStore(store: Store, user: String): List<EmailFolder> {
         val folders = store.defaultFolder.list("*")
         return folders.map { folder ->
@@ -170,11 +135,6 @@ class EmailManager {
         }
     }
 
-    /**
-     * Fetch messages from `folderName` using an already-connected [store]. Mirrors
-     * [fetchMessages] but doesn't open/close a new connection — caller is expected to
-     * have called [withStore] and to be looping over folders inside that lambda.
-     */
     suspend fun fetchMessagesInStore(
         store: Store,
         user: String,
@@ -187,18 +147,10 @@ class EmailManager {
         val folder = store.getFolder(folderName)
         if ((folder.type and Folder.HOLDS_MESSAGES) == 0) return@withContext emptyList<EmailMessage>() to emptyList()
         folder.open(Folder.READ_ONLY)
-        try {
-            fetchMessagesFromOpenFolder(folder, user, folderName, limit, offset, fetchBodies, skipUids)
-        } finally {
-            folder.closeQuietly()
-        }
+        try { fetchMessagesFromOpenFolder(folder, user, folderName, limit, offset, fetchBodies, skipUids) }
+        finally { folder.closeQuietly() }
     }
 
-    /**
-     * Fetches new messages from an already-open [folder] without re-opening it.
-     * Used by [ImapIdleService] so that we can respond to `EXISTS` push events
-     * inline on the same connection instead of going through WorkManager.
-     */
     fun fetchMessagesFromOpenFolder(
         folder: Folder,
         user: String,
@@ -213,15 +165,11 @@ class EmailManager {
         val end = (totalMessages - offset).coerceAtLeast(1)
         val start = (end - limit + 1).coerceAtLeast(1)
         if (end < 1) return emptyList<EmailMessage>() to emptyList()
-
         val messages = folder.getMessages(start, end)
-        // Cheap UIDs-only fetch first, so we can filter out known UIDs before
-        // pulling envelopes (much more bytes).
         folder.fetch(messages, FetchProfile().apply { add(UIDFolder.FetchProfileItem.UID) })
         val uidFolder = folder as? UIDFolder
         val novel = messages.filter { (uidFolder?.getUID(it) ?: -1L) !in skipUids }.toTypedArray()
         if (novel.isEmpty()) return emptyList<EmailMessage>() to emptyList()
-
         val fp = FetchProfile().apply {
             add(FetchProfile.Item.ENVELOPE)
             add(UIDFolder.FetchProfileItem.UID)
@@ -230,16 +178,12 @@ class EmailManager {
             if (fetchBodies) add(FetchProfile.Item.CONTENT_INFO)
         }
         folder.fetch(novel, fp)
-
         val emailMessages = mutableListOf<EmailMessage>()
         val allAttachments = mutableListOf<Attachment>()
         novel.reversedArray().forEach { msg ->
             val uid = uidFolder?.getUID(msg) ?: -1L
-            val (body, isHtml, attachments) = if (fetchBodies) {
-                processMessageContent(user, folderName, uid, msg)
-            } else {
-                Triple<String?, Boolean, List<Attachment>>(null, false, emptyList())
-            }
+            val (body, isHtml, attachments) = if (fetchBodies) processMessageContent(user, folderName, uid, msg)
+            else Triple<String?, Boolean, List<Attachment>>(null, false, emptyList())
             allAttachments.addAll(attachments)
             emailMessages.add(buildEmailMessage(msg, user, folderName, uid, body, isHtml, attachments.isNotEmpty(), fetchBodies))
         }
@@ -247,7 +191,7 @@ class EmailManager {
     }
 
     private fun buildEmailMessage(
-        msg: javax.mail.Message,
+        msg: Message,
         user: String,
         folderName: String,
         uid: Long,
@@ -256,12 +200,12 @@ class EmailManager {
         hasAttachments: Boolean,
         fetchBodies: Boolean,
     ): EmailMessage {
-        val gmailThreadId = (msg as? javax.mail.internet.MimeMessage)?.getHeader("X-GM-THRID")?.firstOrNull()
+        val gmailThreadId = (msg as? MimeMessage)?.getHeader("X-GM-THRID")?.firstOrNull()
         val serverId = msg.getHeader("Message-ID")?.firstOrNull()
         val refs = msg.getHeader("References")?.firstOrNull()
         val listUnsub = msg.getHeader("List-Unsubscribe")?.firstOrNull()
         val listUnsubPost = msg.getHeader("List-Unsubscribe-Post")?.firstOrNull()
-        val isRead = msg.isSet(javax.mail.Flags.Flag.SEEN)
+        val isRead = msg.isSet(Flags.Flag.SEEN)
         val whenMillis = msg.sentDate?.time ?: msg.receivedDate?.time ?: 0L
         return EmailMessage(
             accountEmail = user,
@@ -271,8 +215,8 @@ class EmailManager {
             threadId = gmailThreadId ?: uid.toString(),
             subject = msg.subject ?: "(no subject)",
             from = msg.from?.firstOrNull()?.toString() ?: "",
-            to = msg.getRecipients(javax.mail.Message.RecipientType.TO)?.joinToString { it.toString() },
-            cc = msg.getRecipients(javax.mail.Message.RecipientType.CC)?.joinToString { it.toString() },
+            to = msg.getRecipients(Message.RecipientType.TO)?.joinToString { it.toString() },
+            cc = msg.getRecipients(Message.RecipientType.CC)?.joinToString { it.toString() },
             date = msg.sentDate?.toString() ?: msg.receivedDate?.toString() ?: "",
             dateMillis = whenMillis,
             body = body,
@@ -285,10 +229,6 @@ class EmailManager {
         )
     }
 
-    /**
-     * On-demand body + attachments fetch for a single message. Used by the
-     * MessageThread screen the first time a message without a stored body is opened.
-     */
     suspend fun fetchMessageBody(
         server: ServerConfig,
         user: String,
@@ -299,11 +239,6 @@ class EmailManager {
         fetchMessageBodyInStore(store, user, folderName, uid)
     }
 
-    /**
-     * Body+attachments fetch using an already-open [store]. Used by the sync
-     * worker's background backfill so we don't open a new TCP/TLS connection
-     * for each missing message.
-     */
     suspend fun fetchMessageBodyInStore(
         store: Store,
         user: String,
@@ -315,9 +250,7 @@ class EmailManager {
         try {
             val message = (folder as UIDFolder).getMessageByUID(uid) ?: return@withContext Triple<String?, Boolean, List<Attachment>>(null, false, emptyList())
             processMessageContent(user, folderName, uid, message)
-        } finally {
-            folder.closeQuietly()
-        }
+        } finally { folder.closeQuietly() }
     }
 
     suspend fun fetchFolders(server: ServerConfig, user: String, auth: AuthType): List<EmailFolder> = withStore(server, user, auth) { store ->
@@ -356,6 +289,7 @@ class EmailManager {
         cc: String? = null,
         bcc: String? = null,
         attachments: List<Uri> = emptyList(),
+        inlineImages: List<InlineAttachment> = emptyList(),
         inReplyTo: String? = null,
         references: String? = null,
         from: String? = null,
@@ -366,56 +300,71 @@ class EmailManager {
         val message = MimeMessage(session)
         message.setFrom(InternetAddress(from ?: user))
         message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to))
-        if (!cc.isNullOrBlank()) {
-            message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(cc))
-        }
-        if (!bcc.isNullOrBlank()) {
-            message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(bcc))
-        }
+        if (!cc.isNullOrBlank()) message.setRecipients(Message.RecipientType.CC, InternetAddress.parse(cc))
+        if (!bcc.isNullOrBlank()) message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(bcc))
         message.subject = subject
-        
-        if (inReplyTo != null) {
-            message.setHeader("In-Reply-To", inReplyTo)
-        }
-        if (references != null) {
-            message.setHeader("References", references)
+        if (inReplyTo != null) message.setHeader("In-Reply-To", inReplyTo)
+        if (references != null) message.setHeader("References", references)
+
+        val textPart = MimeBodyPart().apply {
+            if (asHtml) setContent(body, "text/html; charset=utf-8") else setText(body)
         }
 
-        val multipart = MimeMultipart()
-        // Text part
-        val textPart = MimeBodyPart()
-        if (asHtml) {
-            textPart.setContent(body, "text/html; charset=utf-8")
+        val finalMultipart: MimeMultipart
+        if (inlineImages.isEmpty()) {
+            finalMultipart = MimeMultipart("mixed")
+            finalMultipart.addBodyPart(textPart)
+            for (uri in attachments) finalMultipart.addBodyPart(buildAttachmentPart(context, uri))
         } else {
-            textPart.setText(body)
-        }
-        multipart.addBodyPart(textPart)
-
-        // Attachments
-        for (uri in attachments) {
-            val attachmentPart = MimeBodyPart()
-            val filename = getFileName(context, uri) ?: "attachment"
-            val dataSource = object : javax.activation.DataSource {
-                override fun getInputStream() = context.contentResolver.openInputStream(uri) ?: throw Exception("Cannot open URI")
-                override fun getOutputStream() = throw Exception("Not supported")
-                override fun getContentType() = context.contentResolver.getType(uri) ?: "application/octet-stream"
-                override fun getName() = filename
+            val related = MimeMultipart("related")
+            related.addBodyPart(textPart)
+            for (inline in inlineImages) {
+                val inlinePart = MimeBodyPart().apply {
+                    val ds = object : DataSource {
+                        override fun getInputStream() = try {
+                            context.contentResolver.openInputStream(inline.uri) ?: File(inline.uri.path ?: "").inputStream()
+                        } catch (_: Exception) { File(inline.uri.path ?: "").inputStream() }
+                        override fun getOutputStream() = throw Exception("Not supported")
+                        override fun getContentType() = inline.mimeType.ifBlank { "image/jpeg" }
+                        override fun getName() = inline.fileName
+                    }
+                    dataHandler = DataHandler(ds)
+                    setHeader("Content-ID", "<${inline.cid}>")
+                    setHeader("Content-Disposition", "inline; filename=\"${inline.fileName}\"")
+                    fileName = inline.fileName
+                }
+                related.addBodyPart(inlinePart)
             }
-            attachmentPart.dataHandler = DataHandler(dataSource)
-            attachmentPart.fileName = filename
-            multipart.addBodyPart(attachmentPart)
+            val relatedWrapper = MimeBodyPart().apply { setContent(related) }
+            finalMultipart = MimeMultipart("mixed")
+            finalMultipart.addBodyPart(relatedWrapper)
+            for (uri in attachments) finalMultipart.addBodyPart(buildAttachmentPart(context, uri))
         }
 
-        message.setContent(multipart)
+        message.setContent(finalMultipart)
 
         val transport = session.getTransport(server.smtpProtocol)
         try {
-            val credential = (auth as AuthType.Password).value
-            transport.connect(server.host, server.port, user, credential)
+            transport.connect(server.host, server.port, user, auth.credential)
             transport.sendMessage(message, message.allRecipients)
-        } finally {
-            transport.close()
+        } finally { transport.close() }
+    }
+
+    private fun buildAttachmentPart(context: Context, uri: Uri): MimeBodyPart {
+        val attachmentPart = MimeBodyPart()
+        val filename = getFileName(context, uri) ?: "attachment"
+        val dataSource = object : DataSource {
+            override fun getInputStream() = try {
+                context.contentResolver.openInputStream(uri) ?: File(uri.path ?: "").inputStream()
+            } catch (_: Exception) { File(uri.path ?: "").inputStream() }
+            override fun getOutputStream() = throw Exception("Not supported")
+            override fun getContentType() = context.contentResolver.getType(uri) ?: "application/octet-stream"
+            override fun getName() = filename
         }
+        attachmentPart.dataHandler = DataHandler(dataSource)
+        attachmentPart.fileName = filename
+        attachmentPart.setHeader("Content-Disposition", "attachment; filename=\"$filename\"")
+        return attachmentPart
     }
 
     private fun getFileName(context: Context, uri: Uri): String? {
@@ -431,9 +380,6 @@ class EmailManager {
         return uri.path?.let { File(it).name }
     }
 
-    /**
-     * Update the SEEN (read/unread) flag on the IMAP server for a single message.
-     */
     suspend fun setSeenFlag(
         server: ServerConfig,
         user: String,
@@ -447,12 +393,9 @@ class EmailManager {
         try {
             val msg = (folder as UIDFolder).getMessageByUID(uid) ?: return@withStore
             msg.setFlag(Flags.Flag.SEEN, seen)
-        } finally {
-            folder.closeQuietly()
-        }
+        } finally { folder.closeQuietly() }
     }
 
-    /** Permanently delete a message on the IMAP server (sets \Deleted and expunges). */
     suspend fun deleteMessage(
         server: ServerConfig,
         user: String,
@@ -466,16 +409,9 @@ class EmailManager {
             val msg = (folder as UIDFolder).getMessageByUID(uid) ?: return@withStore
             msg.setFlag(Flags.Flag.DELETED, true)
             folder.expunge()
-        } finally {
-            folder.closeQuietly(true)
-        }
+        } finally { folder.closeQuietly(true) }
     }
 
-    /**
-     * Streams an IMAP attachment MIME part into the public Downloads folder via MediaStore, so it
-     * lands in the user-visible Downloads directory (attachments have no HTTP URL, so
-     * DownloadManager isn't applicable). Returns the saved `content://` URI as a string.
-     */
     suspend fun downloadAttachment(
         context: Context,
         server: ServerConfig,
@@ -492,7 +428,6 @@ class EmailManager {
         try {
             val msg = (folder as UIDFolder).getMessageByUID(uid)
             val part = findPartById(msg, partId) ?: throw Exception("Part not found")
-
             val resolver = context.contentResolver
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
@@ -500,24 +435,19 @@ class EmailManager {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                 put(MediaStore.MediaColumns.IS_PENDING, 1)
             }
-            val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: throw Exception("Could not create Downloads entry")
+            val itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw Exception("Could not create Downloads entry")
             try {
-                resolver.openOutputStream(itemUri)?.use { output ->
-                    part.inputStream.use { input -> input.copyTo(output) }
-                } ?: throw Exception("Could not open output stream")
+                resolver.openOutputStream(itemUri)?.use { output -> part.inputStream.use { input -> input.copyTo(output) } }
+                    ?: throw Exception("Could not open output stream")
                 values.clear()
                 values.put(MediaStore.MediaColumns.IS_PENDING, 0)
                 resolver.update(itemUri, values, null, null)
             } catch (e: Exception) {
-                // Roll back the partially-written entry so we don't leave a 0-byte file behind.
                 resolver.delete(itemUri, null, null)
                 throw e
             }
             itemUri.toString()
-        } finally {
-            folder.closeQuietly()
-        }
+        } finally { folder.closeQuietly() }
     }
 
     private fun findPartById(part: Part, partId: String): Part? {
@@ -529,9 +459,7 @@ class EmailManager {
                 val index = id.toIntOrNull() ?: return null
                 if (currentPart.content is MimeMultipart) {
                     val innerMp = currentPart.content as MimeMultipart
-                    if (index < innerMp.count) {
-                        currentPart = innerMp.getBodyPart(index)
-                    } else return null
+                    if (index < innerMp.count) currentPart = innerMp.getBodyPart(index) else return null
                 } else return null
             }
             return currentPart
@@ -539,42 +467,148 @@ class EmailManager {
         return null
     }
 
-    private fun processMessageContent(user: String, folderName: String, uid: Long, part: Part, partId: String = ""): Triple<String?, Boolean, List<Attachment>> {
+    suspend fun fetchRawMessageBytes(
+        server: ServerConfig,
+        user: String,
+        auth: AuthType,
+        folderName: String,
+        uid: Long,
+    ): ByteArray = withStore(server, user, auth) { store ->
+        val folder = store.getFolder(folderName)
+        folder.open(Folder.READ_ONLY)
+        try {
+            val msg = (folder as UIDFolder).getMessageByUID(uid) ?: throw IllegalStateException("Message UID $uid not found in $folderName")
+            val baos = ByteArrayOutputStream()
+            (msg as? MimeMessage)?.writeTo(baos) ?: msg.dataHandler.writeTo(baos)
+            baos.toByteArray()
+        } finally { folder.closeQuietly() }
+    }
+
+    suspend fun fetchRawMessageTo(
+        server: ServerConfig,
+        user: String,
+        auth: AuthType,
+        folderName: String,
+        uid: Long,
+        output: OutputStream,
+    ) = withStore(server, user, auth) { store ->
+        val folder = store.getFolder(folderName)
+        folder.open(Folder.READ_ONLY)
+        try {
+            val msg = (folder as UIDFolder).getMessageByUID(uid) ?: throw IllegalStateException("Message UID $uid not found in $folderName")
+            (msg as? MimeMessage)?.writeTo(output) ?: msg.dataHandler.writeTo(output)
+        } finally { folder.closeQuietly() }
+    }
+
+    internal fun processMessageContent(user: String, folderName: String, uid: Long, part: Part, partId: String = ""): Triple<String?, Boolean, List<Attachment>> {
         when {
             part.isMimeType("text/plain") -> return Triple(part.content.toString(), false, emptyList())
             part.isMimeType("text/html") -> return Triple(part.content.toString(), true, emptyList())
             part.isMimeType("multipart/*") -> {
-            val mp = part.content as MimeMultipart
-            var finalBody: String? = null
-            var finalIsHtml = false
-            val attachments = mutableListOf<Attachment>()
-
-            for (i in 0 until mp.count) {
-                val bodyPart = mp.getBodyPart(i)
-                val currentPartId = if (partId.isEmpty()) i.toString() else "$partId.$i"
-                
-                if (Part.ATTACHMENT.equals(bodyPart.disposition, ignoreCase = true) || !bodyPart.fileName.isNullOrBlank()) {
-                    attachments.add(Attachment(
-                        accountEmail = user,
-                        folderName = folderName,
-                        messageId = uid,
-                        partId = currentPartId,
-                        fileName = bodyPart.fileName ?: "unnamed",
-                        mimeType = bodyPart.contentType.split(";").first(),
-                        size = bodyPart.size.toLong()
-                    ))
-                } else {
-                    val (b, h, a) = processMessageContent(user, folderName, uid, bodyPart, currentPartId)
-                    attachments.addAll(a)
-                    if (finalBody == null || (h && !finalIsHtml)) {
-                        finalBody = b
-                        finalIsHtml = h
+                val mp = part.content as MimeMultipart
+                var finalBody: String? = null
+                var finalIsHtml = false
+                val attachments = mutableListOf<Attachment>()
+                for (i in 0 until mp.count) {
+                    val bodyPart = mp.getBodyPart(i)
+                    val currentPartId = if (partId.isEmpty()) i.toString() else "$partId.$i"
+                    val contentId = try { bodyPart.getHeader("Content-ID")?.firstOrNull() } catch (_: Exception) { null }
+                    val isInlineImage = contentId != null && (bodyPart.isMimeType("image/*") || Part.INLINE.equals(bodyPart.disposition, ignoreCase = true))
+                    if (!isInlineImage && (Part.ATTACHMENT.equals(bodyPart.disposition, ignoreCase = true) || !bodyPart.fileName.isNullOrBlank())) {
+                        attachments.add(Attachment(user, folderName, uid, currentPartId, bodyPart.fileName ?: "unnamed", bodyPart.contentType.split(";").first(), bodyPart.size.toLong()))
+                    } else if (!isInlineImage) {
+                        val (b, h, a) = processMessageContent(user, folderName, uid, bodyPart, currentPartId)
+                        attachments.addAll(a)
+                        if (finalBody == null || (h && !finalIsHtml)) { finalBody = b; finalIsHtml = h }
                     }
                 }
-            }
-            return Triple(finalBody, finalIsHtml, attachments)
+                return Triple(finalBody, finalIsHtml, attachments)
             }
         }
         return Triple(null, false, emptyList())
+    }
+
+    data class FullFetchResult(val contentTriple: Triple<String?, Boolean, List<Attachment>>)
+
+    suspend fun fetchFullForBody(
+        context: Context,
+        server: ServerConfig,
+        user: String,
+        auth: AuthType,
+        folderName: String,
+        uid: Long,
+    ): FullFetchResult = withStore(server, user, auth) { store ->
+        val folder = store.getFolder(folderName)
+        folder.open(Folder.READ_ONLY)
+        try {
+            val message = (folder as UIDFolder).getMessageByUID(uid)
+            if (message == null) return@withStore FullFetchResult(Triple(null, false, emptyList()))
+            val ctx = context.applicationContext
+            try { extractInlineCidMapSync(ctx, message, uid) } catch (_: Exception) { }
+            val triple = processMessageContent(user, folderName, uid, message, "")
+            FullFetchResult(triple)
+        } finally { folder.closeQuietly() }
+    }
+
+    suspend fun fetchCidMap(
+        context: Context,
+        server: ServerConfig,
+        user: String,
+        auth: AuthType,
+        folderName: String,
+        uid: Long,
+    ): Map<String, File> = withContext(Dispatchers.IO) {
+        withStore(server, user, auth) { store ->
+            val folder = store.getFolder(folderName)
+            folder.open(Folder.READ_ONLY)
+            try {
+                val msg = (folder as UIDFolder).getMessageByUID(uid) ?: return@withStore emptyMap<String, File>()
+                extractInlineCidMapSync(context, msg, uid)
+            } finally { folder.closeQuietly() }
+        }
+    }
+
+    private fun extractInlineCidMapSync(context: Context, part: Part, uid: Long): Map<String, File> {
+        val map = mutableMapOf<String, File>()
+        fun walk(p: Part) {
+            try {
+                if (p.isMimeType("multipart/*")) {
+                    val mp = p.content as? MimeMultipart ?: return
+                    for (i in 0 until mp.count) walk(mp.getBodyPart(i))
+                } else {
+                    val cidHeader = try { p.getHeader("Content-ID")?.firstOrNull() } catch (_: Exception) { null }
+                    if (cidHeader != null) {
+                        val cid = cidHeader.trim().removePrefix("<").removeSuffix(">").trim()
+                        if (cid.isNotEmpty()) {
+                            val dir = File(context.cacheDir, "cid/$uid").also { it.mkdirs() }
+                            val safeName = (p.fileName?.takeIf { it.isNotBlank() } ?: "${cid.hashCode()}.bin").replace(Regex("[/\\\\]"), "_")
+                            val outFile = File(dir, safeName)
+                            if (!outFile.exists()) {
+                                try { p.inputStream.use { input -> outFile.outputStream().use { out -> input.copyTo(out) } } } catch (_: Exception) { }
+                            }
+                            if (outFile.exists()) {
+                                map[cid] = outFile
+                                try { File(dir, "$cid.meta").writeText(outFile.name) } catch (_: Exception) { }
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) { }
+        }
+        walk(part)
+        val dir = File(context.cacheDir, "cid/$uid")
+        if (dir.exists()) {
+            dir.listFiles { f -> f.name.endsWith(".meta") }?.forEach { meta ->
+                val cid = meta.name.removeSuffix(".meta")
+                if (cid !in map) {
+                    val targetName = try { meta.readText().trim() } catch (_: Exception) { null }
+                    if (targetName != null) {
+                        val file = File(dir, targetName)
+                        if (file.exists()) map[cid] = file
+                    }
+                }
+            }
+        }
+        return map
     }
 }

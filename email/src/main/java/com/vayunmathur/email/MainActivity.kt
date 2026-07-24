@@ -33,8 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.core.net.toUri
 import com.vayunmathur.email.data.EmailSyncWorker
+import com.vayunmathur.email.util.EmlUtils
 import com.vayunmathur.email.widget.EmailWidgetReceiver
-import com.vayunmathur.library.ui.*
 import com.vayunmathur.library.util.*
 import com.vayunmathur.library.widgets.updateWidgetPreviews
 import kotlinx.coroutines.flow.debounce
@@ -48,6 +48,9 @@ class MainActivity : ComponentActivity() {
 
         updateWidgetPreviews(EmailWidgetReceiver::class)
         handleIntent(intent)
+        // IDLE push for INBOX + hourly non-INBOX poll + on-demand pull-to-refresh.
+        // Purge any legacy 15-min full-poll work from older APKs and ensure hourly non-INBOX is scheduled.
+        com.vayunmathur.email.data.EmailSyncWorker.scheduleHourlyNonInboxSync(this)
         // Wake the outbox sender on every cold start: if the process was killed
         // between scheduled retries, this is what gets it going again.
         com.vayunmathur.email.data.OutboxSendWorker.runNow(this)
@@ -90,6 +93,34 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
 
+        // .eml VIEW from file manager / Downloads / Files app
+        if (intent.action == Intent.ACTION_VIEW) {
+            val dataUri = intent.data
+            if (dataUri != null) {
+                val mime = intent.type
+                val lastSeg = dataUri.lastPathSegment ?: ""
+                val lowerMime = mime?.lowercase() ?: ""
+                val isEmlMime = lowerMime.contains("rfc822") || lowerMime.contains("mbox")
+                var isEmlExtension = lastSeg.endsWith(".eml", ignoreCase = true)
+                // Content URIs sometimes encode the filename in DISPLAY_NAME, not lastPathSegment
+                if (!isEmlExtension && dataUri.scheme == "content") {
+                    try {
+                        contentResolver.query(dataUri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                            if (c.moveToFirst()) {
+                                val name = c.getString(0) ?: ""
+                                if (name.endsWith(".eml", ignoreCase = true)) isEmlExtension = true
+                            }
+                        }
+                    } catch (_: Exception) { /* best-effort */ }
+                }
+                val looksLikeEml = isEmlMime || isEmlExtension
+                if (looksLikeEml) {
+                    IntentState.navigationRoute = Route.EmlViewer(dataUri.toString())
+                    return
+                }
+            }
+        }
+
         val accountEmail = intent.getStringExtra("accountEmail")
         val threadId = intent.getStringExtra("threadId")
         when {
@@ -116,7 +147,10 @@ object IntentState {
 @Composable
 fun MainContent(viewModel: EmailViewModel) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle(emptyList())
-    if (accounts.isEmpty()) {
+    val navigationRoute = IntentState.navigationRoute
+    val isEmlViewer = navigationRoute is Route.EmlViewer
+
+    if (accounts.isEmpty() && !isEmlViewer) {
         // First run: jump straight into the add-account picker. The conditional
         // above auto-swaps us into EmailApp once the first account lands.
         com.vayunmathur.email.ui.AddAccountScreen(
@@ -151,6 +185,8 @@ sealed interface Route : NavKey {
     object AddAccount : Route
     @Serializable
     object Settings : Route
+    @Serializable
+    data class EmlViewer(val uriString: String) : Route
 }
 
 @Composable
@@ -362,6 +398,15 @@ fun EmailApp(viewModel: EmailViewModel) {
                     viewModel = viewModel,
                     onBack = { backStack.pop() },
                     onOpenDraft = { id -> backStack.add(Route.Composer(draftId = id)) },
+                )
+            }
+            entry<Route.EmlViewer>(metadata = ListDetailPage()) { route ->
+                com.vayunmathur.email.ui.EmlViewerScreen(
+                    uriString = route.uriString,
+                    onBack = { backStack.pop() },
+                    onComposeForward = { sub, body ->
+                        backStack.add(Route.Composer(subject = sub, body = body))
+                    },
                 )
             }
         }
@@ -748,6 +793,27 @@ fun MessageThreadScreen(
 ) {
     val messages by viewModel.getThread(accountEmail, threadId).collectAsStateWithLifecycle(emptyList())
     var hasMarkedAsRead by remember(threadId) { mutableStateOf(false) }
+    val context = LocalContext.current
+    var pendingExport by remember { mutableStateOf<EmailMessage?>(null) }
+
+    // SAF CreateDocument launcher for .eml export — streams raw RFC822 from IMAP directly to user-chosen location.
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("message/rfc822")
+    ) { targetUri ->
+        val msg = pendingExport
+        pendingExport = null
+        if (targetUri != null && msg != null) {
+            viewModel.exportEml(
+                accountEmail = msg.accountEmail,
+                folderName = msg.folderName,
+                uid = msg.id,
+                targetUri = targetUri,
+            ) { ok, err ->
+                val toastText = if (ok) "Saved as .eml" else "Save failed: ${err ?: "unknown"}"
+                Toast.makeText(context, toastText, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // Mark all unread messages in the thread as read when the screen loads.
     // Only run once per thread navigation to allow user to mark as unread.
@@ -774,7 +840,21 @@ fun MessageThreadScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(messages, key = { "${it.accountEmail}|${it.folderName}|${it.id}" }) { msg ->
-                MessageItem(msg, viewModel, onBack, onReply, onForward, onCompose)
+                MessageItem(
+                    msg = msg,
+                    viewModel = viewModel,
+                    onBack = onBack,
+                    onReply = onReply,
+                    onForward = onForward,
+                    onCompose = onCompose,
+                    onExportEml = { toExport ->
+                        pendingExport = toExport
+                        val fileName = EmlUtils.sanitizeFileName(
+                            toExport.subject.ifBlank { "email_${toExport.id}" }
+                        )
+                        exportLauncher.launch(fileName)
+                    },
+                )
             }
         }
     }
@@ -783,23 +863,22 @@ fun MessageThreadScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageItem(
-    msg: EmailMessage, 
+    msg: EmailMessage,
     viewModel: EmailViewModel,
     onBack: () -> Unit,
     onReply: (String, String, String?) -> Unit,
     onForward: (String, String?) -> Unit,
-    onCompose: (String, String) -> Unit
+    onCompose: (String, String) -> Unit,
+    onExportEml: (EmailMessage) -> Unit = {},
 ) {
     var attachments by remember { mutableStateOf<List<Attachment>>(emptyList()) }
     var showDetails by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
-    
+    var showOverflow by remember { mutableStateOf(false) }
+
     LaunchedEffect(msg.id) {
         attachments = viewModel.getAttachments(msg.accountEmail, msg.id)
-        // If we only have the header for this message (sync skips bodies), pull
-        // the body now. The DB row update will flow back through the Thread Flow
-        // and trigger a recomposition with the body visible.
         if (msg.body == null) {
             viewModel.fetchBodyIfNeeded(msg)
         }
@@ -811,7 +890,6 @@ fun MessageItem(
     val avatarColor = Color(accountColor(msg.accountEmail))
 
     Column {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -828,7 +906,6 @@ fun MessageItem(
                     Text(text = initial, color = Color.White, style = MaterialTheme.typography.titleMedium)
                 }
             }
-            
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -843,7 +920,7 @@ fun MessageItem(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     Text(
-                        text = "  •  ${msg.date.substringBeforeLast(":")}", // Simplified time
+                        text = "  •  ${msg.date.substringBeforeLast(":")}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -854,8 +931,7 @@ fun MessageItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 var showSnooze by remember { mutableStateOf(false) }
                 Box {
                     TextButton(onClick = { showSnooze = true }) { Text("Snooze") }
@@ -876,11 +952,21 @@ fun MessageItem(
                 }
                 IconButton(onClick = {
                     viewModel.markAsRead(msg.accountEmail, msg.folderName, msg.id, !msg.isRead)
-                    if (msg.isRead) { // If it was read, we just marked it as unread
+                    if (msg.isRead) {
                         onBack()
                     }
                 }) {
                     if (msg.isRead) IconMarkUnread() else IconMarkRead()
+                }
+                Box {
+                    IconButton(onClick = { showOverflow = true }) { IconMoreVert() }
+                    DropdownMenu(expanded = showOverflow, onDismissRequest = { showOverflow = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Save as .eml") },
+                            leadingIcon = { IconSave(modifier = Modifier.size(20.dp)) },
+                            onClick = { showOverflow = false; onExportEml(msg) },
+                        )
+                    }
                 }
             }
         }
@@ -888,38 +974,39 @@ fun MessageItem(
         if (msg.isHtml && msg.body != null) {
             var loadImages by remember(msg.id) { mutableStateOf(false) }
             var showQuotes by remember(msg.id) { mutableStateOf(false) }
+            var cidMap by remember(msg.id) { mutableStateOf<Map<String, java.io.File>>(emptyMap()) }
+            val bodyHasCid = remember(msg.body) { msg.body.contains("cid:", ignoreCase = true) }
+            LaunchedEffect(msg.id, msg.body) {
+                if (bodyHasCid) {
+                    val map = viewModel.loadCidMap(context, msg)
+                    if (map.isNotEmpty()) cidMap = map
+                }
+            }
             val hasQuotes = remember(msg.body) {
                 listOf("gmail_quote", "yahoo_quoted", "moz-cite-prefix", "<blockquote").any { msg.body.contains(it, ignoreCase = true) }
             }
-            if (!loadImages) {
+            val remoteBlocked = !loadImages && cidMap.isEmpty() && !bodyHasCid
+            if (remoteBlocked) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "Remote images blocked",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Text("Remote images blocked", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = { loadImages = true }) { Text("Load images") }
                 }
             }
             HtmlText(
                 html = msg.body,
-                blockRemoteImages = !loadImages,
+                blockRemoteImages = remoteBlocked,
                 hideQuotes = hasQuotes && !showQuotes,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth()
+                cidMap = cidMap,
+                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth()
             )
             if (hasQuotes) {
-                TextButton(
-                    onClick = { showQuotes = !showQuotes },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                ) { Text(if (showQuotes) "Hide quoted text" else "Show quoted text") }
+                TextButton(onClick = { showQuotes = !showQuotes }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text(if (showQuotes) "Hide quoted text" else "Show quoted text")
+                }
             }
         } else {
             var showQuotes by remember(msg.id) { mutableStateOf(false) }
@@ -927,69 +1014,40 @@ fun MessageItem(
             Text(
                 text = if (showQuotes || quotedText.isEmpty()) (msg.body ?: "(No Content)") else mainText,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             )
             if (quotedText.isNotEmpty()) {
-                TextButton(
-                    onClick = { showQuotes = !showQuotes },
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                ) { Text(if (showQuotes) "Hide quoted text" else "Show quoted text") }
-            }
-        }
-        
-        if (attachments.isNotEmpty()) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text("Attachments:", style = MaterialTheme.typography.labelLarge)
-                attachments.forEach { att ->
-                    AttachmentItem(att, viewModel)
+                TextButton(onClick = { showQuotes = !showQuotes }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text(if (showQuotes) "Hide quoted text" else "Show quoted text")
                 }
             }
         }
-        
-        Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = { onReply(msg.from, msg.subject, msg.serverId) },
-                modifier = Modifier.weight(1f)
-            ) {
-                IconUndo(modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.reply))
-            }
-            OutlinedButton(
-                onClick = { onForward(msg.subject, msg.body) },
-                modifier = Modifier.weight(1f)
-            ) {
-                IconForward(modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.forward))
+
+        if (attachments.isNotEmpty()) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text("Attachments:", style = MaterialTheme.typography.labelLarge)
+                attachments.forEach { att -> AttachmentItem(att, viewModel) }
             }
         }
 
-        // Unsubscribe + block sender
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            val unsubscribe = remember(msg.listUnsubscribe, msg.listUnsubscribePost, msg.body, msg.isHtml) {
-                msg.detectUnsubscribe()
+        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { onReply(msg.from, msg.subject, msg.serverId) }, modifier = Modifier.weight(1f)) {
+                IconUndo(modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.reply))
             }
+            OutlinedButton(onClick = { onForward(msg.subject, msg.body) }, modifier = Modifier.weight(1f)) {
+                IconForward(modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.forward))
+            }
+        }
+
+        Row(modifier = Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val unsubscribe = remember(msg.listUnsubscribe, msg.listUnsubscribePost, msg.body, msg.isHtml) { msg.detectUnsubscribe() }
             if (unsubscribe != null) {
                 var showConfirm by remember(msg.id) { mutableStateOf(false) }
                 TextButton(onClick = { showConfirm = true }) { Text("Unsubscribe") }
                 if (showConfirm) {
-                    UnsubscribeDialog(
-                        method = unsubscribe,
-                        onDismiss = { showConfirm = false },
-                        onConfirm = {
-                            showConfirm = false
-                            performUnsubscribe(unsubscribe, context, viewModel, onCompose)
-                        },
-                    )
+                    UnsubscribeDialog(method = unsubscribe, onDismiss = { showConfirm = false }, onConfirm = {
+                        showConfirm = false; performUnsubscribe(unsubscribe, context, viewModel, onCompose)
+                    })
                 }
             }
             TextButton(onClick = {
@@ -998,30 +1056,15 @@ fun MessageItem(
                 onBack()
             }) { Text("Block sender") }
         }
-
         HorizontalDivider()
     }
 
     if (showDetails) {
-        ModalBottomSheet(
-            onDismissRequest = { showDetails = false },
-            sheetState = sheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth()
-            ) {
-                Text(
-                    text = msg.date, // Full date
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.align(Alignment.End)
-                )
-                
+        ModalBottomSheet(onDismissRequest = { showDetails = false }, sheetState = sheetState) {
+            Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                Text(text = msg.date, style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.End))
                 DetailItem(label = stringResource(R.string.from_label), name = senderName, email = senderEmail, avatarColor = avatarColor)
-                // DetailItem(label = "Reply to", ...) // If available
                 DetailItem(label = stringResource(R.string.to_label), name = "me", email = msg.to ?: "", avatarColor = Color.Gray)
-                
                 Spacer(Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconInbox(modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1033,6 +1076,8 @@ fun MessageItem(
         }
     }
 }
+
+
 
 @Composable
 fun DetailItem(label: String, name: String, email: String, avatarColor: Color) {
@@ -1124,28 +1169,24 @@ fun ComposerScreen(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle(emptyList())
     val selectedAccount by viewModel.selectedAccount.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    
-    var fromAccount by remember(selectedAccount, accounts) { 
-        mutableStateOf(selectedAccount ?: accounts.firstOrNull()) 
+
+    var fromAccount by remember(selectedAccount, accounts) {
+        mutableStateOf(selectedAccount ?: accounts.firstOrNull())
     }
-    
+
     var to by remember { mutableStateOf(initialTo) }
     var cc by remember { mutableStateOf("") }
     var bcc by remember { mutableStateOf("") }
     var showCcBcc by remember { mutableStateOf(false) }
     var subject by remember { mutableStateOf(initialSubject) }
-    val bodyController = remember { com.vayunmathur.library.ui.HtmlEditorController(initialBody) }
+    val bodyController = remember { com.vayunmathur.email.composer.EmailHtmlEditorController(initialBody) }
     var sending by remember { mutableStateOf(false) }
     var attachments by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    
+
     var showAccountPicker by remember { mutableStateOf(false) }
     var showSchedule by remember { mutableStateOf(false) }
 
-    // Pick recipients from the system contact picker (no READ_CONTACTS needed —
-    // the picker grants temporary read access to the chosen email row). After
-    // each pick we re-open the picker so several contacts can be added in a row;
-    // the user dismisses it (cancel) when done.
-    var pickTarget by remember { mutableStateOf(0) } // 0=to, 1=cc, 2=bcc
+    var pickTarget by remember { mutableStateOf(0) }
     var pickTick by remember { mutableStateOf(0) }
     val contactPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -1158,7 +1199,7 @@ fun ComposerScreen(
                     1 -> cc = appendRecipient(cc, email)
                     2 -> bcc = appendRecipient(bcc, email)
                 }
-                pickTick++ // re-open so more contacts can be added
+                pickTick++
             }
         }
     }
@@ -1174,7 +1215,6 @@ fun ComposerScreen(
         pickTick++
     }
 
-    // Draft auto-save / resume state.
     var currentDraftId by remember { mutableStateOf(draftId) }
     var draftLoaded by remember { mutableStateOf(draftId == null) }
     LaunchedEffect(draftId) {
@@ -1189,8 +1229,6 @@ fun ComposerScreen(
         }
     }
 
-    // Append the from-account's signature, swapping it when the account changes.
-    // Skipped when editing an existing draft (its body is already saved).
     var appliedSignature by remember { mutableStateOf("") }
     LaunchedEffect(fromAccount) {
         if (draftId != null) return@LaunchedEffect
@@ -1207,7 +1245,6 @@ fun ComposerScreen(
         }
     }
 
-    // Auto-save the draft as the user types (debounced).
     LaunchedEffect(fromAccount, draftLoaded) {
         val acc = fromAccount
         if (!draftLoaded || acc == null) return@LaunchedEffect
@@ -1224,8 +1261,50 @@ fun ComposerScreen(
             }
     }
 
+    // Clean up orphan inline images on text change
+    LaunchedEffect(bodyController.html) {
+        bodyController.inlineCleanupOrphans()
+    }
+
+    // Attachment launchers
     val attachmentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         if (uris.isNotEmpty()) attachments = attachments + uris
+    }
+
+    // Inline image pickers: use PickVisualMedia + fallback GetContent image/*
+    val inlineFallbackLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            val name = uriName(context, uri)
+            // Copy to cache/inline for stable uri
+            val cached = copyInlineToCache(context, uri, name)
+            val finalUri = cached ?: uri
+            bodyController.insertInlineImage(context, finalUri, mime, name)
+        }
+    }
+
+    // Try to use PickVisualMedia if available
+    var visualMediaLauncher: Any? = null
+    val pickVisualLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            val name = uriName(context, uri)
+            val cached = copyInlineToCache(context, uri, name)
+            val finalUri = cached ?: uri
+            bodyController.insertInlineImage(context, finalUri, mime, name)
+        }
+    }
+
+    val pickMultipleVisualLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(5)) { uris ->
+        if (uris.isNotEmpty()) {
+            uris.forEach { uri ->
+                val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val name = uriName(context, uri)
+                val cached = copyInlineToCache(context, uri, name)
+                val finalUri = cached ?: uri
+                bodyController.insertInlineImage(context, finalUri, mime, name)
+            }
+        }
     }
 
     Scaffold(
@@ -1236,6 +1315,16 @@ fun ComposerScreen(
                 actions = {
                     IconButton(onClick = { attachmentLauncher.launch("*/*") }) {
                         IconAttachment()
+                    }
+                    IconButton(onClick = {
+                        // Prefer new photo picker
+                        try {
+                            pickVisualLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } catch (_: Exception) {
+                            inlineFallbackLauncher.launch("image/*")
+                        }
+                    }) {
+                        com.vayunmathur.library.ui.IconImage()
                     }
                     Box {
                         TextButton(onClick = { showSchedule = true }, enabled = fromAccount != null) {
@@ -1250,7 +1339,9 @@ fun ComposerScreen(
                                         body = bodyController.html,
                                         asHtml = true,
                                         cc = cc.ifBlank { null }, bcc = bcc.ifBlank { null },
-                                        attachments = attachments, inReplyTo = inReplyTo,
+                                        attachments = attachments,
+                                        inlineImages = bodyController.toInlineAttachments(),
+                                        inReplyTo = inReplyTo,
                                         references = references, scheduledAt = at,
                                     ) { currentDraftId?.let { viewModel.deleteDraft(it) } }
                                     android.widget.Toast.makeText(context, "Scheduled", android.widget.Toast.LENGTH_SHORT).show()
@@ -1267,15 +1358,16 @@ fun ComposerScreen(
                         sending = true
                         viewModel.sendEmailFrom(
                             account = acc,
-                            to = to, 
-                            subject = subject, 
+                            to = to,
+                            subject = subject,
                             body = bodyController.html,
                             asHtml = true,
                             cc = cc.ifBlank { null },
                             bcc = bcc.ifBlank { null },
                             attachments = attachments,
-                            inReplyTo = inReplyTo, 
-                            references = references, 
+                            inlineImages = bodyController.toInlineAttachments(),
+                            inReplyTo = inReplyTo,
+                            references = references,
                             onSuccess = {
                                 sending = false
                                 currentDraftId?.let { viewModel.deleteDraft(it) }
@@ -1284,8 +1376,6 @@ fun ComposerScreen(
                             },
                             onError = { err ->
                                 sending = false
-                                // ViewModel has already queued the message to the outbox;
-                                // surface the underlying error so the user knows it'll retry.
                                 android.widget.Toast.makeText(context, "Saved to Outbox: $err", android.widget.Toast.LENGTH_LONG).show()
                                 onBack()
                             }
@@ -1298,13 +1388,20 @@ fun ComposerScreen(
             )
         },
         bottomBar = {
+            // Always show formatting toolbar? Per plan, only when focused, but now scrollable and more buttons
             if (bodyController.focused) {
-                com.vayunmathur.library.ui.HtmlFormatToolbar(controller = bodyController)
+                EmailComposerFormatToolbar(controller = bodyController,
+                    onInsertImage = {
+                        try {
+                            pickVisualLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } catch (_: Exception) {
+                            inlineFallbackLauncher.launch("image/*")
+                        }
+                    })
             }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(horizontal = 16.dp, vertical = 8.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Compact account ("From") picker.
             Surface(
                 onClick = { showAccountPicker = true },
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
@@ -1341,9 +1438,9 @@ fun ComposerScreen(
                             accounts.forEach { acc ->
                                 ListItem(
                                     content = { Text(acc.email) },
-                                    modifier = Modifier.clickable { 
+                                    modifier = Modifier.clickable {
                                         fromAccount = acc
-                                        showAccountPicker = false 
+                                        showAccountPicker = false
                                     }
                                 )
                             }
@@ -1387,16 +1484,39 @@ fun ComposerScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // True HTML body editor (real spans → HTML); the formatting toolbar
-            // lives in the Scaffold bottomBar so it docks above the keyboard.
             com.vayunmathur.library.ui.HtmlEditor(
                 controller = bodyController,
                 placeholder = stringResource(R.string.body_label),
                 modifier = Modifier.fillMaxWidth().weight(1f),
             )
-            
-            if (attachments.isNotEmpty()) {
-                val totalBytes = remember(attachments) { attachments.sumOf { uriSize(context, it) } }
+
+            // Inline images thumbnail row (text-based to avoid heavy deps; WYSIWYG preview already in editor)
+            if (bodyController.inlineImages.isNotEmpty()) {
+                val inlineTotal = bodyController.inlineImages.sumOf { uriSize(context, it.localUri) }
+                Text("Inline images (${bodyController.inlineImages.size} - ${android.text.format.Formatter.formatShortFileSize(context, inlineTotal)})", style = MaterialTheme.typography.labelSmall)
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(bodyController.inlineImages.size) { idx ->
+                        val img = bodyController.inlineImages[idx]
+                        Card(modifier = Modifier.size(96.dp)) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                    com.vayunmathur.library.ui.IconImage(modifier = Modifier.size(24.dp))
+                                    Text(img.fileName.take(16), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                }
+                                IconButton(onClick = { bodyController.removeInlineImage(img.cid) }, modifier = Modifier.align(Alignment.TopEnd).size(20.dp)) {
+                                    com.vayunmathur.library.ui.IconClose(modifier = Modifier.size(12.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (attachments.isNotEmpty() || bodyController.inlineImages.isNotEmpty()) {
+                val totalBytes = attachments.sumOf { uriSize(context, it) } + bodyController.inlineImages.sumOf { uriSize(context, it.localUri) }
                 Text("Attachments (${android.text.format.Formatter.formatShortFileSize(context, totalBytes)})", style = MaterialTheme.typography.labelLarge)
                 if (totalBytes > 25L * 1024 * 1024) {
                     Text(
@@ -1405,6 +1525,9 @@ fun ComposerScreen(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
+            }
+
+            if (attachments.isNotEmpty()) {
                 attachments.forEach { uri ->
                     val attachmentLabel = remember(uri) {
                         "${uriName(context, uri)} · " + android.text.format.Formatter.formatShortFileSize(context, uriSize(context, uri))
@@ -1431,6 +1554,35 @@ fun ComposerScreen(
         }
     }
 }
+
+@Composable
+private fun EmailComposerFormatToolbar(
+    controller: com.vayunmathur.email.composer.EmailHtmlEditorController,
+    onInsertImage: () -> Unit,
+) {
+    com.vayunmathur.library.ui.EditorBottomBar(modifier = Modifier, scrollable = true) {
+        com.vayunmathur.library.ui.EditorBaseButtons(formatter = controller)
+        // Extra image button – use library's image icon
+        com.vayunmathur.library.ui.FormatIconButton(
+            contentDescription = "Insert image",
+            onClick = onInsertImage,
+        ) { com.vayunmathur.library.ui.IconImage() }
+    }
+}
+
+private fun copyInlineToCache(context: android.content.Context, uri: Uri, name: String): Uri? {
+    return try {
+        val dir = java.io.File(context.cacheDir, "inline").also { it.mkdirs() }
+        val safeName = name.replace(Regex("[/\\\\]"), "_").ifBlank { "image_${System.currentTimeMillis()}.jpg" }
+        val outFile = java.io.File(dir, "${System.currentTimeMillis()}-$safeName")
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            outFile.outputStream().use { out -> input.copyTo(out) }
+        } ?: return null
+        androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", outFile)
+    } catch (_: Exception) { null }
+}
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

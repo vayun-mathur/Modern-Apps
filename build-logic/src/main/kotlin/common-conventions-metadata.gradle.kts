@@ -67,6 +67,17 @@ dependencies {
     add("debugImplementation", libs.androidx.compose.ui.test.manifest)
 }
 
+afterEvaluate {
+    // Fix concurrent-futures conflict: AGP pins 1.1.0 strictly but
+    // androidx.test:core 1.7.0 brings 1.2.0, breaking :<module>:metadata.
+    configurations.findByName("debugAndroidTestRuntimeClasspath")?.let { cfg ->
+        cfg.resolutionStrategy {
+            force("androidx.concurrent:concurrent-futures:1.2.0")
+            force("androidx.concurrent:concurrent-futures-ktx:1.2.0")
+        }
+    }
+}
+
 val moduleKey = path.removePrefix(":").replace(":", "-")
 val screenshotsOut = File(rootDir, "metadata_data/photos/$moduleKey")
 
