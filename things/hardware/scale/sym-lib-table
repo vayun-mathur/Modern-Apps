@@ -1,6 +1,0 @@
-(sym_lib_table
-	(version 7)
-	(lib (name "scale_libs") (type "KiCad") (uri "${KIPRJMOD}/libs/AFE4300PNR.kicad_sym") (options "") (descr ""))
-
-  (lib (name "lcsc_imported")(type "KiCad")(uri "${KIPRJMOD}/libs/lcsc/symbols/lcsc_imported.kicad_sym")(options "")(descr "LCSC imported components"))
-)

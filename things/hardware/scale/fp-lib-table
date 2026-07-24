@@ -1,6 +1,0 @@
-(fp_lib_table
-	(version 7)
-	(lib (name "scale_libs") (type "KiCad") (uri "${KIPRJMOD}/libs") (options "") (descr "LCSC sourced footprints"))
-
-  (lib (name "lcsc_footprints")(type "KiCad")(uri "${KIPRJMOD}/libs/lcsc/footprints.pretty")(options "")(descr "LCSC imported footprints"))
-)
