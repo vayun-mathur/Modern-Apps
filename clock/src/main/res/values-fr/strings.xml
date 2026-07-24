@@ -7,9 +7,9 @@
     <string name="label_stopwatch">Chronomètre</string>
     <string name="no_alarms">Aucune alarme n\'est configurée</string>
     <string name="set_an_alarm">Configurer une alarme</string>
-    <string name="button_stop">ARRÊT</string>
+    <string name="button_stop">STOP</string>
     <string name="button_snooze">REPORTER (5 MIN)</string>
-    <string name="alarm_notification_wake_up">Réveille-toi !</string>
+    <string name="alarm_notification_wake_up">Réveillez vous !</string>
     <string name="alarm_ringing_notification_title">L\'alarme sonne</string>
     <string name="channel_ongoing_timers_name">Minuteurs actifs</string>
     <string name="channel_completed_timers_name">Minuteurs écoulés</string>
@@ -33,7 +33,7 @@
     <string name="field_seconds">Secondes</string>
     <string name="button_cancel">Annuler</string>
     <string name="button_save">Enregistrer</string>
-    <string name="select_cities_title">Sélection des villes</string>
+    <string name="select_cities_title">Sélectionner des villes</string>
     <string name="search_city_hint">Rechercher une ville ou région…</string>
     <string name="time_am">AM</string>
     <string name="time_pm">PM</string>
@@ -42,4 +42,12 @@
     <string name="channel_completed_timers_description">Alertes lorsque les minuteurs sont écoulés</string>
     <string name="analog_clock_widget_label">Horloge analogique</string>
     <string name="analog_clock_widget_description">Horloge analogique Material You — appuyez pour ouvrir l\'horloge</string>
+    <string name="channel_stopwatch_name">Chronomètre</string>
+    <string name="channel_stopwatch_description">Commandes du chronomètre</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Reprendre</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_reset">Réinitialiser</string>
+    <string name="action_lap">Tour</string>
+    <string name="action_stop">Stop</string>
 </resources>
