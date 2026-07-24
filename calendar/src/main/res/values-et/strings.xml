@@ -73,4 +73,10 @@
     <string name="month_option_last_weekday">Viimane %1$s</string>
     <string name="year_option_day_of_year">Aasta %1$d-l päeval</string>
     <string name="year_option_week">Aasta %1$d-l nädalal, %2$s</string>
+    <string name="import_ics_file">Impordi ics-fail</string>
+    <string name="import_events">Impordi sündmusi</string>
+    <string name="import_to_existing_calendar">Impordi olemasolevasse kalendrisse</string>
+    <string name="create_new_calendar_option">Loo uus kalender</string>
+    <string name="no_events_found">Sündmusi ei leidu</string>
+    <string name="import_summary">%1$d sündmust on importimiseks valmis</string>
 </resources>
