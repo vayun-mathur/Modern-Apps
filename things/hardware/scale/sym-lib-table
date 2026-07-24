@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "lcsc_imported")(type "KiCad")(uri "${KIPRJMOD}/libs/lcsc/symbols/lcsc_imported.kicad_sym")(options "")(descr "LCSC imported components"))
+)
