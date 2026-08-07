@@ -88,7 +88,7 @@ flatgeobuf = "3.29.0"
 quickjs = "1.0.5"
 
 # Git
-jgit = "6.10.0.202406032230-r"
+jgit = "6.10.1.202505221210-r"
 
 # On-device AI
 onnxruntimeAndroid = "1.27.0"
