@@ -1,3 +1,574 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    </resources>
+    <!-- App name displayed in launcher -->
+    <string name="app_name">Office</string>
+    <!-- MainActivity: Button to open document via system picker. Verb phrase. -->
+    <string name="open_document">Otwórz dokument</string>
+    <!-- MainActivity: Error shown when document fails to load -->
+    <string name="error_loading">Błąd podczas wczytywania dokumentu</string>
+    <!-- Section header: Document info/properties panel. Noun. -->
+    <string name="document_info">Szczegóły</string>
+    <!-- Metadata field: Title. Noun. -->
+    <string name="meta_title">Tytuł</string>
+    <!-- Metadata field: Author. Noun. -->
+    <string name="meta_author">Autor</string>
+    <!-- Metadata field: Created timestamp. Noun. -->
+    <string name="meta_created">Utworzono</string>
+    <!-- Metadata field: Modified timestamp. Noun. -->
+    <string name="meta_modified">Zmodyfikowano</string>
+    <!-- Metadata field: Subject. Noun. -->
+    <string name="meta_subject">Temat</string>
+    <!-- Metadata field: Description. Noun. -->
+    <string name="meta_description">Opis</string>
+    <!-- Metadata field: Keywords. Noun. -->
+    <string name="meta_keywords">Słowa kluczowe</string>
+    <!-- Metadata field: Page count. Noun. -->
+    <string name="meta_pages">Strony</string>
+    <!-- Metadata field: Word count. Noun. -->
+    <string name="meta_words">Słowa</string>
+    <!-- Button: Close search UI. Verb. -->
+    <string name="close_search">Zamknij</string>
+    <!-- Hint: Search within document. Verb phrase. -->
+    <string name="search_hint">Szukaj w dokumencie…</string>
+    <!-- Tab title: Document outline/bookmarks. Noun. -->
+    <string name="outline">Konspekt</string>
+    <!-- Button: Reset zoom/font size. Verb. -->
+    <string name="reset">Resetuj</string>
+    <!-- Dialog title: Unsaved changes warning -->
+    <string name="unsaved_changes">Niezapisane zmiany</string>
+    <!-- Dialog message: Ask to save before leaving -->
+    <string name="unsaved_changes_message">Masz niezapisane zmiany. Czy chcesz zapisać dokument przed wyjściem?</string>
+    <!-- Button: Discard changes. Verb. -->
+    <string name="discard">Odrzuć</string>
+    <!-- Hint: Replace field in find/replace bar -->
+    <string name="replace_hint">Zamień na…</string>
+    <!-- Button: Print document. Verb. -->
+    <string name="print_doc">Drukuj</string>
+    <!-- DocumentViews: GoToSlideDialog label for valid range. %1$s=total slide count e.g. "10" -->
+    <string name="slide_number_1">Numer slajdu (1-<xliff:g id="total" example="10">%1$s</xliff:g>)</string>
+    <!-- DocumentViews: Header section label. Noun. -->
+    <string name="header">Nagłówek</string>
+    <!-- DocumentViews: Chart series input format hint -->
+    <string name="series_name_v1_v2">Seria (Nazwa: v1, v2, …)</string>
+    <!-- DocumentViews: Spreadsheet freeze panes action. Verb. -->
+    <string name="freeze">Zablokuj</string>
+    <!-- DocumentViews: Menu item to insert comment. Verb phrase. -->
+    <string name="insert_comment">Wstaw komentarz</string>
+    <!-- DocumentViews: Empty state for presentation with no slides -->
+    <string name="empty_presentation">Pusta prezentacja</string>
+    <!-- DocumentViews: Suffix label for sheet list. Noun. -->
+    <string name="sheet_1">– Arkusz</string>
+    <!-- DocumentViews: Dialog title for font size -->
+    <string name="font_size_1">Rozmiar czcionki</string>
+    <!-- DocumentViews: SortDialog label for valid column index range. %1$s=max index e.g. 4 -->
+    <string name="column_index_0">Indeks kolumny (0-<xliff:g id="max_index" example="4">%1$s</xliff:g>)</string>
+    <!-- DocumentViews: Spreadsheet unfreeze panes. Verb. -->
+    <string name="unfreeze">Odblokuj</string>
+    <!-- DocumentViews: Action to sort rows. Verb phrase. -->
+    <string name="sort_rows">Sortuj wiersze</string>
+    <!-- DocumentViews: Action to edit selected image. Verb phrase. -->
+    <string name="edit_image">Edytuj obraz</string>
+    <!-- DocumentViews: Button Sort. Verb. -->
+    <string name="sort">Sortuj</string>
+    <!-- DocumentViews: Field label for hyperlink display text. Noun. -->
+    <string name="display_text">Tekst do wyświetlenia</string>
+    <!-- DocumentViews: Empty state for spreadsheet -->
+    <string name="empty_spreadsheet">Pusty arkusz</string>
+    <!-- DocumentViews: Placeholder for image element in text -->
+    <string name="image">[Obraz]</string>
+    <!-- DocumentViews: Suffix label for column. Abbreviation. -->
+    <string name="col">– Kol</string>
+    <!-- DocumentViews: Button Go to navigate. Verb. -->
+    <string name="go">Przejdź</string>
+    <!-- DocumentViews: DrawingView page indicator. %1$s=current page 1-indexed e.g. 2, %2$s=total pages e.g. 5 -->
+    <string name="page_of">Strona <xliff:g id="current_page" example="2">%1$s</xliff:g> z <xliff:g id="total_pages" example="5">%2$s</xliff:g></string>
+    <!-- DocumentViews: Menu insert footnote. Verb phrase. -->
+    <string name="insert_footnote">Wstaw przypis dolny</string>
+    <!-- DocumentViews: Menu item Replace with ellipsis -->
+    <string name="replace">Zamień…</string>
+    <!-- DocumentViews: Suffix label for row -->
+    <string name="row">– Wiersz</string>
+    <!-- DocumentViews: Button to add bookmark. Verb phrase. -->
+    <string name="add_bookmark">Dodaj zakładkę</string>
+    <!-- DocumentViews: Auto-save toggle label. Noun phrase. -->
+    <string name="auto_save">Autozapis</string>
+    <!-- DocumentViews: Menu insert hyperlink. Verb phrase. -->
+    <string name="insert_hyperlink">Wstaw hiperłącze</string>
+    <!-- DocumentViews: Button duplicate short. Verb abbreviation. -->
+    <string name="dup">Duplikuj</string>
+    <!-- DocumentViews: Label for rows selector. Noun. -->
+    <string name="rows">Wiersze</string>
+    <!-- DocumentViews: Field label URL. Noun. -->
+    <string name="url">URL</string>
+    <!-- DocumentViews: Menu special character. Noun phrase. -->
+    <string name="special_character">Znak specjalny</string>
+    <!-- DocumentViews: Menu insert table. Verb phrase. -->
+    <string name="insert_table">Wstaw tabelę</string>
+    <!-- DocumentViews: Menu rename sheet. Verb phrase. -->
+    <string name="rename_sheet">Zmień nazwę arkusza</string>
+    <!-- DocumentViews: Button play presentation with triangle symbol. Verb. -->
+    <string name="play">▶ Odtwórz</string>
+    <!-- DocumentViews: Label columns. Noun. -->
+    <string name="columns">Kolumny</string>
+    <!-- DocumentViews: Default font size setting. %1$s=size in pt e.g. 12 -->
+    <string name="default_font_size_pt">Domyślny rozmiar czcionki: <xliff:g id="size" example="12">%1$s</xliff:g> pt</string>
+    <!-- DocumentViews: Button add text box. Noun with plus. -->
+    <string name="text">+ Tekst</string>
+    <!-- DocumentViews: Button add row. Noun with plus. -->
+    <string name="row_1">+ Wiersz</string>
+    <!-- DocumentViews: Empty drawing placeholder -->
+    <string name="empty_drawing">Pusty rysunek</string>
+    <!-- DocumentViews: PresentationView slide indicator. %1$s=current slide 1-indexed e.g. 2, %2$s=total e.g. 10 -->
+    <string name="slide_of">Slajd <xliff:g id="current" example="2">%1$s</xliff:g> z <xliff:g id="total" example="10">%2$s</xliff:g></string>
+    <!-- DocumentViews: Field label Order with colon. Noun. -->
+    <string name="order">Kolejność:</string>
+    <!-- DocumentViews: Button/dialog title Go to Slide. Verb phrase. -->
+    <string name="go_to_slide">Przejdź do slajdu</string>
+    <!-- DocumentViews: Field label footnote text. Noun. -->
+    <string name="footnote_text">Tekst przypisu dolnego</string>
+    <!-- DocumentViews: Footer section label. Noun. -->
+    <string name="footer">Stopka</string>
+    <!-- DocumentViews: Button add slide with plus -->
+    <string name="slide_1">+ Slajd</string>
+    <!-- DocumentViews: Button add column with plus -->
+    <string name="col_1">+ Kolumna</string>
+    <!-- DocumentViews: Field label Type with colon. Noun. -->
+    <string name="type">Typ:</string>
+    <!-- DocumentViews: Hint for chart categories comma separated -->
+    <string name="categories_comma_separated">Kategorie (rozdzielone przecinkami)</string>
+    <!-- DocumentViews: Placeholder for empty table -->
+    <string name="empty_table">(pusta tabela)</string>
+     <!-- DocumentViews: Button crop image. Verb. -->
+    <string name="crop">Przytnij</string>
+    <!-- DocumentViews: Menu header & footer dialog -->
+    <string name="header_footer_1">Nagłówek i stopka</string>
+    <!-- DocumentViews: Field label Name. Noun. -->
+    <string name="name">Nazwa</string>
+    <!-- DocumentViews: Field label interval seconds for slide transition -->
+    <string name="interval_seconds">Interwał (w sekundach)</string>
+    <!-- MainActivity: Label for your device ID. Noun phrase with colon. -->
+    <string name="your_device_id">Identyfikator Twojego urządzenia:</string>
+    <!-- MainActivity: Long explanation of online sharing generating encryption keys and device id -->
+    <string name="sharing_online_generates_your_encryption">Udostępnianie online generuje Twoje klucze szyfrowania oraz identyfikator urządzenia, a także rejestruje urządzenie, aby inni mogli z Tobą współpracować. Musisz to zrobić tylko raz.</string>
+    <!-- MainActivity: Field label file name. Noun. -->
+    <string name="file_name">Nazwa pliku</string>
+    <!-- MainActivity: Label comment. Noun. -->
+    <string name="comment">Komentarz</string>
+    <!-- MainActivity: Button share online. Verb phrase. -->
+    <string name="share_online">Udostępnij online</string>
+    <!-- MainActivity: Export format HTML with ellipsis -->
+    <string name="html_html">HTML (.html)…</string>
+    <!-- MainActivity: Label chart. Noun. -->
+    <string name="chart">Wykres</string>
+    <!-- MainActivity: Export format Markdown with ellipsis -->
+    <string name="markdown_md">Markdown (.md)…</string>
+    <!-- MainActivity: Button reject tracked change. Verb. -->
+    <string name="reject">Odrzuć</string>
+    <!-- MainActivity: Button go to location. Verb phrase. -->
+    <string name="go_to">Przejdź do</string>
+    <!-- MainActivity: Button accept tracked change. Verb. -->
+    <string name="accept">Zaakceptuj</string>
+    <!-- MainActivity: Button new doc short. Noun phrase. -->
+    <string name="new_doc">Nowy dok.</string>
+    <!-- MainActivity: Menu export as text. Verb phrase. -->
+    <string name="export_as_text">Eksportuj jako tekst</string>
+    <!-- MainActivity: Menu insert. Verb. -->
+    <string name="insert">Wstaw</string>
+    <!-- MainActivity: Button enable sharing. Verb. -->
+    <string name="enable">Włącz</string>
+    <!-- MainActivity: Button manage access. Verb. -->
+    <string name="manage">Zarządzaj</string>
+    <!-- MainActivity: Button new slides short. Noun phrase. -->
+    <string name="new_slides">Nowa prez.</string>
+    <!-- MainActivity: Dialog title Enable online sharing question -->
+    <string name="enable_online_sharing">Włączyć udostępnianie online?</string>
+    <!-- MainActivity: Dialog title export to non-ODF warning -->
+    <string name="export_to_non_odf_format">Eksportuj do formatu innego niż ODF</string>
+    <!-- MainActivity: Field label page count. Noun. -->
+    <string name="page_count">Liczba stron</string>
+    <!-- MainActivity: Menu page break insertion. Noun. -->
+    <string name="page_break">Podział strony</string>
+    <!-- MainActivity: Status text online sharing is off -->
+    <string name="online_sharing_is_off">Udostępnianie online jest wyłączone</string>
+    <!-- MainActivity: Menu header & footer with ellipsis -->
+    <string name="header_footer">Nagłówek i stopka…</string>
+    <!-- MainActivity: Field label recipient device ID -->
+    <string name="recipient_device_id">Identyfikator urządzenia odbiorcy</string>
+    <!-- MainActivity: Status bar full stats. %1$s=words count e.g. 120, %2$s=chars count e.g. 650, %3$s=reading time min e.g. 1 -->
+    <string name="words_characters_min_read"><xliff:g id="words" example="120">%1$s</xliff:g> słów · <xliff:g id="characters" example="650">%2$s</xliff:g> znaków · czas czytania: ok. <xliff:g id="minutes" example="1">%3$s</xliff:g> min</string>
+    <!-- MainActivity: Section header speaker notes. Noun. -->
+    <string name="speaker_notes">Notatki prelegenta</string>
+    <!-- MainActivity: Menu table of contents. Noun. -->
+    <string name="table_of_contents">Spis treści</string>
+    <!-- MainActivity: Export format CSV with ellipsis -->
+    <string name="csv">CSV…</string>
+    <!-- MainActivity: Menu Export with submenu arrow -->
+    <string name="export">Eksportuj ▸</string>
+    <!-- MainActivity: Toggle zoom text only. Verb phrase. -->
+    <string name="zoom_text">Powiększ tekst</string>
+    <!-- MainActivity: Button copy. Verb. -->
+    <string name="copy">Kopiuj</string>
+    <!-- MainActivity: Button make user viewer role. Verb phrase. -->
+    <string name="make_viewer">Zmień rolę na: wyświetlający</string>
+    <!-- MainActivity: Menu share online with ellipsis alternative -->
+    <string name="share_online_1">Udostępnij online…</string>
+    <!-- OnlineTab/ShareOnlineDialog: Button that opens the share sheet with a join link. Verb phrase -->
+    <string name="share_link">Udostępnij link</string>
+    <!-- OnlineTab/ShareOnlineDialog: Title of the share chooser for the join link. Noun phrase -->
+    <string name="share_link_chooser">Udostępnij zaproszenie Office</string>
+    <!-- OnlineTab: Header for the inbound join-requests section. Noun -->
+    <string name="requests_header">Prośby</string>
+    <!-- OnlineTab: Button to approve a join request. Verb -->
+    <string name="approve">Zatwierdź</string>
+    <!-- OnlineTab: Button to deny a join request. Verb -->
+    <string name="deny">Odrzuć</string>
+    <!-- OnlineTab: A join request line: %1$s = requester, %2$s = document title. Sentence -->
+    <string name="request_wants_to_join">%1$s chce dołączyć do „%2$s”</string>
+    <!-- MainActivity: Toast while a join request is being sent. Sentence -->
+    <string name="join_request_sending">Wysyłanie prośby o dostęp…</string>
+    <!-- MainActivity: Toast when a join request was delivered. Sentence -->
+    <string name="join_request_sent">Prośba została wysłana — otrzymasz dostęp, gdy właściciel ją zatwierdzi.</string>
+    <!-- MainActivity: Toast when a join request could not be delivered. Sentence -->
+    <string name="join_request_failed">Nie udało się wysłać prośby — sprawdź połączenie i spróbuj ponownie.</string>
+    <!-- MainActivity: Menu image with ellipsis -->
+    <string name="image_1">Obraz…</string>
+    <!-- MainActivity: Menu insert time field -->
+    <string name="time_field">Godzina (pole)</string>
+    <!-- MainActivity: Empty state for online docs explaining share via device id -->
+    <string name="no_online_documents_yet_open_a_document">Brak dokumentów online. Otwórz dokument i użyj opcji \u201CUdostępnij\u201D, aby skopiować go tutaj i wysłać komuś, albo poproś o udostępnienie na Twój identyfikator urządzenia, a następnie odśwież stronę.</string>
+    <!-- MainActivity: Export format Word docx with ellipsis -->
+    <string name="word_docx">Word (.docx)…</string>
+    <!-- MainActivity: Menu View. Noun. -->
+    <string name="view">Widok</string>
+    <!-- MainActivity: Export format PDF with ellipsis -->
+    <string name="pdf_pdf">PDF (.pdf)…</string>
+    <!-- MainActivity: Label explaining your device id sharing -->
+    <string name="your_device_id_share_this_so_others_can">Identyfikator Twojego urządzenia (udostępnij go, aby inni mogli przesyłać Ci dokumenty):</string>
+    <!-- MainActivity: Menu insert title field -->
+    <string name="title_field">Tytuł (pole)</string>
+    <!-- MainActivity: Button resolve comment. Verb. -->
+    <string name="resolve">Rozwiąż</string>
+    <!-- MainActivity: Menu insert horizontal line -->
+    <string name="horizontal_line">Linia pozioma</string>
+    <!-- MainActivity: Menu insert date field -->
+    <string name="date_field">Data (pole)</string>
+    <!-- MainActivity: Warning dialog when exporting outside ODF loses formatting -->
+    <string name="some_formatting_and_features_may_be_lost">Niektóre elementy formatowania oraz funkcje mogą zostać utracone podczas eksportowania poza format Open Document Format. Kontynuować?</string>
+    <!-- MainActivity: Button Next with arrow -->
+    <string name="next">Dalej ▶</string>
+    <!-- MainActivity: Menu Save As with ellipsis -->
+    <string name="save_as_1">Zapisz jako…</string>
+    <!-- MainActivity: Export format Excel xlsx with ellipsis -->
+    <string name="excel_xlsx">Excel (.xlsx)…</string>
+    <!-- MainActivity: Menu track changes with ellipsis -->
+    <string name="track_changes">Śledź zmiany…</string>
+    <!-- MainActivity: Export format PowerPoint pptx with ellipsis -->
+    <string name="powerpoint_pptx">PowerPoint (.pptx)…</string>
+    <!-- MainActivity: Dialog title tracked changes with count. %1$s=number of changes e.g. 3 -->
+    <string name="tracked_changes">Śledzone zmiany (<xliff:g id="count" example="3">%1$s</xliff:g>)</string>
+    <!-- MainActivity: Menu insert page number field -->
+    <string name="page_number">Numer strony</string>
+    <!-- MainActivity: Label for single page or slide count option. Noun/Number. -->
+    <string name="one">Jedna</string>
+    <!-- MainActivity: Menu Comment with ellipsis -->
+    <string name="comment_1">Komentarz…</string>
+    <!-- MainActivity: Export format EPUB with ellipsis -->
+    <string name="epub_epub">EPUB (.epub)…</string>
+    <!-- MainActivity: Field label row height in px -->
+    <string name="row_height_px">Wysokość wiersza (px)</string>
+    <!-- MainActivity: Label notes for current slide -->
+    <string name="notes_for_this_slide">Notatki do tego slajdu</string>
+    <!-- MainActivity: Menu page setup with ellipsis -->
+    <string name="page_setup">Ustawienia strony…</string>
+    <!-- MainActivity: Menu Comments with ellipsis -->
+    <string name="comments">Komentarze…</string>
+    <!-- MainActivity: Menu page setup without ellipsis -->
+    <string name="page_setup_1">Ustawienia strony</string>
+    <!-- MainActivity: Label cell comment in spreadsheet -->
+    <string name="cell_comment">Komentarz do komórki</string>
+    <!-- MainActivity: Button Stop presentation. Verb. -->
+    <string name="stop">Zatrzymaj</string>
+    <!-- MainActivity: App description subtitle: ODF Viewer & Editor -->
+    <string name="open_document_format_viewer_editor">Przeglądarka i edytor formatu Open Document Format</string>
+    <!-- MainActivity: Filter All. Adjective. -->
+    <string name="all">Wszystkie</string>
+    <!-- MainActivity: Button make user owner. Verb phrase. -->
+    <string name="make_owner">Ustaw jako właściciela</string>
+    <!-- MainActivity: Export format Rich Text RTF with ellipsis -->
+    <string name="rich_text_rtf">Sformatowany tekst (.rtf)…</string>
+    <!-- MainActivity: Field label Margins. Noun. -->
+    <string name="margins">Marginesy</string>
+    <!-- MainActivity: Button reject all changes. Verb phrase. -->
+    <string name="reject_all">Odrzuć wszystkie</string>
+    <!-- MainActivity: Button Previous with arrow -->
+    <string name="prev">◀ Wstecz</string>
+    <!-- MainActivity: Button Export. Verb. -->
+    <string name="export_1">Eksportuj</string>
+    <!-- MainActivity: Role label viewer lowercase -->
+    <string name="viewer">wyświetlający</string>
+    <!-- MainActivity: Status synced to cloud -->
+    <string name="synced_to_cloud">Zsynchronizowano z chmurą</string>
+    <!-- MainActivity: Export format Flat ODF with ellipsis -->
+    <string name="flat_odf">Płaski ODF…</string>
+    <!-- MainActivity: Field label column width in px -->
+    <string name="column_width_px">Szerokość kolumny (px)</string>
+    <!-- MainActivity: Section header bookmarks. Noun. -->
+    <string name="bookmarks">Zakładki</string>
+    <!-- MainActivity: Field label Role with colon -->
+    <string name="role">Rola:</string>
+    <!-- MainActivity: Export format TSV with ellipsis -->
+    <string name="tsv">TSV…</string>
+    <!-- MainActivity: Menu special character with ellipsis alternative -->
+    <string name="special_character_1">Znak specjalny…</string>
+    <!-- MainActivity: Status bar short stats. %1$s=words e.g. 120, %2$s=chars e.g. 650, %3$s=min e.g. 1 -->
+    <string name="words_chars_min"><xliff:g id="words" example="120">%1$s</xliff:g> słów · <xliff:g id="characters" example="650">%2$s</xliff:g> znaków · ok. <xliff:g id="minutes" example="1">%3$s</xliff:g> min</string>
+    <!-- MainActivity: Export format Text txt with ellipsis -->
+    <string name="text_txt">Tekst (.txt)…</string>
+    <!-- MainActivity: Field label paper size. Noun. -->
+    <string name="paper_size">Rozmiar papieru</string>
+    <!-- MainActivity: Button make user editor. Verb phrase. -->
+    <string name="make_editor">Zmień rolę na: edytujący</string>
+    <!-- MainActivity: Label people with access list header -->
+    <string name="people_with_access">Osoby z dostępem:</string>
+    <!-- MainActivity: Empty state no tracked changes -->
+    <string name="no_tracked_changes_in_this_document">Brak śledzonych zmian w tym dokumencie.</string>
+    <!-- MainActivity: Field label orientation. Noun. -->
+    <string name="orientation">Orientacja</string>
+    <!-- MainActivity: Button Apply changes. Verb. -->
+    <string name="apply">Zastosuj</string>
+    <!-- MainActivity: Role label editor lowercase -->
+    <string name="editor">edytujący</string>
+    <!-- MainActivity: Security instruction to compare code out-of-band -->
+    <string name="compare_with_the_recipient_out_of_band_i">Porównaj z odbiorcą za pomocą innego kanału komunikacji — kod musi być identyczny na obu urządzeniach:</string>
+    <!-- MainActivity: Menu footnote with ellipsis -->
+    <string name="footnote">Przypis dolny…</string>
+    <!-- MainActivity: Button new sheet. Verb phrase. -->
+    <string name="new_sheet">Nowy arkusz</string>
+    <!-- MainActivity: Section title comments with count. %1$s=count e.g. 2 -->
+    <string name="comments_1">Komentarze (<xliff:g id="count" example="2">%1$s</xliff:g>)</string>
+    <!-- MainActivity: Field label document name. Noun. -->
+    <string name="document_name">Nazwa dokumentu</string>
+    <!-- MainActivity: Empty state no comments yet -->
+    <string name="no_comments_yet_use_insert_comment_to_ad">Brak komentarzy. Użyj opcji Wstaw ▸ Komentarz, aby dodać nowy.</string>
+    <!-- MainActivity: Menu File. Noun. -->
+    <string name="file">Plik</string>
+    <!-- MainActivity: App description lists supported formats -->
+    <string name="opens_odf_word_excel_powerpoint_csv_tsv">Otwiera pliki ODF, Word/Excel/PowerPoint, CSV, TSV, Markdown i pliki tekstowe</string>
+    <!-- MainActivity: Label slide transition (without ellipsis) field -->
+    <string name="slide_transition_1">Przejście slajdu</string>
+    <!-- MainActivity: Label row/column size field -->
+    <string name="row_column_size_1">Rozmiar wiersza / kolumny</string>
+    <!-- MainActivity: Explanation for adding collaborator by device id, encrypted copy -->
+    <string name="add_someone_by_device_id_copies_this_doc">Dodaj osobę za pomocą identyfikatora urządzenia (kopiuje ten dokument do Twojego folderu online, szyfrowanie end-to-end):</string>
+    <!-- MainActivity: Button enable online sharing without question mark -->
+    <string name="enable_online_sharing_1">Włącz udostępnianie online</string>
+    <!-- MainActivity: Export format LaTeX tex with ellipsis -->
+    <string name="latex_tex">LaTeX (.tex)…</string>
+    <!-- MainActivity: Status for non-owner role. %1$s=role e.g. editor/viewer -->
+    <string name="you_have_access_only_the_owner_can_chang">Masz uprawnienia typu: <xliff:g id="role" example="editor">%1$s</xliff:g>. Tylko właściciel może zmieniać opcje udostępniania.</string>
+    <!-- MainActivity: Button accept all tracked changes. Verb phrase. -->
+    <string name="accept_all">Zaakceptuj wszystkie</string>
+    <!-- MainActivity: Menu bookmark. Noun/Verb. -->
+    <string name="bookmark">Zakładka</string>
+    <!-- MainActivity: Label presentation timer feature -->
+    <string name="presentation_timer">Licznik czasu prezentacji</string>
+    <!-- MainActivity: Tab label online documents. Noun. -->
+    <string name="online">Online</string>
+    <!-- OfficeBottomBar: Shape tool ellipse. Noun. -->
+    <string name="ellipse">Elipsa</string>
+    <!-- OfficeBottomBar: Menu slide transition with ellipsis -->
+    <string name="slide_transition">Przejście slajdu…</string>
+    <!-- OfficeBottomBar: Action insert row below. Verb phrase. -->
+    <string name="insert_row_below">Wstaw wiersz poniżej</string>
+    <!-- OfficeBottomBar: Action merge with right cell. Verb phrase. -->
+    <string name="merge_with_right">Scal z prawą</string>
+    <!-- OfficeBottomBar: Number format currency with dollar symbol -->
+    <string name="currency">Waluta ($)</string>
+    <!-- OfficeBottomBar: Action rotate 90 degrees. Verb phrase. -->
+    <string name="rotate_90">Obróć o 90°</string>
+    <!-- OfficeBottomBar: Alignment option right. Adjective/Adverb. -->
+    <string name="right">Do prawej</string>
+    <!-- OfficeBottomBar: Alignment justify. Verb. -->
+    <string name="justify">Wyjustuj</string>
+    <!-- OfficeBottomBar: Button Table. Noun. -->
+    <string name="table">Tabela</string>
+    <!-- OfficeBottomBar: Action delete row. Verb phrase. -->
+    <string name="delete_row">Usuń wiersz</string>
+    <!-- OfficeBottomBar: Number format General -->
+    <string name="general">Ogólne</string>
+    <!-- OfficeBottomBar: Number format Integer -->
+    <string name="integer">Liczba całkowita</string>
+    <!-- OfficeBottomBar: Text style Heading 2 -->
+    <string name="heading_2">Nagłówek 2</string>
+    <!-- OfficeBottomBar: Text style Heading 3 -->
+    <string name="heading_3">Nagłówek 3</string>
+    <!-- OfficeBottomBar: Arrange send to back. Verb phrase. -->
+    <string name="send_to_back">Przesuń na spód</string>
+        <!-- OfficeBottomBar: Shape menu. Noun. -->
+    <string name="shape">Kształt</string>
+    <!-- OfficeBottomBar: Text style Heading 4 -->
+    <string name="heading_4">Nagłówek 4</string>
+    <!-- OfficeBottomBar: Menu chart with ellipsis alternative -->
+    <string name="chart_1">Wykres…</string>
+    <!-- OfficeBottomBar: Action unmerge cell. Verb phrase. -->
+    <string name="unmerge_cell">Rozdziel komórkę</string>
+    <!-- OfficeBottomBar: Action bold cell. Verb phrase. -->
+    <string name="bold_cell">Pogrub komórkę</string>
+    <!-- OfficeBottomBar: Shape rectangle. Noun. -->
+    <string name="rectangle">Prostokąt</string>
+    <!-- OfficeBottomBar: Spreadsheet fill down action. Verb phrase. -->
+    <string name="fill_down">Wypełnij w dół</string>
+    <!-- OfficeBottomBar: Number format scientific -->
+    <string name="scientific">Naukowe</string>
+    <!-- OfficeBottomBar: Action insert column right. Verb phrase. -->
+    <string name="insert_column_right">Wstaw kolumnę po prawej</string>
+    <!-- OfficeBottomBar: Shape line. Noun. -->
+    <string name="line">Linia</string>
+    <!-- OfficeBottomBar: Action merge with below cell. Verb phrase. -->
+    <string name="merge_with_below">Scal z poniższą</string>
+    <!-- OfficeBottomBar: Menu table with ellipsis alternative -->
+    <string name="table_1">Tabela…</string>
+    <!-- OfficeBottomBar: Action clear formatting. Verb phrase. -->
+    <string name="clear_formatting">Wyczyść formatowanie</string>
+    <!-- OfficeBottomBar: Action move paragraph down. Verb phrase. -->
+    <string name="move_paragraph_down">Przesuń akapit w dół</string>
+    <!-- OfficeBottomBar: Menu speaker notes with ellipsis alternative -->
+    <string name="speaker_notes_1">Notatki prelegenta…</string>
+    <!-- OfficeBottomBar: Number format percent -->
+    <string name="percent">Procentowe</string>
+    <!-- OfficeBottomBar: Action unmerge cells. Verb. -->
+    <string name="unmerge">Rozdziel komórki</string>
+    <!-- OfficeBottomBar: Action move paragraph up. Verb phrase. -->
+    <string name="move_paragraph_up">Przesuń akapit w górę</string>
+    <!-- OfficeBottomBar: Menu border color with ellipsis -->
+    <string name="border_color">Kolor krawędzi…</string>
+    <!-- OfficeBottomBar: Text style Heading 1 -->
+    <string name="heading_1">Nagłówek 1</string>
+    <!-- OfficeBottomBar: Action delete column. Verb phrase. -->
+    <string name="delete_column">Usuń kolumnę</string>
+    <!-- OfficeBottomBar: Number format date -->
+    <string name="date">Data</string>
+    <!-- OfficeBottomBar: Number format fraction -->
+    <string name="fraction">Ułamkowe</string>
+    <!-- OfficeBottomBar: Number format time / menu time. Noun. -->
+    <string name="time">Godzina</string>
+    <!-- OfficeBottomBar: Menu border. Noun. -->
+    <string name="border">Krawędź</string>
+    <!-- OfficeBottomBar: Action demote list item (increase indent). Verb phrase. -->
+    <string name="demote_list_item">Obniż poziom elementu listy</string>
+    <!-- OfficeBottomBar: Action duplicate. Verb. -->
+    <string name="duplicate">Duplikuj</string>
+    <!-- OfficeBottomBar: Style normal text. Noun/Adjective. -->
+    <string name="normal">Normalny</string>
+    <!-- OfficeBottomBar: Action delete paragraph. Verb phrase. -->
+    <string name="delete_paragraph">Usuń akapit</string>
+    <!-- OfficeBottomBar: Fill color action. Noun/Verb. -->
+    <string name="fill">Wypełnienie</string>
+    <!-- OfficeBottomBar: Alignment left. Adjective. -->
+    <string name="left">Do lewej</string>
+    <!-- OfficeBottomBar: Menu font size with ellipsis alternative -->
+    <string name="font_size_2">Rozmiar czcionki…</string>
+    <!-- OfficeBottomBar: Action restart list numbering. Verb phrase. -->
+    <string name="restart_numbering">Zacznij numerowanie od nowa</string>
+    <!-- OfficeBottomBar: Menu slide background with ellipsis -->
+    <string name="slide_background">Tło slajdu…</string>
+    <!-- OfficeBottomBar: Action duplicate paragraph. Verb phrase. -->
+    <string name="duplicate_paragraph">Duplikuj akapit</string>
+    <!-- OfficeBottomBar: Menu insert table without ellipsis alternative -->
+    <string name="insert_table_1">Wstaw tabelę</string>
+    <!-- OfficeBottomBar: Arrange bring to front. Verb phrase. -->
+    <string name="bring_to_front">Przesuń na wierzch</string>
+    <!-- OfficeBottomBar: Action promote list item (decrease indent). Verb phrase. -->
+    <string name="promote_list_item">Podwyższ poziom elementu listy</string>
+    <!-- OfficeBottomBar: Action italic cell. Verb phrase. -->
+    <string name="italic_cell">Pochyl komórkę</string>
+        <!-- OfficeBottomBar: Menu row/column size with ellipsis -->
+    <string name="row_column_size">Rozmiar wiersza/kolumny…</string>
+    <!-- OfficeBottomBar: Label number format section. Noun. -->
+    <string name="number_format">Format liczb</string>
+    <!-- OfficeBottomBar: Number format number with 2 decimal places -->
+    <string name="number_2_dp">Liczba (2 m. po przecinku)</string>
+    <!-- OfficeBottomBar: Alignment center. Noun/Adjective. -->
+    <string name="center">Do środka</string>
+    <!-- OfficeViewModel: Toast error when save fails. %1$s=error reason/message -->
+    <string name="save_failed">Błąd zapisu: <xliff:g id="error" example="Permission denied">%1$s</xliff:g></string>
+    <!-- OfficeViewModel: Toast saved successfully -->
+    <string name="saved">Zapisano</string>
+
+    <!-- MainActivity: Explanation prompting user to enable online sharing for real-time collaboration. Full sentence. -->
+    <string name="turn_on_online_sharing_to_collaborate_on">Włącz udostępnianie online, aby współpracować nad dokumentami w czasie rzeczywistym. Spowoduje to wygenerowanie kluczy szyfrowania oraz identyfikatora urządzenia, a także zarejestruje urządzenie, umożliwiając innym udostępnianie plików. Nic nie zostanie utworzone ani wysłane, dopóki nie włączysz tej opcji.</string>
+
+    <!-- MainActivity: Fallback author name Anonymous. Noun. -->
+    <string name="anonymous">Anonimowy</string>
+    <!-- MainActivity: Fallback author Unknown. Noun. -->
+    <string name="unknown">Nieznany</string>
+    <!-- MainActivity: Concatenated author and date for annotation. %1$s=author name, %2$s=date suffix " · YYYY-MM-DD" or empty -->
+    <string name="annotation_author_date"><xliff:g id="author" example="Anonymous">%1$s</xliff:g><xliff:g id="date_suffix" example=" · 2024-01-01">%2$s</xliff:g></string>
+    <!-- MainActivity: Tracked change line. %1$s=change type e.g. "Insertion", %2$s=author e.g. "Unknown", %3$s=date suffix " · 2024-01-01" or empty -->
+    <string name="tracked_change_author_date"><xliff:g id="change_type" example="Insertion">%1$s</xliff:g> · <xliff:g id="author" example="Unknown">%2$s</xliff:g><xliff:g id="date_suffix" example=" · 2024-01-01">%3$s</xliff:g></string>
+
+    <!-- DocumentViews: Toggle ON state. Adjective, uppercase. -->
+    <string name="on">WŁ.</string>
+    <!-- DocumentViews: Toggle OFF state. Adjective, uppercase. -->
+    <string name="off">WYŁ.</string>
+    <!-- DocumentViews: Button insert chart. Verb phrase. -->
+    <string name="insert_chart">Wstaw wykres</string>
+    <!-- DocumentViews: Button edit chart. Verb phrase. -->
+    <string name="edit_chart">Edytuj wykres</string>
+    <!-- DocumentViews: Button hide speaker notes. Verb phrase. -->
+    <string name="hide_notes">Ukryj notatki</string>
+    <!-- DocumentViews: Section header speaker notes without ellipsis -->
+    <string name="speaker_notes_2">Notatki prelegenta</string>
+    <!-- MainActivity: Status computing, ellipsis -->
+    <string name="computing">Obliczanie…</string>
+    <!-- MainActivity: Button show security code for verification. Verb phrase. -->
+    <string name="show_security_code">Pokaż kod bezpieczeństwa</string>
+    <!-- MainActivity: Status adding collaborator -->
+    <string name="adding">Dodawanie…</string>
+    <!-- MainActivity: Label online doc shared by you -->
+    <string name="shared_by_you">Udostępnione przez Ciebie</string>
+    <!-- MainActivity: Label online doc shared with you -->
+    <string name="shared_with_you">Udostępnione Tobie</string>
+    <!-- MainActivity: Checked menu night reading mode with checkmark -->
+    <string name="night_reading_mode">✓ Tryb nocnego czytania</string>
+    <!-- MainActivity: Unchecked menu night reading mode -->
+    <string name="night_reading_mode_1">Tryb nocnego czytania</string>
+    <!-- MainActivity: Checked menu word count bar with checkmark -->
+    <string name="word_count_bar">✓ Pasek liczby słów</string>
+    <!-- MainActivity: Unchecked menu word count bar -->
+    <string name="word_count_bar_1">Pasek liczby słów</string>
+    <!-- MainActivity: Menu item Hide. Verb. -->
+    <string name="hide">Ukryj</string>
+    <!-- MainActivity: Button Replace without ellipsis -->
+    <string name="replace_1">Zamień</string>
+    <!-- MainActivity: Case-sensitive toggle checked with checkbox -->
+    <string name="case_on">☑ Uwzględniaj wielkość liter</string>
+    <!-- MainActivity: Case-sensitive toggle unchecked -->
+    <string name="case_1">☐ Uwzględniaj wielkość liter</string>
+    <!-- MainActivity: Whole word toggle checked -->
+    <string name="word">☑ Całe słowa</string>
+    <!-- MainActivity: Whole word toggle unchecked -->
+    <string name="word_1">☐ Całe słowa</string>
+    <!-- MainActivity: Presence typing indicator suffix with leading space -->
+    <string name="typing"> (pisze…)</string>
+    <!-- MainActivity: Online presence bar. %1$s=concatenated presence e.g. "Alice · Sheet1" -->
+    <string name="online_1">Online: <xliff:g id="presence" example="Alice · Sheet1">%1$s</xliff:g></string>
+    <!-- MainActivity: Portrait orientation radio selected with bullet -->
+    <string name="portrait">● Pionowa</string>
+    <!-- MainActivity: Portrait orientation radio unselected -->
+    <string name="portrait_1">Pionowa</string>
+    <!-- MainActivity: Landscape orientation radio selected -->
+    <string name="landscape">● Pozioma</string>
+    <!-- MainActivity: Landscape orientation radio unselected -->
+    <string name="landscape_1">Pozioma</string>
+    <!-- MainActivity: Narrow margins radio selected -->
+    <string name="narrow">● Wąskie</string>
+    <!-- MainActivity: Narrow margins radio unselected -->
+    <string name="narrow_1">Wąskie</string>
+    <!-- MainActivity: Normal margins radio selected -->
+    <string name="normal_1">● Normalne</string>
+    <!-- MainActivity: Wide margins radio selected -->
+    <string name="wide">● Szerokie</string>
+    <!-- MainActivity: Wide margins radio unselected -->
+    <string name="wide_1">Szerokie</string>
+</resources>
