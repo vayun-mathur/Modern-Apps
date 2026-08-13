@@ -4,14 +4,17 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"sort"
 )
 
 const ID_VERSION = 1
 
 func BoardID(board Board) string {
-	sort.Slice(board.Blocks, func(i, j int) bool {
-		a, b := board.Blocks[i], board.Blocks[j]
+	blocks := slices.Clone(board.Blocks)
+
+	sort.Slice(blocks, func(i, j int) bool {
+		a, b := blocks[i], blocks[j]
 
 		if a.X != b.X {
 			return a.X < b.X
@@ -30,9 +33,14 @@ func BoardID(board Board) string {
 
 	h := sha256.New()
 
-	h.Write([]byte{byte(board.Width), byte(board.Height), byte(board.Exit.X), byte(board.Exit.Y)})
+	h.Write([]byte{
+		byte(board.Width),
+		byte(board.Height),
+		byte(board.Exit.X),
+		byte(board.Exit.Y),
+	})
 
-	for _, b := range board.Blocks {
+	for _, b := range blocks {
 		h.Write([]byte{
 			byte(b.X),
 			byte(b.Y),
