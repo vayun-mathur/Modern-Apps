@@ -663,28 +663,31 @@ fun GameBoard(
                     "blockOffset"
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(blockWidth, blockHeight)
-                        .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
-                        .padding(scaling * 4)
-                        .background(color, shape = RoundedCornerShape(percent = 10))
-                        .blockDragGestures(
-                            block = block,
-                            levelData = levelData,
-                            isLevelWon = isLevelWon,
-                            cellWidth = cellWidth,
-                            cellHeight = cellHeight,
-                            isMainBlock = isMainBlock,
-                            onLevelWon = onLevelWon,
-                            onLevelChanged = onLevelChanged,
-                            index = index,
-                            offsetXProvider = { offsetX },
-                            offsetYProvider = { offsetY },
-                            offsetXUpdater = { offsetX = it },
-                            offsetYUpdater = { offsetY = it }
-                        )
-                )
+                var modifier = Modifier
+                    .size(blockWidth, blockHeight)
+                    .offset { IntOffset(currentOffsetX.roundToPx(), offsetY.roundToPx()) }
+                    .padding(scaling * 4)
+                    .background(color, shape = RoundedCornerShape(percent = 10))
+                
+                if (!block.fixed) {
+                    modifier = modifier.blockDragGestures(
+                        block = block,
+                        levelData = levelData,
+                        isLevelWon = isLevelWon,
+                        cellWidth = cellWidth,
+                        cellHeight = cellHeight,
+                        isMainBlock = isMainBlock,
+                        onLevelWon = onLevelWon,
+                        onLevelChanged = onLevelChanged,
+                        index = index,
+                        offsetXProvider = { offsetX },
+                        offsetYProvider = { offsetY },
+                        offsetXUpdater = { offsetX = it },
+                        offsetYUpdater = { offsetY = it }
+                    )
+                }
+
+                Box(modifier = modifier)
             }
         }
     }
