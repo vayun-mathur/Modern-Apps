@@ -21,7 +21,7 @@ type Board struct {
 }
 
 type Level struct {
+	ID string `json:"id"`
 	Board
-	ID    string `json:"id"`
-	Moves int    `json:"c"`
+	Moves int `json:"c"`
 }

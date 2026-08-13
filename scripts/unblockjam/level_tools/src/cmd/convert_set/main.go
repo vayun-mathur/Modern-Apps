@@ -11,6 +11,22 @@ import (
 	"rush_conv"
 )
 
+type Colors struct {
+	Primary            string `json:"primary"`
+	Secondary          string `json:"secondary"`
+	Tertiary           string `json:"tertiary"`
+	Background         string `json:"background"`
+	Surface            string `json:"surface"`
+	PrimaryContainer   string `json:"primaryContainer"`
+	SecondaryContainer string `json:"secondaryContainer"`
+}
+
+type Pack struct {
+	Name   string            `json:"name"`
+	Colors Colors            `json:"colors"`
+	Levels []rush_conv.Level `json:"levels"`
+}
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -49,18 +65,18 @@ func run() error {
 		return fmt.Errorf("reading stdin: %w", err)
 	}
 
-	result := map[string]interface{}{
-		"name": "Example Pack",
-		"colors": map[string]string{
-			"primary":			  "0x00000000",
-			"secondary":		  "0x00000000",
-			"tertiary":		      "0x00000000",
-			"background":		  "0x00000000",
-			"surface":			  "0x00000000",
-			"primaryContainer":   "0x00000000",
-			"secondaryContainer": "0x00000000",
+	result := Pack{
+		Name: "Example Pack",
+		Colors: Colors{
+			Primary:            "0x00000000",
+			Secondary:          "0x00000000",
+			Tertiary:           "0x00000000",
+			Background:         "0x00000000",
+			Surface:            "0x00000000",
+			PrimaryContainer:   "0x00000000",
+			SecondaryContainer: "0x00000000",
 		},
-		"levels": levels,
+		Levels: levels,
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
