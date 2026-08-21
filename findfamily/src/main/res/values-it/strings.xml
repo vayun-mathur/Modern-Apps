@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+s  ?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notification_channel_location_tracking_desc">Utilizzate per gli aggiornamenti della posizione in background di FindFamily</string>
     <string name="notification_channel_battery_name">Avvisi della batteria</string>
@@ -27,7 +27,7 @@
     <string name="last_updated_never">Mai</string>
     <string name="since_just_now">Da adesso</string>
     <string name="since_minutes_ago">Da %1$d minuti fa</string>
-    <string name="since_time_date">Da %1$s%2$s</string>
+    <string name="since_time_date">Da %1$s %2$s</string>
     <string name="today">oggi</string>
     <string name="yesterday">ieri</string>
     <string name="user_card_status">Aggiornato %1$s\nA %2$s\n%3$s</string>
