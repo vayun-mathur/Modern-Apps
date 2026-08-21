@@ -1,4 +1,4 @@
-s  ?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notification_channel_location_tracking_desc">Utilizzate per gli aggiornamenti della posizione in background di FindFamily</string>
     <string name="notification_channel_battery_name">Avvisi della batteria</string>
