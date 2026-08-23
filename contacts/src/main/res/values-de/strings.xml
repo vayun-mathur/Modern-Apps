@@ -18,12 +18,16 @@
     <string name="birthday">Geburtstag</string>
     <!-- Section header and field label for freeform notes -->
     <string name="note">Notiz</string>
+    <!-- Field label for the row showing which ringtone plays for calls from this contact -->
+    <string name="ringtone">Klingelton</string>
+    <!-- Title of the system ringtone picker opened from the ringtone row -->
+    <string name="select_ringtone">Klingelton für Kontakt</string>
     <!-- ContactList: section header above starred contacts -->
     <string name="favorites">Favoriten</string>
     <!-- Settings: button to export all contacts to VCF file -->
     <string name="export_contacts">Alle Kontakte exportieren</string>
     <!-- Fallback account name meaning local on-device storage, not synced -->
-    <string name="on_device">Auf dem Gerät</string>
+    <string name="on_device">Gerät</string>
     <!-- TopAppBar title for creating new contact -->
     <string name="add_contact">Kontakt hinzufügen</string>
     <!-- TopAppBar title for editing existing contact -->
@@ -37,7 +41,7 @@
     <!-- Text field label for nickname -->
     <string name="nickname">Spitzname</string>
     <!-- Text field label for company/organization name -->
-    <string name="company">Firma</string>
+    <string name="company">Arbeit</string>
     <!-- Field label and picker for contacts account (e.g. Google, Local) -->
     <string name="account">Account</string>
     <!-- Account picker dropdown item format. %1$s = account name or On-Device, %2$s = account type -->
@@ -82,6 +86,14 @@
     <string name="enter_account_name">Name für einen neuen lokalen Account:</string>
     <!-- Text field label for account name input -->
     <string name="account_name">Accountname</string>
+    <!-- Overflow action / dialog title to rename a local account -->
+    <string name="rename_account">Account umbenennen</string>
+    <!-- Overflow action / dialog title to delete a local account -->
+    <string name="delete_account">Account löschen</string>
+    <!-- Confirmation message when deleting a local account and its contacts -->
+    <string name="delete_local_account_confirm">Diesen Account und alle seine Kontakte löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <!-- Error toast when the new account name is already used -->
+    <string name="account_name_exists">Ein Account mit diesen Namen existiert bereits</string>
 
     <!-- Delete contact flow -->
     <!-- Dialog title for delete single contact confirmation -->
@@ -132,7 +144,7 @@
     <!-- Settings toggle: show account label chips in contact list -->
     <string name="show_account_labels">Account anzeigen</string>
     <!-- Search bar hint text to filter contacts -->
-    <string name="search_contacts">In Kontakte suchen</string>
+    <string name="search_contacts">In Kontakten suchen</string>
     <!-- EventDatePickerDialog: toggle whether year is included for birthday (yearless birthdays) -->
     <string name="include_year">Jahr hinzufügen</string>
     <!-- Dropdown option: use system default app for calling/messaging -->
@@ -208,7 +220,18 @@
     <!-- Placeholder / description for entering custom label -->
     <string name="enter_custom_label">Labelname</string>
 
+    <!-- SIM contacts (now virtual accounts) -->
     <string name="sim_limited_fields_hint">SIM-Kontakte speichern nur Name, Telefon und E-Mail.</string>
     <string name="save_failed">Speichern fehlgeschlagen</string>
     <string name="importing">Importiert…</string>
+
+    <!-- Empty states -->
+    <!-- Contacts tab, shown on a first run or when every account is hidden -->
+    <string name="no_contacts_yet">Noch keine Kontakte</string>
+    <!-- Supporting text under no_contacts_yet, pointing at the add button -->
+    <string name="no_contacts_yet_message">Benutze die Hinzufügen-Schaltfläche um den ersten Kontakt zu erstellen.</string>
+    <!-- Groups tab, shown when the user has not created any group -->
+    <string name="no_groups_yet">Noch keine Gruppen</string>
+    <!-- Supporting text under no_groups_yet, pointing at the add button -->
+    <string name="no_groups_yet_message">Benutze die Hinzufügen-Schaltfläche um Kontakte zu gruppieren.</string>
 </resources>
