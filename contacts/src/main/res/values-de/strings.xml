@@ -38,6 +38,30 @@
     <string name="middle_name">Zweiter Vorname</string>
     <!-- Text field label for last/family name -->
     <string name="last_name">Nachname</string>
+    <!-- Dropdown next to the first name field, for honorifics placed before a name -->
+    <string name="name_prefix">Namenspräfix</string>
+    <!-- Dropdown next to the last name field, for generational titles placed after a name -->
+    <string name="name_suffix">Namenssuffix</string>
+    <!-- Option in the name prefix/suffix dropdowns that clears the chosen title -->
+    <string name="name_affix_none"> </string>
+    <!-- Name prefixes offered in the dropdown. Translate to the honorifics used locally. -->
+    <string-array name="name_prefixes">
+        <item>Dr.</item>
+        <item>Herr</item>
+        <item>Frau</item>
+        <item>Frau</item>
+    </string-array>
+    <!-- Name suffixes offered in the dropdown. The roman numerals are generational and are
+         normally left as-is; translate Jr and Sr. -->
+    <string-array name="name_suffixes">
+        <item>Jr</item>
+        <item>Sr</item>
+        <item>I</item>
+        <item>II</item>
+        <item>III</item>
+        <item>IV</item>
+        <item>V</item>
+    </string-array>
     <!-- Text field label for nickname -->
     <string name="nickname">Spitzname</string>
     <!-- Text field label for company/organization name -->

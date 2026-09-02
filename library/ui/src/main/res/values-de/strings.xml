@@ -8,10 +8,23 @@
     <string name="close">Schließen</string>
     <string name="remove">Entfernen</string>
     <string name="rename">Umbenennen</string>
+    <!-- Shown when no installed app can handle an intent. -->
+    <string name="no_app_found">Keine App kann  diesen Link öffnen</string>
     <!-- Shared across every app; see the block above. -->
     <string name="settings">Einstellungen</string>
     <string name="save">Speichern</string>
     <string name="add">Hinzufügen</string>
     <string name="done">Fertig</string>
     <string name="ok">Ok</string>
+    <string name="clear">Leeren</string>
+    <string name="share">Teilen</string>
+    <string name="undo">Rückgängig</string>
+    <!-- Shared library: UI - RingtonePicker: label for a ringtone setting left at the system default sound -->
+    <string name="ringtone_default">Standard</string>
+    <!-- Shared library: UI - RingtonePicker: the system default sound, named. %1$s = the word for "Default", %2$s = the sound's name, e.g. Marimba -->
+    <string name="ringtone_default_named">%1$s (%2$s)</string>
+    <!-- Shared library: UI - RingtonePicker: label for a ringtone setting where the user chose no sound -->
+    <string name="ringtone_silent">-</string>
+    <!-- Shared library: UI - RingtonePicker: fallback label when the picked sound file has no readable title -->
+    <string name="ringtone_custom">Benutzerdefiniert</string>
 </resources>
