@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Manifest / TopAppBar: App name. Noun, proper -->
+    <string name="app_name" translatable="false">Nonogram</string>
+
+    <!-- GameModeDropdown: Mode playing the numbered level progression. Adjective -->
+    <string name="mode_casual">Poziomy</string>
+    <!-- GameModeDropdown: Mode playing today's shared puzzle. Adjective -->
+    <string name="mode_daily">Wyzwanie dzienne</string>
+
+    <!-- NonogramGameScreen TopAppBar: Current level in the progression. %1$d = level number, e.g. 12 -->
+    <string name="level_title">Poziom <xliff:g id="level" example="12">%1$d</xliff:g></string>
+    <!-- NonogramGameScreen: Button advancing to the next level after a win. Verb phrase -->
+    <string name="next_level">Kolejny poziom</string>
+    <!-- NonogramGameScreen: Clears every mark on the current puzzle. Verb -->
+    <string name="restart">Zacznij od nowa</string>
+    <!-- NonogramGameScreen: Shown after finishing the daily, since there is only one per day. Sentence -->
+    <string name="daily_come_back_tomorrow">Rozwiązano! Wróć jutro po nową łamigłówkę.</string>
+    <!-- NonogramGameScreen: Celebratory line shown when a level is completed. Declarative -->
+    <string name="solved">Rozwiązano!</string>
+    <!-- NonogramGameScreen: Shown after clearing the daily, since there is only one per day. Sentence -->
+    <!-- NonogramGameScreen: Hint under a fresh board explaining the two gestures. Imperative sentence -->
+    <string name="how_to_play">Stuknij, aby zamalować; przytrzymaj, aby wykreślić</string>
+    <!-- MarkModeToggle: Tap places part of the picture. Verb, imperative -->
+    <string name="mode_fill">Zamaluj</string>
+    <!-- MarkModeToggle: Tap crosses a cell off as empty. Verb, imperative -->
+    <string name="mode_cross">Wykreśl</string>
+    <!-- NonogramGameScreen: Shown when the last heart is spent. Declarative, sympathetic -->
+    <string name="out_of_hearts">Koniec serc!</string>
+
+    <!-- NonogramGameScreen: Shown when no fair puzzle could be generated for this level. Sentence -->
+    <string name="generation_failed">Nie udało się wygenerować łamigłówki dla tego poziomu.</string>
+    <!-- NonogramGameScreen: Retries generation after a failure, and the level after running out of hearts. Verb -->
+    <string name="try_again">Spróbuj ponownie</string>
+
+    <!-- NonogramBoard: Content description of a cell. %1$d = row number starting at 1, e.g. 4. %2$d = column number starting at 1, e.g. 6. %3$s = the cell's state word, e.g. Filled -->
+    <string name="cd_cell">Wiersz <xliff:g id="row" example="4">%1$d</xliff:g>, kolumna <xliff:g id="column" example="6">%2$d</xliff:g>, <xliff:g id="state" example="Filled">%3$s</xliff:g></string>
+    <!-- NonogramBoard: Cell state, painted as part of the picture. Verb past participle -->
+    <string name="cd_filled">Zamalowane</string>
+    <!-- NonogramBoard: Cell state, ruled out by the player. Verb past participle -->
+    <string name="cd_crossed">Wykreślone</string>
+    <!-- NonogramBoard: Cell state, untouched. Adjective -->
+    <string name="cd_blank">Czyste</string>
+</resources>
