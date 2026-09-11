@@ -118,7 +118,7 @@ jpeg-encoder = { version = "0.6.1", default-features = false }
 flate2 = "1.1.4"
 
 # Crypto / PQC (features preserved – no feature loss)
-sha2 = { version = "0.10.9", features = ["oid"] }
+sha2 = { version = "0.11.0", features = ["oid"] }
 # SHAKE256 for FindFamily link-seed expansion. Already in the lock file transitively
 # via fips203/fips204, so this only promotes it to a direct dependency.
 sha3 = "0.10"

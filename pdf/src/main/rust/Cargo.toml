@@ -25,7 +25,7 @@ hayro-jbig2 = { version = "0.3", default-features = false, features = ["std"] }
 openjp2.workspace = true
 md-5.workspace = true
 aes.workspace = true
-sha2 = { version = "0.10", features = ["oid"] }
+sha2 = { version = "0.11", features = ["oid"] }
 indexmap = { version = "2.10.0" }
 getrandom.workspace = true
 
