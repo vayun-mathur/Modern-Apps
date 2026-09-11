@@ -9,7 +9,7 @@ agp = "9.4.0-alpha04"
 # lint version = 23 + AGP major (AGP 9.x -> lint 32.x)
 lint = "32.4.0-alpha04"
 kotlin = "2.4.0"
-kotlinGradlePlugin = "2.4.0"
+kotlinGradlePlugin = "2.4.20"
 # KSP 2.x is versioned independently of Kotlin: the `<kotlin>-<ksp>` scheme ended at
 # 2.2.21-2.0.5, and releases from 2.3.0 onwards carry KSP's own version. 2.3.10 is therefore
 # not skew against kotlin above, and no 2.4.x KSP release exists.
