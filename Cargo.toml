@@ -215,7 +215,7 @@ p256 = { version = "0.13.2", default-features = false }
 rand_chacha = { version = "0.3.1", default-features = false }
 xts-mode = "0.5.1"
 wycheproof = "0.5.1"
-blake2 = "0.10.6"
+blake2 = "0.11.0"
 hdrhistogram = "7.5.4"
 regex = "1.10.2"
 criterion = { version = "0.5.1", features = ["html_reports"] }
