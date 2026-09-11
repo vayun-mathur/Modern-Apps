@@ -108,7 +108,7 @@ apksig = "8.7.3"
 quickjs = "1.0.5"
 
 # Git
-jgit = "6.10.1.202505221210-r"
+jgit = "7.8.0.202609011348-r"
 
 # Crypto, security & credential storage
 sqlcipherAndroid = "4.18.0"
