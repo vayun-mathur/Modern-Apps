@@ -48,7 +48,7 @@ adaptiveNavigation3 = "1.3.0"
 
 # AndroidX – media, camera & images
 media3Exoplayer = "1.11.0-beta01"
-camerax = "1.7.0-alpha02"
+camerax = "1.7.0-alpha03"
 exifinterface = "1.4.2"
 
 # AndroidX – storage
