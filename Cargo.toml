@@ -123,7 +123,7 @@ sha2 = { version = "0.10.9", features = ["oid"] }
 # via fips203/fips204, so this only promotes it to a direct dependency.
 sha3 = "0.10"
 aes = "0.8.4"
-md-5 = "0.10.6"
+md-5 = "0.11.0"
 keepass = { version = "0.13.17", default-features = false, features = ["save_kdbx4"] }
 # Classic Signal protocol (WhatsApp bridge) – X25519/XEdDSA + AES-CBC + HMAC.
 curve25519-dalek = { version = "4.1.3", default-features = false, features = ["alloc", "precomputed-tables", "zeroize"] }
