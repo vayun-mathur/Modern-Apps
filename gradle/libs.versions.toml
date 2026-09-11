@@ -127,7 +127,7 @@ kxml2 = "2.3.0"
 robolectric = "4.14.1"
 
 # Payments, telephony & auth
-stripe = "21.12.0"
+stripe = "23.18.0"
 
 # AppStore – Play install via Aurora
 gplayapi = "3.6.4"
