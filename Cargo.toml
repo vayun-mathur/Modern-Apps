@@ -193,7 +193,7 @@ ukey2_connections = { path = "third_party/betocore/ukey2_connections" }
 # crates.io deps required by vendored betocore crates (pins from nearby/Cargo.toml)
 tinyvec = { version = "1.6.0", features = ["rustc_1_55"] }
 nom = { version = "7.1.3", default-features = false }
-strum = { version = "0.27.1", default-features = false }
+strum = { version = "0.28.0", default-features = false }
 strum_macros = { version = "0.27.1", default-features = false }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 itertools = { version = "0.13.0", default-features = false }
