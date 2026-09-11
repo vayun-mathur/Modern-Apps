@@ -5,15 +5,15 @@
 # =============================================================================
 
 # Build & tooling
-agp = "9.4.0-alpha04"
+agp = "9.5.0-alpha04"
 # lint version = 23 + AGP major (AGP 9.x -> lint 32.x)
 lint = "32.4.0-alpha04"
-kotlin = "2.4.0"
-kotlinGradlePlugin = "2.4.0"
+kotlin = "2.4.20"
+kotlinGradlePlugin = "2.4.20"
 # KSP 2.x is versioned independently of Kotlin: the `<kotlin>-<ksp>` scheme ended at
 # 2.2.21-2.0.5, and releases from 2.3.0 onwards carry KSP's own version. 2.3.10 is therefore
 # not skew against kotlin above, and no 2.4.x KSP release exists.
-ksp = "2.3.10"
+ksp = "2.3.11"
 protobufPlugin = "0.10.0"
 desugarJdkLibs = "2.1.5"
 
@@ -59,7 +59,7 @@ room3 = "3.0.2"
 # AndroidX – widgets, web & browser
 glance = "1.3.0-alpha02"
 webkit = "1.17.0-alpha03"
-browser = "1.9.0"
+browser = "1.10.0"
 
 # AndroidX – security, identity & health
 biometric = "1.4.0-alpha07"
@@ -75,26 +75,26 @@ carApp = "1.4.0"
 
 # AndroidX – instrumentation test (androidTest). Only :library:map's on-device renderer
 # harness uses these; they are three independently versioned artifacts, not one train.
-androidxTestRunner = "1.6.2"
-androidxTestCore = "1.6.1"
-androidxTestExtJunit = "1.2.1"
+androidxTestRunner = "1.7.0"
+androidxTestCore = "1.7.0"
+androidxTestExtJunit = "1.3.0"
 
 # Google libraries
 # One key for the entire protobuf toolchain — protobuf-java, protobuf-javalite and the protoc
 # compiler. Generated sources and the runtime that parses them must come from the same release,
 # so these are deliberately not separable: a bump here moves compiler and runtime together.
-protobufVersion = "4.35.0"
+protobufVersion = "4.36.1"
 # gRPC for the Accrescent app source (:appstore). grpc-java + grpc-kotlin coroutine stubs
 # over grpc-okhttp; the messages are generated as protobuf-lite to match the repo's other
 # protobuf module (:youpipe:extractor). These versions must stay mutually compatible with
 # protobufVersion above and are the most likely first build-friction point.
-grpc = "1.69.0"
-grpcKotlin = "1.4.1"
+grpc = "1.84.0"
+grpcKotlin = "1.5.0"
 # @javax.annotation.Generated referenced by grpc-java generated stubs.
 javaxAnnotation = "1.3.2"
 jsr305 = "3.0.2"
 zxing = "3.5.4"
-libphonenumber = "9.0.34"
+libphonenumber = "9.0.38"
 brotli = "0.1.2"
 # Standalone library from the AGP toolchain (com.android.tools.build), not the plugin —
 # :appstore uses it at runtime to verify APK source stamps.
@@ -105,13 +105,13 @@ apksig = "8.7.3"
 # =============================================================================
 
 # JavaScript engines & HTML
-quickjs = "1.0.5"
+quickjs = "1.0.15"
 
 # Git
 jgit = "6.10.1.202505221210-r"
 
 # Crypto, security & credential storage
-sqlcipherAndroid = "4.18.0"
+sqlcipherAndroid = "4.19.0"
 # Pinned at 0.101.0, not Maven Central's newest (0.86.5): the CDSI enclave identity is compiled into the
 # native library, and 0.86.5/0.92.0 carry a retired MRENCLAVE, so contact discovery requests
 # /v1/{stale}/discovery and the server answers 404. 0.101.0 also matches the checked-out libsignal source,
@@ -119,12 +119,12 @@ sqlcipherAndroid = "4.18.0"
 libsignalAndroid = "0.101.0"
 # Signal's WebRTC fork plus its calling engine. Bundles its own org.webrtc, so it cannot coexist with
 # another WebRTC distribution in the same APK.
-ringrtcAndroid = "2.71.0"
+ringrtcAndroid = "2.72.0"
 # signalProtocolJava removed — WhatsApp X3DH now via Rust libwhatsapp_signal
 
 # XML
 kxml2 = "2.3.0"
-robolectric = "4.14.1"
+robolectric = "4.16.1"
 
 # Payments, telephony & auth
 stripe = "21.12.0"
