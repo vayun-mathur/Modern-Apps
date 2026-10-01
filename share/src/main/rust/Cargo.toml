@@ -22,7 +22,7 @@ prost = "0.13"
 bytes = "1.6"
 hkdf = "0.12"
 p256 = { version = "0.13", features = ["ecdh", "ecdsa"] }
-cbc = { version = "0.1", features = ["alloc"] }
+cbc = { version = "0.2", features = ["alloc"] }
 cipher = "0.4"
 # BetoCore vendored crates (P0 wiring — protocol code not yet migrated)
 np_adv = { workspace = true, features = ["std"] }
