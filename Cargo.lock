@@ -880,7 +880,7 @@ dependencies = [
  "aes 0.8.4",
  "aes-gcm",
  "aes-gcm-siv",
- "cbc 0.1.2",
+ "cbc 0.2.1",
  "cfg-if",
  "crypto_provider",
  "ctr",
@@ -3218,7 +3218,7 @@ version = "0.1.0"
 dependencies = [
  "aes 0.8.4",
  "bytes",
- "cbc 0.1.2",
+ "cbc 0.2.1",
  "cipher 0.4.4",
  "crypto_provider_default",
  "getrandom 0.2.17",
