@@ -3984,7 +3984,7 @@ dependencies = [
  "aes 0.8.4",
  "bytes",
  "cbc 0.1.2",
- "cipher 0.4.4",
+ "cipher 0.5.2",
  "crypto_provider_default",
  "getrandom 0.2.17",
  "hkdf 0.12.4",
