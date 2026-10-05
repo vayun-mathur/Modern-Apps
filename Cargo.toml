@@ -91,7 +91,7 @@ unwrap_used = "deny"
 # `ErrorPolicy`, and `GlobalRef`/`AutoLocal` were renamed). That migration
 # touches all 31 native entry points across maps and games/voxels and needs an
 # Android build to verify, so it is deliberately left as a follow-up.
-jni = "0.21.1"
+jni = "0.22.4"
 jni-sys = "0.3.1"
 cesu8 = "1.1.0"
 thiserror = { version = "2" }
