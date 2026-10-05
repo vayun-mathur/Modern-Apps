@@ -22,7 +22,7 @@ name = "code_ts"
 crate-type = ["cdylib"]
 
 [dependencies]
-jni = "0.21.1"
+jni = "0.22.4"
 tree-sitter = "0.22"
 tree-sitter-kotlin = "0.3"
 tree-sitter-java = "0.21"
