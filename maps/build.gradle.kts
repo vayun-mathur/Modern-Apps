@@ -11,6 +11,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20261005
+        versionName = "v2.6.9"
         applicationId = "com.vayunmathur.maps"
     }
     // PoiIndexTest exercises the real side-file reader, which logs. Without this every

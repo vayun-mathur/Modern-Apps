@@ -9,6 +9,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20261005
+        versionName = "v2.6.9"
         applicationId = "com.vayunmathur.cast"
     }
     // MediaProxyServer is sockets and lifecycle, and every branch of it logs. Its teardown is worth

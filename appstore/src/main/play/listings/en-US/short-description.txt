@@ -1,0 +1,1 @@
+An app store that verifies every install and tells you who could update it

@@ -1,0 +1,1 @@
+An open-source food delivery client with Stripe payments

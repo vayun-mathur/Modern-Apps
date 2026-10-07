@@ -1,0 +1,1 @@
+Read the device log and system error reports, entirely on device

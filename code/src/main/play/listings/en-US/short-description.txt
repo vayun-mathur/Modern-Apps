@@ -1,0 +1,1 @@
+A lightweight, open-source code editor for Android

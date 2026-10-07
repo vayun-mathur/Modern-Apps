@@ -22,6 +22,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20261005
+        versionName = "v2.6.9"
         applicationId = "com.vayunmathur.communicate"
     }
     compileOptions {

@@ -1,0 +1,1 @@
+A health metric manager meant to replace Google Fit

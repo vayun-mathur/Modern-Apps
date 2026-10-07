@@ -1,0 +1,1 @@
+A privileged eSIM manager (LPA) for the phone's built-in eUICC
