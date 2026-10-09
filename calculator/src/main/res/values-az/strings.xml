@@ -33,4 +33,5 @@
     <string name="units_widget_label">Vahid Çeviricisi</string>
     <string name="units_widget_description">Vahidlər arasında bir baxışda çevirin - çeviricini açmaq üçün toxunun</string>
     <string name="units_widget_choose_category">Vahid kateqoriyası seçin</string>
+    <string name="absolute_time">Mütləq zaman</string>
 </resources>
