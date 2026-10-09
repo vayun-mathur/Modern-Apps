@@ -31,4 +31,5 @@
     </plurals>
     <string name="view_360">Widok 360°</string>
     <string name="color">Kolor</string>
+    <string name="action_cancel">Anuluj</string>
 </resources>
