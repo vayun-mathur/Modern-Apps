@@ -280,12 +280,12 @@
     <string name="field_smoking_status">Status</string>
     <string name="recorded_on">Zapisano <xliff:g example="4 marca 2026" id="date">%1$s</xliff:g></string>
     <string name="pregnancy_unknown">Brak odpowiedzi</string>
-    <string name="pregnancy_pregnant">W ciąży</string>
-    <string name="pregnancy_not_pregnant">Nie w ciąży</string>
+    <string name="pregnancy_pregnant">Jestem w ciąży</string>
+    <string name="pregnancy_not_pregnant">Nie jestem w ciąży</string>
     <string name="smoking_unknown">Brak odpowiedzi</string>
-    <string name="smoking_never">Nigdy nie palono</string>
+    <string name="smoking_never">Nie palę</string>
     <string name="smoking_former">Były palacz</string>
-    <string name="smoking_current">Obecnie pali</string>
+    <string name="smoking_current">Obecnie palę</string>
     <string name="social_alcohol">Jak często pijesz napoje alkoholowe?</string>
     <string name="social_drugs">Ile razy w ciągu ostatniego roku zażyłeś(-aś) nielegalny narkotyk lub lek wydawany na receptę w celach innych niż medyczne?</string>
     <string name="social_housing">Jaka jest obecnie Twoja sytuacja mieszkaniowa?</string>
@@ -307,9 +307,9 @@
     <string name="housing_steady">Mam stałe miejsce zamieszkania</string>
     <string name="housing_worried">Mam obecnie gdzie mieszkać, ale martwię się, że to stracę</string>
     <string name="housing_none">Nie mam stałego miejsca zamieszkania</string>
-    <string name="hvs_often_true">Często prawda</string>
-    <string name="hvs_sometimes_true">Czasami prawda</string>
-    <string name="hvs_never_true">Nigdy prawda</string>
+    <string name="hvs_often_true">Często</string>
+    <string name="hvs_sometimes_true">Czasami</string>
+    <string name="hvs_never_true">Nigdy</string>
     <string name="transport_medical">Tak, na wizyty lekarskie lub po odbiór leków</string>
     <string name="transport_non_medical">Tak, do pracy lub po inne potrzebne rzeczy</string>
     <string name="transport_no">Nie</string>
