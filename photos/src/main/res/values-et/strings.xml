@@ -199,4 +199,10 @@
     <string name="secure_folder_relock_label">Lahkumisel lukusta</string>
     <string name="secure_folder_relock_description">Sisselülitumisel lukustub turvakaust peale sealt lahkumist automaatselt ja eeldab hilisemal kasutusel uuesti lukustuse avamist.</string>
     <string name="video_edit_with_label">Muuda videot minu rakendusega</string>
+    <string name="tool_crop_rotate">Kadreerimine ja pööramine</string>
+    <string name="tool_fill">Täida</string>
+    <string name="editor_desc_none">Tühi kirjeldus, kui ükski režiim pole aktiivne</string>
+    <string name="editor_desc_adjust">Liuguritega saad valgust ja värve peenhäälestada.</string>
+    <string name="editor_desc_red_eye">Punasilmsuse eemaldamiseks puuduta iga silma.</string>
+    <string name="editor_desc_healing">Eemalda iluvead, kopeerides naabruses olevaid piksleid.</string>
 </resources>
