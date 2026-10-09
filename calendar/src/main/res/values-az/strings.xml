@@ -169,4 +169,9 @@
     <string name="reminder_notification_text">Saat <xliff:g id="start_time" example="3:00 PM">%1$s</xliff:g>-da başlayır</string>
     <string name="today">Bu gün</string>
     <string name="tomorrow">Sabah</string>
+    <string name="save_this_event">Bu tədbiri yadda saxlayın</string>
+    <string name="save_this_and_following_events">Bu və növbəti tədbirləri yadda saxlayın</string>
+    <string name="save_all_events">Bütün tədbirləri yadda saxla</string>
+    <string name="edit_occurrence_not_found">Bu hadisə tapılmadı — heç nə yadda saxlanılmadı</string>
+    <string name="calendar_not_found">Təqvim tapılmadı</string>
 </resources>
