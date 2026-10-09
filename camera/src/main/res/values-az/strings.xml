@@ -53,4 +53,5 @@
     <string name="settings_save_location_choose">Qovluq seçin</string>
     <string name="settings_save_location_reset">Standart parametrlərə qaytar</string>
     <string name="settings_save_location_error">Həmin qovluqdan istifadə etmək mümkün olmadı</string>
+    <string name="mode_photo">Foto</string>
 </resources>
