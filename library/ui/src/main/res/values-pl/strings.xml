@@ -18,4 +18,21 @@
     <string name="ringtone_default">Domyślny</string>
     <string name="ringtone_silent">Cichy</string>
     <string name="ringtone_custom">Niestandardowy</string>
+    <string name="open">Otwórz</string>
+    <string name="create">Utwórz</string>
+    <string name="search">Szukaj</string>
+    <string name="today">Dzisiaj</string>
+    <string name="note">Notatka</string>
+    <string name="email">Email</string>
+    <string name="contacts">Kontakty</string>
+    <string name="reset">Resetuj</string>
+    <string name="name">Nazwa</string>
+    <string name="copy">Kopiuj</string>
+    <string name="stop">Zatrzymaj</string>
+    <string name="all">Wszystko</string>
+    <string name="apply">Zastosuj</string>
+    <string name="date">Data</string>
+    <string name="time">Godzina</string>
+    <string name="saved">Zapisano</string>
+    <string name="unknown">Nieznany</string>
 </resources>
