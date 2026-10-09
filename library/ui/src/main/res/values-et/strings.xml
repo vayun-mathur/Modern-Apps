@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- Shared across every app. Defined here so each app does not carry
          its own copy to translate; an app that needs different wording can
          still override by declaring the same name. -->
@@ -9,16 +9,150 @@
     <string name="remove">Eemalda</string>
     <string name="rename">Muuda nime</string>
     <!-- Shown when no installed app can handle an intent. -->
-    <string name="no_app_found">Ükski rakendus ei saa seda faili avada</string>
+    <string name="no_app_found">Ükski rakendus ei oska seda faili avada</string>
     <!-- Shared across every app; see the block above. -->
     <string name="settings">Seadistused</string>
     <string name="save">Salvesta</string>
     <string name="add">Lisa</string>
     <string name="done">Valmis</string>
     <string name="ok">Sobib</string>
-    <string name="clear">Eemalda</string>
-    <string name="undo">Võta tagasi</string>
+    <string name="clear">Tühjenda</string>
+    <string name="undo">Võta tegevus tagasi</string>
     <string name="ringtone_default">Vaikimisi</string>
     <string name="ringtone_silent">Hääletu</string>
     <string name="ringtone_custom">Sinu valitud</string>
+    <string name="search">Otsi</string>
+    <string name="open">Ava</string>
+    <string name="create">Loo</string>
+    <string name="today">Täna</string>
+    <string name="all">Kõik</string>
+    <string name="name">Nimi</string>
+    <string name="apply">Rakenda</string>
+    <string name="note">Märge</string>
+    <string name="email">E-posti aadress</string>
+    <string name="contacts">Kontaktid</string>
+    <string name="home">Avaleht</string>
+    <string name="copy">Kopeeri</string>
+    <string name="share">Jaga</string>
+    <string name="unknown">Pole teada</string>
+    <string name="back">Tagasi</string>
+    <string name="call">Helista</string>
+    <string name="new_game">Uus mäng</string>
+    <string name="next_level">Järgmine tase</string>
+    <string name="restart">Alusta uuesti</string>
+    <string name="daily_challenge">Igapäevane ülesanne</string>
+    <string name="stop">Lõpeta</string>
+    <string name="reset">Lähtesta suum</string>
+    <string name="date">Kuupäev</string>
+    <string name="time">Kellaaeg</string>
+    <string name="saved">Salvestatud</string>
+    <string name="dismiss">Loobu</string>
+    <string name="off">Pole kasutusel</string>
+    <string name="continue_label">Jätka</string>
+    <string name="retry">Proovi uuesti</string>
+    <string name="backup_dialog_title_import">Varukoopia salasõna importimisel</string>
+    <string name="backup_dialog_title_export">Varukoopia salasõna eksportimisel</string>
+    <string name="backup_password_prompt">Sisesta KDBX-faili üldsalasõna:</string>
+    <string name="backup_export_success">Varukoopia loomine õnnestus</string>
+    <string name="backup_export_failed_format">Varukoopia loomine ei õnnestunud: <xliff:g id="error" example="õigused on puudu">%1$s</xliff:g></string>
+    <string name="time_picker_title">Vali aeg</string>
+    <string name="label_now">Praegu</string>
+    <string name="title_game_center">Mängude keskus</string>
+    <string name="achievement_completed">Tehtud!</string>
+    <string name="style_normal">Tavaline</string>
+    <string name="style_heading1">Pealkiri 1</string>
+    <string name="style_heading2">Pealkiri 2</string>
+    <string name="style_heading3">Pealkiri 3</string>
+    <string name="style_heading4">Pealkiri 4</string>
+    <string name="link_dialog_title_edit">Muuda linki</string>
+    <string name="link_dialog_title_insert">Lisa link</string>
+    <string name="link_field_text">Tekst</string>
+    <string name="link_field_url">(Võrguaadressi) link</string>
+    <string name="link_action_unlink">Eemalda link</string>
+    <string name="link_action_open">Ava</string>
+    <string name="heading">Pealkiri <xliff:g id="level" example="2">%1$s</xliff:g></string>
+    <string name="cd_link">Linkide haldus</string>
+    <string name="next">Järgmine</string>
+    <string name="none">Puudub</string>
+    <string name="location">Asukoht</string>
+    <string name="easy">Lihtne</string>
+    <string name="medium">Keskmine</string>
+    <string name="hard">Keerukas</string>
+    <string name="settings_reminders">Meeldetuletused</string>
+    <string name="backup_import_success">Varukoopia importimine õnnestus. Käivitan rakenduse uuesti…</string>
+    <string name="backup_import_failed_format">Varukoopia importimine ei õnnestunud: <xliff:g id="error" example="vigane fail">%1$s</xliff:g></string>
+    <string name="setting_daily_reminder_time">Meeldetuletuse aeg</string>
+    <string name="game_back">Tagasi</string>
+    <string name="game_play_again">Mängi uuesti</string>
+    <string name="game_level">Tase</string>
+    <string name="game_time">Aeg</string>
+    <string name="game_moves">Käike</string>
+    <string name="game_completed">Valmis</string>
+    <string name="game_daily_challenge">Igapäevane ülesanne</string>
+    <string name="map_unavailable">Seda kaarti ei saa antud seadmes kuvada.</string>
+    <string name="permission_gate_title">Anna vajalikud õigused</string>
+    <string name="permission_name_other">Õigused</string>
+    <string name="permission_grant">Anna õigused</string>
+    <string name="permission_purpose_other">Rakenduse omadused</string>
+    <string name="permission_name_location">Asukoht</string>
+    <string name="permission_purpose_location">Praegune asukoht</string>
+    <string name="permission_name_background_location">Asukohatuvastus taustal</string>
+    <string name="permission_purpose_background_location">Asukohatuvastus, kui rakendus on suletud</string>
+    <string name="permission_name_bluetooth">Bluetooth</string>
+    <string name="permission_purpose_bluetooth">Bluetoothi seadmed lähikonnas</string>
+    <string name="permission_name_wifi">WiFi võrgus</string>
+    <string name="permission_purpose_wifi">Seadmed WiFi võrgus</string>
+    <string name="permission_name_local_network">Kohtvõrk</string>
+    <string name="permission_purpose_local_network">Seadmed kohtvõrgus</string>
+    <string name="permission_name_camera">Kaamerad</string>
+    <string name="permission_purpose_camera">Fotod ja videod</string>
+    <string name="permission_name_microphone">Mikrofon</string>
+    <string name="permission_purpose_microphone">Helisalvestus</string>
+    <string name="permission_name_contacts">Kontaktid</string>
+    <string name="permission_purpose_contacts">Kontaktide nimed ja telefoninumbrid</string>
+    <string name="permission_name_phone">Telefon</string>
+    <string name="permission_purpose_phone">Helistamine</string>
+    <string name="permission_name_calendar">Kalender</string>
+    <string name="permission_purpose_calendar">Kalendrisüsndmused</string>
+    <string name="permission_name_notifications">Teavitused</string>
+    <string name="permission_purpose_notifications">Hoiatused ja uuendused</string>
+    <string name="permission_name_audio">Helifailid</string>
+    <string name="permission_purpose_audio">Muusika selles seadmes</string>
+    <string name="permission_name_photos">Fotod ja videod</string>
+    <string name="permission_purpose_photos">Pildid ja videod selles seadmes</string>
+    <string name="permission_purpose_photos_with_location">Pildid, videod ja nende asukohad</string>
+    <string name="permission_name_photo_locations">Fotode asukohad</string>
+    <string name="permission_purpose_photo_locations">Fotodesse salvestatud asukohad</string>
+    <string name="permission_name_storage">Failid</string>
+    <string name="permission_purpose_storage">Failid selles seadmes</string>
+    <string name="permission_name_exact_alarms">Täpsed äratused</string>
+    <string name="permission_purpose_exact_alarms">Äratused ja meeldetuletused täpselt etteantud ajal</string>
+    <string name="permission_name_all_files">Kõik failid</string>
+    <string name="permission_purpose_all_files">Meediumikogust väljaspool asuvad failid</string>
+    <string name="permission_name_notification_listener">Ligipääs teavitustele</string>
+    <string name="permission_purpose_notification_listener">Teavitused teistest rakendustest</string>
+    <string name="permission_name_vpn">VPN</string>
+    <string name="permission_purpose_vpn">Virtuaalsete privaatvõrkude kasutamise kinnitamine</string>
+    <string name="permission_name_full_screen_intent">Hoiatused täisekraanivaates</string>
+    <string name="permission_purpose_full_screen_intent">Teated ja äratused lukustusvaates</string>
+    <string name="permission_name_manage_media">Meediumihaldus</string>
+    <string name="permission_purpose_manage_media">Muuda ja kustuta fotosid ja videoid</string>
+    <string name="permission_name_health_connect">Terviseandmed</string>
+    <string name="permission_purpose_health_connect">Loe ja kirjuta terviseandmeid</string>
+    <string name="setting_daily_reminder">Igapäevane meeldetuletuse pusle kohta</string>
+    <string name="setting_daily_reminder_hint">Teavita mind, kui tänase päeva pusle on mängimata</string>
+    <string name="compass_low_accuracy_title">Kompass pole täpne</string>
+    <string name="compass_calibrate_figure_8">Kalibreerimiseks liiguta telefoni õhus 8-kujulist trajektoori mööda</string>
+    <string name="ringtone_default_named"><xliff:g id="default_label" example="Vaikimisi">%1$s</xliff:g> (<xliff:g id="sound_name" example="Marimba">%2$s</xliff:g>)</string>
+    <plurals name="game_hearts_left">
+        <item quantity="one">Jäänud on <xliff:g id="count" example="1">%1$d</xliff:g> süda</item>
+        <item quantity="other">Jäänud on <xliff:g id="count" example="1">%1$d</xliff:g> südant</item>
+    </plurals>
+    <plurals name="game_daily_streak">
+        <item quantity="one"><xliff:g id="days" example="1">%1$d</xliff:g>-päevane seeria</item>
+        <item quantity="other"><xliff:g id="days" example="1">%1$d</xliff:g>-päevane seeria</item>
+    </plurals>
+    <string name="permission_exact_alarms_rationale">Täpne äratus on vajalik äratuste ja meeldetuletuste jaoks, mis peavad käivituma täpselt etteantud ajal. Lubamiseks ava seadistused.</string>
+    <string name="achievement_secret_description">Jätka mängimist, et see eesmärk avaneks</string>
+    <string name="achievement_unlocked">Eesmärk on käes!</string>
 </resources>
