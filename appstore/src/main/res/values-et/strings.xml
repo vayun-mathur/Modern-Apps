@@ -105,7 +105,7 @@
         <item quantity="other">%1$d uuendust on paigaldamisel…</item>
     </plurals>
     <string name="sync_done">Kataloog on uuendatud - %1$d rakendust</string>
-    <string name="sync_failed_all">Kummastki allikast sünkroonimine ei toiminud. Sinu olemasolev kataloog pole muutunud.</string>
+    <string name="sync_failed_all">Ühestki allikast sünkroonimine ei toiminud. Sinu olemasolev kataloog pole muutunud.</string>
     <string name="sync_failed_fdroid">F-Droidist sünkroonimine ei toiminud. Tema olemasolevad rakendused pole muutunud.</string>
     <string name="sync_failed_modern_apps">Moodsatest Rakendustest sünkroonimine ei toiminud. Tema olemasolevad rakendused pole muutunud.</string>
     <plurals name="updates_confirm_count">
