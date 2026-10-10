@@ -28,7 +28,7 @@
     <string name="section_recently_updated_subtitle">Najnowsze kompilacje na F-Droid</string>
     <string name="nav_updates">Aktualizacje</string>
     <string name="section_modern_apps">Z Modern Apps</string>
-    <string name="sources_are_fixed">Te źródła są wbudowane i nie można dodać innych — inne repozytoria F-Droid udostępniają jedynie pliki binarne skompilowane przez kogoś innego, więc nie ma z czym ich zweryfikować. Wyłącz te, z których sklep ma nie korzystać.</string>
+    <string name="sources_are_fixed">Tylko wbudowane źródła; nie można dodawać innych. Pozostałe repozytoria udostępniają niesprawdzone pliki binarne zbudowane przez inne osoby. Wyłącz te, których nie używasz.</string>
     <string name="section_modern_apps_subtitle">Zbudowano w tym repozytorium i podpisano tym samym kluczem co ten sklep</string>
     <string name="section_recently_updated">Nowe i zaktualizowane</string>
     <string name="filter_with_count">%1$s (%2$d)</string>
@@ -190,7 +190,7 @@
     <string name="trust_accrescent_limits">Accrescent nie publikuje żadnych skrótów dla poszczególnych plików ani powtarzalnych kompilacji, więc gwarancją jest podpis i minimalna wersja, a nie zgodność ze źródłem. Listy i linki do pobrania pochodzą ze zwykłego serwera za pośrednictwem gRPC; błędna odpowiedź może skutkować jedynie plikiem, który nie przejdzie kontroli podpisu i wersji. Nikt nie skanuje aplikacji i nie ma możliwości wycofania wadliwej wersji z telefonów.</string>
     <string name="source_accrescent">Accrescent</string>
     <string name="source_accrescent_pin">Przypięto do klucza podpisu repodata Accrescent (ed25519)</string>
-    <string name="updates_confirm_notification_body">Android pozwala App Store na aktualizowanie tylko tych aplikacji, które zostały przez niego zainstalowane, dlatego te wymagają Twojego kliknięcia. Otwórz App Store, aby je zainstalować.</string>
+    <string name="updates_confirm_notification_body">System Android pozwala sklepowi na aktualizowanie tylko tych aplikacji, które sam zainstalował, dlatego te pozycje wymagają Twojego zatwierdzenia. Otwórz App Store, aby je zainstalować.</string>
     <plurals name="updates_confirm_count">
         <item quantity="one">%1$d aktualizacja wymaga Twojego potwierdzenia</item>
         <item quantity="few">%1$d aktualizacje wymagają Twojego potwierdzenia</item>
@@ -223,4 +223,13 @@
     <string name="trust_grapheneos_check_rollback">Listy starsze niż ostatnio zarejestrowana są odrzucane, co uniemożliwia wymuszenie instalacji starej wersji</string>
     <string name="trust_grapheneos_check_hash_and_key">Każdy pobrany plik jest zgodny z sumą kontrolną oraz kluczem podpisu przypisanymi do jego nazwy na liście</string>
     <string name="trust_grapheneos_limits">Są to aplikacje Google o zamkniętym kodzie źródłowym. Żadna z nich nie powstaje na bazie opublikowanego kodu ani nie jest możliwa do odtworzenia; potwierdzone jest jedynie to, że otrzymano plik wskazany przez GrapheneOS, a nie to, co ten plik faktycznie robi. Kod źródłowy obejmuje wyłącznie komponenty Google Play działające w izolowanym środowisku, a wadliwego wydania nie da się już wycofać z telefonów.</string>
+    <string name="source_chip_proprietary">Własnościowy</string>
+    <string name="section_modern_apps_recent">Nowości od Modern Apps</string>
+    <string name="section_modern_apps_recent_subtitle">Najnowsze wersje z tego repozytorium</string>
+    <string name="section_proprietary_recent">Nowości w aplikacjach własnościowych</string>
+    <string name="section_proprietary_recent_subtitle">Najnowsze wersje z serwera lustrzanego Play</string>
+    <string name="section_fdroid_recent">Nowości na F-Droid</string>
+    <string name="section_fdroid_recent_subtitle">Najnowsze wersje w serwisie F-Droid</string>
+    <string name="sync_step_proprietary">Sprawdzanie własnościowego serwera lustrzanego…</string>
+    <string name="sync_failed_proprietary">Własnościowy serwer lustrzany nie zsynchronizował się. Istniejące aplikacje pozostają bez zmian.</string>
 </resources>
