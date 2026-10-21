@@ -11,6 +11,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20261021
+        versionName = "v2.6.10"
         applicationId = "com.vayunmathur.contacts"
     }
     // vCard parser tests call the real Log facade on the JVM: without this every

@@ -1,0 +1,1 @@
+Enables Android's built-in parental controls with an on-device PIN
