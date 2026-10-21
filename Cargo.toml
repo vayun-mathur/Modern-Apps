@@ -167,7 +167,7 @@ aes09 = { package = "aes", version = "=0.9.3" }
 md-5 = "0.11.0"
 # keepass 0.15.x (cipher 0.5 / cbc 0.2 / aes 0.9 stack, matching the workspace
 # default aes 0.9.3 pin). Only passwords uses keepass.
-keepass = { version = "=0.15.2", default-features = false, features = ["save_kdbx4"] }
+keepass = { version = "=0.15.3", default-features = false, features = ["save_kdbx4"] }
 # Classic Signal protocol (WhatsApp bridge) – X25519/XEdDSA + AES-CBC + HMAC.
 curve25519-dalek = { version = "5.0.0", default-features = false, features = ["alloc", "precomputed-tables", "zeroize"] }
 # MLS (RFC 9420) for the RCS line — OpenMLS + RustCrypto provider + memory storage.
