@@ -137,7 +137,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_core = "1.0.229"
 proc-macro2 = "1.0.92"
 quote = "1.0.40"
-syn = "2.0.101"
+syn = "3.0.9"
 itoa = "1.0.15"
 memchr = "2.8.3"
 # XML pull parsing for the OOXML/ODF importers. Only transitive dep is memchr, pinned above.
