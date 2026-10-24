@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Build & tooling
-agp = "9.5.0-alpha09"
+agp = "9.5.0-alpha10"
 # lint version = 23 + AGP major (AGP 9.x -> lint 32.x)
 lint = "32.5.0-alpha09"
 kotlin = "2.5.0-Beta1"
