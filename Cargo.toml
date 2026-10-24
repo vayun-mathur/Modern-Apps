@@ -295,7 +295,7 @@ ab_glyph = "0.2.32"
 png = "0.18"
 memmap2 = "0.9"
 ash = { version = "0.38", default-features = false, features = ["loaded"] }
-glam = { version = "0.27", features = ["serde"] }
+glam = { version = "0.34", features = ["serde"] }
 miniz_oxide = "0.8"
 tiff = "0.9"
 mimalloc = { version = "0.1", default-features = false }
