@@ -274,25 +274,43 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_destroyMa
     drop(unsafe { Box::from_raw(handle as *mut MadladHandle) });
 }
 
-/// Recogniser batch sizes built at OCR load, largest first. A request's strips go through the
-/// largest that fits, then smaller ones, then the single-line net, so a 10-line page is two
-/// submits rather than ten (each submit costs ~4 ms on a Pixel 8 beyond its GPU time).
+/// Recogniser batch sizes, largest first. A request's strips go through the largest that fits,
+/// then smaller ones, then the single-line net, so a 10-line page is two submits rather than ten
+/// (each submit costs ~4 ms on a Pixel 8 beyond its GPU time).
 const REC_BATCHES: [u32; 3] = [8, 4, 2];
 
-/// The batched recognisers for [`REC_BATCHES`]: independent copies of the pass in one plan.
-fn rec_batch_nets(shared: &std::sync::Arc<crate::vulkan::context::Context>, weights: &Weights) -> Result<Vec<(u32, Net)>, String> {
-    let mut nets = Vec::with_capacity(REC_BATCHES.len());
-    for lines in REC_BATCHES {
-        let plan = ppocr_rec::build_batch(weights, ocr::REC_WIDTH, lines)?;
-        nets.push((lines, Net::new(shared.clone(), plan, weights, PPOCR_REC)?));
+/// The batched recognisers for [`REC_BATCHES`], independent copies of the pass in one plan each.
+/// Built on the first request with more than one line: the three cost 48-78 ms on a Pixel 8,
+/// which a single-word request should not pay at load.
+struct RecBatches {
+    shared: std::sync::Arc<crate::vulkan::context::Context>,
+    weights: Weights,
+    nets: Vec<(u32, Net)>,
+}
+
+impl RecBatches {
+    fn nets(&mut self, lines: usize) -> Result<&mut [(u32, Net)], String> {
+        if self.nets.is_empty() && lines > 1 {
+            for batch in REC_BATCHES {
+                let plan = ppocr_rec::build_batch(&self.weights, ocr::REC_WIDTH, batch)?;
+                self.nets.push((batch, Net::new(self.shared.clone(), plan, &self.weights, PPOCR_REC)?));
+            }
+        }
+        Ok(&mut self.nets)
     }
-    Ok(nets)
 }
 
 /// Recognise every strip, one result per strip in order. Each line's logits are identical to a
 /// single-line run: the batch plans are independent copies, and the strip is preprocessed by the
 /// same `to_planar_f16` and rounded to the same fp16 on the way in.
-fn recognise_all(rec: &mut Net, batches: &mut [(u32, Net)], strips: &[Vec<i32>]) -> Vec<Result<Vec<f32>, String>> {
+fn recognise_all(rec: &mut Net, batches: &mut RecBatches, strips: &[Vec<i32>]) -> Vec<Result<Vec<f32>, String>> {
+    let batches = match batches.nets(strips.len()) {
+        Ok(nets) => nets,
+        Err(e) => {
+            log(&format!("batched recognisers unavailable, one line at a time: {e}"));
+            &mut []
+        }
+    };
     let mut out = Vec::with_capacity(strips.len());
     let mut rest = strips;
     while let Some((first, tail)) = rest.split_first() {

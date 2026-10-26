@@ -273,9 +273,18 @@ fn profile_rec_batch(path: &str, passes: u32) -> Result<(), String> {
     const LINES: u32 = 8;
     let weights = load(path, graph::PPOCR_REC)?;
     let context = context::shared()?;
+    let t = Instant::now();
     let mut single = Net::new(context.clone(), ppocr_rec::build(&weights, REC_WIDTH)?, &weights, PPOCR_REC)?;
+    println!("load      single {:.1} ms", since(t));
+    for lines in [2u32, 4] {
+        let t = Instant::now();
+        let _net = Net::new(context.clone(), ppocr_rec::build_batch(&weights, REC_WIDTH, lines)?, &weights, PPOCR_REC)?;
+        println!("load      batch of {lines} {:.1} ms", since(t));
+    }
+    let t = Instant::now();
     let mut batch =
         Net::new(context, ppocr_rec::build_batch(&weights, REC_WIDTH, LINES)?, &weights, PPOCR_REC)?;
+    println!("load      batch of {LINES} {:.1} ms", since(t));
     let len = ppocr_rec::HEIGHT as usize * REC_WIDTH as usize;
     let strips: Vec<Vec<i32>> = (0..LINES as usize)
         .map(|i| (0..len).map(|p| (0xff00_0000u32 | ((p * 37 + i * 101) as u32 * 2_654_435_761 >> 8)) as i32).collect())
