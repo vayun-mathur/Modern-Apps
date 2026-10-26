@@ -186,8 +186,9 @@ impl Graph {
                     res,
                     shift,
                     quant_scale,
+                    staged,
                 } => {
-                    if res.is_some() || shift.is_some() {
+                    if res.is_some() || shift.is_some() || staged.is_some() {
                         return Err(format!(
                             "emitter: node {i} carries a fused addend; emit before fusion"
                         ));

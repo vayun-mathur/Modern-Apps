@@ -65,4 +65,54 @@ impl Reference {
         }
         Ok(())
     }
+
+    /// `conv_point_int4_dot.comp`: the input quantised per position per 32-tap block to int8
+    /// (`quantize_blocks.comp`'s rounding), exact integer block sums, then
+    /// `acc += isum * (ascale * wscale)`. Read from the fp16 input, which the op keeps live, so
+    /// [`Kind::QuantizeBlocks`] has nothing to do here.
+    fn conv_int4_dot(&mut self, p: &Push) -> Result<(), String> {
+        let block = crate::weights::I4_BLOCK;
+        let blocks = p.in_c / block;
+        let positions = p.out_h * p.out_w;
+        let mut staged = vec![(0.0f32, [0i32; 32]); (blocks * positions) as usize];
+        for b in 0..blocks {
+            for position in 0..positions {
+                let mut v = [0.0f32; 32];
+                for (t, slot) in v.iter_mut().enumerate() {
+                    *slot = self.load(p.in0, (b * block + t as u32) * positions + position)?;
+                }
+                let amax = v.iter().fold(0.0f32, |m, x| m.max(x.abs()));
+                let inv = if amax > 0.0 { 127.0 / amax } else { 0.0 };
+                let mut q = [0i32; 32];
+                for (slot, x) in q.iter_mut().zip(v) {
+                    *slot = ((x * inv).round_ties_even() as i32).clamp(-127, 127);
+                }
+                if let Some(cell) = staged.get_mut((b * positions + position) as usize) {
+                    *cell = (amax / 127.0, q);
+                }
+            }
+        }
+        for oc in 0..p.out_c {
+            let shift = self.fused_shift(p, oc)?;
+            for position in 0..positions {
+                let mut acc = 0.0f32;
+                for b in 0..blocks {
+                    let (ascale, q) = staged
+                        .get((b * positions + position) as usize)
+                        .copied()
+                        .ok_or("staged block out of range")?;
+                    let mut isum = 0i32;
+                    for (t, x) in q.iter().enumerate() {
+                        isum += x * i32::from(self.int4(p.weight, oc * p.in_c + b * block + t as u32)?);
+                    }
+                    acc += isum as f32 * (ascale * self.weight(p.act_weight, oc * blocks + b)?);
+                }
+                let biased = acc + self.weight(p.bias, oc)?;
+                let index = oc * positions + position;
+                let folded = activate(biased, p.act, 0.0) + self.fused_res(p, index)? + shift;
+                self.store(p.out, index, self.fused_quant(p, folded)?)?;
+            }
+        }
+        Ok(())
+    }
 }

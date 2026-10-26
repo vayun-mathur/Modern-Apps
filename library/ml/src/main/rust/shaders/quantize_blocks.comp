@@ -1,0 +1,57 @@
+#version 450
+//! Block-quantises a channel-major fp16 activation `(in_c, positions)` to int8 for
+//! `conv_point_int4_dot.comp`: one scale per position per 32-channel block, matching the int4
+//! weights' `I4_BLOCK`.
+//!
+//! # Layout written at `p.out_at` (element offset, a multiple of 8)
+//!
+//! Data, `[block][position]`, 8 words each: word `2q` packs channels `8q + 0, 2, 4, 6` and word
+//! `2q + 1` channels `8q + 1, 3, 5, 7`, one signed byte each, low byte first. That is the order a
+//! weight word's nibbles fall into after `& 0x0F0F0F0F` and `>> 4 & 0x0F0F0F0F`. Then, from
+//! element `p.out_at + positions * in_c / 2`, a `[block][position]` table of `uvec2`: the scale as
+//! f32 bits and `8 * sum(q)`, the correction for weights read as unsigned nibbles `w + 8`.
+//!
+//! # Push fields
+//!
+//! `p.in0` the input, `p.out_at` the output, `p.in_c` channels, `p.out_h * p.out_w` positions,
+//! `p.count` `positions * in_c / 32` invocations.
+#include "common.glsl"
+
+layout(std430, binding = 0) buffer ArenaWord {
+    uint arena_word[];
+};
+
+uint pack4(vec4 v, float inv, inout int sum) {
+    ivec4 q = clamp(ivec4(roundEven(v * inv)), ivec4(-127), ivec4(127));
+    sum += q.x + q.y + q.z + q.w;
+    return uint(q.x & 255) | (uint(q.y & 255) << 8u) | (uint(q.z & 255) << 16u) | (uint(q.w) << 24u);
+}
+
+void main() {
+    uint index = global_index();
+    if (index >= p.count) {
+        return;
+    }
+    uint positions = p.out_h * p.out_w;
+    uint position = index % positions;
+    uint block = index / positions;
+    float v[32];
+    float amax = 0.0;
+    uint at = p.in0 + block * I4_BLOCK * positions + position;
+    for (uint t = 0u; t < 32u; t++) {
+        v[t] = float(arena[at + t * positions]);
+        amax = max(amax, abs(v[t]));
+    }
+    float inv = amax > 0.0 ? 127.0 / amax : 0.0;
+    int sum = 0;
+    uint base = (p.out_at >> 1u) + index * 8u;
+    for (uint q = 0u; q < 4u; q++) {
+        uint k = q * 8u;
+        arena_word[base + 2u * q] = pack4(vec4(v[k], v[k + 2u], v[k + 4u], v[k + 6u]), inv, sum);
+        arena_word[base + 2u * q + 1u] =
+            pack4(vec4(v[k + 1u], v[k + 3u], v[k + 5u], v[k + 7u]), inv, sum);
+    }
+    uint meta = ((p.out_at + positions * p.in_c / 2u) >> 1u) + index * 2u;
+    arena_word[meta] = floatBitsToUint(amax / 127.0);
+    arena_word[meta + 1u] = uint(8 * sum);
+}

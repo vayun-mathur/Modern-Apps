@@ -347,6 +347,26 @@ impl<'a> Builder<'a> {
                     invocations: 64,
                 });
             }
+            Node::QuantizeBlocks { input, out } => {
+                let (si, so) = (shape(*input), shape(*out));
+                let count = si.c / crate::weights::I4_BLOCK * si.h * si.w;
+                ops.push(Op::Dispatch {
+                    kind: Kind::QuantizeBlocks,
+                    push: Push {
+                        in0: at(*input)?,
+                        out: at(*out)?,
+                        in_c: si.c,
+                        in_h: si.h,
+                        in_w: si.w,
+                        out_c: so.c,
+                        out_h: so.h,
+                        out_w: so.w,
+                        count,
+                        ..Push::default()
+                    },
+                    invocations: count,
+                });
+            }
             Node::Quantize { input, out, scale } => {
                 let so = shape(*out);
                 ops.push(Op::Dispatch {

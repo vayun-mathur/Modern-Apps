@@ -178,7 +178,9 @@ pub(crate) mod tests {
             // serves a `1 x 1` is a lowering decision the op-inventory tests should not see.
             // The int4 and Q2_K triples fold the same way.
             super::Kind::ConvPointInt8 | super::Kind::ConvVecInt8 => "ConvInt8".to_string(),
-            super::Kind::ConvPointInt4 | super::Kind::ConvVecInt4 => "ConvInt4".to_string(),
+            super::Kind::ConvPointInt4 | super::Kind::ConvVecInt4 | super::Kind::ConvPointInt4Dot => {
+                "ConvInt4".to_string()
+            }
             super::Kind::ConvQ2K | super::Kind::ConvPointQ2K | super::Kind::ConvVecQ2K => {
                 "ConvQ2K".to_string()
             }

@@ -288,7 +288,7 @@ impl Kind {
             // word view, and its scale table is fp16 like an int8 one - only wider. Q2_K
             // reads identically too: superblocks through the word view, the `(d, dmin)`
             // table through the fp16 view, bias as usual.
-            Kind::ConvVecInt4 | Kind::ConvPointInt4 | Kind::ConvQ2K | Kind::ConvVecQ2K | Kind::ConvPointQ2K => {
+            Kind::ConvVecInt4 | Kind::ConvPointInt4 | Kind::ConvPointInt4Dot | Kind::ConvQ2K | Kind::ConvVecQ2K | Kind::ConvPointQ2K => {
                 reads.push(WeightRead { at: words(push.weight), field: "weight" });
                 reads.push(WeightRead { at: elems(push.bias), field: "bias" });
                 reads.push(WeightRead { at: elems(push.act_weight), field: "act_weight" });
@@ -331,6 +331,7 @@ impl Kind {
             | Kind::CacheWrite
             | Kind::Softcap
             | Kind::Quantize
+            | Kind::QuantizeBlocks
             | Kind::Argmax
             | Kind::ArgmaxFold
             | Kind::TopK
@@ -445,11 +446,16 @@ impl Kind {
             | Kind::ConvPointInt8
             | Kind::ConvVecInt8
             | Kind::ConvPointInt4
+            | Kind::ConvPointInt4Dot
             | Kind::ConvVecInt4
             | Kind::ConvQ2K
             | Kind::ConvPointQ2K
             | Kind::ConvVecQ2K => {
                 let mut ranges = vec![(push.in0, dense)];
+                // The dot GEMM also reads the int8 blocks staged at `kw`.
+                if self == Kind::ConvPointInt4Dot {
+                    ranges.push((push.kw, push.in_c / 8 * 5 * push.out_h * push.out_w));
+                }
                 if push.res != NO_FUSE {
                     ranges.push((push.res, written));
                 }
@@ -472,6 +478,7 @@ impl Kind {
             | Kind::Affine
             | Kind::Softcap
             | Kind::Quantize
+            | Kind::QuantizeBlocks
             | Kind::Activate
             | Kind::GatedActivate
             | Kind::MulScalar

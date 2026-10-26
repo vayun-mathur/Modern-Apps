@@ -32,6 +32,7 @@ impl Node {
             | Node::ArgmaxFold { out, .. } => *out,
             | Node::TopK { out, .. } => *out,
             | Node::Quantize { out, .. } => *out,
+            | Node::QuantizeBlocks { out, .. } => *out,
             | Node::Activate { out, .. }
             | Node::GatedActivate { out, .. } => *out,
             | Node::MulScalar { out, .. } => *out,
@@ -50,10 +51,11 @@ impl Node {
                 reads.extend(shift.iter().copied());
                 reads
             }
-            Node::ConvInt8 { input, res, shift, .. } => {
+            Node::ConvInt8 { input, res, shift, staged, .. } => {
                 let mut reads = vec![*input];
                 reads.extend(res.iter().copied());
                 reads.extend(shift.iter().copied());
+                reads.extend(staged.iter().copied());
                 reads
             }
             Node::MaxPool { input, .. }
@@ -66,6 +68,7 @@ impl Node {
             | Node::Softcap { input, .. }
             | Node::Argmax { input, .. }
             | Node::Quantize { input, .. }
+            | Node::QuantizeBlocks { input, .. }
             | Node::GatedActivate { input, .. }
             | Node::Activate { input, .. }
             | Node::MulScalar { input, .. }

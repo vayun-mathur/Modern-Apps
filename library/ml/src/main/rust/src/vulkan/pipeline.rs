@@ -25,7 +25,7 @@ use ash::vk;
 use crate::nets::Kind;
 
 use super::context::Context;
-use super::pipeline_extra::{CONV_POINT_Q2K, CONV_Q2K, QUANTIZE};
+use super::pipeline_extra::{CONV_POINT_Q2K, CONV_Q2K, QUANTIZE, QUANTIZE_BLOCKS};
 use super::segment::Segment;
 
 const CONV: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/conv.comp.spv"));
@@ -92,7 +92,7 @@ const TOPK: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/topk.comp.spv"));
 /// Every shader, in the order `Shaders::create` destructures them (the Q2_K pair,
 /// `QUANTIZE`, and the `compute_pipeline` / `shader_module` helpers live in
 /// `pipeline_extra.rs` for length).
-pub(crate) const SPIRV: [&[u8]; 48] = [
+pub(crate) const SPIRV: [&[u8]; 49] = [
     CONV,
     CONV_TRANSPOSE,
     MAXPOOL,
@@ -141,6 +141,7 @@ pub(crate) const SPIRV: [&[u8]; 48] = [
     ARGMAX,
     ARGMAX_FOLD,
     TOPK,
+    QUANTIZE_BLOCKS,
 ];
 
 /// Descriptors in one set: the arena, the weights as fp16, the weights as words, the step params.
@@ -223,6 +224,9 @@ pub struct Shaders {
     pub(crate) argmax: vk::Pipeline,
     pub(crate) argmax_fold: vk::Pipeline,
     pub(crate) topk: vk::Pipeline,
+    pub(crate) quantize_blocks: vk::Pipeline,
+    /// Null when the device lacks the int8 dot product; see [`Context::int_dot`].
+    pub(crate) conv_point_int4_dot: vk::Pipeline,
 }
 
 /// One net's descriptor sets, over the device-wide [`Shaders`].

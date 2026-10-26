@@ -60,6 +60,10 @@ pub struct Context {
     pub queue_family_index: u32,
     /// The three device limits the weights buffer has to fit inside.
     pub limits: Limits,
+    /// `VK_KHR_shader_integer_dot_product` is enabled, so the int8-dot int4 GEMM can run.
+    ///
+    /// Optional: the Vulkan 1.1 floor does not have it. `MODELRUNNER_INT8_DOT=0` turns it off.
+    pub int_dot: bool,
     /// Guards the queue above.
     ///
     /// `VkQueue` is *externally synchronised* in the Vulkan sense: the application must not
@@ -229,16 +233,26 @@ impl Context {
         let queue_info = vk::DeviceQueueCreateInfo::default()
             .queue_family_index(queue_family_index)
             .queue_priorities(&priorities);
-        let extensions = [ash::khr::shader_float16_int8::NAME.as_ptr()];
+        let int_dot = Self::supports_int_dot(&instance, physical_device)
+            && crate::knobs::get("int8_dot").as_deref() != Some("0");
+        let mut extensions = vec![ash::khr::shader_float16_int8::NAME.as_ptr()];
+        if int_dot {
+            extensions.push(ash::khr::shader_integer_dot_product::NAME.as_ptr());
+        }
         let mut float16 =
             vk::PhysicalDeviceShaderFloat16Int8Features::default().shader_float16(true);
         let mut storage16 =
             vk::PhysicalDevice16BitStorageFeatures::default().storage_buffer16_bit_access(true);
-        let device_info = vk::DeviceCreateInfo::default()
+        let mut dot =
+            vk::PhysicalDeviceShaderIntegerDotProductFeatures::default().shader_integer_dot_product(true);
+        let mut device_info = vk::DeviceCreateInfo::default()
             .queue_create_infos(std::slice::from_ref(&queue_info))
             .enabled_extension_names(&extensions)
             .push_next(&mut float16)
             .push_next(&mut storage16);
+        if int_dot {
+            device_info = device_info.push_next(&mut dot);
+        }
         let device = match instance.create_device(physical_device, &device_info, None) {
             Ok(d) => d,
             Err(e) => {
@@ -256,6 +270,7 @@ impl Context {
             queue,
             queue_family_index,
             limits,
+            int_dot,
             queue_lock: Mutex::new(()),
             shaders: Mutex::new(None),
         })
@@ -313,6 +328,30 @@ impl Context {
             .push_next(&mut storage16);
         instance.get_physical_device_features2(physical_device, &mut features);
         float16.shader_float16 == vk::TRUE && storage16.storage_buffer16_bit_access == vk::TRUE
+    }
+
+    /// Whether `VK_KHR_shader_integer_dot_product` is present with its feature and packed 4x8
+    /// signed dot products are hardware-accelerated. Emulated ones would be slower than fp32.
+    unsafe fn supports_int_dot(instance: &ash::Instance, physical_device: vk::PhysicalDevice) -> bool {
+        let has_extension = instance
+            .enumerate_device_extension_properties(physical_device)
+            .is_ok_and(|all| {
+                all.iter().any(|e| {
+                    CStr::from_ptr(e.extension_name.as_ptr())
+                        == ash::khr::shader_integer_dot_product::NAME
+                })
+            });
+        if !has_extension {
+            return false;
+        }
+        let mut dot = vk::PhysicalDeviceShaderIntegerDotProductFeatures::default();
+        let mut features = vk::PhysicalDeviceFeatures2::default().push_next(&mut dot);
+        instance.get_physical_device_features2(physical_device, &mut features);
+        let mut fast = vk::PhysicalDeviceShaderIntegerDotProductProperties::default();
+        let mut properties = vk::PhysicalDeviceProperties2::default().push_next(&mut fast);
+        instance.get_physical_device_properties2(physical_device, &mut properties);
+        dot.shader_integer_dot_product == vk::TRUE
+            && fast.integer_dot_product4x8_bit_packed_signed_accelerated == vk::TRUE
     }
 
     unsafe fn has_layer(entry: &Entry, wanted: &CStr) -> bool {

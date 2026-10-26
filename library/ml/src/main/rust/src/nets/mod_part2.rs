@@ -360,6 +360,11 @@ pub(crate) enum Node {
         out: Id,
         scale: f32,
     },
+    /// int8 blocks of an int4 GEMM's input. See [`Kind::QuantizeBlocks`].
+    QuantizeBlocks {
+        input: Id,
+        out: Id,
+    },
     /// An activation on its own. See [`Kind::Activate`].
     Activate {
         input: Id,
@@ -437,6 +442,9 @@ pub(crate) enum Node {
         /// convolution produced folds into the store, which keeps
         /// `quantize(activate(acc + bias))` and never dispatches it.
         quant_scale: Option<f32>,
+        /// The input block-quantised to int8 by a [`Node::QuantizeBlocks`], for an int4 GEMM
+        /// on the int8 dot product. See [`Kind::ConvPointInt4Dot`].
+        staged: Option<Id>,
     },
     AttnApply {
         probs: Id,

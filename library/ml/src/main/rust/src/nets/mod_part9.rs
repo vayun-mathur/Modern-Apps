@@ -27,6 +27,7 @@ impl<'a> Builder<'a> {
                 res,
                 shift,
                 quant_scale,
+                staged,
             } => {
                 let (si, so) = (shape(*input), shape(*out));
                 // The same test `Node::Conv` applies below, less the two cases that cannot arise
@@ -84,6 +85,7 @@ impl<'a> Builder<'a> {
                     && (si.c * kernel.1) % 16 == 0
                     && *weight % 4 == 0;
                 let kind = if row_gemm { Kind::ConvPointInt8 } else { kind };
+                let (kind, staged_at) = Self::int8_dot(kind, *staged, at)?;
                 // Too few 32 x 32 tiles to fill the GPU: two channels per invocation instead of
                 // four, bit-identical. See `split_rows` in conv_point_int8.comp. On a Pixel 8,
                 // splitting everything under 256 tiles took Supertonic's sampler 2199 -> 1521 ms.
@@ -146,7 +148,7 @@ impl<'a> Builder<'a> {
                     Kind::ConvPointQ2K => {
                         so.c.div_ceil(CONV_POINT_INT8_TILE >> q2k_split) * positions.div_ceil(CONV_POINT_INT8_TILE)
                     }
-                    Kind::ConvPointInt8 | Kind::ConvPointInt4 => int8_tiles,
+                    Kind::ConvPointInt8 | Kind::ConvPointInt4 | Kind::ConvPointInt4Dot => int8_tiles,
                     _ => so.len(),
                 };
                 ops.push(Op::Dispatch {
@@ -183,7 +185,7 @@ impl<'a> Builder<'a> {
                         // `nets::reference` can serve all three kinds from one `conv_int8`, whose
                         // arithmetic is identical once the geometry above holds.
                         kh: kernel.0,
-                        kw: kernel.1,
+                        kw: staged_at.unwrap_or(kernel.1),
                         stride_h: stride.0,
                         stride_w: stride.1,
                         dil_h: dilation.0,
@@ -207,7 +209,7 @@ impl<'a> Builder<'a> {
                         Kind::ConvVecInt8
                         | Kind::ConvPointInt8
                         | Kind::ConvVecInt4
-                        | Kind::ConvPointInt4
+                        | Kind::ConvPointInt4 | Kind::ConvPointInt4Dot
                         | Kind::ConvVecQ2K
                         | Kind::ConvPointQ2K => count * 64,
                         Kind::ConvInt8 if int8_blocked => {

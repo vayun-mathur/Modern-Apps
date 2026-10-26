@@ -12,7 +12,13 @@ impl<'a> Builder<'a> {
             pad_edge: false,
             spatial_tiled: false,
             widen_int8: false,
+            fp32_int4: false,
         }
+    }
+    /// Keep this net's int4 GEMMs on fp32 activations, off the int8 dot-product path that
+    /// `stage_int8` otherwise picks.
+    pub fn fp32_int4(&mut self) {
+        self.fp32_int4 = true;
     }
 
     /// Run this net's int8 GEMMs over fp16 copies of their weights, widened at upload.
@@ -398,6 +404,7 @@ impl<'a> Builder<'a> {
         let out_h = conv_out(in_shape.h, kh, stride.0, dilation.0, pad_t + pad_b);
         let out_w = conv_out(in_shape.w, kw, stride.1, dilation.1, pad_l + pad_r);
         let out = self.tensor(Shape::new(m, out_h, out_w));
+        let staged = self.stage_int8(input, weight, quant, kernel, stride, (pad_t, pad_l, pad_b, pad_r), group);
         self.nodes.push(Node::ConvInt8 {
             input,
             out,
@@ -414,7 +421,67 @@ impl<'a> Builder<'a> {
             res: None,
             shift: None,
             quant_scale: None,
+            staged,
         });
         out
     }
+
+    /// The int8 blocks an int4 GEMM over `input` reads on the dot-product path, or `None` when
+    /// it stays fp32: decode (one position), shapes the dot shader cannot tile, or
+    /// `MODELRUNNER_INT8_DOT=0`. Convolutions sharing an input share one staging.
+    #[allow(clippy::too_many_arguments)]
+    fn stage_int8(
+        &mut self,
+        input: Id,
+        weight: u32,
+        quant: Quant,
+        kernel: (u32, u32),
+        stride: (u32, u32),
+        pads: (u32, u32, u32, u32),
+        group: u32,
+    ) -> Option<Id> {
+        let s = self.shape_of(input);
+        let positions = s.h * s.w;
+        let eligible = quant == Quant::I4
+            && !self.fp32_int4
+            && kernel == (1, 1)
+            && stride == (1, 1)
+            && pads == (0, 0, 0, 0)
+            && group == 1
+            && s.c % crate::weights::I4_BLOCK == 0
+            && positions >= INT8_DOT_MIN_POSITIONS
+            && positions % 4 == 0
+            && weight % 4 == 0
+            && crate::knobs::get("int8_dot").as_deref() != Some("0");
+        if !eligible {
+            return None;
+        }
+        let existing = self.nodes.iter().find_map(|node| match node {
+            Node::QuantizeBlocks { input: i, out } if *i == input => Some(*out),
+            _ => None,
+        });
+        if existing.is_some() {
+            return existing;
+        }
+        let out = self.tensor(Shape::new(s.c / 8 * 5, s.h, s.w));
+        self.nodes.push(Node::QuantizeBlocks { input, out });
+        Some(out)
+    }
+
+    /// The int8 dot-product GEMM and its staged input's offset when the builder staged one (see
+    /// `stage_int8`); its 32 x 32 tiling is also the fp32 shader's `in1` 0 path, the fallback.
+    fn int8_dot(
+        kind: Kind,
+        staged: Option<Id>,
+        at: &dyn Fn(Id) -> Result<u32, String>,
+    ) -> Result<(Kind, Option<u32>), String> {
+        let staged_at = match staged {
+            Some(id) if kind == Kind::ConvPointInt4 => Some(at(id)?).filter(|s| s % 8 == 0),
+            _ => None,
+        };
+        Ok((if staged_at.is_some() { Kind::ConvPointInt4Dot } else { kind }, staged_at))
+    }
 }
+
+/// Fewest positions an int4 GEMM needs to take the int8 dot-product path.
+const INT8_DOT_MIN_POSITIONS: u32 = 8;

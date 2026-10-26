@@ -247,6 +247,7 @@ fn int4_gemm_fixture(label: &str, out_channels: u32, in_channels: u32, positions
     let weights = Weights::parse(&blob, graph::SUPERTONIC_VE).expect("the int4 fixture parses");
     let input = spread((in_channels * positions) as usize, 0.5);
     let mut builder = Builder::new(&weights);
+    builder.fp32_int4();
     let first = builder.input(Shape::new(in_channels, 1, positions));
     let last = builder.conv_int4(first, 0, out_channels, act);
     let plan = builder.finish(&[last]).expect("the int4 gemm fixture plan builds");
@@ -466,6 +467,7 @@ fn the_wide_int4_gemm_agrees_with_the_reference_at_gemma_prefill_shapes() {
     );
     let weights = Weights::parse(&blob, graph::SUPERTONIC_VE).expect("the int4 fixture parses");
     let mut builder = Builder::new(&weights);
+    builder.fp32_int4();
     let first = builder.input(Shape::new(1536, 1, 200));
     let last = builder.conv_int4(first, 0, 64, Act::None);
     let plan = builder.finish(&[last]).expect("the plan builds");

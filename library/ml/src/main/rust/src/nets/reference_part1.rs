@@ -93,6 +93,8 @@ impl Reference {
                         self.conv_int8(push)
                     }
                     Kind::ConvVecInt4 | Kind::ConvPointInt4 => self.conv_int4(push),
+                    Kind::ConvPointInt4Dot => self.conv_int4_dot(push),
+                    Kind::QuantizeBlocks => Ok(()),
                     Kind::ConvQ2K | Kind::ConvPointQ2K | Kind::ConvVecQ2K => self.conv_q2k(push),
                 },
             };

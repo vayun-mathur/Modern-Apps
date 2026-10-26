@@ -17,6 +17,11 @@ pub(crate) const CONV_POINT_Q2K: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_q2k.comp.spv"));
 pub(crate) const CONV_Q2K: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/conv_q2k.comp.spv"));
+pub(crate) const QUANTIZE_BLOCKS: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/quantize_blocks.comp.spv"));
+/// Declares `DotProductKHR`, so it is built only on a device that enabled the extension.
+const CONV_POINT_INT4_DOT: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_int4_dot.comp.spv"));
 
 impl Shaders {
     /// Compile every shader and build the two layouts. Called once per device.
@@ -100,6 +105,17 @@ impl Shaders {
         // `pipeline_cache`.
         let (cache, seed) = super::pipeline_cache::open(device);
         let started = std::time::Instant::now();
+        let conv_point_int4_dot = if context.int_dot {
+            match compute_pipeline(device, layout, cache, CONV_POINT_INT4_DOT) {
+                Ok(pipeline) => pipeline,
+                Err(e) => {
+                    super::pipeline_cache::close(device, cache, &seed);
+                    return Err(e);
+                }
+            }
+        } else {
+            vk::Pipeline::null()
+        };
         for spirv in SPIRV {
             match compute_pipeline(device, layout, cache, spirv) {
                 Ok(pipeline) => built.push(pipeline),
@@ -107,6 +123,7 @@ impl Shaders {
                     for pipeline in built {
                         device.destroy_pipeline(pipeline, None);
                     }
+                    device.destroy_pipeline(conv_point_int4_dot, None);
                     super::pipeline_cache::close(device, cache, &seed);
                     return Err(e);
                 }
@@ -170,12 +187,14 @@ impl Shaders {
             argmax,
             argmax_fold,
             topk,
+            quantize_blocks,
         ] = match <[vk::Pipeline; SPIRV.len()]>::try_from(built) {
             Ok(all) => all,
             Err(built) => {
                 for pipeline in built {
                     device.destroy_pipeline(pipeline, None);
                 }
+                device.destroy_pipeline(conv_point_int4_dot, None);
                 return Err("wrong pipeline count".into());
             }
         };
@@ -232,6 +251,8 @@ impl Shaders {
             argmax,
             argmax_fold,
             topk,
+            quantize_blocks,
+            conv_point_int4_dot,
         })
     }
 
@@ -261,6 +282,12 @@ impl Shaders {
             Kind::GatedActivate => self.gated_activate,
             Kind::ConvVecInt4 => self.conv_vec_int4,
             Kind::ConvPointInt4 => self.conv_point_int4,
+            // Same push and tiling as the fp32 shader's `in1` 0 path, which serves it otherwise.
+            Kind::ConvPointInt4Dot if self.conv_point_int4_dot != vk::Pipeline::null() => {
+                self.conv_point_int4_dot
+            }
+            Kind::ConvPointInt4Dot => self.conv_point_int4,
+            Kind::QuantizeBlocks => self.quantize_blocks,
             Kind::ConvVecQ2K => self.conv_vec_q2k,
             Kind::ConvPointQ2K => self.conv_point_q2k,
             Kind::ConvQ2K => self.conv_q2k,
@@ -341,6 +368,8 @@ impl Shaders {
             self.argmax,
             self.argmax_fold,
             self.topk,
+            self.quantize_blocks,
+            self.conv_point_int4_dot,
         ] {
             device.destroy_pipeline(pipeline, None);
         }

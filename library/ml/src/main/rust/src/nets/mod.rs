@@ -346,6 +346,13 @@ pub enum Kind {
     /// S10's live attention quantizes the mixture to int8 before the O projection
     /// consumes it; the scale rides the push block like [`Kind::Softcap`]'s cap.
     Quantize,
+    /// Block-quantise an activation to int8 for [`Kind::ConvPointInt4Dot`]. See
+    /// `shaders/quantize_blocks.comp`.
+    QuantizeBlocks,
+    /// [`Kind::ConvPointInt4`] on the int8 dot product, reading the staged activation at
+    /// [`Push::kw`]. Falls back to the fp32 pipeline on a device without the extension. See
+    /// `shaders/conv_point_int4_dot.comp`.
+    ConvPointInt4Dot,
     /// `O[h][d][i] = sum_j S[h][i][j] * V[h][d][j]`, attention's weighted sum.
     ///
     /// `O[h][d][i] = sum_j S[h][i][j] * V[h][d][j]`, attention's weighted sum.

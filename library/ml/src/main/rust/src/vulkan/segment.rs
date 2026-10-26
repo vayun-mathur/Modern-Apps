@@ -198,6 +198,7 @@ pub(crate) fn rebase_push(base: u64, kind: Kind, push: &Push) -> Push {
                         | Kind::ConvVecInt8
                         | Kind::ConvVecInt4
                         | Kind::ConvPointInt4
+                        | Kind::ConvPointInt4Dot
                         | Kind::ConvQ2K
                         | Kind::ConvVecQ2K
                         | Kind::ConvPointQ2K
