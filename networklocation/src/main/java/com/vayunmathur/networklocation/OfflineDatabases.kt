@@ -60,7 +60,7 @@ object OfflineDatabases {
      * has been built and published.
      */
     fun sha256For(name: String): String? = when (name) {
-        GEOCODER -> "a9a3b21eba93fcf4549c077c8a2a74ae561570878c63988601505a5fe6a6f942"
+        GEOCODER -> "6032d718e3553d4790c35339adaca3bc0f3087b5db59ba6838abaa8a376647b4"
         // A device that has a store counts it as installed and never refetches it, so new
         // content for a beacon store must ship under a new filename, not just a new hash.
         WIFI -> "c8aa83f577d90d250d76912df2adde8a8e0d0bc0dcb4c87fe9e9916a59e822db"
