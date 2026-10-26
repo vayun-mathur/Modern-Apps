@@ -315,6 +315,18 @@ impl<'a> Builder<'a> {
         out
     }
 
+    /// `input` with zero positions appended up to `count`: the same 1x1 average pool, whose
+    /// windows past the input's width sum nothing.
+    pub fn pad_positions(&mut self, input: Id, count: u32) -> Id {
+        let shape = self.shape_of(input);
+        if count < shape.w {
+            self.fail(format!("{shape:?} padded to {count} positions"));
+        }
+        let out = self.tensor(Shape::new(shape.c, shape.h, count));
+        self.nodes.push(Node::AvgPool { input, out, kernel: (1, 1), stride: (1, 1) });
+        out
+    }
+
     /// [`Builder::softmax`] with each query's row truncated at the diagonal.
     ///
     /// The input must be a square score map `[heads, T, T]`: a causal mask is a statement about

@@ -259,9 +259,16 @@ pub fn build(weights: &dyn WeightSource, mode: Mode) -> Result<Plan, String> {
         return builder.finish(&[sscp_out, projected]);
     }
 
-    let mut x = projected;
+    // Layers run padded to a multiple of eight positions so the int4 GEMMs take their 16-byte
+    // load path. Exact: the attention band and the depthwise conv only read earlier positions,
+    // and every other op is per position.
+    let padded = seq.next_multiple_of(8);
+    let mut x = if padded == seq { projected } else { b.pad_positions(projected, padded) };
     for index in 0..stop_after {
         x = layer(b, index, x)?;
+    }
+    if padded != seq {
+        x = b.crop_positions(x, seq);
     }
     for index in stop_after..LAYERS {
         declare_layer(weights, index)?;

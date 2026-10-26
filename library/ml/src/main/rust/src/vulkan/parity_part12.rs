@@ -47,5 +47,9 @@ fn key_bounded_softmax_and_crop_agree_with_the_reference() {
         let source = Invented::new(0);
         let plan = build(&source, &[Shape::new(heads, queries, width)], |b, ids| b.softmax_keys(ids[0], keys));
         compare(&format!("softmax over {keys} of {width} keys, zero tail"), plan, source.into_data(), &[&scores]);
+        let source = Invented::new(0);
+        let plan = build(&source, &[Shape::new(heads, queries, keys)], |b, ids| b.pad_positions(ids[0], width));
+        let real = spread((heads * queries * keys) as usize, 0.29);
+        compare(&format!("{keys} positions padded to {width}"), plan, source.into_data(), &[&real]);
     }
 }
