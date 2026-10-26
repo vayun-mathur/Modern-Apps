@@ -21,7 +21,7 @@ use modelrunner::nets::{
     maia, mobilefacenet, modnet, ppocr_det, ppocr_rec, scrfd, selfie, tinyclip, u2netp, Plan,
 };
 use modelrunner::post::ocr::REC_WIDTH;
-use modelrunner::preprocess::{RESCALE_ONLY, PPOCR_REC};
+use modelrunner::preprocess::{f16_to_f32, to_planar_f16, PPOCR_REC, RESCALE_ONLY};
 use modelrunner::vulkan::context;
 use modelrunner::vulkan::reshape::Reshaped;
 use modelrunner::vulkan::run::Net;
@@ -44,6 +44,7 @@ fn main() {
         ("mbf", "w600k_mbf.maml", 5),
         ("det", "ppocr_det.maml", 2),
         ("rec", "ppocr_rec.maml", 5),
+        ("rec_batch", "ppocr_rec.maml", 5),
         ("clip_image", "clip/tinyclip.maml", 3),
         ("clip_text", "clip/tinyclip.maml", 5),
         ("maia", "maia3-5m.maml", 3),
@@ -63,6 +64,7 @@ fn main() {
             "mbf" => profile_mbf(&path, *passes),
             "det" => profile_det(&path, *passes),
             "rec" => profile_rec(&path, *passes),
+            "rec_batch" => profile_rec_batch(&path, *passes),
             "clip_image" => profile_clip_image(&path, *passes),
             "clip_text" => profile_clip_text(&path, *passes),
             "maia" => profile_maia(&path, *passes),
@@ -264,6 +266,48 @@ fn profile_rec(path: &str, passes: u32) -> Result<(), String> {
     let input = pattern(3 * ppocr_rec::HEIGHT as usize * REC_WIDTH as usize);
     let input_b = blob(3, ppocr_rec::HEIGHT as usize, REC_WIDTH as usize);
     report("rec", &mut net, &input, &input_b, passes)
+}
+
+/// Eight lines one submit each against one batched submit; the logits must match bit for bit.
+fn profile_rec_batch(path: &str, passes: u32) -> Result<(), String> {
+    const LINES: u32 = 8;
+    let weights = load(path, graph::PPOCR_REC)?;
+    let context = context::shared()?;
+    let mut single = Net::new(context.clone(), ppocr_rec::build(&weights, REC_WIDTH)?, &weights, PPOCR_REC)?;
+    let mut batch =
+        Net::new(context, ppocr_rec::build_batch(&weights, REC_WIDTH, LINES)?, &weights, PPOCR_REC)?;
+    let len = ppocr_rec::HEIGHT as usize * REC_WIDTH as usize;
+    let strips: Vec<Vec<i32>> = (0..LINES as usize)
+        .map(|i| (0..len).map(|p| (0xff00_0000u32 | ((p * 37 + i * 101) as u32 * 2_654_435_761 >> 8)) as i32).collect())
+        .collect();
+    let shape = modelrunner::nets::Shape::new(3, ppocr_rec::HEIGHT, REC_WIDTH);
+    let mut half = vec![0u16; shape.len() as usize];
+    let mut inputs = Vec::new();
+    for strip in &strips {
+        to_planar_f16(strip, REC_WIDTH, ppocr_rec::HEIGHT, shape, &PPOCR_REC, &mut half)?;
+        inputs.push(half.iter().map(|&h| f16_to_f32(h)).collect::<Vec<f32>>());
+    }
+    let refs: Vec<&[f32]> = inputs.iter().map(Vec::as_slice).collect();
+    let (mut one, mut many) = (Vec::new(), Vec::new());
+    let mut expected = Vec::new();
+    for _ in 0..=passes {
+        let t = Instant::now();
+        expected = strips
+            .iter()
+            .map(|s| single.infer(s, REC_WIDTH, ppocr_rec::HEIGHT))
+            .collect::<Result<Vec<_>, _>>()?;
+        one.push(since(t));
+        let t = Instant::now();
+        let got = batch.infer_raw_many(&refs)?;
+        many.push(since(t));
+        if expected != got {
+            return Err("a batched line's logits differ from its single run".into());
+        }
+    }
+    println!("single    {} for {LINES} lines", stats(&one[1..]));
+    println!("batched   {} for {LINES} lines (identical logits)", stats(&many[1..]));
+    print_checksums(&expected);
+    Ok(())
 }
 
 fn tinyclip_plan(offsets: &Offsets, mode: tinyclip::Mode) -> Result<Plan, String> {

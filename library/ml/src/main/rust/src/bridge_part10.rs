@@ -273,3 +273,53 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_destroyMa
     // destroyed. `Net`'s Drop waits for the device to go idle before freeing.
     drop(unsafe { Box::from_raw(handle as *mut MadladHandle) });
 }
+
+/// Recogniser batch sizes built at OCR load, largest first. A request's strips go through the
+/// largest that fits, then smaller ones, then the single-line net, so a 10-line page is two
+/// submits rather than ten (each submit costs ~4 ms on a Pixel 8 beyond its GPU time).
+const REC_BATCHES: [u32; 3] = [8, 4, 2];
+
+/// The batched recognisers for [`REC_BATCHES`]: independent copies of the pass in one plan.
+fn rec_batch_nets(shared: &std::sync::Arc<crate::vulkan::context::Context>, weights: &Weights) -> Result<Vec<(u32, Net)>, String> {
+    let mut nets = Vec::with_capacity(REC_BATCHES.len());
+    for lines in REC_BATCHES {
+        let plan = ppocr_rec::build_batch(weights, ocr::REC_WIDTH, lines)?;
+        nets.push((lines, Net::new(shared.clone(), plan, weights, PPOCR_REC)?));
+    }
+    Ok(nets)
+}
+
+/// Recognise every strip, one result per strip in order. Each line's logits are identical to a
+/// single-line run: the batch plans are independent copies, and the strip is preprocessed by the
+/// same `to_planar_f16` and rounded to the same fp16 on the way in.
+fn recognise_all(rec: &mut Net, batches: &mut [(u32, Net)], strips: &[Vec<i32>]) -> Vec<Result<Vec<f32>, String>> {
+    let mut out = Vec::with_capacity(strips.len());
+    let mut rest = strips;
+    while let Some((first, tail)) = rest.split_first() {
+        let fit = batches.iter_mut().find(|(lines, _)| *lines as usize <= rest.len());
+        if let Some((lines, net)) = fit {
+            let (now, later) = rest.split_at(*lines as usize);
+            match infer_batch(net, now) {
+                Ok(logits) => out.extend(logits.into_iter().map(Ok)),
+                Err(e) => out.extend(now.iter().map(|_| Err(e.clone()))),
+            }
+            rest = later;
+        } else {
+            out.push(rec.infer(first, ocr::REC_WIDTH, ppocr_rec::HEIGHT));
+            rest = tail;
+        }
+    }
+    out
+}
+
+fn infer_batch(net: &mut Net, strips: &[Vec<i32>]) -> Result<Vec<Vec<f32>>, String> {
+    let shape = crate::nets::Shape::new(3, ppocr_rec::HEIGHT, ocr::REC_WIDTH);
+    let mut half = vec![0u16; shape.len() as usize];
+    let mut inputs = Vec::with_capacity(strips.len());
+    for strip in strips {
+        crate::preprocess::to_planar_f16(strip, ocr::REC_WIDTH, ppocr_rec::HEIGHT, shape, &PPOCR_REC, &mut half)?;
+        inputs.push(half.iter().map(|&h| crate::preprocess::f16_to_f32(h)).collect::<Vec<f32>>());
+    }
+    let refs: Vec<&[f32]> = inputs.iter().map(Vec::as_slice).collect();
+    net.infer_raw_many(&refs)
+}

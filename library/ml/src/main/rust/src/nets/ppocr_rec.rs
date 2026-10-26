@@ -221,7 +221,7 @@ pub(crate) fn block(b: &mut Builder, l: &mut Layers, x: Id) -> Id {
 
 /// Build the recognition pass. Implemented in [`super::ppocr_rec_extra`] to keep this
 /// file under the size limit; re-exported so `ppocr_rec::build` keeps working.
-pub use super::ppocr_rec_extra::build;
+pub use super::ppocr_rec_extra::{build, build_batch};
 
 #[cfg(test)]
 mod tests {

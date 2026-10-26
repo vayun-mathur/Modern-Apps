@@ -68,12 +68,12 @@ fn read_text(state: &mut OcrHandle, width: u32, height: u32) -> Result<Vec<Line>
     let (map_w, map_h) = state.det.output_size()?;
     // Disjoint field borrows: the recogniser is taken mutably while the pixels and the
     // dictionary are read, which is why this is not `state.rec.infer(...)` inline.
-    let OcrHandle { rec, dictionary, pixels, .. } = state;
-    ocr::lines(
+    let OcrHandle { rec, rec_batches, dictionary, pixels, .. } = state;
+    ocr::lines_batched(
         &ocr::Detection { probability, width: map_w, height: map_h, fit: &fit },
         &ocr::Source { pixels, width, height },
         dictionary,
-        |crop, crop_w, crop_h| rec.infer(crop, crop_w, crop_h),
+        |strips| recognise_all(rec, rec_batches, strips),
     )
 }
 

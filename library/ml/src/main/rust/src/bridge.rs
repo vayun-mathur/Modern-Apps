@@ -379,6 +379,7 @@ fn detect(state: &mut Handle, width: u32, height: u32) -> Result<Vec<f32>, Strin
 struct OcrHandle {
     det: Net,
     rec: Net,
+    rec_batches: Vec<(u32, Net)>,
     dictionary: Dictionary,
     pixels: Vec<i32>,
 }
@@ -437,6 +438,7 @@ fn build_ocr<'l>(
     let rec_plan = ppocr_rec::build(&rec_weights, ocr::REC_WIDTH)?;
     Ok(OcrHandle {
         det: Net::new(shared.clone(), det_plan, &det_weights, PPOCR_DET)?,
+        rec_batches: rec_batch_nets(&shared, &rec_weights)?,
         rec: Net::new(shared, rec_plan, &rec_weights, PPOCR_REC)?,
         dictionary,
         pixels: Vec::new(),

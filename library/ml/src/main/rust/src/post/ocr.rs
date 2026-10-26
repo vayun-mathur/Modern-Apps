@@ -90,6 +90,20 @@ pub fn lines(
     dictionary: &Dictionary,
     mut recognise: impl FnMut(&[i32], u32, u32) -> Result<Vec<f32>, String>,
 ) -> Result<Vec<Line>, String> {
+    lines_batched(detection, source, dictionary, |strips| {
+        strips.iter().map(|strip| recognise(strip, REC_WIDTH, ppocr_rec::HEIGHT)).collect()
+    })
+}
+
+/// [`lines`] with every strip handed over at once, `REC_WIDTH x HEIGHT` each, so the device can
+/// recognise a request's lines in a few submits instead of one per line. `recognise` returns one
+/// result per strip, in order; a failed strip is skipped like a failed crop.
+pub fn lines_batched(
+    detection: &Detection,
+    source: &Source,
+    dictionary: &Dictionary,
+    recognise: impl FnOnce(&[Vec<i32>]) -> Vec<Result<Vec<f32>, String>>,
+) -> Result<Vec<Line>, String> {
     let regions = dbnet::regions(
         detection.probability,
         detection.width,
@@ -97,19 +111,20 @@ pub fn lines(
         detection.fit,
         (source.width, source.height),
     )?;
-    let mut lines = Vec::with_capacity(regions.len());
+    let mut pending = Vec::with_capacity(regions.len());
+    let mut strips = Vec::with_capacity(regions.len());
     for region in &regions {
         let corners = crop::corners(&region.rect);
         let content =
             crop::crop_width(region, ppocr_rec::HEIGHT, ppocr_rec::WIDTH_MULTIPLE, REC_WIDTH);
-        let strip = match strip(source, &corners, content) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
-        let logits = match recognise(&strip, REC_WIDTH, ppocr_rec::HEIGHT) {
-            Ok(l) => l,
-            Err(_) => continue,
-        };
+        if let Ok(s) = strip(source, &corners, content) {
+            strips.push(s);
+            pending.push((corners, content, region.vertical));
+        }
+    }
+    let mut lines = Vec::with_capacity(pending.len());
+    for ((corners, content, vertical), logits) in pending.into_iter().zip(recognise(&strips)) {
+        let Ok(logits) = logits else { continue };
         // Only the timesteps the crop actually filled; the rest is padding.
         let used = (content / ppocr_rec::WIDTH_MULTIPLE) as usize;
         let Decoded { text, confidence } = match ctc::decode(&logits, used, dictionary) {
@@ -120,7 +135,7 @@ pub fn lines(
         if text.is_empty() {
             continue;
         }
-        lines.push(Line { text, confidence, corners, vertical: region.vertical });
+        lines.push(Line { text, confidence, corners, vertical });
     }
     order(&mut lines);
     Ok(lines)

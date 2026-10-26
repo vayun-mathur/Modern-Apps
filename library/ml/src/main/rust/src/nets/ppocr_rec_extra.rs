@@ -9,7 +9,6 @@ use super::ppocr_rec::{along_sequence, block, depthwise, point, squeeze_excite};
 /// `width` must be a positive multiple of [`WIDTH_MULTIPLE`]; the output is
 /// `[LOGITS, 1, width / 8]`.
 pub fn build(weights: &dyn WeightSource, width: u32) -> Result<Plan, String> {
-    use super::ppocr_rec::Layers;
     if width == 0 || !width.is_multiple_of(WIDTH_MULTIPLE) {
         return Err(format!(
             "a recognition width of {width}: three stride-2 stages act on it, so it must \
@@ -17,10 +16,31 @@ pub fn build(weights: &dyn WeightSource, width: u32) -> Result<Plan, String> {
         ));
     }
 
-    let l = &mut Layers { next: 0 };
     let mut builder = Builder::new(weights);
-    let b = &mut builder;
-    let input = b.input(Shape::new(3, HEIGHT, width));
+    let input = builder.input(Shape::new(3, HEIGHT, width));
+    let logits = chain(&mut builder, input)?;
+    builder.finish(&[logits])
+}
+
+/// [`build`] for `lines` crops at once: independent copies of the pass in one plan, so a
+/// whole OCR request's lines are one submit. Input and output `i` are line `i`'s.
+pub fn build_batch(weights: &dyn WeightSource, width: u32, lines: u32) -> Result<Plan, String> {
+    if width == 0 || !width.is_multiple_of(WIDTH_MULTIPLE) || lines == 0 {
+        return Err(format!("a batch of {lines} recognitions at width {width}"));
+    }
+    let mut builder = Builder::new(weights);
+    let inputs: Vec<Id> = (0..lines).map(|_| builder.input(Shape::new(3, HEIGHT, width))).collect();
+    let mut outputs = Vec::with_capacity(inputs.len());
+    for input in inputs {
+        outputs.push(chain(&mut builder, input)?);
+    }
+    builder.finish(&outputs)
+}
+
+/// One crop's pass from its input to its logits, reading every tensor once.
+fn chain(b: &mut Builder, input: Id) -> Result<Id, String> {
+    use super::ppocr_rec::Layers;
+    let l = &mut Layers { next: 0 };
     let affine = |b: &mut Builder, x: Id, which: usize| -> Id {
         let (scale, shift) = AFFINES[which];
         b.affine(x, scale, shift)
@@ -108,5 +128,5 @@ pub fn build(weights: &dyn WeightSource, width: u32) -> Result<Plan, String> {
     if l.next != TENSORS {
         return Err(format!("the forward pass claims {} tensors, not {TENSORS}", l.next));
     }
-    builder.finish(&[logits])
+    Ok(logits)
 }
