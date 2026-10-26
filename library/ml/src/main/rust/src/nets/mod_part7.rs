@@ -358,6 +358,12 @@ impl<'a> Builder<'a> {
 
     /// One fold, or `false` when no binary qualifies.
     fn fuse_one_elementwise(&mut self, outputs: &[Id]) -> bool {
+        let readers = Readers::of(&self.nodes, self.shapes.len());
+        let producer_of = |nodes: &[Node], id: Id| {
+            readers.writer(id).filter(|&w| {
+                matches!(nodes[w], Node::Conv { .. } | Node::ConvInt8 { .. } | Node::RmsNorm { .. })
+            })
+        };
         let folded = (0..self.nodes.len()).find_map(|i| {
             // The producer's index, the tensor it produced, the addend that folds, and
             // the binary's own output, which the sum moves onto. All `Copy`, so the
@@ -401,9 +407,7 @@ impl<'a> Builder<'a> {
                 while let Some(next) = stack.pop() {
                     // No producing node: an input or a host tensor, written before the
                     // pass runs, so always ready.
-                    let Some(node_index) =
-                        self.nodes.iter().position(|node| node.out() == next)
-                    else {
+                    let Some(node_index) = readers.writer(next) else {
                         continue;
                     };
                     if node_index >= index {
@@ -422,9 +426,7 @@ impl<'a> Builder<'a> {
             }
             // The producer's output must reach exactly this binary: a second reader, or
             // the plan holding it as an output, keeps the add unfolded.
-            let single = self.nodes.iter().enumerate()
-                .filter(|(j, _)| *j != index && *j != i)
-                .all(|(_, node)| !node.inputs().contains(&produced))
+            let single = readers.only_readers(&self.nodes, produced, [index, i])
                 && !outputs.contains(&produced);
             single.then_some((i, index, residual, shift, out))
         });

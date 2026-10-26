@@ -49,6 +49,7 @@ impl<'a> Builder<'a> {
 
     /// One fold, or `false` when no quantize qualifies.
     fn fuse_one_quantize(&mut self, outputs: &[Id]) -> bool {
+        let readers = Readers::of(&self.nodes, self.shapes.len());
         let folded = (0..self.nodes.len()).find_map(|i| {
             // The quantize's input, its scale, and its own output, which the
             // rounded value moves onto. All `Copy`, so the borrow ends here.
@@ -69,13 +70,13 @@ impl<'a> Builder<'a> {
             }
             // The producer's index. `None` for anything that is not a
             // quant-fusable store, or one that already carries a scale.
-            let index = quant_producer_of(&self.nodes, produced)?;
+            let index = readers
+                .writer(produced)
+                .filter(|&w| quant_producer_of(&self.nodes[w..=w], produced).is_some())?;
             // The producer's output must reach exactly this quantize: a second
             // reader, or the plan holding it as an output, keeps the quantize
             // unfolded. Same rule as the elementwise fold.
-            let single = self.nodes.iter().enumerate()
-                .filter(|(j, _)| *j != index && *j != i)
-                .all(|(_, node)| !node.inputs().contains(&produced))
+            let single = readers.only_readers(&self.nodes, produced, [index, i])
                 && !outputs.contains(&produced);
             single.then_some((i, index, scale, out))
         });
