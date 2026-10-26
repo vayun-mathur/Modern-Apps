@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ToolCallsTest {
@@ -12,34 +11,13 @@ class ToolCallsTest {
     private val q = "<|\"|>"
 
     @Test
-    fun parsesQuotedAndBareArguments() {
-        val reply = "Sure.<|tool_call>call:set_timer{label:${q}tea${q},seconds:120}<tool_call|>"
-        assertEquals(
-            ParsedToolCall("set_timer", mapOf("label" to "tea", "seconds" to "120")),
-            parseToolCall(reply),
-        )
-    }
-
-    @Test
-    fun parsesCallWithoutArguments() {
-        assertEquals(ParsedToolCall("get_notes", emptyMap()), parseToolCall("<|tool_call>call:get_notes{}<tool_call|>"))
-    }
-
-    @Test
-    fun quotedValueMayContainCommasAndColons() {
-        val call = parseToolCall("<|tool_call>call:create_note{content:${q}a, b: c${q},title:${q}x${q}}<tool_call|>")
-        assertEquals("a, b: c", call?.arguments?.get("content"))
-        assertEquals("x", call?.arguments?.get("title"))
-    }
-
-    @Test
-    fun incompleteOrMalformedCallsDoNotParse() {
-        assertNull(parseToolCall("<|tool_call>call:set_timer{seconds:12"))
+    fun detectsCompleteCallsAndGuessesNames() {
+        assertTrue(hasCompleteToolCall("Sure.<|tool_call>call:set_timer{seconds:120}<tool_call|>"))
         assertFalse(hasCompleteToolCall("<|tool_call>call:set_timer{seconds:12"))
-        assertNull(parseToolCall("<|tool_call>call:{seconds:1}<tool_call|>"))
-        assertNull(parseToolCall("<|tool_call>call:x{label:${q}open}<tool_call|>"))
+        assertFalse(hasCompleteToolCall("plain text"))
         assertEquals("x", toolCallNameGuess("<|tool_call>call:x{label:${q}open}<tool_call|>"))
-        assertNull(parseToolCall("plain text"))
+        assertEquals("oops", toolCallNameGuess("<|tool_call>call:oops<tool_call|>"))
+        assertEquals("unknown", toolCallNameGuess("<|tool_call>call:{}<tool_call|>"))
     }
 
     @Test

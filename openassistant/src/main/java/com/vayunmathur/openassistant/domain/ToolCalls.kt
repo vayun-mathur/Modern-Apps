@@ -69,8 +69,7 @@ fun hasCompleteToolCall(reply: String): Boolean {
     return open >= 0 && reply.indexOf(TOOL_CALL_CLOSE, open) >= 0
 }
 
-/** The raw text between the first complete pair of tool-call markers, or null. */
-fun toolCallBody(reply: String): String? {
+private fun toolCallBody(reply: String): String? {
     val open = reply.indexOf(TOOL_CALL_OPEN)
     if (open < 0) return null
     val close = reply.indexOf(TOOL_CALL_CLOSE, open)
@@ -78,54 +77,10 @@ fun toolCallBody(reply: String): String? {
     return reply.substring(open + TOOL_CALL_OPEN.length, close)
 }
 
-/**
- * The first complete call in [reply], or null when there is none or it is malformed.
- *
- * Accepts both `<|"|>`-quoted values and bare ones: Gemma writes numbers unquoted
- * (`seconds:120`), which a quoted-only parser silently drops.
- */
-fun parseToolCall(reply: String): ParsedToolCall? {
-    val body = toolCallBody(reply)?.trim()?.removePrefix(CALL_PREFIX) ?: return null
-    val brace = body.indexOf('{')
-    val end = body.lastIndexOf('}')
-    if (brace <= 0 || end < brace) return null
-    val name = body.substring(0, brace).trim()
-    if (name.isEmpty()) return null
-    val arguments = parseArguments(body.substring(brace + 1, end)) ?: return null
-    return ParsedToolCall(name, arguments)
-}
-
 /** Best-effort tool name of a malformed call, for addressing the error response. */
 fun toolCallNameGuess(reply: String): String =
     toolCallBody(reply)?.trim()?.removePrefix(CALL_PREFIX)?.substringBefore('{')?.trim()
         ?.takeIf { it.isNotEmpty() } ?: "unknown"
-
-private fun parseArguments(body: String): Map<String, String>? {
-    val out = LinkedHashMap<String, String>()
-    var at = 0
-    while (at < body.length) {
-        while (at < body.length && (body[at] == ',' || body[at].isWhitespace())) at++
-        if (at >= body.length) break
-        val colon = body.indexOf(':', at)
-        if (colon < 0) return null
-        val key = body.substring(at, colon).trim().trim('"')
-        if (key.isEmpty()) return null
-        var value = colon + 1
-        while (value < body.length && body[value].isWhitespace()) value++
-        if (body.startsWith(QUOTE, value)) {
-            val close = body.indexOf(QUOTE, value + QUOTE.length)
-            if (close < 0) return null
-            out[key] = body.substring(value + QUOTE.length, close)
-            at = close + QUOTE.length
-        } else {
-            var close = value
-            while (close < body.length && body[close] != ',') close++
-            out[key] = body.substring(value, close).trim().trim('"')
-            at = close
-        }
-    }
-    return out
-}
 
 /**
  * [text] with tool markup removed, for display.

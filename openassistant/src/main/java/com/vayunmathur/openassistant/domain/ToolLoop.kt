@@ -25,6 +25,7 @@ const val MAX_TOOL_ROUNDS = 6
  */
 suspend fun runToolLoop(
     generator: ChatGenerator,
+    parseCall: (String) -> ParsedToolCall?,
     executeTool: suspend (ParsedToolCall) -> String,
     renderToolResponse: (name: String, value: String) -> String,
     maxRounds: Int = MAX_TOOL_ROUNDS,
@@ -45,7 +46,7 @@ suspend fun runToolLoop(
         visible = joinVisible(visible, stripToolMarkup(reply, streaming = false))
         if (halted) return ToolLoopOutcome.Halted(visible)
         if (!hasCompleteToolCall(reply) || round == maxRounds - 1) break
-        val call = parseToolCall(reply)
+        val call = parseCall(reply)
         val (name, result) = if (call == null) {
             toolCallNameGuess(reply) to "Error: malformed tool call; use name{arg:value}"
         } else {

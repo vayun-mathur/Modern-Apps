@@ -8,6 +8,7 @@ import com.vayunmathur.library.ml.Gemma4Handle
 import com.vayunmathur.library.ml.Gemma4VisionHandle
 import com.vayunmathur.library.ml.Sampling
 import com.vayunmathur.openassistant.domain.ChatGenerator
+import com.vayunmathur.openassistant.domain.ParsedToolCall
 import com.vayunmathur.openassistant.domain.ToolLoopOutcome
 import com.vayunmathur.openassistant.domain.decodeWavMono16k
 import com.vayunmathur.openassistant.domain.fitConversation
@@ -91,6 +92,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
             }
             val outcome = runToolLoop(
                 generator = generator,
+                parseCall = { reply -> Gemma4Handle.parseToolCall(reply)?.let { ParsedToolCall(it.name, it.arguments) } },
                 executeTool = { call ->
                     withContext(Dispatchers.IO) { tools.invoke(call) }.also {
                         Log.status(TAG, "tool ${call.name} -> ${it.take(LOG_CHARS)}")
