@@ -53,3 +53,23 @@ fn key_bounded_softmax_and_crop_agree_with_the_reference() {
         compare(&format!("{keys} positions padded to {width}"), plan, source.into_data(), &[&real]);
     }
 }
+#[test]
+#[ignore = "needs a Vulkan device"]
+fn a_tile_mode_rms_norm_agrees_with_the_reference() {
+    // Gemma 4's prefill norms: the hidden state at 208 and a ragged 200 positions (tiles that end
+    // past the last row), and the grouped QK-norm at 37 positions, where tiles straddle heads.
+    for (channels, groups, positions) in [(1536u32, 1u32, 208u32), (1536, 1, 200), (2048, 8, 37)] {
+        let per_group = channels / groups;
+        let input: Vec<f32> = spread((channels * positions) as usize, 0.9)
+            .iter()
+            .enumerate()
+            .map(|(i, v)| v * ((i / (per_group * positions) as usize) as f32 + 1.0))
+            .collect();
+        let given = Given::new(&[(vec![per_group], spread(per_group as usize, 2.5))])
+            .expect("the fixture tensors are consistent");
+        let plan = ragged_plan(&given, &[Shape::new(channels, 1, positions)], crate::nets::Kind::RmsNorm, |b, ids| {
+            b.rms_norm_grouped(ids[0], 0, 1e-6, groups)
+        });
+        compare(&format!("a tile-mode rms norm, {channels}/{groups} x {positions}"), plan, given.data().to_vec(), &[&input]);
+    }
+}

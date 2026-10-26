@@ -116,10 +116,10 @@ impl<'a> Builder<'a> {
             }
             Node::RmsNorm { input, out, gamma, epsilon, groups, res, quant_scale } => {
                 let so = shape(*out);
-                // One invocation per group per position, reducing over that group's channels,
-                // or one workgroup each when there are few. See `row_reduce`.
+                // One invocation per group per position, one workgroup each when there are few,
+                // or 16 positions a workgroup when they are strided. See `norm_reduce`.
                 let positions = so.h * so.w * groups.max(&1);
-                let (kw, invocations) = row_reduce(positions, so.c / groups.max(&1));
+                let (kw, invocations) = norm_reduce(positions, so.c / groups.max(&1), so.h * so.w);
                 // A folded residual addend, or NO_FUSE. Same contract as the
                 // convolution kinds: `fused_store` in the shader adds
                 // `arena[res + index]`, and `arena_reads` covers the range.

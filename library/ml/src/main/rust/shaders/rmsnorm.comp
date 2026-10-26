@@ -114,7 +114,132 @@ void row_mode() {
     }
 }
 
+/// [`tile_mode`] when positions come in aligned quads: a lane loads four adjacent positions at once
+/// and sixteen lanes split the channels, so a lane makes a sixteenth of a channel walk where the
+/// scalar tile made a quarter. The sixteen channel groups' sums add in a fixed order.
+void quad_tile_mode(uint stride) {
+    uint lane = gl_LocalInvocationID.x;
+    uint quad = lane & 3u;
+    uint part = lane >> 2u;
+    uint row = reduce_row() * 16u + quad * 4u;
+    bool live = row < p.count;
+    uint groups = max(p.group, 1u);
+    uint per_group = p.in_c / groups;
+    uint base = (row / stride) * per_group;
+    uint at_pos = row % stride;
+    float epsilon = uintBitsToFloat(p.param1_bits);
+    vec4 squares = vec4(0.0);
+    if (live) {
+        for (uint c = part; c < per_group; c += 16u) {
+            vec4 v = vec4(arena_quad[(p.in0 + (base + c) * stride + at_pos) >> 2u]);
+            squares += v * v;
+        }
+    }
+    vec4 total = squares;
+    uint slot = quad * 4u;
+    for (uint q = 1u; q < 16u; q++) {
+        if (part == q) {
+            reduce_partial[slot] = squares.x;
+            reduce_partial[slot + 1u] = squares.y;
+            reduce_partial[slot + 2u] = squares.z;
+            reduce_partial[slot + 3u] = squares.w;
+        }
+        barrier();
+        if (part == 0u) {
+            total += vec4(reduce_partial[slot], reduce_partial[slot + 1u], reduce_partial[slot + 2u],
+                          reduce_partial[slot + 3u]);
+        }
+        barrier();
+    }
+    if (part == 0u) {
+        reduce_partial[slot] = total.x;
+        reduce_partial[slot + 1u] = total.y;
+        reduce_partial[slot + 2u] = total.z;
+        reduce_partial[slot + 3u] = total.w;
+    }
+    barrier();
+    total = vec4(reduce_partial[slot], reduce_partial[slot + 1u], reduce_partial[slot + 2u],
+                 reduce_partial[slot + 3u]);
+    if (!live) {
+        return;
+    }
+    vec4 inverse = 1.0 / sqrt(total / float(per_group) + epsilon);
+    for (uint c = part; c < per_group; c += 16u) {
+        uint at = (base + c) * stride + at_pos;
+        vec4 v = vec4(arena_quad[(p.in0 + at) >> 2u]);
+        vec4 scaled = v * inverse * float(weights[p.weight + c]);
+        vec4 normed = vec4(quant_store(scaled.x), quant_store(scaled.y), quant_store(scaled.z),
+                           quant_store(scaled.w));
+        if (p.res != 0xFFFFFFFFu) {
+            normed += vec4(arena_quad[(p.res + at) >> 2u]);
+        }
+        arena_quad[(p.out_at + at) >> 2u] = f16vec4(normed);
+    }
+}
+/// Tile mode (`p.kw == 2`): a workgroup owns 16 consecutive rows and each quarter of its lanes a
+/// quarter of the channels, so 16 adjacent lanes read 16 adjacent positions of one channel - one
+/// 32-byte load where row mode makes 16 lanes read 16 channels a whole sequence apart. The four
+/// quarters' sums add in a fixed order through `reduce_partial`, whatever the subgroup size.
+void tile_mode() {
+    uint stride = p.in_h * p.in_w;
+    if ((stride & 3u) == 0u && (p.in0 & 3u) == 0u && (p.out_at & 3u) == 0u
+        && (p.res == 0xFFFFFFFFu || (p.res & 3u) == 0u)) {
+        quad_tile_mode(stride);
+        return;
+    }
+    uint lane = gl_LocalInvocationID.x;
+    uint slot = lane & 15u;
+    uint quarter = lane >> 4u;
+    uint position = reduce_row() * 16u + slot;
+    bool live = position < p.count;
+    uint groups = max(p.group, 1u);
+    uint per_group = p.in_c / groups;
+    uint base = (position / stride) * per_group;
+    uint at_pos = position % stride;
+    float epsilon = uintBitsToFloat(p.param1_bits);
+    float squares = 0.0;
+    if (live) {
+        for (uint c = quarter; c < per_group; c += 4u) {
+            float value = float(arena[p.in0 + (base + c) * stride + at_pos]);
+            squares += value * value;
+        }
+    }
+    float total = squares;
+    for (uint q = 1u; q < 4u; q++) {
+        if (quarter == q) {
+            reduce_partial[slot] = squares;
+        }
+        barrier();
+        if (quarter == 0u) {
+            total += reduce_partial[slot];
+        }
+        barrier();
+    }
+    if (quarter == 0u) {
+        reduce_partial[slot] = total;
+    }
+    barrier();
+    total = reduce_partial[slot];
+    if (!live) {
+        return;
+    }
+    float inverse = 1.0 / sqrt(total / float(per_group) + epsilon);
+    for (uint c = quarter; c < per_group; c += 4u) {
+        uint at = (base + c) * stride + at_pos;
+        float value = float(arena[p.in0 + at]);
+        float gamma = float(weights[p.weight + c]);
+        float normed = quant_store(value * inverse * gamma);
+        if (p.res != 0xFFFFFFFFu) {
+            normed += float(arena[p.res + at]);
+        }
+        arena[p.out_at + at] = float16_t(normed);
+    }
+}
 void main() {
+    if (p.kw == 2u) {
+        tile_mode();
+        return;
+    }
     if (reduce_row_mode()) {
         row_mode();
         return;

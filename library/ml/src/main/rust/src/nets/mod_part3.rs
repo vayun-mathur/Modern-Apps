@@ -98,6 +98,20 @@ fn row_reduce(rows: u32, len: u32) -> (u32, u32) {
     }
 }
 
+/// [`row_reduce`] for an RMS norm over `rows` rows strided `stride` apart: tile mode
+/// (`Push::kw` 2, 16 rows a workgroup, see `shaders/rmsnorm.comp`) once 16 adjacent positions
+/// exist to share each load.
+fn norm_reduce(rows: u32, len: u32, stride: u32) -> (u32, u32) {
+    if stride >= NORM_TILE_ROWS && len >= ROW_REDUCE_MIN_LEN {
+        (2, rows.div_ceil(NORM_TILE_ROWS) * ROW_REDUCE_LANES)
+    } else {
+        row_reduce(rows, len)
+    }
+}
+
+/// Rows one tile-mode workgroup owns. `tile_mode` in `shaders/rmsnorm.comp` hard-codes it.
+const NORM_TILE_ROWS: u32 = 16;
+
 /// [`row_reduce`] for a per-channel plane reduction (instance norm, global average
 /// pool), whose rows are contiguous planes rather than strided channel gathers.
 ///
