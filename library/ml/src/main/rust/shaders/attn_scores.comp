@@ -102,6 +102,11 @@ void tiled() {
     if (query_base >= queries || key_base >= keys) {
         return;
     }
+    // Causal (`p.kh` 1): the only readers stop at the diagonal, so a block wholly above it is
+    // never read and is left unwritten.
+    if (p.kh == 1u && key_base > query_base + 3u) {
+        return;
+    }
     if (p.kw == 2u) {
         ragged(queries, keys, head_dim, head, query_base, key_base);
         return;

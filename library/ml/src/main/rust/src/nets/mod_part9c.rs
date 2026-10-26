@@ -172,6 +172,13 @@ impl<'a> Builder<'a> {
                 } else {
                     (0, so.len(), so.len())
                 };
+                // Read only by causal softmaxes, which never look past the diagonal: the tiled
+                // shader leaves blocks wholly above it unwritten (`kh` 1).
+                let readers: Vec<&Node> = self.nodes.iter().filter(|n| n.inputs().contains(out)).collect();
+                let causal = so.h == so.w
+                    && !self.pinned.contains(out)
+                    && !readers.is_empty()
+                    && readers.iter().all(|n| matches!(n, Node::Softmax { mode: SoftmaxMode::Causal, .. }));
                 ops.push(Op::Dispatch {
                     kind: Kind::AttnScores,
                     push: Push {
@@ -189,6 +196,7 @@ impl<'a> Builder<'a> {
                         param0_bits: scale.to_bits(),
                         count,
                         kw,
+                        kh: u32::from(causal),
                         ..Push::default()
                     },
                     invocations,

@@ -97,6 +97,10 @@ fn causal_attention_skips_only_zero_probabilities() {
             matches!(op, crate::nets::Op::Dispatch { kind: crate::nets::Kind::AttnApply, push, .. } if push.kh == 1 && push.kw != 0)
         });
         assert!(bounded, "the causal apply at {positions} did not take the bounded tiled path");
+        let skipped = plan.ops.iter().any(|op| {
+            matches!(op, crate::nets::Op::Dispatch { kind: crate::nets::Kind::AttnScores, push, .. } if push.kh == 1 && push.kw != 0)
+        });
+        assert!(skipped, "the causal scores at {positions} do not skip the upper triangle");
         compare(&format!("causal attention {heads}/{kv_heads} heads x {positions}"), plan, source.into_data(), &[&q, &k, &v]);
     }
 }
