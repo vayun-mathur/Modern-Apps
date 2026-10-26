@@ -397,20 +397,16 @@ impl Gemma4Handle {
         }
         .at(self.context);
         let pending = (!self.net.holds(mode)).then(|| self.net.planner());
-        let embed = &self.embed;
-        let (gathered, plan) = std::thread::scope(|scope| {
-            let building = pending.map(|(plan, offsets)| scope.spawn(move || plan(&offsets, mode)));
-            let gathered = rows(&embed.reader());
-            let plan = building.map(|thread| thread.join().map_err(|_| "the plan thread panicked".to_string()));
-            (gathered, plan)
-        });
-        let (hidden, embedded) = gathered?;
-        if let Some(plan) = plan {
-            self.net.adopt(mode, plan??);
-        }
+        // Owns its inputs, so it keeps building through the rows and the combine below.
+        let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
+        let (hidden, embedded) = rows(&self.embed.reader())?;
         let gathered = started.elapsed();
         let per_layer = self.combine_block(&hidden, &embedded, width)?;
         let combined = started.elapsed() - gathered;
+        if let Some(thread) = building {
+            let plan = thread.join().map_err(|_| "the plan thread panicked".to_string())?;
+            self.net.adopt(mode, plan?);
+        }
         let wide = width as usize;
         let (l, g) = (gemma4::HEAD_DIM as usize, gemma4::GLOBAL_HEAD_DIM as usize);
         let (mut local, mut global) = (vec![0f32; l * wide], vec![0f32; g * wide]);

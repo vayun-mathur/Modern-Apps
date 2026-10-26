@@ -563,6 +563,7 @@ struct PrefillTimes {
     rows: f64,
     combine: f64,
     rotary: f64,
+    plan_wait: f64,
     record: f64,
     gpu: f64,
     /// The last token's final-normed state, which the head reads.
@@ -591,19 +592,18 @@ fn prefill_app(
         let mode = if start == 0 { gemma4::Mode::PrefillFresh { tokens: width } } else { gemma4::Mode::Prefill { tokens: width } }.at(TIER);
         let pending = (!net.holds(mode)).then(|| net.planner());
         let tick = Instant::now();
-        let (rows, plan) = std::thread::scope(|scope| {
-            let building = pending.map(|(plan, offsets)| scope.spawn(move || plan(&offsets, mode)));
-            let rows = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::layer_rows(embed, &fed)?)));
-            (rows, building.map(|thread| thread.join().map_err(|_| "the plan thread panicked".to_string())))
-        });
-        let (hidden, embedded) = rows?;
-        if let Some(plan) = plan {
-            net.adopt(mode, plan??);
-        }
+        let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
+        let (hidden, embedded) = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::layer_rows(embed, &fed)?)))?;
         times.rows += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         let per_layer = gather.at(width)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no combine")?;
         times.combine += tick.elapsed().as_secs_f64() * 1000.0;
+        let tick = Instant::now();
+        if let Some(thread) = building {
+            let plan = thread.join().map_err(|_| "the plan thread panicked".to_string())?;
+            net.adopt(mode, plan?);
+        }
+        times.plan_wait += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         let mut local = vec![0f32; (gemma4::HEAD_DIM * width) as usize];
         let mut global = vec![0f32; (gemma4::GLOBAL_HEAD_DIM * width) as usize];
@@ -659,6 +659,11 @@ fn time_prefill(
         for width in [256, 1] {
             gather.at(width)?;
         }
+        if let Some(head) = head_net.as_mut() {
+            for out in [HeadOut::Logits, HeadOut::TopK, HeadOut::Greedy] {
+                head.at(out)?;
+            }
+        }
         Ok(())
     })();
     if let Err(why) = warmed {
@@ -698,10 +703,10 @@ fn time_prefill(
             };
             let head_ms = tick.elapsed().as_secs_f64() * 1000.0;
             println!(
-                "{} prefill {width}+1 tokens: rows {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} = {prefill_ms:.0} ms; \
+                "{} prefill {width}+1 tokens: rows {:.0} + plan wait {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} = {prefill_ms:.0} ms; \
                  head {head_ms:.0} ms (id {id:?}); TTFT {:.0} ms",
                 if run == 0 { "cold" } else { "warm" },
-                p.rows, p.combine, p.rotary, p.record, p.gpu,
+                p.rows, p.plan_wait, p.combine, p.rotary, p.record, p.gpu,
                 prefill_ms + head_ms,
             );
         }

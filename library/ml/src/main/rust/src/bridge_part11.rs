@@ -211,7 +211,15 @@ fn build_gemma4<'l>(
     warm_gemma4(&mut net, gemma4::CONTEXT_TIERS[0])?;
     // Never `Reshaped::streamed` over EMBED: it uploads the whole 3.6 GB file, which on top of
     // TEXT OOM-kills a Pixel 8. The gather net is windowed to the tensors it reads.
-    let head = head_file.as_ref().and_then(gemma4_head_file_plan);
+    let mut head = head_file.as_ref().and_then(gemma4_head_file_plan);
+    if let Some(head) = head.as_mut() {
+        // Each mode's first recording costs ~70 ms on a Pixel 8; a sampled first token would pay
+        // it. Logits first: it has the largest readback, so the staging grows once.
+        use crate::nets::gemma4_head::HeadOut;
+        for out in [HeadOut::Logits, HeadOut::TopK, HeadOut::Greedy] {
+            head.at(out)?;
+        }
+    }
     let mut gather_net = gemma4_gather_plan(&embed);
     if let Some(gather) = gather_net.as_mut() {
         gather.at(CHUNK)?;
