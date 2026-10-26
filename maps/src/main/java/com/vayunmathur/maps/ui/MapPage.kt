@@ -173,14 +173,12 @@ fun MapPage(
         }
     }
 
-    // The Moon raster pair, loaded lazily on first Moon select (never for Earth
-    // sessions): 37MB of assets read once, cached for the session. `body` lives
-    // on the chrome (session-only); the textures ride the scope to the surface.
+    // The Moon raster pair, loaded on Moon select (never for Earth sessions) and dropped
+    // again when the body goes back to Earth, so ~37MB of heap and ~40MB of GPU images are
+    // only held while the Moon is actually shown.
     var moonTextures by remember { mutableStateOf<MoonTextures?>(null) }
     LaunchedEffect(chrome.body) {
-        if (chrome.body == MapBody.Moon && moonTextures == null) {
-            moonTextures = MoonAssetLoader.load(context)
-        }
+        moonTextures = if (chrome.body == MapBody.Moon) MoonAssetLoader.load(context) else null
     }
 
     // Resolve the P6 map-theme setting against the OS the same way DynamicTheme does, so the map

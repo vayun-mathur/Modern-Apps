@@ -8,7 +8,7 @@ use crate::tile::select::TileId;
 /// Re-exported so `bridge::frame` keeps its `super::handle::RESIDENT_TILE_CAP` path: the
 /// constant lives in `tile::select` (with the retention policy and its measurement pin),
 /// but the frame reads it through the handle.
-pub(crate) use crate::tile::select::RESIDENT_TILE_CAP;
+pub(crate) use crate::tile::select::{RESIDENT_BYTE_BUDGET, RESIDENT_TILE_CAP};
 use crate::vulkan::renderer::Renderer;
 use jni::sys::jlong;
 use std::collections::{HashMap, HashSet};

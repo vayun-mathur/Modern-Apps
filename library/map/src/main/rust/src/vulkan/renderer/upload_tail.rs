@@ -129,13 +129,13 @@ pub(super) fn build_layers(
 /// FindFamily SIGABRT: the first empty segment made `*_at` shorter than the mesh list
 /// and `[0]` landed on an empty vec.
 pub(super) fn build_regions(
-    mesh: &TileMesh,
+    mesh: &mut TileMesh,
     flat_region_at: &[usize],
     flat_first: &[u32],
 ) -> Vec<RegionBuffers> {
     let mut regions = Vec::with_capacity(mesh.regions.len());
     let mut ri = 0usize;
-    for region in &mesh.regions {
+    for region in &mut mesh.regions {
         if region.indices.is_empty() {
             continue;
         }
@@ -150,7 +150,7 @@ pub(super) fn build_regions(
             id: region.id,
             first_index,
             index_count: region.indices.len() as u32,
-            rings: region.rings.clone(),
+            rings: std::mem::take(&mut region.rings),
             area: region.area,
             level: region.level,
         });
@@ -233,7 +233,7 @@ pub(super) fn assemble_tile(
     carriageways: Vec<CarriagewayBuffers>,
     buildings: Option<BuildingBuffers>,
     terrain: Option<TerrainBuffers>,
-    mesh: &TileMesh,
+    mesh: &mut TileMesh,
     uploaded_at: f32,
 ) -> ResidentTile {
     // Owned buffers follow the fresh triples out (fresh path only; the pooled path
@@ -273,6 +273,7 @@ pub(super) fn assemble_tile(
         lines: lines_handles,
         ribbons: ribbons_handles,
         fresh_owned,
+        arena_ranges: Vec::new(),
         layers,
         buildings,
         terrain,
@@ -280,9 +281,9 @@ pub(super) fn assemble_tile(
         traffic,
         carriageways,
         yellow_centre: mesh.yellow_centre,
-        labels: mesh.labels.clone(),
-        arrows: mesh.arrows.clone(),
-        heightmap: mesh.heightmap.clone(),
+        labels: std::mem::take(&mut mesh.labels),
+        arrows: std::mem::take(&mut mesh.arrows),
+        heightmap: mesh.heightmap.take(),
         z: mesh.z,
         x: mesh.x,
         y: mesh.y,
@@ -308,14 +309,9 @@ pub(super) fn is_arena_buffer(pool: &super::upload_pool::UploadPool, b: vk::Buff
 
 /// Free a resident tile's owned GPU buffers after its grace period.
 ///
-/// `fresh_owned` destroys its buffers; arena ranges free nothing (they belong to the
-/// pool). Buildings/terrain are always fresh. The CPU-side clones drop with the tile
-/// either way. Takes only the tile + device (never the renderer), so the `retain_mut`
-/// in `upload.rs` borrows just the retiring queue — no `self` inside the closure.
-///
-/// Retirement still gates the grace count for both, so a replaced tile's draws stop
-/// referencing its ranges before anything reuses them (nothing ever does — but the
-/// fence discipline stays uniform).
+/// `fresh_owned` destroys its buffers; arena ranges are released by the caller, which holds
+/// the pool. Buildings/terrain are always fresh. Takes only the tile + device (never the
+/// renderer), so the `retain_mut` in `upload.rs` borrows just the retiring queue.
 pub(super) fn free_retired_tile_owned(tile: &ResidentTile, device: &ash::Device) {
     // SAFETY: the device is idle past the grace count (see `collect_retired`).
     unsafe {
@@ -359,28 +355,43 @@ pub(super) fn free_tile_set(
     }
 }
 
+/// GPU bytes a resident tile holds: its arena ranges plus every buffer it owns.
+pub(super) fn tile_gpu_bytes(tile: &ResidentTile) -> u64 {
+    let ranges: u64 = tile.arena_ranges.iter().map(|r| r.bytes()).sum();
+    let fresh: u64 = tile.fresh_owned.iter().map(|b| b.size).sum();
+    let buildings = tile
+        .buildings
+        .as_ref()
+        .map_or(0, |b| b.vertices.size + b.indices.size);
+    let terrain = tile
+        .terrain
+        .as_ref()
+        .map_or(0, |t| t.vertices.size + t.indices.size);
+    ranges + fresh + buildings + terrain
+}
+
 /// Drop resident tiles that are neither wanted nor useful as a stand-in, and enforce the
-/// residency cap.
+/// residency cap and byte budget (see [`select::evict`]).
 ///
 /// `keep` is the visible tiles and their ancestors, in the order [`select::resident_set`]
 /// produced them — coarsest first. `visible` is needed separately because descendants cannot
 /// be enumerated into a keep list without naming tiles that were never fetched; they are
 /// recognised here, against what is actually resident.
-///
-/// This is also the **only** bound on GPU memory. Tiles live until they fall out of this, so
-/// the cap is not belt-and-braces: without it, retaining descendants would mean every deep
-/// tile visited during a session stays resident for as long as the camera sits above it.
-pub fn retain(renderer: &mut Renderer, keep: &[u64], visible: &[select::TileId], cap: usize) {
+pub fn retain(
+    renderer: &mut Renderer,
+    keep: &[u64],
+    visible: &[select::TileId],
+    cap: usize,
+    byte_budget: u64,
+) {
     use std::collections::HashSet;
     let visible_keys: HashSet<u64> = visible.iter().map(|t| t.key()).collect();
     let wanted: HashSet<u64> = keep.iter().copied().collect();
 
-    // Rank by how much is lost if it goes, because the cap has to evict *something* and the
-    // stand-ins are what it should reach for first.
-    let mut ranked: Vec<(u8, u64)> = renderer
+    let mut ranked: Vec<(u8, u64, u64)> = renderer
         .tiles
-        .keys()
-        .map(|&key| {
+        .iter()
+        .map(|(&key, tile)| {
             let rank = if visible_keys.contains(&key) {
                 0 // on screen at its own zoom; evicting this is the blank frame itself
             } else if wanted.contains(&key) {
@@ -390,19 +401,10 @@ pub fn retain(renderer: &mut Renderer, keep: &[u64], visible: &[select::TileId],
             } else {
                 3 // unrelated to anything on screen
             };
-            (rank, key)
+            (rank, key, tile_gpu_bytes(tile))
         })
         .collect();
-    ranked.sort_unstable();
-
-    // Over the cap, stand-ins go first and on-screen tiles never: evicting a visible tile
-    // only refetches it next frame, and a tilted view can need more tiles than the cap holds.
-    let doomed: Vec<u64> = ranked
-        .iter()
-        .enumerate()
-        .filter(|(at, (rank, _))| *rank == 3 || (*at >= cap && *rank != 0))
-        .map(|(_, (_, key))| *key)
-        .collect();
+    let doomed = select::evict(&mut ranked, cap, byte_budget);
     if doomed.is_empty() {
         return;
     }

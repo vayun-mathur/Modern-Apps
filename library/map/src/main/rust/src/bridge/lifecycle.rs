@@ -283,3 +283,22 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_destroy<'l>(
     // the renderer, which waits for the device to go idle before freeing anything.
     unsafe { drop(Box::from_raw(handle as *mut MapHandle)) };
 }
+
+/// Give memory back under system pressure (`onTrimMemory`). With `keep_visible` the tiles on
+/// screen stay; without it every tile goes and the next frame refetches what it needs.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_trimMemory<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+    keep_visible: bool,
+) {
+    if let Some(map) = handle_mut(handle) {
+        let keep = if keep_visible {
+            map.last_visible.clone()
+        } else {
+            HashSet::new()
+        };
+        map.renderer.trim(&keep);
+    }
+}

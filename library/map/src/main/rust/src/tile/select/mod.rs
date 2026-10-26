@@ -37,5 +37,5 @@ pub use cover::{relevant_keys, redundant_tiles, COVER_MAX_DEPTH};
 pub use fade::{
     fade_in_progress, has_resident_ancestor, lod_fade_alpha, tile_lod_alpha, LOD_FADE_SECONDS,
 };
-pub use resident::{resident_set, stands_in_for_visible, zoom_out_burst, ANCESTOR_DEPTH, DESCENDANT_DEPTH, RESIDENT_TILE_CAP};
+pub use resident::{evict, resident_set, stands_in_for_visible, zoom_out_burst, ANCESTOR_DEPTH, DESCENDANT_DEPTH, RESIDENT_BYTE_BUDGET, RESIDENT_TILE_CAP};
 pub use tile_id::TileId;

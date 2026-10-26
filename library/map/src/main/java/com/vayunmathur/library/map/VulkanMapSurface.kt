@@ -1,6 +1,8 @@
 package com.vayunmathur.library.map
 
+import android.content.ComponentCallbacks2
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.SurfaceTexture
 import android.view.Surface
 import android.view.TextureView
@@ -182,6 +184,19 @@ internal fun VulkanMapSurface(
         }
     }
 
+    // The renderer holds tens of MB of GPU tile buffers; hand them back when the system asks.
+    // Callbacks arrive on the main thread, which is the renderer's thread.
+    DisposableEffect(context, host) {
+        val callbacks = object : ComponentCallbacks2 {
+            override fun onTrimMemory(level: Int) = renderer.trimMemory(level)
+            override fun onConfigurationChanged(newConfig: Configuration) = Unit
+            @Deprecated("Deprecated in Java")
+            override fun onLowMemory() = renderer.trimMemory(ComponentCallbacks2.TRIM_MEMORY_BACKGROUND)
+        }
+        context.registerComponentCallbacks(callbacks)
+        onDispose { context.unregisterComponentCallbacks(callbacks) }
+    }
+
     // The renderer draws on demand rather than every vsync, and it *pulls* its camera out of
     // the CameraState inside its frame callback — so nothing would otherwise tell it that a
     // gesture, a fling, `animateTo` or a layout pass has moved the camera while the loop is
@@ -315,16 +330,19 @@ internal fun VulkanMapSurface(
 
     // The Moon textures: pushed like the route, out of band from the frame loop.
     // Keyed on value equality so an identical push on recomposition does not
-    // re-upload 36MB. `null` keeps whatever is there (upload-once asset).
+    // re-upload 36MB. `null` frees them (the host left the Moon).
     LaunchedEffect(moonTextures, host) {
-        moonTextures?.let {
+        val moon = moonTextures
+        if (moon == null) {
+            renderer.clearMoonTextures()
+        } else {
             renderer.setMoonTextures(
-                it.colorRgba,
-                it.width,
-                it.height,
-                it.demRg,
-                it.demWidth,
-                it.demHeight
+                moon.colorRgba,
+                moon.width,
+                moon.height,
+                moon.demRg,
+                moon.demWidth,
+                moon.demHeight
             )
         }
     }

@@ -264,6 +264,23 @@ impl ScratchRing {
         }
     }
 
+    /// Free every block past the first, dropping a dense frame's high-water mark.
+    ///
+    /// # Safety
+    ///
+    /// The device must be idle, or no command buffer may still reference the ring.
+    pub unsafe fn shrink(&mut self, device: &ash::Device) {
+        for block in self.blocks.drain(1.min(self.blocks.len())..) {
+            device.unmap_memory(block.memory);
+            device.destroy_buffer(block.buffer, None);
+            device.free_memory(block.memory, None);
+        }
+        if let Some(first) = self.blocks.first_mut() {
+            first.used = 0;
+        }
+        self.cursor = 0;
+    }
+
     /// # Safety
     ///
     /// The device must be idle, or no command buffer may still reference the ring.

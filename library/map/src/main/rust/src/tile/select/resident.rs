@@ -18,8 +18,8 @@ pub fn zoom_out_burst(last_zoom: Option<f64>, zoom: f64) -> bool {
 
 /// The most tiles allowed resident on the GPU at once.
 ///
-/// Eviction is the only thing bounding tile memory — there is no separate budget — so this is a
-/// real limit rather than a safety net. It matters more now that descendants are kept: an
+/// Together with [`RESIDENT_BYTE_BUDGET`] this bounds tile memory, so it is a real limit rather
+/// than a safety net. It matters more now that descendants are kept: an
 /// ancestor set is linear in depth, but a descendant set is not, and without a cap every deep
 /// tile visited would stay resident for as long as the camera sat above it.
 ///
@@ -45,6 +45,38 @@ pub fn zoom_out_burst(last_zoom: Option<f64>, zoom: f64) -> bool {
 /// Lives here (not in `bridge::handle`) so the host-testable selection suite can pin the
 /// structural demand against it.
 pub const RESIDENT_TILE_CAP: usize = 64;
+
+/// GPU bytes (vertex + index) the non-visible resident tiles may add on top of what is on
+/// screen.
+///
+/// The count cap alone let 64 dense city tiles stay resident, hundreds of megabytes. Visible
+/// tiles are never evicted and ancestors are coarse and few, so only descendants and unrelated
+/// tiles answer to this budget: past it they go first, which costs a briefly coarser zoom-out.
+pub const RESIDENT_BYTE_BUDGET: u64 = 48 * 1024 * 1024;
+
+/// Which resident tiles to evict, given each as `(rank, key, gpu_bytes)`.
+///
+/// Rank 0 is visible, 1 an ancestor, 2 a descendant stand-in, 3 unrelated. Rank 3 always goes;
+/// past `cap` tiles anything but rank 0 goes; and once the running byte total (in rank order)
+/// passes `byte_budget`, ranks 2 and 3 go. Visible tiles are never evicted: evicting one only
+/// refetches it next frame.
+pub fn evict(ranked: &mut [(u8, u64, u64)], cap: usize, byte_budget: u64) -> Vec<u64> {
+    ranked.sort_unstable_by_key(|&(rank, key, _)| (rank, key));
+    let mut bytes = 0u64;
+    let mut kept = 0usize;
+    let mut doomed = Vec::new();
+    for &(rank, key, size) in ranked.iter() {
+        let over_cap = kept >= cap && rank != 0;
+        let over_budget = bytes.saturating_add(size) > byte_budget && rank >= 2;
+        if rank == 3 || over_cap || over_budget {
+            doomed.push(key);
+        } else {
+            kept += 1;
+            bytes = bytes.saturating_add(size);
+        }
+    }
+    doomed
+}
 
 /// How many levels of descendant to *keep* when they are already resident.
 ///

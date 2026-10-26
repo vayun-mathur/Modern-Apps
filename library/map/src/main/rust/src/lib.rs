@@ -45,6 +45,7 @@ pub mod marker;
 pub mod overlay;
 pub mod overlay_parts;
 pub mod pipeline_cache;
+pub mod range_alloc;
 pub mod style;
 pub mod tess;
 pub mod tile;

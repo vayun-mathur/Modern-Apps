@@ -18,7 +18,10 @@ impl Renderer {
     /// ribbon carriageways in [`ribbons`](ResidentTile::ribbons). Buildings and terrain are
     /// already one mesh per tile and keep their own pair. A dense tile costs ~5 allocations
     /// instead of ~60-100, on the same Choreographer callback as before.
-    pub fn upload(&mut self, key: u64, mesh: &TileMesh) -> Result<(), String> {
+    ///
+    /// Takes the mesh by value so its CPU-side parts (labels, arrows, heightmap, region rings)
+    /// move onto the resident tile instead of being cloned beside a copy that is then dropped.
+    pub fn upload(&mut self, key: u64, mut mesh: TileMesh) -> Result<(), String> {
         use crate::style::LayerKind;
         use crate::tess::{fill, ribbon, stroke};
         use crate::vulkan::buffers::upload_packed;
@@ -78,9 +81,9 @@ impl Renderer {
         // through to fresh buffers below, counting the allocation — so `Step::UploadAllocs`
         // reads zero in the steady state and names every fallback.
         //
-        // SAFETY: arena ranges are bump-allocated and never reused for another tile, so no
-        // live draw can reference the ranges this commit writes; draws bind the committed
-        // offsets below, which outlive the tile like every other resident buffer.
+        // SAFETY: a pooled range is only handed out again after the tile that held it has
+        // left the retiring queue (frames-in-flight grace), so no live draw can reference
+        // the ranges this commit writes.
         //
         // The pooled path needs the same `first_index` bookkeeping the fresh path does
         // below (layer slices, region/traffic/carriageway lookups), so both paths funnel
@@ -173,7 +176,7 @@ impl Renderer {
         let (flat_first_src, line_first_src, ribbon_first_src) =
             upload_tail::first_index_lists(&pooled_buffers, &flat, &lines, &ribbons);
         let layers = upload_tail::build_layers(
-            mesh,
+            &mesh,
             &flat_layer_at,
             &line_layer_at,
             &flat_first_src,
@@ -181,10 +184,10 @@ impl Renderer {
         );
         let flat_first: Vec<u32> = flat_first_src;
         let line_first: Vec<u32> = line_first_src;
-        let regions = upload_tail::build_regions(mesh, &flat_region_at, &flat_first);
-        let traffic = upload_tail::build_traffic(mesh, &line_traffic_at, &line_first);
+        let regions = upload_tail::build_regions(&mut mesh, &flat_region_at, &flat_first);
+        let traffic = upload_tail::build_traffic(&mesh, &line_traffic_at, &line_first);
         let ribbon_first: Vec<u32> = ribbon_first_src;
-        let carriageways = upload_tail::build_carriageways(mesh, &ribbon_first);
+        let carriageways = upload_tail::build_carriageways(&mesh, &ribbon_first);
         // The tile's 3D buildings, if any: one combined mesh, uploaded fresh — 2 allocs
         // when present, counted below. Buildings and terrain stay on the fresh path
         // deliberately: they are single meshes per tile (not packed groups), rare (z14+
@@ -267,7 +270,7 @@ impl Renderer {
             .get(&key)
             .map(|previous| previous.uploaded_at)
             .unwrap_or_else(|| self.last_camera.map(|c| c.time_seconds).unwrap_or(0.0));
-        let tile = upload_tail::assemble_tile(
+        let mut tile = upload_tail::assemble_tile(
             &pooled_buffers,
             (flat, lines, ribbons),
             layers,
@@ -276,9 +279,10 @@ impl Renderer {
             carriageways,
             buildings,
             terrain,
-            mesh,
+            &mut mesh,
             uploaded_at,
         );
+        tile.arena_ranges = pooled.as_ref().map(|s| s.ranges()).unwrap_or_default();
         if let Some(previous) = self.tiles.insert(key, tile) {
             self.retire(previous);
         }
@@ -297,26 +301,79 @@ impl Renderer {
     }
 
     /// Drop resident tiles that are neither wanted nor useful as a stand-in, and enforce
-    /// the residency cap. Split into `upload_tail` (file-length limit); see it for the
-    /// ranking contract — this only forwards, so the call sites are unchanged.
-    pub fn retain(&mut self, keep: &[u64], visible: &[select::TileId], cap: usize) {
-        upload_tail::retain(self, keep, visible, cap);
+    /// the residency cap and byte budget. Split into `upload_tail` (file-length limit).
+    pub fn retain(
+        &mut self,
+        keep: &[u64],
+        visible: &[select::TileId],
+        cap: usize,
+        byte_budget: u64,
+    ) {
+        upload_tail::retain(self, keep, visible, cap, byte_budget);
     }
 
-    /// Free anything whose grace period has expired. Split into `upload_tail`
-    /// (file-length limit): `fresh_owned` destroys, arena ranges free nothing — see
-    /// `free_retired_tile` for the ownership rule.
+    /// Give memory back under system pressure: evict every resident tile not in `visible`
+    /// (all of them when it is empty), wait for the GPU, then free retired tiles, empty
+    /// arenas and the scratch rings' high-water blocks at once rather than over the next
+    /// frames, which may never come while the app is in the background.
+    pub fn trim(&mut self, visible: &std::collections::HashSet<u64>) {
+        let doomed: Vec<u64> = self
+            .tiles
+            .keys()
+            .filter(|key| !visible.contains(key))
+            .copied()
+            .collect();
+        if !doomed.is_empty() {
+            self.bump_residency();
+        }
+        for key in doomed {
+            if let Some(tile) = self.tiles.remove(&key) {
+                self.retire(tile);
+            }
+        }
+        // SAFETY: after `device_wait_idle` no command buffer references anything retired.
+        unsafe {
+            if self.context.device.device_wait_idle().is_err() {
+                return;
+            }
+            for (remaining, _) in &mut self.retiring {
+                *remaining = 0;
+            }
+            for transient in &mut self.transients {
+                transient.frames = 0;
+            }
+            for (remaining, _) in &mut self.moon_retiring {
+                *remaining = 0;
+            }
+            self.collect_retired();
+            let keep_first = !self.tiles.is_empty();
+            self.upload_pool
+                .release_empty_arenas(&self.context.device, keep_first);
+            for ring in &mut self.scratch {
+                ring.shrink(&self.context.device);
+            }
+        }
+    }
+
+    /// Free anything whose grace period has expired. `fresh_owned` buffers are destroyed;
+    /// arena ranges go back to the pool, and arenas past the first that empty out are freed.
     pub(super) fn collect_retired(&mut self) {
         self.collect_moon_retired();
         let device = self.context.device.clone();
+        let pool = &mut self.upload_pool;
         self.retiring.retain_mut(|(remaining, tile)| {
             if *remaining > 0 {
                 *remaining -= 1;
                 return true;
             }
+            for range in &tile.arena_ranges {
+                pool.release(range);
+            }
             upload_tail::free_retired_tile_owned(tile, &device);
             false
         });
+        // SAFETY: ranges were released only after their grace period (above).
+        unsafe { self.upload_pool.release_empty_arenas(&device, true) };
         // Transient per-frame symbol buffers retire on the same grace count, in
         // their own queue — no device_wait_idle stall on the frame path.
         // `device` is the owned clone above, so borrows are explicit: `destroy`

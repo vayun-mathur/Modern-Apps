@@ -146,6 +146,25 @@ impl Renderer {
         Ok(())
     }
 
+    /// Retire the Moon pair and its descriptor pool; a Moon frame then draws the clear colour
+    /// until the next [`set_moon_textures`](Self::set_moon_textures).
+    pub fn clear_moon_textures(&mut self) {
+        let had = self.moon_color.is_some() || self.moon_dem.is_some() || self.moon_pool.is_some();
+        if let Some(color) = self.moon_color.take() {
+            self.retire_moon_image(color);
+        }
+        if let Some(dem) = self.moon_dem.take() {
+            self.retire_moon_image(dem);
+        }
+        if let Some(pool) = self.moon_pool.take() {
+            self.retire_moon_pool(pool);
+        }
+        self.moon_set = None;
+        if had {
+            self.bump_state();
+        }
+    }
+
     fn retire_moon_image(&mut self, image: SampledImage) {
         // Images are not buffers: hold them aside with the same frame count and
         // destroy on drain (see `collect_retired`).

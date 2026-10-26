@@ -94,3 +94,17 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_setMoonTexture
 fn bytemuck_cast(bytes: &mut [u8]) -> &mut [i8] {
     unsafe { std::slice::from_raw_parts_mut(bytes.as_mut_ptr() as *mut i8, bytes.len()) }
 }
+
+/// Drop the Moon raster pair (~40 MB of GPU images) when the host leaves the Moon; a later
+/// [`setMoonTextures`](Java_com_vayunmathur_library_map_MapNative_setMoonTextures) uploads it
+/// again.
+#[no_mangle]
+pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_clearMoonTextures<'l>(
+    _env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+    handle: jlong,
+) {
+    if let Some(map) = handle_mut(handle) {
+        map.renderer.clear_moon_textures();
+    }
+}

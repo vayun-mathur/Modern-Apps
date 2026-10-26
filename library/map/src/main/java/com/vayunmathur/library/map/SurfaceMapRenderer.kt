@@ -1,5 +1,6 @@
 package com.vayunmathur.library.map
 
+import android.content.ComponentCallbacks2
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import android.view.Choreographer
@@ -292,6 +293,25 @@ class SurfaceMapRenderer(
         if (handle != 0L) {
             MapNative.setMoonTextures(handle, colorRgba, width, height, demRg, demWidth, demHeight)
         }
+        invalidate()
+    }
+
+    /** Forget the Moon raster pair and free its GPU images, e.g. once the host leaves the Moon. */
+    fun clearMoonTextures() {
+        if (moonTextures == null) return
+        moonTextures = null
+        if (handle != 0L) MapNative.clearMoonTextures(handle)
+        invalidate()
+    }
+
+    /**
+     * Release memory for [ComponentCallbacks2.onTrimMemory]. From
+     * [ComponentCallbacks2.TRIM_MEMORY_BACKGROUND] up every resident tile goes (the next frame
+     * refetches what it needs); below it only off-screen tiles do.
+     */
+    fun trimMemory(level: Int) {
+        if (handle == 0L) return
+        MapNative.trimMemory(handle, keepVisible = level < ComponentCallbacks2.TRIM_MEMORY_BACKGROUND)
         invalidate()
     }
 

@@ -152,3 +152,31 @@ fn resident_demand_fits_the_cap_with_headroom() {
         worst_globe.1,
     );
 }
+
+const MIB: u64 = 1024 * 1024;
+
+#[test]
+fn eviction_drops_unrelated_and_never_visible() {
+    let mut ranked = vec![(0, 1, 500 * MIB), (0, 2, 500 * MIB), (3, 9, 1)];
+    assert_eq!(evict(&mut ranked, 1, 0), vec![9]);
+}
+
+#[test]
+fn eviction_spends_the_byte_budget_on_descendants_last() {
+    // Visible + ancestors already fill the budget: descendants go, ancestors stay.
+    let mut ranked = vec![
+        (2, 30, 8 * MIB),
+        (1, 20, 4 * MIB),
+        (0, 10, 40 * MIB),
+        (2, 31, 1 * MIB),
+    ];
+    let doomed = evict(&mut ranked, 64, 48 * MIB);
+    assert_eq!(doomed, vec![30]);
+}
+
+#[test]
+fn eviction_counts_the_cap_over_kept_tiles_only() {
+    let mut ranked = vec![(0, 1, 0), (2, 2, 100 * MIB), (2, 3, 0), (1, 4, 0)];
+    // Tile 2 is over the byte budget; it must not use up a cap slot that tile 3 needs.
+    assert_eq!(evict(&mut ranked, 3, 50 * MIB), vec![2]);
+}

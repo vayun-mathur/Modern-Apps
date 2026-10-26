@@ -76,9 +76,8 @@ struct LayerBuffers {
 /// who owns the memory — which is why the draw path binds `(buffer, offset)` pairs plus a
 /// per-draw `firstIndex` and never asks which path produced them.
 ///
-/// Ownership on retire: fresh pools are destroyed with the tile; arena ranges belong to
-/// the pool and are never freed (see `collect_retired`, which tells them apart by buffer
-/// handle, not by offset — offset 0 is a valid arena start).
+/// Ownership on retire: fresh pools are destroyed with the tile; arena ranges go back to the
+/// pool's free lists ([`arena_ranges`](Self::arena_ranges)) once the grace period is over.
 ///
 /// `pub(crate)`: the pick-snapshot split (`placement_refresh`) resolves one
 /// label against a tile, so it names this type.
@@ -98,9 +97,10 @@ pub(crate) struct ResidentTile {
     /// Same `(handle, offset, handle, offset)` shape as [`flat`](Self::flat).
     ribbons: Option<(vk::Buffer, vk::DeviceSize, vk::Buffer, vk::DeviceSize)>,
     /// Fresh-path owned buffers (up to 6: flat/lines/ribbons × vertices/indices), destroyed
-    /// with the tile. Empty on the pooled path — arena ranges belong to the pool and are
-    /// never freed (see `upload_pool`).
+    /// with the tile. Empty on the pooled path.
     fresh_owned: Vec<Buffer>,
+    /// Pooled-path arena ranges, released to the pool when the tile leaves the retiring queue.
+    arena_ranges: Vec<upload_pool::ArenaRange>,
     layers: Vec<LayerBuffers>,
     /// The tile's extruded 3D buildings, or `None` below z14 / where the tile has none. Drawn in
     /// its own depth-tested pass ([`Renderer::record_buildings`]), not the flat layer loop.

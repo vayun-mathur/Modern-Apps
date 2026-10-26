@@ -142,19 +142,28 @@ impl SampledImage {
                 pixels.len()
             ));
         }
-        // SwiftShader (the emulator's Vulkan) advertises sampled R8 but its
-        // optimal-tiling R8 path is less exercised than RGBA8; expand R8 → RGBA8
-        // so the image, view and sampler all take the universally-supported
-        // path. Costs 4x atlas bytes (4 MB, one-time). The byte order is the
-        // shader contract — see `glyph::expand_sdf_r8_to_rgba8`, which owns it
-        // so a host test pins it.
+        // SwiftShader (the emulator's Vulkan) advertises sampled R8 but its optimal-tiling R8
+        // path is less exercised than RGBA8, so there (or on a device without linear-filtered
+        // R8) the atlas is expanded R8 → RGBA8 at 4x the bytes. Everywhere else it stays R8 and
+        // the view swizzles R into all four channels, which samples exactly like the expansion:
+        // `glyph::expand_sdf_r8_to_rgba8` owns that byte-order contract and a host test pins it.
         let rgba;
         let (upload_pixels, upload_format) = match format {
-            vk::Format::R8_UNORM => {
+            vk::Format::R8_UNORM if !r8_sampling_ok(instance, physical_device) => {
                 rgba = crate::tile::glyph::expand_sdf_r8_to_rgba8(pixels);
                 (rgba.as_slice(), vk::Format::R8G8B8A8_UNORM)
             }
             _ => (pixels, format),
+        };
+        let components = if upload_format == vk::Format::R8_UNORM {
+            vk::ComponentMapping {
+                r: vk::ComponentSwizzle::R,
+                g: vk::ComponentSwizzle::R,
+                b: vk::ComponentSwizzle::R,
+                a: vk::ComponentSwizzle::R,
+            }
+        } else {
+            vk::ComponentMapping::default()
         };
         let _ = bpp;
         // Device-local image, host-visible staging buffer (the Buffer helper is
@@ -312,6 +321,7 @@ impl SampledImage {
             .image(image)
             .view_type(vk::ImageViewType::TYPE_2D)
             .format(upload_format)
+            .components(components)
             .subresource_range(vk::ImageSubresourceRange {
                 aspect_mask: vk::ImageAspectFlags::COLOR,
                 base_mip_level: 0,
@@ -356,4 +366,20 @@ impl SampledImage {
         device.free_memory(self.memory, None);
         device.destroy_image(self.image, None);
     }
+}
+
+/// Whether R8 atlases can stay R8 on this device: not SwiftShader, and R8 supports linear
+/// sampling with optimal tiling.
+unsafe fn r8_sampling_ok(instance: &ash::Instance, physical_device: vk::PhysicalDevice) -> bool {
+    let props = instance.get_physical_device_properties(physical_device);
+    let name = std::ffi::CStr::from_ptr(props.device_name.as_ptr()).to_string_lossy();
+    if name.contains("SwiftShader") {
+        return false;
+    }
+    instance
+        .get_physical_device_format_properties(physical_device, vk::Format::R8_UNORM)
+        .optimal_tiling_features
+        .contains(
+            vk::FormatFeatureFlags::SAMPLED_IMAGE | vk::FormatFeatureFlags::SAMPLED_IMAGE_FILTER_LINEAR,
+        )
 }

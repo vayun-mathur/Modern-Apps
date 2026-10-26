@@ -1,7 +1,7 @@
 //! One frame from a camera snapshot.
 //!
 //! Pure move out of `bridge.rs`; no logic changes.
-use super::handle::{handle_mut, TileResult, RESIDENT_TILE_CAP, UPLOADS_PER_FRAME, WASH_MAX_ZOOM};
+use super::handle::{handle_mut, TileResult, RESIDENT_BYTE_BUDGET, RESIDENT_TILE_CAP, UPLOADS_PER_FRAME, WASH_MAX_ZOOM};
 use super::log::{log, log_info};
 use crate::camera::Camera;
 use crate::style;
@@ -129,7 +129,7 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
                 // It arrived, so whatever was failing has stopped. Anything else would leave a
                 // tile that recovered still carrying a ten-second backoff for the session.
                 map.retry.remove(&key);
-                if let Err(e) = map.renderer.upload(key, &mesh) {
+                if let Err(e) = map.renderer.upload(key, mesh) {
                     log(&format!("uploading a tile failed: {e}"));
                 }
             }
@@ -343,7 +343,8 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     // resumes against.
     if !moon {
         map.retry.retain_visible(&visible);
-        map.renderer.retain(&keep, &visible, RESIDENT_TILE_CAP);
+        map.renderer
+            .retain(&keep, &visible, RESIDENT_TILE_CAP, RESIDENT_BYTE_BUDGET);
         map.last_visible = wanted_keys;
     }
     // `fetch_held` (the hold count from the live-set diff above) plus the drain count

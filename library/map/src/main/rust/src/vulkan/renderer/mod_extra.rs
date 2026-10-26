@@ -196,8 +196,8 @@ pub struct Renderer {
     /// before the first submit and after anything that invalidates unconditionally
     /// (swapchain rebuild), forcing the next frame through.
     pub(crate) last_frame_version: Option<FrameVersion>,
-    /// Tile-upload staging arenas (see `upload_pool`): bump-allocated once, never freed
-    /// until the renderer dies, so a tile upload costs copies but no `vkAllocateMemory`.
+    /// Tile-upload staging arenas (see `upload_pool`): sub-allocated per tile and recycled on
+    /// retire, so a tile upload costs copies but no `vkAllocateMemory`.
     pub(crate) upload_pool: UploadPool,
     /// Which resident tiles are fully covered by settled finer tiles
     /// ([`cover`](crate::tile::select::cover)), per draw group: the

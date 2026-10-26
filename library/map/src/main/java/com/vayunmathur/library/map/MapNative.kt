@@ -122,6 +122,9 @@ internal object MapNative {
         demHeight: Int,
     )
 
+    /** Drop the Moon raster pair from the GPU; a Moon frame draws the clear colour until the next push. */
+    external fun clearMoonTextures(handle: Long)
+
     external fun resize(handle: Long, width: Int, height: Int)
 
     /**
@@ -437,6 +440,13 @@ internal object MapNative {
      * the frame loop.
      */
     external fun lastFrameStepTimesNanos(handle: Long): LongArray
+
+    /**
+     * Give memory back under system pressure: evict every resident tile except the visible ones
+     * (or all of them when [keepVisible] is false), wait for the GPU, and free the evicted
+     * buffers, empty upload arenas and scratch high-water blocks at once.
+     */
+    external fun trimMemory(handle: Long, keepVisible: Boolean)
 
     /**
      * Destroy the renderer, wait for the GPU to go idle, and release the window.
