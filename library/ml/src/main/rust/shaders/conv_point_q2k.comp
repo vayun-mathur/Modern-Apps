@@ -39,17 +39,27 @@ layout(std430, binding = 0) readonly buffer ArenaQuad {
 /// Channels and positions per invocation.
 #define BLOCK 4u
 
+/// Partial sums from the K-split's other slices, combined by slice 0 in slice order.
+shared float partial[64][BLOCK * BLOCK];
+
 void main() {
     uint tile = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
     if (tile >= p.count) {
         return;
     }
+    // `p.in1` = s > 0 (word path only): the workgroup's lanes split into 2^s slices, each summing
+    // a contiguous 1/2^s of the taps for a (32 >> s) x 32 tile, so a GEMM with few tiles (MADLAD's
+    // 8192 -> 1024 at 32 positions is 32) runs 2^s times the workgroups at the same loads per MAC.
+    uint split = p.in1;
+    uint slice_lanes = 64u >> split;
     uint positions = p.out_h * p.out_w;
     uint tiles_across = (positions + TILE - 1u) / TILE;
     uint lid = gl_LocalInvocationID.x;
-    uint channel_base = (tile / tiles_across) * TILE + (lid >> 3u) * BLOCK;
+    uint slice = lid / slice_lanes;
+    uint channel_base = (tile / tiles_across) * (TILE >> split) + ((lid % slice_lanes) >> 3u) * BLOCK;
     uint position_base = (tile % tiles_across) * TILE + (lid & 7u) * BLOCK;
-    if (position_base >= positions) {
+    bool busy = position_base < positions;
+    if (!busy && split == 0u) {
         return;
     }
     uint blocks = (p.in_c + Q2K_BLOCK - 1u) / Q2K_BLOCK;
@@ -77,7 +87,11 @@ void main() {
         for (uint i = 0u; i < BLOCK; i++) {
             sum[i] = vec4(0.0);
         }
-        for (uint unit = 0u; unit < blocks * 16u; unit++) {
+        bool pair_word = (p.act_weight & 1u) == 0u;
+        uint units = (blocks * 16u) >> split;
+        uint unit0 = busy ? slice * units : 0u;
+        uint unit_end = busy ? unit0 + units : 0u;
+        for (uint unit = unit0; unit < unit_end; unit++) {
             uint block = unit >> 4u;
             uint w = unit & 15u;
             uint half_idx = w >> 3u;
@@ -94,9 +108,14 @@ void main() {
                 scales[i][0] = weights32[sb + half_idx * 2u];
                 scales[i][1] = weights32[sb + half_idx * 2u + 1u];
                 uint pair = p.act_weight + (rows[i] * blocks + block) * 2u;
-                float d = float(weights[pair]);
-                dall[i] = d * d;
-                dmin[i] = float(weights[pair + 1u]) * d;
+                vec2 dm;
+                if (pair_word) {
+                    dm = unpackHalf2x16(weights32[pair >> 1u]);
+                } else {
+                    dm = vec2(float(weights[pair]), float(weights[pair + 1u]));
+                }
+                dall[i] = dm.x * dm.x;
+                dmin[i] = dm.y * dm.x;
             }
             for (uint q = 0u; q < 4u; q++) {
                 // Taps `first + q*32 + 0..3`, four positions each.
@@ -114,6 +133,26 @@ void main() {
                             + float((codes[i] >> (shift + 16u)) & 3u) * x[2]
                             + float((codes[i] >> (shift + 24u)) & 3u) * x[3];
                     sum[i] += dall[i] * float(sc & 15u) * cx - dmin[i] * float(sc >> 4u) * xsum;
+                }
+            }
+        }
+        if (split > 0u) {
+            if (slice > 0u) {
+                for (uint i = 0u; i < BLOCK; i++) {
+                    for (uint j = 0u; j < BLOCK; j++) {
+                        partial[lid][i * BLOCK + j] = sum[i][j];
+                    }
+                }
+            }
+            barrier();
+            if (slice > 0u || !busy) {
+                return;
+            }
+            for (uint k = 1u; k < (1u << split); k++) {
+                for (uint i = 0u; i < BLOCK; i++) {
+                    for (uint j = 0u; j < BLOCK; j++) {
+                        sum[i][j] += partial[lid + k * slice_lanes][i * BLOCK + j];
+                    }
                 }
             }
         }

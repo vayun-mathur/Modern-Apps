@@ -242,6 +242,10 @@ fn madlad_profile(path: Option<&str>) -> Result<(), String> {
         let out = net.at(madlad::Mode::Encode { len: SRC_LEN })?.infer_raw_many(&[&embedded, &enc_bias])?;
         encode_ms.push(ms(t));
         let encoded = out.into_iter().next().ok_or("the encoder returned nothing")?;
+        if round == 0 {
+            let sum: f64 = encoded.iter().map(|&v| f64::from(v)).sum();
+            println!("encoded   checksum {sum:.6}");
+        }
 
         let mut token = 0u32;
         for step in 0..STEPS {

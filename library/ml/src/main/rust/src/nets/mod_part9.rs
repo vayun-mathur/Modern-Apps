@@ -1,3 +1,7 @@
+/// Q2_K GEMMs over at least 2048 taps with fewer 32 x 32 tiles than this split their taps across
+/// four lane slices. See `q2k_split` in [`Builder::emit`] and conv_point_q2k.comp.
+const Q2K_SPLIT_BELOW: u32 = 64;
+
 impl<'a> Builder<'a> {
     fn emit(
         &self,
@@ -115,6 +119,20 @@ impl<'a> Builder<'a> {
                     && (si.c / *group) % 16 == 0
                     && *weight % 4 == 0
                     && input_at % 4 == 0;
+                // Too few Q2_K tiles to fill the GPU and a long tap loop: split the taps across 4
+                // lane slices of a workgroup (`in1` = 2 in conv_point_q2k.comp). Word path only; at
+                // 1024 taps the shorter loop no longer pays for the combine.
+                let q2k_split = if kind == Kind::ConvPointQ2K
+                    && si.c % 256 == 0
+                    && si.c >= 2048
+                    && positions % 4 == 0
+                    && input_at % 4 == 0
+                    && int8_tiles < Q2K_SPLIT_BELOW
+                {
+                    2
+                } else {
+                    0
+                };
                 // Workgroups for the staged kinds, output elements for the untiled one.
                 let count = match kind {
                     Kind::ConvVecInt8 | Kind::ConvVecInt4 | Kind::ConvVecQ2K => rows,
@@ -122,14 +140,19 @@ impl<'a> Builder<'a> {
                         so.c.div_ceil(CONV_POINT_INT8_TILE / 2) * positions.div_ceil(CONV_POINT_INT8_TILE)
                     }
                     Kind::ConvPointInt4 if int4_wide => so.c.div_ceil(CONV_POINT_INT8_TILE) * positions.div_ceil(64),
-                    Kind::ConvPointInt8 | Kind::ConvPointInt4 | Kind::ConvPointQ2K => int8_tiles,
+                    Kind::ConvPointQ2K => {
+                        so.c.div_ceil(CONV_POINT_INT8_TILE >> q2k_split) * positions.div_ceil(CONV_POINT_INT8_TILE)
+                    }
+                    Kind::ConvPointInt8 | Kind::ConvPointInt4 => int8_tiles,
                     _ => so.len(),
                 };
                 ops.push(Op::Dispatch {
                     kind,
                     push: Push {
                         in0: input_at,
-                        in1: if row_gemm || grouped_vec {
+                        in1: if kind == Kind::ConvPointQ2K {
+                            q2k_split
+                        } else if row_gemm || grouped_vec {
                             2
                         } else if widened {
                             3 + u32::from(split)
