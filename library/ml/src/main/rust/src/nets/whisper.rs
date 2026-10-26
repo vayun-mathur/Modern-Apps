@@ -286,6 +286,8 @@ fn declare_cross_caches(b: &mut Builder) -> Vec<(Id, Id)> {
 fn encode(weights: &dyn WeightSource) -> Result<Plan, String> {
     let mut builder = Builder::new(weights);
     let b = &mut builder;
+    // Its 1500-position int8 GEMMs run 22% faster over fp16 copies (Pixel 8); exact.
+    b.widen_int8();
     name_host_tensors(b, &device_tensors(Mode::Encode));
 
     let caches = declare_cross_caches(b);

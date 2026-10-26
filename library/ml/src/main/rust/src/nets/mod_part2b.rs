@@ -16,6 +16,8 @@ pub struct Builder<'a> {
     /// Whether spatial convolutions lower to the register-blocked tiled path.
     /// See [`Builder::spatial_tiling`].
     spatial_tiled: bool,
+    /// See [`Builder::widen_int8`].
+    widen_int8: bool,
 }
 
 /// Arena allocations are aligned to this many fp16 elements, i.e. 16 bytes — the same

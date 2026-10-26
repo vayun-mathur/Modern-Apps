@@ -231,12 +231,13 @@ fn build_whisper<'l>(
 
     // Recorded on the decode step first, then the encoder every transcription runs first: the
     // first recording of each kernel is the expensive one, and this keeps it out of the first
-    // transcription's switch into decoding.
-    let mut net = Reshaped::streamed(
+    // transcription's switch into decoding. Windowed over both so the encoder's int8 weights are
+    // widened at upload (its plan lists them; the decode step's does not).
+    let mut net = Reshaped::windowed(
         context::shared()?,
         weights.offsets(),
         &weights,
-        whisper::Mode::DecodeStep,
+        &[whisper::Mode::DecodeStep, whisper::Mode::Encode],
         whisper_plan,
     )?;
     net.at(whisper::Mode::Encode)?;

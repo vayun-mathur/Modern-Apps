@@ -160,3 +160,54 @@ fn a_two_stage_argmax_keeps_the_first_of_ties_across_slices() {
         assert_eq!(id, 5_000, "the first of an fp16 tie");
     }
 }
+
+/// `Builder::widen_int8`: the int8 GEMM over fp16-widened weights (`in1` 3 and 4) is
+/// bit-identical to the int8 paths and agrees with the reference. 512 x 520 / 517 positions take
+/// the four-row path, 40 x 52 / 49 the split one; the widths cover aligned and ragged loads.
+#[test]
+#[ignore = "needs a Vulkan device"]
+fn a_widened_int8_gemm_matches_the_int8_paths_bit_for_bit() {
+    for (out_channels, widths, path) in [(512u32, [520u32, 517], 3u32), (40, [52, 49], 4)] {
+        let in_channels = 64u32;
+        let kernel: Vec<i8> = (0..(out_channels * in_channels) as i32)
+            .map(|i| ((i * 37) % 255 - 127) as i8)
+            .collect();
+        let scales: Vec<f32> =
+            (0..out_channels).map(|c| 0.007_812_5 * (1.0 + (c % 7) as f32)).collect();
+        let blob = write_mixed(
+            graph::SUPERTONIC_VE,
+            &[
+                Fixture::I8(vec![out_channels, in_channels, 1, 1], kernel),
+                Fixture::F16(vec![out_channels], scales),
+                Fixture::F16(vec![out_channels], spread(out_channels as usize, 0.5)),
+            ],
+        );
+        let weights = Weights::parse(&blob, graph::SUPERTONIC_VE).expect("the fixture blob parses");
+        for width in widths {
+            let input = spread((in_channels * width) as usize, 1.3);
+            let mut builder = Builder::new(&weights);
+            builder.widen_int8();
+            let first = builder.input(Shape::new(in_channels, 1, width));
+            let last = builder.conv_int8(
+                first, 0, out_channels, (1, 1), (1, 1), (1, 1), (0, 0, 0, 0), 1, Act::Gelu,
+            );
+            let plan = builder.finish(&[last]).expect("the widened plan builds");
+            assert_eq!(plan.widen.len(), 1);
+            assert!(plan.ops.iter().any(|op| matches!(
+                op,
+                crate::nets::Op::Dispatch { kind: crate::nets::Kind::ConvPointInt8, push, .. }
+                    if push.in1 == path
+            )));
+            let narrow = Plan { widen: Vec::new(), ..plan.clone() };
+            let int8 = on_device(narrow, weights.data().to_vec(), &[&input]);
+            let what = format!("a widened int8 gemm, {out_channels} x {width}");
+            let host = run_multi(&plan, weights.data(), &[&input]).expect("the interpreter runs");
+            let widened = on_device(plan, weights.data().to_vec(), &[&input]);
+            matches(&what, &host, &widened);
+            assert!(
+                int8.iter().flatten().zip(widened.iter().flatten()).all(|(a, b)| a.to_bits() == b.to_bits()),
+                "{what}: the widened path differs from the int8 path"
+            );
+        }
+    }
+}

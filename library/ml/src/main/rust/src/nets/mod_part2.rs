@@ -61,6 +61,11 @@ pub struct Plan {
     /// SCRFD has **nine** — score, box and keypoint maps at each of three strides —
     /// which is the reason this is a list.
     pub outputs: Vec<Binding>,
+
+    /// Word offsets of int8 1x1 weights the runtime should widen to fp16 at upload, at every
+    /// shape (so a one-position load plan lists what later GEMM plans use). Empty unless the
+    /// net opted in with [`Builder::widen_int8`].
+    pub widen: Vec<u32>,
 }
 
 impl Plan {

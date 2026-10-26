@@ -33,7 +33,9 @@ impl Net {
         let mut plans = vec![&plan];
         plans.extend_from_slice(also);
         let window = super::segment::read_window(&plans, weights.tensors(), align)?;
-        Self::with_window(context, plan, weights, normalise, window)
+        // Every plan's list: the first may be a decode step that lists none of the encoder's.
+        let widen: Vec<u32> = plans.iter().flat_map(|each| each.widen.iter().copied()).collect();
+        Self::with_window(context, plan, weights, normalise, window, &widen)
     }
 
     /// [`Net::new`], uploading the whole data section so any plan over this file can be
@@ -45,7 +47,8 @@ impl Net {
         normalise: Normalise,
     ) -> Result<Net, String> {
         let window = (0, weights.data_len());
-        Self::with_window(context, plan, weights, normalise, window)
+        let widen = plan.widen.clone();
+        Self::with_window(context, plan, weights, normalise, window, &widen)
     }
 
     fn with_window(
@@ -54,17 +57,22 @@ impl Net {
         weights: &dyn Blob,
         normalise: Normalise,
         window: (u64, u64),
+        widen: &[u32],
     ) -> Result<Net, String> {
         let (lo, hi) = window;
         if lo > hi || hi > weights.data_len() {
             return Err(format!("weights window {lo}..{hi} of a {}-byte file", weights.data_len()));
         }
         let arena_bytes = (plan.arena_elems as vk::DeviceSize) * 2;
+        // fp16 copies of the int8 weights the plan asked to widen go after the window.
+        let base = (hi - lo).div_ceil(super::segment::ALIGNMENT) * super::segment::ALIGNMENT;
+        let widened = widened_layout(widen, weights.tensors(), window, base);
+        let end = widened.last().map_or(hi - lo, |w| w.dst + 2 * w.bytes - lo);
         // Vulkan forbids a zero-sized buffer, and the descriptor set needs a real one bound to
         // the weights binding whether or not any shader reads it. A plan can legitimately read
         // no weights at all — a purely elementwise one does — so this floors the allocation
         // rather than refusing the plan.
-        let weights_bytes = ((hi - lo) as vk::DeviceSize).max(2);
+        let weights_bytes = (end as vk::DeviceSize).max(2);
         let input_elems = binding_elems(&plan.inputs);
         let output_elems = binding_elems(&plan.outputs);
         // One staging buffer for both directions: the inputs and the outputs are never in
@@ -78,7 +86,11 @@ impl Net {
         let segments = Segments::plan(weights_bytes, &context.limits)?;
         // A few kilobytes, kept because `record` needs each tensor's extent to know which window
         // an op fits in, and `rebuild` installs plans this net was not constructed with.
-        let tensors = super::segment::window_tensors(weights.tensors(), lo, hi);
+        let tensors = Self::widened_tensors(
+            super::segment::window_tensors(weights.tensors(), lo, hi),
+            &widened,
+            lo,
+        )?;
 
         let weights_buffer = Buffer::device_local(&context, weights_bytes)?;
         let arena = Buffer::device_local(&context, arena_bytes)?;
@@ -117,6 +129,7 @@ impl Net {
             pipelines,
             segments,
             tensors,
+            widened,
             window,
             command_pool,
             command_buffer: vk::CommandBuffer::null(),
@@ -135,10 +148,12 @@ impl Net {
 
         let staged = std::time::Instant::now();
         net.upload_weights(weights)?;
+        net.upload_widened(weights)?;
         timing!(
-            "upload {} MB of {} MB (bytes {lo}..{hi}) in {:.0} ms",
+            "upload {} MB of {} MB (bytes {lo}..{hi}, {} MB widened) in {:.0} ms",
             weights_bytes / (1024 * 1024),
             weights.data_len() / (1024 * 1024),
+            net.widened_bytes() / (1024 * 1024),
             staged.elapsed().as_secs_f64() * 1000.0
         );
         net.command_buffer = net.allocate_command_buffer()?;

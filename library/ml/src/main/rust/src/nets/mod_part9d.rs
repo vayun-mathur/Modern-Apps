@@ -88,3 +88,33 @@ impl<'a> Builder<'a> {
         Ok(())
     }
 }
+
+impl Builder<'_> {
+    /// What [`Plan::widen`] lists: every int8 1x1 whose GEMM the widened paths can take.
+    fn widened_weights(&self) -> Vec<u32> {
+        let mut out = Vec::new();
+        if !self.widen_int8 {
+            return out;
+        }
+        for node in &self.nodes {
+            let Node::ConvInt8 { input, weight, kernel, stride, pad, group, quant: Quant::I8, .. } =
+                node
+            else {
+                continue;
+            };
+            let channels = self.shapes.get(input.0).map_or(0, |s| s.c);
+            if *group == 1
+                && *kernel == (1, 1)
+                && *stride == (1, 1)
+                && *pad == (0, 0)
+                && channels > 0
+                && channels % 16 == 0
+                && *weight % 4 == 0
+                && !out.contains(weight)
+            {
+                out.push(*weight);
+            }
+        }
+        out
+    }
+}

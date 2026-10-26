@@ -19,7 +19,17 @@ impl Net {
     /// once per net rather than once per inference.
     fn upload_weights(&self, weights: &dyn Blob) -> Result<(), String> {
         let (lo, hi) = self.window;
-        let total = hi - lo;
+        self.upload_with(0, hi - lo, &mut |offset, piece| weights.read_at(lo + offset, piece))
+    }
+
+    /// Write `total` bytes at weights-buffer byte `dst`, `fill(offset, piece)` producing each
+    /// chunk. See [`Net::upload_weights`].
+    fn upload_with(
+        &self,
+        dst: u64,
+        total: u64,
+        fill: &mut dyn FnMut(u64, &mut [u8]) -> Result<(), String>,
+    ) -> Result<(), String> {
         if total == 0 {
             return Ok(());
         }
@@ -71,7 +81,7 @@ impl Net {
                     Some(piece) => piece,
                     None => break Err("a chunk is larger than its buffer".to_string()),
                 };
-                if let Err(e) = weights.read_at(lo + written, piece) {
+                if let Err(e) = fill(written, piece) {
                     break Err(e);
                 }
                 // This side's previous copy (two chunks ago) may still be reading its staging
@@ -98,7 +108,7 @@ impl Net {
                         )
                         .map_err(|e| format!("begin_command_buffer {e:?}"))?;
                     let region = vk::BufferCopy::default()
-                        .dst_offset(written as vk::DeviceSize)
+                        .dst_offset((dst + written) as vk::DeviceSize)
                         .size(size as vk::DeviceSize);
                     device.cmd_copy_buffer(
                         command_buffer,
@@ -147,6 +157,7 @@ impl Net {
         kind: crate::nets::Kind,
         push: &crate::nets::Push,
     ) -> Result<crate::nets::Push, String> {
+        let push = &self.widen_push(kind, push);
         let (lo, hi) = self.window;
         let reads = kind.weight_reads(push);
         for read in &reads {

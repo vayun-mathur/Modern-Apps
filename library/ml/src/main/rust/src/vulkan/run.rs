@@ -34,7 +34,7 @@ use ash::vk;
 
 use crate::nets::{Op, Plan};
 use crate::preprocess::{self, Normalise};
-use crate::weights::Blob;
+use crate::weights::{Blob, Dtype, Tensor};
 
 use super::buffers::Buffer;
 use super::context::Context;
@@ -276,6 +276,8 @@ pub struct Net {
     /// The `.maml` tensors inside the uploaded window, offsets relative to its start, for
     /// [`Segments::for_op`].
     tensors: Vec<crate::weights::Tensor>,
+    /// fp16 copies of int8 weights, past the window in the weights buffer. See [`Widened`].
+    widened: Vec<Widened>,
     /// The `[lo, hi)` data-section bytes in the weights buffer. Byte 0 of the buffer is file
     /// byte `lo`; a plan reading outside the window is refused at record time.
     window: (u64, u64),
@@ -341,3 +343,4 @@ include!("run_part7.rs");
 include!("run_part3.rs");
 include!("run_part4.rs");
 include!("run_part5.rs");
+include!("run_part8.rs");

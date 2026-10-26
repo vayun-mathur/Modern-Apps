@@ -305,6 +305,7 @@ mod tests {
             inputs: vec![Binding { at: 0, shape: Shape { c: 1, h: 1, w: 1 } }],
             pinned: Vec::new(),
             outputs: vec![Binding { at: 0, shape: Shape { c: 1, h: 1, w: 1 } }],
+            widen: Vec::new(),
         }
     }
 

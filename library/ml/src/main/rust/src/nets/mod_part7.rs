@@ -314,6 +314,7 @@ impl<'a> Builder<'a> {
             inputs: self.inputs.iter().map(|&id| binding(id)).collect::<Result<_, _>>()?,
             pinned: self.pinned.iter().map(|&id| binding(id)).collect::<Result<_, _>>()?,
             outputs: outputs.iter().map(|&id| binding(id)).collect::<Result<_, _>>()?,
+            widen: self.widened_weights(),
         })
     }
 

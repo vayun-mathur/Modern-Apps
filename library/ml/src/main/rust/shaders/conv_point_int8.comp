@@ -227,9 +227,19 @@ void row_taps() {
     }
 }
 
+#include "conv_point_widened.glsl"
+
 void main() {
     if (p.in1 == 1u) {
         split_rows();
+        return;
+    }
+    if (p.in1 == 3u) {
+        widened_block();
+        return;
+    }
+    if (p.in1 == 4u) {
+        widened_split();
         return;
     }
     if (p.in1 == 2u) {

@@ -11,7 +11,17 @@ impl<'a> Builder<'a> {
             inputs: Vec::new(),
             pad_edge: false,
             spatial_tiled: false,
+            widen_int8: false,
         }
+    }
+
+    /// Run this net's int8 GEMMs over fp16 copies of their weights, widened at upload.
+    ///
+    /// Exact (every int8 is an fp16, the sums are unchanged) and faster where the int8 unpack is
+    /// the bottleneck, at twice the memory for those weights. [`Plan::widen`] lists them and the
+    /// runtime falls back to the int8 path for any it did not widen.
+    pub fn widen_int8(&mut self) {
+        self.widen_int8 = true;
     }
 
     /// Lower dense spatial convolutions to the register-blocked path from here on.

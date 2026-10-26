@@ -88,6 +88,13 @@ impl<'a> Builder<'a> {
                     && si.c % 16 == 0
                     && *weight % 4 == 0
                     && int8_tiles < CONV_POINT_INT8_SPLIT_BELOW;
+                // Opted-in nets mark the wide paths 3 / 4 (fp16-widened weights, see
+                // conv_point_widened.glsl); the runtime falls back to 0 / 1 if it did not widen.
+                let widened = self.widen_int8
+                    && kind == Kind::ConvPointInt8
+                    && !row_gemm
+                    && si.c % 16 == 0
+                    && *weight % 4 == 0;
                 // The untiled shader's register-blocked path (`in1` = 1): 4 channels x 8 columns
                 // of a row per invocation. Ungrouped only: maia's grouped 1x1 got slower.
                 let int8_blocked = kind == Kind::ConvInt8 && *group == 1;
@@ -124,6 +131,8 @@ impl<'a> Builder<'a> {
                         in0: input_at,
                         in1: if row_gemm || grouped_vec {
                             2
+                        } else if widened {
+                            3 + u32::from(split)
                         } else {
                             u32::from(split || int8_blocked || int4_wide)
                         },
