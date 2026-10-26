@@ -1,5 +1,8 @@
 package com.vayunmathur.library.downloadservice
 
+import android.content.Context
+import java.io.File
+
 /**
  * Centralized model URL config for supply-chain mitigation #1.
  * Models are served ONLY from the self-hosted mirror (no HuggingFace fallback).
@@ -7,33 +10,26 @@ package com.vayunmathur.library.downloadservice
  * and set Content-Length + ETag.
  *
  * Mirror contents (path = file served under MIRROR_BASE):
- *   models/gemma-4-E2B-it.litertlm
+ *   models/gemma4/gemma4_text.maml, gemma4_embed.maml, gemma4_head.maml,
+ *     gemma4_vision.maml, gemma4_audio.maml, gemma4_tokenizer.spm1
  *   models/siglip2_vision_model_fp16.onnx
  *   models/siglip2_text_model_int8.onnx
  *   models/siglip2_tokenizer.model
  */
 object ModelUrls {
     const val MIRROR_BASE = "https://data.maproj.org/models/"
-
     // On-disk file names (also the mirror path for the SigLIP2 files).
-    const val GEMMA_FILE = "gemma4-2b.litertlm"
     const val SIGLIP_VISION_FILE = "siglip2_vision_model_fp16.onnx"
     const val SIGLIP_TEXT_FILE = "siglip2_text_model_int8.onnx"
     const val SIGLIP_TOKENIZER_FILE = "siglip2_tokenizer.model"
-
     // Mirror download URLs.
-    const val GEMMA_URL = "${MIRROR_BASE}gemma-4-E2B-it.litertlm"
     const val SIGLIP_VISION_URL = "${MIRROR_BASE}siglip2_vision_model_fp16.onnx"
     const val SIGLIP_TEXT_URL = "${MIRROR_BASE}siglip2_text_model_int8.onnx"
     const val SIGLIP_TOKENIZER_URL = "${MIRROR_BASE}siglip2_tokenizer.model"
-
     // SHA-256 integrity checks (verified against the files uploaded to the mirror).
-    const val GEMMA_SHA256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"
     const val SIGLIP_VISION_SHA256 = "a1959f7bd3993a607e48839f6d01e25b876fe76afda301b028b78eef68aabd95"
     const val SIGLIP_TEXT_SHA256 = "3a0603d3a00c05a80a6ded4743c16aaac7b1e62cdcc7e362e7ce418659b96400"
     const val SIGLIP_TOKENIZER_SHA256 = "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2"
-
-    val GEMMA = ModelDownloadItem(GEMMA_URL, GEMMA_FILE, "Model", GEMMA_SHA256)
     val SIGLIP_VISION = ModelDownloadItem(
         SIGLIP_VISION_URL,
         SIGLIP_VISION_FILE,
@@ -53,14 +49,72 @@ object ModelUrls {
             "Tokenizer",
             SIGLIP_TOKENIZER_SHA256
         )
-
     /** SigLIP2 semantic-search models fetched on demand by the photos app. */
     val SIGLIP = listOf(SIGLIP_VISION, SIGLIP_TEXT, SIGLIP_TOKENIZER)
 
-    /** Everything downloaded on OpenAssistant first launch (Gemma + SigLIP2). */
-    val INITIAL = listOf(GEMMA) + SIGLIP
-}
+    /**
+     * Gemma 4 E2B for `:library:ml`'s maml runtime (`Gemma4Handle` and its vision and audio
+     * towers), downloaded into `gemma4/` under the app's external files directory.
+     */
+    object GemmaMaml {
+        const val DIR = "gemma4"
+        const val BASE = "${MIRROR_BASE}gemma4/"
 
+        val FILES: List<ModelDownloadItem> = listOf(
+            // 1,101,593,392 bytes.
+            item(
+                "gemma4_text.maml",
+                "Text Model",
+                "f990e8f99d61a127dd329cd4329b081f214067afefb1b3f4778922cc12d210d8",
+            ),
+            // 1,566,576,256 bytes.
+            item(
+                "gemma4_embed.maml",
+                "Embeddings",
+                "11b9e8b316dd8a2c628d58b98908e9a509764c6f63531731b6d94ccf6419a9bd",
+            ),
+            // 403,703,360 bytes.
+            item(
+                "gemma4_head.maml",
+                "Output Head",
+                "338021b6aa4d78eda55e47f5197d186087a73a8dade02001812aa95f0f550937",
+            ),
+            // 97,815,200 bytes.
+            item(
+                "gemma4_vision.maml",
+                "Vision Tower",
+                "4c53c0a8383f2ea99f8beed50bd5eac203565436313d0c2dd77b389ea1cf38e3",
+            ),
+            // 173,999,072 bytes.
+            item(
+                "gemma4_audio.maml",
+                "Audio Tower",
+                "be3ac4f968835fa257291f0845be642750f71e63e197a6e199ad5210316cb4f2",
+            ),
+            // 3,889,167 bytes.
+            item(
+                "gemma4_tokenizer.spm1",
+                "Tokenizer",
+                "e3e03941be666b885f6644cb3d7a0264949f842f8a7b97302589d9deff2334d7",
+            ),
+        )
+
+        private fun item(name: String, description: String, sha256: String) =
+            ModelDownloadItem("$BASE$name", "$DIR/$name", "Gemma 4 $description", sha256)
+
+        /** Directory `Gemma4Handle.inDirectory` loads from. */
+        fun modelDir(context: Context): File = File(context.getExternalFilesDir(null), DIR)
+
+        /** True once every file is on disk. */
+        fun isDownloaded(context: Context): Boolean {
+            val root = context.getExternalFilesDir(null) ?: return false
+            return FILES.all { File(root, it.fileName).isFile }
+        }
+    }
+
+    /** Everything downloaded on OpenAssistant first launch (Gemma + SigLIP2). */
+    val INITIAL = GemmaMaml.FILES + SIGLIP
+}
 /** A single model file fetched from the self-hosted mirror, with optional SHA-256. */
 data class ModelDownloadItem(
     val url: String,
