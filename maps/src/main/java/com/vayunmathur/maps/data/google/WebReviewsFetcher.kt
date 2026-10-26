@@ -30,39 +30,21 @@ import java.util.concurrent.atomic.AtomicInteger
  * [ReviewsWebParser] turns it into [GoogleReview]s.
  *
  * Strictly best-effort + lazy: any failure/timeout returns empty and the place sheet just shows no
- * reviews. Serialized by a [Mutex] since the single WebView navigates per place. Takes an Android
- * [Context] (application context preferred) — no DI framework, standalone.
+ * reviews. Serialized by a [Mutex] since the single WebView navigates per place.
+ *
+ * Only ever constructed inside [com.vayunmathur.maps.service.ReviewsScraperService]'s `:reviews`
+ * process: loading Chromium pins ~100 MB that `WebView.destroy()` never unmaps, so it must live in
+ * a process that can exit.
  */
 class WebReviewsFetcher(private val context: Context) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
-    private val partial = ConcurrentHashMap<String, (List<GoogleReview>) -> Unit>()
+    private val partial = ConcurrentHashMap<String, (String) -> Unit>()
     private val seq = AtomicInteger()
     private val mutex = Mutex()
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile private var webView: WebView? = null
-    private var reap: Runnable? = null
-
-    /** Free the WebView after a quiet period: a warm fetcher pins a full maps.google.com page for
-     *  the rest of the session, which is real memory. The next fetch after a reap re-creates it. */
-    private fun scheduleReap() {
-        reap?.let(main::removeCallbacks)
-        val r = Runnable { reapNow() }
-        reap = r
-        main.postDelayed(r, REAP_IDLE_MS)
-    }
-
-    /** Destroy the WebView immediately. Must run on the main thread (WebView requirement). */
-    private fun reapNow() {
-        webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
-        webView = null
-    }
-
-    private fun cancelReap() {
-        reap?.let(main::removeCallbacks)
-        reap = null
-    }
 
     private inner class Bridge {
         @JavascriptInterface
@@ -79,39 +61,33 @@ class WebReviewsFetcher(private val context: Context) {
 
         // The accumulated reviews SO FAR, sent whenever the count grows — the sheet streams them
         // into the list under the progress bar instead of making the user stare at a bar for 30 s.
-        // Same JavaBridge thread; parse failures are dropped (the final onResult is authoritative).
+        // Same JavaBridge thread; the raw JSON is parsed by the client (the final onResult is
+        // authoritative).
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
-            val cb = partial[id] ?: return
-            runCatching { ReviewsWebParser.parse(payload) }.getOrNull()?.let { if (it.isNotEmpty()) cb(it) }
+            partial[id]?.invoke(payload)
         }
     }
 
-    /** Reviews for [featureId] (`0x..:0x..`) — newest/most-relevant first as Google renders them,
-     *  each with its uploaded photos — or empty on any failure. [onProgress] streams the running
-     *  count while the scrape is in flight; [onPartial] streams the accumulated reviews themselves
-     *  (a growing prefix of the final result). Both are called off the main thread. */
+    /** Raw reviews JSON (see [ReviewsWebParser]) for [featureId] (`0x..:0x..`) — newest/most-relevant
+     *  first as Google renders them, each with its uploaded photos — or null on any failure.
+     *  [onProgress] streams the running count while the scrape is in flight; [onPartial] streams the
+     *  accumulated reviews JSON (a growing prefix of the final result). Both are called off the main
+     *  thread. */
     suspend fun fetch(
         featureId: String,
         onProgress: (Int) -> Unit = {},
-        onPartial: (List<GoogleReview>) -> Unit = {},
-    ): List<GoogleReview> {
-        val cid = cidOf(featureId) ?: return emptyList()
-        return mutex.withLock {
-            cancelReap()
-            try {
-                fetchLocked(cid, onProgress, onPartial)
-            } finally {
-                scheduleReap()
-            }
-        }
+        onPartial: (String) -> Unit = {},
+    ): String? {
+        val cid = cidOf(featureId) ?: return null
+        return mutex.withLock { fetchLocked(cid, onProgress, onPartial) }
     }
 
     private suspend fun fetchLocked(
         cid: String,
         onProgress: (Int) -> Unit,
-        onPartial: (List<GoogleReview>) -> Unit,
-    ): List<GoogleReview> {
+        onPartial: (String) -> Unit,
+    ): String? {
         return run {
             val id = BRIDGE_ID_PREFIX + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
@@ -160,11 +136,7 @@ class WebReviewsFetcher(private val context: Context) {
                 progress.remove(id)
                 partial.remove(id)
             }
-            if (raw.isNullOrEmpty()) {
-                emptyList()
-            } else {
-                runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
-            }
+            raw?.ifEmpty { null }
         }
     }
 
@@ -414,7 +386,6 @@ class WebReviewsFetcher(private val context: Context) {
         // Must outlast the script's own hard stop (130 ticks × 250 ms ≈ 33 s + page load) — if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L
-        const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period
         const val SETTLE_MS = 150L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a

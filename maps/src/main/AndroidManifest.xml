@@ -101,6 +101,10 @@
             android:name=".util.NavigationService"
             android:foregroundServiceType="location"
             android:exported="false" />
+        <service
+            android:name=".service.ReviewsScraperService"
+            android:process=":reviews"
+            android:exported="false" />
 
         <service
             android:name=".car.MapsCarAppService"

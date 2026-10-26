@@ -8,7 +8,7 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.osmPlace
 import com.vayunmathur.maps.data.google.GooglePoiDataSource
 import com.vayunmathur.maps.data.google.GooglePoiInfo
-import com.vayunmathur.maps.data.google.WebReviewsFetcher
+import com.vayunmathur.maps.service.ReviewsScraperClient
 import com.vayunmathur.maps.data.parse
 import com.vayunmathur.maps.data.google.PoiSection
 import kotlinx.coroutines.Dispatchers
@@ -127,9 +127,9 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
      */
     private var lastPersisted: GeoPoint? = null
 
-    // Hidden-WebView reviews scraper (keyless; Google 404'd the old reviews RPC). Holds a single
-    // WebView built from the application Context, serialized + idle-reaped internally.
-    private val webReviews = WebReviewsFetcher(application)
+    // Hidden-WebView reviews scraper (keyless; Google 404'd the old reviews RPC), run in the
+    // `:reviews` process so Chromium never maps into this one.
+    private val webReviews = ReviewsScraperClient(application)
 
     init {
         locationManager.startUpdates(
