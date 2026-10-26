@@ -94,8 +94,8 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_pushGemma
                         .map_err(|_| format!("token {token} is not in the vocabulary"))?,
                 );
             }
-            handle.prefill(&owned)?;
-            Ok(handle.position)
+            handle.push(&owned)?;
+            Ok(handle.fed())
         });
         Ok(match pushed {
             Ok(position) => jint::try_from(position).unwrap_or(-1),
@@ -207,7 +207,7 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_positionG
     }
     // SAFETY: the caller guarantees the handle came from `createGemma4` and is still live.
     let handle = unsafe { &*(handle as *const Gemma4Handle) };
-    jint::try_from(handle.position).unwrap_or(-1)
+    jint::try_from(handle.fed()).unwrap_or(-1)
 }
 
 /// A weight source for the scaling probe: every tensor at offset zero.
@@ -489,5 +489,6 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_benchmark
         log(&format!("gemma4 benchmark {label}: {best:.0} ms"));
     }
     handle.position = 0;
+    handle.pending.clear();
     -1
 }

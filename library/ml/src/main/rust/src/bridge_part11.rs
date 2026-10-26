@@ -234,6 +234,7 @@ fn build_gemma4<'l>(
         // something else was killed.
         context: gemma4::CONTEXT_TIERS[0],
         position: 0,
+        pending: Vec::new(),
     })
 }
 

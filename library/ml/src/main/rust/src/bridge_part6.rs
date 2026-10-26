@@ -1,6 +1,9 @@
 impl Gemma4Handle {
     /// Feed one token and return its logits, or `None` while only filling the cache.
     fn step(&mut self, token: u32, want_logits: bool) -> Result<Option<Vec<f32>>, String> {
+        if let Some(state) = self.fold_pending(token)? {
+            return if want_logits { self.head_logits(&state).map(Some) } else { Ok(None) };
+        }
         let (hidden, per_layer) = self.gather(token)?;
         self.step_hidden(&hidden, &per_layer, want_logits)
     }
@@ -70,6 +73,9 @@ impl Gemma4Handle {
     /// when the head net is absent. The sampling path (`logitsGemma4`) never
     /// calls this — it needs the full logits.
     fn step_greedy(&mut self, token: u32) -> Result<u32, String> {
+        if let Some(state) = self.fold_pending(token)? {
+            return self.head_greedy(&state);
+        }
         let (hidden, per_layer) = self.gather(token)?;
         self.step_hidden_greedy(&hidden, &per_layer)
     }

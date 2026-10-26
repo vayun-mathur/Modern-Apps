@@ -90,13 +90,14 @@ struct Args {
     len: Option<u32>,
     gather: bool,
     soft: bool,
+    spread: bool,
 }
 
 /// `--head <path>`, `--time <repeats>`, `--prefill <tokens>`, `--sample`; the
 /// rest are positional: text embed golden [trace] [tail] [head].
 fn parse_args() -> Args {
     let mut args =
-        Args { positional: Vec::new(), head: None, time: None, prefill: None, sample: false, topk: false, split: None, len: None, gather: false, soft: false };
+        Args { positional: Vec::new(), head: None, time: None, prefill: None, sample: false, topk: false, split: None, len: None, gather: false, soft: false, spread: false };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -109,6 +110,7 @@ fn parse_args() -> Args {
             "--len" => args.len = it.next().and_then(|n| n.parse().ok()),
             "--gather" => args.gather = true,
             "--soft" => args.soft = true,
+            "--spread" => args.spread = true,
             _ => args.positional.push(arg),
         }
     }
@@ -186,7 +188,10 @@ fn main() {
         return print_memory();
     }
     if let Some(widths) = args.prefill {
-        time_prefill(&context, &weights, &embed_weights, head_weights.as_ref(), &tokens, &widths);
+        // `--spread`: a prompt of distinct ids, where no row read repeats (the golden cycles 6).
+        let spread: Vec<u32> = (0..TIER).map(|i| (i * 7919 + 1000) % 250_000).collect();
+        let prompt = if args.spread { &spread } else { &tokens };
+        time_prefill(&context, &weights, &embed_weights, head_weights.as_ref(), prompt, &widths);
         return print_memory();
     }
     match run(&context, &weights, &embed_weights, head_weights.as_ref(), &tokens) {
@@ -560,6 +565,8 @@ struct PrefillTimes {
     rotary: f64,
     record: f64,
     gpu: f64,
+    /// The last token's final-normed state, which the head reads.
+    state: Vec<f32>,
 }
 
 /// `prompt` at position 0 exactly as `Gemma4Handle::prefill` feeds it: per chunk (padded to
@@ -611,8 +618,10 @@ fn prefill_app(
         times.record += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         at.set_params(StepParams { prefix: start, window_start: start.saturating_sub(gemma4::WINDOW - 1) })?;
-        at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
+        let out = at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
         times.gpu += tick.elapsed().as_secs_f64() * 1000.0;
+        let states = out.first().ok_or("a prefill returned nothing")?;
+        times.state = g::column(states, chunk.len() - 1, width as usize);
     }
     Ok(times)
 }
@@ -667,37 +676,52 @@ fn time_prefill(
         }
         let prompt: Vec<u32> = tokens.iter().copied().cycle().take(width as usize).collect();
         let next = tokens[width as usize % tokens.len()];
+        // The app's flow: Kotlin pushes the prompt, then steps its last token; native runs them as
+        // one prefill and the head reads the last column (`Gemma4Handle::fold_pending`).
+        let folded: Vec<u32> = prompt.iter().copied().chain([next]).collect();
         for run in 0..2 {
             let start = Instant::now();
-            let p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt, true) {
+            let p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &folded, true) {
                 Ok(p) => p,
                 Err(why) => return println!("the prefill failed: {why}"),
             };
             let prefill_ms = start.elapsed().as_secs_f64() * 1000.0;
             if stamps && run == 1 {
-                let ran_at = modelrunner::nets::gemma4_gather::padded(width.min(CHUNK as u32), TIER);
+                let ran_at = modelrunner::nets::gemma4_gather::padded((width + 1).min(CHUNK as u32), TIER);
                 prefill_report = net.at(gemma4::Mode::PrefillFresh { tokens: ran_at }.at(TIER)).and_then(|at| at.op_times()).ok();
             }
             let tick = Instant::now();
-            if let Err(why) = net.at(gemma4::Mode::DecodeStep.at(TIER)) {
-                return println!("the decode plan does not build: {why}");
-            }
-            let first_record = tick.elapsed().as_secs_f64() * 1000.0;
-            let mut s = StepTimes::default();
-            let id = match decode_one(&mut net, head_net.as_mut(), Some(&mut gather), &reader, &rotary, next, width, HeadOut::Greedy, &mut s) {
-                Ok(id) => id,
-                Err(why) => return println!("the first decode step failed: {why}"),
+            let id = match head_net.as_mut().map(|h| h.at(HeadOut::Greedy).and_then(|at| at.infer_raw_many(&[&p.state]))) {
+                Some(Ok(out)) => out.last().filter(|id| id.len() == 2).map(|id| id[1] as u32 * 2048 + id[0] as u32),
+                Some(Err(why)) => return println!("the head failed: {why}"),
+                None => None,
             };
-            let first_ms = tick.elapsed().as_secs_f64() * 1000.0;
+            let head_ms = tick.elapsed().as_secs_f64() * 1000.0;
             println!(
-                "{} prefill {width} tokens: rows {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} = {prefill_ms:.0} ms; \
-                 first token {first_ms:.0} ms (record {first_record:.0}, gather {:.0}, step {:.0}, head {:.0}; id {id:?}); TTFT {:.0} ms",
+                "{} prefill {width}+1 tokens: rows {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} = {prefill_ms:.0} ms; \
+                 head {head_ms:.0} ms (id {id:?}); TTFT {:.0} ms",
                 if run == 0 { "cold" } else { "warm" },
                 p.rows, p.combine, p.rotary, p.record, p.gpu,
-                s.rows + s.combine, s.infer, s.head,
-                prefill_ms + first_ms,
+                prefill_ms + head_ms,
             );
         }
+        // The old flow once (prefill the prompt, then a decode step), for the token to match.
+        let tick = Instant::now();
+        let unfolded = prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt, true).and_then(|_| {
+            let mut s = StepTimes::default();
+            decode_one(&mut net, head_net.as_mut(), Some(&mut gather), &reader, &rotary, next, width, HeadOut::Greedy, &mut s)
+        });
+        println!("  decode-step flow: id {unfolded:?}, {:.0} ms", tick.elapsed().as_secs_f64() * 1000.0);
+        let margins = (|| -> Result<String, String> {
+            let head = head_net.as_mut().ok_or("no head")?;
+            let p = prefill_app(&mut net, &mut gather, &reader, &rotary, &folded, true)?;
+            let a = softcapped(&head.at(HeadOut::Logits)?.infer_raw_many(&[&p.state])?)?;
+            prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt, true)?;
+            let b = last_logits(&mut net, head, &reader, &rotary, next, width)?;
+            let top3 = |l: &[f32]| top10(l).into_iter().take(3).map(|i| (i, l[i as usize])).collect::<Vec<_>>();
+            Ok(format!("folded {:?} / decode-step {:?}", top3(&a), top3(&b)))
+        })();
+        println!("  top3 {margins:?}");
     }
     if let Some(report) = prefill_report {
         print_kinds("prefill", &report);
@@ -852,11 +876,15 @@ fn split_check(
     println!("  {:<32} top10 {:?}", "app path (rows + device combine)", top10(&app));
     let pad_diff = app.iter().zip(&exact).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
     println!("  padding {} -> {}: max |logit diff| vs unpadded {pad_diff:.4}", body.len(), body.len().div_ceil(8) * 8);
+    let folded = prefill_app(&mut net, &mut gather, &reader, &rotary, prompt, true)?;
+    let folded = softcapped(&head_net.at(HeadOut::Logits)?.infer_raw_many(&[&folded.state])?)?;
+    println!("  {:<32} top10 {:?}", "app path, last token folded", top10(&folded));
     let variants = [
         variants[0].clone(),
         variants[1].clone(),
         variants[2].clone(),
         ("app path (rows + device combine)", app),
+        ("app path, last token folded", folded),
     ];
     for (label, logits) in &variants {
         let got = top10(logits);

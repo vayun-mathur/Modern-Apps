@@ -48,6 +48,7 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_loadPrefi
                 let at = handle.net.at(gemma4::Mode::DecodeStep.at(handle.context))?;
                 at.import_pinned(gemma4::CACHE_TENSORS, positions, &bytes)?;
                 handle.position = positions;
+                handle.pending.clear();
                 Ok(positions)
             });
         Ok(match loaded {
@@ -154,6 +155,12 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_seekGemma
     match u32::try_from(position) {
         Ok(position) if position <= handle.position => {
             handle.position = position;
+            handle.pending.clear();
+            jint::try_from(position).unwrap_or(-1)
+        }
+        // Inside what was pushed but not yet run: keep that much of it.
+        Ok(position) if position <= handle.fed() => {
+            handle.pending.truncate((position - handle.position) as usize);
             jint::try_from(position).unwrap_or(-1)
         }
         // Forward is refused: those rows were never written, so attending over them would read
@@ -186,6 +193,7 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_resetGemm
     // SAFETY: the caller guarantees the handle came from `createGemma4` and is still live.
     let handle = unsafe { &mut *(handle as *mut Gemma4Handle) };
     handle.position = 0;
+    handle.pending.clear();
 }
 
 /// Release the handle. Idempotent from Kotlin's side, which zeroes its field first.
@@ -234,6 +242,8 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_pushSoftG
         // that no other call on it overlaps this one.
         let handle = unsafe { &mut *(handle as *mut Gemma4Handle) };
         let fed = read_float_array(env, &embeddings).and_then(|values| {
+            // Soft tokens follow whatever was pushed before them, so that goes in first.
+            handle.flush()?;
             handle.prefill_soft(&values)?;
             Ok((values.len() / gemma4::D_MODEL as usize) as jint)
         });

@@ -258,8 +258,13 @@ impl Gemma4Handle {
             let logits = self.step(token, true)?.ok_or("a decode step returned no logits")?;
             return Ok(top_k_pairs(&logits, k));
         }
-        let (hidden, per_layer) = self.gather(token)?;
-        let state = self.decode_state(&hidden, &per_layer)?;
+        let state = match self.fold_pending(token)? {
+            Some(state) => state,
+            None => {
+                let (hidden, per_layer) = self.gather(token)?;
+                self.decode_state(&hidden, &per_layer)?
+            }
+        };
         let Some(head) = self.head.as_mut() else { return Err("the head disappeared".into()) };
         let out = head.at(HeadOut::TopK)?.infer_raw_many(&[&state])?;
         let triples = out.first().ok_or("the top-k head returned nothing")?;
@@ -277,13 +282,53 @@ impl Gemma4Handle {
 }
 
 impl Gemma4Handle {
-    /// Feed many tokens in **one** submit per chunk, filling the caches and returning nothing.
+    /// Take pushed tokens into `pending`, refusing what the cache cannot hold. They run with the
+    /// next step's token (see [`fold_pending`](Self::fold_pending)), or at the next [`flush`](Self::flush).
+    fn push(&mut self, tokens: &[u32]) -> Result<(), String> {
+        let total = self.position as usize + self.pending.len() + tokens.len();
+        if total > self.context as usize {
+            return Err(format!("a prompt of {total} positions past this device's {} cache", self.context));
+        }
+        if let Some(bad) = tokens.iter().find(|&&t| t >= gemma4::VOCAB) {
+            return Err(format!("token {bad} is past the {}-entry vocabulary", gemma4::VOCAB));
+        }
+        self.pending.extend_from_slice(tokens);
+        Ok(())
+    }
+
+    /// Positions the cache holds once `pending` is in it: what Kotlin counts.
+    fn fed(&self) -> u32 {
+        self.position + self.pending.len() as u32
+    }
+
+    /// Prefill `pending` now, for any call that needs the cache to hold it.
+    fn flush(&mut self) -> Result<(), String> {
+        let tokens = std::mem::take(&mut self.pending);
+        if !tokens.is_empty() {
+            self.prefill(&tokens)?;
+        }
+        Ok(())
+    }
+
+    /// `pending` and `token` as one prefill, returning `token`'s normed state for the head, or
+    /// `None` when nothing is pending and the step runs as a decode step.
+    fn fold_pending(&mut self, token: u32) -> Result<Option<Vec<f32>>, String> {
+        if self.pending.is_empty() {
+            return Ok(None);
+        }
+        let mut tokens = std::mem::take(&mut self.pending);
+        tokens.push(token);
+        self.prefill(&tokens).map(Some)
+    }
+
+    /// Feed many tokens in **one** submit per chunk, filling the caches. Returns the last token's
+    /// final-normed state, which the head reads when that token is a step's.
     ///
     /// At one position a pass reads 1.30 GB of weights for a single 1536-wide vector; at T
     /// positions it reads them once and every projection becomes a GEMM over T columns. Chunked
     /// because each chunk's score maps are eight heads of `T x context`. Every chunk attends the
     /// whole cache (`attn_cached_multi`), so any split and any starting position is correct.
-    fn prefill(&mut self, tokens: &[u32]) -> Result<(), String> {
+    fn prefill(&mut self, tokens: &[u32]) -> Result<Vec<f32>, String> {
         if self.position as usize + tokens.len() > self.context as usize {
             return Err(format!(
                 "a prompt of {} positions past this device's {} cache",
@@ -291,18 +336,19 @@ impl Gemma4Handle {
                 self.context
             ));
         }
+        let mut state = Vec::new();
         for chunk in tokens.chunks(CHUNK as usize) {
             let real = chunk.len() as u32;
             let width = crate::nets::gemma4_gather::padded(real, self.context - self.position);
             // Pad columns feed the pad token; nothing real reads them (see `padded`).
             let mut fed = chunk.to_vec();
             fed.resize(width as usize, 0);
-            self.prefill_chunk(real, width, |reader| {
+            state = self.prefill_chunk(real, width, |reader| {
                 let hidden = crate::nets::gemma4_gather::token_rows(reader, &fed)?;
                 Ok((hidden, crate::nets::gemma4_gather::layer_rows(reader, &fed)?))
             })?;
         }
-        Ok(())
+        Ok(state)
     }
 
     /// [`prefill`](Self::prefill) for **soft tokens** (`D_MODEL` values per row from the vision
@@ -336,13 +382,13 @@ impl Gemma4Handle {
 
     /// One chunk of `real` positions run at `width`: `rows` gathers the `[C, 1, width]` hidden
     /// and table blocks while the chunk's plan builds on another thread if it was evicted, then
-    /// one combine submit and one Prefill submit.
+    /// one combine submit and one Prefill submit. Returns the last real column's normed state.
     fn prefill_chunk(
         &mut self,
         real: u32,
         width: u32,
         rows: impl FnOnce(&crate::weights::Reader<'_>) -> Result<(Vec<f32>, Vec<f32>), String>,
-    ) -> Result<(), String> {
+    ) -> Result<Vec<f32>, String> {
         let started = std::time::Instant::now();
         let mode = if self.position == 0 {
             gemma4::Mode::PrefillFresh { tokens: width }
@@ -383,7 +429,7 @@ impl Gemma4Handle {
             window_start: self.position.saturating_sub(gemma4::WINDOW - 1),
         })?;
         let ran = std::time::Instant::now();
-        at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
+        let out = at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
         log(&format!(
             "gemma4 prefill {real} positions (run at {width}) at {}: {:.0} ms rows, {:.0} ms combine, \
              {:.0} ms record, {:.0} ms gpu",
@@ -394,6 +440,7 @@ impl Gemma4Handle {
             ran.elapsed().as_secs_f64() * 1000.0,
         ));
         self.position += real;
-        Ok(())
+        let states = out.first().ok_or("a prefill returned nothing")?;
+        Ok(crate::nets::gemma4_gather::column(states, real.saturating_sub(1) as usize, wide))
     }
 }

@@ -444,6 +444,9 @@ struct Gemma4Handle {
     /// `[window_start, prefix]`, so rows past the new prefix are never looked at again and
     /// overwriting them lazily is free.
     position: u32,
+    /// Pushed tokens not yet in the cache: held so the next step runs them and its own token as
+    /// one prefill and reads its logits off the last column, with no decode step of its own.
+    pending: Vec<u32>,
 }
 
 fn gemma4_plan(offsets: &Offsets, pass: gemma4::Pass) -> Result<Plan, String> {

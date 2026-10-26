@@ -247,15 +247,12 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
     }
 
     if let Mode::Prefill { .. } | Mode::PrefillFresh { .. } = mode {
-        // Prefill runs every layer - the point is the caches those layers fill - and then stops.
-        // The head and the final norm are named rather than evaluated, exactly as a trace names
-        // the layers it stops short of.
-        name_head(b);
-        // `finish` needs an output and the hidden state is the only thing left. A prefill's real
-        // product is the thirty caches, which are `persistent` and so are not outputs at all;
-        // returning `x` costs nothing, since it is already in the arena, and gives the host
-        // something to sanity-check a pass against.
-        return builder.finish(&[x]);
+        // Prefill runs every layer - the point is the caches those layers fill - and then the
+        // final norm, so the host can run the head on the last column: a prompt's final token
+        // rides its prefill instead of costing a decode step of its own. The other columns'
+        // states are read back and ignored.
+        let state = b.rms_norm(x, FINAL_NORM, EPSILON);
+        return builder.finish(&[state]);
     }
 
     let state = b.rms_norm(x, FINAL_NORM, EPSILON);

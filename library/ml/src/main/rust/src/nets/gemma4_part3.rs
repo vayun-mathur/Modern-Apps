@@ -186,23 +186,15 @@ mod tests {
     }
 
     #[test]
-    fn a_prefill_plan_drops_the_final_norm() {
-        // The head is tied and lives on the host, so a decode step ends at the final
-        // norm - and a prefill, which only fills caches, stops one op earlier.
-        //
-        // Asserted as a DIFFERENCE against `DecodeStep` rather than an absolute count, so it
-        // survives the rest of the net changing under it.
+    fn a_prefill_plan_ends_at_the_final_norm_like_decode() {
+        // A prefill skips nothing a decode step runs: the head lives in its own file, and the
+        // final norm stays so the host can run the head on a prefill's last column.
         let decode = build(&Shapes::new(TENSORS), Mode::DecodeStep.at(TEST_CONTEXT)).expect("decode builds");
         let prefill =
             build(&Shapes::new(TENSORS), Mode::Prefill { tokens: 1 }.at(TEST_CONTEXT)).expect("prefill builds");
-        assert!(
-            prefill.ops.len() < decode.ops.len(),
-            "prefill {} ops against decode {}",
-            prefill.ops.len(),
-            decode.ops.len()
-        );
-        // Exactly the final RMS norm.
-        assert_eq!(decode.ops.len() - prefill.ops.len(), 1, "prefill skips only the norm");
+        assert_eq!(decode.ops.len(), prefill.ops.len(), "prefill {} ops against decode {}", prefill.ops.len(), decode.ops.len());
+        assert_eq!(prefill.outputs.len(), 1);
+        assert_eq!(prefill.outputs[0].shape, decode.outputs[0].shape, "the normed state, one per column");
         // The caches are the point of a prefill, so it must still write all of them.
         let writes = |plan: &Plan| {
             plan.ops
