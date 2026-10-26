@@ -1,4 +1,5 @@
-/// Plan inputs, in declaration order. `T` is [`Grid::patches`].
+/// Plan inputs, in declaration order. `T` is [`padded_positions`] of [`Grid::patches`]; the
+/// padded columns are zeros.
 ///
 /// | | shape | |
 /// | :--- | :--- | :--- |
@@ -13,6 +14,14 @@
 /// All three are built by [`prepare`].
 pub const INPUTS: usize = 3;
 
+/// The sequence length the layers run at: the patches rounded up to a multiple of eight, so the
+/// int4 GEMMs take their 16-byte load path (`wide_oct` in conv_point_int4.comp). Every op but
+/// attention is per position; the padded keys are masked out of each softmax and the padded
+/// positions cropped off before the pooling.
+pub const fn padded_positions(patches: u32) -> u32 {
+    patches.next_multiple_of(8)
+}
+
 /// Build the image pass.
 pub fn build(weights: &dyn WeightSource, mode: Mode) -> Result<Plan, String> {
     let grid = mode.grid();
@@ -24,12 +33,13 @@ pub fn build(weights: &dyn WeightSource, mode: Mode) -> Result<Plan, String> {
         }
     };
     let patches = Grid::new(grid.rows, grid.cols)?.patches();
+    let padded = padded_positions(patches);
     let mut builder = Builder::new(weights);
     let b = &mut builder;
 
-    let values = b.input(Shape::new(D_MODEL, 1, patches));
-    let positions = b.input(Shape::new(D_MODEL, 1, patches));
-    let angles = b.input(Shape::new(HEAD_DIM, 1, patches));
+    let values = b.input(Shape::new(D_MODEL, 1, padded));
+    let positions = b.input(Shape::new(D_MODEL, 1, padded));
+    let angles = b.input(Shape::new(HEAD_DIM, 1, padded));
 
     // The two position tables are gathered on the host and arrive summed, as `positions`.
     for at in [COLUMN_POSITIONS, ROW_POSITIONS] {
@@ -44,7 +54,10 @@ pub fn build(weights: &dyn WeightSource, mode: Mode) -> Result<Plan, String> {
     let mut x = b.add(projected, positions);
 
     for index in 0..stop_after {
-        x = layer(b, index, x, angles)?;
+        x = layer(b, index, x, angles, patches)?;
+    }
+    if padded != patches {
+        x = b.crop_positions(x, patches);
     }
 
     if let Mode::Trace { .. } = mode {
@@ -148,7 +161,7 @@ fn dense_point(b: &mut Builder, at: usize, x: Id, out: u32) -> Id {
 }
 
 /// One encoder layer.
-fn layer(b: &mut Builder, index: usize, x: Id, angles: Id) -> Result<Id, String> {
+fn layer(b: &mut Builder, index: usize, x: Id, angles: Id, keys: u32) -> Result<Id, String> {
     let at = layer_at(index);
     let mut next = at;
     let plain = |n: &mut usize| {
@@ -215,7 +228,7 @@ fn layer(b: &mut Builder, index: usize, x: Id, angles: Id) -> Result<Id, String>
     // No scale: the export goes straight from the rotary into the score matmul, and the
     // uniform q_norm and k_norm gammas carry it instead. See `SCALE_IS_IN_THE_NORMS`.
     let scores = b.attn_scores_prescaled(q, k, HEADS);
-    let probs = b.softmax(scores);
+    let probs = b.softmax_keys(scores, keys);
     let mixed = b.attn_apply(probs, v, HEADS);
     let mixed = b.clamp(mixed, clip_mixed);
     let attended = point(b, o_proj, mixed, D_MODEL);
@@ -343,5 +356,12 @@ pub fn prepare(
             }
         }
     }
-    Ok([values, positions, rotary_angles(grid)])
+    let padded = padded_positions(grid.patches()) as usize;
+    let pad = |values: Vec<f32>| -> Vec<f32> {
+        if padded == patches {
+            return values;
+        }
+        values.chunks(patches).flat_map(|row| row.iter().copied().chain(std::iter::repeat_n(0.0, padded - patches))).collect()
+    };
+    Ok([pad(values), pad(positions), pad(rotary_angles(grid))])
 }

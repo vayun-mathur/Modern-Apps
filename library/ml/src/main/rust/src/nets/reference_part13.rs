@@ -73,6 +73,7 @@ impl Reference {
                     }
                     continue;
                 }
+                SoftmaxMode::Full if p.kh != 0 => p.kh.min(p.out_w),
                 SoftmaxMode::Full => p.out_w,
             };
             // A sliding layer's causal row also drops everything more than `p.kh - 1` behind
@@ -100,13 +101,11 @@ impl Reference {
                 let value = (self.load(p.in0, at + i)? - peak).exp() * inverse;
                 self.store(p.out, at + i, value)?;
             }
-            if mode == SoftmaxMode::Causal {
-                // Written rather than left alone: `attn_apply` multiplies the whole row, and the
-                // arena is reused, so a stale masked value would contribute something
-                // unpredictable.
-                for i in keys..p.out_w {
-                    self.store(p.out, at + i, 0.0)?;
-                }
+            // Written rather than left alone (causal and key-bounded rows): `attn_apply`
+            // multiplies the whole row, and the arena is reused, so a stale masked value would
+            // contribute something unpredictable.
+            for i in keys..p.out_w {
+                self.store(p.out, at + i, 0.0)?;
             }
         }
         Ok(())

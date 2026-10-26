@@ -37,6 +37,12 @@
 //!
 //! With `p.kw == 1` one workgroup owns one row and its lanes split the keys, for the few
 //! long rows a decode step has (whisper's cross-attention is 1,500 keys). See `reduce.glsl`.
+//!
+//! # Key bound
+//!
+//! A non-zero `p.kh` normalises only the leading `p.kh` keys of each row and stores zeros past
+//! them, for a sequence padded to a multiple of eight positions (Gemma 4's vision tower): the
+//! padded keys then add exact zeros in `attn_apply`.
 
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
@@ -51,19 +57,20 @@ void row_mode() {
     uint lane = gl_LocalInvocationID.x;
     uint lanes = gl_WorkGroupSize.x;
     uint at = p.in0 + row * p.out_w;
+    uint keys = p.kh == 0u ? p.out_w : p.kh;
     float peak = -65504.0;
-    for (uint i = lane; i < p.out_w; i += lanes) {
+    for (uint i = lane; i < keys; i += lanes) {
         peak = max(peak, float(arena[at + i]));
     }
     peak = workgroup_max(peak);
     float total = 0.0;
-    for (uint i = lane; i < p.out_w; i += lanes) {
+    for (uint i = lane; i < keys; i += lanes) {
         total += exp(float(arena[at + i]) - peak);
     }
     float inverse = 1.0 / workgroup_sum(total);
     uint out_row = p.out_at + row * p.out_w;
     for (uint i = lane; i < p.out_w; i += lanes) {
-        arena[out_row + i] = float16_t(exp(float(arena[at + i]) - peak) * inverse);
+        arena[out_row + i] = i < keys ? float16_t(exp(float(arena[at + i]) - peak) * inverse) : float16_t(0.0);
     }
 }
 
@@ -77,22 +84,26 @@ void main() {
         return;
     }
     uint at = p.in0 + row * p.out_w;
+    uint keys = p.kh == 0u ? p.out_w : p.kh;
 
     // The most negative fp16 rather than -inf, matching `maxpool.comp`: every row here
     // is non-empty, so the seed is never the answer.
     float peak = -65504.0;
-    for (uint i = 0u; i < p.out_w; i++) {
+    for (uint i = 0u; i < keys; i++) {
         peak = max(peak, float(arena[at + i]));
     }
 
     float total = 0.0;
-    for (uint i = 0u; i < p.out_w; i++) {
+    for (uint i = 0u; i < keys; i++) {
         total += exp(float(arena[at + i]) - peak);
     }
     float inverse = 1.0 / total;
 
     uint out_row = p.out_at + row * p.out_w;
-    for (uint i = 0u; i < p.out_w; i++) {
+    for (uint i = 0u; i < keys; i++) {
         arena[out_row + i] = float16_t(exp(float(arena[at + i]) - peak) * inverse);
+    }
+    for (uint i = keys; i < p.out_w; i++) {
+        arena[out_row + i] = float16_t(0.0);
     }
 }

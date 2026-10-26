@@ -290,6 +290,31 @@ impl<'a> Builder<'a> {
         out
     }
 
+    /// [`Builder::softmax`] over only the leading `keys` entries of each row, storing zeros past
+    /// them: keys padded onto a sequence then contribute nothing to `attn_apply`.
+    pub fn softmax_keys(&mut self, input: Id, keys: u32) -> Id {
+        let shape = self.shape_of(input);
+        if keys == 0 || keys > shape.w {
+            self.fail(format!("a softmax over {keys} keys of {shape:?}"));
+        }
+        let out = self.tensor(shape);
+        let window = if keys == shape.w { 0 } else { keys };
+        self.nodes.push(Node::Softmax { input, out, mode: SoftmaxMode::Full, sliding: false, window });
+        out
+    }
+
+    /// The leading `count` positions of a `[C, H, W]` tensor, as a 1x1 average pool (one
+    /// dispatch, exact) rather than `C * H` copies.
+    pub fn crop_positions(&mut self, input: Id, count: u32) -> Id {
+        let shape = self.shape_of(input);
+        if count == 0 || count > shape.w {
+            self.fail(format!("the first {count} positions of {shape:?}"));
+        }
+        let out = self.tensor(Shape::new(shape.c, shape.h, count));
+        self.nodes.push(Node::AvgPool { input, out, kernel: (1, 1), stride: (1, 1) });
+        out
+    }
+
     /// [`Builder::softmax`] with each query's row truncated at the diagonal.
     ///
     /// The input must be a square score map `[heads, T, T]`: a causal mask is a statement about

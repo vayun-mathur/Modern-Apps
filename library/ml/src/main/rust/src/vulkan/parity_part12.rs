@@ -31,3 +31,21 @@ fn ragged_tiled_attention_agrees_with_the_reference() {
         compare(&format!("ragged apply {heads}/{kv_heads} heads {queries}x{keys}"), plan, source.into_data(), &[&probs, &v]);
     }
 }
+#[test]
+#[ignore = "needs a Vulkan device"]
+fn key_bounded_softmax_and_crop_agree_with_the_reference() {
+    // The vision tower's padding: rows over a padded key count normalise only the real keys
+    // (per-row and row-mode shaders), and the padded positions are cropped off.
+    for (heads, queries, width, keys) in [(3u32, 40u32, 40u32, 37u32), (2, 2, 1504, 1497), (2, 8, 600, 600)] {
+        let scores = spread((heads * queries * width) as usize, 0.41);
+        let source = Invented::new(0);
+        let plan = build(&source, &[Shape::new(heads, queries, width)], |b, ids| {
+            let probs = b.softmax_keys(ids[0], keys);
+            b.crop_positions(probs, keys)
+        });
+        compare(&format!("softmax over {keys} of {width} keys, cropped"), plan, source.into_data(), &[&scores]);
+        let source = Invented::new(0);
+        let plan = build(&source, &[Shape::new(heads, queries, width)], |b, ids| b.softmax_keys(ids[0], keys));
+        compare(&format!("softmax over {keys} of {width} keys, zero tail"), plan, source.into_data(), &[&scores]);
+    }
+}
