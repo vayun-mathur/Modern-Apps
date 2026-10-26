@@ -43,7 +43,7 @@ internal fun LogLineList(
         contentPadding = contentPadding,
         modifier = modifier.fillMaxSize().pinchToZoom(onZoom),
     ) {
-        items(count = lines.size, key = { it }) { index ->
+        items(count = lines.size) { index ->
             Text(
                 text = kind.displayLine(lines[index]),
                 fontFamily = FontFamily.Monospace,

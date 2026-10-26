@@ -23,7 +23,6 @@ private object PreviewActions : LogViewerActions {
     override fun share() {}
     override fun report() {}
     override fun save(uri: Uri) {}
-    override fun setDescription(description: String) {}
     override fun zoom(factor: Float) {}
     override fun setBuffers(buffers: List<String>) {}
     override fun setLevel(level: LogLevel) {}
@@ -77,7 +76,6 @@ class MetadataPreviews {
                     lines = SAMPLE_LINES,
                     kind = LogKind.ErrorReport,
                     fontSizeSp = LogKind.ErrorReport.initialFontSizeSp,
-                    canCopy = true,
                     showReportButton = true,
                     snapshotFileName = "weather-crash.txt",
                 ),
@@ -101,7 +99,6 @@ class MetadataPreviews {
                     lines = SAMPLE_LINES,
                     kind = LogKind.ErrorReport,
                     fontSizeSp = LogKind.ErrorReport.initialFontSizeSp,
-                    canCopy = true,
                     showReportButton = true,
                     snapshotFileName = "weather-crash.txt",
                     stackTrace = SAMPLE_TRACE,
@@ -129,7 +126,6 @@ class MetadataPreviews {
                     ),
                     kind = LogKind.Logcat,
                     fontSizeSp = LogKind.Logcat.initialFontSizeSp,
-                    canCopy = false,
                     snapshotFileName = "weather-logcat.txt",
                     logcat = LogcatFilters(
                         buffers = listOf("main"),

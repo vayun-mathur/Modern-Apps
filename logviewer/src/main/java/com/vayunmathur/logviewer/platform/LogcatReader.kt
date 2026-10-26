@@ -21,11 +21,12 @@ import java.io.IOException
  * anything but this process's own lines.
  *
  * `-d` means dump and exit, so this is a snapshot, not a stream - the same as the app it replaces.
- * Re-reading is a new activity, which is what gives the filter controls a back stack.
+ * Re-reading for new filters is another call to this, in the same window.
  */
 internal object LogcatReader {
 
     private const val TAG = "LogcatReader"
+    private const val INITIAL_LINE_CAPACITY = 16_384
 
     val DEFAULT_BUFFERS: List<String> = listOf("main", "system", "crash", "events", "kernel")
 
@@ -79,11 +80,14 @@ internal object LogcatReader {
 
         Log.debug(TAG, "command: " + command.joinToString(" "))
 
-        val logcatBytes = try {
+        // Parsed as it streams in, so the raw dump is never held whole alongside its lines.
+        val body = ArrayList<String>(INITIAL_LINE_CAPACITY)
+        try {
             val process = ProcessBuilder(command).start()
-            val bytes = process.inputStream.use { it.readBytes() }
+            process.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
+                for (line in lines) body += stripUtcOffset(line)
+            }
             Log.debug(TAG, "logcat return code: " + process.waitFor())
-            bytes
         } catch (e: IOException) {
             Log.error(TAG, "logcat failed", e)
             return LogLoadResult.Unavailable()
@@ -91,6 +95,8 @@ internal object LogcatReader {
             Log.error(TAG, "logcat interrupted", e)
             return LogLoadResult.Unavailable()
         }
+        while (body.isNotEmpty() && body[body.lastIndex].isEmpty()) body.removeAt(body.lastIndex)
+        body.trimToSize()
 
         val header = mutableListOf("type: logcat", "osVersion: ${Build.FINGERPRINT}")
         ReportHeaders.addDeviceLines(context, header)
@@ -104,8 +110,8 @@ internal object LogcatReader {
                 kind = LogKind.Logcat,
                 sourcePackage = request.targetPackage,
                 title = buildTitle(context, request),
-                header = header.joinToString("\n"),
-                body = stripUtcOffsets(String(logcatBytes, Charsets.UTF_8)),
+                headerLines = header,
+                bodyLines = body,
             )
         )
     }
@@ -142,12 +148,5 @@ internal object LogcatReader {
      * `--format=UTC` stamps every single line with `+0000`, which is the same on all of them and
      * costs six columns of a screen that is already too narrow.
      */
-    private fun stripUtcOffsets(text: String): String {
-        val sb = StringBuilder(text.length)
-        for (line in text.split("\n")) {
-            sb.append(line.replaceFirst(" +0000", ""))
-            sb.append('\n')
-        }
-        return sb.toString()
-    }
+    private fun stripUtcOffset(line: String): String = line.replaceFirst(" +0000", "")
 }

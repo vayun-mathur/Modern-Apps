@@ -3,7 +3,9 @@ package com.vayunmathur.logviewer.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,30 +30,36 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.ErrorState
+import com.vayunmathur.library.ui.FloatingActionButtonMenu
+import com.vayunmathur.library.ui.FloatingActionButtonMenuItem
 import com.vayunmathur.library.ui.IconButton
-import com.vayunmathur.library.ui.IconDescription
-import com.vayunmathur.library.ui.IconMoreVert
+import com.vayunmathur.library.ui.IconClose
+import com.vayunmathur.library.ui.IconCopy
+import com.vayunmathur.library.ui.IconSave
 import com.vayunmathur.library.ui.IconSearch
-import com.vayunmathur.library.ui.IconTune
+import com.vayunmathur.library.ui.IconShare
+import com.vayunmathur.library.ui.LinearProgressIndicator
 import com.vayunmathur.library.ui.LoadingState
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.OverflowMenu
+import com.vayunmathur.library.ui.MultiSelectDropdown
+import com.vayunmathur.library.ui.SelectDropdown
 import com.vayunmathur.library.ui.SnackbarHost
 import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
+import com.vayunmathur.library.ui.ToggleFloatingActionButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.logviewer.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.logviewer.domain.LogDocument
+import com.vayunmathur.logviewer.domain.LogLevel
 import com.vayunmathur.logviewer.platform.ExtraAction
 import com.vayunmathur.logviewer.platform.LogViewerActions
 import com.vayunmathur.logviewer.platform.LogViewerUiState
+import com.vayunmathur.logviewer.platform.LogcatReader
 import com.vayunmathur.logviewer.ui.components.LogLineList
-import com.vayunmathur.logviewer.ui.dialogs.LogBuffersDialog
-import com.vayunmathur.logviewer.ui.dialogs.LogLevelDialog
 import com.vayunmathur.logviewer.ui.dialogs.StackTraceDialog
 import com.vayunmathur.logviewer.ui.dialogs.TextInputDialog
 
@@ -61,10 +69,9 @@ import com.vayunmathur.logviewer.ui.dialogs.TextInputDialog
  * Stateless, so both entry points render it from their own [LogViewerUiState] and nothing about a
  * crash report or a logcat dump is baked into the layout.
  *
- * The bottom row is a pair of either/or buttons, which is inherited and is a real decision worth
- * keeping. Copy becomes Save once the log is too large for a clipboard transaction, so the button
- * offered is always one that will work; Share becomes Report when the sender says the report is
- * worth filing, which puts the tracker one tap away at the moment the user is looking at the crash.
+ * Copy, Share and Save live behind one share FAB. The bottom row is left for the actions specific
+ * to what is on screen: Report when the sender says the report is worth filing, and the jumps to a
+ * related log.
  */
 @Composable
 internal fun LogViewerScreen(state: LogViewerUiState, actions: LogViewerActions) {
@@ -76,10 +83,7 @@ internal fun LogViewerScreen(state: LogViewerUiState, actions: LogViewerActions)
     // dialog over it (see the scaffold content below).
     val expanded = isExpandedWidth()
 
-    var showDescription by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
-    var showLevel by remember { mutableStateOf(false) }
-    var showBuffers by remember { mutableStateOf(false) }
 
     // This app has no MainNavigation to drain AppMessages, so the one screen it has does it.
     LaunchedEffect(snackbarHostState) {
@@ -92,16 +96,10 @@ internal fun LogViewerScreen(state: LogViewerUiState, actions: LogViewerActions)
         ActivityResultContracts.CreateDocument(LogDocument.MIME_TYPE)
     ) { uri -> if (uri != null) actions.save(uri) }
 
-    // A log is read from the end, so that is where it opens. Only for logcat: a stack trace is read
-    // from the top.
-    LaunchedEffect(state.loading) {
-        if (!state.loading && state.kind.scrollToBottom && state.lines.isNotEmpty()) {
-            listState.scrollToItem(state.lines.lastIndex)
-        }
-    }
-    // A description is appended to the end, and writing one you cannot see is pointless.
-    LaunchedEffect(state.description) {
-        if (state.description.isNotEmpty() && state.lines.isNotEmpty()) {
+    // A log is read from the end, so that is where it opens, and where a filter change lands. Only
+    // for logcat: a stack trace is read from the top.
+    LaunchedEffect(state.lines) {
+        if (state.kind.scrollToBottom && state.lines.isNotEmpty()) {
             listState.scrollToItem(state.lines.lastIndex)
         }
     }
@@ -112,142 +110,123 @@ internal fun LogViewerScreen(state: LogViewerUiState, actions: LogViewerActions)
         snackbarHost = { SnackbarHost(snackbarHostState) },
         actions = {
             if (!state.loading && !state.unavailable) {
-                IconButton(onClick = { showDescription = true }) { IconDescription() }
-                if (state.logcat != null) {
+                val logcat = state.logcat
+                if (logcat != null) {
                     IconButton(onClick = { showFilter = true }) { IconSearch() }
-                    IconButton(onClick = { showLevel = true }) { IconTune() }
-                }
-                if (state.showReportButton || state.canCopy || state.logcat != null) {
-                    // OverflowMenu defaults to IconMenu(), a hamburger. This is an overflow, not a
-                    // drawer.
-                    OverflowMenu(icon = { IconMoreVert() }) {
-                        // Share and Save appear here only when the bottom row gave their slot to
-                        // Report and Copy - never twice.
-                        if (state.showReportButton) {
-                            Item(stringResource(UiR.string.share)) { actions.share() }
-                        }
-                        if (state.canCopy) {
-                            Item(stringResource(UiR.string.save)) {
-                                save.launch(state.snapshotFileName)
-                            }
-                        }
-                        if (state.logcat != null) {
-                            Item(stringResource(R.string.log_buffers)) { showBuffers = true }
-                        }
-                    }
-                }
-            }
-        },
-        bottomBar = {
-            if (!state.loading && !state.unavailable) {
-                BottomActions(state, actions, onSave = { save.launch(state.snapshotFileName) })
-            }
-        },
-    ) { padding ->
-        when {
-            state.loading -> LoadingState(Modifier.padding(padding))
-
-            state.unavailable -> {
-                val messageRes = state.unavailableMessageRes
-                // A failure with no message is already closing the window (see LogViewerPage).
-                // Rendering the fallback text here would flash the wrong reason on the way out.
-                if (messageRes != null) {
-                    ErrorState(
-                        title = stringResource(messageRes),
-                        modifier = Modifier.padding(padding),
+                    SelectDropdown(
+                        label = logcat.level.letter.toString(),
+                        options = LogLevel.entries,
+                        selected = logcat.level,
+                        itemLabel = { stringResource(it.labelRes) },
+                        onSelect = actions::setLevel,
+                    )
+                    MultiSelectDropdown(
+                        label = logcat.buffers.joinToString("") { it.take(1).uppercase() },
+                        options = LogcatReader.ALL_BUFFERS,
+                        selected = logcat.buffers,
+                        itemLabel = { it },
+                        onApply = actions::setBuffers,
                     )
                 }
             }
+        },
+        floatingActionButton = {
+            if (!state.loading && !state.unavailable) {
+                ShareFab(
+                    onCopy = actions::copy,
+                    onShare = actions::share,
+                    onSave = { save.launch(state.snapshotFileName) },
+                )
+            }
+        },
+        bottomBar = {
+            if (!state.loading && !state.unavailable &&
+                (state.showReportButton || state.extraActions.isNotEmpty())
+            ) {
+                BottomActions(state, actions)
+            }
+        },
+    ) { scaffoldPadding ->
+        // Room under the last line for the FAB, so the newest log line is never hidden behind it.
+        val padding = PaddingValues(
+            top = scaffoldPadding.calculateTopPadding(),
+            bottom = scaffoldPadding.calculateBottomPadding() + FAB_CLEARANCE,
+        )
+        Box(Modifier.fillMaxSize()) {
+            when {
+                state.loading -> LoadingState(Modifier.padding(padding))
 
-            // Expanded windows (large tablets, desktop) put the log lines and the
-            // "unable to save" stack trace side by side instead of stacking a
-            // modal dialog over the log — there is room for both, and the trace
-            // explains the log the user is already looking at.
-            expanded && state.stackTrace != null -> Row(modifier = Modifier.fillMaxSize().padding(padding)) {
-                LogLineList(
+                state.unavailable -> {
+                    val messageRes = state.unavailableMessageRes
+                    // A failure with no message is already closing the window (see LogViewerPage).
+                    // Rendering the fallback text here would flash the wrong reason on the way out.
+                    if (messageRes != null) {
+                        ErrorState(
+                            title = stringResource(messageRes),
+                            modifier = Modifier.padding(padding),
+                        )
+                    }
+                }
+
+                // Expanded windows (large tablets, desktop) put the log lines and the
+                // "unable to save" stack trace side by side instead of stacking a
+                // modal dialog over the log — there is room for both, and the trace
+                // explains the log the user is already looking at.
+                expanded && state.stackTrace != null -> Row(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    LogLineList(
+                        lines = state.lines,
+                        kind = state.kind,
+                        fontSizeSp = state.fontSizeSp,
+                        listState = listState,
+                        contentPadding = PaddingValues(0.dp),
+                        onZoom = actions::zoom,
+                        // The 16dp gutter the app being replaced put around its whole layout. It stays on
+                        // the list rather than the window so the top bar and the snackbar still go
+                        // edge to edge.
+                        modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 16.dp),
+                    )
+                    StackTraceSidePanel(
+                        stackTrace = state.stackTrace,
+                        onCopy = actions::copyStackTrace,
+                        onDismiss = actions::dismissStackTrace,
+                        modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight(),
+                    )
+                }
+
+                else -> LogLineList(
                     lines = state.lines,
                     kind = state.kind,
                     fontSizeSp = state.fontSizeSp,
                     listState = listState,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    contentPadding = padding,
                     onZoom = actions::zoom,
                     // The 16dp gutter the app being replaced put around its whole layout. It stays on
                     // the list rather than the window so the top bar and the snackbar still go
                     // edge to edge.
-                    modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 16.dp),
-                )
-                StackTraceSidePanel(
-                    stackTrace = state.stackTrace,
-                    onCopy = actions::copyStackTrace,
-                    onDismiss = actions::dismissStackTrace,
-                    modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight(),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
-
-            else -> LogLineList(
-                lines = state.lines,
-                kind = state.kind,
-                fontSizeSp = state.fontSizeSp,
-                listState = listState,
-                contentPadding = padding,
-                onZoom = actions::zoom,
-                // The 16dp gutter the app being replaced put around its whole layout. It stays on
-                // the list rather than the window so the top bar and the snackbar still go
-                // edge to edge.
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            if (state.refreshing) {
+                LinearProgressIndicator(
+                    Modifier.fillMaxWidth().padding(top = scaffoldPadding.calculateTopPadding())
+                )
+            }
         }
-    }
-
-    if (showDescription) {
-        val titleRes =
-            if (state.description.isEmpty()) R.string.add_description
-            else R.string.update_description
-        TextInputDialog(
-            title = stringResource(titleRes),
-            initialText = state.description,
-            onConfirm = {
-                actions.setDescription(it.trim())
-                showDescription = false
-            },
-            onDismiss = { showDescription = false },
-        )
     }
 
     val logcat = state.logcat
-    if (logcat != null) {
-        if (showFilter) {
-            TextInputDialog(
-                title = stringResource(R.string.set_filter),
-                initialText = logcat.filterRegex,
-                onConfirm = {
-                    showFilter = false
-                    // Applying an empty filter to an already-unfiltered log would be a new activity
-                    // showing the same thing.
-                    if (it.isNotEmpty() || logcat.filterRegex.isNotEmpty()) actions.setFilter(it)
-                },
-                onDismiss = { showFilter = false },
-                singleLine = true,
-                hint = stringResource(R.string.set_filter_editor_hint),
-            )
-        }
-        if (showLevel) {
-            LogLevelDialog(
-                current = logcat.level,
-                onSelect = {
-                    showLevel = false
-                    actions.setLevel(it)
-                },
-                onDismiss = { showLevel = false },
-            )
-        }
-        if (showBuffers) {
-            LogBuffersDialog(
-                current = logcat.buffers,
-                onApply = actions::setBuffers,
-                onDismiss = { showBuffers = false },
-            )
-        }
+    if (logcat != null && showFilter) {
+        TextInputDialog(
+            title = stringResource(R.string.set_filter),
+            initialText = logcat.filterRegex,
+            onConfirm = {
+                showFilter = false
+                actions.setFilter(it)
+            },
+            onDismiss = { showFilter = false },
+            singleLine = true,
+            hint = stringResource(R.string.set_filter_editor_hint),
+        )
     }
 
     val stackTrace = state.stackTrace
@@ -299,30 +278,61 @@ private fun StackTraceSidePanel(
 }
 
 @Composable
-private fun BottomActions(
-    state: LogViewerUiState,
-    actions: LogViewerActions,
-    onSave: () -> Unit,
-) {
+private fun BottomActions(state: LogViewerUiState, actions: LogViewerActions) {
     Row(
         modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
-        if (state.canCopy) {
-            Button(onClick = actions::copy) { Text(stringResource(UiR.string.copy)) }
-        } else {
-            Button(onClick = onSave) { Text(stringResource(UiR.string.save)) }
-        }
         if (state.showReportButton) {
             Button(onClick = actions::report) { Text(stringResource(R.string.action_report)) }
-        } else {
-            Button(onClick = actions::share) { Text(stringResource(UiR.string.share)) }
         }
         for (extra in state.extraActions) {
             Button(onClick = { actions.perform(extra) }) { Text(stringResource(extra.labelRes)) }
         }
     }
 }
+
+private val FAB_CLEARANCE = 88.dp
+
+/** Copy, Share and Save, opening upward from one share FAB. */
+@Composable
+private fun ShareFab(onCopy: () -> Unit, onShare: () -> Unit, onSave: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    FloatingActionButtonMenu(
+        expanded = open,
+        button = {
+            ToggleFloatingActionButton(checked = open, onCheckedChange = { open = it }) {
+                if (open) IconClose() else IconShare()
+            }
+        },
+    ) {
+        FloatingActionButtonMenuItem(
+            onClick = { open = false; onCopy() },
+            text = { Text(stringResource(UiR.string.copy)) },
+            icon = { IconCopy() },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = { open = false; onShare() },
+            text = { Text(stringResource(UiR.string.share)) },
+            icon = { IconShare() },
+        )
+        FloatingActionButtonMenuItem(
+            onClick = { open = false; onSave() },
+            text = { Text(stringResource(UiR.string.save)) },
+            icon = { IconSave() },
+        )
+    }
+}
+
+private val LogLevel.labelRes: Int
+    get() = when (this) {
+        LogLevel.Verbose -> R.string.log_level_verbose
+        LogLevel.Debug -> R.string.log_level_debug
+        LogLevel.Info -> R.string.log_level_info
+        LogLevel.Warn -> R.string.log_level_warn
+        LogLevel.Error -> R.string.log_level_error
+        LogLevel.Assert -> R.string.log_level_assert
+    }
 
 private val ExtraAction.labelRes: Int
     get() = when (this) {

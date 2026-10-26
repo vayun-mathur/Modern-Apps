@@ -41,8 +41,6 @@ _Install: ./install logviewer (dev by default)._
 - com/vayunmathur/logviewer/ui/LogViewerScreen.kt
 - com/vayunmathur/logviewer/ui/LogViewerPage.kt
 - com/vayunmathur/logviewer/ui/components/LogLineList.kt
-- com/vayunmathur/logviewer/ui/dialogs/LogBuffersDialog.kt
-- com/vayunmathur/logviewer/ui/dialogs/LogLevelDialog.kt
 - com/vayunmathur/logviewer/ui/dialogs/StackTraceDialog.kt
 - com/vayunmathur/logviewer/ui/dialogs/TextInputDialog.kt
 

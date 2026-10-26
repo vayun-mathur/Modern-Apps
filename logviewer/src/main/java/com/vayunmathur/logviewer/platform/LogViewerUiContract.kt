@@ -15,6 +15,8 @@ import com.vayunmathur.logviewer.domain.LogLevel
  */
 internal data class LogViewerUiState(
     val loading: Boolean = true,
+    /** A filter change is re-reading the log; the previous one stays on screen meanwhile. */
+    val refreshing: Boolean = false,
     /**
      * Set when the log could not be produced. A null [unavailableMessageRes] with [loading] false
      * means close the window silently; a non-null one means say why first.
@@ -24,15 +26,12 @@ internal data class LogViewerUiState(
     val title: String = "",
     /** The app the log is about, if any: what "Show log" opens. */
     val sourcePackage: String? = null,
-    /** Header, body and description already flattened into the rows the list shows. */
+    /** Header and body already flattened into the rows the list shows. */
     val lines: List<String> = emptyList(),
     val kind: LogKind = LogKind.ErrorReport,
     val fontSizeSp: Float = LogKind.ErrorReport.initialFontSizeSp,
-    /** False for a log too large to fit in a clipboard transaction: Save replaces Copy. */
-    val canCopy: Boolean = false,
-    /** True for a report the sender wants filed: Report replaces Share. */
+    /** True for a report the sender wants filed: a Report button joins the bottom row. */
     val showReportButton: Boolean = false,
-    val description: String = "",
     val snapshotFileName: String = "",
     val logcat: LogcatFilters? = null,
     val extraActions: List<ExtraAction> = emptyList(),
@@ -65,7 +64,6 @@ internal interface LogViewerActions {
     fun share()
     fun report()
     fun save(uri: Uri)
-    fun setDescription(description: String)
 
     /** Pinch-to-zoom; [factor] is the incremental scale since the last gesture event. */
     fun zoom(factor: Float)

@@ -6,20 +6,16 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.logviewer.R
 import com.vayunmathur.logviewer.domain.LogDocument
 import com.vayunmathur.logviewer.domain.LogLevel
-import com.vayunmathur.logviewer.provider.BlobProvider
+import kotlinx.coroutines.launch
 
 /**
  * The half of [LogViewerActions] that needs an Activity: the clipboard, the share sheet, and
  * starting the next screen.
- *
- * Changing a logcat filter starts a *new* activity carrying the edited intent rather than reloading
- * in place. That is what makes Back step through the filters the user tried, and with
- * `documentLaunchMode="always"` each one is its own entry in Recents - so two logs can be compared
- * side by side. Reloading in place would quietly lose both.
  */
 internal open class LogViewerController(
     private val activity: ComponentActivity,
@@ -38,16 +34,17 @@ internal open class LogViewerController(
     }
 
     override fun share() {
-        val bytes = viewModel.snapshotBytes() ?: return
         val fileName = viewModel.state.value.snapshotFileName
-        val uri = BlobProvider.getUri(fileName, bytes)
-        val send = Intent(Intent.ACTION_SEND).apply {
-            putExtra(Intent.EXTRA_SUBJECT, fileName)
-            type = LogDocument.MIME_TYPE
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        activity.lifecycleScope.launch {
+            val uri = viewModel.shareUri() ?: return@launch
+            val send = Intent(Intent.ACTION_SEND).apply {
+                putExtra(Intent.EXTRA_SUBJECT, fileName)
+                type = LogDocument.MIME_TYPE
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            activity.startActivity(Intent.createChooser(send, fileName))
         }
-        activity.startActivity(Intent.createChooser(send, fileName))
     }
 
     /**
@@ -61,23 +58,15 @@ internal open class LogViewerController(
 
     override fun save(uri: Uri) = viewModel.save(uri)
 
-    override fun setDescription(description: String) = viewModel.setDescription(description)
-
     override fun zoom(factor: Float) = viewModel.zoom(factor)
 
-    override fun setBuffers(buffers: List<String>) = relaunch {
-        putStringArrayListExtra(LogcatActivityExtras.LOG_BUFFERS, ArrayList(buffers))
-    }
+    /** The filter and extra actions do nothing by default; each entry point overrides what it offers. */
+    override fun setBuffers(buffers: List<String>) = Unit
 
-    override fun setLevel(level: LogLevel) = relaunch {
-        putExtra(LogcatActivityExtras.LOG_LEVEL, level.priority)
-    }
+    override fun setLevel(level: LogLevel) = Unit
 
-    override fun setFilter(regex: String) = relaunch {
-        putExtra(LogcatActivityExtras.FILTER_REGEX, regex)
-    }
+    override fun setFilter(regex: String) = Unit
 
-    /** Nothing by default; each entry point overrides the actions it actually offers. */
     override fun perform(action: ExtraAction) = Unit
 
     override fun dismissStackTrace() = viewModel.dismissStackTrace()
@@ -89,9 +78,6 @@ internal open class LogViewerController(
 
     protected fun start(intent: Intent) = activity.startActivity(intent)
 
-    private fun relaunch(edit: Intent.() -> Unit) {
-        activity.startActivity(Intent(activity.intent).apply(edit))
-    }
 
     private fun copyToClipboard(label: CharSequence?, text: String) {
         activity.getSystemService(ClipboardManager::class.java)
@@ -103,16 +89,3 @@ internal open class LogViewerController(
     }
 }
 
-/**
- * Extras the logcat screen sends to itself.
- *
- * Unlike the names in `LogViewerIntents` these are private to the app - nothing outside it produces
- * them - so they are package-qualified to keep them out of anyone else's way.
- */
-internal object LogcatActivityExtras {
-    private const val PREFIX = "com.vayunmathur.logviewer.LogcatActivity"
-
-    const val LOG_BUFFERS = "$PREFIX.LOG_BUFFERS"
-    const val LOG_LEVEL = "$PREFIX.LOG_LEVEL"
-    const val FILTER_REGEX = "$PREFIX.FILTER_REGEX"
-}

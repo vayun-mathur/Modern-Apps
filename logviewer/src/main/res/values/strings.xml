@@ -37,20 +37,10 @@
     <!-- Bottom button when viewing one app's log: switches to the whole system log. -->
     <string name="action_show_system_log">Show system log</string>
 
-    <!-- Overflow item and dialog title: which logcat ring buffers to read. -->
-    <string name="log_buffers">Log buffers</string>
-    <!-- Top bar action and dialog title: the minimum severity of the lines shown. -->
-    <string name="log_level">Log level</string>
-
     <!-- Top bar action and dialog title: filter the log with a regular expression. -->
     <string name="set_filter">Set filter</string>
     <!-- Hint inside the empty "Set filter" text field. -->
     <string name="set_filter_editor_hint">Regex</string>
-
-    <!-- Top bar action, when the log has no description yet. -->
-    <string name="add_description">Add description</string>
-    <!-- Top bar action, when the log already has a description. -->
-    <string name="update_description">Update description</string>
 
     <!-- Shown instead of the device log when a secondary user or work profile asks for it. The
          device log contains other users' activity, so only the primary user may read it. -->

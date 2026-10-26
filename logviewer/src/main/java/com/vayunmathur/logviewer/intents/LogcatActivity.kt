@@ -9,11 +9,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.logviewer.domain.LogDocument
 import com.vayunmathur.logviewer.domain.LogLevel
 import com.vayunmathur.logviewer.platform.ExtraAction
+import com.vayunmathur.logviewer.platform.LogLoadResult
 import com.vayunmathur.logviewer.platform.LogViewerController
 import com.vayunmathur.logviewer.platform.LogViewerViewModel
-import com.vayunmathur.logviewer.platform.LogcatActivityExtras
 import com.vayunmathur.logviewer.platform.LogcatFilters
 import com.vayunmathur.logviewer.platform.LogcatReader
 import com.vayunmathur.logviewer.ui.LogViewerPage
@@ -26,8 +27,8 @@ import com.vayunmathur.logviewer.ui.LogViewerPage
  * signed with the same key can open it. There is no launcher entry: the log is something another
  * system surface sends the user to, not something to browse to.
  *
- * The whole activity is one snapshot of the log with one set of filters. Changing a filter starts
- * another one - see [LogViewerController].
+ * Changing a filter re-reads the log in this same window; the active filters live in the
+ * ViewModel, so they survive rotation.
  */
 class LogcatActivity : ComponentActivity() {
 
@@ -36,34 +37,20 @@ class LogcatActivity : ComponentActivity() {
     // One instance, not one per recomposition of setContent's lambda.
     private val actions by lazy { Actions() }
 
+    private var targetPackage: String? = null
+    private var isSystemUser = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val request = readRequest(intent)
+        // Set by the framework for ACTION_PKG_LOGCAT, and by the error report's "Show log" button.
+        targetPackage = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME)
         // Read here rather than in the loader: a secondary user may see their own apps' logs but
         // not the device log, and the answer must not depend on which thread asks.
-        val isSystemUser = getSystemService(UserManager::class.java)?.isSystemUser == true
-        val context: Context = applicationContext
+        isSystemUser = getSystemService(UserManager::class.java)?.isSystemUser == true
 
-        viewModel.start(
-            loader = { LogcatReader.read(context, request) },
-            chrome = {
-                LogViewerViewModel.Chrome(
-                    showReportButton = false,
-                    extraActions =
-                        if (request.targetPackage != null && isSystemUser) {
-                            listOf(ExtraAction.ShowSystemLog)
-                        } else {
-                            emptyList()
-                        },
-                    logcat = LogcatFilters(
-                        buffers = request.buffers,
-                        level = request.level,
-                        filterRegex = request.filterRegex,
-                    ),
-                )
-            },
-        )
+        val initial = LogcatFilters(LogcatReader.DEFAULT_BUFFERS, LogLevel.Verbose, filterRegex = "")
+        viewModel.start(loader = loader(initial), chrome = chrome(initial))
 
         enableEdgeToEdge()
         setContent {
@@ -77,18 +64,40 @@ class LogcatActivity : ComponentActivity() {
         }
     }
 
-    private fun readRequest(intent: Intent): LogcatReader.Request = LogcatReader.Request(
-        // Set by the framework for ACTION_PKG_LOGCAT, and by our own "Show log" button.
-        targetPackage = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME),
-        buffers = intent.getStringArrayListExtra(LogcatActivityExtras.LOG_BUFFERS)
-            ?: LogcatReader.DEFAULT_BUFFERS,
-        level = LogLevel.ofPriority(
-            intent.getIntExtra(LogcatActivityExtras.LOG_LEVEL, LogLevel.Verbose.priority)
-        ),
-        filterRegex = intent.getStringExtra(LogcatActivityExtras.FILTER_REGEX).orEmpty(),
-    )
+    private fun loader(filters: LogcatFilters): suspend () -> LogLoadResult {
+        val context: Context = applicationContext
+        val request = LogcatReader.Request(
+            targetPackage = targetPackage,
+            buffers = filters.buffers,
+            level = filters.level,
+            filterRegex = filters.filterRegex,
+        )
+        return { LogcatReader.read(context, request) }
+    }
+
+    private fun chrome(filters: LogcatFilters): suspend (LogDocument) -> LogViewerViewModel.Chrome = {
+        LogViewerViewModel.Chrome(
+            extraActions =
+                if (targetPackage != null && isSystemUser) listOf(ExtraAction.ShowSystemLog)
+                else emptyList(),
+            logcat = filters,
+        )
+    }
+
+    private fun reload(edit: LogcatFilters.() -> LogcatFilters) {
+        val current = viewModel.state.value.logcat ?: return
+        val next = current.edit()
+        if (next == current) return
+        viewModel.reload(next, loader(next), chrome(next))
+    }
 
     private inner class Actions : LogViewerController(this@LogcatActivity, viewModel) {
+        override fun setBuffers(buffers: List<String>) = reload { copy(buffers = buffers) }
+
+        override fun setLevel(level: LogLevel) = reload { copy(level = level) }
+
+        override fun setFilter(regex: String) = reload { copy(filterRegex = regex) }
+
         override fun perform(action: ExtraAction) {
             if (action != ExtraAction.ShowSystemLog) return
             // No extras: the system log with the default buffers and no filter.

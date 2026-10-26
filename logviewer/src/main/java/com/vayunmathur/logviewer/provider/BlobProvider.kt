@@ -16,7 +16,9 @@ import com.vayunmathur.logviewer.domain.LogDocument
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
+import java.io.FilterOutputStream
 import java.io.IOException
+import java.io.OutputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -124,19 +126,34 @@ class BlobProvider : ContentProvider(), ContentProvider.PipeDataWriter<ByteArray
             override fun sizeOf(key: Uri, value: Entry): Int = value.gzipped.size
         }
 
-        /** Registers [bytes] under a Uri named [blobName] and returns that Uri. */
-        fun getUri(blobName: String, bytes: ByteArray): Uri {
+        /**
+         * Registers whatever [write] produces under a Uri named [blobName] and returns that Uri.
+         * Compressed as it is written, so the uncompressed log never exists as one array.
+         */
+        fun getUri(blobName: String, write: (OutputStream) -> Unit): Uri {
             val uri = Uri.Builder()
                 .scheme(ContentResolver.SCHEME_CONTENT)
                 .authority(AUTHORITY)
                 .path(blobName)
                 .build()
 
-            val compressed = ByteArrayOutputStream(bytes.size).also { out ->
-                GZIPOutputStream(out).use { it.write(bytes) }
-            }.toByteArray()
+            val compressed = ByteArrayOutputStream()
+            var size = 0
+            GZIPOutputStream(compressed).use { gzip ->
+                write(object : FilterOutputStream(gzip) {
+                    override fun write(b: Int) {
+                        out.write(b)
+                        size++
+                    }
 
-            synchronized(entries) { entries.put(uri, Entry(compressed, bytes.size)) }
+                    override fun write(b: ByteArray, off: Int, len: Int) {
+                        out.write(b, off, len)
+                        size += len
+                    }
+                })
+            }
+
+            synchronized(entries) { entries.put(uri, Entry(compressed.toByteArray(), size)) }
             return uri
         }
     }

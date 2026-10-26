@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.logviewer.R
 import com.vayunmathur.logviewer.domain.LogDocument
+import com.vayunmathur.logviewer.provider.BlobProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +20,7 @@ import java.io.IOException
 import java.io.PrintStream
 
 /**
- * Holds the loaded log and the parts of the screen the user changes: the description and the font
- * size.
+ * Holds the loaded log and the one part of the screen the user changes: the font size.
  *
  * The app this replaces kept these in a process-wide `LruCache` keyed by a UUID it stashed in the
  * saved instance state, because a plain `Activity` loses its fields on rotation. A ViewModel is
@@ -36,6 +37,7 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
 
     private var document: LogDocument? = null
     private var started = false
+    private var loadJob: Job? = null
 
     /** The parts of the chrome that depend on what was actually loaded. */
     data class Chrome(
@@ -47,7 +49,25 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
     fun start(loader: suspend () -> LogLoadResult, chrome: suspend (LogDocument) -> Chrome) {
         if (started) return
         started = true
-        viewModelScope.launch {
+        load(loader, chrome)
+    }
+
+    /**
+     * Re-reads logcat with new [filters] in place. The current log stays on screen under a progress
+     * bar until the new one arrives, and a newer change cancels one still in flight.
+     */
+    fun reload(
+        filters: LogcatFilters,
+        loader: suspend () -> LogLoadResult,
+        chrome: suspend (LogDocument) -> Chrome,
+    ) {
+        _state.update { it.copy(logcat = filters, refreshing = true) }
+        load(loader, chrome)
+    }
+
+    private fun load(loader: suspend () -> LogLoadResult, chrome: suspend (LogDocument) -> Chrome) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             // Both run on IO: `chrome` decides whether "More info" applies, which means reading
             // /data/tombstones.
             val outcome = withContext(Dispatchers.IO) {
@@ -60,6 +80,7 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
                 is LogLoadResult.Unavailable -> _state.update {
                     it.copy(
                         loading = false,
+                        refreshing = false,
                         unavailable = true,
                         unavailableMessageRes = result.messageRes,
                     )
@@ -69,28 +90,24 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
                     val loaded = result.document
                     document = loaded
                     val resolved = outcome.second ?: Chrome()
+                    val previous = _state.value
                     _state.value = LogViewerUiState(
                         loading = false,
                         title = loaded.title,
                         sourcePackage = loaded.sourcePackage,
-                        lines = loaded.displayLines(""),
+                        lines = loaded.lines,
                         kind = loaded.kind,
-                        fontSizeSp = loaded.kind.initialFontSizeSp,
-                        canCopy = loaded.canCopy,
+                        // A reload keeps the size the user pinched to.
+                        fontSizeSp =
+                            if (previous.loading) loaded.kind.initialFontSizeSp else previous.fontSizeSp,
                         showReportButton = resolved.showReportButton,
                         snapshotFileName = LogDocument.snapshotFileName(loaded.title),
                         logcat = resolved.logcat,
                         extraActions = resolved.extraActions,
+                        stackTrace = previous.stackTrace,
                     )
                 }
             }
-        }
-    }
-
-    fun setDescription(description: String) {
-        val loaded = document ?: return
-        _state.update {
-            it.copy(description = description, lines = loaded.displayLines(description))
         }
     }
 
@@ -101,10 +118,18 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
     fun dismissStackTrace() = _state.update { it.copy(stackTrace = null) }
 
     /** The clipboard text, or null if nothing is loaded. Truncation is reported by the caller. */
-    fun clipText(): LogDocument.ClipText? = document?.clipText(_state.value.description)
+    fun clipText(): LogDocument.ClipText? = document?.clipText()
 
-    fun snapshotBytes(): ByteArray? =
-        document?.snapshotText(_state.value.description)?.toByteArray(Charsets.UTF_8)
+    /** Off the main thread: compressing a multi-megabyte log is long enough to drop frames. */
+    suspend fun shareUri(): Uri? {
+        val loaded = document ?: return null
+        val fileName = _state.value.snapshotFileName
+        return withContext(Dispatchers.Default) {
+            BlobProvider.getUri(fileName) { out ->
+                out.bufferedWriter(Charsets.UTF_8).use { loaded.writeSnapshot(it) }
+            }
+        }
+    }
 
     /**
      * Writes the log to the document the user picked.
@@ -113,7 +138,7 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
      * because the interesting part of "could not write" is which exception it was.
      */
     fun save(uri: Uri) {
-        val bytes = snapshotBytes() ?: return
+        val loaded = document ?: return
         val fileName = _state.value.snapshotFileName
         val context = getApplication<Application>()
         viewModelScope.launch {
@@ -121,7 +146,7 @@ internal class LogViewerViewModel(application: Application) : AndroidViewModel(a
                 try {
                     val stream = context.contentResolver.openOutputStream(uri)
                         ?: return@withContext OpenFailed
-                    stream.use { it.write(bytes) }
+                    stream.bufferedWriter(Charsets.UTF_8).use { loaded.writeSnapshot(it) }
                     null
                 } catch (e: IOException) {
                     e

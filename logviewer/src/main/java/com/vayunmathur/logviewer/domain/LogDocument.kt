@@ -10,43 +10,39 @@ import java.util.UUID
  * formatting be reused by the screen, the clipboard and the file writer without any of them
  * agreeing on it separately.
  *
- * [description] is the one part the user edits, and it is not held here: it is screen state, and
- * every function that needs it takes it as a parameter.
+ * Held as lines rather than one string: a full logcat is tens of megabytes, and the list, the
+ * clipboard and the file writer all want it line by line. Keeping one copy and viewing it in each
+ * shape is what stops a large log from sitting in the heap several times over.
  */
-data class LogDocument(
+class LogDocument(
     val kind: LogKind,
     /** The app the log is about - the one that crashed, or the one logcat is filtered on. */
     val sourcePackage: String?,
     val title: String,
-    val header: String,
-    val body: String,
+    headerLines: List<String>,
+    val bodyLines: List<String>,
 ) {
-    /**
-     * Whether the bottom-left button offers Copy rather than Save.
-     *
-     * Both the character and the byte length are checked because the limit being approximated is a
-     * binder transaction, which is bytes, while the cheap check is characters.
-     */
-    val canCopy: Boolean =
-        body.length < MAX_SIZE_FOR_COPY && body.toByteArray(Charsets.UTF_8).size < MAX_SIZE_FOR_COPY
+    constructor(kind: LogKind, sourcePackage: String?, title: String, header: String, body: String) :
+        this(kind, sourcePackage, title, splitLines(header), splitLines(body))
 
     /** Empty when there is no header at all, so the screen does not render a blank separator. */
-    fun headerLines(): List<String> {
-        val lines = splitLines(header)
-        return if (lines.size == 1 && lines[0].isBlank()) emptyList() else lines
-    }
+    val headerLines: List<String> =
+        if (headerLines.all(String::isBlank)) emptyList() else headerLines
 
-    fun bodyLines(): List<String> = splitLines(body)
+    /** The rows the list shows - header, blank, body - as a view, not a copy. */
+    val lines: List<String> = object : AbstractList<String>() {
+        private val bodyStart =
+            if (this@LogDocument.headerLines.isEmpty()) 0 else this@LogDocument.headerLines.size + 1
 
-    /** The rows the list shows, in order: header, blank, body, blank, description. */
-    fun displayLines(description: String): List<String> = buildList {
-        val headerRows = headerLines()
-        addAll(headerRows)
-        if (headerRows.isNotEmpty()) add("")
-        addAll(bodyLines())
-        if (description.isNotBlank()) {
-            add("")
-            addAll(splitLines("description: $description"))
+        override val size: Int get() = bodyStart + bodyLines.size
+
+        override fun get(index: Int): String {
+            val header = this@LogDocument.headerLines
+            return when {
+                index < header.size -> header[index]
+                index < bodyStart -> ""
+                else -> bodyLines[index - bodyStart]
+            }
         }
     }
 
@@ -58,17 +54,15 @@ data class LogDocument(
      * binder transaction limit that `ClipboardManager.setPrimaryClip` has to fit inside - going
      * over it is a `TransactionTooLargeException`, not a truncated paste.
      */
-    fun clipText(description: String): ClipText {
-        var sumSize = header.toByteArray(Charsets.UTF_8).size +
-            description.toByteArray(Charsets.UTF_8).size
+    fun clipText(): ClipText {
+        var sumSize = headerLines.sumOf { utf8Length(it) + 1 }
         var sumChars = 0
         var bodyStartIndex = 0
 
-        val bodyLines = bodyLines()
         for (i in bodyLines.indices.reversed()) {
             val line = bodyLines[i]
             sumChars += line.length + 1
-            sumSize += line.toByteArray(Charsets.UTF_8).size + 1
+            sumSize += utf8Length(line) + 1
             if (sumSize > MAX_CLIP_BYTES) {
                 bodyStartIndex = i + 1
                 break
@@ -78,12 +72,11 @@ data class LogDocument(
         val sb = StringBuilder(sumChars + 1000)
         sb.append("```\n")
 
-        val headerRows = headerLines()
-        for (line in headerRows) {
+        for (line in headerLines) {
             sb.append(line)
             sb.append('\n')
         }
-        if (headerRows.size > 1) sb.append('\n')
+        if (headerLines.size > 1) sb.append('\n')
 
         if (bodyStartIndex != 0) sb.append("[[TRUNCATED]]\n")
 
@@ -92,43 +85,28 @@ data class LogDocument(
             sb.append('\n')
         }
 
-        appendDescription(sb, description)
         sb.append("```\n")
 
         return ClipText(sb.toString(), truncated = bodyStartIndex != 0)
     }
 
     /** The whole thing, unfenced and untruncated: what Save writes and what Share hands over. */
-    fun snapshotText(description: String): String {
-        val sb = StringBuilder()
-
-        val headerRows = headerLines()
-        for (line in headerRows) {
-            sb.append(line)
-            sb.append('\n')
+    fun writeSnapshot(out: Appendable) {
+        for (line in headerLines) {
+            out.append(line)
+            out.append('\n')
         }
-        if (headerRows.size > 1) sb.append('\n')
+        if (headerLines.size > 1) out.append('\n')
 
-        for (line in bodyLines()) {
-            sb.append(line)
-            sb.append('\n')
+        for (line in bodyLines) {
+            out.append(line)
+            out.append('\n')
         }
-
-        appendDescription(sb, description)
-        return sb.toString()
-    }
-
-    private fun appendDescription(sb: StringBuilder, description: String) {
-        if (description.isBlank()) return
-        sb.append("\ndescription: ")
-        sb.append(description)
-        sb.append('\n')
     }
 
     data class ClipText(val text: String, val truncated: Boolean)
 
     companion object {
-        private const val MAX_SIZE_FOR_COPY = 50_000
         private const val MAX_CLIP_BYTES = 200_000
 
         /**
@@ -145,17 +123,34 @@ data class LogDocument(
             trimToSize(title, 200) + ' ' + UUID.randomUUID().toString().substring(24) + ".txt"
 
         /**
-         * `String.split` the way `java.lang.String.split` does it, which is what the header/body
-         * line counts were written against: trailing empty strings are dropped, so a body ending in
-         * a newline does not gain a blank last row (and so "scroll to the last line" lands on the
-         * last line).
+         * Trailing empty strings are dropped, so a body ending in a newline does not gain a blank
+         * last row (and so "scroll to the last line" lands on the last line).
          */
         internal fun splitLines(s: String): List<String> {
-            if (s.isEmpty()) return listOf("")
             val parts = s.split("\n")
             var end = parts.size
             while (end > 0 && parts[end - 1].isEmpty()) end--
             return parts.subList(0, end)
+        }
+
+        /** Counted rather than encoded: encoding every line just to measure it doubles the work. */
+        private fun utf8Length(s: String): Int {
+            var bytes = 0
+            var i = 0
+            while (i < s.length) {
+                val c = s[i]
+                bytes += when {
+                    c.code < 0x80 -> 1
+                    c.code < 0x800 -> 2
+                    c.isHighSurrogate() && i + 1 < s.length && s[i + 1].isLowSurrogate() -> {
+                        i++
+                        4
+                    }
+                    else -> 3
+                }
+                i++
+            }
+            return bytes
         }
 
         /** [android.text.TextUtils.trimToSize], reimplemented so this file stays Android-free. */

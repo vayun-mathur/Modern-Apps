@@ -23,7 +23,7 @@ import com.vayunmathur.logviewer.R
 import com.vayunmathur.library.ui.R as UiR
 
 /**
- * A dialog that collects one piece of text: the log's description, or a filter regex.
+ * A dialog that collects one piece of text: the filter regex.
  *
  * Replaces the hand-built `EditorDialog` (an `EditText` inside a `FrameLayout` inside an
  * `AlertDialog`), which existed because there is no framework dialog for this. The 10,000-character
