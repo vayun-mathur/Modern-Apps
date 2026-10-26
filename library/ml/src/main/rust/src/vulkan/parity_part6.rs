@@ -448,3 +448,36 @@ fn strided_window_convs_agree_with_the_reference() {
         );
     }
 }
+
+/// The Q2_K gemv's pair-per-lane path (8-aligned input, even scale table) at MADLAD's input widths,
+/// ragged row groups, several units per lane at 8192.
+#[test]
+#[ignore = "needs a Vulkan device"]
+fn q2k_gemv_pairs_agree_with_the_reference() {
+    for (out_c, in_c) in [(44u32, 1024u32), (13, 2048), (9, 8192)] {
+        let blocks = in_c / crate::weights::Q2K_BLOCK;
+        let bytes: Vec<u8> =
+            (0..out_c * blocks * crate::weights::Q2K_BYTES).map(|i| (i.wrapping_mul(2_246_822_519) >> 7) as u8).collect();
+        let pairs: Vec<f32> = (0..out_c * blocks * 2).map(|i| 0.05 + 0.01 * ((i * 5) % 9) as f32).collect();
+        let blob = write_mixed(
+            graph::SUPERTONIC_VE,
+            &[
+                Fixture::Q2K(vec![out_c, in_c], bytes),
+                Fixture::F16(vec![out_c * blocks * 2], pairs),
+                Fixture::F16(vec![out_c], spread(out_c as usize, 0.2)),
+            ],
+        );
+        let weights = Weights::parse(&blob, graph::SUPERTONIC_VE).expect("the fixture blob parses");
+        let input = spread(in_c as usize, 0.8);
+        let mut builder = Builder::new(&weights);
+        let first = builder.input(Shape::new(in_c, 1, 1));
+        let last = builder.conv_q2k(first, 0, out_c, Act::None);
+        let plan = builder.finish(&[last]).expect("the q2k gemv plan builds");
+        assert!(plan.ops.iter().any(|op| matches!(
+            op,
+            crate::nets::Op::Dispatch { kind: crate::nets::Kind::ConvVecQ2K, push, .. }
+                if push.in0 % 8 == 0 && push.act_weight % 2 == 0
+        )));
+        compare(&format!("a q2k gemv {out_c}x{in_c}"), plan, weights.data().to_vec(), &[&input]);
+    }
+}

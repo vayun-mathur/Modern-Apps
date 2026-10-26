@@ -46,6 +46,11 @@ layout(std430, binding = 0) readonly buffer ArenaQuad {
     f16vec4 arena_quad[];
 };
 
+/// The arena as 8 fp16 per element, for the pair-per-lane activation loads.
+layout(std430, binding = 0) readonly buffer ArenaOct {
+    uvec4 arena_oct[];
+};
+
 /// Output channels one workgroup owns.
 ///
 /// Eight like the int4 gemv, for the same stream reason: a Q2_K superblock is wider than
@@ -79,7 +84,63 @@ void main() {
         acc[r] = 0.0;
     }
     bool by_word = (p.in_c % Q2K_BLOCK) == 0u && (p.in0 & 3u) == 0u;
-    if (by_word) {
+    // Pair-per-lane: a lane owns two adjacent `qs` words (32 taps sharing four scale bytes) for
+    // four of the eight rows, so each row's scale words and `(d, dmin)` are fetched once per 32
+    // taps instead of 16, and the activations come in as two 16-byte loads per code lane.
+    bool by_pair = by_word && (p.in0 & 7u) == 0u && (p.act_weight & 1u) == 0u;
+    if (by_pair) {
+        uint row_half = lane >> 5u;
+        uint units = blocks * 8u;
+        float part[4];
+        for (uint r = 0u; r < 4u; r++) {
+            part[r] = 0.0;
+        }
+        for (uint unit = lane & 31u; unit < units; unit += 32u) {
+            uint block = unit >> 3u;
+            uint w = (unit & 7u) << 1u;
+            uint half_idx = w >> 3u;
+            uint odd = (w >> 2u) & 1u;
+            uint first = block * Q2K_BLOCK + half_idx * 128u + odd * 16u + (w & 3u) * 4u;
+            vec4 xa[4];
+            vec4 xb[4];
+            float xsum[4];
+            for (uint q = 0u; q < 4u; q++) {
+                uvec4 raw = arena_oct[(p.in0 + first + q * 32u) >> 3u];
+                xa[q] = vec4(unpackHalf2x16(raw.x), unpackHalf2x16(raw.y));
+                xb[q] = vec4(unpackHalf2x16(raw.z), unpackHalf2x16(raw.w));
+                vec4 s = xa[q] + xb[q];
+                xsum[q] = s.x + s.y + s.z + s.w;
+            }
+            for (uint r = 0u; r < 4u; r++) {
+                uint row = min(channel_base + row_half * 4u + r, p.out_c - 1u);
+                uint idx = row * blocks + block;
+                vec2 dm = unpackHalf2x16(weights32[(p.act_weight >> 1u) + idx]);
+                float dall = dm.x * dm.x;
+                float dmin = dm.y * dm.x;
+                uint sb = p.weight + idx * 21u;
+                uint c0 = weights32[sb + 4u + w];
+                uint c1 = weights32[sb + 5u + w];
+                uint scales_lo = weights32[sb + half_idx * 2u];
+                uint scales_hi = weights32[sb + half_idx * 2u + 1u];
+                float total = 0.0;
+                for (uint q = 0u; q < 4u; q++) {
+                    uint word = q < 2u ? scales_lo : scales_hi;
+                    uint sc = (word >> ((((q & 1u) << 1u) + odd) << 3u)) & 255u;
+                    uint shift = q << 1u;
+                    vec4 ca = vec4(float((c0 >> shift) & 3u), float((c0 >> (shift + 8u)) & 3u),
+                                   float((c0 >> (shift + 16u)) & 3u), float((c0 >> (shift + 24u)) & 3u));
+                    vec4 cb = vec4(float((c1 >> shift) & 3u), float((c1 >> (shift + 8u)) & 3u),
+                                   float((c1 >> (shift + 16u)) & 3u), float((c1 >> (shift + 24u)) & 3u));
+                    total += dall * float(sc & 15u) * (dot(ca, xa[q]) + dot(cb, xb[q]))
+                        - dmin * float(sc >> 4u) * xsum[q];
+                }
+                part[r] += total;
+            }
+        }
+        for (uint r = 0u; r < ROWS; r++) {
+            acc[r] = (r >> 2u) == row_half ? part[r & 3u] : 0.0;
+        }
+    } else if (by_word) {
         // 16 `qs` words per superblock, so this many units across the row.
         uint units = blocks * 16u;
         for (uint unit = lane; unit < units; unit += 64u) {

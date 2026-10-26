@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use modelrunner::nets::{madlad, madlad_part1, nllb, whisper};
+use modelrunner::nets::{madlad, madlad_part1, nllb, whisper, Op, Plan};
 use modelrunner::vulkan::context;
 use modelrunner::vulkan::reshape::Reshaped;
 use modelrunner::vulkan::run::{Net, StepParams};
@@ -276,11 +276,14 @@ fn madlad_profile(path: Option<&str>) -> Result<(), String> {
     println!("step      {}", stats(&step_ms));
     println!("ids       {ids:?}");
 
+    let (planner, offsets) = net.planner();
     let decode = net.at(madlad::Mode::DecodeStep { src_len: SRC_LEN })?;
     print_kinds("decode step", decode);
+    print_shapes("decode step", decode, &planner(&offsets, madlad::Mode::DecodeStep { src_len: SRC_LEN })?);
     let encode = net.at(madlad::Mode::Encode { len: SRC_LEN })?;
     encode.infer_raw_many(&[&embedded, &enc_bias])?;
     print_kinds("encode", encode);
+    print_shapes("encode", encode, &planner(&offsets, madlad::Mode::Encode { len: SRC_LEN })?);
     Ok(())
 }
 
@@ -329,6 +332,35 @@ fn print_kinds(label: &str, net: &Net) {
     println!("  {:<22} {:>6} {:>10} {:>10}", "kind", "count", "total ms", "mean us");
     for (kind, (count, us)) in rows {
         println!("  {kind:<22} {count:>6} {:>10.3} {:>10.1}", us / 1e3, us / count as f64);
+    }
+}
+
+/// GPU time per (kind, in_c, out_c, positions) when `MODELRUNNER_SHAPES` is set.
+fn print_shapes(label: &str, net: &Net, plan: &Plan) {
+    if std::env::var("MODELRUNNER_SHAPES").is_err() {
+        return;
+    }
+    let Ok(times) = net.op_times() else { return };
+    let pushes: Vec<_> = plan
+        .ops
+        .iter()
+        .filter_map(|op| match op {
+            Op::Dispatch { kind, push, .. } => Some((*kind, *push)),
+            _ => None,
+        })
+        .collect();
+    let mut shapes: BTreeMap<String, (usize, f64)> = BTreeMap::new();
+    for ((_, us, _), (kind, push)) in times.iter().zip(&pushes) {
+        let key = format!("{kind:?} {}->{} x{} in1={}", push.in_c, push.out_c, push.out_h * push.out_w, push.in1);
+        let entry = shapes.entry(key).or_default();
+        entry.0 += 1;
+        entry.1 += us;
+    }
+    let mut rows: Vec<_> = shapes.into_iter().collect();
+    rows.sort_by(|a, b| b.1 .1.total_cmp(&a.1 .1));
+    println!("{label} by shape:");
+    for (key, (count, us)) in rows.into_iter().take(16) {
+        println!("  {key:<44} {count:>5} {:>10.3} ms {:>9.1} us", us / 1e3, us / count as f64);
     }
 }
 
