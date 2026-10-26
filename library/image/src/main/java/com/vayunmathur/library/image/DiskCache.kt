@@ -11,8 +11,7 @@ import kotlin.concurrent.withLock
  * - Key is hashed via SHA-256 to form a filename.
  * - Raw bytes are stored (encoded image bytes, e.g. JPEG/PNG).
  * - Eviction: oldest lastModified first when over size limit.
- *
- * Mirrors Coil diskCache { directory(cacheDir/image_cache).maxSizePercent(0.05) } shape.
+ * - Fixed at 200 MB.
  *
  * Locking is striped per key rather than global: during a fast scroll, dozens of
  * unrelated thumbnails are read and written at once, and a single lock made them
@@ -187,6 +186,7 @@ class DiskCache internal constructor(
 
     private companion object {
         const val STRIPE_COUNT = 16
+        const val MAX_BYTES = 200L * 1024 * 1024
 
         /** Marks in-progress writes so they are never counted or evicted. */
         const val TMP_MARKER = ".tmp_"
@@ -201,39 +201,15 @@ class DiskCache internal constructor(
 
     class Builder {
         private var directory: File? = null
-        private var maxSizePercent: Double = 0.02
-        private var maxSizeBytes: Long? = null
 
         fun directory(dir: File): Builder {
             directory = dir
             return this
         }
 
-        fun maxSizePercent(percent: Double): Builder {
-            maxSizePercent = percent
-            return this
-        }
-
-        fun maxSizePercent(percent: Float): Builder = maxSizePercent(percent.toDouble())
-
-        /** Optional fixed size */
-        fun maxSizeBytes(bytes: Long): Builder {
-            maxSizeBytes = bytes
-            return this
-        }
-
         fun build(): DiskCache {
             val dir = directory ?: throw IllegalStateException("DiskCache directory not set")
-            val maxBytes = maxSizeBytes ?: run {
-                try {
-                    val stat = android.os.StatFs(dir.absolutePath)
-                    val total = stat.blockCountLong * stat.blockSizeLong
-                    (total * maxSizePercent).toLong().coerceAtLeast(10L * 1024 * 1024)
-                } catch (_: Exception) {
-                    50L * 1024 * 1024
-                }
-            }
-            return DiskCache(dir, maxBytes)
+            return DiskCache(dir, MAX_BYTES)
         }
     }
 }

@@ -401,10 +401,10 @@ class ImageLoader private constructor(
         }
 
         fun build(): ImageLoader {
-            val mem = memoryCacheInstance ?: MemoryCache.Builder(context.applicationContext).build()
+            val mem = memoryCacheInstance ?: MemoryCache.Builder().build()
             val disk = diskCacheInstance ?: try {
                 val dir = context.applicationContext.cacheDir.resolve("image_cache")
-                DiskCache.Builder().directory(dir).maxSizePercent(0.05).build()
+                DiskCache.Builder().directory(dir).build()
             } catch (_: Exception) { null }
 
             val defaultFetchers = listOf(

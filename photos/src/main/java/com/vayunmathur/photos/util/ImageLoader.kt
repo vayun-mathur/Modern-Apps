@@ -37,8 +37,6 @@ import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.R
 
 object ImageLoader {
-    private const val MEMORY_CACHE_FRACTION = 0.25
-    private const val DISK_CACHE_FRACTION = 0.05
     private const val VIDEO_FRAME_MILLIS = 1000L
     private const val THUMBNAIL_SIZE = 256
 
@@ -64,12 +62,11 @@ object ImageLoader {
 
     private fun build(context: Context): LibImageLoader = LibImageLoader.Builder(context)
         .memoryCache {
-            MemoryCache.Builder(context).maxSizePercent(MEMORY_CACHE_FRACTION).build()
+            MemoryCache.Builder().build()
         }
         .diskCache {
             DiskCache.Builder()
                 .directory(context.cacheDir.resolve("image_cache"))
-                .maxSizePercent(DISK_CACHE_FRACTION)
                 .build()
         }
         .respectCacheHeaders(false)

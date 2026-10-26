@@ -43,10 +43,7 @@
         android:description="@string/permission_show_error_report_desc"
         android:protectionLevel="signature|preinstalled" />
 
-    <!-- largeHeap because a full logcat dump is held in memory as one string plus one string per
-         line; this is inherited from the app being replaced and is not optional.
-
-         usesNonSdkApi is what makes platform/HiddenFrameworkApi.kt actually work, and without it
+    <!-- usesNonSdkApi is what makes platform/HiddenFrameworkApi.kt actually work, and without it
          that file is dead code. ApplicationInfo.isAllowedToUseHiddenApis() (framework source,
          ApplicationInfo.java:2646-2654) reads:
              if (isSignedWithPlatformKey())            return true;
@@ -66,7 +63,6 @@
     <application
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:largeHeap="true"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.General"
