@@ -30,6 +30,13 @@ impl<'a> Builder<'a> {
                 } else {
                     (0, so.len(), so.len())
                 };
+                // Causal self-attention: the softmax wrote exact zeros past the diagonal, so the
+                // tiled shader stops each block at its last query's key (`kh` 1), dropping only
+                // `+ 0` terms.
+                let causal = so.w == sv.w
+                    && self.nodes.iter().any(|n| {
+                        matches!(n, Node::Softmax { out, mode: SoftmaxMode::Causal, .. } if out == probs)
+                    });
                 ops.push(Op::Dispatch {
                     kind: Kind::AttnApply,
                     push: Push {
@@ -48,6 +55,7 @@ impl<'a> Builder<'a> {
                         kv_heads: *kv_heads,
                         count,
                         kw,
+                        kh: u32::from(causal),
                         ..Push::default()
                     },
                     invocations,

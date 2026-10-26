@@ -73,3 +73,30 @@ fn a_tile_mode_rms_norm_agrees_with_the_reference() {
         compare(&format!("a tile-mode rms norm, {channels}/{groups} x {positions}"), plan, given.data().to_vec(), &[&input]);
     }
 }
+#[test]
+#[ignore = "needs a Vulkan device"]
+fn causal_attention_skips_only_zero_probabilities() {
+    // Gemma 4's fresh prefill: grouped queries over their own keys through a causal softmax, at a
+    // width with a partial 32-query tile (200), and a ragged width on the scalar-load path (258).
+    for (heads, kv_heads, head_dim, positions) in [(2u32, 1u32, 64u32, 200u32), (2, 1, 16, 258)] {
+        let q = spread((heads * head_dim * positions) as usize, 0.31);
+        let k = spread((kv_heads * head_dim * positions) as usize, -0.23);
+        let v = spread((kv_heads * head_dim * positions) as usize, 0.53);
+        let source = Invented::new(0);
+        let shapes = [
+            Shape::new(heads * head_dim, 1, positions),
+            Shape::new(kv_heads * head_dim, 1, positions),
+            Shape::new(kv_heads * head_dim, 1, positions),
+        ];
+        let plan = build(&source, &shapes, |b, ids| {
+            let scores = b.attn_scores_grouped_prescaled(ids[0], ids[1], heads, kv_heads);
+            let probs = b.softmax_causal(scores);
+            b.attn_apply_grouped(probs, ids[2], heads, kv_heads)
+        });
+        let bounded = plan.ops.iter().any(|op| {
+            matches!(op, crate::nets::Op::Dispatch { kind: crate::nets::Kind::AttnApply, push, .. } if push.kh == 1 && push.kw != 0)
+        });
+        assert!(bounded, "the causal apply at {positions} did not take the bounded tiled path");
+        compare(&format!("causal attention {heads}/{kv_heads} heads x {positions}"), plan, source.into_data(), &[&q, &k, &v]);
+    }
+}

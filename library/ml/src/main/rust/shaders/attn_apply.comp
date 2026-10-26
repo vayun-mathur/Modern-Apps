@@ -61,7 +61,9 @@ void ragged(uint channel_base, uint query_base, uint queries, uint keys, uint he
         s_row[i] = p.in0 + (head * queries + query) * keys;
     }
     mat4 acc = mat4(0.0);
-    for (uint j = 0u; j < keys; j++) {
+    // Causal (`p.kh` 1): keys past this block's last query hold exact zeros.
+    uint bound = p.kh == 1u ? min(keys, min(query_base + BLOCK, queries)) : keys;
+    for (uint j = 0u; j < bound; j++) {
         vec4 v = vec4(float(arena[v_row.x + j]), float(arena[v_row.y + j]), float(arena[v_row.z + j]), float(arena[v_row.w + j]));
         vec4 s = vec4(float(arena[s_row.x + j]), float(arena[s_row.y + j]), float(arena[s_row.z + j]), float(arena[s_row.w + j]));
         // Column `q` of `acc` is query `q`: `acc[q][c] += v[c] * s[q]`.
@@ -96,6 +98,10 @@ void tiled() {
     // `head_dim` is a multiple of four, so a block of four channels never spans two heads.
     uint head = channel_base / head_dim;
     uint quads = keys >> 2u;
+    if (p.kh == 1u) {
+        // Causal: keys past this block's last query hold exact zeros, so only `+ 0` is skipped.
+        quads = min(quads, (min(query_base + BLOCK, queries) + 3u) >> 2u);
+    }
     uint value_row[BLOCK];
     uint prob_row[BLOCK];
     for (uint i = 0u; i < BLOCK; i++) {
