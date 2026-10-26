@@ -131,6 +131,19 @@ pub fn build_plan_at(weights: &dyn WeightSource, width: u32) -> Result<Plan, Str
     builder.finish(&[combined])
 }
 
+/// Prefill chunks are padded up to a multiple of this many positions, where the int4 GEMM takes
+/// its 16-byte activation path: on a Pixel 8 a 163-position chunk cost 4.7 s against 2.5 s at
+/// 200. Coarser buckets (64) cost ~0.1 s of GPU on widths that were already aligned.
+pub const PAD_TO: u32 = 8;
+
+/// The width to run a `width`-position chunk at when `room` cache positions are free from its
+/// start. Exact: queries attend causally, so no real position reads a pad, and the pads' cache
+/// slots lie past the prompt, where the next position writes before anything reads.
+pub fn padded(width: u32, room: u32) -> u32 {
+    let up = width.div_ceil(PAD_TO) * PAD_TO;
+    if up <= room { up } else { width }
+}
+
 /// Write one position's `values` into column `column` of a channel-major `[C, 1, width]` block.
 pub fn place(into: &mut [f32], values: &[f32], column: usize, width: usize) {
     for (slot, &value) in into.iter_mut().skip(column).step_by(width.max(1)).zip(values) {
@@ -222,6 +235,14 @@ mod tests {
         assert_eq!(plan.inputs[1].shape, Shape::new(8960, 1, 200));
         assert_eq!(plan.outputs[0].shape, Shape::new(8960, 1, 200));
         assert_eq!(plan.ops.len(), 5);
+    }
+
+    #[test]
+    fn padding_rounds_up_to_the_tile_when_the_cache_has_room() {
+        assert_eq!(padded(163, 1024), 168);
+        assert_eq!(padded(64, 1024), 64);
+        assert_eq!(padded(1, 1024), 8);
+        assert_eq!(padded(163, 165), 163);
     }
 
     #[test]

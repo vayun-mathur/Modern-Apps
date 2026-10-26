@@ -59,7 +59,7 @@ const CHUNK: u32 = 256;
 
 /// Grow the arena to the widest prefill chunk, then record the decode step. An arena growth drops
 /// every kept recording, so without this the first prompt re-records the decode step for the
-/// first token; after it a prompt only records its own width and the decode step stays warm.
+/// first token. A new prompt width then only records its own plan, built while its rows gather.
 fn warm_gemma4(net: &mut Reshaped<gemma4::Pass>, context: u32) -> Result<(), String> {
     let width = CHUNK.min(context);
     net.at(gemma4::Mode::Prefill { tokens: width }.at(context))?;

@@ -562,24 +562,37 @@ struct PrefillTimes {
     gpu: f64,
 }
 
-/// `prompt` at position 0 exactly as `Gemma4Handle::prefill` feeds it: per chunk, the host rows
-/// straight into `[C, 1, T]`, one device combine, the rotary rows, then the Prefill record + submit.
+/// `prompt` at position 0 exactly as `Gemma4Handle::prefill` feeds it: per chunk (padded to
+/// `gemma4_gather::padded` when `pad`), the host rows straight into `[C, 1, T]` while an evicted
+/// plan builds on another thread, one device combine, the rotary rows, then the Prefill submit.
 fn prefill_app(
     net: &mut Reshaped<gemma4::Pass>,
     gather: &mut Reshaped<u32>,
     embed: &modelrunner::weights::Reader<'_>,
     rotary: &modelrunner::weights::Reader<'_>,
     prompt: &[u32],
+    pad: bool,
 ) -> Result<PrefillTimes, String> {
     use modelrunner::nets::gemma4_gather as g;
     use std::time::Instant;
     let mut times = PrefillTimes::default();
     for (index, chunk) in prompt.chunks(CHUNK).enumerate() {
         let start = (index * CHUNK) as u32;
-        let width = chunk.len() as u32;
+        let width = if pad { g::padded(chunk.len() as u32, TIER - start) } else { chunk.len() as u32 };
+        let mut fed = chunk.to_vec();
+        fed.resize(width as usize, 0);
+        let mode = if start == 0 { gemma4::Mode::PrefillFresh { tokens: width } } else { gemma4::Mode::Prefill { tokens: width } }.at(TIER);
+        let pending = (!net.holds(mode)).then(|| net.planner());
         let tick = Instant::now();
-        let hidden = g::token_rows(embed, chunk)?;
-        let embedded = g::layer_rows(embed, chunk)?;
+        let (rows, plan) = std::thread::scope(|scope| {
+            let building = pending.map(|(plan, offsets)| scope.spawn(move || plan(&offsets, mode)));
+            let rows = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::layer_rows(embed, &fed)?)));
+            (rows, building.map(|thread| thread.join().map_err(|_| "the plan thread panicked".to_string())))
+        });
+        let (hidden, embedded) = rows?;
+        if let Some(plan) = plan {
+            net.adopt(mode, plan??);
+        }
         times.rows += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         let per_layer = gather.at(width)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no combine")?;
@@ -593,9 +606,8 @@ fn prefill_app(
             place(&mut global, &rotary_row(rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?, column, width);
         }
         times.rotary += tick.elapsed().as_secs_f64() * 1000.0;
-        let mode = if start == 0 { gemma4::Mode::PrefillFresh { tokens: width } } else { gemma4::Mode::Prefill { tokens: width } };
         let tick = Instant::now();
-        let at = net.at(mode.at(TIER))?;
+        let at = net.at(mode)?;
         times.record += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         at.set_params(StepParams { prefix: start, window_start: start.saturating_sub(gemma4::WINDOW - 1) })?;
@@ -631,13 +643,13 @@ fn time_prefill(
     };
     // As `build_gemma4` warms at load: the arena at the widest chunk, then the decode step.
     let tick = Instant::now();
-    let chunk = CHUNK as u32;
     let warmed = (|| -> Result<(), String> {
-        net.at(gemma4::Mode::Prefill { tokens: chunk }.at(TIER))?;
-        net.at(gemma4::Mode::PrefillFresh { tokens: chunk }.at(TIER))?;
+        net.at(gemma4::Mode::Prefill { tokens: 256 }.at(TIER))?;
+        net.at(gemma4::Mode::PrefillFresh { tokens: 256 }.at(TIER))?;
         net.at(gemma4::Mode::DecodeStep.at(TIER))?;
-        gather.at(chunk)?;
-        gather.at(1)?;
+        for width in [256, 1] {
+            gather.at(width)?;
+        }
         Ok(())
     })();
     if let Err(why) = warmed {
@@ -657,13 +669,14 @@ fn time_prefill(
         let next = tokens[width as usize % tokens.len()];
         for run in 0..2 {
             let start = Instant::now();
-            let p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt) {
+            let p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt, true) {
                 Ok(p) => p,
                 Err(why) => return println!("the prefill failed: {why}"),
             };
             let prefill_ms = start.elapsed().as_secs_f64() * 1000.0;
             if stamps && run == 1 {
-                prefill_report = net.at(gemma4::Mode::PrefillFresh { tokens: width.min(CHUNK as u32) }.at(TIER)).and_then(|at| at.op_times()).ok();
+                let ran_at = modelrunner::nets::gemma4_gather::padded(width.min(CHUNK as u32), TIER);
+                prefill_report = net.at(gemma4::Mode::PrefillFresh { tokens: ran_at }.at(TIER)).and_then(|at| at.op_times()).ok();
             }
             let tick = Instant::now();
             if let Err(why) = net.at(gemma4::Mode::DecodeStep.at(TIER)) {
@@ -831,9 +844,14 @@ fn split_check(
     ];
     let want = top10(&reference);
     let mut gather = gather_plan(context, embed)?;
-    prefill_app(&mut net, &mut gather, &reader, &rotary, body)?;
+    prefill_app(&mut net, &mut gather, &reader, &rotary, body, false)?;
+    let exact = last_logits(&mut net, &mut head_net, &reader, &rotary, last, (n - 1) as u32)?;
+    println!("  {:<32} top10 {:?}", "app path, unpadded", top10(&exact));
+    prefill_app(&mut net, &mut gather, &reader, &rotary, body, true)?;
     let app = last_logits(&mut net, &mut head_net, &reader, &rotary, last, (n - 1) as u32)?;
     println!("  {:<32} top10 {:?}", "app path (rows + device combine)", top10(&app));
+    let pad_diff = app.iter().zip(&exact).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
+    println!("  padding {} -> {}: max |logit diff| vs unpadded {pad_diff:.4}", body.len(), body.len().div_ceil(8) * 8);
     let variants = [
         variants[0].clone(),
         variants[1].clone(),

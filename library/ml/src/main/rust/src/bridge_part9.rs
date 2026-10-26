@@ -275,3 +275,125 @@ impl Gemma4Handle {
         Ok(pairs)
     }
 }
+
+impl Gemma4Handle {
+    /// Feed many tokens in **one** submit per chunk, filling the caches and returning nothing.
+    ///
+    /// At one position a pass reads 1.30 GB of weights for a single 1536-wide vector; at T
+    /// positions it reads them once and every projection becomes a GEMM over T columns. Chunked
+    /// because each chunk's score maps are eight heads of `T x context`. Every chunk attends the
+    /// whole cache (`attn_cached_multi`), so any split and any starting position is correct.
+    fn prefill(&mut self, tokens: &[u32]) -> Result<(), String> {
+        if self.position as usize + tokens.len() > self.context as usize {
+            return Err(format!(
+                "a prompt of {} positions past this device's {} cache",
+                self.position as usize + tokens.len(),
+                self.context
+            ));
+        }
+        for chunk in tokens.chunks(CHUNK as usize) {
+            let real = chunk.len() as u32;
+            let width = crate::nets::gemma4_gather::padded(real, self.context - self.position);
+            // Pad columns feed the pad token; nothing real reads them (see `padded`).
+            let mut fed = chunk.to_vec();
+            fed.resize(width as usize, 0);
+            self.prefill_chunk(real, width, |reader| {
+                let hidden = crate::nets::gemma4_gather::token_rows(reader, &fed)?;
+                Ok((hidden, crate::nets::gemma4_gather::layer_rows(reader, &fed)?))
+            })?;
+        }
+        Ok(())
+    }
+
+    /// [`prefill`](Self::prefill) for **soft tokens** (`D_MODEL` values per row from the vision
+    /// or audio encoder). Soft rows take the pad token's per-layer rows: the reference rewrites
+    /// the placeholder id to `pad_token_id` before gathering, then overwrites only the hidden.
+    fn prefill_soft(&mut self, values: &[f32]) -> Result<(), String> {
+        let d = gemma4::D_MODEL as usize;
+        if values.is_empty() || !values.len().is_multiple_of(d) {
+            return Err(format!("{} values, which is not a whole number of {d}", values.len()));
+        }
+        if self.position as usize + values.len() / d > self.context as usize {
+            return Err(format!(
+                "{} soft tokens past this device's {} cache",
+                self.position as usize + values.len() / d,
+                self.context
+            ));
+        }
+        for chunk in values.chunks(d * CHUNK as usize) {
+            let real = (chunk.len() / d) as u32;
+            let width = crate::nets::gemma4_gather::padded(real, self.context - self.position);
+            self.prefill_chunk(real, width, |reader| {
+                let mut hidden = vec![0f32; d * width as usize];
+                for (at, row) in chunk.chunks_exact(d).enumerate() {
+                    crate::nets::gemma4_gather::place(&mut hidden, row, at, width as usize);
+                }
+                Ok((hidden, crate::nets::gemma4_gather::layer_rows(reader, &vec![0; width as usize])?))
+            })?;
+        }
+        Ok(())
+    }
+
+    /// One chunk of `real` positions run at `width`: `rows` gathers the `[C, 1, width]` hidden
+    /// and table blocks while the chunk's plan builds on another thread if it was evicted, then
+    /// one combine submit and one Prefill submit.
+    fn prefill_chunk(
+        &mut self,
+        real: u32,
+        width: u32,
+        rows: impl FnOnce(&crate::weights::Reader<'_>) -> Result<(Vec<f32>, Vec<f32>), String>,
+    ) -> Result<(), String> {
+        let started = std::time::Instant::now();
+        let mode = if self.position == 0 {
+            gemma4::Mode::PrefillFresh { tokens: width }
+        } else {
+            gemma4::Mode::Prefill { tokens: width }
+        }
+        .at(self.context);
+        let pending = (!self.net.holds(mode)).then(|| self.net.planner());
+        let embed = &self.embed;
+        let (gathered, plan) = std::thread::scope(|scope| {
+            let building = pending.map(|(plan, offsets)| scope.spawn(move || plan(&offsets, mode)));
+            let gathered = rows(&embed.reader());
+            let plan = building.map(|thread| thread.join().map_err(|_| "the plan thread panicked".to_string()));
+            (gathered, plan)
+        });
+        let (hidden, embedded) = gathered?;
+        if let Some(plan) = plan {
+            self.net.adopt(mode, plan??);
+        }
+        let gathered = started.elapsed();
+        let per_layer = self.combine_block(&hidden, &embedded, width)?;
+        let combined = started.elapsed() - gathered;
+        let wide = width as usize;
+        let (l, g) = (gemma4::HEAD_DIM as usize, gemma4::GLOBAL_HEAD_DIM as usize);
+        let (mut local, mut global) = (vec![0f32; l * wide], vec![0f32; g * wide]);
+        for at in 0..wide {
+            let position = self.position as usize + at;
+            let local_row = self.local.get(position * l..(position + 1) * l).ok_or("past the rotary table")?;
+            let global_row = self.global.get(position * g..(position + 1) * g).ok_or("past the rotary table")?;
+            crate::nets::gemma4_gather::place(&mut local, local_row, at, wide);
+            crate::nets::gemma4_gather::place(&mut global, global_row, at, wide);
+        }
+        let submitted = std::time::Instant::now();
+        let at = self.net.at(mode)?;
+        let recorded = submitted.elapsed();
+        at.set_params(StepParams {
+            prefix: self.position,
+            window_start: self.position.saturating_sub(gemma4::WINDOW - 1),
+        })?;
+        let ran = std::time::Instant::now();
+        at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
+        log(&format!(
+            "gemma4 prefill {real} positions (run at {width}) at {}: {:.0} ms rows, {:.0} ms combine, \
+             {:.0} ms record, {:.0} ms gpu",
+            self.position,
+            gathered.as_secs_f64() * 1000.0,
+            combined.as_secs_f64() * 1000.0,
+            recorded.as_secs_f64() * 1000.0,
+            ran.elapsed().as_secs_f64() * 1000.0,
+        ));
+        self.position += real;
+        Ok(())
+    }
+}
