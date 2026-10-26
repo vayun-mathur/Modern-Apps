@@ -3,6 +3,9 @@ package com.vayunmathur.library.network
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -339,53 +342,66 @@ object NetworkClient {
         readTimeoutMs: Long? = connectTimeoutMs,
         sslSocketFactory: SSLSocketFactory? = null,
         useSystemTrust: Boolean = false,
+        followRedirects: Boolean = true,
         block: suspend (stream: NetworkDataStream?, response: SimpleResponse) -> Unit,
     ): SimpleResponse {
-        val response = HttpUrlEngine.openResponse(
-            url, method, headers, HttpUrlEngine.toBodyBytes(body),
-            followRedirects = true, connectTimeoutMs = connectTimeoutMs, readTimeoutMs = readTimeoutMs,
-            sslSocketFactory = resolveFactory(sslSocketFactory, useSystemTrust),
-            // This entry point has always let connect failures surface as they are.
-            wrapConnectErrors = false,
-        )
-
-        var simple = SimpleResponse(response.status, response.statusMessage, "", response.headers, response.finalUrl)
-
-        if (simple.isSuccess || simple.status == STATUS_PARTIAL_CONTENT) {
-            if (!response.hasStream) {
-                withContext(Dispatchers.IO) { response.close() }
-                block(null, simple)
-                return simple
-            }
-            val raw = response.stream
-            var closed = false
-            val streamObj = object : NetworkDataStream {
-                override val isClosedForRead: Boolean get() = closed
-                override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-                    withContext(Dispatchers.IO) {
-                        try {
-                            val n = raw.read(buffer, offset, length)
-                            if (n == -1) closed = true
-                            n
-                        } catch (_: java.io.IOException) {
-                            closed = true
-                            -1
-                        }
-                    }
-            }
-            try {
-                block(streamObj, simple)
-            } finally {
-                withContext(Dispatchers.IO) { response.close() }
-            }
-        } else {
-            val errorBody = withContext(Dispatchers.IO) {
-                response.use { readErrorPrefix(it.stream, ERROR_PREFIX_BYTES) }
-            }
-            simple = simple.copy(body = errorBody)
-            block(null, simple)
+        var ownedResponse: HttpUrlEngine.OpenResponse? = null
+        suspend fun closeResponse() = withContext(NonCancellable + Dispatchers.IO) {
+            ownedResponse?.close()
+            ownedResponse = null
         }
-        return simple
+        try {
+            currentCoroutineContext().ensureActive()
+            val response = withContext(NonCancellable + Dispatchers.IO) {
+                // Shield acquisition until ownership is recorded; socket timeouts still apply.
+                HttpUrlEngine.openResponse(
+                    url, method, headers, HttpUrlEngine.toBodyBytes(body),
+                    followRedirects = followRedirects, connectTimeoutMs = connectTimeoutMs, readTimeoutMs = readTimeoutMs,
+                    sslSocketFactory = resolveFactory(sslSocketFactory, useSystemTrust),
+                    // This entry point has always let connect failures surface as they are.
+                    wrapConnectErrors = false,
+                ).also { ownedResponse = it }
+            }
+            currentCoroutineContext().ensureActive()
+            var simple = SimpleResponse(response.status, response.statusMessage, "", response.headers, response.finalUrl)
+            if (simple.isSuccess || simple.status == STATUS_PARTIAL_CONTENT) {
+                if (!response.hasStream) {
+                    closeResponse()
+                    block(null, simple)
+                    return simple
+                }
+                val raw = response.stream
+                var closed = false
+                val streamObj = object : NetworkDataStream {
+                    override val isClosedForRead: Boolean get() = closed
+                    override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+                        withContext(Dispatchers.IO) {
+                            try {
+                                val n = raw.read(buffer, offset, length)
+                                if (n == -1) closed = true
+                                n
+                            } catch (_: java.io.IOException) {
+                                closed = true
+                                -1
+                            }
+                        }
+                }
+                block(streamObj, simple)
+            } else {
+                val errorBody = withContext(Dispatchers.IO) {
+                    try {
+                        readErrorPrefix(response.stream, ERROR_PREFIX_BYTES)
+                    } finally {
+                        closeResponse()
+                    }
+                }
+                simple = simple.copy(body = errorBody)
+                block(null, simple)
+            }
+            return simple
+        } finally {
+            closeResponse()
+        }
     }
 
     /**

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Shop</string>
+    <string name="search">Search</string>
+    <string name="search_products">Search products</string>
+    <string name="no_products_found">No products found</string>
+    <string name="check_connection_retry">Enter a search or try a different query</string>
+    <string name="cart">Cart</string>
+    <string name="cart_empty">Your cart is empty</string>
+    <string name="checkout">Checkout</string>
+    <string name="orders">Checkouts</string>
+    <string name="no_orders_yet">No checkout history yet</string>
+    <string name="continue_in_browser">Continue in browser</string>
+    <string name="place_order">Prepare checkout</string>
+    <string name="store_domain">Merchant domain (optional)</string>
+    <string name="store_domain_hint">Leave empty for Shopify search, or enter a UCP merchant domain.</string>
+    <string name="estimated_subtotal">Estimated subtotal</string>
+    <string name="checkout_pending">Payment not confirmed</string>
+    <string name="checkout_handoff_notice">Review final prices, shipping and payment on the merchant site. Cart items remain until you remove them.</string>
+    <string name="buy_now">Buy now</string>
+    <string name="add_to_cart">Add to cart</string>
+</resources>
