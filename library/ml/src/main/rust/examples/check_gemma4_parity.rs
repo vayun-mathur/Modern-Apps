@@ -600,7 +600,7 @@ struct PrefillTimes {
 /// plan builds on another thread, one device combine, the rotary rows, then the Prefill submit.
 fn prefill_app(
     net: &mut Reshaped<gemma4::Pass>,
-    gather: &mut Reshaped<u32>,
+    gather: Option<&mut Reshaped<u32>>,
     embed: &modelrunner::weights::Reader<'_>,
     rotary: &modelrunner::weights::Reader<'_>,
     prompt: &[u32],
@@ -609,6 +609,7 @@ fn prefill_app(
     use modelrunner::nets::gemma4_gather as g;
     use std::time::Instant;
     let mut times = PrefillTimes::default();
+    let mut gather = gather;
     for (index, chunk) in prompt.chunks(CHUNK).enumerate() {
         let start = (index * CHUNK) as u32;
         let width = if pad { g::padded(chunk.len() as u32, TIER - start) } else { chunk.len() as u32 };
@@ -634,6 +635,7 @@ fn prefill_app(
         let per_layer = if fused() {
             embedded
         } else {
+            let gather = gather.as_deref_mut().ok_or("no gather net for an unfused text file")?;
             gather.at(width)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no combine")?
         };
         times.combine += tick.elapsed().as_secs_f64() * 1000.0;
@@ -705,7 +707,7 @@ fn time_prefill(
         Ok(net) => net,
         Err(why) => return println!("the head does not build: {why}"),
     };
-    let mut gather = match gather_plan(context, embed) {
+    let mut gather = match (!fused()).then(|| gather_plan(context, embed)).transpose() {
         Ok(net) => net,
         Err(why) => return println!("the gather net does not build: {why}"),
     };
@@ -716,8 +718,10 @@ fn time_prefill(
         net.at(gemma4::Mode::PrefillFresh { tokens: 256 }.at(TIER))?;
         net.at(gemma4::Mode::Tail.at(TIER))?;
         net.at(gemma4::Mode::DecodeStep.at(TIER))?;
-        for width in [256, 1].into_iter().filter(|_| !fused()) {
-            gather.at(width)?;
+        for width in [256, 1] {
+            if let Some(gather) = gather.as_mut() {
+                gather.at(width)?;
+            }
         }
         if let Some(head) = head_net.as_mut() {
             for out in [HeadOut::Logits, HeadOut::TopK, HeadOut::Greedy] {
@@ -746,7 +750,7 @@ fn time_prefill(
         let folded: Vec<u32> = prompt.iter().copied().chain([next]).collect();
         for run in 0..2 {
             let start = Instant::now();
-            let mut p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &folded, true) {
+            let mut p = match prefill_app(&mut net, gather.as_mut(), &reader, &rotary, &folded, true) {
                 Ok(p) => p,
                 Err(why) => return println!("the prefill failed: {why}"),
             };
@@ -771,16 +775,16 @@ fn time_prefill(
         }
         // The old flow once (prefill the prompt, then a decode step), for the token to match.
         let tick = Instant::now();
-        let unfolded = prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt, true).and_then(|_| {
+        let unfolded = prefill_app(&mut net, gather.as_mut(), &reader, &rotary, &prompt, true).and_then(|_| {
             let mut s = StepTimes::default();
-            decode_one(&mut net, head_net.as_mut(), Some(&mut gather), &reader, &rotary, next, width, HeadOut::Greedy, &mut s)
+            decode_one(&mut net, head_net.as_mut(), gather.as_mut(), &reader, &rotary, next, width, HeadOut::Greedy, &mut s)
         });
         println!("  decode-step flow: id {unfolded:?}, {:.0} ms", tick.elapsed().as_secs_f64() * 1000.0);
         let margins = (|| -> Result<String, String> {
             let head = head_net.as_mut().ok_or("no head")?;
-            let p = prefill_app(&mut net, &mut gather, &reader, &rotary, &folded, true)?;
+            let p = prefill_app(&mut net, gather.as_mut(), &reader, &rotary, &folded, true)?;
             let a = softcapped(&head.at(HeadOut::Logits)?.infer_raw_many(&[&p.state])?)?;
-            prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt, true)?;
+            prefill_app(&mut net, gather.as_mut(), &reader, &rotary, &prompt, true)?;
             let b = last_logits(&mut net, head, &reader, &rotary, next, width)?;
             let top3 = |l: &[f32]| top10(l).into_iter().take(3).map(|i| (i, l[i as usize])).collect::<Vec<_>>();
             Ok(format!("folded {:?} / decode-step {:?}", top3(&a), top3(&b)))
@@ -933,16 +937,16 @@ fn split_check(
         ("batched head + batched tail", run("batched head + batched tail", true, true, false)?),
     ];
     let want = top10(&reference);
-    let mut gather = gather_plan(context, embed)?;
-    prefill_app(&mut net, &mut gather, &reader, &rotary, body, false)?;
+    let mut gather = if fused() { None } else { Some(gather_plan(context, embed)?) };
+    prefill_app(&mut net, gather.as_mut(), &reader, &rotary, body, false)?;
     let exact = last_logits(&mut net, &mut head_net, &reader, &rotary, last, (n - 1) as u32)?;
     println!("  {:<32} top10 {:?}", "app path, unpadded", top10(&exact));
-    prefill_app(&mut net, &mut gather, &reader, &rotary, body, true)?;
+    prefill_app(&mut net, gather.as_mut(), &reader, &rotary, body, true)?;
     let app = last_logits(&mut net, &mut head_net, &reader, &rotary, last, (n - 1) as u32)?;
     println!("  {:<32} top10 {:?}", "app path (rows + device combine)", top10(&app));
     let pad_diff = app.iter().zip(&exact).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
     println!("  padding {} -> {}: max |logit diff| vs unpadded {pad_diff:.4}", body.len(), body.len().div_ceil(8) * 8);
-    let folded = prefill_app(&mut net, &mut gather, &reader, &rotary, prompt, true)?;
+    let folded = prefill_app(&mut net, gather.as_mut(), &reader, &rotary, prompt, true)?;
     let folded = softcapped(&head_net.at(HeadOut::Logits)?.infer_raw_many(&[&folded.state])?)?;
     println!("  {:<32} top10 {:?}", "app path, last token folded", top10(&folded));
     let variants = [

@@ -14,6 +14,18 @@ Usage:
   GEMMA4_EMBED_DUMP=analysis/maml-rebuild/embed_s2_fp32.bin \
     python scripts/ml/s10_to_maml.py -o build/gemma4-s10 --print-digest
   (--text-only writes gemma4_text.maml alone and needs no dump.)
+
+Slim embed (the shipped file):
+  python scripts/ml/s10_to_maml.py -o build/gemma4-release \
+    --slim-embed build/gemma4/gemma4_embed.maml
+  copies the token table triple (0-2) and the 35 per-layer int4 tables
+  (7+i*3) byte-for-byte out of a full embed file, with no S10 read and no
+  re-quantisation. SHARED_PROJ/norm (3-6) become four one-element fp16
+  placeholders so every index the runtime reads holds (nets::gemma4::embed::
+  SLIM_TENSORS, 112 tensors): the per-layer combine reads the text file's
+  copy (the 1094-tensor gemma4_text.maml, nets::gemma4::COMBINE_PROJ), and
+  the head table + both head-chunk copies are dropped because
+  gemma4_head.maml carries the head. ~1.4 GB instead of 3.6 GB.
 Then:
   cargo run --offline --release -p modelrunner --example check_gemma4_parity -- \
     build/gemma4-s10/gemma4_text.maml build/gemma4-s10/gemma4_embed.maml \
@@ -379,8 +391,13 @@ def main():
     ap.add_argument('--print-digest', action='store_true')
     ap.add_argument('--text-only', action='store_true',
                     help='write gemma4_text.maml only (no embed dump needed)')
+    ap.add_argument('--slim-embed', metavar='FULL_EMBED',
+                    help='write only a slim gemma4_embed.maml copied from FULL_EMBED')
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
+    if args.slim_embed:
+        write_slim_embed(args.slim_embed, os.path.join(args.outdir, 'gemma4_embed.maml'))
+        return
     rdr = S10Reader(S10)
     layers, tensors = collect_text(rdr)
     digest = mc.layer_table_digest(layers)
@@ -414,8 +431,81 @@ def main():
     print(f'wrote {hout} ({len(hblob)} bytes)')
 
 
+# Slim embed layout (see the module docstring): kept source entries, in order,
+# with SLIM_PLACEHOLDERS one-element fp16 tensors standing in for 3-6.
+SLIM_LAYERS = 35
+SLIM_TABLES = 7
+SLIM_PLACEHOLDERS = range(3, SLIM_TABLES)
+SLIM_TENSORS = SLIM_TABLES + SLIM_LAYERS * 3
+
+
+def read_maml_table(path):
+    """(graph_id, sha256, data_offset, entries) of a .maml; entry = (ndim, dims, dtype, offset, size)."""
+    import struct
+    with open(path, 'rb') as f:
+        header = f.read(mc.HEADER_BYTES)
+        if header[:4] != mc.MAGIC:
+            raise SystemExit(f'{path}: not a .maml')
+        _, graph_id, count = struct.unpack_from('<III', header, 4)
+        sha = header[16:48]
+        data_offset, _ = struct.unpack_from('<II', header, 48)
+        table = f.read(count * mc.TENSOR_ENTRY_BYTES)
+    entries = []
+    for i in range(count):
+        fields = struct.unpack_from('<I4IIII', table, i * mc.TENSOR_ENTRY_BYTES)
+        ndim, dims, dtype, offset, size = fields[0], fields[1:5], fields[5], fields[6], fields[7]
+        entries.append((ndim, dims[:ndim], dtype, offset, size))
+    return graph_id, sha, data_offset, entries
+
+
+def read_payload(f, data_offset, entry):
+    _, _, dtype, offset, size = entry
+    f.seek(data_offset + offset)
+    want = mc.payload_bytes(dtype, size)
+    payload = f.read(want)
+    if len(payload) != want:
+        raise SystemExit(f'short read: {len(payload)} of {want} bytes')
+    return payload
+
+
+def write_slim_embed(src, out):
+    """Slim gemma4_embed.maml from a full one, tables bit-identical (re-read and compared)."""
+    import hashlib
+    graph_id, sha, data_offset, entries = read_maml_table(src)
+    if graph_id != mc.GRAPHS['gemma4_embed']:
+        raise SystemExit(f'{src}: graph {graph_id}, not gemma4_embed')
+    if len(entries) < SLIM_TENSORS:
+        raise SystemExit(f'{src}: {len(entries)} tensors, fewer than the {SLIM_TENSORS} kept')
+    tensors = []
+    with open(src, 'rb') as f:
+        for i in range(SLIM_TENSORS):
+            if i in SLIM_PLACEHOLDERS:
+                tensors.append(np.zeros(1, dtype=np.float16))
+                continue
+            entry = entries[i]
+            tensors.append(mc.Raw(entry[2], entry[1], entry[4], read_payload(f, data_offset, entry)))
+    blob, _ = mc.build([], tensors, graph_id, sha)
+    with open(out, 'wb') as f:
+        f.write(blob)
+    del blob, tensors
+    _, _, out_data, out_entries = read_maml_table(out)
+    assert len(out_entries) == SLIM_TENSORS, len(out_entries)
+    with open(src, 'rb') as a, open(out, 'rb') as b:
+        for i in range(SLIM_TENSORS):
+            if i in SLIM_PLACEHOLDERS:
+                continue
+            want, got = entries[i], out_entries[i]
+            if want[:3] != got[:3] or want[4] != got[4]:
+                raise SystemExit(f'tensor {i}: entry {got} differs from {want}')
+            if hashlib.sha256(read_payload(a, data_offset, want)).digest() != \
+                    hashlib.sha256(read_payload(b, out_data, got)).digest():
+                raise SystemExit(f'tensor {i}: payload differs from the source')
+    print(f'wrote {out} ({os.path.getsize(out)} bytes, {SLIM_TENSORS} tensors, '
+          f'{SLIM_TENSORS - len(SLIM_PLACEHOLDERS)} bit-identical to {src})')
+
+
 def collect_embed(rdr):
-    """gemma4_embed from S10's own tensors (+ S2 dump for the working table).
+    """gemma4_embed from S10's own tensors
 
     Layout matches the artisan path's embed file exactly (same tensor order,
     same layer kinds), so the runtime reads either file identically:

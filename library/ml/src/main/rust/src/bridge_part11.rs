@@ -180,6 +180,17 @@ fn build_gemma4<'l>(
         Some(file) => Some(Streamed::open(file, head_at, head_len, graph::GEMMA4_HEAD)?),
         None => None,
     };
+    // A slim embed file (`embed::SLIM_TENSORS`) has neither the combine weights nor the head
+    // table, so it needs the text file's combine and the head file. Refused here rather than
+    // at the first token, and never served by the ~2 s/token host head.
+    let fused = weights.len() == gemma4::TENSORS_WITH_COMBINE;
+    if !fused && !gemma4::embed::carries_combine(&embed.reader()) {
+        return Err("neither the text file nor the embed file carries the per-layer combine".into());
+    }
+    let host_head = gemma4::embed::carries_head_table(embed.len());
+    if head_file.is_none() && !host_head {
+        return Err("the head file is missing and the embed file carries no head table".into());
+    }
     let tokenizer = env
         .convert_byte_array(tokenizer)
         .map_err(|e| format!("cannot read the tokenizer table: {e}"))?;
@@ -216,6 +227,9 @@ fn build_gemma4<'l>(
     // Never `Reshaped::streamed` over EMBED: it uploads the whole 3.6 GB file, which on top of
     // TEXT OOM-kills a Pixel 8. The gather net is windowed to the tensors it reads.
     let mut head = head_file.as_ref().and_then(gemma4_head_file_plan);
+    if head.is_none() && !host_head {
+        return Err("the head file did not build and the embed file carries no head table".into());
+    }
     if let Some(head) = head.as_mut() {
         // Each mode's first recording costs ~70 ms on a Pixel 8; a sampled first token would pay
         // it. Logits first: it has the largest readback, so the staging grows once.
@@ -225,7 +239,6 @@ fn build_gemma4<'l>(
         }
     }
     // A text file that carries the combine needs no gather net.
-    let fused = weights.len() == gemma4::TENSORS_WITH_COMBINE;
     let mut gather_net = if fused { None } else { gemma4_gather_plan(&embed) };
     if let Some(gather) = gather_net.as_mut() {
         gather.at(CHUNK)?;

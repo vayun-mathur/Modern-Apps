@@ -4299,6 +4299,31 @@ class Int4:
         self.size = self.codes.size
 
 
+class Raw:
+    """A tensor copied verbatim from another `.maml`: its table entry's dtype, shape and element
+    count plus its payload bytes, so a re-packed file is bit-identical to its source."""
+
+    def __init__(self, dtype, shape, size, payload):
+        self.dtype_code = dtype
+        self.shape = tuple(shape)
+        self.ndim = len(self.shape)
+        self.size = size
+        self.payload = payload
+
+
+def payload_bytes(dtype, size):
+    """Payload length of a tensor of `size` elements stored as `dtype` (mirrors `Dtype::bytes`)."""
+    if dtype == DTYPE_F16:
+        return size * 2
+    if dtype == DTYPE_I8:
+        return size
+    if dtype == DTYPE_I4:
+        return (size + 1) // 2
+    if dtype == DTYPE_Q2K:
+        return (size + Q2K_BLOCK - 1) // Q2K_BLOCK * Q2K_BYTES
+    raise SystemExit(f"unknown dtype {dtype}")
+
+
 def build(layers, tensors, graph_id, onnx_sha256):
     """Serialise the tensor table and the data section.
 
@@ -4315,7 +4340,12 @@ def build(layers, tensors, graph_id, onnx_sha256):
         while len(data) % ALIGNMENT:
             data.append(0)
         offset = len(data)
-        if isinstance(tensor, Int4):
+        if isinstance(tensor, Raw):
+            dtype = tensor.dtype_code
+            if len(tensor.payload) != payload_bytes(dtype, tensor.size):
+                raise SystemExit(f"a raw payload of {len(tensor.payload)} bytes for {tensor.size} taps")
+            data.extend(tensor.payload)
+        elif isinstance(tensor, Int4):
             dtype = DTYPE_I4
             data.extend(pack_int4(tensor.codes))
         elif isinstance(tensor, Q2K):

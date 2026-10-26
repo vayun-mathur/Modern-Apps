@@ -76,6 +76,24 @@ pub mod embed {
         TABLES + i * 3
     }
 
+    /// Tensors a SLIM embedding `.maml` holds (`s10_to_maml.py --slim-embed`): the working triple,
+    /// four one-element fp16 placeholders where SHARED_PROJ and SHARED_NORM were, and the 35
+    /// tables, so every index above holds. No head table: the head file carries the head, and
+    /// the per-layer combine reads the text file's copy (`super::COMBINE_PROJ`).
+    pub const SLIM_TENSORS: usize = TABLES + super::LAYERS * 3;
+
+    /// Whether this embedding file carries the per-layer combine's projection and norm.
+    pub fn carries_combine(embed: &crate::weights::Reader<'_>) -> bool {
+        let rows = super::LAYERS as u32 * super::PER_LAYER;
+        embed.describe(SHARED_PROJ, &[rows, super::D_MODEL, 1, 1]).is_ok()
+            && embed.describe(SHARED_NORM, &[super::PER_LAYER]).is_ok()
+    }
+
+    /// Whether an embedding file of `tensors` entries carries the host head's table.
+    pub const fn carries_head_table(tensors: usize) -> bool {
+        tensors > HEAD_TABLE
+    }
+
     /// Ids the export maps to row 0 of the per-layer table before gathering.
     ///
     /// The image and audio placeholders. They have no per-layer input of their own - their
@@ -398,5 +416,20 @@ mod combine_cache_tests {
         assert_eq!(reread.len(), LAYERS * PER_LAYER as usize);
         assert_eq!(miss, reread);
         assert_eq!(hit, reread);
+        assert!(embed::carries_combine(&reader));
+    }
+
+    #[test]
+    fn a_slim_embed_keeps_every_index_and_carries_neither_combine_nor_head() {
+        assert_eq!(embed::SLIM_TENSORS, 112);
+        assert_eq!(embed::table(LAYERS - 1) + 3, embed::SLIM_TENSORS);
+        assert!(!embed::carries_head_table(embed::SLIM_TENSORS));
+        assert!(embed::carries_head_table(embed::TENSORS));
+        let placeholders: Vec<_> =
+            (0..embed::TABLES).map(|_| crate::weights::Fixture::F16(vec![1], vec![0.0])).collect();
+        let blob = crate::weights::write_mixed(crate::weights::graph::GEMMA4_EMBED, &placeholders);
+        let weights = crate::weights::Weights::parse(&blob, crate::weights::graph::GEMMA4_EMBED)
+            .expect("the slim fixture parses");
+        assert!(!embed::carries_combine(&weights.reader()));
     }
 }
