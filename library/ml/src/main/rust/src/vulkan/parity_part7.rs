@@ -451,6 +451,7 @@ fn the_wide_int4_gemm_agrees_with_the_reference_at_gemma_prefill_shapes() {
         ("a wide 1536 -> 12288 gemm at 200 positions", 12288, 1536, 200, Act::None),
         ("a wide ragged gemm at 36 positions", 1000, 2048, 36, Act::Gelu),
         ("a wide gemm at 68 positions", 96, 1536, 68, Act::None),
+        ("a wide 16-byte-load gemm at 72 positions", 1000, 1536, 72, Act::Gelu),
     ] {
         int4_gemm_fixture(label, out, inp, positions, act);
     }
@@ -471,8 +472,8 @@ fn the_wide_int4_gemm_agrees_with_the_reference_at_gemma_prefill_shapes() {
     assert!(
         plan.ops.iter().any(|op| matches!(
             op,
-            crate::nets::Op::Dispatch { kind: crate::nets::Kind::ConvPointInt4, push, .. } if push.in1 == 1
+            crate::nets::Op::Dispatch { kind: crate::nets::Kind::ConvPointInt4, push, .. } if push.in1 == 4
         )),
-        "an aligned int4 GEMM must take the wide path",
+        "an 8-aligned int4 GEMM must take the wide 16-byte-load path",
     );
 }

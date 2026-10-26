@@ -110,6 +110,9 @@ impl<'a> Builder<'a> {
                     && *weight % 4 == 0
                     && positions % 4 == 0
                     && input_at % 4 == 0;
+                // Its 16-byte activation load (`in1` = 4, `wide_oct()`) when each lane's eight positions
+                // are one aligned group.
+                let int4_oct = int4_wide && positions % 8 == 0 && input_at % 8 == 0;
                 // A grouped single-position 1x1 (maia's bias expansion): `grouped_rows` in
                 // conv_int8.comp, `in1` = 2, wide loads of each group's taps.
                 let grouped_vec = kind == Kind::ConvInt8
@@ -152,6 +155,8 @@ impl<'a> Builder<'a> {
                         in0: input_at,
                         in1: if kind == Kind::ConvPointQ2K {
                             q2k_split
+                        } else if int4_oct {
+                            4
                         } else if row_gemm || grouped_vec {
                             2
                         } else if widened {

@@ -23,11 +23,36 @@ layout(std430, binding = 0) readonly buffer ArenaQuad {
 #define TILE 32u
 #define BLOCK 4u
 
-/// `p.in1 == 1`: 4 channels x 8 positions per lane over a 32 x 64 tile, chosen by the emit only
+/// The same arena as 16-byte groups of eight fp16, for `wide()` when the eight positions a lane
+/// owns are one aligned group.
+layout(std430, binding = 0) readonly buffer ArenaOct {
+    uvec4 arena_oct[];
+};
+
+void store8(uint channel, uint position_base, uint positions, vec4 lo, vec4 hi) {
+    if (channel >= p.out_c) {
+        return;
+    }
+    float offset = float(weights[p.bias + channel]);
+    for (uint j = 0u; j < 8u; j++) {
+        uint position = position_base + j;
+        if (position >= positions) {
+            continue;
+        }
+        float acc = j < 4u ? lo[j] : hi[j - 4u];
+        uint index = channel * positions + position;
+        arena[p.out_at + index] = float16_t(quant_store(fused_store(acc + offset, p.act, channel, index)));
+    }
+}
+
+/// `p.in1 == 1` or `4`: 4 channels x 8 positions per lane over a 32 x 64 tile, chosen by the emit only
 /// when `in_c % 32`, `p.weight % 4`, `positions % 4` and `p.in0 % 4` are all zero. Each nibble
 /// unpack feeds 8 FMAs instead of 4, and the block scale is folded into the tap so the lane keeps
 /// 32 accumulators and no per-block partials (scale per tap, not per block sum: rounding moves
-/// within the int4 fixtures' tolerance).
+/// within the int4 fixtures' tolerance). Weights come one word (8 taps) per row at a time rather
+/// than a whole block up front: fewer live registers, 13% faster on a Pixel 8. `in1` 4 (positions
+/// and `p.in0` % 8 == 0) reads the eight activations as one 16-byte load instead of two 8-byte
+/// ones: ConvPointInt4 of a 200-token Gemma prefill 3.06 -> 2.25 s with both.
 void wide() {
     uint positions = p.out_h * p.out_w;
     uint tiles_across = (positions + 63u) / 64u;
@@ -43,10 +68,8 @@ void wide() {
     }
     uint blocks = p.in_c >> 5u;
     uint rows[BLOCK];
-    uint rows32[BLOCK];
     for (uint i = 0u; i < BLOCK; i++) {
         rows[i] = min(channel_base + i, p.out_c - 1u);
-        rows32[i] = (p.weight >> 2u) + rows[i] * blocks;
     }
     vec4 lo[BLOCK];
     vec4 hi[BLOCK];
@@ -58,43 +81,93 @@ void wide() {
     uint quad = (p.in0 + position_base) >> 2u;
     bool second = position_base + 4u < positions;
     for (uint block = 0u; block < blocks; block++) {
-        uvec4 w[BLOCK];
         float scale[BLOCK];
         for (uint i = 0u; i < BLOCK; i++) {
-            w[i] = weights128[rows32[i] + block];
             scale[i] = int4_scale(rows[i], block, blocks);
         }
-        uint k = block * I4_BLOCK;
-        for (uint t = 0u; t < I4_BLOCK; t++) {
-            uint at = quad + (k + t) * quads;
-            vec4 x0 = vec4(arena_quad[at]);
-            vec4 x1 = second ? vec4(arena_quad[at + 1u]) : vec4(0.0);
+        for (uint word = 0u; word < 4u; word++) {
+            uint w[BLOCK];
             for (uint i = 0u; i < BLOCK; i++) {
-                float tap = float(bitfieldExtract(int(w[i][t >> 3u]), int((t & 7u) << 2u), 4)) * scale[i];
-                lo[i] += tap * x0;
-                hi[i] += tap * x1;
+                w[i] = weights32[p.weight + (rows[i] * blocks + block) * 4u + word];
+            }
+            uint k = block * I4_BLOCK + word * 8u;
+            for (uint t = 0u; t < 8u; t++) {
+                uint at = quad + (k + t) * quads;
+                vec4 x0 = vec4(arena_quad[at]);
+                vec4 x1 = second ? vec4(arena_quad[at + 1u]) : vec4(0.0);
+                for (uint i = 0u; i < BLOCK; i++) {
+                    float tap = float(bitfieldExtract(int(w[i]), int(t << 2u), 4)) * scale[i];
+                    lo[i] += tap * x0;
+                    hi[i] += tap * x1;
+                }
             }
         }
     }
     for (uint i = 0u; i < BLOCK; i++) {
-        uint channel = channel_base + i;
-        if (channel >= p.out_c) {
-            continue;
+        store8(channel_base + i, position_base, positions, lo[i], hi[i]);
+    }
+}
+
+/// `wide()` with the 16-byte activation load (`in1` 4).
+void wide_oct() {
+    uint positions = p.out_h * p.out_w;
+    uint tiles_across = (positions + 63u) / 64u;
+    uint tile = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
+    if (tile >= p.count) {
+        return;
+    }
+    uint lid = gl_LocalInvocationID.x;
+    uint channel_base = (tile / tiles_across) * TILE + (lid >> 3u) * BLOCK;
+    uint position_base = (tile % tiles_across) * 64u + (lid & 7u) * 8u;
+    if (position_base >= positions) {
+        return;
+    }
+    uint blocks = p.in_c >> 5u;
+    uint rows[BLOCK];
+    for (uint i = 0u; i < BLOCK; i++) {
+        rows[i] = min(channel_base + i, p.out_c - 1u);
+    }
+    vec4 lo[BLOCK];
+    vec4 hi[BLOCK];
+    for (uint i = 0u; i < BLOCK; i++) {
+        lo[i] = vec4(0.0);
+        hi[i] = vec4(0.0);
+    }
+    uint octs = positions >> 3u;
+    uint oct = (p.in0 + position_base) >> 3u;
+    for (uint block = 0u; block < blocks; block++) {
+        float scale[BLOCK];
+        for (uint i = 0u; i < BLOCK; i++) {
+            scale[i] = int4_scale(rows[i], block, blocks);
         }
-        float offset = float(weights[p.bias + channel]);
-        for (uint j = 0u; j < 8u; j++) {
-            uint position = position_base + j;
-            if (position >= positions) {
-                continue;
+        for (uint word = 0u; word < 4u; word++) {
+            uint w[BLOCK];
+            for (uint i = 0u; i < BLOCK; i++) {
+                w[i] = weights32[p.weight + (rows[i] * blocks + block) * 4u + word];
             }
-            float acc = j < 4u ? lo[i][j] : hi[i][j - 4u];
-            uint index = channel * positions + position;
-            arena[p.out_at + index] = float16_t(quant_store(fused_store(acc + offset, p.act, channel, index)));
+            uint k = block * I4_BLOCK + word * 8u;
+            for (uint t = 0u; t < 8u; t++) {
+                uvec4 u = arena_oct[oct + (k + t) * octs];
+                vec4 x0 = vec4(unpackHalf2x16(u.x), unpackHalf2x16(u.y));
+                vec4 x1 = vec4(unpackHalf2x16(u.z), unpackHalf2x16(u.w));
+                for (uint i = 0u; i < BLOCK; i++) {
+                    float tap = float(bitfieldExtract(int(w[i]), int(t << 2u), 4)) * scale[i];
+                    lo[i] += tap * x0;
+                    hi[i] += tap * x1;
+                }
+            }
         }
+    }
+    for (uint i = 0u; i < BLOCK; i++) {
+        store8(channel_base + i, position_base, positions, lo[i], hi[i]);
     }
 }
 
 void main() {
+    if (p.in1 == 4u) {
+        wide_oct();
+        return;
+    }
     if (p.in1 == 1u) {
         wide();
         return;
