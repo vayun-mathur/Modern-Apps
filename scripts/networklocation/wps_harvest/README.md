@@ -1,6 +1,6 @@
 # wps_harvest — offline beacon store builder
 
-Builds `wifi-v2.wpsdb` and `cells-v2.wpsdb`, the offline WiFi and cell beacon databases that
+Builds `wifi-v3.wpsdb` and `cells-v3.wpsdb`, the offline WiFi and cell beacon databases that
 `:networklocation` resolves scan results against.
 
 Replaces `wtfps-experiment/store.py`, which lived outside the repo and no longer exists.
@@ -14,8 +14,8 @@ v1 wifi.wpsdb ── wps_extract ──► seed-bssids.txt ─┐
                  (BSSIDs only)                    │
                                                   ├─ wps_crawl ──► *.shard ─┐
 (or a local scan, or random probing) ─────────────┘  (gs-loc snowball)      │
-                                                                            ├─ wps_build ──► wifi-v2.wpsdb
-OpenCelliD ────── wps_seed ──────────────────────────────► *.shard ─────────┘                cells-v2.wpsdb
+                                                                            ├─ wps_build ──► wifi-v3.wpsdb
+OpenCelliD ────── wps_seed ──────────────────────────────► *.shard ─────────┘                cells-v3.wpsdb
 ```
 
 Shards are the interchange format: fixed-width, unsorted, append-only. The stages are separate
@@ -187,13 +187,29 @@ client with a minimum interval, and failures back off geometrically to a five-mi
 `analysis/server-inventory-raw.md` already flags the endpoint as a terms-of-service concern;
 running the crawl faster is both rude and self-defeating.
 
+### Crawl cells from gs-loc
+
+OpenCelliD misses cells, and a phone whose serving cell is missing gets no fix at all: LTE
+neighbour reports carry only a PCI, so the serving cell is usually the only one with a full
+identity. `wps_cellcrawl` fills the gap from gs-loc. An LTE cell request returns the asked-for
+cell plus about 120 surrounding LTE cells, so seeding it with a phone's cells covers the area
+around it:
+
+```sh
+./target/release/wps_cellcrawl --out cells-gsloc.shard \
+  --seed 310,260,14570,21206278 --max-queries 30 --radius-km 15
+```
+
+Seeds are `MCC,MNC,TAC,CID`. Cells nearest the first resolved seed are queried first. LTE only:
+gs-loc's cell request is the LTE tower field.
+
 ### 3. Build
 
 ```sh
-./target/release/wps_build --kind wifi --out wifi-v2.wpsdb \
+./target/release/wps_build --kind wifi --out wifi-v3.wpsdb \
   --scratch /var/tmp/wps  wifi-bdb.shard wifi-gsloc.shard
 
-./target/release/wps_build --kind cell --out cells-v2.wpsdb \
+./target/release/wps_build --kind cell --out cells-v3.wpsdb \
   --scratch /var/tmp/wps  cells-ocid.shard cells-bdb.shard
 ```
 
@@ -209,8 +225,8 @@ exists but there is no good reason to use it.
 ### 4. Publish
 
 ```sh
-sha256sum wifi-v2.wpsdb cells-v2.wpsdb
-../../maps/publish_r2.sh wifi-v2.wpsdb cells-v2.wpsdb
+sha256sum wifi-v3.wpsdb cells-v3.wpsdb
+../../maps/publish_r2.sh wifi-v3.wpsdb cells-v3.wpsdb
 ```
 
 Put the hashes into `OfflineDatabases.sha256For` in the app. They are load-bearing: a store is

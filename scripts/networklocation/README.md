@@ -6,9 +6,9 @@ published to `data.maproj.org` and downloaded to device-protected storage on req
 
 | Database | Built by | Holds |
 | --- | --- | --- |
-| `geocoder-v3.geodb` | [`geodb_build/`](geodb_build/) | Addresses, named streets, POIs and populated places, from an OSM planet dump |
-| `wifi-v2.wpsdb` | [`wps_harvest/`](wps_harvest/) | WiFi BSSID → coordinates + accuracy |
-| `cells-v2.wpsdb` | [`wps_harvest/`](wps_harvest/) | Cell tower → coordinates + accuracy |
+| `geocoder.db` | [`geodb_build/`](geodb_build/) | Addresses, named streets, POIs and populated places, from an OSM planet dump |
+| `wifi-v3.wpsdb` | [`wps_harvest/`](wps_harvest/) | WiFi BSSID → coordinates + accuracy |
+| `cells-v3.wpsdb` | [`wps_harvest/`](wps_harvest/) | Cell tower → coordinates + accuracy |
 
 Both are self-contained Rust crates with their own READMEs; start there.
 

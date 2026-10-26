@@ -42,6 +42,10 @@ path = "src/bin/wps_build.rs"
 name = "wps_extract"
 path = "src/bin/wps_extract.rs"
 
+[[bin]]
+name = "wps_cellcrawl"
+path = "src/bin/wps_cellcrawl.rs"
+
 [dependencies]
 # HTTPS for the gs-loc client. rustls rather than the platform stack so a build box needs no
 # system OpenSSL, and webpki-roots so it needs no system trust store either.
