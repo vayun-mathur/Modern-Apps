@@ -338,5 +338,4 @@ private val ExtraAction.labelRes: Int
     get() = when (this) {
         ExtraAction.MoreInfo -> R.string.action_more_info
         ExtraAction.ShowAppLog -> R.string.action_show_log
-        ExtraAction.ShowSystemLog -> R.string.action_show_system_log
     }

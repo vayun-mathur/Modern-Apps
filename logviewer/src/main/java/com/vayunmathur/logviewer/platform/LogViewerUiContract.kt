@@ -53,9 +53,6 @@ internal enum class ExtraAction {
 
     /** Error report: open the crashed app's log. */
     ShowAppLog,
-
-    /** One app's log: widen to the whole system log. */
-    ShowSystemLog,
 }
 
 /** What the log screen can do. Implemented by [LogViewerController]. */

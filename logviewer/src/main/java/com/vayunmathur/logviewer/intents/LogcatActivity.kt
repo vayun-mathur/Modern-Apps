@@ -3,7 +3,6 @@ package com.vayunmathur.logviewer.intents
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.os.UserManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,7 +10,6 @@ import androidx.activity.viewModels
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.logviewer.domain.LogDocument
 import com.vayunmathur.logviewer.domain.LogLevel
-import com.vayunmathur.logviewer.platform.ExtraAction
 import com.vayunmathur.logviewer.platform.LogLoadResult
 import com.vayunmathur.logviewer.platform.LogViewerController
 import com.vayunmathur.logviewer.platform.LogViewerViewModel
@@ -38,16 +36,12 @@ class LogcatActivity : ComponentActivity() {
     private val actions by lazy { Actions() }
 
     private var targetPackage: String? = null
-    private var isSystemUser = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Set by the framework for ACTION_PKG_LOGCAT, and by the error report's "Show log" button.
         targetPackage = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME)
-        // Read here rather than in the loader: a secondary user may see their own apps' logs but
-        // not the device log, and the answer must not depend on which thread asks.
-        isSystemUser = getSystemService(UserManager::class.java)?.isSystemUser == true
 
         val initial = LogcatFilters(LogcatReader.DEFAULT_BUFFERS, LogLevel.Verbose, filterRegex = "")
         viewModel.start(loader = loader(initial), chrome = chrome(initial))
@@ -76,12 +70,7 @@ class LogcatActivity : ComponentActivity() {
     }
 
     private fun chrome(filters: LogcatFilters): suspend (LogDocument) -> LogViewerViewModel.Chrome = {
-        LogViewerViewModel.Chrome(
-            extraActions =
-                if (targetPackage != null && isSystemUser) listOf(ExtraAction.ShowSystemLog)
-                else emptyList(),
-            logcat = filters,
-        )
+        LogViewerViewModel.Chrome(logcat = filters)
     }
 
     private fun reload(edit: LogcatFilters.() -> LogcatFilters) {
@@ -97,11 +86,5 @@ class LogcatActivity : ComponentActivity() {
         override fun setLevel(level: LogLevel) = reload { copy(level = level) }
 
         override fun setFilter(regex: String) = reload { copy(filterRegex = regex) }
-
-        override fun perform(action: ExtraAction) {
-            if (action != ExtraAction.ShowSystemLog) return
-            // No extras: the system log with the default buffers and no filter.
-            start(Intent(this@LogcatActivity, LogcatActivity::class.java))
-        }
     }
 }

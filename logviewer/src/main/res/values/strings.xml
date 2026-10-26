@@ -34,8 +34,6 @@
     <string name="toast_unable_to_show_more_info">Unable to show more info</string>
     <!-- Bottom button on the error report screen: opens the crashed app's log. -->
     <string name="action_show_log">Show log</string>
-    <!-- Bottom button when viewing one app's log: switches to the whole system log. -->
-    <string name="action_show_system_log">Show system log</string>
 
     <!-- Top bar action and dialog title: filter the log with a regular expression. -->
     <string name="set_filter">Set filter</string>

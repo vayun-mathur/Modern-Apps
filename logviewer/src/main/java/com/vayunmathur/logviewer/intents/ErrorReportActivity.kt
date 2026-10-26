@@ -82,8 +82,6 @@ class ErrorReportActivity : ComponentActivity() {
                             .putExtra(Intent.EXTRA_PACKAGE_NAME, sourcePackage)
                     )
                 }
-
-                ExtraAction.ShowSystemLog -> Unit
             }
         }
     }
