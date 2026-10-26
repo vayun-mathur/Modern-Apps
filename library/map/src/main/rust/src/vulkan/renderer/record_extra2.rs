@@ -106,7 +106,7 @@ impl Renderer {
                 let (misc, morph) = (
                     [tile_span_px, edge_aa, 0.0, camera.time_seconds],
                     if globe {
-                        let r = crate::camera::globe_radius(camera.zoom) as f32;
+                        let r = crate::camera::globe_radius(camera.zoom, camera.center_lat) as f32;
                         [1.0, camera.width_dp / 2.0, r, camera.height_dp / 2.0]
                     } else {
                         [1.0, 0.0, camera.tile_span_dp(tile.z) as f32, 0.0]
@@ -303,7 +303,7 @@ impl Renderer {
         binds: &mut BindState,
     ) {
         let device = &renderer.context.device;
-        let (origin, span) = route.placement.at_zoom(camera.zoom);
+        let (origin, span) = route.placement.at_zoom_near(camera);
         let matrix = camera.world_quad_to_clip(origin, span);
         // What `line.vert` divides a pixel offset by to reach local units. The route's
         // square stands in for a tile here, which is the whole reason the two share a
@@ -448,9 +448,7 @@ impl Renderer {
         let device = &self.context.device;
         let density = camera.density;
         let puck_matrix = if globe {
-            // `globe_anchor_to_screen` returns `None` far-side, but the cull above
-            // already handled that; `expect` would panic on a race between the two
-            // calls, so re-derive defensively and skip instead.
+            // Re-derived defensively: a far-side race with the cull above skips, not panics.
             match camera.globe_anchor_to_screen(puck.lon, puck.lat) {
                 Some((sx, sy)) => super::placement::globe_screen_quad(camera, sx, sy, PUCK_QUAD_DP as f64),
                 None => return,
@@ -458,6 +456,10 @@ impl Renderer {
         } else {
             camera.screen_quad_to_clip(puck.lon, puck.lat, PUCK_QUAD_DP as f64)
         };
+        // Behind the eye under tilt (w <= 0): the quad would invert across the screen.
+        if puck_matrix[15] <= 0.0 {
+            return;
+        }
         let push = Push {
             tile_to_clip: puck_matrix,
             color: argb_to_rgba(PUCK_COLOR),

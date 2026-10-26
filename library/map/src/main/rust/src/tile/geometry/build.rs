@@ -388,27 +388,12 @@ pub fn build_toggled(
 
         // Globe zooms: the globe shaders bend only vertices, so long edges must be split or
         // they cut chords through the ball. Before draping, so new vertices get their own height.
-        if z <= crate::camera::GLOBE_FLAT_THRESHOLD as u8 {
-            let max_edge = subdivide::globe_max_edge(z);
-            match layer.kind {
-                LayerKind::Fill => subdivide::subdivide(
-                    &mut vertices,
-                    &mut indices,
-                    fill::FLOATS_PER_VERTEX,
-                    max_edge,
-                ),
-                LayerKind::Line => {
-                    subdivide::subdivide(
-                        &mut vertices,
-                        &mut indices,
-                        stroke::FLOATS_PER_VERTEX,
-                        max_edge,
-                    );
-                    for (_, v, i) in coloured.iter_mut() {
-                        subdivide::subdivide(v, i, stroke::FLOATS_PER_VERTEX, max_edge);
-                    }
-                }
-                LayerKind::Symbol => {}
+        if z <= crate::camera::GLOBE_FLAT_THRESHOLD as u8 && layer.kind != LayerKind::Symbol {
+            let edge = subdivide::globe_max_edge(z);
+            let fpv = if layer.kind == LayerKind::Fill { fill::FLOATS_PER_VERTEX } else { stroke::FLOATS_PER_VERTEX };
+            subdivide::subdivide(&mut vertices, &mut indices, fpv, edge);
+            for (_, v, i) in coloured.iter_mut() {
+                subdivide::subdivide(v, i, stroke::FLOATS_PER_VERTEX, edge);
             }
         }
         // Drape the layer's flat geometry onto the relief where the tile carries a

@@ -36,12 +36,14 @@ void main() {
     float ox = push.tileToClip[0][2];
     float oy = push.tileToClip[1][2];
     float span = push.tileToClip[2][2];
-    // `misc.x` is the flat tile's px span. On the ball (radius = half the flat world width)
-    // Mercator's conformal scale makes one tile unit pi * cos(lat) times longer, in both
-    // directions, so widths and dash lengths convert through the globe's own span.
-    // cos(lat) = 1 / cosh(n) for the Mercator n of this vertex's unbent position.
+    // `misc.x` is the flat tile's px span (span * world). On the ball one tile unit spans
+    // 2 * pi * r * cos(lat) * span Dp in both directions (Mercator is conformal), so widths
+    // and dash lengths convert through that span instead. `world` (Dp) rides in the globe
+    // matrix's m[14]; cos(lat) = 1 / cosh(n) for the Mercator n of the unbent position.
     float n0 = PI - 2.0 * PI * (oy + inPosition.y * span);
-    float tilePx = max(push.misc.x, 1.0) * PI * max(1.0 / cosh(n0), 0.05);
+    float worldDp = max(push.tileToClip[3][2], 1e-6);
+    float tilePx = max(push.misc.x, 1.0)
+        * (2.0 * PI * push.morph.z * max(1.0 / cosh(n0), 0.05) / worldDp);
     float wantHalfPx = push.line.x;
     float gapHalfPx = push.line.y;
     float lateralPx = push.misc.z;

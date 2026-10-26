@@ -1,17 +1,6 @@
 use super::FLOATS_PER_VERTEX;
 
-/// The centroid of a ring's vertices (the vertex average, enough to point wall normals outward
-/// for the convex-ish footprints buildings are).
-pub(crate) fn ring_centroid(ring: &[(f32, f32)]) -> (f32, f32) {
-    let mut sx = 0.0;
-    let mut sy = 0.0;
-    for &(x, y) in ring {
-        sx += x;
-        sy += y;
-    }
-    let inv = 1.0 / ring.len() as f32;
-    (sx * inv, sy * inv)
-}
+/// The unit normal
 
 /// The unit normal of the triangle `a, b, c`, or straight up for a degenerate (zero-area)
 /// triangle so a sliver never emits a NaN normal.

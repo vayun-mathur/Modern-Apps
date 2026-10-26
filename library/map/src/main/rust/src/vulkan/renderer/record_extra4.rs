@@ -145,6 +145,30 @@ impl Renderer {
         self.step_times
             .borrow_mut()
             .record(Step::RecordBuildings, nanos_since(step_start));
+        // Traffic and turn arrows are basemap detail drawn over the roads, and the rail lines
+        // are a basemap-like overlay: all three go under the labels so road names and POIs are
+        // not buried beneath them.
+        let step_start = std::time::Instant::now();
+        self.record_traffic(command_buffer, camera, submitted, culled, binds, globe);
+        self.step_times
+            .borrow_mut()
+            .record(Step::RecordTraffic, nanos_since(step_start));
+        let step_start = std::time::Instant::now();
+        self.record_arrows(command_buffer, camera, layers, submitted, culled, binds);
+        self.step_times
+            .borrow_mut()
+            .record(Step::RecordArrows, nanos_since(step_start));
+        // The route and rail lines on the globe: hidden while the globe is
+        // active. Both are flat-plane overlays whose matrices assume a Mercator
+        // plane; bending them is a follow-up, and a route drawn flat over a ball
+        // is worse than no route. Navigation always zooms past the globe
+        // threshold anyway, so this only affects a zoomed-out preview.
+        let mut rail_nanos = 0;
+        if !globe {
+            let rail_start = std::time::Instant::now();
+            self.record_rail_lines(command_buffer, camera, submitted, binds);
+            rail_nanos = nanos_since(rail_start);
+        }
         let step_start = std::time::Instant::now();
         for &(key, index) in deferred_symbols.iter() {
             self.record_symbol(
@@ -164,39 +188,23 @@ impl Renderer {
         self.step_times
             .borrow_mut()
             .record(Step::RecordSymbols, nanos_since(step_start));
-        let step_start = std::time::Instant::now();
-        self.record_traffic(command_buffer, camera, submitted, culled, binds, globe);
-        self.step_times
-            .borrow_mut()
-            .record(Step::RecordTraffic, nanos_since(step_start));
-        let step_start = std::time::Instant::now();
-        self.record_arrows(command_buffer, camera, layers, submitted, culled, binds);
-        self.step_times
-            .borrow_mut()
-            .record(Step::RecordArrows, nanos_since(step_start));
-        // The route and rail lines on the globe: hidden while the globe is
-        // active. Both are flat-plane overlays whose matrices assume a Mercator
-        // plane; bending them is a follow-up, and a route drawn flat over a ball
-        // is worse than no route. Navigation always zooms past the globe
-        // threshold anyway, so this only affects a zoomed-out preview.
-        if !globe {
-            let rail_start = std::time::Instant::now();
-            self.record_rail_lines(command_buffer, camera, submitted, binds);
-            self.step_times
-                .borrow_mut()
-                .record(Step::RecordRail, nanos_since(rail_start));
-            // No route slot: it shares `record_route_buffers` with the rail lines, so its cost
-            // rides on `RecordRail` rather than a slot that reads zero on route-less frames.
-            self.record_route(command_buffer, camera, submitted, binds);
-        }
-        // Region mask on the globe: skipped with the route (flat-plane stencil
-        // over a depth-tested ball). A selected region's mask reappears on zoom-in.
+        // The region scrim dims the whole basemap, labels included, so it follows them; the
+        // route follows the scrim so a route you are following is never dimmed (see above).
+        // Region mask on the globe: skipped with the route (flat-plane stencil). A selected
+        // region's mask reappears on zoom-in.
         if !globe {
             let step_start = std::time::Instant::now();
             self.record_region_mask(command_buffer, camera, submitted, culled, binds);
             self.step_times
                 .borrow_mut()
                 .record(Step::RecordRegion, nanos_since(step_start));
+            // The route shares `record_route_buffers` with the rail lines, so its cost rides on
+            // `RecordRail` rather than a slot that reads zero on route-less frames.
+            let route_start = std::time::Instant::now();
+            self.record_route(command_buffer, camera, submitted, binds);
+            self.step_times
+                .borrow_mut()
+                .record(Step::RecordRail, rail_nanos + nanos_since(route_start));
         }
         let step_start = std::time::Instant::now();
         self.record_overlays(command_buffer, camera, palette, submitted, binds, globe);

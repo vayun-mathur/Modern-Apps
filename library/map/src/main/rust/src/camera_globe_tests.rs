@@ -102,9 +102,21 @@ mod tests {
 
     #[test]
     fn the_globe_radius_is_half_the_world() {
-        assert_eq!(globe_radius(0.0), 256.0);
-        assert_eq!(globe_radius(1.0), 512.0);
-        assert!((globe_radius(2.5) - 256.0 * 2f64.powf(2.5)).abs() < 1e-9);
+        assert_eq!(globe_radius(0.0, 0.0), 256.0);
+        assert_eq!(globe_radius(1.0, 45.0), 512.0);
+        assert!((globe_radius(2.5, 0.0) - 256.0 * 2f64.powf(2.5)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn the_globe_meets_the_flat_scale_at_the_threshold() {
+        // At the switch the sphere's centre scale (r per radian) must equal flat Mercator's
+        // (world / 2pi per radian of longitude, over cos(lat)), or the map jumps.
+        let z = crate::camera::GLOBE_FLAT_THRESHOLD;
+        for lat in [0.0f64, 37.77, 60.0] {
+            let flat = crate::camera::world_size(z) / (2.0 * std::f64::consts::PI * lat.to_radians().cos());
+            let r = globe_radius(z, lat);
+            assert!((r - flat).abs() / flat < 1e-9, "lat {lat}: r {r} flat {flat}");
+        }
     }
 
     #[test]
@@ -164,7 +176,7 @@ mod tests {
         assert_eq!(m[2], 0.0f32, "ox of tile x=0");
         assert!((m[6] - (1.0 / n) as f32).abs() < 1e-9, "oy of tile y=1");
         assert!((m[10] - (1.0 / n) as f32).abs() < 1e-9, "span at z2");
-        let r = globe_radius(2.0);
+        let r = globe_radius(2.0, 37.7749);
         let kx = 2.0 / 512.0;
         assert!((m[0] as f64 - kx * r).abs() < 1e-3, "2x2 carries the globe scale");
     }

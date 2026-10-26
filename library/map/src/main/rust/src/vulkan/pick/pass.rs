@@ -244,7 +244,22 @@ impl Pick {
                     None => continue,
                 }
             } else {
-                camera.screen_quad_to_clip(marker.lon, marker.lat, (MARKER_SIZE_DP * 0.5) as f64)
+                let mut m =
+                    camera.screen_quad_to_clip(marker.lon, marker.lat, (MARKER_SIZE_DP * 0.5) as f64);
+                // Behind the eye under tilt: the draw culls this pin, so the pick must too.
+                if m[15] <= 0.0 {
+                    continue;
+                }
+                // The drawn icon is counter-rotated to stay screen-upright (`upright_offset`);
+                // turn the tap box's axes the same way so the two cover the same pixels.
+                let (cos, sin) = camera.rotation();
+                let (cos, sin) = (cos as f32, sin as f32);
+                let (x0, x1, y0, y1) = (m[0], m[1], m[4], m[5]);
+                m[0] = cos * x0 + sin * y0;
+                m[1] = cos * x1 + sin * y1;
+                m[4] = -sin * x0 + cos * y0;
+                m[5] = -sin * x1 + cos * y1;
+                m
             };
             let mut push = Push {
                 tile_to_clip: matrix,

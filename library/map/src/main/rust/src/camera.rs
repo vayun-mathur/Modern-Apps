@@ -156,11 +156,22 @@ pub fn unproject(x: f64, y: f64, zoom: f64) -> (f64, f64) {
 /// in step with the Kotlin `GLOBE_DETAIL_ZOOM`.
 pub const GLOBE_FLAT_THRESHOLD: f64 = 8.0;
 
-/// Screen radius of the globe in Dp: half the world width at this zoom, so the
-/// sphere shows half the planet across its diameter. Mirrors the Kotlin
-/// `Projection.globeRadius`.
-pub fn globe_radius(zoom: f64) -> f64 {
-    world_size(zoom) / 2.0
+/// Zoom at which [`globe_radius`] starts blending from the half-world sphere toward the flat
+/// map's scale. Must stay in step with the Kotlin `GLOBE_BLEND_START_ZOOM`.
+pub const GLOBE_BLEND_START: f64 = 5.0;
+
+/// Screen radius of the globe in Dp, for a camera at `zoom` centred on `center_lat`.
+///
+/// Zoomed out (below [`GLOBE_BLEND_START`]) it is half the world width, so the sphere shows
+/// half the planet across its diameter and fills the screen. By [`GLOBE_FLAT_THRESHOLD`] it
+/// must match the flat Mercator scale at the centre — `world / (2 * pi * cos(lat))` — or the
+/// switch to the flat map jumps about 1.65 zoom levels. Between the two the factor blends
+/// geometrically. Mirrors the Kotlin `globeRadius`.
+pub fn globe_radius(zoom: f64, center_lat: f64) -> f64 {
+    let t = ((zoom - GLOBE_BLEND_START) / (GLOBE_FLAT_THRESHOLD - GLOBE_BLEND_START)).clamp(0.0, 1.0);
+    let cos = center_lat.to_radians().cos().max(0.05);
+    let to_flat = 1.0 / (std::f64::consts::PI * cos);
+    world_size(zoom) / 2.0 * to_flat.powf(t)
 }
 
 /// Whether this camera draws the globe: the flag on, and close enough out that

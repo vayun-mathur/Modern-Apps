@@ -440,7 +440,7 @@ impl Renderer {
                         // On the globe it is the globe radius (Dp) instead, and morph.xy
                         // the half-viewport (Dp) — see the `*_globe.vert` headers.
                         morph: if globe {
-                            let r = crate::camera::globe_radius(camera.zoom) as f32;
+                            let r = crate::camera::globe_radius(camera.zoom, camera.center_lat) as f32;
                             [
                                 tile_fade,
                                 camera.width_dp / 2.0,

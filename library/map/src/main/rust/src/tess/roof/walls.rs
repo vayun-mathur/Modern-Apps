@@ -1,4 +1,4 @@
-use super::geom::{push_tri, ring_centroid};
+use super::geom::push_tri;
 
 /// A wall quad per footprint edge, from `base` to `wall_top`, with an outward-facing normal.
 ///
@@ -25,9 +25,20 @@ pub(crate) fn emit_walls(
     if wall_top <= base {
         return; // A floating part flush with its base has no wall to draw.
     }
-    for ring in local {
-        let centroid = ring_centroid(ring);
+    for (ring_index, ring) in local.iter().enumerate() {
         let n = ring.len();
+        // Which side is outward follows from the ring's winding, not from a centroid (which can
+        // sit outside an L-shaped or courtyard footprint): a positive shoelace area puts the
+        // ring's interior to the left of each edge, i.e. towards (-ey, ex). The exterior ring
+        // (first) faces away from its interior; a hole's walls face into the courtyard.
+        let twice_area: f32 = (0..n)
+            .map(|i| {
+                let (x0, y0) = ring[i];
+                let (x1, y1) = ring[(i + 1) % n];
+                x0 * y1 - x1 * y0
+            })
+            .sum();
+        let outward_right = (ring_index == 0) == (twice_area > 0.0);
         for i in 0..n {
             let (x0, y0) = ring[i];
             let (x1, y1) = ring[(i + 1) % n];
@@ -35,16 +46,8 @@ pub(crate) fn emit_walls(
             if ex == 0.0 && ey == 0.0 {
                 continue;
             }
-            // The edge's two horizontal normals are (ey, -ex) and (-ey, ex). Pick the one that
-            // points away from the ring centroid so faces are lit as if from outside — cull is off
-            // in the pipeline, so this only decides shading, never visibility.
-            let (mx, my) = ((x0 + x1) * 0.5, (y0 + y1) * 0.5);
-            let mut nx = ey;
-            let mut ny = -ex;
-            if nx * (mx - centroid.0) + ny * (my - centroid.1) < 0.0 {
-                nx = -nx;
-                ny = -ny;
-            }
+            // Cull is off in the pipeline, so this only decides shading, never visibility.
+            let (nx, ny) = if outward_right { (ey, -ex) } else { (-ey, ex) };
             let inv = 1.0 / (nx * nx + ny * ny).sqrt();
             let normal = [nx * inv, ny * inv, 0.0];
 

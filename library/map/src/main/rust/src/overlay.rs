@@ -155,6 +155,17 @@ impl RoutePlacement {
         )
     }
 
+    /// [`at_zoom`](Self::at_zoom) at the camera's zoom, shifted to the world copy nearest the
+    /// camera centre: a route crossing the antimeridian is stored unwrapped past the world edge
+    /// (`overlay_parts::tessellate`), so the copy beside the camera is the one to draw.
+    pub fn at_zoom_near(&self, camera: &crate::camera::Camera) -> (WorldPx, f64) {
+        let (mut origin, span) = self.at_zoom(camera.zoom);
+        let world = crate::camera::world_size(camera.zoom);
+        let centre_x = crate::camera::project(camera.center_lon, camera.center_lat, camera.zoom).x;
+        origin.x -= ((origin.x + span * 0.5 - centre_x) / world).round() * world;
+        (origin, span)
+    }
+
     /// The route line's half-width in **device px** — what a fill pass pushes.
     pub fn fill_half(&self, density: f32) -> f32 {
         self.style.width_dp * 0.5 * density

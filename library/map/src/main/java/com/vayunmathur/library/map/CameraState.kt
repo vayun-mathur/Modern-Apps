@@ -162,11 +162,14 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
         // The short way round, so a turn from 350 to 10 degrees goes through north rather
         // than the long way through south. Inert on the phone, where both ends are zero.
         val turn = angleDelta(start.bearing, target.bearing)
+        // Longitude likewise: a flight from 179 E to 179 W hops the antimeridian rather than
+        // sweeping across the whole planet.
+        val lonStep = angleDelta(start.target.longitude, target.target.longitude)
         Animatable(0f).animateTo(1f, tween(durationMs)) {
             val t = value.toDouble()
             position = CameraPosition(
                 target = GeoPoint(
-                    lerp(start.target.longitude, target.target.longitude, t),
+                    wrapLongitude(start.target.longitude + lonStep * t),
                     lerp(start.target.latitude, target.target.latitude, t),
                 ),
                 zoom = lerp(start.zoom, target.zoom, t),
@@ -354,17 +357,17 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
  * as seen through a viewport [vp]: dragging content right moves the planet
  * right, so the centre moves the opposite way along its own parallel/meridian.
  *
- * The globe radius in Dp is half the world width at [zoom] (mirroring
- * `globe_radius` on the native side), so one Dp is `180 / r` degrees of
- * great-circle at the centre. Longitude wraps; latitude clamps to the Mercator
- * bound the flat path honours. Unused [vp]: kept so the signature matches the
- * flat pan it replaces at the call site.
+ * One Dp at the centre is `1 / r` radians of great circle, with `r` the globe radius
+ * ([globeRadius], mirroring the native `globe_radius`); a longitude step is that over
+ * `cos(lat)`. Longitude wraps; latitude clamps to the Mercator bound the flat path honours.
+ * Unused [vp]: kept so the signature matches the flat pan it replaces at the call site.
  */
 internal fun globePanBy(center: GeoPoint, panDp: Offset, vp: Size, zoom: Double): GeoPoint {
-    val r = Mercator.worldSize(zoom) / 2.0
+    val r = globeRadius(zoom, center.latitude)
     if (r <= 0.0) return center
-    val degPerDp = 180.0 / r
-    val lon = wrapLongitude(center.longitude - panDp.x * degPerDp)
+    val degPerDp = Math.toDegrees(1.0 / r)
+    val lonScale = 1.0 / cos(Math.toRadians(center.latitude)).coerceAtLeast(0.05)
+    val lon = wrapLongitude(center.longitude - panDp.x * degPerDp * lonScale)
     val lat = (center.latitude + panDp.y * degPerDp).coerceIn(-MAX_GLOBE_LAT, MAX_GLOBE_LAT)
     return GeoPoint(lon, lat)
 }
@@ -434,11 +437,14 @@ private fun CameraState.anchoredZoom(
         // projection of `geo` at the new zoom lands back on the anchor.
         val moved = globeNext.screenLocationFromPosition(geo)
         val want = DpOffset(anchorDp.x.dp, anchorDp.y.dp)
-        // Screen delta (Dp) back to a centre shift: invert through the globe
-        // radius scale rather than re-projecting.
-        val r = Mercator.worldSize(newZoom) / 2.0
-        val dLon = (want.x.value - moved.x.value) / r * 180.0
-        val dLat = -(want.y.value - moved.y.value) / r * 180.0
+        // Screen delta (Dp) back to a centre shift, through the sphere's centre scale:
+        // `globeNext` is centred on `geo`, so `moved` is the viewport centre, and putting
+        // `geo` at `want` means moving the centre the *opposite* way by the offset. A Dp is
+        // `1 / r` radians of latitude and `1 / (r cos lat)` of longitude; screen y is down.
+        val r = globeRadius(newZoom, geo.latitude)
+        val cosLat = cos(Math.toRadians(geo.latitude)).coerceAtLeast(0.05)
+        val dLon = -Math.toDegrees((want.x.value - moved.x.value) / (r * cosLat))
+        val dLat = Math.toDegrees((want.y.value - moved.y.value) / r)
         return from.copy(
             target = GeoPoint(
                 wrapLongitude(geo.longitude + dLon),

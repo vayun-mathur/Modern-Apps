@@ -395,10 +395,12 @@ pub fn retain(renderer: &mut Renderer, keep: &[u64], visible: &[select::TileId],
         .collect();
     ranked.sort_unstable();
 
+    // Over the cap, stand-ins go first and on-screen tiles never: evicting a visible tile
+    // only refetches it next frame, and a tilted view can need more tiles than the cap holds.
     let doomed: Vec<u64> = ranked
         .iter()
         .enumerate()
-        .filter(|(at, (rank, _))| *rank == 3 || *at >= cap)
+        .filter(|(at, (rank, _))| *rank == 3 || (*at >= cap && *rank != 0))
         .map(|(_, (_, key))| *key)
         .collect();
     if doomed.is_empty() {

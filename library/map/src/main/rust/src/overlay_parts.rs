@@ -22,6 +22,29 @@ use crate::tess::stroke;
 /// glitchy zero-length step does not blank a route being followed. A caller clearing the
 /// route passes an empty slice and gets `None`, which is the same thing.
 pub fn tessellate(segments: &[RouteSegment], style: RouteStyle) -> Option<RouteMesh> {
+    // Longitudes unwrapped along the route (each point within 180 degrees of the one before,
+    // runs continuing from the previous run's end), so a route crossing the antimeridian is
+    // one short hop past +-180 rather than a streak back across the whole world. `project` is
+    // linear in longitude, so an unwrapped point simply lands past the world edge; the draw
+    // picks the world copy nearest the camera.
+    let mut previous: Option<f64> = None;
+    let unwrapped: Vec<Vec<(f64, f64)>> = segments
+        .iter()
+        .map(|segment| {
+            segment
+                .points
+                .iter()
+                .map(|&(lon, lat)| {
+                    let lon = match previous {
+                        Some(p) => p + (lon - p + 540.0).rem_euclid(360.0) - 180.0,
+                        None => lon,
+                    };
+                    previous = Some(lon);
+                    (lon, lat)
+                })
+                .collect()
+        })
+        .collect();
     // The bounding box spans every run's points, so all runs normalise into the same
     // square and their strokes line up. Zoom 0 is the reference the mesh is stored at:
     // any zoom would do, since the normalisation divides the scale out, and zero needs
@@ -35,8 +58,8 @@ pub fn tessellate(segments: &[RouteSegment], style: RouteStyle) -> Option<RouteM
         y: f64::MIN,
     };
     let mut any = false;
-    for segment in segments {
-        for &(lon, lat) in &segment.points {
+    for points in &unwrapped {
+        for &(lon, lat) in points {
             let p = project(lon, lat, 0.0);
             min.x = min.x.min(p.x);
             min.y = min.y.min(p.y);
@@ -60,13 +83,13 @@ pub fn tessellate(segments: &[RouteSegment], style: RouteStyle) -> Option<RouteM
     let mut indices = Vec::new();
     let mut ranges = Vec::new();
     let mut coords: Vec<i32> = Vec::new();
-    for segment in segments {
-        if segment.points.len() < 2 {
+    for (segment, points) in segments.iter().zip(&unwrapped) {
+        if points.len() < 2 {
             continue;
         }
         coords.clear();
-        coords.reserve(segment.points.len() * 2);
-        for &(lon, lat) in &segment.points {
+        coords.reserve(points.len() * 2);
+        for &(lon, lat) in points {
             let p = project(lon, lat, 0.0);
             coords.push((((p.x - min.x) / span) * EXTENT as f64).round() as i32);
             coords.push((((p.y - min.y) / span) * EXTENT as f64).round() as i32);

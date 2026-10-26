@@ -154,7 +154,7 @@ impl Renderer {
                     // mirroring the flat layer loop. On the globe it is the globe radius
                     // (Dp) instead, and morph.xy the half-viewport (Dp).
                     morph: if globe {
-                        let r = crate::camera::globe_radius(camera.zoom) as f32;
+                        let r = crate::camera::globe_radius(camera.zoom, camera.center_lat) as f32;
                         [MORPH_NONE[0], camera.width_dp / 2.0, r, camera.height_dp / 2.0]
                     } else {
                         [MORPH_NONE[0], 0.0, camera.tile_span_dp(tile.z) as f32, 0.0]

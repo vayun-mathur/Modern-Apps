@@ -48,7 +48,7 @@ impl Renderer {
     /// of every drawing symbol layer, placed once, globally.
     ///
     /// Collision padding widens with zoom-out (see
-    /// [`collision_padding_px`]): at low zoom boxes overlap eagerly so only
+    /// [`collision_padding_dp`]): at low zoom boxes overlap eagerly so only
     /// the most important places survive, matching MapLibre's ~10 cities at
     /// z6; at street zoom padding relaxes toward the drawn box.
     pub(super) fn place_symbols(
@@ -260,20 +260,31 @@ impl Renderer {
         // bit-identical footprints for one label. The placer would accept the first
         // and reject the second on collision — keeping both doubles the quadratic
         // loop's work for nothing. Drop exact duplicates by stable feature identity
-        // (feature id + layer), keeping the first occurrence. Labels with no feature
-        // id (ID_NONE) are never deduped: they carry no identity to compare.
+        // (feature id + layer). Within a layer candidates run coarsest tile first, so the
+        // *last* copy is the finest tile's: keep that one, or a zoom-in keeps drawing the
+        // stand-in ancestor's coarser label beside the sharpening geometry. Labels with no
+        // feature id (ID_NONE) are never deduped: they carry no identity to compare.
         //
         // `candidate_id` is untouched: it still names the same label in the
         // accept-set `record_symbol` filters by.
         {
             let mut seen: HashSet<(u64, usize)> = HashSet::with_capacity(candidates.len());
-            candidates.retain(|c| {
-                let (feature_id, layer_index) = (c.feature_id, c.layer_index);
-                // Identity unknown: keep, never dedup.
-                if feature_id == tilecodec::mamaps::body::ID_NONE {
-                    return true;
+            let keep: Vec<bool> = {
+                let mut keep = vec![true; candidates.len()];
+                for (i, c) in candidates.iter().enumerate().rev() {
+                    // Identity unknown: keep, never dedup.
+                    if c.feature_id != tilecodec::mamaps::body::ID_NONE
+                        && !seen.insert((c.feature_id, c.layer_index))
+                    {
+                        keep[i] = false;
+                    }
                 }
-                seen.insert((feature_id, layer_index))
+                keep
+            };
+            let mut at = 0;
+            candidates.retain(|_| {
+                at += 1;
+                keep[at - 1]
             });
         }
         // Keyed by candidate id, valued by the anchor the placer settled on and **where in

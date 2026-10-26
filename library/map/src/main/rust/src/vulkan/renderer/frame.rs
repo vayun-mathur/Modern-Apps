@@ -271,7 +271,7 @@ impl Renderer {
         // draws nothing but the clear colour — the frame still presents, so the
         // globe reads as empty space rather than freezing the loop.
         if crate::camera::moon_active(camera) {
-            return self.render_moon(camera);
+            return self.render_moon(camera, clear);
         }
 
         // MapLibre-style submit early-out: when nothing changed since the last submitted

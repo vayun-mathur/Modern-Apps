@@ -636,15 +636,19 @@ class SurfaceMapRenderer(
             requestFrame()
             return
         }
-        if (System.nanoTime() - lastChangeNanos < IDLE_GRACE_NANOS || !regionResolved) {
+        if (System.nanoTime() - lastChangeNanos < IDLE_GRACE_NANOS) {
             requestFrame()
             return
         }
         // Nothing local is changing, so the native side decides: draw now, draw later, or stop.
+        // An unresolved region mask retries once its tiles land, which is a frame the native
+        // side already asks for; with nothing pending (offline, say) it polls on a slow cadence
+        // rather than spinning the loop at 60 fps.
         val delay = MapNative.nextFrameDelayMillis(handle)
         when {
             delay == 0L -> requestFrame()
-            delay > 0L -> requestFrameDelayed(delay)
+            delay > 0L -> requestFrameDelayed(if (regionResolved) delay else minOf(delay, REGION_RETRY_MILLIS))
+            !regionResolved -> requestFrameDelayed(REGION_RETRY_MILLIS)
         }
     }
 
@@ -769,7 +773,8 @@ class SurfaceMapRenderer(
         // `0` clears above; a nonzero id returns nonzero once a resident tile carries it.
         // `0` back means the tiles have not landed yet — retried next frame, not a miss.
         val resolved = MapNative.setRegionMask(handle, id) != 0L
-        Log.dev("RegionDbg", "applyRegionMask id=$id resolved=$resolved")
+        // Logged on the transition only: this runs every retry frame while unresolved.
+        if (resolved) Log.dev("RegionDbg", "applyRegionMask id=$id resolved")
         regionResolved = resolved
     }
 
@@ -880,6 +885,9 @@ data class MoonTextures(
          * unbounded one re-heats the phone this loop exists to cool.
          */
         internal val IDLE_GRACE_NANOS = java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250)
+
+        /** Retry cadence for an unresolved region mask while no tile work is pending. */
+        const val REGION_RETRY_MILLIS = 500L
 
         // DEFAULT_ROUTE_COLOR lives in SurfaceMapOverlays.kt.
     }

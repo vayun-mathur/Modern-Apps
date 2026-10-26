@@ -225,14 +225,8 @@ class Projection internal constructor(
         return GeoPoint(lon, lat)
     }
 
-    /** Screen radius of the globe in Dp: the sphere that fits the zoom scale. */
-    private fun globeRadius(): Double {
-        // World width at this zoom is `worldSize`; the globe shows half the planet
-        // across 2r, so r = worldSize/2 scaled to the viewport: match the native
-        // `globe_radius` (screen-fit radius at the same zoom).
-        val world = Mercator.worldSize(zoom)
-        return world / 2.0
-    }
+    /** Screen radius of the globe in Dp: see the top-level [globeRadius]. */
+    private fun globeRadius(): Double = globeRadius(zoom, center.latitude)
 
     /**
      * Visible-ground bounds on the globe: the hemisphere cap around the centre,
@@ -344,6 +338,22 @@ class Projection internal constructor(
  * chips collapse into the Earth/Moon dropdown.
  */
 const val GLOBE_DETAIL_ZOOM = 8.0
+
+/** Zoom at which [globeRadius] starts blending toward the flat scale. Mirrors the native `GLOBE_BLEND_START`. */
+const val GLOBE_BLEND_START_ZOOM = 5.0
+
+/**
+ * Screen radius of the globe in Dp at [zoom], centred on [centerLatitude]. Mirrors the native
+ * `globe_radius`: half the world width when zoomed out, blending geometrically to the flat
+ * Mercator centre scale (`world / (2 * PI * cos(lat))`) by [GLOBE_DETAIL_ZOOM], so the switch
+ * to the flat map does not jump.
+ */
+fun globeRadius(zoom: Double, centerLatitude: Double): Double {
+    val t = ((zoom - GLOBE_BLEND_START_ZOOM) / (GLOBE_DETAIL_ZOOM - GLOBE_BLEND_START_ZOOM)).coerceIn(0.0, 1.0)
+    val c = cos(Math.toRadians(centerLatitude)).coerceAtLeast(0.05)
+    val toFlat = 1.0 / (PI * c)
+    return Mercator.worldSize(zoom) / 2.0 * Math.pow(toFlat, t)
+}
 
 /** Half the full circle: antimeridian wrap threshold. */
 private const val ANTIMERIDIAN_SPAN_DEG = 180.0

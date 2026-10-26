@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -122,8 +125,19 @@ internal fun VulkanMapSurface(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
-    val host = remember(context, tileSource) { MapSurfaceHost(context, cameraState, density, tileSource, onFrame) }
+    // The host is rebuilt on a density change (the renderer's Dp<->px scale is fixed per
+    // instance), and reads `onFrame` through the latest-value holder so a new lambda is honoured.
+    val currentOnFrame by rememberUpdatedState(onFrame)
+    val host = remember(context, tileSource, density) {
+        MapSurfaceHost(context, cameraState, density, tileSource) { currentOnFrame() }
+    }
     val renderer = host.renderer
+    // The renderer pulls its camera from here every frame; a new CameraState must replace the
+    // one the host was built with, or the map keeps drawing the old camera.
+    LaunchedEffect(host, cameraState) {
+        renderer.composeCamera = cameraState
+        renderer.invalidate()
+    }
 
     // Task-17 pick wiring: the projection answers queryRenderedLabels from
     // the native placed-label snapshot owned by this surface's renderer.
@@ -230,6 +244,9 @@ internal fun VulkanMapSurface(
                 if (active) {
                     active = false
                     renderer.setGestureActive(false, 0f)
+                    // Wake the loop: if the idle grace already lapsed, nothing else would draw
+                    // the frame that lets the native side settle and fetch the final zoom.
+                    renderer.invalidate()
                 }
                 continue
             }
@@ -330,17 +347,21 @@ internal fun VulkanMapSurface(
     }
 
     Box(modifier) {
-        AndroidView(
-            factory = {
-                TextureView(context).apply {
-                    // The map is opaque, so tell the compositor: a translucent TextureView is
-                    // blended every frame for nothing.
-                    isOpaque = true
-                    surfaceTextureListener = host
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
+        // Keyed on the host: a rebuilt host (tile source or density change) needs a fresh
+        // TextureView, because the old view's listener and surface belong to the old host.
+        key(host) {
+            AndroidView(
+                factory = {
+                    TextureView(context).apply {
+                        // The map is opaque, so tell the compositor: a translucent TextureView is
+                        // blended every frame for nothing.
+                        isOpaque = true
+                        surfaceTextureListener = host
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         // The debug table floats over the surface's top-start corner; gated inside, so
         // `false` composes nothing at all.

@@ -214,18 +214,19 @@ pub(super) fn box_inputs_with_arms(
         icon_px: label
             .sprite
             .map(|s| (s.width_dp * camera.density, s.height_dp * camera.density)),
-        pad_px: collision_padding_px(camera.zoom),
+        pad_px: collision_padding_dp(camera.zoom) * camera.density,
     }
 }
 
-/// Collision padding in device px around every label box, by camera zoom.
+/// Collision padding in Dp around every label box, by camera zoom (the caller converts to
+/// device px alongside the text and icon sizes).
 ///
 /// MapLibre pads every label (icon + text padding, growing at low zoom via
 /// the icon-padding ramp), which is what holds z6 to ~10 cities while z14
 /// stays dense. Without it tight advance boxes let hundreds of villages
 /// survive at z6. 24px at z6 and below culls hamlets against towns; 4px at
 /// z14+ keeps street labels tight. Linear between.
-fn collision_padding_px(zoom: f64) -> f32 {
+fn collision_padding_dp(zoom: f64) -> f32 {
     if zoom <= 6.0 {
         24.0
     } else if zoom >= 14.0 {

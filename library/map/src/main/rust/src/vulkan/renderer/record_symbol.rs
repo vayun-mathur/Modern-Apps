@@ -49,7 +49,7 @@ impl Renderer {
         // globe pipelines with the sphere matrix (centre + radius in the matrix);
         // `misc.x` keeps its flat meaning (tile span, Dp) and `morph` carries the
         // globe half-viewport + radius (see `symbol_globe.vert`).
-        let r = crate::camera::globe_radius(camera.zoom) as f32;
+        let r = crate::camera::globe_radius(camera.zoom, camera.center_lat) as f32;
         let (globe_misc, globe_morph) = if globe {
             (
                 [camera.tile_span_dp(tz) as f32, 0.0, 0.0, 0.0],

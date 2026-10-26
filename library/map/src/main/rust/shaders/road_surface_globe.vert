@@ -34,7 +34,9 @@ void main() {
     float span = push.tileToClip[2][2];
     // The globe's own px per tile unit: see `line_globe.vert`.
     float n0 = PI - 2.0 * PI * (oy + inPosition.y * span);
-    float tilePx = max(push.misc.x, 1.0) * PI * max(1.0 / cosh(n0), 0.05);
+    float worldDp = max(push.tileToClip[3][2], 1e-6);
+    float tilePx = max(push.misc.x, 1.0)
+        * (2.0 * PI * push.morph.z * max(1.0 / cosh(n0), 0.05) / worldDp);
     float wantHalfPx = push.line.x;
     float halfWidthPx = max(wantHalfPx, MIN_HALF_WIDTH_PX);
     vec2 offsetTile = inNormal * (inT * halfWidthPx / tilePx);

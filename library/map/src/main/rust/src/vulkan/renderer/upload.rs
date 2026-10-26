@@ -260,6 +260,13 @@ impl Renderer {
                 })
             }
         };
+        // A same-key replacement (toggle/palette re-tessellation) keeps the original stamp:
+        // its pixels were already on screen, so restarting the fade would flash it transparent.
+        let uploaded_at = self
+            .tiles
+            .get(&key)
+            .map(|previous| previous.uploaded_at)
+            .unwrap_or_else(|| self.last_camera.map(|c| c.time_seconds).unwrap_or(0.0));
         let tile = upload_tail::assemble_tile(
             &pooled_buffers,
             (flat, lines, ribbons),
@@ -270,7 +277,7 @@ impl Renderer {
             buildings,
             terrain,
             mesh,
-            self.last_camera.map(|c| c.time_seconds).unwrap_or(0.0),
+            uploaded_at,
         );
         if let Some(previous) = self.tiles.insert(key, tile) {
             self.retire(previous);

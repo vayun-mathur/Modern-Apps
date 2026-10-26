@@ -172,9 +172,9 @@ pub(super) fn emit_marker_label(
 }
 /// Emit one marker's four corners into the shared sprite vertex/index buffers.
 ///
-/// `corners` are (local_u, local_v, tex_u, tex_v); (cx, cy) the clip-space
-/// centre; (xu, yu)/(xv, yv) the local Dp axes in clip space; `w` the
-/// perspective divisor (1.0 on the globe path).
+/// `corners` are (local_u, local_v, tex_u, tex_v); (cx, cy) the NDC centre and
+/// (xu, yu)/(xv, yv) the local Dp axes in NDC, both already divided by the
+/// marker's `w` in [`marker_screen_geom`], so the corners add straight on.
 pub(super) fn emit_marker_corners(
     vertices: &mut Vec<f32>,
     indices: &mut Vec<u32>,
@@ -186,13 +186,10 @@ pub(super) fn emit_marker_corners(
     yu: f64,
     xv: f64,
     yv: f64,
-    w: f64,
 ) {
     for (lu, lv, tu, tv) in corners {
-        // Flat path: perspective divide by the marker's own w. Globe path:
-        // axis-aligned clip axes with w == 1, so this is the same add.
-        let ox = (lu * xu + lv * xv) / w;
-        let oy = (lu * yu + lv * yv) / w;
+        let ox = lu * xu + lv * xv;
+        let oy = lu * yu + lv * yv;
         vertices.push((cx + ox) as f32);
         vertices.push((cy + oy) as f32);
         vertices.push(tu);

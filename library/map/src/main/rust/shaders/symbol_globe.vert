@@ -63,13 +63,13 @@ void main() {
     float hw = push.morph.x;
     float hh = push.morph.y;
     // Screen offset of this corner from its anchor. Labels are shaped in flat tile-local
-    // units, where one unit is `tile_span_dp = span * world_size = span * 2r` Dp; the globe
-    // 2x2 is `k * r`, so the delta is scaled by `2 * span` to keep the flat screen size.
+    // units, where one unit is `span * world` Dp (`world` rides in m[14]); the globe 2x2 is
+    // `k * r`, so the delta is scaled by `span * world / r` to keep the flat screen size.
     float m00 = push.tileToClip[0][0];
     float m01 = push.tileToClip[0][1];
     float m10 = push.tileToClip[1][0];
     float m11 = push.tileToClip[1][1];
-    vec2 dTile = (inPosition - inAnchor) * (2.0 * span);
+    vec2 dTile = (inPosition - inAnchor) * (span * push.tileToClip[3][2] / max(r, 1e-6));
     vec2 off = vec2(m00 * dTile.x + m10 * dTile.y, m01 * dTile.x + m11 * dTile.y);
     float ax = kx * (a.x * r) + (kx * hw - 1.0);
     float ay = -(ky * (a.y * r)) + (ky * hh - 1.0);

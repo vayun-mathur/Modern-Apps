@@ -79,12 +79,11 @@ impl Renderer {
         let mut text_vertices: Vec<f32> = Vec::new();
         let mut text_indices: Vec<u32> = Vec::new();
         for (i, marker) in markers.iter().enumerate() {
-            let Some((sprite, cx, cy, xu, yu, xv, yv, w)) =
+            let Some((sprite, cx, cy, xu, yu, xv, yv, _)) =
                 marker_screen_geom(camera, marker, globe)
             else {
                 continue;
             };
-            let _ = w;
             // Draw the icon at `MARKER_SIZE_DP` on its larger side, keeping its aspect ratio. With
             // `radius_dp = 1.0` above, a local coordinate is one Dp, so these half-extents are Dp.
             // (On the globe the quad is axis-aligned clip — same units, same math.) The extents
@@ -109,7 +108,7 @@ impl Renderer {
                 (corners[2].0, corners[2].1, uv.u1, v1),
                 (corners[3].0, corners[3].1, uv.u0, v1),
             ];
-            emit_marker_corners(&mut vertices, &mut indices, base, corners, cx, cy, xu, yu, xv, yv, w);
+            emit_marker_corners(&mut vertices, &mut indices, base, corners, cx, cy, xu, yu, xv, yv);
             // The name beside the icon, POI-style: shaped with the glyph atlas, laid out in Dp
             // to the icon's right, and hung off the same counter-rotated axes so it sits beside
             // the upright icon rather than wherever the bearing turned the map to.

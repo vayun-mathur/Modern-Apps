@@ -17,7 +17,7 @@ impl Renderer {
     /// disc radius fills the globe the Earth path would have drawn at this
     /// zoom (same `globe_radius`), centred on the viewport, so switching bodies
     /// never moves the planet under the finger.
-    pub(super) fn render_moon(&mut self, camera: &Camera) -> Result<bool, String> {
+    pub(super) fn render_moon(&mut self, camera: &Camera, clear: u32) -> Result<bool, String> {
         if self.needs_rebuild {
             self.rebuild()?;
             self.needs_rebuild = false;
@@ -65,7 +65,7 @@ impl Renderer {
             device
                 .reset_fences(std::slice::from_ref(&in_flight))
                 .map_err(|e| format!("reset_fences {e:?}"))?;
-            self.record_moon(command_buffer, image_index as usize, camera)?;
+            self.record_moon(command_buffer, image_index as usize, camera, clear)?;
             let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
             let submit = vk::SubmitInfo::default()
                 .wait_semaphores(std::slice::from_ref(&image_available))
@@ -103,13 +103,11 @@ impl Renderer {
         command_buffer: vk::CommandBuffer,
         image_index: usize,
         camera: &Camera,
+        // The same theme-following clear the vector frame uses (`style::background` of the
+        // palette variant).
+        clear: u32,
     ) -> Result<(), String> {
-        use crate::style;
         let device = &self.context.device;
-        // Same clear as the vector frame: the water-blue is the Earth sea, but on
-        // the Moon it reads as space only if dark — the maps host drives the Moon
-        // from the same dark-palette path, so the clear follows the theme.
-        let clear = style::background(crate::style::Variant::Light);
         Self::begin_frame_pass(
             device,
             command_buffer,
@@ -149,7 +147,7 @@ impl Renderer {
         // rect, so no new vertex path. The quad vertices are -1..1 already; the
         // matrix maps them to the disc: scale = globe diameter in clip units,
         // centred on the viewport centre.
-        let r_dp = crate::camera::globe_radius(camera.zoom);
+        let r_dp = crate::camera::globe_radius(camera.zoom, camera.center_lat);
         let kx = 2.0 / camera.width_dp as f64;
         let ky = 2.0 / camera.height_dp as f64;
         let disc = [

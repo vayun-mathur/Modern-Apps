@@ -184,7 +184,15 @@ impl Camera {
         let anchor = project(lon, lat, self.zoom);
         let center = project(self.center_lon, self.center_lat, self.zoom);
         let (cos, sin) = self.rotation();
-        let dx = anchor.x - center.x;
+        // A point is wherever its nearest copy is: a pin just across the antimeridian is a
+        // few Dp east, not a world-width west.
+        let size = crate::camera::world_size(self.zoom);
+        let mut dx = anchor.x - center.x;
+        if dx > size / 2.0 {
+            dx -= size;
+        } else if dx < -size / 2.0 {
+            dx += size;
+        }
         let dy = anchor.y - center.y;
         if self.pitch_deg == 0.0 {
             let kx = 2.0 / self.width_dp as f64;

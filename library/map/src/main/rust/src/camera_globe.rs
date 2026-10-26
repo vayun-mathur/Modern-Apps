@@ -15,7 +15,8 @@ impl Camera {
     /// reconstruct the lon/lat per vertex.
     ///
     /// The translation column carries the camera centre lon/lat in m[12]/m[13]
-    /// (degrees) — the sphere basis every globe vertex shader needs. It rides
+    /// (degrees) — the sphere basis every globe vertex shader needs — and the flat
+    /// world width (Dp) in m[14], the scale flat tile-local sizes are measured in. It rides
     /// here rather than in the push block because the block is exactly at the
     /// guaranteed 128-byte limit: this keeps `misc`/`morph` meaning what the
     /// flat path means (tile px, edge AA, fade, span scale, dash speed), so the
@@ -29,7 +30,7 @@ impl Camera {
     /// through this same matrix, so a label or POI placed CPU-side lands where
     /// the basemap under it drew.
     pub fn globe_tile_to_clip(&self, z: u8, x: u32, y: u32) -> [f32; 16] {
-        let r = crate::camera::globe_radius(self.zoom);
+        let r = crate::camera::globe_radius(self.zoom, self.center_lat);
         let kx = 2.0 / self.width_dp as f64;
         let ky = 2.0 / self.height_dp as f64;
         // Tile origin/span in *normalised world* (0..1 across the planet): stable
@@ -53,7 +54,9 @@ impl Camera {
             0.0, //
             self.center_lon as f32,
             self.center_lat as f32,
-            0.0,
+            // The flat world width (Dp): what flat tile-local sizes (line widths, label quads)
+            // are measured against, now that `r` is no longer a fixed fraction of it.
+            crate::camera::world_size(self.zoom) as f32,
             1.0,
         ]
     }
@@ -66,7 +69,7 @@ impl Camera {
         if z < 0.0 {
             return None;
         }
-        let r = crate::camera::globe_radius(self.zoom);
+        let r = crate::camera::globe_radius(self.zoom, self.center_lat);
         Some((
             self.width_dp as f64 / 2.0 + x * r,
             self.height_dp as f64 / 2.0 - y * r,

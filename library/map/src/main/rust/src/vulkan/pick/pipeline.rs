@@ -32,10 +32,11 @@ pub(super) unsafe fn build_pipeline(
             .name(entry),
     ];
 
-    // The shared unit quad: two floats per vertex.
+    // The shared unit quad (`quad::QUAD_VERTICES`): three floats per vertex, of which the
+    // shader reads the first two.
     let binding = vk::VertexInputBindingDescription::default()
         .binding(0)
-        .stride(2 * std::mem::size_of::<f32>() as u32)
+        .stride(3 * std::mem::size_of::<f32>() as u32)
         .input_rate(vk::VertexInputRate::VERTEX);
     let attribute = vk::VertexInputAttributeDescription::default()
         .location(0)
