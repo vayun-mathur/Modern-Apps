@@ -305,7 +305,7 @@ impl Gemma4Handle {
     fn flush(&mut self) -> Result<(), String> {
         let tokens = std::mem::take(&mut self.pending);
         if !tokens.is_empty() {
-            self.prefill(&tokens)?;
+            self.prefill(&tokens, false)?;
         }
         Ok(())
     }
@@ -318,17 +318,18 @@ impl Gemma4Handle {
         }
         let mut tokens = std::mem::take(&mut self.pending);
         tokens.push(token);
-        self.prefill(&tokens).map(Some)
+        self.prefill(&tokens, true).map(Some)
     }
 
-    /// Feed many tokens in **one** submit per chunk, filling the caches. Returns the last token's
-    /// final-normed state, which the head reads when that token is a step's.
+    /// Feed many tokens in **one** submit per chunk, filling the caches. With `tail`, returns the
+    /// last token's final-normed state (from [`gemma4::Mode::Tail`]), which the head reads when
+    /// that token is a step's; otherwise an empty state.
     ///
     /// At one position a pass reads 1.30 GB of weights for a single 1536-wide vector; at T
     /// positions it reads them once and every projection becomes a GEMM over T columns. Chunked
     /// because each chunk's score maps are eight heads of `T x context`. Every chunk attends the
     /// whole cache (`attn_cached_multi`), so any split and any starting position is correct.
-    fn prefill(&mut self, tokens: &[u32]) -> Result<Vec<f32>, String> {
+    fn prefill(&mut self, tokens: &[u32], tail: bool) -> Result<Vec<f32>, String> {
         if self.position as usize + tokens.len() > self.context as usize {
             return Err(format!(
                 "a prompt of {} positions past this device's {} cache",
@@ -337,13 +338,14 @@ impl Gemma4Handle {
             ));
         }
         let mut state = Vec::new();
-        for chunk in tokens.chunks(CHUNK as usize) {
+        let chunks = tokens.len().div_ceil(CHUNK as usize);
+        for (index, chunk) in tokens.chunks(CHUNK as usize).enumerate() {
             let real = chunk.len() as u32;
             let width = crate::nets::gemma4_gather::padded(real, self.context - self.position);
             // Pad columns feed the pad token; nothing real reads them (see `padded`).
             let mut fed = chunk.to_vec();
             fed.resize(width as usize, 0);
-            state = self.prefill_chunk(real, width, |reader| {
+            state = self.prefill_chunk(real, width, tail && index + 1 == chunks, |reader| {
                 let hidden = crate::nets::gemma4_gather::token_rows(reader, &fed)?;
                 Ok((hidden, crate::nets::gemma4_gather::layer_rows(reader, &fed)?))
             })?;
@@ -369,7 +371,7 @@ impl Gemma4Handle {
         for chunk in values.chunks(d * CHUNK as usize) {
             let real = (chunk.len() / d) as u32;
             let width = crate::nets::gemma4_gather::padded(real, self.context - self.position);
-            self.prefill_chunk(real, width, |reader| {
+            self.prefill_chunk(real, width, false, |reader| {
                 let mut hidden = vec![0f32; d * width as usize];
                 for (at, row) in chunk.chunks_exact(d).enumerate() {
                     crate::nets::gemma4_gather::place(&mut hidden, row, at, width as usize);
@@ -382,11 +384,13 @@ impl Gemma4Handle {
 
     /// One chunk of `real` positions run at `width`: `rows` gathers the `[C, 1, width]` hidden
     /// and table blocks while the chunk's plan builds on another thread if it was evicted, then
-    /// one combine submit and one Prefill submit. Returns the last real column's normed state.
+    /// one combine submit and one Prefill submit. With `tail`, runs the last real column on
+    /// through [`gemma4::Mode::Tail`] and returns its normed state; otherwise an empty one.
     fn prefill_chunk(
         &mut self,
         real: u32,
         width: u32,
+        tail: bool,
         rows: impl FnOnce(&crate::weights::Reader<'_>) -> Result<(Vec<f32>, Vec<f32>), String>,
     ) -> Result<Vec<f32>, String> {
         let started = std::time::Instant::now();
@@ -442,8 +446,28 @@ impl Gemma4Handle {
             recorded.as_secs_f64() * 1000.0,
             ran.elapsed().as_secs_f64() * 1000.0,
         ));
+        let last = self.position + real - 1;
         self.position += real;
-        let states = out.first().ok_or("a prefill returned nothing")?;
-        Ok(crate::nets::gemma4_gather::column(states, real.saturating_sub(1) as usize, wide))
+        if !tail {
+            return Ok(Vec::new());
+        }
+        let residual = out.first().ok_or("a prefill returned nothing")?;
+        let inputs = gemma4::tail_inputs(residual, [&hidden, &per_layer, &local, &global], (real - 1) as usize, wide, self.fused());
+        self.tail(&inputs, last)
+    }
+
+    /// [`gemma4::Mode::Tail`] for the prefill column at `position`: its final-normed state.
+    fn tail(&mut self, inputs: &[Vec<f32>], position: u32) -> Result<Vec<f32>, String> {
+        let ran = std::time::Instant::now();
+        let at = self.net.at(gemma4::Mode::Tail.at(self.context))?;
+        at.set_params(StepParams { prefix: position, window_start: position.saturating_sub(gemma4::WINDOW - 1) })?;
+        let refs: Vec<&[f32]> = inputs.iter().map(Vec::as_slice).collect();
+        let out = at.infer_raw_many(&refs)?;
+        log(&format!("gemma4 tail at {position}: {:.0} ms", ran.elapsed().as_secs_f64() * 1000.0));
+        let state = out.into_iter().next().unwrap_or_default();
+        if state.len() != gemma4::D_MODEL as usize {
+            return Err(format!("a tail state of {} values, not {}", state.len(), gemma4::D_MODEL));
+        }
+        Ok(state)
     }
 }

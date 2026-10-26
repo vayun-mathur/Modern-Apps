@@ -64,6 +64,7 @@ fn warm_gemma4(net: &mut Reshaped<gemma4::Pass>, context: u32) -> Result<(), Str
     let width = CHUNK.min(context);
     net.at(gemma4::Mode::Prefill { tokens: width }.at(context))?;
     net.at(gemma4::Mode::PrefillFresh { tokens: width }.at(context))?;
+    net.at(gemma4::Mode::Tail.at(context))?;
     net.at(gemma4::Mode::DecodeStep.at(context))?;
     Ok(())
 }

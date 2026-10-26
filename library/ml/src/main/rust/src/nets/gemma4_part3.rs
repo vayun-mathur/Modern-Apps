@@ -186,15 +186,16 @@ mod tests {
     }
 
     #[test]
-    fn a_prefill_plan_ends_at_the_final_norm_like_decode() {
-        // A prefill skips nothing a decode step runs: the head lives in its own file, and the
-        // final norm stays so the host can run the head on a prefill's last column.
+    fn a_prefill_plan_and_its_tail_run_what_decode_runs() {
+        // A prefill runs the cache-owning layers and the tail the rest plus the final norm: the
+        // two together are exactly a decode step, so the host can run the head on the tail.
         let decode = build(&Shapes::new(TENSORS), Mode::DecodeStep.at(TEST_CONTEXT)).expect("decode builds");
         let prefill =
             build(&Shapes::new(TENSORS), Mode::Prefill { tokens: 1 }.at(TEST_CONTEXT)).expect("prefill builds");
-        assert_eq!(decode.ops.len(), prefill.ops.len(), "prefill {} ops against decode {}", prefill.ops.len(), decode.ops.len());
+        let tail = build(&Shapes::new(TENSORS), Mode::Tail.at(TEST_CONTEXT)).expect("tail builds");
+        assert_eq!(decode.ops.len(), prefill.ops.len() + tail.ops.len(), "prefill {} + tail {} ops against decode {}", prefill.ops.len(), tail.ops.len(), decode.ops.len());
         assert_eq!(prefill.outputs.len(), 1);
-        assert_eq!(prefill.outputs[0].shape, decode.outputs[0].shape, "the normed state, one per column");
+        assert_eq!(prefill.outputs[0].shape, decode.outputs[0].shape, "the residual, one per column");
         // The caches are the point of a prefill, so it must still write all of them.
         let writes = |plan: &Plan| {
             plan.ops
@@ -260,8 +261,9 @@ mod tests {
                     _ => {}
                 }
             }
-            assert_eq!((scores, softmaxes), (LAYERS, LAYERS), "one cached attention per layer");
-            assert_eq!(windowed, 28, "and the sliding ones carry a window");
+            let owners = OWNS_CACHE_LAYERS;
+            assert_eq!((scores, softmaxes), (owners, owners), "one cached attention per owning layer");
+            assert_eq!(windowed, 12, "and the sliding ones carry a window");
 
             // At position 0 the chunk is all there is, so it attends itself with the T x T kernels.
             let fresh = build(&Shapes::new(TENSORS), Mode::PrefillFresh { tokens }.at(TEST_CONTEXT))
@@ -271,7 +273,7 @@ mod tests {
             assert!(kinds().all(|(k, _)| !matches!(k, Kind::AttnScoresCached | Kind::AttnApplyCached)));
             let causal: Vec<_> = kinds().filter(|(k, _)| *k == Kind::SoftmaxCausal).collect();
             assert!(causal.iter().all(|(_, p)| (p.out_h, p.out_w) == (tokens, tokens)), "T x T scores");
-            assert_eq!((causal.len(), causal.iter().filter(|(_, p)| p.kh == WINDOW).count()), (LAYERS, 28));
+            assert_eq!((causal.len(), causal.iter().filter(|(_, p)| p.kh == WINDOW).count()), (OWNS_CACHE_LAYERS, 12));
         }
         assert!(build(&Shapes::new(TENSORS), Mode::Prefill { tokens: 0 }.at(TEST_CONTEXT)).is_err());
         let past = MAX_CONTEXT + 1;

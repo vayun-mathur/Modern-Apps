@@ -437,3 +437,4 @@ include!("gemma4_part6.rs");
 include!("gemma4_part7.rs");
 include!("gemma4_part8.rs");
 include!("gemma4_part9.rs");
+include!("gemma4_part10.rs");

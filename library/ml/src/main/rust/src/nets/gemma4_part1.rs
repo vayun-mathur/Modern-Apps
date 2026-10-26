@@ -53,7 +53,10 @@ pub enum Mode {
     /// divergence point. Computed by the same op sequence as [`layer`](super::layer),
     /// so the KV cache it fills matches a decode step exactly.
     TraceTail,
-    /// Run every layer to fill the KV cache, with **no logits head**. `tokens` positions at once.
+    /// Run the cache-owning layers to fill the KV cache, with **no logits head**. `tokens`
+    /// positions at once. Returns the residual after layer `OWNS_CACHE_LAYERS - 1` for every
+    /// column: the later layers write no cache, so only the column whose logits are wanted goes
+    /// on through them, in [`Mode::Tail`].
     ///
     /// # Why the head is skipped rather than ignored
     ///
@@ -83,6 +86,11 @@ pub enum Mode {
     /// attention runs over the chunk's own keys with the tiled `T x T` kernels, which is faster
     /// than the cache-wide multi-query path. Wrong at any other position.
     PrefillFresh { tokens: u32 },
+    /// Layers `OWNS_CACHE_LAYERS..LAYERS` and the final norm for one prefill column, through the
+    /// decode-step ops, submitted with `StepParams` at that column's position. Inputs: the
+    /// prefill's residual at that column, then the column of the prefill's inputs 1..3, then of
+    /// input 0 when the plan combines in-plan. See [`tail_inputs`].
+    Tail,
 }
 
 /// Plan inputs, in declaration order.
@@ -121,20 +129,23 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
     if !CONTEXT_TIERS.contains(&context) {
         return Err(format!("a cache of {context} positions, which is not one of the tiers"));
     }
-    let stop_after = match mode {
-        Mode::DecodeStep => LAYERS,
-        // Prefill runs every layer; what it skips is the head, not the depth.
+    let run = match mode {
+        Mode::DecodeStep => 0..LAYERS,
+        Mode::Tail => OWNS_CACHE_LAYERS..LAYERS,
         Mode::Prefill { tokens: 0 } | Mode::PrefillFresh { tokens: 0 } => {
             return Err("a prefill of no positions".into())
         }
-        Mode::Prefill { tokens } | Mode::PrefillFresh { tokens } if tokens <= context => LAYERS,
+        // Past the owning layers a prefill column reaches no cache, so they stop here.
+        Mode::Prefill { tokens } | Mode::PrefillFresh { tokens } if tokens <= context => {
+            0..OWNS_CACHE_LAYERS
+        }
         Mode::Prefill { tokens } | Mode::PrefillFresh { tokens } => {
             return Err(format!("a prefill of {tokens} positions, past a {context} cache"))
         }
-        Mode::Trace { layers } if layers <= LAYERS => layers,
+        Mode::Trace { layers } if layers <= LAYERS => 0..layers,
         Mode::Trace { layers } => return Err(format!("a trace of {layers} of {LAYERS} layers")),
         // Layer 0 only; the branches come from that one layer.
-        Mode::TraceTail => 1,
+        Mode::TraceTail => 0..1,
     };
     let mut builder = Builder::new(weights);
     let b = &mut builder;
@@ -178,7 +189,9 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
     let angles_local = b.input(Shape::new(HEAD_DIM, 1, width));
     let angles_global = b.input(Shape::new(GLOBAL_HEAD_DIM, 1, width));
     let fused = combines_in_plan(weights);
-    let per_layer_inputs = if fused { combine_in_plan(b, x, per_layer_in) } else { per_layer_in };
+    // The tail's input 0 is a residual, so the token row the combine reads comes after the rest.
+    let row = if fused && mode == Mode::Tail { b.input(Shape::new(D_MODEL, 1, 1)) } else { x };
+    let per_layer_inputs = if fused { combine_in_plan(b, row, per_layer_in) } else { per_layer_in };
     // The rotary tables. Read on the host, a row at a time, and handed back as the two angle
     // inputs above - the same arrangement as the embedding.
     b.host_tensor(ROTARY_LOCAL, &[MAX_CONTEXT, HEAD_DIM]);
@@ -194,7 +207,7 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
     // to the shared layers as tensors (the `cache_source` mapping, resolved to tensors).
     let fresh = matches!(mode, Mode::PrefillFresh { .. });
     let (mut sliding_kv, mut full_kv): (Option<(Id, Id)>, Option<(Id, Id)>) = (None, None);
-    for index in 0..stop_after {
+    for index in run.clone() {
         let angles = if is_full_attention(index) { angles_global } else { angles_local };
         let (cache_k, cache_v) = *caches
             .get(cache_source(index))
@@ -222,108 +235,34 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
         }
     }
 
-    if let Mode::TraceTail = mode {
-        // Layers 1..35 are named rather than evaluated, exactly as `Trace` does.
-        for index in stop_after..LAYERS {
-            declare_layer(weights, index)?;
-            name_layer(b, index);
+    // Every tensor a skipped layer would have read still has to be read, or `finish` refuses the
+    // plan - so those layers are named rather than evaluated.
+    for index in (0..LAYERS).filter(|index| !run.contains(index)) {
+        declare_layer(weights, index)?;
+        name_layer(b, index);
+    }
+    match mode {
+        Mode::TraceTail => {
+            name_head(b);
+            let Some([attn_branch, mlp_branch, ple_branch, out]) = tail else {
+                return Err("a tail trace with no layer 0".into());
+            };
+            builder.finish(&[attn_branch, mlp_branch, ple_branch, out])
         }
-        name_head(b);
-        let Some([attn_branch, mlp_branch, ple_branch, out]) = tail else {
-            return Err("a tail trace with no layer 0".into());
-        };
-        return builder.finish(&[attn_branch, mlp_branch, ple_branch, out]);
-    }
-
-    if let Mode::Trace { .. } = mode {
-        // Every tensor the untraced pass would have read still has to be read, or `finish`
-        // refuses the plan - so the layers this stops short of, and the head, are named rather
-        // than evaluated.
-        for index in stop_after..LAYERS {
-            declare_layer(weights, index)?;
-            name_layer(b, index);
+        Mode::Trace { .. } => {
+            name_head(b);
+            builder.finish(&[x, per_layer_inputs])
         }
-        name_head(b);
-        return builder.finish(&[x, per_layer_inputs]);
+        Mode::Prefill { .. } | Mode::PrefillFresh { .. } => {
+            name_head(b);
+            builder.finish(&[x])
+        }
+        // The normed hidden state; the head lives in its own file.
+        Mode::DecodeStep | Mode::Tail => {
+            let state = b.rms_norm(x, FINAL_NORM, EPSILON);
+            builder.finish(&[state])
+        }
     }
-
-    if let Mode::Prefill { .. } | Mode::PrefillFresh { .. } = mode {
-        // Prefill runs every layer - the point is the caches those layers fill - and then the
-        // final norm, so the host can run the head on the last column: a prompt's final token
-        // rides its prefill instead of costing a decode step of its own. The other columns'
-        // states are read back and ignored.
-        let state = b.rms_norm(x, FINAL_NORM, EPSILON);
-        return builder.finish(&[state]);
-    }
-
-    let state = b.rms_norm(x, FINAL_NORM, EPSILON);
-    // Tied head: litertlm stores no logits head, so logits are hidden @ E^T with
-    // E the working embedding table - computed ON THE HOST in bridge_part6
-    // (host tied-head SGEMV over the embed file's int4 table, then softcap).
-    // The device returns the normed hidden state; this keeps 201 MB of head
-    // weights out of the text file and out of VRAM. A Vulkan tied-head GEMM
-    // (chunked over vocab) is the follow-up; host SGEMV is the correct v1.
-    builder.finish(&[state])
-}
-
-/// Name the final norm as host-read, for the modes that stop before the head.
-///
-/// [`Mode::Trace`] and [`Mode::Prefill`] both end after a layer rather than after the
-/// norm, and `Builder::finish` refuses a plan that leaves a tensor unread.
-fn name_head(b: &mut Builder) {
-    b.host_tensor(FINAL_NORM, &[D_MODEL]);
-}
-
-/// Name every tensor of layer `index` as host-read, for [`Mode::Trace`].
-///
-/// A trace stops early, so the layers after it are never evaluated - but `Builder::finish`
-/// refuses a plan that leaves a tensor unread, and rightly so. This says "the host owns these",
-/// which keeps that invariant meaningful for the layers the trace *does* run.
-///
-/// Mirrors [`super::declare_layer`] tensor for tensor: split gate/ff1/linear, no
-/// `v_norm`, plus the trailing `skip` scalar. A shape here that drifted from the
-/// declaration would name a tensor the file does not hold at that index.
-fn name_layer(b: &mut Builder, index: usize) {
-    let dim = head_dim(index);
-    let inner = ffn(index);
-    let blocks = |inp: u32| inp.div_ceil(crate::weights::I4_BLOCK);
-    let mut next = layer_at(index);
-    let mut plain = |b: &mut Builder, n: &mut usize, dims: &[u32]| {
-        b.host_tensor(*n, dims);
-        *n += 1;
-    };
-    let mut proj4 = |b: &mut Builder, n: &mut usize, out: u32, inp: u32| {
-        b.host_tensor(*n, &[out, inp, 1, 1]);
-        b.host_tensor(*n + 1, &[out, blocks(inp)]);
-        b.host_tensor(*n + 2, &[out]);
-        *n += PROJECTION_TENSORS;
-    };
-    let mut proj8 = |b: &mut Builder, n: &mut usize, out: u32, inp: u32| {
-        b.host_tensor(*n, &[out, inp, 1, 1]);
-        b.host_tensor(*n + 1, &[out]);
-        b.host_tensor(*n + 2, &[out]);
-        *n += PROJECTION_TENSORS;
-    };
-    plain(b, &mut next, &[D_MODEL]);
-    plain(b, &mut next, &[dim]);
-    proj4(b, &mut next, HEADS * dim, D_MODEL);
-    if owns_cache(index) {
-        plain(b, &mut next, &[dim]);
-        proj4(b, &mut next, KV_HEADS * dim, D_MODEL);
-        proj4(b, &mut next, KV_HEADS * dim, D_MODEL);
-    }
-    proj4(b, &mut next, D_MODEL, HEADS * dim);
-    plain(b, &mut next, &[D_MODEL]);
-    plain(b, &mut next, &[D_MODEL]);
-    proj4(b, &mut next, inner, D_MODEL);
-    proj4(b, &mut next, inner, D_MODEL);
-    proj4(b, &mut next, D_MODEL, inner);
-    plain(b, &mut next, &[D_MODEL]);
-    proj8(b, &mut next, PER_LAYER, D_MODEL);
-    proj8(b, &mut next, D_MODEL, PER_LAYER);
-    plain(b, &mut next, &[D_MODEL]);
-    plain(b, &mut next, &[1]);
-    debug_assert_eq!(next, layer_at(index + 1), "layer {index} names past its span");
 }
 
 /// One decoder layer over `width` positions at once.

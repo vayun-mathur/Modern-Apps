@@ -587,6 +587,8 @@ struct PrefillTimes {
     plan_wait: f64,
     record: f64,
     gpu: f64,
+    /// The last token's `Mode::Tail` submit.
+    tail: f64,
     /// The last token's final-normed state, which the head reads.
     state: Vec<f32>,
 }
@@ -653,8 +655,20 @@ fn prefill_app(
         at.set_params(StepParams { prefix: start, window_start: start.saturating_sub(gemma4::WINDOW - 1) })?;
         let out = at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
         times.gpu += tick.elapsed().as_secs_f64() * 1000.0;
-        let states = out.first().ok_or("a prefill returned nothing")?;
-        times.state = g::column(states, chunk.len() - 1, width as usize);
+        if (index + 1) * CHUNK < prompt.len() {
+            continue;
+        }
+        // As `Gemma4Handle::tail`: the last real column through the layers that own no cache.
+        let tick = Instant::now();
+        let last = chunk.len() - 1;
+        let residual = out.first().ok_or("a prefill returned nothing")?;
+        let inputs = gemma4::tail_inputs(residual, [&hidden, &per_layer, &local, &global], last, width as usize, fused());
+        let at = net.at(gemma4::Mode::Tail.at(TIER))?;
+        let position = start + last as u32;
+        at.set_params(StepParams { prefix: position, window_start: position.saturating_sub(gemma4::WINDOW - 1) })?;
+        let refs: Vec<&[f32]> = inputs.iter().map(Vec::as_slice).collect();
+        times.state = at.infer_raw_many(&refs)?.into_iter().next().ok_or("the tail returned nothing")?;
+        times.tail += tick.elapsed().as_secs_f64() * 1000.0;
     }
     Ok(times)
 }
@@ -688,6 +702,7 @@ fn time_prefill(
     let warmed = (|| -> Result<(), String> {
         net.at(gemma4::Mode::Prefill { tokens: 256 }.at(TIER))?;
         net.at(gemma4::Mode::PrefillFresh { tokens: 256 }.at(TIER))?;
+        net.at(gemma4::Mode::Tail.at(TIER))?;
         net.at(gemma4::Mode::DecodeStep.at(TIER))?;
         for width in [256, 1].into_iter().filter(|_| !fused()) {
             gather.at(width)?;
@@ -736,10 +751,10 @@ fn time_prefill(
             };
             let head_ms = tick.elapsed().as_secs_f64() * 1000.0;
             println!(
-                "{} prefill {width}+1 tokens: rows {:.0} + plan wait {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} = {prefill_ms:.0} ms; \
+                "{} prefill {width}+1 tokens: rows {:.0} + plan wait {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} + tail {:.0} = {prefill_ms:.0} ms; \
                  head {head_ms:.0} ms (id {id:?}); TTFT {:.0} ms",
                 if run == 0 { "cold" } else { "warm" },
-                p.rows, p.plan_wait, p.combine, p.rotary, p.record, p.gpu,
+                p.rows, p.plan_wait, p.combine, p.rotary, p.record, p.gpu, p.tail,
                 prefill_ms + head_ms,
             );
         }
@@ -888,8 +903,10 @@ fn split_check(
             tail_ms = tail_tick.elapsed().as_secs_f64() * 1000.0;
         }
         let logits = last_logits(&mut net, &mut head_net, &reader, &rotary, last, (n - 1) as u32)?;
+        let caches = net.at(gemma4::Mode::DecodeStep.at(TIER))?.export_pinned(gemma4::CACHE_TENSORS, n as u32)?;
+        let hash = caches.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &b| (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3));
         println!(
-            "  {label:<32} {:>7.0} ms (tail {tail_ms:.0} ms = {:.1} ms/token)  top10 {:?}",
+            "  {label:<32} {:>7.0} ms (tail {tail_ms:.0} ms = {:.1} ms/token)  caches {hash:016x}  top10 {:?}",
             tick.elapsed().as_secs_f64() * 1000.0,
             tail_ms / tail.len().max(1) as f64,
             top10(&logits)
