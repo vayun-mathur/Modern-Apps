@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,15 +33,19 @@ import com.vayunmathur.library.util.DataStoreUtils
  * unavailable until the geocoder database arrives.
  */
 @Composable
-fun OfflineDatabaseSection(modifier: Modifier = Modifier) {
+fun OfflineDatabaseSection(modifier: Modifier = Modifier, onReady: () -> Unit = {}) {
     val context = LocalContext.current
     val ds = remember { DataStoreUtils.getInstance(context) }
 
-    // Presence is read once per composition rather than observed: the files only appear when a
-    // download finishes, and the progress rows below already track that.
     val databases = remember { offlineDatabaseEntries() }
     var requested by remember { mutableStateOf(false) }
-    val allPresent = remember(requested) { OfflineDatabases.allPresent(context) }
+    // Presence is re-read whenever a download's progress moves: the worker publishes 1.0 only
+    // after the finished file has been renamed into place, so the last tick sees it on disk.
+    val progress = databases.map { (name, _, _) -> ds.doubleFlow("progress_$name").collectAsState(0.0).value }
+    val allPresent = remember(requested, progress) { OfflineDatabases.allPresent(context) }
+    LaunchedEffect(allPresent) {
+        if (allPresent) onReady()
+    }
 
     Column(modifier) {
         Text("Offline databases", style = MaterialTheme.typography.titleMedium)

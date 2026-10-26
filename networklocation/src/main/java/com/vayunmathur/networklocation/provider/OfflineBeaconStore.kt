@@ -119,6 +119,12 @@ class OfflineBeaconStore(context: Context) {
         }
     }
 
+    /** Which stores are open, for the fix loop's status line. */
+    fun describe(): String = synchronized(lock) {
+        "stores[wifi=${if (wifiHandle != 0L) "open" else "closed"} " +
+            "cell=${if (cellHandle != 0L) "open" else "closed"} native=${WpsStoreNative.available}]"
+    }
+
     /**
      * Release both handles and their descriptors. Idempotent. Serialized with the resolvers so
      * it never frees a native reader that a concurrent lookup is still dereferencing.

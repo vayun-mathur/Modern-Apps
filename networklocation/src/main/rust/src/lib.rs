@@ -19,6 +19,7 @@ pub mod coordinate;
 pub mod geocoder;
 mod jni;
 pub mod measurement;
+mod mmap;
 pub mod multilateration;
 pub mod position;
 pub mod wpsdb;

@@ -4,11 +4,11 @@ import android.content.Context
 import android.location.Location
 import android.location.LocationManager
 import android.os.SystemClock
+import com.vayunmathur.library.log.Log
 import com.vayunmathur.networklocation.BeaconFix
 import com.vayunmathur.networklocation.BeaconId
 import com.vayunmathur.networklocation.DevicePosition
 import com.vayunmathur.networklocation.NetworkLocationNative
-import com.vayunmathur.networklocation.cache.BeaconCache
 import com.vayunmathur.networklocation.cell.NearbyCells
 import com.vayunmathur.networklocation.wifi.NearbyWifi
 import kotlinx.coroutines.CoroutineScope
@@ -18,16 +18,17 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
- * The periodic fix loop: scan nearby radios, resolve them to coordinates against the
- * cache and the offline WPSDB stores, and estimate the device position with the native
- * solver. Reconstructs GrapheneOS's LocationReportingTask.
+ * The periodic fix loop: scan nearby radios, resolve them to coordinates against the offline
+ * WPSDB stores, and estimate the device position with the native solver. Reconstructs
+ * GrapheneOS's LocationReportingTask.
  *
- * Resolution is entirely on-device. Beacons absent from both tiers are dropped, so a
- * fix is produced only from what the downloaded stores know; if they have not been
- * downloaded yet, no fix is produced at all.
+ * Resolution is entirely on-device. A store lookup is a few probes into a memory-mapped file,
+ * so beacons are resolved fresh on every scan rather than cached: a cache would only hold a
+ * second copy of coordinates the mapping already serves, in heap instead of reclaimable page
+ * cache. Beacons absent from the stores are dropped, so a fix is produced only from what the
+ * downloaded stores know; if they have not been downloaded yet, no fix is produced at all.
  */
 class LocationReportingTask(
     context: Context,
@@ -36,7 +37,6 @@ class LocationReportingTask(
     private val appContext = context.applicationContext
     private val wifi = NearbyWifi(appContext)
     private val cells = NearbyCells(appContext)
-    private val cache = BeaconCache(appContext)
     private val offlineStore = OfflineBeaconStore(appContext)
 
     private var scope: CoroutineScope? = null
@@ -47,7 +47,7 @@ class LocationReportingTask(
         scope = newScope
         newScope.launch {
             while (isActive) {
-                runCatching { reportOnce() }
+                runCatching { reportOnce() }.onFailure { Log.error(TAG, "fix attempt failed", it) }
                 delay(intervalMillis.coerceAtLeast(MIN_INTERVAL_MS))
             }
         }
@@ -59,20 +59,25 @@ class LocationReportingTask(
         offlineStore.close()
     }
 
-    private suspend fun reportOnce() {
+    private fun reportOnce() {
         val position = estimate() ?: return
         onFix(position.toLocation())
     }
 
     /** Full pipeline for a single fix; null when there are no usable beacons. */
-    private suspend fun estimate(): DevicePosition? {
+    private fun estimate(): DevicePosition? {
         val wifiIds = wifi.scan()
         val cellIds = cells.scan()
-        val allIds: List<BeaconId> = wifiIds + cellIds
-        if (allIds.isEmpty()) return null
+        if (wifiIds.isEmpty() && cellIds.isEmpty()) {
+            trace("no beacons scanned")
+            return null
+        }
 
-        val fixes = resolveFixes(wifiIds, cellIds, allIds)
-        if (fixes.isEmpty()) return null
+        val fixes = resolveFixes(wifiIds, cellIds)
+        if (fixes.isEmpty()) {
+            trace("wifi=${wifiIds.size} cell=${cellIds.size} resolved=0 ${offlineStore.describe()}")
+            return null
+        }
 
         val interleaved = DoubleArray(fixes.size * COORDS_PER_FIX)
         for ((i, f) in fixes.withIndex()) {
@@ -80,38 +85,29 @@ class LocationReportingTask(
             interleaved[i * COORDS_PER_FIX + 1] = f.longitude
             interleaved[i * COORDS_PER_FIX + 2] = f.accuracyMeters
         }
-        val out = NetworkLocationNative.estimatePosition(interleaved) ?: return null
-        return DevicePosition(out[0], out[1], out[2])
+        val out = NetworkLocationNative.estimatePosition(interleaved)
+        trace(
+            "wifi=${wifiIds.size} cell=${cellIds.size} resolved=${fixes.size} " +
+                "solver=${if (out == null) "no fix" else "fix"}",
+        )
+        return out?.let { DevicePosition(it[0], it[1], it[2]) }
     }
 
-    private suspend fun resolveFixes(
-        wifiIds: List<BeaconId.Wifi>,
-        cellIds: List<BeaconId.Cell>,
-        allIds: List<BeaconId>,
-    ): List<BeaconFix> {
-        val cached = cache.get(allIds)
-        val resolved = ArrayList(cached.values)
+    private var lastTrace: String? = null
 
-        val missingWifi = wifiIds.filter { it !in cached }
-        val missingCell = cellIds.filter { it !in cached }
-
-        // Offline store tier: the only source of new beacon coordinates. Hits are written
-        // back into BeaconCache so the in-memory/Room tier front-runs later scans. Beacons
-        // absent from the stores stay unresolved and are simply left out of the solve.
-        if (missingWifi.isNotEmpty() || missingCell.isNotEmpty()) {
-            val offline = withContext(Dispatchers.Default) {
-                buildList {
-                    if (missingWifi.isNotEmpty()) addAll(offlineStore.resolveWifi(missingWifi).values)
-                    if (missingCell.isNotEmpty()) addAll(offlineStore.resolveCell(missingCell).values)
-                }
-            }
-            if (offline.isNotEmpty()) {
-                cache.put(offline)
-                resolved.addAll(offline)
-            }
-        }
-        return resolved
+    /**
+     * One status line whenever the pipeline's outcome changes, so a provider that never
+     * reports says why. Counts only: beacon identities and positions are never logged.
+     */
+    private fun trace(summary: String) {
+        if (summary == lastTrace) return
+        lastTrace = summary
+        Log.status(TAG, summary)
     }
+
+    /** Store hits for this scan; beacons the stores do not know are left out of the solve. */
+    private fun resolveFixes(wifiIds: List<BeaconId.Wifi>, cellIds: List<BeaconId.Cell>): List<BeaconFix> =
+        offlineStore.resolveWifi(wifiIds).values + offlineStore.resolveCell(cellIds).values
 
     private fun DevicePosition.toLocation(): Location =
         Location(LocationManager.NETWORK_PROVIDER).apply {
@@ -123,6 +119,7 @@ class LocationReportingTask(
         }
 
     private companion object {
+        const val TAG = "NetworkLocationFix"
         const val MIN_INTERVAL_MS = 1_000L
 
         /** Coordinates per fix in the interleaved native array (lat, lon, accuracy). */

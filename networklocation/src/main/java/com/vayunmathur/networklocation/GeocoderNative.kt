@@ -8,7 +8,7 @@ package com.vayunmathur.networklocation
  * forward queries entirely in Rust.
  *
  * Results are flat String arrays with [FIELDS_PER_RESULT] entries per result:
- * `[lat, lon, name, house, street, city, state, country, postcode, kind]`, lat/lon to 7 dp.
+ * `[lat, lon, name, house, street, city, state, country, postcode, kind]`, lat/lon to 5 dp.
  *
  * The fully-qualified name MUST stay `com.vayunmathur.networklocation.GeocoderNative` so the
  * JNI symbol mangling (`Java_com_vayunmathur_networklocation_GeocoderNative_*`) matches.

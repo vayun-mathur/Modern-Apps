@@ -5,95 +5,97 @@ impl Reader {
         if dupfd < 0 {
             return None;
         }
+        // The mapping outlives the descriptor, so the dup'd fd is closed as soon as it is made.
         let file = unsafe { File::from_raw_fd(dupfd) };
-        Reader::from_src(Src { file, base: offset as u64 })
+        Reader::map_file(&file, offset.max(0) as u64)
     }
 
-    /// Host fallback: `fd` is an APK asset descriptor, meaningless off-device.
+    /// Host fallback: `fd` is an Android descriptor, meaningless off-device.
     #[cfg(not(unix))]
     fn open(_fd: i32, _offset: i64) -> Option<Reader> {
         None
     }
 
-    /// Open a `.geodb` straight from a filesystem path (base offset 0). Test-only: the
-    /// production path receives an APK asset fd + offset via `open`.
+    /// Open a database straight from a filesystem path. Test-only: the production path
+    /// receives a descriptor via `open`.
     #[cfg(test)]
     fn open_path<P: AsRef<std::path::Path>>(path: P) -> Option<Reader> {
-        let file = File::open(path).ok()?;
-        Reader::from_src(Src { file, base: 0 })
+        Reader::map_file(&File::open(path).ok()?, 0)
     }
 
-    fn from_src(src: Src) -> Option<Reader> {
-        if src.rd_u32(0)? != MAGIC || src.rd_u32(4)? != VERSION {
+    fn map_file(file: &File, offset: u64) -> Option<Reader> {
+        let len = file.metadata().ok()?.len().checked_sub(offset)?;
+        let map = Map::new(file, offset, usize::try_from(len).ok()?)?;
+        Reader::from_map(map)
+    }
+
+    /// Walk the section headers and remember where each section starts. Nothing is decoded and
+    /// nothing proportional to the database is allocated.
+    fn from_map(map: Map) -> Option<Reader> {
+        let d = map.as_slice();
+        if be32(d, 0)? != MAGIC || be32(d, 4)? != VERSION {
             return None;
         }
-        let n = src.rd_i32(8)?;
-        let mut cursor: u64 = 12;
+        let n = be32(d, 8)? as i32;
+
+        // (body offset, body end) of every section.
+        let mut bodies = Vec::with_capacity(SECTIONS);
+        let mut cursor = 12usize;
+        for _ in 0..SECTIONS {
+            let size = be32(d, cursor)? as usize;
+            let body = cursor + 4;
+            let end = body.checked_add(size)?;
+            if end > d.len() {
+                return None;
+            }
+            bodies.push((body, end));
+            cursor = end;
+        }
 
         let mut dicts = Vec::with_capacity(DICTS);
-        for _ in 0..DICTS {
-            dicts.push(decode_dict(&sect_bytes(&src, &mut cursor)?)?);
+        for &(body, end) in &bodies[..DICTS] {
+            dicts.push(Dict::new(d, body, end)?);
         }
-
-        let delta = [true, true, false, false, false, false, false, false, false, false];
         let mut cols = Vec::with_capacity(COLUMNS);
-        for i in 0..COLUMNS {
-            let off = sect_body(&src, &mut cursor)?;
-            cols.push(Column::new(&src, off, delta[i])?);
+        for (c, &(body, _)) in bodies[DICTS..DICTS + COLUMNS].iter().enumerate() {
+            cols.push(Column::new(d, body, DELTA[c])?);
         }
-
-        let grid = sect_bytes(&src, &mut cursor)?;
-        let count = be32(&grid[0..4]) as usize;
-        let mut cell_ids = Vec::with_capacity(count);
-        let mut cell_starts = Vec::with_capacity(count);
-        let mut g = 4usize;
-        for _ in 0..count {
-            cell_ids.push(be64(&grid[g..g + 8]));
-            cell_starts.push(be32(&grid[g + 8..g + 12]) as i32);
-            g += 12;
+        let (grid_body, grid_end) = bodies[DICTS + COLUMNS];
+        let grid_count = be32(d, grid_body)? as usize;
+        let grid = grid_body + 4;
+        if grid.checked_add(grid_count.checked_mul(GRID_ENTRY)?)? > grid_end {
+            return None;
         }
+        let fwd = Column::new(d, bodies[DICTS + COLUMNS + 1].0, true)?;
+        let nm_name = Column::new(d, bodies[DICTS + COLUMNS + 2].0, true)?;
+        let nm_rec = Column::new(d, bodies[DICTS + COLUMNS + 3].0, false)?;
 
-        let fwd_off = sect_body(&src, &mut cursor)?;
-        let fwd = Column::new(&src, fwd_off, true)?;
-
-        let nm_name_off = sect_body(&src, &mut cursor)?;
-        let nm_name = Column::new(&src, nm_name_off, true)?;
-        let nm_rec_off = sect_body(&src, &mut cursor)?;
-        let nm_rec = Column::new(&src, nm_rec_off, false)?;
-
-        Some(Reader { src, n, dicts, cell_ids, cell_starts, cols, fwd, nm_name, nm_rec })
+        Some(Reader { map, n, dicts, grid, grid_count, cols, fwd, nm_name, nm_rec })
     }
 
-    fn grid_index(&self, cell: i64) -> i32 {
-        let mut lo = 0i32;
-        let mut hi = self.cell_ids.len() as i32 - 1;
-        while lo <= hi {
-            let mid = (lo + hi) >> 1;
-            let v = self.cell_ids[mid as usize];
-            if v < cell {
-                lo = mid + 1;
-            } else if v > cell {
-                hi = mid - 1;
-            } else {
-                return mid;
-            }
-        }
-        -1
+    fn grid_cell(&self, gi: usize) -> i64 {
+        be64(self.map.as_slice(), self.grid + gi * GRID_ENTRY).unwrap_or(i64::MAX)
     }
 
-    fn dict_index(&self, field: usize, key: &str) -> i32 {
-        let dict = &self.dicts[field];
-        let mut lo = 0i32;
-        let mut hi = dict.len() as i32 - 1;
-        while lo <= hi {
-            let mid = (lo + hi) >> 1;
-            match cmp_utf16(&dict[mid as usize], key) {
+    fn grid_start(&self, gi: usize) -> i32 {
+        be32(self.map.as_slice(), self.grid + gi * GRID_ENTRY + 8).map_or(self.n, |v| v as i32)
+    }
+
+    fn grid_index(&self, cell: i64) -> Option<usize> {
+        let (mut lo, mut hi) = (0usize, self.grid_count);
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            match self.grid_cell(mid).cmp(&cell) {
                 Ordering::Less => lo = mid + 1,
-                Ordering::Greater => hi = mid - 1,
-                Ordering::Equal => return mid,
+                Ordering::Greater => hi = mid,
+                Ordering::Equal => return Some(mid),
             }
         }
-        -1
+        None
+    }
+
+    fn col(&mut self, c: usize, i: i32) -> i32 {
+        self.cols[c].get(self.map.as_slice(), i)
     }
 
     /// Nearest record to `(lat, lon)`, or `None` if nothing is within [`MAX_RADIUS`] cells.
@@ -106,102 +108,88 @@ impl Reader {
         if self.n == 0 {
             return None;
         }
-        let q_lat = to_e7(lat);
-        let q_lon = to_e7(lon);
-        let row = (q_lat as i64 - MIN_LAT_E7 as i64) / CELL_E7;
-        let col = (q_lon as i64 - MIN_LON_E7 as i64) / CELL_E7;
+        let q_lat = to_e5(lat);
+        let q_lon = to_e5(lon);
+        let row = (q_lat as i64 - MIN_LAT as i64) / CELL;
+        let col = (q_lon as i64 - MIN_LON as i64) / CELL;
         let lon_scale = lat.to_radians().cos();
 
         let mut best_rec = -1i32;
         let mut best_dist = f64::MAX;
         let mut radius = 1i64;
         while radius <= MAX_RADIUS {
-            let mut r = row - radius;
-            while r <= row + radius {
-                if r >= 0 {
-                    let mut c = col - radius;
-                    while c <= col + radius {
-                        let on_edge = !(radius > 1
-                            && r > row - radius
-                            && r < row + radius
-                            && c > col - radius
-                            && c < col + radius);
-                        if on_edge {
-                            let cc = ((c % COLS) + COLS) % COLS;
-                            let cell = r * COLS + cc;
-                            let gi = self.grid_index(cell);
-                            if gi >= 0 {
-                                let start = self.cell_starts[gi as usize];
-                                let end = if (gi as usize) + 1 < self.cell_starts.len() {
-                                    self.cell_starts[gi as usize + 1]
-                                } else {
-                                    self.n
-                                };
-                                for i in start..end {
-                                    let d_lat = (self.cols[C_LAT].get(&self.src, i) - q_lat) as f64;
-                                    let d_lon = (self.cols[C_LON].get(&self.src, i) - q_lon) as f64
-                                        * lon_scale;
-                                    let d = d_lat * d_lat + d_lon * d_lon;
-                                    if d < best_dist {
-                                        best_dist = d;
-                                        best_rec = i;
-                                    }
-                                }
-                            }
+            for r in (row - radius)..=(row + radius) {
+                if r < 0 {
+                    continue;
+                }
+                for c in (col - radius)..=(col + radius) {
+                    let on_edge = !(radius > 1
+                        && r > row - radius
+                        && r < row + radius
+                        && c > col - radius
+                        && c < col + radius);
+                    if !on_edge {
+                        continue;
+                    }
+                    let cc = ((c % COLS) + COLS) % COLS;
+                    let Some(gi) = self.grid_index(r * COLS + cc) else { continue };
+                    let start = self.grid_start(gi);
+                    let end = if gi + 1 < self.grid_count { self.grid_start(gi + 1) } else { self.n };
+                    for i in start..end {
+                        let d_lat = (self.col(C_LAT, i) - q_lat) as f64;
+                        let d_lon = (self.col(C_LON, i) - q_lon) as f64 * lon_scale;
+                        let d = d_lat * d_lat + d_lon * d_lon;
+                        if d < best_dist {
+                            best_dist = d;
+                            best_rec = i;
                         }
-                        c += 1;
                     }
                 }
-                r += 1;
             }
             // Anything on the next ring is at least `radius` whole cells away along one axis,
             // because the query sits somewhere inside ring 0's cell. Once that floor exceeds
             // the best distance found, no further ring can improve on it.
             if best_rec >= 0 {
-                let floor = radius as f64 * CELL_E7 as f64 * lon_scale.abs().min(1.0);
+                let floor = radius as f64 * CELL as f64 * lon_scale.abs().min(1.0);
                 if floor * floor > best_dist {
                     break;
                 }
             }
             radius += 1;
         }
-        if best_rec < 0 {
-            None
-        } else {
-            Some(best_rec)
-        }
+        (best_rec >= 0).then_some(best_rec)
     }
 
     fn compare_key(&mut self, rec: i32, target: [i32; 4]) -> i32 {
-        let c = self.cols[C_COUNTRY].get(&self.src, rec) - target[0];
-        if c != 0 {
-            return c;
+        for (c, t) in [(C_COUNTRY, target[0]), (C_STATE, target[1]), (C_CITY, target[2])] {
+            let v = self.col(c, rec) - t;
+            if v != 0 {
+                return v;
+            }
         }
-        let c = self.cols[C_STATE].get(&self.src, rec) - target[1];
-        if c != 0 {
-            return c;
-        }
-        let c = self.cols[C_CITY].get(&self.src, rec) - target[2];
-        if c != 0 {
-            return c;
-        }
-        self.cols[C_STREET].get(&self.src, rec) - target[3]
+        self.col(C_STREET, rec) - target[3]
+    }
+
+    fn dict_index(&mut self, field: usize, key: &str) -> Option<i32> {
+        self.dicts[field].index_of(self.map.as_slice(), key).map(|i| i as i32)
     }
 
     fn forward(&mut self, country: &str, state: &str, city: &str, street: &str, limit: i32) -> Vec<i32> {
-        let k_country = self.dict_index(dict_of(C_COUNTRY), country);
-        let k_state = self.dict_index(dict_of(C_STATE), state);
-        let k_city = self.dict_index(dict_of(C_CITY), city);
-        let k_street = self.dict_index(dict_of(C_STREET), street);
-        if k_country < 0 || k_state < 0 || k_city < 0 || k_street < 0 {
+        let keys = (
+            self.dict_index(dict_of(C_COUNTRY), country),
+            self.dict_index(dict_of(C_STATE), state),
+            self.dict_index(dict_of(C_CITY), city),
+            self.dict_index(dict_of(C_STREET), street),
+        );
+        let (Some(k_country), Some(k_state), Some(k_city), Some(k_street)) = keys else {
             return Vec::new();
-        }
+        };
         let target = [k_country, k_state, k_city, k_street];
-        let mut lo = 0i32;
-        let mut hi = self.n;
+        let total = self.fwd.n;
+        let (mut lo, mut hi) = (0i32, total);
         while lo < hi {
             let mid = (lo + hi) >> 1;
-            let rec = self.fwd.get(&self.src, mid);
+            let rec = self.fwd.get(self.map.as_slice(), mid);
             if self.compare_key(rec, target) < 0 {
                 lo = mid + 1;
             } else {
@@ -210,8 +198,8 @@ impl Reader {
         }
         let mut out = Vec::new();
         let mut k = lo;
-        while k < self.n && (out.len() as i32) < limit {
-            let rec = self.fwd.get(&self.src, k);
+        while k < total && (out.len() as i32) < limit {
+            let rec = self.fwd.get(self.map.as_slice(), k);
             if self.compare_key(rec, target) != 0 {
                 break;
             }
@@ -227,31 +215,14 @@ impl Reader {
     /// contiguous run and both ends are a binary search. Matching is case-sensitive: the
     /// dictionary is ordered by the names as they appear in OpenStreetMap, and a case-folded
     /// run would not be contiguous in that ordering.
-    fn name_prefix_range(&self, prefix: &str) -> (i32, i32) {
-        let dict = &self.dicts[dict_of(C_NAME)];
-        let len = dict.len() as i32;
-        let mut lo = 0i32;
-        let mut hi = len;
-        while lo < hi {
-            let mid = (lo + hi) >> 1;
-            if cmp_utf16(&dict[mid as usize], prefix) == Ordering::Less {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
-        let start = lo;
-        let mut lo2 = start;
-        let mut hi2 = len;
-        while lo2 < hi2 {
-            let mid = (lo2 + hi2) >> 1;
-            if dict[mid as usize].starts_with(prefix) {
-                lo2 = mid + 1;
-            } else {
-                hi2 = mid;
-            }
-        }
-        (start, lo2)
+    fn name_prefix_range(&mut self, prefix: &str) -> (i32, i32) {
+        let d = self.map.as_slice();
+        let dict = &mut self.dicts[dict_of(C_NAME)];
+        let start = dict.partition_point(d, |s| cmp_utf16(s, prefix) == Ordering::Less);
+        let end = dict.partition_point(d, |s| {
+            cmp_utf16(s, prefix) == Ordering::Less || s.starts_with(prefix)
+        });
+        (start as i32, end as i32)
     }
 
     /// Records whose name begins with `prefix`, up to `limit`.
@@ -263,12 +234,12 @@ impl Reader {
         if id_lo >= id_hi {
             return Vec::new();
         }
+        let d = self.map.as_slice();
         let total = self.nm_name.n;
-        let mut lo = 0i32;
-        let mut hi = total;
+        let (mut lo, mut hi) = (0i32, total);
         while lo < hi {
             let mid = (lo + hi) >> 1;
-            if self.nm_name.get(&self.src, mid) < id_lo {
+            if self.nm_name.get(d, mid) < id_lo {
                 lo = mid + 1;
             } else {
                 hi = mid;
@@ -277,10 +248,10 @@ impl Reader {
         let mut out = Vec::new();
         let mut k = lo;
         while k < total && (out.len() as i32) < limit {
-            if self.nm_name.get(&self.src, k) >= id_hi {
+            if self.nm_name.get(d, k) >= id_hi {
                 break;
             }
-            out.push(self.nm_rec.get(&self.src, k));
+            out.push(self.nm_rec.get(d, k));
             k += 1;
         }
         out
@@ -289,16 +260,19 @@ impl Reader {
     /// `[lat, lon, name, house, street, city, state, country, postcode, kind]` for a
     /// grid-ordered record.
     fn resolve(&mut self, rec: i32) -> [String; FIELDS] {
-        let lat = self.cols[C_LAT].get(&self.src, rec) as f64 / 1e7;
-        let lon = self.cols[C_LON].get(&self.src, rec) as f64 / 1e7;
-        let kind = self.cols[C_KIND].get(&self.src, rec);
-        let mut text = |col: usize| -> String {
-            let id = self.cols[col].get(&self.src, rec);
-            self.dicts[dict_of(col)].get(id as usize).cloned().unwrap_or_default()
+        let lat = self.col(C_LAT, rec) as f64 / 1e5;
+        let lon = self.col(C_LON, rec) as f64 / 1e5;
+        let kind = self.col(C_KIND, rec);
+        let mut text = |c: usize| -> String {
+            let id = self.cols[c].get(self.map.as_slice(), rec);
+            if id < 0 {
+                return String::new();
+            }
+            self.dicts[dict_of(c)].get(self.map.as_slice(), id as usize)
         };
         [
-            format!("{lat:.7}"),
-            format!("{lon:.7}"),
+            format!("{lat:.5}"),
+            format!("{lon:.5}"),
             text(C_NAME),
             text(C_HOUSE),
             text(C_STREET),
@@ -311,9 +285,9 @@ impl Reader {
     }
 }
 
-/// Degrees to e7, the precision OSM itself stores and this database keeps.
-fn to_e7(deg: f64) -> i32 {
-    (deg * 10_000_000.0 + 0.5).floor() as i32
+/// Degrees to e5 (about 1.1 m), the precision this database stores.
+fn to_e5(deg: f64) -> i32 {
+    (deg * 100_000.0 + 0.5).floor() as i32
 }
 
 // --------------------------------------------------------------------------- JNI
@@ -340,8 +314,8 @@ fn build_string_array(env: &mut Env, reader: &mut Reader, recs: &[i32]) -> jobje
     arr.into_raw()
 }
 
-/// `open(fd, offset, length) -> handle` (0 on failure). `length` is currently unused (the
-/// section framing bounds every read) but kept for API symmetry / future validation.
+/// `open(fd, offset, length) -> handle` (0 on failure). `length` is unused: the reader maps
+/// the file from `offset` to its end and the section framing bounds every read.
 #[no_mangle]
 pub extern "system" fn Java_com_vayunmathur_networklocation_GeocoderNative_open<'l>(
     _env: EnvUnowned<'l>,

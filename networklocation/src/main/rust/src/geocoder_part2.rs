@@ -32,7 +32,7 @@ mod tests {
         if let Ok(p) = std::env::var("GEOCODER_DB") {
             return Some(p);
         }
-        let bundled = concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/geocoder-v3.geodb");
+        let bundled = concat!(env!("CARGO_MANIFEST_DIR"), "/../assets/geocoder.db");
         if std::path::Path::new(bundled).exists() {
             Some(bundled.to_string())
         } else {
@@ -64,25 +64,62 @@ mod tests {
         assert_eq!(r.cols.len(), COLUMNS, "wrong column count");
         assert_eq!(r.nm_name.n, r.nm_rec.n, "name index halves must match in length");
         assert!(r.nm_name.n <= r.n, "name index cannot exceed the record count");
-        assert_eq!(r.fwd.n, r.n, "forward index must cover every record");
-        assert_eq!(
-            r.cell_ids.len(),
-            r.cell_starts.len(),
-            "grid cell_ids/cell_starts length mismatch"
-        );
+        assert!(r.fwd.n > 0 && r.fwd.n <= r.n, "forward index holds addresses, so 0 < fwd <= n");
         for (i, d) in r.dicts.iter().enumerate() {
-            assert!(!d.is_empty(), "dictionary {i} is empty");
+            assert!(d.count > 0, "dictionary {i} is empty");
         }
-        // grid_index() binary-searches cell_ids, so they must be strictly ascending.
-        for w in r.cell_ids.windows(2) {
-            assert!(w[0] < w[1], "cell_ids not strictly ascending");
+        // grid_index() binary-searches the grid's cell ids, so they must be strictly ascending,
+        // and the record starts must be non-decreasing and within [0, n].
+        let mut prev_cell = i64::MIN;
+        let mut prev_start = 0i32;
+        for gi in 0..r.grid_count {
+            let (cell, s) = (r.grid_cell(gi), r.grid_start(gi));
+            assert!(cell > prev_cell, "grid cells not strictly ascending at {gi}");
+            assert!(s >= prev_start && s <= r.n, "grid start {s} out of range (prev {prev_start}, n {})", r.n);
+            prev_cell = cell;
+            prev_start = s;
         }
-        // cell_starts index into records: non-decreasing and within [0, n].
-        let mut prev = 0i32;
-        for &s in &r.cell_starts {
-            assert!(s >= prev && s <= r.n, "cell_start {s} out of range (prev {prev}, n {})", r.n);
-            prev = s;
+    }
+
+    /// Every dictionary's first-string table must agree with its blocks, or a binary search
+    /// lands in the wrong block and silently misses. Checked for every block of every
+    /// searchable dictionary.
+    #[test]
+    fn first_string_tables_match_their_blocks() {
+        let mut r = match open_db() {
+            Some(r) => r,
+            None => return,
+        };
+        for field in [dict_of(C_NAME), dict_of(C_STREET), dict_of(C_CITY), dict_of(C_STATE), dict_of(C_COUNTRY)] {
+            let d = r.map.as_slice();
+            let dict = &mut r.dicts[field];
+            for b in 0..dict.blocks {
+                let first = dict.first(d, b).to_owned();
+                assert_eq!(dict.get(d, b * dict.per), first, "dictionary {field} block {b}");
+                if b > 0 {
+                    assert_eq!(cmp_utf16(dict.first(d, b - 1), &first), Ordering::Less);
+                }
+            }
         }
+    }
+
+    /// `index_of` must find every string at its own id, across block boundaries.
+    #[test]
+    fn dictionary_lookup_finds_strings_at_their_own_ids() {
+        let mut r = match open_db() {
+            Some(r) => r,
+            None => return,
+        };
+        let d = r.map.as_slice();
+        let dict = &mut r.dicts[dict_of(C_STREET)];
+        let step = (dict.count / 500).max(1);
+        let mut i = 0;
+        while i < dict.count {
+            let s = dict.get(d, i);
+            assert_eq!(dict.index_of(d, &s), Some(i), "street {s:?}");
+            i += step;
+        }
+        assert_eq!(dict.index_of(d, "\u{10FFFF} no such street"), None);
     }
 
     /// Reverse geocoding a coordinate that is definitely inside the database's coverage
@@ -199,7 +236,7 @@ mod tests {
             }
             i += step;
         }
-        assert!(kinds.len() > 1, "a v3 database should hold more than addresses: {kinds:?}");
+        assert!(kinds.len() > 1, "the database should hold more than addresses: {kinds:?}");
     }
 
     /// A name taken from the database is findable by its own prefix, and the result really
@@ -215,7 +252,7 @@ mod tests {
             return;
         }
         // Pick a name that actually exists, from the middle of the name index.
-        let seed = r.nm_rec.get(&r.src, r.nm_name.n / 2);
+        let seed = r.nm_rec.get(r.map.as_slice(), r.nm_name.n / 2);
         let name = r.resolve(seed)[F_NAME].clone();
         assert!(!name.is_empty(), "the name index must point at a named record");
 
@@ -285,7 +322,7 @@ mod tests {
     }
 
     /// Micro-benchmark (opt-in). Run with:
-    ///   GEOCODER_DB=/path/geocoder.geodb cargo test -p network_location_position_estimation_rust \
+    ///   GEOCODER_DB=/path/geocoder.db cargo test -p network_location_position_estimation_rust \
     ///     geocoder::tests::bench_ops -- --ignored --nocapture
     #[test]
     #[ignore]
