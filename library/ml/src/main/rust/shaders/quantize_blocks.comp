@@ -5,28 +5,28 @@
 //!
 //! # Layout written at `p.out_at` (element offset, a multiple of 8)
 //!
-//! Data, `[block][position]`, 8 words each: word `2q` packs channels `8q + 0, 2, 4, 6` and word
+//! Data, `[block][half][position]`, one 16-byte cell each, so a run of positions is contiguous:
+//! word `2q` of the block (cell `q / 2`, word `2q % 4`) packs channels `8q + 0, 2, 4, 6` and word
 //! `2q + 1` channels `8q + 1, 3, 5, 7`, one signed byte each, low byte first. That is the order a
-//! weight word's nibbles fall into after `& 0x0F0F0F0F` and `>> 4 & 0x0F0F0F0F`. Then, from
-//! element `p.out_at + positions * in_c / 2`, a `[block][position]` table of `uvec2`: the scale as
-//! f32 bits and `8 * sum(q)`, the correction for weights read as unsigned nibbles `w + 8`.
+//! weight word's nibbles fall into after `<< 4 & 0xF0F0F0F0` and `& 0xF0F0F0F0`. Then, from
+//! element `p.out_at + positions * in_c / 2`, a `[block][position]` table of f32 scales,
+//! `amax / 127 / 16`: the GEMM reads each nibble as a byte 16 times its value.
 //!
 //! # Push fields
 //!
 //! `p.in0` the input, `p.out_at` the output, `p.in_c` channels, `p.out_h * p.out_w` positions,
 //! `p.count` `positions * in_c / 32` invocations.
 #include "common.glsl"
-
 layout(std430, binding = 0) buffer ArenaWord {
     uint arena_word[];
 };
-
-uint pack4(vec4 v, float inv, inout int sum) {
+layout(std430, binding = 0) buffer ArenaOct {
+    uvec4 arena_oct[];
+};
+uint pack4(vec4 v, float inv) {
     ivec4 q = clamp(ivec4(roundEven(v * inv)), ivec4(-127), ivec4(127));
-    sum += q.x + q.y + q.z + q.w;
     return uint(q.x & 255) | (uint(q.y & 255) << 8u) | (uint(q.z & 255) << 16u) | (uint(q.w) << 24u);
 }
-
 void main() {
     uint index = global_index();
     if (index >= p.count) {
@@ -43,15 +43,14 @@ void main() {
         amax = max(amax, abs(v[t]));
     }
     float inv = amax > 0.0 ? 127.0 / amax : 0.0;
-    int sum = 0;
-    uint base = (p.out_at >> 1u) + index * 8u;
-    for (uint q = 0u; q < 4u; q++) {
-        uint k = q * 8u;
-        arena_word[base + 2u * q] = pack4(vec4(v[k], v[k + 2u], v[k + 4u], v[k + 6u]), inv, sum);
-        arena_word[base + 2u * q + 1u] =
-            pack4(vec4(v[k + 1u], v[k + 3u], v[k + 5u], v[k + 7u]), inv, sum);
+    for (uint h = 0u; h < 2u; h++) {
+        uint k = h * 16u;
+        arena_oct[(p.out_at >> 3u) + (block * 2u + h) * positions + position] = uvec4(
+            pack4(vec4(v[k], v[k + 2u], v[k + 4u], v[k + 6u]), inv),
+            pack4(vec4(v[k + 1u], v[k + 3u], v[k + 5u], v[k + 7u]), inv),
+            pack4(vec4(v[k + 8u], v[k + 10u], v[k + 12u], v[k + 14u]), inv),
+            pack4(vec4(v[k + 9u], v[k + 11u], v[k + 13u], v[k + 15u]), inv));
     }
-    uint meta = ((p.out_at + positions * p.in_c / 2u) >> 1u) + index * 2u;
-    arena_word[meta] = floatBitsToUint(amax / 127.0);
-    arena_word[meta + 1u] = uint(8 * sum);
+    arena_word[((p.out_at + positions * p.in_c / 2u) >> 1u) + index] =
+        floatBitsToUint(amax / 127.0 / 16.0);
 }

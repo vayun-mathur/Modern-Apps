@@ -2,35 +2,37 @@
 //! The int4 GEMM on the hardware int8 dot product (`VK_KHR_shader_integer_dot_product`).
 //!
 //! Reads the activations `quantize_blocks.comp` staged at element `p.kw`: int8 per position per
-//! 32-channel block with an f32 scale. A weight word's 8 nibbles become two packed byte quads
-//! (`w ^ 0x88888888` turns each two's-complement nibble `s` into `s + 8`, 0..15, a valid signed
-//! byte), each multiplied against its activation quad by one signed `OpSDotKHR` (the Mali-G715
-//! accelerates signed but not mixed-signedness); the staged `8 * sum(q)` removes the `+ 8`.
-//! A block accumulates exactly in int32, then `acc += wscale * ascale * isum`.
+//! 32-channel block in `[block][half][position]` 16-byte cells, and an f32 scale table. A weight
+//! word's 8 two's-complement nibbles become two packed byte quads, `w << 4 & 0xF0F0F0F0` and
+//! `w & 0xF0F0F0F0`: each byte is its nibble times 16, so no offset correction is needed (the
+//! staged scale carries the 1/16). Each quad meets its activation quad in one signed
+//! `OpSDotAccSatKHR` (the Mali-G715 accelerates signed but not mixed-signedness); a block's int32
+//! sum never nears saturation (|sum| <= 32 * 127 * 128). Then `acc += wscale * ascale * isum`.
 //!
-//! 4 channels x 4 positions per lane over 32 x 32 tiles, one 16-byte weight load per row per
-//! block and one 16-byte activation load per position per half block. On a Pixel 8 that took
-//! ConvPointInt4 of a 200-token Gemma prefill 2212 -> 2020 ms; the same tiling with 4-byte weight
-//! and 8-byte activation loads took 4144 ms, and 4 x 8 per lane (32 x 64 tiles) 2282 ms.
+//! 4 channels x 4 positions per lane over 32 x 32 tiles; a lane's positions are 8 apart, so the
+//! 8 lanes sharing a row group read 8 consecutive positions' cells, 128 contiguous bytes.
+//! One 16-byte weight load per row per block, one 16-byte activation load per position per half.
+//! On a Pixel 8 (200-token Gemma prefill) ConvPointInt4Dot took 2050 ms with 4 consecutive
+//! positions per lane, `[block][position]` cells and a separate add per `OpSDotKHR`; 1500 ms
+//! with this layout; 885 ms with the accumulating dot.
 //!
 //! The tiling is also the `in1` 0 path of `conv_point_int4.comp`, so the emit's dispatch serves
 //! that path when the device lacks the extension: `Shaders::for_kind` then hands out the fp32
 //! pipeline with this push unchanged.
-//! Requires `in_c % 32 == 0`, `positions % 4 == 0`, `p.weight % 4 == 0`, `p.kw % 8 == 0`.
+//! Requires `in_c % 32 == 0`, `p.weight % 4 == 0`, `p.kw % 8 == 0`.
 #extension GL_EXT_spirv_intrinsics : require
 #include "common.glsl"
-
-spirv_instruction(extensions = ["SPV_KHR_integer_dot_product"], capabilities = [6019, 6018], id = 4450)
-int sdot(uint a, uint b, spirv_literal int format);
-
+spirv_instruction(extensions = ["SPV_KHR_integer_dot_product"], capabilities = [6019, 6018], id = 4453)
+int sdot_acc(uint a, uint b, int acc, spirv_literal int format);
 layout(std430, binding = 0) readonly buffer ArenaOct {
     uvec4 arena_oct[];
 };
-
+layout(std430, binding = 0) readonly buffer ArenaWord {
+    uint arena_word[];
+};
 #define TILE 32u
 #define BLOCK 4u
-#define NIBBLES 0x0F0F0F0Fu
-
+#define HIGH 0xF0F0F0F0u
 void main() {
     uint tile = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
     if (tile >= p.count) {
@@ -40,57 +42,60 @@ void main() {
     uint tiles_across = (positions + TILE - 1u) / TILE;
     uint lid = gl_LocalInvocationID.x;
     uint channel_base = (tile / tiles_across) * TILE + (lid >> 3u) * BLOCK;
-    uint position_base = (tile % tiles_across) * TILE + (lid & 7u) * BLOCK;
+    uint position_base = (tile % tiles_across) * TILE + (lid & 7u);
     if (position_base >= positions) {
         return;
     }
     uint blocks = p.in_c >> 5u;
     uint rows[BLOCK];
+    uint cols[BLOCK];
     for (uint i = 0u; i < BLOCK; i++) {
         rows[i] = min(channel_base + i, p.out_c - 1u);
+        cols[i] = min(position_base + 8u * i, positions - 1u);
     }
     vec4 acc[BLOCK];
     for (uint i = 0u; i < BLOCK; i++) {
         acc[i] = vec4(0.0);
     }
     uint data = p.kw >> 3u;
-    uint meta = (p.kw + positions * p.in_c / 2u) >> 3u;
+    uint meta = (p.kw + positions * p.in_c / 2u) >> 1u;
     for (uint block = 0u; block < blocks; block++) {
         uvec4 w[BLOCK];
         for (uint i = 0u; i < BLOCK; i++) {
-            w[i] = weights128[(p.weight >> 2u) + rows[i] * blocks + block] ^ uvec4(0x88888888u);
+            w[i] = weights128[(p.weight >> 2u) + rows[i] * blocks + block];
         }
         ivec4 isum[BLOCK];
         for (uint i = 0u; i < BLOCK; i++) {
             isum[i] = ivec4(0);
         }
-        uint cell = block * positions + position_base;
         for (uint h = 0u; h < 2u; h++) {
+            uint at = data + (block * 2u + h) * positions;
             uint lo0[BLOCK];
             uint hi0[BLOCK];
             uint lo1[BLOCK];
             uint hi1[BLOCK];
             for (uint i = 0u; i < BLOCK; i++) {
-                lo0[i] = w[i][2u * h] & NIBBLES;
-                hi0[i] = (w[i][2u * h] >> 4u) & NIBBLES;
-                lo1[i] = w[i][2u * h + 1u] & NIBBLES;
-                hi1[i] = (w[i][2u * h + 1u] >> 4u) & NIBBLES;
+                lo0[i] = (w[i][2u * h] << 4u) & HIGH;
+                hi0[i] = w[i][2u * h] & HIGH;
+                lo1[i] = (w[i][2u * h + 1u] << 4u) & HIGH;
+                hi1[i] = w[i][2u * h + 1u] & HIGH;
             }
             for (uint j = 0u; j < BLOCK; j++) {
-                uvec4 x = arena_oct[data + (cell + j) * 2u + h];
+                uvec4 x = arena_oct[at + cols[j]];
                 for (uint i = 0u; i < BLOCK; i++) {
-                    isum[i][j] += sdot(x.x, lo0[i], 0) + sdot(x.y, hi0[i], 0)
-                        + sdot(x.z, lo1[i], 0) + sdot(x.w, hi1[i], 0);
+                    int s = sdot_acc(x.x, lo0[i], isum[i][j], 0);
+                    s = sdot_acc(x.y, hi0[i], s, 0);
+                    s = sdot_acc(x.z, lo1[i], s, 0);
+                    isum[i][j] = sdot_acc(x.w, hi1[i], s, 0);
                 }
             }
         }
-        uvec4 m0 = arena_oct[meta + (cell >> 1u)];
-        uvec4 m1 = arena_oct[meta + (cell >> 1u) + 1u];
-        vec4 ascale = vec4(uintBitsToFloat(m0.x), uintBitsToFloat(m0.z),
-            uintBitsToFloat(m1.x), uintBitsToFloat(m1.z));
-        ivec4 correction = ivec4(m0.y, m0.w, m1.y, m1.w);
+        uint scales = meta + block * positions;
+        vec4 ascale = vec4(uintBitsToFloat(arena_word[scales + cols[0]]),
+            uintBitsToFloat(arena_word[scales + cols[1]]), uintBitsToFloat(arena_word[scales + cols[2]]),
+            uintBitsToFloat(arena_word[scales + cols[3]]));
         for (uint i = 0u; i < BLOCK; i++) {
-            acc[i] += vec4(isum[i] - correction) * (ascale * int4_scale(rows[i], block, blocks));
+            acc[i] += vec4(isum[i]) * (ascale * int4_scale(rows[i], block, blocks));
         }
     }
     for (uint i = 0u; i < BLOCK; i++) {
@@ -100,9 +105,12 @@ void main() {
         }
         float offset = float(weights[p.bias + channel]);
         for (uint j = 0u; j < BLOCK; j++) {
-            uint index = channel * positions + position_base + j;
-            arena[p.out_at + index] =
-                float16_t(quant_store(fused_store(acc[i][j] + offset, p.act, channel, index)));
+            uint position = position_base + 8u * j;
+            if (position < positions) {
+                uint index = channel * positions + position;
+                arena[p.out_at + index] =
+                    float16_t(quant_store(fused_store(acc[i][j] + offset, p.act, channel, index)));
+            }
         }
     }
 }
