@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vayunmathur.appstore.data.AppStoreDatabaseRepository
+import com.vayunmathur.appstore.data.ExternalLinks
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.UpdateCheckWorker
 import com.vayunmathur.appstore.ui.AppDetailPage
@@ -96,18 +97,8 @@ class MainActivity : MaActivity() {
     }
 
     private fun handleIntentUrl(intent: Intent?) {
-        val data = intent?.dataString ?: return
-        val pkg = when {
-            data.startsWith("market://") -> ID_PARAM.find(data)?.groupValues?.get(1)
-            data.contains("play.google.com") -> ID_PARAM.find(data)?.groupValues?.get(1)
-            data.contains("f-droid.org") -> data.substringAfterLast('/').substringBefore('?')
-            else -> null
-        }
+        val pkg = ExternalLinks.parseExternalPackage(intent?.dataString)
         if (!pkg.isNullOrBlank()) externalPkg = pkg
-    }
-
-    private companion object {
-        val ID_PARAM = Regex("[?&]id=([^&]+)")
     }
 }
 

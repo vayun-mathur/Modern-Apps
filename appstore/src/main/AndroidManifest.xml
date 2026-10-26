@@ -67,10 +67,16 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" />
-                <data android:host="f-droid.org" />
-                <data android:pathPrefix="/packages/" />
-                <data android:pathPattern="/.*/packages/.*" />
+                <!-- Plain /packages/<pkg> listing URLs. -->
+                <data
+                    android:scheme="https"
+                    android:host="f-droid.org"
+                    android:pathPrefix="/packages/" />
+                <!-- Localised /<locale>/packages/<pkg>/ listing URLs. -->
+                <data
+                    android:scheme="https"
+                    android:host="f-droid.org"
+                    android:pathPattern="/.*/packages/.*" />
             </intent-filter>
         </activity>
 
