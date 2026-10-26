@@ -610,7 +610,15 @@ fn prefill_app(
         let mut fed = chunk.to_vec();
         fed.resize(width as usize, 0);
         let mode = if start == 0 { gemma4::Mode::PrefillFresh { tokens: width } } else { gemma4::Mode::Prefill { tokens: width } }.at(TIER);
-        let pending = (!net.holds(mode)).then(|| net.planner());
+        let mut pending = (!net.holds(mode)).then(|| net.planner());
+        let tick = Instant::now();
+        if fused() {
+            // As `Gemma4Handle::prefill_chunk`: built on this thread, which keeps its core awake.
+            if let Some((plan, offsets)) = pending.take() {
+                net.adopt(mode, plan(&offsets, mode)?);
+            }
+        }
+        times.plan_wait += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
         let (hidden, embedded) = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::layer_rows(embed, &fed)?)))?;

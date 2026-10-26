@@ -396,7 +396,14 @@ impl Gemma4Handle {
             gemma4::Mode::Prefill { tokens: width }
         }
         .at(self.context);
-        let pending = (!self.net.holds(mode)).then(|| self.net.planner());
+        let mut pending = (!self.net.holds(mode)).then(|| self.net.planner());
+        if self.fused() {
+            // Nothing left to overlap with, and a thread blocked in `join` lets this core clock
+            // down: on a Pixel 8 that made the record ~5x slower (23 -> 120 ms).
+            if let Some((plan, offsets)) = pending.take() {
+                self.net.adopt(mode, plan(&offsets, mode)?);
+            }
+        }
         // Owns its inputs, so it keeps building through the rows and the combine below.
         let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
         let (hidden, embedded) = rows(&self.embed.reader())?;
