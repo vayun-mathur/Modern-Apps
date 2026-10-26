@@ -156,30 +156,34 @@ pub fn column(block: &[f32], column: usize, width: usize) -> Vec<f32> {
     block.iter().skip(column).step_by(width.max(1)).copied().collect()
 }
 
-/// The working-table rows of `tokens`, channel-major `[D_MODEL, 1, tokens.len()]`.
+/// The working-table rows of `tokens`, channel-major `[D_MODEL, 1, tokens.len()]`. Each distinct
+/// token is read once and placed in every column it fills.
 pub fn token_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result<Vec<f32>, String> {
     use super::gemma4::{embed, D_MODEL, VOCAB};
     let width = tokens.len();
     let mut block = vec![0f32; D_MODEL as usize * width];
-    for (at, &token) in tokens.iter().enumerate() {
+    for (token, columns) in distinct(tokens.iter().copied()) {
         if token >= VOCAB {
             return Err(format!("token {token} is past the {VOCAB}-entry vocabulary"));
         }
         let row = reader.int4_row(embed::TOKENS, embed::TOKENS + 1, &[VOCAB, D_MODEL], token)?;
-        place(&mut block, &row, at, width);
+        for at in columns {
+            place(&mut block, &row, at, width);
+        }
     }
     Ok(block)
 }
 
 /// The 35 per-layer table rows of each token, concatenated per token and laid out channel-major
 /// `[PER_LAYER * LAYERS, 1, tokens.len()]`. Placeholders read row 0, as the export masks them.
+/// Each distinct row is read once per table.
 pub fn layer_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result<Vec<f32>, String> {
     use super::gemma4::{embed, VOCAB};
     let width = tokens.len();
     let wide = PER_LAYER as usize;
     let mut block = vec![0f32; wide * LAYERS * width];
-    for (at, &token) in tokens.iter().enumerate() {
-        let row = if embed::PLACEHOLDERS.contains(&token) { 0 } else { token };
+    let rows = distinct(tokens.iter().map(|&t| if embed::PLACEHOLDERS.contains(&t) { 0 } else { t }));
+    for (row, columns) in rows {
         for i in 0..LAYERS {
             let table = embed::table(i);
             let values = reader.int4_row(table, table + 1, &[VOCAB, PER_LAYER], row)?;
@@ -187,10 +191,28 @@ pub fn layer_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result
             let Some(slab) = block.get_mut(from..from + wide * width) else {
                 return Err(format!("layer {i} past a {width}-column block"));
             };
-            place(slab, &values, at, width);
+            for &at in &columns {
+                place(slab, &values, at, width);
+            }
         }
     }
     Ok(block)
+}
+
+/// Each distinct id in first-seen order, with the columns it occupies.
+fn distinct(ids: impl Iterator<Item = u32>) -> Vec<(u32, Vec<usize>)> {
+    let mut groups: Vec<(u32, Vec<usize>)> = Vec::new();
+    let mut seen = std::collections::HashMap::new();
+    for (at, id) in ids.enumerate() {
+        let slot = *seen.entry(id).or_insert_with(|| {
+            groups.push((id, Vec::new()));
+            groups.len() - 1
+        });
+        if let Some((_, columns)) = groups.get_mut(slot) {
+            columns.push(at);
+        }
+    }
+    groups
 }
 
 #[cfg(test)]
@@ -243,6 +265,11 @@ mod tests {
         assert_eq!(padded(64, 1024), 64);
         assert_eq!(padded(1, 1024), 8);
         assert_eq!(padded(163, 165), 163);
+    }
+
+    #[test]
+    fn distinct_groups_columns_by_first_sight() {
+        assert_eq!(distinct([5, 2, 5, 0, 2].into_iter()), vec![(5, vec![0, 2]), (2, vec![1, 4]), (0, vec![3])]);
     }
 
     #[test]
