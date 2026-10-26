@@ -7,14 +7,15 @@
 //! `w & 0xF0F0F0F0`: each byte is its nibble times 16, so no offset correction is needed (the
 //! staged scale carries the 1/16). Each quad meets its activation quad in one signed
 //! `OpSDotAccSatKHR` (the Mali-G715 accelerates signed but not mixed-signedness); a block's int32
-//! sum never nears saturation (|sum| <= 32 * 127 * 128). Then `acc += wscale * ascale * isum`.
+//! sum never nears saturation (|sum| <= 32 * 127 * 128). Then `acc += isum * (ascale * wscale)`.
 //!
-//! 4 channels x 4 positions per lane over 32 x 32 tiles; a lane's positions are 8 apart, so the
-//! 8 lanes sharing a row group read 8 consecutive positions' cells, 128 contiguous bytes.
-//! One 16-byte weight load per row per block, one 16-byte activation load per position per half.
-//! On a Pixel 8 (200-token Gemma prefill) ConvPointInt4Dot took 2050 ms with 4 consecutive
-//! positions per lane, `[block][position]` cells and a separate add per `OpSDotKHR`; 1500 ms
-//! with this layout; 885 ms with the accumulating dot.
+//! 2 channels x 8 positions per lane over 32 x 32 tiles; a lane's positions are 4 apart, so the
+//! 4 lanes sharing a row pair read 4 consecutive positions' cells. Each row's block is unpacked
+//! once and reused by 8 positions: the kernel is ALU-bound, and the unpack is the overhead that
+//! shrinks with more positions. On a Pixel 8 (200-token Gemma prefill) ConvPointInt4Dot took
+//! 2050 ms with 4 x 4 consecutive positions, `[block][position]` cells and an add per
+//! `OpSDotKHR`; 1500 ms with this layout at 4 x 4; 885 ms with the accumulating dot; 760 ms at
+//! 2 x 8. 1 x 16 took 1080 ms (activation loads), and the 8 scales as two vec4 loads 855 ms.
 //!
 //! The tiling is also the `in1` 0 path of `conv_point_int4.comp`, so the emit's dispatch serves
 //! that path when the device lacks the extension: `Shaders::for_kind` then hands out the fp32
@@ -31,7 +32,9 @@ layout(std430, binding = 0) readonly buffer ArenaWord {
     uint arena_word[];
 };
 #define TILE 32u
-#define BLOCK 4u
+#define ROWS 2u
+#define COLS 8u
+#define ACROSS (TILE / COLS)
 #define HIGH 0xF0F0F0F0u
 void main() {
     uint tile = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
@@ -41,71 +44,66 @@ void main() {
     uint positions = p.out_h * p.out_w;
     uint tiles_across = (positions + TILE - 1u) / TILE;
     uint lid = gl_LocalInvocationID.x;
-    uint channel_base = (tile / tiles_across) * TILE + (lid >> 3u) * BLOCK;
-    uint position_base = (tile % tiles_across) * TILE + (lid & 7u);
+    uint channel_base = (tile / tiles_across) * TILE + (lid / ACROSS) * ROWS;
+    uint position_base = (tile % tiles_across) * TILE + (lid % ACROSS);
     if (position_base >= positions) {
         return;
     }
     uint blocks = p.in_c >> 5u;
-    uint rows[BLOCK];
-    uint cols[BLOCK];
-    for (uint i = 0u; i < BLOCK; i++) {
+    uint rows[ROWS];
+    for (uint i = 0u; i < ROWS; i++) {
         rows[i] = min(channel_base + i, p.out_c - 1u);
-        cols[i] = min(position_base + 8u * i, positions - 1u);
     }
-    vec4 acc[BLOCK];
-    for (uint i = 0u; i < BLOCK; i++) {
-        acc[i] = vec4(0.0);
+    uint cols[COLS];
+    for (uint j = 0u; j < COLS; j++) {
+        cols[j] = min(position_base + ACROSS * j, positions - 1u);
+    }
+    float acc[ROWS][COLS];
+    for (uint i = 0u; i < ROWS; i++) {
+        for (uint j = 0u; j < COLS; j++) {
+            acc[i][j] = 0.0;
+        }
     }
     uint data = p.kw >> 3u;
     uint meta = (p.kw + positions * p.in_c / 2u) >> 1u;
     for (uint block = 0u; block < blocks; block++) {
-        uvec4 w[BLOCK];
-        for (uint i = 0u; i < BLOCK; i++) {
-            w[i] = weights128[(p.weight >> 2u) + rows[i] * blocks + block];
-        }
-        ivec4 isum[BLOCK];
-        for (uint i = 0u; i < BLOCK; i++) {
-            isum[i] = ivec4(0);
-        }
-        for (uint h = 0u; h < 2u; h++) {
-            uint at = data + (block * 2u + h) * positions;
-            uint lo0[BLOCK];
-            uint hi0[BLOCK];
-            uint lo1[BLOCK];
-            uint hi1[BLOCK];
-            for (uint i = 0u; i < BLOCK; i++) {
-                lo0[i] = (w[i][2u * h] << 4u) & HIGH;
-                hi0[i] = w[i][2u * h] & HIGH;
-                lo1[i] = (w[i][2u * h + 1u] << 4u) & HIGH;
-                hi1[i] = w[i][2u * h + 1u] & HIGH;
+        uint wq[ROWS][8];
+        float ws[ROWS];
+        for (uint i = 0u; i < ROWS; i++) {
+            uvec4 w = weights128[(p.weight >> 2u) + rows[i] * blocks + block];
+            for (uint k = 0u; k < 4u; k++) {
+                wq[i][2u * k] = (w[k] << 4u) & HIGH;
+                wq[i][2u * k + 1u] = w[k] & HIGH;
             }
-            for (uint j = 0u; j < BLOCK; j++) {
-                uvec4 x = arena_oct[at + cols[j]];
-                for (uint i = 0u; i < BLOCK; i++) {
-                    int s = sdot_acc(x.x, lo0[i], isum[i][j], 0);
-                    s = sdot_acc(x.y, hi0[i], s, 0);
-                    s = sdot_acc(x.z, lo1[i], s, 0);
-                    isum[i][j] = sdot_acc(x.w, hi1[i], s, 0);
-                }
-            }
+            ws[i] = int4_scale(rows[i], block, blocks);
         }
+        uint at = data + block * 2u * positions;
         uint scales = meta + block * positions;
-        vec4 ascale = vec4(uintBitsToFloat(arena_word[scales + cols[0]]),
-            uintBitsToFloat(arena_word[scales + cols[1]]), uintBitsToFloat(arena_word[scales + cols[2]]),
-            uintBitsToFloat(arena_word[scales + cols[3]]));
-        for (uint i = 0u; i < BLOCK; i++) {
-            acc[i] += vec4(isum[i]) * (ascale * int4_scale(rows[i], block, blocks));
+        for (uint j = 0u; j < COLS; j++) {
+            uvec4 x0 = arena_oct[at + cols[j]];
+            uvec4 x1 = arena_oct[at + positions + cols[j]];
+            float a = uintBitsToFloat(arena_word[scales + cols[j]]);
+            for (uint i = 0u; i < ROWS; i++) {
+                int s = sdot_acc(x0.x, wq[i][0], 0, 0);
+                s = sdot_acc(x0.y, wq[i][1], s, 0);
+                s = sdot_acc(x0.z, wq[i][2], s, 0);
+                s = sdot_acc(x0.w, wq[i][3], s, 0);
+                s = sdot_acc(x1.x, wq[i][4], s, 0);
+                s = sdot_acc(x1.y, wq[i][5], s, 0);
+                s = sdot_acc(x1.z, wq[i][6], s, 0);
+                s = sdot_acc(x1.w, wq[i][7], s, 0);
+                acc[i][j] += float(s) * (a * ws[i]);
+            }
         }
     }
-    for (uint i = 0u; i < BLOCK; i++) {
+    for (uint i = 0u; i < ROWS; i++) {
         uint channel = channel_base + i;
         if (channel >= p.out_c) {
             continue;
         }
         float offset = float(weights[p.bias + channel]);
-        for (uint j = 0u; j < BLOCK; j++) {
-            uint position = position_base + 8u * j;
+        for (uint j = 0u; j < COLS; j++) {
+            uint position = position_base + ACROSS * j;
             if (position < positions) {
                 uint index = channel * positions + position;
                 arena[p.out_at + index] =
