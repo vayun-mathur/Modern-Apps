@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
 import com.vayunmathur.library.util.SecureResultReceiver
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.downloadservice.ModelUrls
 import com.vayunmathur.openassistant.platform.AssistantTools
 import com.vayunmathur.openassistant.platform.ChatRequest
 import com.vayunmathur.openassistant.platform.ChatResult
@@ -61,7 +62,6 @@ class InferenceService : Service() {
         private const val INTENT_QUEUE_TTL_MILLIS = 45000L
         private const val HISTORY_RECENCY_MILLIS = 1000L
         private const val DB_WRITE_INTERVAL_MILLIS = 100L
-        private const val MODEL_DIR = "gemma4"
 
         /** The system prompt used when the user has not set a custom one. */
         val DEFAULT_SYSTEM_PROMPT = """
@@ -434,7 +434,7 @@ class InferenceService : Service() {
 
     private suspend fun ensureEngineInitialized() = engineLock.withLock {
         if (engine != null) return@withLock
-        val dir = File(applicationContext.getExternalFilesDir(null), MODEL_DIR)
+        val dir = ModelUrls.GemmaMaml.modelDir(applicationContext)
         val created = MamlChatEngine(dir)
         if (!created.load()) {
             created.close()

@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.library.downloadservice.ModelUrls
 import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.Message
@@ -208,16 +209,20 @@ class AssistantViewModel(
         })
     }
 
+    /**
+     * Deletes the retired single-file Gemma models (and their `.part` leftovers) at the root of
+     * the external files dir, but only once the maml set in `gemma4/` is complete, so an
+     * upgrading user never ends up with neither. `gemma4/` itself is a directory and is skipped.
+     */
     private fun cleanupLegacyModelFile() {
         val context = getApplication<Application>()
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                if (!ModelUrls.GemmaMaml.isDownloaded(context)) return@launch
                 val externalDir = context.getExternalFilesDir(null) ?: return@launch
-                val legacyModelFiles = listOf("gemma4.litertlm", "gemma4-4b.litertlm")
-                for (name in legacyModelFiles) {
-                    if (File(externalDir, name).delete()) {
-                        Log.status(TAG, "Deleted legacy model file $name")
-                    }
+                val legacy = externalDir.listFiles { file -> file.isFile && file.name.startsWith("gemma4") }
+                for (file in legacy.orEmpty()) {
+                    if (file.delete()) Log.status(TAG, "Deleted legacy model file ${file.name}")
                 }
             } catch (expected: Exception) {
                 Log.error(TAG, "Error cleaning up legacy model file", expected)
