@@ -5,6 +5,8 @@ import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ml.SupertonicSynthesizer
 import com.vayunmathur.speech.domain.SupertonicVoices
 import java.io.File
+import java.text.BreakIterator
+import java.util.Locale
 
 /**
  * The one Supertonic handle the TTS service speaks through.
@@ -62,9 +64,11 @@ class SupertonicEngine(private val context: Context) {
      * false.
      *
      * Chunked rather than returned whole because the framework wants audio as it is produced and a
-     * paragraph of 44.1 kHz mono is megabytes. The whole utterance is synthesised before the first
-     * chunk is delivered — Supertonic's sampler is one pass over the entire sequence, so there is no
-     * streaming to be had inside it — so this splits the finished waveform rather than pipelining.
+     * paragraph of 44.1 kHz mono is megabytes. Supertonic's sampler is one pass over a whole
+     * sequence, so there is no streaming inside a sentence; instead the text is split into sentences
+     * (`BreakIterator`) and each one's audio is delivered as soon as it is synthesised, so a
+     * paragraph starts playing after its first sentence rather than after all of them. Sampler cost
+     * is linear in frames, so the total is about the same.
      *
      * The lock covers the synthesis and **not** the delivery. `onChunk` writes into the framework's
      * audio track and blocks while it plays, so holding the handle across it would make [close] —
@@ -80,26 +84,44 @@ class SupertonicEngine(private val context: Context) {
      * did it too.
      */
     fun synthesize(text: String, language: String, onChunk: (FloatArray) -> Boolean): Boolean {
-        val samples = synchronized(lock) {
-            val engine = ensure() ?: return false
-            // Broad catch is deliberate: the native synthesizer throws undocumented
-            // RuntimeExceptions (not just IllegalStateException) on bad input.
-            @Suppress("TooGenericExceptionCaught")
-            try {
-                engine.synthesize(text, language)
-            } catch (e: Exception) {
-                Log.error(TAG, "synthesis failed", e)
-                return false
+        var spoke = false
+        for (sentence in sentences(text, language)) {
+            val samples = synchronized(lock) {
+                val engine = ensure() ?: return false
+                // Broad catch is deliberate: the native synthesizer throws undocumented
+                // RuntimeExceptions (not just IllegalStateException) on bad input.
+                @Suppress("TooGenericExceptionCaught")
+                try {
+                    engine.synthesize(sentence, language)
+                } catch (e: Exception) {
+                    Log.error(TAG, "synthesis failed", e)
+                    return false
+                }
             }
+            var offset = 0
+            while (offset < samples.size) {
+                val n = minOf(CHUNK_SAMPLES, samples.size - offset)
+                if (!onChunk(samples.copyOfRange(offset, offset + n))) return false
+                offset += n
+            }
+            spoke = spoke || samples.isNotEmpty()
         }
-        if (samples.isEmpty()) return false
-        var offset = 0
-        while (offset < samples.size) {
-            val n = minOf(CHUNK_SAMPLES, samples.size - offset)
-            if (!onChunk(samples.copyOfRange(offset, offset + n))) return false
-            offset += n
+        return spoke
+    }
+
+    /** `text` as trimmed, non-blank sentences in `language`'s rules. */
+    private fun sentences(text: String, language: String): List<String> {
+        val breaks = BreakIterator.getSentenceInstance(Locale.forLanguageTag(language))
+        breaks.setText(text)
+        val out = mutableListOf<String>()
+        var start = breaks.first()
+        var end = breaks.next()
+        while (end != BreakIterator.DONE) {
+            text.substring(start, end).trim().takeIf { it.isNotEmpty() }?.let(out::add)
+            start = end
+            end = breaks.next()
         }
-        return true
+        return out
     }
 
     /**
