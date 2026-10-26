@@ -5,8 +5,7 @@
 # Annotation metadata is read reflectively by Room, kotlinx.serialization and
 # protobuf-lite, so these stay repo-wide. MethodParameters is deliberately NOT
 # here: it stores a name string for every parameter of every method in the app,
-# and only :openassistant reflects on parameter names. It lives in
-# openassistant/proguard-rules.pro alongside the rest of the LiteRT keeps.
+# and no app reflects on parameter names.
 -keepattributes RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations,AnnotationDefault,Signature
 
 # Protobuf Lite - the generated runtime schema accesses message fields (e.g.

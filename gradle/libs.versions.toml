@@ -107,7 +107,6 @@ javaxAnnotation = "1.3.2"
 jsr305 = "3.0.2"
 zxing = "3.5.4"
 libphonenumber = "9.0.41"
-litertlmAndroid = "0.18.0"
 brotli = "0.1.2"
 # Pooled HTTP for :library:network's range-fetch path (issue 815): connection
 # reuse + HTTP/2 multiplexing at MapLibre's 20/host concurrency, which per-request
@@ -129,7 +128,7 @@ chicory = "1.4.0"
 # Git
 jgit = "7.8.0.202609011348-r"
 
-# On-device AI (openassistant: LiteRT-LM chat + SigLIP2 ONNX embeddings)
+# On-device AI (openassistant: SigLIP2 ONNX embeddings)
 onnxruntimeAndroid = "1.31.0"
 
 # Crypto, security & credential storage
@@ -322,7 +321,6 @@ javax-annotation-api = { module = "javax.annotation:javax.annotation-api", versi
 google-jsr305 = { module = "com.google.code.findbugs:jsr305", version.ref = "jsr305" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
-litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlmAndroid" }
 brotli-dec = { module = "org.brotli:dec", version.ref = "brotli" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 apksig = { module = "com.android.tools.build:apksig", version.ref = "apksig" }
@@ -339,7 +337,7 @@ chicory-runtime = { module = "com.dylibso.chicory:runtime", version.ref = "chico
 # Git
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
 
-# On-device AI (openassistant: LiteRT-LM chat + SigLIP2 ONNX embeddings)
+# On-device AI (openassistant: SigLIP2 ONNX embeddings)
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntimeAndroid" }
 
 # Crypto, security & credential storage

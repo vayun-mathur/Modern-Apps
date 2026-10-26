@@ -54,11 +54,6 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.General">
-
-        <uses-native-library android:name="libvndksupport.so" android:required="false"/>
-        <uses-native-library android:name="libOpenCL.so" android:required="false"/>
-        <uses-native-library android:name="libcdsprpc.so" android:required="false"/>
-
         <activity
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:name=".MainActivity"

@@ -5,7 +5,7 @@
 _Install: ./install openassistant (dev by default)._
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :openassistant / dir: openassistant/
-- Package roots present: ui, data
+- Package roots present: ui, data, domain, platform
 - Entry files: MainActivity.kt (no Route.kt — `Route` + `Navigation` are inline)
 - Deps: :library:room, :library:image, :library:ml, :library:downloadservice
 - Metadata: metadata_data/openassistant.md (present)
@@ -18,12 +18,14 @@ _Install: ./install openassistant (dev by default)._
 - Multimodal input: photo upload (SigLIP embeddings) and audio recording
 - Tool calling into other Modern Apps over local IPC, with JSON-schema validation
 - A model-managed memory plus an editable system prompt; can be set as the device's default digital assistant (Assist API + voice interaction service)
-**Architecture / data-flow:** `ui/LiteRTChatUi` → `util/AssistantViewModel` → `data/OpenAssistantRepository` (Room) + `util/InferenceService` (LiteRT/Gemma engine) with `util/AssistantToolSet` dispatching IPC tool calls. `onCreateBeforeContent` only wires the `IntentLauncher` and picks up Assist-API screen context; `Content()` gates on the initial model download before the chat renders.
-**Entry points + reading order:** `Route` (`ConversationPage(id)` / `SettingsPage`, inline) → `MainActivity.kt` → `ui/LiteRTChatUi.kt` → `util/AssistantViewModel.kt` → `util/InferenceService.kt` → `data/OpenAssistantRepository.kt`.
+**Architecture / data-flow:** `ui/LiteRTChatUi` → `util/AssistantViewModel` → `data/OpenAssistantRepository` (Room) + `util/InferenceService` → `platform/MamlChatEngine` (Gemma 4 on `:library:ml`'s `Gemma4Handle`; own tool loop, max 6 rounds) with `platform/AssistantTools` (explicit registry over `domain/AssistantToolSpecs`) dispatching IPC tool calls. Pure logic (tool-call parsing/markup stripping, tool loop, WAV decode, history fitting) lives in `domain/` with unit tests. `onCreateBeforeContent` only wires the `IntentLauncher` and picks up Assist-API screen context; `Content()` gates on the initial model download before the chat renders.
+**Entry points + reading order:** `Route` (`ConversationPage(id)` / `SettingsPage`, inline) → `MainActivity.kt` → `ui/LiteRTChatUi.kt` → `util/AssistantViewModel.kt` → `util/InferenceService.kt` → `platform/MamlChatEngine.kt` → `data/OpenAssistantRepository.kt`.
 **Gotchas:**
 - Card drift fixed: `ui/` files were renamed `Assistant*` → `LiteRT*` and `util/` gained `AssistantDeviceTools`, `AssistantToolIntents`, `InferenceEmbeddingHandler`, `JsonSchemaValidator`, `SentencePieceTokenizer`, `SiglipEmbedder`; `Gemma4Engine`/`Gemma4EtEngine` no longer exist
 - `MainActivity.intentLauncher` is a shared static other apps mirror (maps/taxi pattern) — keep it initialized in `onCreateBeforeContent`
 - `StubRecognitionService` is a placeholder voice-recognition hook, not a real recognizer
+- Tool names are snake_case (`get_notes`, `add_to_memory`), matching what LiteRT-LM exposed; the system prompt references them. Add a tool in `domain/AssistantToolSpecs.kt` AND `platform/AssistantTools.kt` (an init check fails if they disagree)
+- Model files live in `getExternalFilesDir(null)/gemma4/` (text, embed, head, vision, audio, tokenizer); the vision/audio towers load lazily and unload after 3 idle minutes
 - Extra non-conforming dirs (`assist/`, `util/`) hold real code — closed-roots migration pending
 
 ## Key files
@@ -43,6 +45,15 @@ _Install: ./install openassistant (dev by default)._
 - com/vayunmathur/openassistant/ui/LiteRTChatBubble.kt
 - com/vayunmathur/openassistant/ui/LiteRTChatInput.kt
 - com/vayunmathur/openassistant/ui/SettingsPage.kt
+### domain/ — pure, unit-tested
+- com/vayunmathur/openassistant/domain/AssistantToolSpecs.kt — tool names/descriptions/params
+- com/vayunmathur/openassistant/domain/ToolCalls.kt — call parsing, markup stripping, arg coercion
+- com/vayunmathur/openassistant/domain/ToolLoop.kt — generate/call/respond loop
+- com/vayunmathur/openassistant/domain/WavDecoder.kt
+- com/vayunmathur/openassistant/domain/HistoryFit.kt
+### platform/ — engine + tool registry
+- com/vayunmathur/openassistant/platform/MamlChatEngine.kt
+- com/vayunmathur/openassistant/platform/AssistantTools.kt
 ### util/ — ViewModel, inference, tools, audio (migration pending)
 - com/vayunmathur/openassistant/util/AssistantViewModel.kt
 - com/vayunmathur/openassistant/util/AssistantUiContract.kt
@@ -50,7 +61,6 @@ _Install: ./install openassistant (dev by default)._
 - com/vayunmathur/openassistant/util/InferenceEmbeddingHandler.kt
 - com/vayunmathur/openassistant/util/SentencePieceTokenizer.kt
 - com/vayunmathur/openassistant/util/SiglipEmbedder.kt
-- com/vayunmathur/openassistant/util/AssistantToolSet.kt
 - com/vayunmathur/openassistant/util/AssistantToolIntents.kt
 - com/vayunmathur/openassistant/util/AssistantDeviceTools.kt
 - com/vayunmathur/openassistant/util/JsonSchemaValidator.kt
@@ -60,6 +70,7 @@ _Install: ./install openassistant (dev by default)._
 ## Verify (this module only)
 ```
 ./gradlew :openassistant:compileDevKotlin
+./gradlew :openassistant:testDevUnitTest
 ./gradlew :openassistant:lint
 ./gradlew :openassistant:checkMetadata
 ```

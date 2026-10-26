@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
  * Model output arrives as streaming text with an embedded JSON call, so the
  * host must extract the largest balanced object, reject malformed payloads
  * without throwing, and dispatch only allowlisted tools. Mirrors the
- *(JsonExtractor plus runTool gating) contract without litertlm or intents.
+ *(JsonExtractor plus runTool gating) contract without the model or intents.
  */
 class ToolCallParseTest {
 

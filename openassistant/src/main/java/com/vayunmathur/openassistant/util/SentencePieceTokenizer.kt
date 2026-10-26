@@ -12,8 +12,8 @@ import kotlin.math.min
  * SentencePiece model (`tokenizer.model`, ~4 MB, 256k vocab) that SigLIP2 uses
  * for its text tower.
  *
- * We need raw token ids to feed SigLIP2's text ONNX model, and litertlm's Gemma
- * engine does not expose them, so this is a standalone re-implementation of the
+ * We need raw token ids to feed SigLIP2's text ONNX model with SigLIP2's own
+ * vocabulary, so this is a standalone re-implementation of the
  * two pieces we actually need:
  *
  *  1. **Model parsing** ([load]): the `.model` file is a serialized

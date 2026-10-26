@@ -6,7 +6,7 @@
                               conversation history plus remembered facts. Free-form user
                               text, so it can contain anything.
        external/              on-demand model downloads in getExternalFilesDir(null):
-                              gemma4-2b.litertlm, the SigLIP2 ONNX encoders and
+                              the gemma4/ maml model files, the SigLIP2 ONNX encoders and
                               tokenizer.model. Gigabytes, and re-downloadable.
        file/datastore_default.preferences_pb  model download progress and version markers
                               (progress_*, dlid_*, siglip_model_version). Meaningless once
