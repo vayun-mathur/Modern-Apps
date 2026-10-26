@@ -46,6 +46,7 @@ import com.vayunmathur.contacts.util.saveEditDraft
 import com.vayunmathur.contacts.util.setLastSelectedAccount
 import com.vayunmathur.contacts.util.updateEditDraft
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.util.NavBackStack
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,13 +114,17 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
         },
         scrollBehavior = appBarScrollBehavior(),
     ) {
+        // Short (landscape) windows collapse the fixed spacers so the ~2000dp form
+        // needs less scrolling; portrait keeps every gap verbatim.
+        val gap = if (isCompactHeight()) 8.dp else 16.dp
+        val smallGap = if (isCompactHeight()) 4.dp else 8.dp
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (saveError != null) {
                 Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(smallGap))
             }
 
             // Account chooser for new contacts (SIM accounts appear here as normal accounts)
@@ -128,7 +133,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     viewModel.updateEditDraft { it.copy(accountName = name, accountType = type) }
                     viewModel.setLastSelectedAccount(name, type)
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
                 if (isSimAccount) {
                     Text(
                         stringResource(R.string.sim_limited_fields_hint),
@@ -136,7 +141,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(smallGap))
                 }
             } else if (isSimAccount) {
                 Text(
@@ -145,10 +150,10 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(smallGap))
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(smallGap))
             if (!isSimAccount) {
                 EditContactPhotoSection(
                     photo = currentDraft.photo?.photo,
@@ -161,7 +166,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     },
                     sharedKey = editRoute.contactId,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(if (isCompactHeight()) 12.dp else 24.dp))
             }
 
 
@@ -200,7 +205,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(gap))
             EditContactDetailGroups(
                 draft = currentDraft,
                 mobileIndex = mobileIndex,
@@ -208,7 +213,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                 onUpdate = { viewModel.updateEditDraft { _ -> it } },
                 isSimAccount = isSimAccount,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(smallGap))
 
             // Preferred call/message method: SIM ADN rows have no Data rows to keep it.
             if (!isSimAccount) {
@@ -217,11 +222,11 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     contactId = editRoute.contactId,
                     onUpdate = { viewModel.updateEditDraft { _ -> it } },
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
             }
 
             if (!isSimAccount) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
                 EditContactBirthday(backStack, currentDraft.birthday) { v ->
                     viewModel.updateEditDraft { it.copy(birthday = v) }
                 }
@@ -232,13 +237,13 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     icon = { DateDetailsAddIcon() },
                     options = listOf(CDKEvent.TYPE_ANNIVERSARY, CDKEvent.TYPE_OTHER, CDKEvent.TYPE_CUSTOM)
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
                 EditContactGenderSection(
                     draft = currentDraft,
                     contactId = editRoute.contactId,
                     onUpdate = { viewModel.updateEditDraft { _ -> it } },
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
                 Text(
                     text = stringResource(UiR.string.note),
                     style = MaterialTheme.typography.labelMedium,
@@ -253,7 +258,7 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                         .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                         .padding(12.dp),
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
 
                 // Last, to match the detail page. Anything on both pages is in the same order on both, so
                 // a value does not have to be hunted for after the morph, and nothing has to travel past
@@ -265,10 +270,10 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
                     contactId = editRoute.contactId,
                     onUpdate = { viewModel.updateEditDraft { _ -> it } },
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(gap))
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(gap))
         }
     }
 }

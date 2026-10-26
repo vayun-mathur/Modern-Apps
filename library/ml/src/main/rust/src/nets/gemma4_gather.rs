@@ -178,13 +178,18 @@ pub fn token_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result
 /// `[PER_LAYER * LAYERS, 1, tokens.len()]`. Placeholders read row 0, as the export masks them.
 /// Each distinct row is read once per table.
 pub fn layer_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result<Vec<f32>, String> {
+    leading_layer_rows(reader, tokens, LAYERS)
+}
+
+/// [`layer_rows`] with only the first `tables` tables read; the rest of the block stays zero.
+pub fn leading_layer_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32], tables: usize) -> Result<Vec<f32>, String> {
     use super::gemma4::{embed, VOCAB};
     let width = tokens.len();
     let wide = PER_LAYER as usize;
     let mut block = vec![0f32; wide * LAYERS * width];
     let rows = distinct(tokens.iter().map(|&t| if embed::PLACEHOLDERS.contains(&t) { 0 } else { t }));
     for (row, columns) in rows {
-        for i in 0..LAYERS {
+        for i in 0..tables.min(LAYERS) {
             let table = embed::table(i);
             let values = reader.int4_row(table, table + 1, &[VOCAB, PER_LAYER], row)?;
             let from = i * wide * width;

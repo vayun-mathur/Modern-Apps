@@ -41,6 +41,8 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.RadioButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.isCompactHeight
+import com.vayunmathur.library.ui.isExpandedWidth
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -169,13 +171,28 @@ fun ImportVcfScreen(
                 )
             }
             else -> {
-                LazyColumn(
+                // Expanded windows centre the content at a readable measure via
+                // adaptive gutters; short (landscape) windows tighten the gaps.
+                androidx.compose.foundation.layout.BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    val gutter = if (isExpandedWidth()) {
+                        ((maxWidth - 560.dp) / 2).coerceAtLeast(16.dp)
+                    } else {
+                        16.dp
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = gutter,
+                            end = gutter,
+                            top = 16.dp,
+                            bottom = 16.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(if (isCompactHeight()) 8.dp else 16.dp)
+                    ) {
                     item {
                         Text(
                             pluralStringResource(R.plurals.import_summary_contacts, contacts.size, contacts.size),
@@ -251,7 +268,10 @@ fun ImportVcfScreen(
                     }
 
                     item {
-                        Spacer(Modifier.height(80.dp)) // FAB padding
+                        // The tall FAB clearance is a portrait affordance; on short
+                        // (landscape) windows the scaffold inset already clears it.
+                        Spacer(Modifier.height(if (isCompactHeight()) 16.dp else 80.dp)) // FAB padding
+                    }
                     }
                 }
             }

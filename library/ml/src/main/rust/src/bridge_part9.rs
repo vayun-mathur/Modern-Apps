@@ -345,9 +345,9 @@ impl Gemma4Handle {
             // Pad columns feed the pad token; nothing real reads them (see `padded`).
             let mut fed = chunk.to_vec();
             fed.resize(width as usize, 0);
-            state = self.prefill_chunk(real, width, tail && index + 1 == chunks, |reader| {
+            state = self.prefill_chunk(real, width, (tail && index + 1 == chunks).then(|| chunk[chunk.len() - 1]), |reader, tables| {
                 let hidden = crate::nets::gemma4_gather::token_rows(reader, &fed)?;
-                Ok((hidden, crate::nets::gemma4_gather::layer_rows(reader, &fed)?))
+                Ok((hidden, crate::nets::gemma4_gather::leading_layer_rows(reader, &fed, tables)?))
             })?;
         }
         Ok(state)
@@ -371,12 +371,12 @@ impl Gemma4Handle {
         for chunk in values.chunks(d * CHUNK as usize) {
             let real = (chunk.len() / d) as u32;
             let width = crate::nets::gemma4_gather::padded(real, self.context - self.position);
-            self.prefill_chunk(real, width, false, |reader| {
+            self.prefill_chunk(real, width, None, |reader, tables| {
                 let mut hidden = vec![0f32; d * width as usize];
                 for (at, row) in chunk.chunks_exact(d).enumerate() {
                     crate::nets::gemma4_gather::place(&mut hidden, row, at, width as usize);
                 }
-                Ok((hidden, crate::nets::gemma4_gather::layer_rows(reader, &vec![0; width as usize])?))
+                Ok((hidden, crate::nets::gemma4_gather::leading_layer_rows(reader, &vec![0; width as usize], tables)?))
             })?;
         }
         Ok(())
@@ -384,14 +384,16 @@ impl Gemma4Handle {
 
     /// One chunk of `real` positions run at `width`: `rows` gathers the `[C, 1, width]` hidden
     /// and table blocks while the chunk's plan builds on another thread if it was evicted, then
-    /// one combine submit and one Prefill submit. With `tail`, runs the last real column on
-    /// through [`gemma4::Mode::Tail`] and returns its normed state; otherwise an empty one.
+    /// one combine submit and one Prefill submit. With `tail` (the last real column's token), runs
+    /// that column on through [`gemma4::Mode::Tail`] and returns its normed state; otherwise an
+    /// empty one. `rows` reads the first `tables` per-layer tables: a fused prefill uses only the
+    /// cache-owning layers' groups.
     fn prefill_chunk(
         &mut self,
         real: u32,
         width: u32,
-        tail: bool,
-        rows: impl FnOnce(&crate::weights::Reader<'_>) -> Result<(Vec<f32>, Vec<f32>), String>,
+        tail: Option<u32>,
+        rows: impl FnOnce(&crate::weights::Reader<'_>, usize) -> Result<(Vec<f32>, Vec<f32>), String>,
     ) -> Result<Vec<f32>, String> {
         let started = std::time::Instant::now();
         let mode = if self.position == 0 {
@@ -410,7 +412,14 @@ impl Gemma4Handle {
         }
         // Owns its inputs, so it keeps building through the rows and the combine below.
         let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
-        let (hidden, embedded) = rows(&self.embed.reader())?;
+        let tables = if self.fused() { gemma4::OWNS_CACHE_LAYERS } else { gemma4::LAYERS };
+        let (hidden, embedded) = rows(&self.embed.reader(), tables)?;
+        // The tail combines every group; read its token's rows now, before the core idles on the
+        // prefill's fence.
+        let tail_rows = match tail.filter(|_| self.fused()) {
+            Some(token) => Some(crate::nets::gemma4_gather::layer_rows(&self.embed.reader(), &[token])?),
+            None => None,
+        };
         let gathered = started.elapsed();
         let per_layer = if self.fused() { embedded } else { self.combine_block(&hidden, &embedded, width)? };
         let combined = started.elapsed() - gathered;
@@ -448,11 +457,14 @@ impl Gemma4Handle {
         ));
         let last = self.position + real - 1;
         self.position += real;
-        if !tail {
+        if tail.is_none() {
             return Ok(Vec::new());
         }
         let residual = out.first().ok_or("a prefill returned nothing")?;
-        let inputs = gemma4::tail_inputs(residual, [&hidden, &per_layer, &local, &global], (real - 1) as usize, wide, self.fused());
+        let mut inputs = gemma4::tail_inputs(residual, [&hidden, &per_layer, &local, &global], (real - 1) as usize, wide, self.fused());
+        if let Some(rows) = tail_rows {
+            inputs[1] = rows;
+        }
         self.tail(&inputs, last)
     }
 

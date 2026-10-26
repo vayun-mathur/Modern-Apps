@@ -66,6 +66,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.ToggleButton
 import com.vayunmathur.library.ui.VerticalDivider
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -96,9 +97,8 @@ fun GraphScreen(state: GraphUiState, actions: GraphActions) {
         },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
-        // Sibling tools, never list-detail. On expanded windows the canvas sits
-        // beside the function editors (fractional split) instead of above them.
-        if (isExpandedWidth()) {
+        // Sibling tools, never list-detail: side-by-side on wide or short windows.
+        if (isExpandedWidth() || isCompactHeight()) {
             Row(Modifier.fillMaxSize().padding(padding)) {
                 GraphCanvas(state, actions, Modifier.weight(1.4f).fillMaxSize())
                 VerticalDivider()

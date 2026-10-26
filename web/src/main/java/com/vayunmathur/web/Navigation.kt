@@ -1,9 +1,6 @@
 package com.vayunmathur.web
 
 import androidx.compose.runtime.Composable
-import com.vayunmathur.library.ui.isExpandedWidth
-import com.vayunmathur.library.util.ListDetailPage
-import com.vayunmathur.library.util.ListPage
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.openSettingsIfRequested
 import com.vayunmathur.library.util.rememberNavBackStack
@@ -21,23 +18,21 @@ import com.vayunmathur.web.ui.SiteDataPage
 fun Navigation(viewModel: WebViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Browser)
     backStack.openSettingsIfRequested(Route.Settings)
-    // On expanded windows the browser stays visible while History/Bookmarks and
-    // friends open beside it instead of covering it. MainNavigation only two-panes
-    // when it sees list+detail metadata, so on smaller widths we pass none and every
-    // destination stays a full-screen push exactly as before.
-    val expanded = isExpandedWidth()
-    val listPane = if (expanded) ListPage() else emptyMap<String, Any>()
-    val detailPane = if (expanded) ListDetailPage() else emptyMap<String, Any>()
+    // No list-detail metadata: the browser is not a list and History/Bookmarks
+    // are not its details, so every destination is a full-screen push. The
+    // previous wiring marked the browser as a list pane to keep it visible
+    // beside History on wide windows, but that just squeezed browsing into a
+    // narrow pane next to an empty void.
     MainNavigation(backStack) {
-        entry<Route.Browser>(metadata = listPane) { BrowserPage(viewModel = viewModel, backStack = backStack) }
-        entry<Route.History>(metadata = detailPane) { HistoryPage(viewModel = viewModel, backStack = backStack) }
-        entry<Route.Bookmarks>(metadata = detailPane) { BookmarksPage(viewModel = viewModel, backStack = backStack) }
-        entry<Route.Settings>(metadata = detailPane) { SettingsPage(viewModel = viewModel, backStack = backStack) }
-        entry<Route.Downloads>(metadata = detailPane) { DownloadsPage(viewModel = viewModel, backStack = backStack) }
-        entry<Route.SiteData>(metadata = detailPane) { SiteDataPage(viewModel = viewModel, backStack = backStack) }
-        entry<Route.InstalledSites>(metadata = detailPane) {
+        entry<Route.Browser> { BrowserPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.History> { HistoryPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.Bookmarks> { BookmarksPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.Settings> { SettingsPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.Downloads> { DownloadsPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.SiteData> { SiteDataPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.InstalledSites> {
             InstalledSitesPage(viewModel = viewModel, backStack = backStack)
         }
-        entry<Route.Shields>(metadata = detailPane) { ShieldsPage(viewModel = viewModel, backStack = backStack) }
+        entry<Route.Shields> { ShieldsPage(viewModel = viewModel, backStack = backStack) }
     }
 }

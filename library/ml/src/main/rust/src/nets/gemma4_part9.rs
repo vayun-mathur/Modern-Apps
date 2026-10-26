@@ -20,11 +20,31 @@ pub fn combines_in_plan(weights: &dyn WeightSource) -> bool {
 }
 
 /// `(16 * rows + rms_norm(SHARED_PROJ @ hidden)) / sqrt(2)` per 256-wide group, exactly
-/// `gemma4_gather::build_plan_at` over the text file's copy of its tensors.
-fn combine_in_plan(b: &mut Builder, hidden: Id, rows: Id) -> Id {
-    let wide = PER_LAYER * LAYERS as u32;
-    let projected = b.conv_int8(hidden, COMBINE_PROJ, wide, (1, 1), (1, 1), (1, 1), (0, 0, 0, 0), 1, Act::None);
-    let normed = b.rms_norm_grouped(projected, COMBINE_NORM, EPSILON, LAYERS as u32);
+/// `gemma4_gather::build_plan_at` over the text file's copy of its tensors, for the leading
+/// `layers` groups: the rows of `SHARED_PROJ` past them feed layers the plan does not run.
+fn combine_in_plan(b: &mut Builder, hidden: Id, rows: Id, layers: usize) -> Id {
+    let wide = PER_LAYER * layers as u32;
+    let (projected, rows) = if layers == LAYERS {
+        let projected = b.conv_int8(hidden, COMBINE_PROJ, wide, (1, 1), (1, 1), (1, 1), (0, 0, 0, 0), 1, Act::None);
+        (projected, rows)
+    } else {
+        // Resolved against the whole tensor, then bound to its leading `wide` output rows: the
+        // kernel, scale and bias are all row-major, so those rows are a prefix of each.
+        let all = PER_LAYER * LAYERS as u32;
+        let weight = b.weights.shaped_words(COMBINE_PROJ, &[all, D_MODEL, 1, 1]).unwrap_or_else(|e| {
+            b.fail(e);
+            0
+        });
+        if let Some(slot) = b.read.get_mut(COMBINE_PROJ) {
+            *slot = true;
+        }
+        let scale = b.weight(COMBINE_PROJ + 1, &[all]);
+        let bias = b.weight(COMBINE_PROJ + 2, &[all]);
+        let one = (1, 1);
+        let projected = b.conv_int8_raw(hidden, weight, scale, bias, wide, Act::None, one, one, one, (0, 0, 0, 0), 1, super::Quant::I8);
+        (projected, b.slice_channels(rows, 0, wide))
+    };
+    let normed = b.rms_norm_grouped(projected, COMBINE_NORM, EPSILON, layers as u32);
     let scaled = b.affine(rows, super::gemma4_gather::GATHER_SCALE, 0.0);
     let summed = b.add(scaled, normed);
     b.affine(summed, std::f32::consts::FRAC_1_SQRT_2, 0.0)
@@ -86,9 +106,10 @@ mod combine_in_plan_tests {
             let plain = build(&Shapes::new(TENSORS), mode.at(TEST_CONTEXT)).expect("builds without");
             assert_eq!(fused.inputs.len(), plain.inputs.len(), "{mode:?}");
             assert_eq!(fused.inputs[1].shape, plain.inputs[1].shape, "{mode:?}");
-            // conv + grouped norm + up to two affines and an add (the add may fold).
+            // conv + grouped norm + up to two affines and an add (the add may fold), plus the
+            // copy of the leading groups' rows in a prefill.
             let extra = fused.ops.len() - plain.ops.len();
-            assert!((3..=5).contains(&extra), "{mode:?} added {extra} ops");
+            assert!((3..=6).contains(&extra), "{mode:?} added {extra} ops");
         }
     }
 }

@@ -2,6 +2,7 @@ package com.vayunmathur.contacts.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +24,7 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.SelectableDropdownMenuItem
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
+import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.expandFromLine
 import com.vayunmathur.library.util.sharedContainer
 
@@ -76,6 +78,12 @@ fun EditContactNameSection(
             )
             return@Column
         }
+        // Expanded tablets get two name fields per row; phones (including landscape,
+        // where the two-pane detail is narrow) keep the single-column stack verbatim.
+        if (isExpandedWidth()) {
+            EditContactNameGrid(draft, contactId, onUpdate)
+            return@Column
+        }
         LabeledTextField(
             value = draft.firstName,
             onValueChange = { v -> onUpdate(draft.copy(firstName = v)) },
@@ -117,6 +125,72 @@ fun EditContactNameSection(
             sharedTextKey = contactId?.let { "contact-nickname-$it" },
             modifier = Modifier.fillMaxWidth().expandFromLine(),
         )
+        LabeledTextField(
+            value = draft.company,
+            onValueChange = { v -> onUpdate(draft.copy(company = v)) },
+            label = stringResource(R.string.company),
+            sharedTextKey = contactId?.let { "contact-company-$it" },
+            modifier = Modifier.fillMaxWidth().expandFromLine(),
+        )
+    }
+}
+
+/**
+ * Two-column name grid for expanded windows: first/middle, last/nickname, company
+ * full-width. Same fields, keys and order as the portrait stack — only paired.
+ */
+@Composable
+private fun EditContactNameGrid(
+    draft: ContactViewModel.ContactDraft,
+    contactId: Long?,
+    onUpdate: (ContactViewModel.ContactDraft) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LabeledTextField(
+                value = draft.firstName,
+                onValueChange = { v -> onUpdate(draft.copy(firstName = v)) },
+                label = stringResource(R.string.first_name),
+                keyboardType = KeyboardType.PersonName,
+                sharedTextKey = contactId?.let { "contact-firstname-$it" },
+                modifier = Modifier.weight(1f).expandFromLine(),
+                leadingIcon = {
+                    NamePrefixChooser(draft.namePrefix, null) { v ->
+                        onUpdate(draft.copy(namePrefix = v))
+                    }
+                },
+            )
+            LabeledTextField(
+                value = draft.middleName,
+                onValueChange = { v -> onUpdate(draft.copy(middleName = v)) },
+                label = stringResource(R.string.middle_name),
+                keyboardType = KeyboardType.PersonName,
+                sharedTextKey = contactId?.let { "contact-middlename-$it" },
+                modifier = Modifier.weight(1f).expandFromLine(),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LabeledTextField(
+                value = draft.lastName,
+                onValueChange = { v -> onUpdate(draft.copy(lastName = v)) },
+                label = stringResource(R.string.last_name),
+                keyboardType = KeyboardType.PersonName,
+                sharedTextKey = contactId?.let { "contact-lastname-$it" },
+                modifier = Modifier.weight(1f).expandFromLine(),
+                trailingIcon = {
+                    NameSuffixChooser(draft.nameSuffix, null) { v ->
+                        onUpdate(draft.copy(nameSuffix = v))
+                    }
+                },
+            )
+            LabeledTextField(
+                value = draft.nickname,
+                onValueChange = { v -> onUpdate(draft.copy(nickname = v)) },
+                label = stringResource(R.string.nickname),
+                sharedTextKey = contactId?.let { "contact-nickname-$it" },
+                modifier = Modifier.weight(1f).expandFromLine(),
+            )
+        }
         LabeledTextField(
             value = draft.company,
             onValueChange = { v -> onUpdate(draft.copy(company = v)) },

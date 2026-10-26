@@ -191,7 +191,9 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
     let fused = combines_in_plan(weights);
     // The tail's input 0 is a residual, so the token row the combine reads comes after the rest.
     let row = if fused && mode == Mode::Tail { b.input(Shape::new(D_MODEL, 1, 1)) } else { x };
-    let per_layer_inputs = if fused { combine_in_plan(b, row, per_layer_in) } else { per_layer_in };
+    // A prefill combines only the groups of the layers it runs.
+    let groups = if matches!(mode, Mode::Prefill { .. } | Mode::PrefillFresh { .. }) { OWNS_CACHE_LAYERS } else { LAYERS };
+    let per_layer_inputs = if fused { combine_in_plan(b, row, per_layer_in, groups) } else { per_layer_in };
     // The rotary tables. Read on the host, a row at a time, and handed back as the two angle
     // inputs above - the same arrangement as the embedding.
     b.host_tensor(ROTARY_LOCAL, &[MAX_CONTEXT, HEAD_DIM]);

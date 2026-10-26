@@ -19,11 +19,15 @@ class FDroidVersionSelectionTest {
         fileName: String,
         versionCode: Long = 1L,
         nativeCode: List<String> = emptyList(),
+        requiredSplitTypes: List<String> = emptyList(),
+        size: Long = 0L,
     ) = FDroidRepository.VersionCandidate(
         added = added,
         fileName = fileName,
         versionCode = versionCode,
         nativeCode = nativeCode,
+        requiredSplitTypes = requiredSplitTypes,
+        size = size,
     )
 
     @Test
@@ -110,5 +114,40 @@ class FDroidVersionSelectionTest {
         )
 
         assertEquals("/app_arm.apk", FDroidRepository.selectVersion(release, arm64Device)?.fileName)
+    }
+
+    @Test
+    fun `prefers a split-set base over a same-version module with no split types`() {
+        // GMS (issue: "not a valid signed app file"): the base and its Dynamite
+        // modules share one versionCode and ABI rank, so everything ties and the
+        // encounter order (index hash order) used to elect a module.
+        val release = listOf(
+            version(200, "/gms/module-CronetDynamite_installtime.apk", nativeCode = listOf("arm64-v8a")),
+            version(200, "/gms/base.apk", nativeCode = listOf("arm64-v8a"), requiredSplitTypes = listOf("base__density")),
+        )
+
+        assertEquals("/gms/base.apk", FDroidRepository.selectVersion(release, arm64Device)?.fileName)
+    }
+
+    @Test
+    fun `prefers the larger file when split types also tie`() {
+        val release = listOf(
+            version(200, "/app_small.apk", nativeCode = listOf("arm64-v8a")),
+            version(200, "/app_big.apk", nativeCode = listOf("arm64-v8a")),
+        ).map {
+            // Sizes stand in for base (192MB) vs module (12MB) when an index
+            // hasn't recorded split types on either side.
+            if (it.fileName.contains("big")) it.copy(size = 192_000_000L) else it.copy(size = 12_000_000L)
+        }
+
+        assertEquals("/app_big.apk", FDroidRepository.selectVersion(release, arm64Device)?.fileName)
+    }
+
+    @Test
+    fun `identifies Dynamite runtime modules by the installtime infix`() {
+        assertEquals(true, FDroidRepository.isDynamiteModule("/gms/264230035/gms-264230035-CronetDynamite_installtime.apk"))
+        assertEquals(true, FDroidRepository.isDynamiteModule("/gms/CronetDynamite_INSTALLTIME.apk"))
+        assertEquals(false, FDroidRepository.isDynamiteModule("/gms/264230035/gms-264230035.apk"))
+        assertEquals(false, FDroidRepository.isDynamiteModule("/gms/264230035/gms-264230035-config.en.apk"))
     }
 }

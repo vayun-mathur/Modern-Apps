@@ -2,12 +2,16 @@ package com.vayunmathur.games.sudoku.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +40,8 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameResultOverlay
 import com.vayunmathur.library.ui.game.formatDuration
+import com.vayunmathur.library.ui.isCompactHeight
+import com.vayunmathur.library.ui.isExpandedWidth
 
 /** Caps the grid on tablets, where a full-width board would put the digits absurdly far apart. */
 private val BoardMaxWidth = 520.dp
@@ -67,7 +73,10 @@ fun GameBoardScreen(
         },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
-        Box(
+        // Short windows (landscape phones) and wide expanded windows in landscape
+        // cannot fit board + pad + actions stacked, so the board sits beside the
+        // controls instead of above them. Everything else keeps the stacked column.
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .padding(padding),
@@ -77,37 +86,79 @@ fun GameBoardScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-                return@Box
+                return@BoxWithConstraints
             }
 
-            Column(
-                Modifier
-                    .widthIn(max = BoardMaxWidth)
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.md),
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
-                SudokuGrid(
-                    game = game,
-                    onSelect = actions::selectCell,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            val sideBySide = isCompactHeight() || (isExpandedWidth() && maxWidth > maxHeight)
+            // Hoisted out of the Row below: RowScope would shadow the
+            // BoxWithConstraintsScope receiver and the size would not resolve.
+            val boardSize = minOf(maxWidth * 0.62f, maxHeight)
+            if (sideBySide) {
+                Row(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Inputs first (left in LTR): number pad and actions sit beside
+                    // the board rather than under it, so neither is pushed off the
+                    // short landscape height.
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            // No fillMaxHeight: the column wraps its content and the
+                            // parent Row's CenterVertically centers the whole block
+                            // beside the board. Still scrolls if it overflows.
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                    ) {
+                        HintsUsed(game.hintsUsed)
 
-                if (game.hintsUsed > 0) {
-                    Text(
-                        "${stringResource(R.string.hints_used)}: ${game.hintsUsed}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        NumberPad(
+                            game = game,
+                            onDigit = actions::enterDigit,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        ActionBar(state, actions, onExit)
+                    }
+                    // Height-sized square: the board is what the height allows.
+                    // Capped at a share of the width so a narrow-but-short window
+                    // still leaves room for the inputs.
+                    SudokuGrid(
+                        game = game,
+                        onSelect = actions::selectCell,
+                        modifier = Modifier.size(boardSize),
                     )
                 }
+            } else {
+                Column(
+                    Modifier
+                        .widthIn(max = BoardMaxWidth)
+                        .fillMaxWidth()
+                        // Safety net for short-but-not-compact windows (an 800dp-tall
+                        // desktop window still overflows the stacked 9x9 slightly).
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = Spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    SudokuGrid(
+                        game = game,
+                        onSelect = actions::selectCell,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
 
-                NumberPad(
-                    game = game,
-                    onDigit = actions::enterDigit,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                    HintsUsed(game.hintsUsed)
 
-                ActionBar(state, actions, onExit)
+                    NumberPad(
+                        game = game,
+                        onDigit = actions::enterDigit,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    ActionBar(state, actions, onExit)
+                }
             }
 
             if (game.isWon) {
@@ -128,6 +179,17 @@ fun GameBoardScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HintsUsed(hintsUsed: Int) {
+    if (hintsUsed > 0) {
+        Text(
+            "${stringResource(R.string.hints_used)}: $hintsUsed",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

@@ -217,7 +217,6 @@ object FDroidRepository {
         var requiredFeatures: List<String> = emptyList()
         var featuresPublished: Boolean = false
         var requiredSplitTypes: List<String> = emptyList()
-
         fun build(): VersionCandidate? {
             val name = fileName ?: return null
             return VersionCandidate(
@@ -258,6 +257,15 @@ object FDroidRepository {
         }
         reader.endObject()
 
+        // Play Dynamite runtime modules (`*_installtime.apk`, e.g. GMS's CronetDynamite)
+        // ride along in Play delivery under the same versionCode but are not installable
+        // APKs: `pm install` refuses them with INSTALL_FAILED_INVALID_APK, and
+        // PackageManager cannot parse them, so InstallVerifier rejects the download as
+        // "not a valid signed app file". Drop them here so they can be neither picked as
+        // the advertised version nor swept in as install siblings. The server no longer
+        // indexes them either; this covers indexes synced before that change.
+        b.versions.removeAll { isDynamiteModule(it.fileName) }
+
         // Nothing this device can run — drop the package rather than advertising an entry
         // that has no installable APK behind it.
         val latest = selectVersion(b.versions, deviceAbis) ?: return null
@@ -266,6 +274,9 @@ object FDroidRepository {
         // splits, every indexed file sharing its versionCode belongs in the
         // same installer session (base + config splits). Without this the
         // system refuses with INSTALL_FAILED_MISSING_SPLIT on Android 14+.
+        // Dynamite runtime modules (`*_installtime.apk`) are excluded: they share
+        // the versionCode but are not installable splits, and the system refuses
+        // the whole session when one is included.
         // Sibling order is deterministic (base first: shortest file name tends
         // to be the base; ties broken alphabetically) — the session writer
         // doesn't care about order, but humans reading logs do.
@@ -273,7 +284,11 @@ object FDroidRepository {
             emptyList()
         } else {
             b.versions
-                .filter { it.versionCode == latest.versionCode && it.fileName != latest.fileName }
+                .filter {
+                    it.versionCode == latest.versionCode &&
+                        it.fileName != latest.fileName &&
+                        !isDynamiteModule(it.fileName)
+                }
                 .sortedWith(compareBy({ it.fileName.length }, { it.fileName }))
                 .map {
                     SplitFile(
@@ -551,6 +566,22 @@ object FDroidRepository {
     private val deviceAbis: List<String> by lazy { Build.SUPPORTED_ABIS?.toList().orEmpty() }
 
     /**
+     * Whether this indexed file is a Play Dynamite runtime module rather than an
+     * installable APK.
+     *
+     * GMS ships `*_installtime.apk` modules (Cronet, Maps, Ads, …) inside its Play delivery
+     * under the same versionCode as the base. They carry the package name and signers, so
+     * every identity check passes, but they are not installable: `pm install` refuses them
+     * with `INSTALL_FAILED_INVALID_APK: Full install must include a base package`, and
+     * PackageManager cannot parse them — which is what the user sees as
+     * "the download is not a valid signed app file". Matched on the `_installtime` infix
+     * Play uses for these module splits, file name only: a package legitimately carrying
+     * that string elsewhere in the path is not filtered.
+     */
+    internal fun isDynamiteModule(fileName: String): Boolean =
+        fileName.substringAfterLast('/').contains("_installtime", ignoreCase = true)
+
+    /**
      * Pick the one APK to advertise for a package, newest release first.
      *
      * A release split per architecture used to resolve to whichever variant happened to be
@@ -562,6 +593,11 @@ object FDroidRepository {
      * Variants this device cannot run are dropped outright, so a package whose newest release
      * has no build for this architecture falls back to an older one that does rather than
      * disappearing.
+     *
+     * A split-set base wins ties against its own siblings: GMS's mirror entry carries the
+     * base plus config splits plus runtime Dynamite modules (`*_installtime.apk`) under one
+     * versionCode, all ABI-matching. The non-empty `requiredSplitTypes` marks the base — the
+     * only file installable standalone — so a module can never win on hash order again.
      */
     internal fun selectVersion(
         candidates: List<VersionCandidate>,
@@ -572,7 +608,9 @@ object FDroidRepository {
             .minWithOrNull(
                 compareByDescending<Pair<VersionCandidate, Int>> { it.first.added }
                     .thenBy { it.second }
+                    .thenByDescending { it.first.requiredSplitTypes.isNotEmpty() }
                     .thenByDescending { it.first.versionCode }
+                    .thenByDescending { it.first.size }
             )
             ?.first
 

@@ -95,15 +95,21 @@ class CatalogRepository(
     suspend fun recentlyUpdatedBySource(source: AppSource, limit: Int = 30): List<UnifiedApp> =
         withContext(Dispatchers.IO) {
             runCatching {
-                db.cachedAppDao().recentlyUpdatedBySource(source.name, limit).map { it.toUnifiedApp() }
-            }.getOrDefault(emptyList()).filterTv()
+                db.cachedAppDao().recentlyUpdatedBySource(source.name, rowsToScan(limit)).map { it.toUnifiedApp() }
+            }.getOrDefault(emptyList()).filterTv().take(limit)
         }
 
     suspend fun byCategory(category: String, limit: Int = 60): List<UnifiedApp> =
         withContext(Dispatchers.IO) {
-            runCatching { db.cachedAppDao().byCategory(category, limit).map { it.toUnifiedApp() } }
-                .getOrDefault(emptyList()).filterTv()
+            runCatching { db.cachedAppDao().byCategory(category, rowsToScan(limit)).map { it.toUnifiedApp() } }
+                .getOrDefault(emptyList()).filterTv().take(limit)
         }
+
+    /**
+     * On a TV the compat filter runs after the query, so a plain LIMIT would fill a row with
+     * phone apps and filter it down to almost nothing. Scan the whole source there instead.
+     */
+    private fun rowsToScan(limit: Int): Int = if (isTv) Int.MAX_VALUE else limit
 
     /**
      * Every cached row for one offline source, A→Z. Backs the Browse page, which
@@ -126,13 +132,17 @@ class CatalogRepository(
             }.getOrDefault(emptyList()).filterTv()
         }
 
-    /** Categories present in the catalogue, most-populated first. */
+    /**
+     * Categories present in the catalogue, most-populated first. On a TV the "TV" category
+     * is dropped: every listing shown there is already TV-compatible.
+     */
     suspend fun categories(): List<String> = withContext(Dispatchers.IO) {
         runCatching {
             db.cachedAppDao().allCategoryStrings()
                 .flatMap { it.split(",") }
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
+                .filterNot { isTv && it.equals(TV_CATEGORY, ignoreCase = true) }
                 .groupingBy { it }
                 .eachCount()
                 .entries
@@ -285,5 +295,7 @@ class CatalogRepository(
     private companion object {
         /** SQLite's default host-parameter ceiling; `IN (:packages)` binds one each. */
         const val SQLITE_VARIABLE_LIMIT = 900
+        /** The F-Droid category that marks a TV build. */
+        const val TV_CATEGORY = "TV"
     }
 }

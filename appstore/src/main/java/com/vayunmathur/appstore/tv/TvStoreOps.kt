@@ -64,8 +64,10 @@ internal fun TvStoreViewModel.setSearchImpl(query: String) {
 
 /**
  * Recheck every enabled source for newer builds of installed packages. Mirrors the
- * phone's `checkForUpdatesImpl`: catalogue first, Play only for packages no offline
- * source lists, Accrescent's allowlist refresh then per-package update info.
+ * phone's refresh + `checkForUpdatesImpl`: re-download the offline catalogues (so new
+ * versions and new index data - e.g. TV verdicts - arrive without waiting for the 12h
+ * worker), then Play only for packages no offline source lists, then Accrescent's
+ * allowlist refresh and per-package update info.
  */
 internal fun TvStoreViewModel.checkForUpdatesImpl() {
     if (isCheckingUpdatesFlow.value) return
@@ -75,6 +77,8 @@ internal fun TvStoreViewModel.checkForUpdatesImpl() {
             isCheckingUpdatesFlow.value = true
             statusMessageFlow.value = context.getString(R.string.updates_checking)
 
+            catalog.sync(enabled)
+            loadHome()
             installedRepo.refresh()
             catalogUpdatesFlow.value = catalog.updatesFor(installedRepo.updatable.value)
 

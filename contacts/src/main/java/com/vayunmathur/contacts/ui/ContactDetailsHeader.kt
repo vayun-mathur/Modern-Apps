@@ -3,7 +3,6 @@ package com.vayunmathur.contacts.ui
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,8 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.vayunmathur.contacts.R
@@ -38,11 +35,18 @@ import com.vayunmathur.library.ui.IconVideoCamera
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.isCompactHeight
+import com.vayunmathur.library.ui.isExpandedWidth
 import com.vayunmathur.library.util.sharedContent
-import com.vayunmathur.library.util.sharedText
 
 @Composable
 fun ProfileHeader(contact: Contact, decodePhoto: ((String) -> android.graphics.Bitmap?)? = null) {
+    // Wide windows (landscape phones, tablets) put avatar beside the name so the
+    // header fits above the fold; portrait keeps the centered stack verbatim.
+    if (isExpandedWidth() || isCompactHeight()) {
+        ContactDetailsHeaderLandscape(contact, decodePhoto)
+        return
+    }
     Column(
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         // No whole-block shared key. The avatar, each name part and the company pair up individually
@@ -66,51 +70,7 @@ fun ProfileHeader(contact: Contact, decodePhoto: ((String) -> android.graphics.B
         // Composed from the structured name rather than the joined display name, so that each part can
         // travel to the field that owns it when this page morphs into the editor. A single Text could
         // only ever land in one of them.
-        val name = contact.name
-        val parts = listOfNotNull(
-            name.namePrefix.takeIf { it.isNotBlank() }?.let { "nameprefix" to it },
-            name.firstName.takeIf { it.isNotBlank() }?.let { "firstname" to it },
-            name.middleName.takeIf { it.isNotBlank() }?.let { "middlename" to it },
-            name.lastName.takeIf { it.isNotBlank() }?.let { "lastname" to it },
-            name.nameSuffix.takeIf { it.isNotBlank() }?.let { "namesuffix" to it },
-        )
-        FlowRow(
-            // Full width so the arrangement always has room to centre within. Without it the row
-            // shrinks to its content and relies on the parent Column to centre it, which silently
-            // stops working once a name is wide enough to fill the width - the point at which each
-            // wrapped line needs centring most.
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(
-                6.dp,
-                androidx.compose.ui.Alignment.CenterHorizontally,
-            ),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            parts.forEach { (slot, label) ->
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.sharedText("contact-$slot-${contact.id}"),
-                )
-            }
-        }
-        if (contact.nickname.nickname.isNotBlank()) {
-            Text(
-                text = contact.nickname.nickname,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.sharedText("contact-nickname-${contact.id}"),
-            )
-        }
-        Text(
-            text = contact.org.company,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.sharedText("contact-company-${contact.id}")
-        )
+        ProfileNameColumn(contact, startAligned = false)
     }
 }
 
@@ -124,11 +84,18 @@ fun ActionButtonsRow(
     onSaveCommPref: ((CommPref) -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    // Wide windows centre the buttons with fixed gaps instead of spreading them
+    // across the full width; portrait keeps SpaceEvenly verbatim.
+    val wide = isExpandedWidth() || isCompactHeight()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        horizontalArrangement = if (wide) {
+            Arrangement.spacedBy(32.dp, androidx.compose.ui.Alignment.CenterHorizontally)
+        } else {
+            Arrangement.SpaceEvenly
+        }
     ) {
         if (phoneNumbers.isNotEmpty()) {
             CommActionButton(

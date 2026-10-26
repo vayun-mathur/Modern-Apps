@@ -589,6 +589,8 @@ struct PrefillTimes {
     gpu: f64,
     /// The last token's `Mode::Tail` submit.
     tail: f64,
+    /// Per-kind GPU tables of the last chunk's prefill and tail, under `MODELRUNNER_TIMESTAMPS`.
+    reports: Vec<(&'static str, Vec<(String, f64, f64)>)>,
     /// The last token's final-normed state, which the head reads.
     state: Vec<f32>,
 }
@@ -624,7 +626,9 @@ fn prefill_app(
         times.plan_wait += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
-        let (hidden, embedded) = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::layer_rows(embed, &fed)?)))?;
+        let tables = if fused() { gemma4::OWNS_CACHE_LAYERS } else { gemma4::LAYERS };
+        let (hidden, embedded) = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::leading_layer_rows(embed, &fed, tables)?)))?;
+        let tail_rows = if fused() { Some(g::layer_rows(embed, &chunk[chunk.len() - 1..])?) } else { None };
         times.rows += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         let per_layer = if fused() {
@@ -655,6 +659,8 @@ fn prefill_app(
         at.set_params(StepParams { prefix: start, window_start: start.saturating_sub(gemma4::WINDOW - 1) })?;
         let out = at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
         times.gpu += tick.elapsed().as_secs_f64() * 1000.0;
+        let stamps = modelrunner::knobs::is_set("timestamps");
+        times.reports = if stamps { at.op_times().map(|r| vec![("prefill", r)]).unwrap_or_default() } else { Vec::new() };
         if (index + 1) * CHUNK < prompt.len() {
             continue;
         }
@@ -662,13 +668,19 @@ fn prefill_app(
         let tick = Instant::now();
         let last = chunk.len() - 1;
         let residual = out.first().ok_or("a prefill returned nothing")?;
-        let inputs = gemma4::tail_inputs(residual, [&hidden, &per_layer, &local, &global], last, width as usize, fused());
+        let mut inputs = gemma4::tail_inputs(residual, [&hidden, &per_layer, &local, &global], last, width as usize, fused());
+        if let Some(rows) = tail_rows {
+            inputs[1] = rows;
+        }
         let at = net.at(gemma4::Mode::Tail.at(TIER))?;
         let position = start + last as u32;
         at.set_params(StepParams { prefix: position, window_start: position.saturating_sub(gemma4::WINDOW - 1) })?;
         let refs: Vec<&[f32]> = inputs.iter().map(Vec::as_slice).collect();
         times.state = at.infer_raw_many(&refs)?.into_iter().next().ok_or("the tail returned nothing")?;
         times.tail += tick.elapsed().as_secs_f64() * 1000.0;
+        if let Some(report) = stamps.then(|| at.op_times().ok()).flatten() {
+            times.reports.push(("tail", report));
+        }
     }
     Ok(times)
 }
@@ -734,14 +746,13 @@ fn time_prefill(
         let folded: Vec<u32> = prompt.iter().copied().chain([next]).collect();
         for run in 0..2 {
             let start = Instant::now();
-            let p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &folded, true) {
+            let mut p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &folded, true) {
                 Ok(p) => p,
                 Err(why) => return println!("the prefill failed: {why}"),
             };
             let prefill_ms = start.elapsed().as_secs_f64() * 1000.0;
             if stamps && run == 1 {
-                let ran_at = modelrunner::nets::gemma4_gather::padded((width + 1).min(CHUNK as u32), TIER);
-                prefill_report = net.at(gemma4::Mode::PrefillFresh { tokens: ran_at }.at(TIER)).and_then(|at| at.op_times()).ok();
+                prefill_report = Some(std::mem::take(&mut p.reports));
             }
             let tick = Instant::now();
             let id = match head_net.as_mut().map(|h| h.at(HeadOut::Greedy).and_then(|at| at.infer_raw_many(&[&p.state]))) {
@@ -776,8 +787,8 @@ fn time_prefill(
         })();
         println!("  top3 {margins:?}");
     }
-    if let Some(report) = prefill_report {
-        print_kinds("prefill", &report);
+    for (title, report) in prefill_report.unwrap_or_default() {
+        print_kinds(title, &report);
     }
 }
 

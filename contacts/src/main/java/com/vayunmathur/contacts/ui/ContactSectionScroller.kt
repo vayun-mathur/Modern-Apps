@@ -29,6 +29,7 @@ import com.vayunmathur.library.ui.IconStar
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.isCompactHeight
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -90,14 +91,18 @@ internal fun ContactSectionScroller(
         // scrubs the list, so a finger that drifts off the small pill mid-drag no longer falls
         // through to the list itself and stalls the scrub. Horizontal gestures pass through to
         // the list untouched - only vertical drags are claimed.
+        //
+        // Short (landscape) tracks shrink the pill and clear less space above the FAB,
+        // so the pill's travel stays usable when the viewport is only ~300dp tall.
+        val shortTrack = isCompactHeight()
         Box(
             Modifier
                 .align(Alignment.TopEnd)
                 .fillMaxHeight()
-                .width(64.dp)
+                .width(if (shortTrack) 48.dp else 64.dp)
                 // End the grab strip above the FAB (56dp button + 16dp margin + room), and
                 // measure the track here so the pill's travel ends there too.
-                .padding(bottom = 88.dp)
+                .padding(bottom = if (shortTrack) 72.dp else 88.dp)
                 .onSizeChanged { trackHeightPx = it.height }
                 // Stable keys: the travel distance is read through updated state, so a
                 // recomposition mid-drag never restarts the detector and drops the gesture.
@@ -134,7 +139,7 @@ internal fun ContactSectionScroller(
                 // change would shift the travel mapping under the finger).
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(if (shortTrack) 40.dp else 48.dp),
                 ) {
                     if (currentKey == FAVORITES_KEY) {
                         IconStar()

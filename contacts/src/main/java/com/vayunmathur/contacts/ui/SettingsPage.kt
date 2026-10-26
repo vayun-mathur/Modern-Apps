@@ -40,6 +40,7 @@ import com.vayunmathur.library.ui.OverflowMenu
 import com.vayunmathur.library.ui.Switch
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.isCompactHeight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -286,7 +287,9 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                 HorizontalDivider()
             }
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                // The tall FAB clearance is a portrait affordance; on short (landscape)
+                // windows the scaffold's own bottom inset already clears the button.
+                Spacer(modifier = Modifier.height(if (isCompactHeight()) 16.dp else 80.dp))
             }
     }
 
