@@ -41,3 +41,7 @@ jni.workspace = true
 # anyway. It is not android-gated: `loaded` finds the platform loader on the host too,
 # which is the only way the shaders ever get executed before they reach a phone.
 ash = { workspace = true, default-features = false, features = ["loaded"] }
+
+# mmap for host row reads out of large weight files (`weights_part9.rs`).
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true

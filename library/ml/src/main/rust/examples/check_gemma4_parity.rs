@@ -151,10 +151,11 @@ fn main() {
     };
     FUSED.store(gemma4::combines_in_plan(&weights.offsets()), std::sync::atomic::Ordering::Relaxed);
     println!("text plans combine the per-layer rows: {}", fused());
-    let embed_weights = match open_streamed(&embed, graph::GEMMA4_EMBED) {
+    let mut embed_weights = match open_streamed(&embed, graph::GEMMA4_EMBED) {
         Ok(w) => w,
         Err(why) => return println!("the embedding does not stream: {why}"),
     };
+    println!("embed rows mapped: {}", embed_weights.map());
     let head_weights: Option<Streamed> = match &args.head {
         Some(path) => match open_streamed(path, graph::GEMMA4_HEAD) {
             Ok(w) => Some(w),

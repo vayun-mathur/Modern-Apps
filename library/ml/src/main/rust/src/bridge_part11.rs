@@ -168,7 +168,10 @@ fn build_gemma4<'l>(
     budget: u64,
 ) -> Result<Gemma4Handle, String> {
     let weights = Streamed::open(text, text_at, text_len, graph::GEMMA4_TEXT)?;
-    let embed = Streamed::open(embed, embed_at, embed_len, graph::GEMMA4_EMBED)?;
+    let mut embed = Streamed::open(embed, embed_at, embed_len, graph::GEMMA4_EMBED)?;
+    if !embed.map() {
+        log("gemma4 reads embedding rows with pread: the embed file did not map");
+    }
     // The optional head file: opened (header-checked against GEMMA4_HEAD)
     // only when the caller passed a live descriptor. `None` keeps the old
     // two-file behavior exactly — host head, no third upload.

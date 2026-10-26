@@ -239,6 +239,8 @@ pub struct Streamed {
     /// header and table. Every [`Blob::read_at`] adds it, so callers index the data section.
     data_at: u64,
     data_len: u64,
+    /// Set by [`Streamed::map`]: host reads copy out of a mapping instead of calling pread.
+    mapping: Option<Mapping>,
 }
 
 impl Streamed {
@@ -278,6 +280,7 @@ impl Streamed {
             file,
             data_at: at + data_at,
             data_len: header.data_len as u64,
+            mapping: None,
         })
     }
 
@@ -323,6 +326,9 @@ impl Blob for Streamed {
                 "{offset}..{end} of a {}-byte data section",
                 self.data_len
             ));
+        }
+        if let Some(mapped) = self.mapping.as_ref().and_then(|m| m.read_at(offset, into)) {
+            return Ok(mapped);
         }
         read_exact_at(&self.file, into, self.data_at + offset)
             .map_err(|e| format!("reading {} bytes at {offset}: {e}", into.len()))
