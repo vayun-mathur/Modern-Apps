@@ -43,6 +43,8 @@ dependencies {
     implementation(project(":library:image"))
 
     // ai
+    // Gemma 4 chat runs on `:library:ml`'s Vulkan runtime (Gemma4Handle).
+    implementation(project(":library:ml"))
     implementation(libs.litertlm.android)
     // litertlm 0.14.0 needs kotlinx-coroutines 1.11.0 (close$default on the
     // SendChannel interface); requesting it directly wins over the transitive 1.9.0.

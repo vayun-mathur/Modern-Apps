@@ -47,7 +47,7 @@ class OpenAssistantRepository private constructor(context: Context) :
     suspend fun upsertMemory(value: Memory): Long = memoryDao.upsert(value)
     suspend fun deleteMemory(value: Memory): Int = memoryDao.delete(value)
 
-    /** Backing DAOs for [com.vayunmathur.openassistant.util.AssistantToolSet] and similar consumers. */
+    /** Backing DAOs for [com.vayunmathur.openassistant.platform.AssistantTools] and similar consumers. */
     internal val conversationDaoRef get(): ConversationDao = conversationDao
     internal val messageDaoRef get(): MessageDao = messageDao
     internal val memoryDaoRef get(): MemoryDao = memoryDao

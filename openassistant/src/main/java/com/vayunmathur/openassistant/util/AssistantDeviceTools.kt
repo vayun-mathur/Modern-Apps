@@ -12,7 +12,7 @@ import kotlin.time.Clock
 
 /**
  * Device-local tools (app list, messaging, memories, clock helpers) backing
- * [AssistantToolSet]. Split from [AssistantToolIntents] so neither class
+ * [com.vayunmathur.openassistant.platform.AssistantTools]. Split from [AssistantToolIntents] so neither class
  * exceeds the TooManyFunctions limit.
  */
 internal class AssistantDeviceTools(private val context: Context) {

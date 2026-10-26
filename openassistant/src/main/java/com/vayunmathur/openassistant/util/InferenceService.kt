@@ -13,38 +13,35 @@ import android.os.ResultReceiver
 import com.vayunmathur.library.log.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
-import com.google.ai.edge.litertlm.Backend
-import com.google.ai.edge.litertlm.Content
-import com.google.ai.edge.litertlm.Contents
-import com.google.ai.edge.litertlm.Conversation
-import com.google.ai.edge.litertlm.ConversationConfig
-import com.google.ai.edge.litertlm.Engine
-import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.ExperimentalApi
-import com.google.ai.edge.litertlm.ExperimentalFlags
-import com.google.ai.edge.litertlm.tool
 import com.vayunmathur.library.util.SecureResultReceiver
 import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.openassistant.platform.AssistantTools
+import com.vayunmathur.openassistant.platform.ChatRequest
+import com.vayunmathur.openassistant.platform.ChatResult
+import com.vayunmathur.openassistant.platform.HistoryTurn
+import com.vayunmathur.openassistant.platform.MamlChatEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.flow.catch
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Clock
-import com.vayunmathur.openassistant.data.AppDatabase
 import com.vayunmathur.openassistant.data.Message as DbMessage
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import com.vayunmathur.openassistant.R
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
@@ -62,10 +59,9 @@ class InferenceService : Service() {
         internal const val EMBEDDING_OK_CODE = 0
         private const val INTENT_TIMEOUT_MILLIS = 45000L
         private const val INTENT_QUEUE_TTL_MILLIS = 45000L
-        private const val INFERENCE_TIMEOUT_MILLIS = 45000L
         private const val HISTORY_RECENCY_MILLIS = 1000L
-        private const val ENGINE_SETTLE_MILLIS = 100L
-        private const val INTENT_CONVERSATION_ID = -2L
+        private const val DB_WRITE_INTERVAL_MILLIS = 100L
+        private const val MODEL_DIR = "gemma4"
 
         /** The system prompt used when the user has not set a custom one. */
         val DEFAULT_SYSTEM_PROMPT = """
@@ -105,7 +101,7 @@ class InferenceService : Service() {
         /**
          * A SigLIP2 embedding request from another app (photos). [mode] is
          * "text", "image", or "info". Runs on [SiglipEmbedder], independent of
-         * the litertlm chat [Engine], so it can be served while the LLM is busy.
+         * the chat [MamlChatEngine], so it can be served while the LLM is busy.
          */
         data class Embedding(
             val mode: String,
@@ -134,10 +130,9 @@ class InferenceService : Service() {
         InferenceEmbeddingHandler(applicationContext, serviceScope)
     }
 
-    /** Guards the on-demand SigLIP2 model download so we start it at most once. */
-    private var engine: Engine? = null
-    private var currentConversation: Conversation? = null
-    private var currentConversationId: Long = -1L
+    private var engine: MamlChatEngine? = null
+    private val engineLock = Mutex()
+    private val tools by lazy { AssistantTools(applicationContext, memoryDao) }
 
     private val repository by lazy { OpenAssistantRepository.get(applicationContext) }
     private val conversationDao get() = repository.conversationDaoRef
@@ -198,7 +193,7 @@ class InferenceService : Service() {
 
     // Embeddings run on their own consumer so they don't wait behind the
     // (possibly long) chat/intent LLM jobs — they use SiglipEmbedder, not the
-    // litertlm Engine.
+    // chat engine.
     private fun launchEmbeddingLoop() {
         serviceScope.launch {
             for (job in embeddingQueue) {
@@ -295,15 +290,8 @@ class InferenceService : Service() {
         try {
             Log.debug("InferenceService", "Executing Intent Inference")
             ensureEngineInitialized()
-
-            currentConversation?.close()
-            currentConversation = null
-            delay(ENGINE_SETTLE_MILLIS)
-
-            setupIntentConversation(job.schema)
-
             withTimeout(INTENT_TIMEOUT_MILLIS) {
-                runIntentInferenceLoop(job.userText, job.imagePaths, job.schema, job.receiver)
+                runIntentInference(job.userText, job.imagePaths, job.schema, job.receiver)
             }
         } catch (e: TimeoutCancellationException) {
             Log.error("InferenceService", "Intent inference timed out after 45 seconds")
@@ -312,8 +300,7 @@ class InferenceService : Service() {
                 Bundle().apply { putString("error", getString(R.string.error_inference_timeout)) },
             )
         } catch (e: CancellationException) {
-            if (e.message != "HALT") throw e
-            Log.status("InferenceService", "Intent inference halted successfully via schema match.")
+            throw e
         } catch (expected: Exception) {
             Log.error("InferenceService", "Error during intent inference", expected)
             job.receiver.send(
@@ -325,10 +312,6 @@ class InferenceService : Service() {
                     )
                 },
             )
-        } finally {
-            currentConversation?.close()
-            currentConversation = null
-            currentConversationId = -1L
         }
     }
 
@@ -347,46 +330,36 @@ class InferenceService : Service() {
     // ---------- SigLIP2 embedding provider (served to the photos app) ----------
     // Dispatch lives in [InferenceEmbeddingHandler]; queue types are public aliases above.
 
-    private suspend fun resetConversation(conversationId: Long, userText: String) {
-        currentConversation?.close()
-        currentConversation = null
-        delay(ENGINE_SETTLE_MILLIS)
+    private suspend fun loadHistory(conversationId: Long, userText: String): List<HistoryTurn> {
         val cutoff = Clock.System.now().toEpochMilliseconds() - HISTORY_RECENCY_MILLIS
-        val history = fetchHistoryFromDb(conversationId)
+        return fetchHistoryFromDb(conversationId)
             .filter { it.text != userText || it.timestamp < cutoff }
-        setupConversation(conversationId, history)
+            .map { HistoryTurn(fromUser = it.role != "assistant", text = it.text) }
     }
 
     private suspend fun executeStandardInference(job: InferenceJob.Standard) {
         try {
             ensureEngineInitialized()
-            val stale = currentConversationId != job.conversationId ||
-                currentConversation == null ||
-                currentConversation?.isAlive != true
-            if (stale) {
-                resetConversation(job.conversationId, job.userText)
-            }
             runInferenceLoop(job.conversationId, job.userText, job.imagePaths, job.audioPath)
         } catch (e: CancellationException) {
-            if (e.message != "HALT") throw e
-            Log.status("InferenceService", "Standard inference halted successfully.")
+            throw e
         } catch (expected: Exception) {
             Log.error("InferenceService", "Inference failed, resetting engine for retry", expected)
-            retryStandardInference(job, expected)
+            retryStandardInference(job)
         }
     }
 
-    private suspend fun retryStandardInference(job: InferenceJob.Standard, ignored: Exception) {
-        currentConversation?.close()
-        currentConversation = null
-        currentConversationId = -1L
-        engine?.close()
-        engine = null
+    private suspend fun retryStandardInference(job: InferenceJob.Standard) {
+        engineLock.withLock {
+            engine?.close()
+            engine = null
+        }
         try {
             ensureEngineInitialized()
-            resetConversation(job.conversationId, job.userText)
             runInferenceLoop(job.conversationId, job.userText, job.imagePaths, job.audioPath)
-        } catch (retryExpected: IllegalStateException) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (retryExpected: Exception) {
             Log.error("InferenceService", "Retry also failed", retryExpected)
             val detail = retryExpected.localizedMessage ?: ""
             upsertMessageToDb(
@@ -400,96 +373,53 @@ class InferenceService : Service() {
         }
     }
 
-    private fun setupIntentConversation(schema: String) {
-        val systemPrompt = """
-            You are a highly specialized data extraction engine.
-            Your sole purpose is to analyze the provided images/text and output a SINGLE valid JSON object that adheres STRICTLY to the provided JSON schema.
+    private fun intentSystemPrompt(schema: String): String = """
+        You are a highly specialized data extraction engine.
+        Your sole purpose is to analyze the provided images/text and output a SINGLE valid JSON object that adheres STRICTLY to the provided JSON schema.
 
-            EXTREMELY IMPORTANT:
-            1. DO NOT respond with any conversational text.
-            2. DO NOT include any preamble, explanation, or postscript.
-            3. Output ONLY the raw JSON object.
-            4. Ensure all keys and values are properly quoted.
+        EXTREMELY IMPORTANT:
+        1. DO NOT respond with any conversational text.
+        2. DO NOT include any preamble, explanation, or postscript.
+        3. Output ONLY the raw JSON object.
+        4. Ensure all keys and values are properly quoted.
 
-            SCHEMA:
-            $schema
+        SCHEMA:
+        $schema
 
-            Start extraction immediately.
-            """.trimIndent()
+        Start extraction immediately.
+        """.trimIndent()
 
-        currentConversation = engine?.createConversation(
-            ConversationConfig(
-                systemInstruction = Contents.of(systemPrompt),
-                initialMessages = emptyList(),
-                automaticToolCalling = false,
-            ),
-        )
-        currentConversationId = INTENT_CONVERSATION_ID
-    }
-
-    private suspend fun runIntentInferenceLoop(
+    private suspend fun runIntentInference(
         userText: String,
         imagePaths: Array<String>,
         schema: String,
         receiver: ResultReceiver,
     ) {
-        val conv = currentConversation ?: return
-
-        val initialContents = mutableListOf<Content>()
-        imagePaths.forEach { path -> initialContents.add(Content.ImageFile(path)) }
-        if (userText.isNotBlank()) {
-            initialContents.add(Content.Text(userText))
-        }
-
-        val nextMessage = com.google.ai.edge.litertlm.Message.user(Contents.of(initialContents))
-
-        var fullResponseText = ""
-        Log.debug(
-            "InferenceService",
-            "Sending intent inference request (Streaming mode for safe interruption)",
-        )
-
-        val stream = conv.sendMessageAsync(nextMessage)
-
-        stream.collect { chunk ->
-            val chunkText = chunk.contents.contents
-                .filterIsInstance<Content.Text>()
-                .joinToString("") { it.text }
-            fullResponseText += chunkText
-
-            // Try to extract JSON and check if it matches schema
-            val jsonCandidate = tryExtractLargestJson(fullResponseText)
-            if (jsonCandidate != null) {
-                val validationError = JsonSchemaValidator.validateJsonAgainstSchema(
-                    jsonCandidate,
-                    schema,
-                )
-                if (validationError == null) {
-                    Log.status(
-                        "InferenceService",
-                        "Valid JSON extracted and verified against schema. Halting.",
-                    )
-                    receiver.send(
-                        EMBEDDING_OK_CODE,
-                        Bundle().apply { putString("json_result", jsonCandidate) },
-                    )
-                    throw CancellationException("HALT")
-                }
+        val chat = engine ?: throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+        val job = currentCoroutineContext()[Job]
+        var sent = false
+        Log.debug("InferenceService", "Sending intent inference request (streaming for early halt)")
+        val reply = chat.extract(intentSystemPrompt(schema), userText, imagePaths.toList()) { text ->
+            if (job?.isActive == false) return@extract false
+            val candidate = tryExtractLargestJson(text)
+            if (candidate != null && JsonSchemaValidator.validateJsonAgainstSchema(candidate, schema) == null) {
+                Log.status("InferenceService", "Valid JSON extracted and verified against schema. Halting.")
+                receiver.send(EMBEDDING_OK_CODE, Bundle().apply { putString("json_result", candidate) })
+                sent = true
+                false
+            } else {
+                true
             }
         }
+        if (sent) return
+        currentCoroutineContext()[Job]?.let { if (!it.isActive) throw CancellationException("intent cancelled") }
+        if (reply == null) throw IllegalStateException(getString(R.string.error_ai_engine_failed))
 
-        // If it finished without tryExtractLargestJson triggering HALT (e.g. at the very end)
-        val finalJson = tryExtractLargestJson(fullResponseText)
-        if (finalJson != null) {
-            val validationError = JsonSchemaValidator.validateJsonAgainstSchema(finalJson, schema)
-            if (validationError == null) {
-                receiver.send(
-                    EMBEDDING_OK_CODE,
-                    Bundle().apply { putString("json_result", finalJson) },
-                )
-                Log.dev("InferenceService", "AI produced output: $finalJson")
-                return
-            }
+        val finalJson = tryExtractLargestJson(reply)
+        if (finalJson != null && JsonSchemaValidator.validateJsonAgainstSchema(finalJson, schema) == null) {
+            receiver.send(EMBEDDING_OK_CODE, Bundle().apply { putString("json_result", finalJson) })
+            Log.dev("InferenceService", "AI produced output: $finalJson")
+            return
         }
 
         Log.error("InferenceService", "AI finished generation without providing a schema-matching JSON.")
@@ -502,53 +432,20 @@ class InferenceService : Service() {
     private fun tryExtractLargestJson(text: String): String? =
         JsonExtractor.largestObject(text)
 
-    private suspend fun ensureEngineInitialized() {
-        if (engine != null) return
-
-        @OptIn(ExperimentalApi::class)
-        ExperimentalFlags.enableSpeculativeDecoding = true
-
-        val modelFile = File(applicationContext.getExternalFilesDir(null)!!, "gemma4-2b.litertlm")
-        if (!modelFile.exists()) {
-            throw IllegalStateException("Model file missing at ${modelFile.absolutePath}")
+    private suspend fun ensureEngineInitialized() = engineLock.withLock {
+        if (engine != null) return@withLock
+        val dir = File(applicationContext.getExternalFilesDir(null), MODEL_DIR)
+        val created = MamlChatEngine(dir)
+        if (!created.load()) {
+            created.close()
+            throw IllegalStateException("Model missing or failed to load at ${dir.absolutePath}")
         }
-
-        val config = EngineConfig(
-            modelPath = modelFile.absolutePath,
-            backend = Backend.GPU(),
-            visionBackend = Backend.GPU(),
-            audioBackend = Backend.CPU(),
-            cacheDir = applicationContext.cacheDir.absolutePath,
-        )
-
-        val newEngine = Engine(config)
-        withContext(Dispatchers.IO) {
-            newEngine.initialize()
-        }
-        engine = newEngine
+        engine = created
     }
 
-    private suspend fun setupConversation(id: Long, history: List<DbMessage>) {
+    private suspend fun systemPrompt(): String {
         val stored = DataStoreUtils.getInstance(applicationContext).getStringAwait(KEY_SYSTEM_PROMPT)
-        val systemPrompt = if (stored.isNullOrBlank()) DEFAULT_SYSTEM_PROMPT else stored
-
-        val initialMessages = history.map { msg ->
-            when (msg.role) {
-                "user" -> com.google.ai.edge.litertlm.Message.user(Contents.of(msg.text))
-                "assistant" -> com.google.ai.edge.litertlm.Message.model(Contents.of(msg.text))
-                else -> com.google.ai.edge.litertlm.Message.user(Contents.of(msg.text))
-            }
-        }
-
-        currentConversation = engine?.createConversation(
-            ConversationConfig(
-                systemInstruction = Contents.of(systemPrompt),
-                initialMessages = initialMessages,
-                tools = listOf(tool(AssistantToolSet(applicationContext, memoryDao, messageDao, id))),
-                automaticToolCalling = true,
-            ),
-        )
-        currentConversationId = id
+        return if (stored.isNullOrBlank()) DEFAULT_SYSTEM_PROMPT else stored
     }
 
     private suspend fun runInferenceLoop(
@@ -557,7 +454,14 @@ class InferenceService : Service() {
         imagePaths: Array<String>,
         audioPath: String?,
     ) {
-        val conv = currentConversation ?: return
+        val chat = engine ?: throw IllegalStateException(getString(R.string.error_ai_engine_failed))
+        val request = ChatRequest(
+            system = systemPrompt(),
+            history = loadHistory(conversationId, userText),
+            userText = userText,
+            imagePaths = imagePaths.toList(),
+            audioPath = audioPath?.takeIf { File(it).exists() },
+        )
 
         val aiMsgId = upsertMessageToDb(
             DbMessage(
@@ -568,50 +472,61 @@ class InferenceService : Service() {
             ),
         )
 
-        var fullResponseText = ""
-        val contents = mutableListOf<Content>()
-        imagePaths.forEach { path -> contents.add(Content.ImageFile(path)) }
-        audioPath?.let { if (File(it).exists()) contents.add(Content.AudioFile(it)) }
-        if (userText.isNotBlank()) contents.add(Content.Text(userText))
+        val job = currentCoroutineContext()[Job]
+        val latest = AtomicReference("")
+        val writer = serviceScope.launch {
+            var written = ""
+            while (isActive) {
+                delay(DB_WRITE_INTERVAL_MILLIS)
+                flushTitle(conversationId)
+                val text = latest.get()
+                if (text.isNotBlank() && text != written) {
+                    updateMessageInDb(aiMsgId, text)
+                    written = text
+                }
+            }
+        }
+        val result = try {
+            chat.chat(request, tools) { text ->
+                if (halt || job?.isActive == false) {
+                    false
+                } else {
+                    latest.set(text)
+                    true
+                }
+            }
+        } catch (e: Exception) {
+            withContext(NonCancellable) { messageDao.deleteById(aiMsgId) }
+            throw e
+        } finally {
+            withContext(NonCancellable) { writer.cancelAndJoin() }
+        }
+        flushTitle(conversationId)
 
-        val stream = conv.sendMessageAsync(com.google.ai.edge.litertlm.Message.user(Contents.of(contents)))
-
-        stream.catch { e ->
-            Log.debug("InferenceService", "Caught inference error: ${e::class.simpleName}", e)
-            if (isBenignInterruption(e)) {
+        when (result) {
+            is ChatResult.Reply -> if (result.halted || halt) {
                 halt = false
                 messageDao.deleteById(aiMsgId)
-            } else {
+                Log.status("InferenceService", "Standard inference halted successfully.")
+            } else if (result.text.isNotBlank()) {
+                updateMessageInDb(aiMsgId, result.text)
+            }
+            ChatResult.TooLong -> updateMessageInDb(
+                aiMsgId,
+                getString(R.string.error_prefix, "the message is too long for the model's context"),
+            )
+            ChatResult.Unavailable -> {
                 messageDao.deleteById(aiMsgId)
-                throw e
-            }
-        }.collect { chunk ->
-            if (halt) {
-                halt = false
-                messageDao.deleteById(aiMsgId)
-                throw CancellationException("HALT")
-            }
-            val chunkText = chunk.contents.contents
-                .filterIsInstance<Content.Text>()
-                .joinToString("") { it.text }
-            fullResponseText += chunkText
-
-            if (newTitle != null) {
-                updateTitleInDb(conversationId, newTitle!!)
-                newTitle = null
-            }
-
-            if (fullResponseText.isNotBlank()) {
-                updateMessageInDb(aiMsgId, fullResponseText)
+                throw IllegalStateException(getString(R.string.error_ai_engine_failed))
             }
         }
     }
 
-    private fun isBenignInterruption(e: Throwable): Boolean =
-        e is MissingAppException ||
-            e is StopInferenceException ||
-            e.cause is StopInferenceException ||
-            halt
+    private suspend fun flushTitle(conversationId: Long) {
+        val title = newTitle ?: return
+        newTitle = null
+        updateTitleInDb(conversationId, title)
+    }
 
     private suspend fun fetchHistoryFromDb(id: Long): List<DbMessage> = messageDao.getByConversation(id)
     private suspend fun upsertMessageToDb(msg: DbMessage): Long = messageDao.upsert(msg)
@@ -628,8 +543,8 @@ class InferenceService : Service() {
 
     override fun onDestroy() {
         serviceScope.cancel()
-        currentConversation?.close()
         engine?.close()
+        engine = null
         super.onDestroy()
     }
 }

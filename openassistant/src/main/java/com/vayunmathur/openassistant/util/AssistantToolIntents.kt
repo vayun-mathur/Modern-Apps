@@ -23,10 +23,14 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import com.vayunmathur.openassistant.MainActivity
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 /**
- * Intent-launching back end for [AssistantToolSet]. Holds no @Tool functions
- * itself so the tool class stays under the TooManyFunctions limit; every tool
+ * Intent-launching back end for the assistant tool registry
+ * ([com.vayunmathur.openassistant.platform.AssistantTools]); every tool
  * delegates here for the actual cross-app call.
  */
 internal class AssistantToolIntents(private val context: Context) {
@@ -204,4 +208,50 @@ internal class AssistantToolIntents(private val context: Context) {
         memoryDao.upsert(Memory(content))
         return "Success: Added memory"
     }
+}
+
+class MissingAppException(val packageName: String) : Exception("App $packageName is not installed.")
+
+@kotlinx.serialization.Serializable
+data class WeatherLatLonRequest(val latitude: Double, val longitude: Double)
+
+@kotlinx.serialization.Serializable
+data class WeatherNameRequest(val name: String)
+
+@kotlinx.serialization.Serializable
+data class CreateLinkRequest(val name: String, val expiryMillis: Long)
+
+@OptIn(ExperimentalSerializationApi::class)
+suspend inline fun <reified Input : Any, reified Output : Any> launchIntent(
+    context: Context,
+    packageName: String,
+    className: String,
+    input: Input,
+): Output {
+    val stringOutput = MainActivity.intentLauncher.launch(
+        context,
+        packageName,
+        className,
+        serializer<Input>(),
+        input,
+    )
+    if (stringOutput == "package $packageName doesn't exist") throw MissingAppException(packageName)
+    return Json.decodeFromString(serializer<Output>(), stringOutput)
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+suspend inline fun <reified Input : Any> launchIntentU(
+    context: Context,
+    packageName: String,
+    className: String,
+    input: Input,
+) {
+    val stringOutput = MainActivity.intentLauncher.launch(
+        context,
+        packageName,
+        className,
+        serializer<Input>(),
+        input,
+    )
+    if (stringOutput == "package $packageName doesn't exist") throw MissingAppException(packageName)
 }
