@@ -112,8 +112,19 @@ class UcpCatalogDatedTest {
                 assertEquals("p1", UcpCatalog.getProduct(UcpPlatforms.GENERIC, "shop.example", "p1").getOrThrow().id)
                 val call = detail.requests.last()
                 assertEquals("$endpoint/catalog/product", call.url)
-                assertEquals(obj("""{"id":"p1"}"""), obj(call.body!!))
+                assertEquals(obj("""{"id":"p1","context":{"address_country":"US"}}"""), obj(call.body!!))
             }
+        }
+    }
+
+    @Test
+    fun bothDatedParsersRetainTheFullMerchantRangeNotJustVisibleVariantPrices() {
+        for (version in listOf(current, april)) {
+            val item = product().replace("\"max\":{\"amount\":12999", "\"max\":{\"amount\":15999")
+            val parsed = UcpCatalog.parseProducts(response(version, item), "generic", "shop.example", version).single()
+            assertEquals(Money(12999, "USD"), parsed.priceRange)
+            assertEquals(Money(15999, "USD"), parsed.priceRangeMax)
+            assertEquals(Money(12999, "USD"), parsed.variants.single().price)
         }
     }
 

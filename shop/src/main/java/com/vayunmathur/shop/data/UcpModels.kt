@@ -12,6 +12,9 @@ data class Money(val amount: Long = 0, val currency: String = "USD")
 data class ProductImage(val url: String = "", val alt: String? = null)
 
 @Serializable
+data class CatalogOptionSelection(val name: String, val label: String, val id: String? = null)
+
+@Serializable
 data class ProductVariant(
     val id: String = "",
     val title: String = "",
@@ -19,6 +22,9 @@ data class ProductVariant(
     val available: Boolean = false,
     val optionValues: List<String> = emptyList(),
     val sku: String? = null,
+    val storeName: String = "",
+    val shopDomain: String = "",
+    val selectedOptions: List<CatalogOptionSelection> = emptyList(),
 )
 
 @Serializable
@@ -33,6 +39,9 @@ data class UcpProduct(
     val images: List<ProductImage> = emptyList(),
     val variants: List<ProductVariant> = emptyList(),
     val checkoutEligible: Boolean = false,
+    val descriptionHtml: String = "",
+    val storeName: String = "",
+    val priceRangeMax: Money? = null,
 )
 
 @Serializable

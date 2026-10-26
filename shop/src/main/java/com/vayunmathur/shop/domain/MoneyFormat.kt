@@ -18,6 +18,12 @@ object MoneyFormat {
 
     fun majorUnits(money: Money): Double = decimalAmount(money).toDouble()
 
+    fun formatRange(min: Money, max: Money?, locale: Locale = Locale.US): String {
+        val minimum = format(min, locale)
+        if (max == null || max.currency != min.currency || max.amount < min.amount) return "From $minimum"
+        return if (min.amount == max.amount) minimum else "$minimum - ${format(max, locale)}"
+    }
+
     fun format(money: Money, locale: Locale = Locale.US): String {
         val currency = currency(money)
             ?: return "${money.currency.uppercase(Locale.US)} ${decimalAmount(money).toPlainString()}"

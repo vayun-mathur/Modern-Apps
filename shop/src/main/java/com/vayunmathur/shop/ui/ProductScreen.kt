@@ -25,31 +25,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.image.compose.AsyncImage
+import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.shop.R
+import com.vayunmathur.shop.data.ProductVariant
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
+import com.vayunmathur.shop.domain.MerchantUrls
 import com.vayunmathur.shop.domain.MoneyFormat
 import com.vayunmathur.shop.network.UcpCatalog
 import com.vayunmathur.shop.network.UcpCheckoutApi
 import com.vayunmathur.shop.network.UcpHttpException
-import com.vayunmathur.shop.platform.ShopViewModel
 import com.vayunmathur.shop.platform.AppInit
+import com.vayunmathur.shop.platform.ShopViewModel
+import kotlinx.coroutines.CancellationException
 
-/**
- * Product detail: gallery, variant picker, add-to-cart. Price/availability are re-checked
- * live against the store on entry — search results may be stale and must never be trusted
- * for the buy decision.
- */
+/** Search snapshots paint immediately, but only a live, exact-variant refresh permits purchase. */
 @Composable
 fun ProductScreen(
     viewModel: ShopViewModel,
@@ -61,154 +64,225 @@ fun ProductScreen(
 ) {
     val context = LocalContext.current
     val messenger = rememberMessenger()
-    var product by remember(variantId, platformId, shopDomain) { mutableStateOf<UcpProduct?>(null) }
-    var loading by remember(variantId, platformId, shopDomain) { mutableStateOf(true) }
-    var refreshed by remember(variantId, platformId, shopDomain) { mutableStateOf(false) }
+    var product by remember(variantId, platformId, shopDomain) {
+        mutableStateOf(viewModel.results.firstOrNull { candidate ->
+            candidate.platformId == platformId && candidate.variants.any {
+                it.id == variantId && (candidate.shopDomain == shopDomain || it.shopDomain == shopDomain)
+            }
+        })
+    }
     var selectedVariant by remember(variantId, platformId, shopDomain) { mutableStateOf(variantId) }
     var quantity by remember(variantId, platformId, shopDomain) { mutableStateOf(1) }
+    var retry by remember(variantId, platformId, shopDomain) { mutableStateOf(0) }
+    var refreshing by remember(variantId, platformId, shopDomain) { mutableStateOf(true) }
+    var activeKey by remember(variantId, platformId, shopDomain) { mutableStateOf<Pair<String, String>?>(null) }
+    var verifiedKey by remember(variantId, platformId, shopDomain) { mutableStateOf<Pair<String, String>?>(null) }
+    var failure by remember(variantId, platformId, shopDomain) { mutableStateOf<String?>(null) }
+    val selected = product?.variants?.firstOrNull { it.id == selectedVariant }
+    val publisherDomain = selected?.shopDomain?.takeIf { it.isNotBlank() }
+        ?: product?.shopDomain?.takeIf { it.isNotBlank() } ?: shopDomain
+    val refreshKey = selectedVariant to publisherDomain
+    val loading = refreshing || activeKey != refreshKey
 
-    LaunchedEffect(variantId, platformId, shopDomain) {
-        // Prefer the search snapshot for instant paint, then re-check live.
-        viewModel.results.firstOrNull {
-            it.platformId == platformId && it.shopDomain == shopDomain &&
-                it.variants.any { v -> v.id == variantId }
-        }?.let {
-            product = it
+    LaunchedEffect(variantId, platformId, refreshKey, retry) {
+        activeKey = refreshKey
+        refreshing = true
+        verifiedKey = null
+        failure = null
+        val snapshot = product
+        val publisherName = selected?.storeName?.takeIf { it.isNotBlank() }
+            ?: snapshot?.takeIf { it.shopDomain == publisherDomain }?.storeName.orEmpty()
+        try {
+            if (publisherDomain.isBlank()) {
+                failure = "The publishing store domain is missing. Cart actions are disabled."
+            } else {
+                AppInit.awaitReady()
+                val platform = UcpCheckoutApi.platformFor(platformId)
+                UcpCatalog.refreshProduct(
+                    platform, publisherDomain, selectedVariant, snapshot?.id, selected?.selectedOptions.orEmpty(), snapshot?.title,
+                ).fold(
+                    onSuccess = { live ->
+                        if (live.variants.none { it.id == selectedVariant }) {
+                            failure = "The store no longer lists this exact variant. Cart actions are disabled."
+                        } else {
+                            // Detail responses can narrow to one option. Other choices stay unverified until selected.
+                            val choices = snapshot?.variants?.map { previous ->
+                                live.variants.firstOrNull { it.id == previous.id }?.let { refreshed ->
+                                    refreshed.copy(
+                                        storeName = refreshed.storeName.ifBlank { previous.storeName },
+                                        shopDomain = refreshed.shopDomain.ifBlank { previous.shopDomain },
+                                        selectedOptions = refreshed.selectedOptions.ifEmpty { previous.selectedOptions },
+                                    )
+                                } ?: previous
+                            }.orEmpty()
+                            product = live.copy(
+                                storeName = live.storeName.ifBlank { publisherName },
+                                variants = choices + live.variants.filter { fresh -> choices.none { it.id == fresh.id } },
+                            )
+                            verifiedKey = refreshKey
+                        }
+                    },
+                    onFailure = { error ->
+                        if (error is CancellationException) throw error
+                        failure = (error as? UcpHttpException)?.error?.message()
+                            ?: "Couldn't refresh this product from the publishing store. Check your connection and retry."
+                    },
+                )
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            failure = (error as? UcpHttpException)?.error?.message()
+                ?: "Couldn't refresh this product from the publishing store. Check your connection and retry."
+        } finally {
+            refreshing = false
         }
-        AppInit.awaitReady()
-        if (shopDomain.isNotBlank()) {
-            val platform = UcpCheckoutApi.platformFor(platformId)
-            UcpCatalog.lookup(platform, shopDomain, listOf(variantId)).fold(
-                onSuccess = { products ->
-                    products.firstOrNull()?.let {
-                        product = it
-                        refreshed = true
-                    }
-                    // The looked-up variant may differ from the tapped one; keep the
-                    // selection only if the store still lists it.
-                    if (products.flatMap { it.variants }.none { it.id == selectedVariant }) {
-                        selectedVariant = products.firstOrNull()?.variants?.firstOrNull()?.id
-                            ?: variantId
-                    }
-                },
-                onFailure = {
-                    val err = (it as? UcpHttpException)?.error
-                    messenger.show(
-                        err?.message() ?: "Couldn't refresh this product.",
-                    )
-                },
-            )
-        }
-        loading = false
     }
 
+    val verified = !loading && verifiedKey == refreshKey
+    val canAdd = verified && product?.checkoutEligible == true && selected?.available == true
+    val addToCart: () -> Unit = {
+        val current = product
+        if (canAdd && current != null) {
+            val cartProduct = current.copy(shopDomain = selected?.shopDomain?.takeIf { it.isNotBlank() } ?: current.shopDomain)
+            viewModel.addToCart(cartProduct, selectedVariant, quantity, context)
+        }
+    }
     AppScaffold(
         title = product?.title ?: stringResource(R.string.app_name),
         onNavigateBack = onBack,
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         val current = product
-        if (loading && current == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            return@AppScaffold
-        }
         if (current == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.check_connection_retry))
+            Box(Modifier.fillMaxSize().padding(padding).padding(16.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (loading) {
+                        CircularProgressIndicator()
+                        Text("Checking live price and availability...")
+                    } else {
+                        Text(failure ?: "This product is unavailable. Please retry.")
+                        Button(onClick = { retry += 1 }) { Text("Retry") }
+                    }
+                }
             }
-            return@AppScaffold
+        } else {
+            ProductDetailContent(
+                product = current,
+                selectedVariantId = selectedVariant,
+                quantity = quantity,
+                loading = loading,
+                verified = verified,
+                failure = failure,
+                onSelectVariant = { selectedVariant = it },
+                onQuantityChange = { quantity = it },
+                onRetry = { retry += 1 },
+                onAddToCart = { if (canAdd) { addToCart(); messenger.show("Added to cart") } },
+                onBuyNow = { if (canAdd) { addToCart(); onCheckout() } },
+                onOpenUrl = { url -> MerchantUrls.httpsUrl(url)?.let { openContinueUrl(context, it) } },
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
         }
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().padding(padding),
-        ) {
-            val images = current.images
-            if (images.isNotEmpty()) {
-                item {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(images, key = { it.url }) { image ->
-                            AsyncImage(
-                                model = image.url,
-                                contentDescription = image.alt ?: current.title,
-                                modifier = Modifier
-                                    .fillParentMaxWidth(0.85f)
-                                    .height(280.dp),
-                                contentScale = ContentScale.Crop,
-                            )
-                        }
-                    }
+    }
+}
+
+/** Stateless content shared with metadata fixtures; all effects belong to the screen host. */
+@Composable
+internal fun ProductDetailContent(
+    product: UcpProduct,
+    selectedVariantId: String,
+    quantity: Int,
+    loading: Boolean,
+    verified: Boolean,
+    failure: String?,
+    onSelectVariant: (String) -> Unit,
+    onQuantityChange: (Int) -> Unit,
+    onRetry: () -> Unit,
+    onAddToCart: () -> Unit,
+    onBuyNow: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val variant = product.variants.firstOrNull { it.id == selectedVariantId }
+    val storeDomain = variant?.shopDomain?.takeIf { it.isNotBlank() } ?: product.shopDomain
+    val storeName = variant?.storeName?.takeIf { it.isNotBlank() }
+        ?: product.storeName.takeIf { storeDomain == product.shopDomain }.orEmpty()
+    val canAdd = verified && !loading && product.checkoutEligible && variant?.available == true
+    val description = remember(product.descriptionHtml, product.description, onOpenUrl) {
+        // Native conversion also handles merchants that put HTML fragments in the plain field.
+        AnnotatedString.fromHtml(
+            product.descriptionHtml.ifBlank { product.description },
+            linkInteractionListener = LinkInteractionListener { link ->
+                (link as? LinkAnnotation.Url)?.url?.let { url ->
+                    MerchantUrls.httpsUrl(url)?.let(onOpenUrl)
                 }
-            }
+            },
+        )
+    }
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier,
+    ) {
+        if (product.images.isNotEmpty()) {
             item {
-                DetailSection("Price") {
-                    val variant = current.variants.firstOrNull { it.id == selectedVariant }
-                    Text(
-                        MoneyFormat.format(variant?.price ?: current.priceRange),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            if (current.variants.size > 1) {
-                item {
-                    DetailSection("Options") {
-                        VariantPicker(
-                            variants = current.variants,
-                            selectedId = selectedVariant,
-                            onSelect = { selectedVariant = it },
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(product.images, key = { it.url }) { image ->
+                        AsyncImage(
+                            model = image.url,
+                            contentDescription = image.alt ?: product.title,
+                            modifier = Modifier.fillParentMaxWidth(0.85f).height(280.dp),
+                            contentScale = ContentScale.Crop,
                         )
                     }
                 }
             }
-            if (current.description.isNotBlank()) {
-                item {
-                    DetailSection("Details") {
-                        Text(
-                            current.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
+        }
+        item {
+            DetailSection("Publishing store") {
+                Text(storeName.ifBlank { storeDomain.ifBlank { "Publishing store" } }, style = MaterialTheme.typography.titleMedium)
+                if (storeName.isNotBlank()) {
+                    Text(storeDomain.ifBlank { "Store domain unavailable" }, style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            item {
-                QuantityRow(quantity = quantity, onChange = { quantity = it })
+        }
+        item {
+            DetailSection("Price") {
+                Text(
+                    variant?.price?.let { MoneyFormat.format(it) } ?: "Select an option to see its price",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
+        }
+        if (product.variants.size > 1) {
             item {
-                val canAdd = refreshed && !loading && current.checkoutEligible &&
-                    current.variants.firstOrNull { it.id == selectedVariant }?.available == true
-                if (!current.checkoutEligible && current.url.isNotBlank()) {
-                    Button(onClick = { openContinueUrl(context, current.url) }) {
-                        Text("View on merchant site")
-                    }
+                DetailSection("Options") {
+                    VariantPicker(product.variants, selectedVariantId, onSelectVariant)
                 }
-                if (!refreshed) Text("Live price could not be verified. Cart actions are disabled.")
+            }
+        }
+        item { ProductQuantityRow(quantity, onQuantityChange) }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                when {
+                    loading -> Text("Checking live price and availability...")
+                    !verified -> {
+                        Text(failure ?: "Live price and availability are not verified. Cart actions are disabled.")
+                        Button(onClick = onRetry) { Text("Retry") }
+                    }
+                    variant?.available != true -> Text("This variant is out of stock.")
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            viewModel.addToCart(current, selectedVariant, quantity, context)
-                            messenger.show("Added to cart")
-                        },
-                        enabled = canAdd,
-                        modifier = Modifier.weight(1f),
-                    ) {
+                    Button(onClick = onAddToCart, enabled = canAdd, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.add_to_cart))
                     }
-                    Button(
-                        onClick = {
-                            viewModel.addToCart(current, selectedVariant, quantity, context)
-                            onCheckout()
-                        },
-                        enabled = canAdd,
-                        modifier = Modifier.weight(1f),
-                    ) {
+                    Button(onClick = onBuyNow, enabled = canAdd, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.buy_now))
                     }
                 }
-                Spacer(Modifier.height(4.dp))
-                if (!current.checkoutEligible && current.url.isNotBlank()) {
+                if ((!product.checkoutEligible || !verified && !loading) && MerchantUrls.httpsUrl(product.url) != null) {
+                    Button(onClick = { onOpenUrl(product.url) }) { Text("View on merchant site") }
                     Text(
                         "Completes on the merchant site.",
                         style = MaterialTheme.typography.bodySmall,
@@ -217,12 +291,19 @@ fun ProductScreen(
                 }
             }
         }
+        if (description.isNotBlank()) {
+            item {
+                DetailSection("Details") {
+                    Text(description, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun VariantPicker(
-    variants: List<com.vayunmathur.shop.data.ProductVariant>,
+    variants: List<ProductVariant>,
     selectedId: String,
     onSelect: (String) -> Unit,
 ) {
@@ -235,49 +316,22 @@ private fun VariantPicker(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        variant.title.ifBlank { "Default" },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Text(variant.title.ifBlank { "Default" }, style = MaterialTheme.typography.bodyMedium)
                     if (!variant.available) {
-                        Text(
-                            "Out of stock",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                        Text("Out of stock", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     MoneyFormat.format(variant.price),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { onSelect(variant.id) },
-                    enabled = variant.available && !selected,
-                ) {
+                Button(onClick = { onSelect(variant.id) }, enabled = variant.available && !selected) {
                     Text(if (selected) "Selected" else "Select")
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun QuantityRow(quantity: Int, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Quantity", style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.width(12.dp))
-        Button(onClick = { onChange((quantity - 1).coerceAtLeast(1)) }) { Text("−") }
-        Spacer(Modifier.width(8.dp))
-        Text("$quantity", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.width(8.dp))
-        Button(onClick = { onChange((quantity + 1).coerceAtMost(99)) }) { Text("+") }
     }
 }

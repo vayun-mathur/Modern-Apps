@@ -1,5 +1,6 @@
 package com.vayunmathur.shop.network
 
+import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.ProductImage
 import com.vayunmathur.shop.data.ProductVariant
@@ -40,13 +41,53 @@ object UcpCatalog {
             .mapCatching { parseProducts(it, platform.id, shopDomain, service.version) }
     }
 
-    suspend fun getProduct(platform: UcpPlatform, shopDomain: String, id: String): Result<UcpProduct> {
+    suspend fun getProduct(
+        platform: UcpPlatform, shopDomain: String, id: String,
+        selectedOptions: List<CatalogOptionSelection> = emptyList(),
+    ): Result<UcpProduct> {
         val service = UcpDiscovery.resolve(shopDomain, "dev.ucp.shopping.catalog.lookup")
             .getOrElse { return Result.failure(it) }
-        val arguments = buildJsonObject { putJsonObject("catalog") { put("id", id) } }
+        val arguments = buildJsonObject {
+            putJsonObject("catalog") {
+                put("id", id)
+                putJsonObject("context") { put("address_country", "US") }
+                if (selectedOptions.isNotEmpty()) {
+                    putJsonArray("selected") {
+                        selectedOptions.forEach { selection ->
+                            add(buildJsonObject {
+                                put("name", selection.name)
+                                put("label", selection.label)
+                                selection.id?.let { put("id", it) }
+                            })
+                        }
+                    }
+                }
+            }
+        }
         return UcpApi.serviceCall(service, "get_product", arguments).mapCatching {
             parseProductResponse(it, platform.id, shopDomain, service.version)
         }
+    }
+
+    /** Confirm the exact SKU using a fresh merchant response, not the cached search snapshot. */
+    suspend fun refreshProduct(
+        platform: UcpPlatform, shopDomain: String, variantId: String, productId: String? = null,
+        selectedOptions: List<CatalogOptionSelection> = emptyList(), productTitle: String? = null,
+    ): Result<UcpProduct> {
+        val detail = getProduct(platform, shopDomain, productId?.takeIf { it.isNotBlank() } ?: variantId, selectedOptions)
+        if (detail.isFailure || detail.getOrThrow().variants.any { it.id == variantId }) return detail
+        // Some detail services return only their featured option, ignoring the requested selection.
+        // A separate advertised merchant search can confirm the exact SKU; never retry denied/limited requests.
+        if (!productTitle.isNullOrBlank()) {
+            return searchStore(platform, shopDomain, productTitle, limit = 10).mapCatching { products ->
+                val matched = products.firstOrNull { product -> product.variants.any { it.id == variantId } }
+                    ?: throw UcpHttpException(UcpError.Unsupported("The store did not return a live price for this option."))
+                val alternatives = detail.getOrThrow().takeIf { it.id == matched.id }?.variants.orEmpty()
+                    .filter { option -> option.price.currency == matched.priceRange.currency && matched.variants.none { it.id == option.id } }
+                matched.copy(variants = matched.variants + alternatives)
+            }
+        }
+        return Result.failure(UcpHttpException(UcpError.Unsupported("The store did not return a live price for this option.")))
     }
 
     internal fun searchArguments(query: String, country: String, limit: Int): JsonObject =
@@ -158,12 +199,12 @@ object UcpCatalog {
             o["description"].asObject() == null || o["price"].asObject() == null) malformed("Invalid dated variant")
     }
 
-    private fun priceRange(o: JsonObject, money: (JsonObject) -> Money): Money {
+    private fun priceRange(o: JsonObject, money: (JsonObject) -> Money): Pair<Money, Money> {
         val range = o["price_range"].asObject() ?: malformed("Missing price range")
         val min = money(range["min"].asObject() ?: malformed("Missing minimum price"))
         val max = money(range["max"].asObject() ?: malformed("Missing maximum price"))
         if (min.currency != max.currency || min.amount > max.amount) malformed("Invalid price range")
-        return min
+        return min to max
     }
 
     private fun augustQuantity(o: JsonObject): Boolean {
@@ -181,14 +222,19 @@ object UcpCatalog {
         available = o["availability"].asObject()?.get("available") == JsonPrimitive(true) && supportedQuantity,
         optionValues = o["options"].asArray()?.mapNotNull { string(it.asObject(), "label") }.orEmpty(),
         sku = string(o, "sku"),
+        storeName = sellerName(o),
+        shopDomain = sellerDomain(o),
+        selectedOptions = parseSelectedOptions(o),
     )
 
     private fun projectProduct(
-        o: JsonObject, platformId: String, defaultShop: String, price: Money, variants: List<ProductVariant>,
+        o: JsonObject, platformId: String, defaultShop: String, price: Pair<Money, Money>, variants: List<ProductVariant>,
     ): UcpProduct {
         val url = string(o, "url")?.let(MerchantUrls::httpsUrl).orEmpty()
-        val shop = MerchantUrls.domain(defaultShop) ?: string(o, "shop_domain")?.let(MerchantUrls::domain)
-            ?: url.takeIf { it.isNotBlank() }?.let { URI(it).host.lowercase() }.orEmpty()
+        val shop = MerchantUrls.domain(defaultShop)
+            ?: variants.firstOrNull()?.shopDomain?.takeIf { it.isNotBlank() }
+            ?: string(o, "shop_domain")?.let(MerchantUrls::domain)
+            ?: merchantDomainFromUrl(url)
         val images = o["media"].asArray()?.mapNotNull { item ->
             val media = item.asObject() ?: return@mapNotNull null
             if (string(media, "type") != "image") return@mapNotNull null
@@ -200,11 +246,36 @@ object UcpCatalog {
         return UcpProduct(
             id = string(o, "id")!!, title = string(o, "title")!!,
             description = string(o["description"].asObject(), "plain").orEmpty(),
-            priceRange = price, url = url, platformId = platformId, shopDomain = shop,
+            priceRange = price.first, priceRangeMax = price.second,
+            url = url, platformId = platformId, shopDomain = shop,
             images = images, variants = variants,
+            descriptionHtml = string(o["description"].asObject(), "html").orEmpty(),
+            storeName = variants.firstOrNull { it.shopDomain.isBlank() || it.shopDomain == shop }?.storeName.orEmpty(),
             checkoutEligible = shop.isNotBlank() && variants.isNotEmpty() && o["native_commerce"] != JsonPrimitive(false),
         )
     }
+
+    private fun parseSelectedOptions(variant: JsonObject): List<CatalogOptionSelection> =
+        variant["options"].asArray()?.mapNotNull { element ->
+            val option = element.asObject() ?: return@mapNotNull null
+            val name = string(option, "name") ?: return@mapNotNull null
+            val label = string(option, "label") ?: return@mapNotNull null
+            CatalogOptionSelection(name, label, string(option, "id"))
+        }.orEmpty()
+
+    private fun sellerName(variant: JsonObject): String =
+        string(variant["seller"].asObject(), "name")?.trim()?.take(200).orEmpty()
+
+    private fun sellerDomain(variant: JsonObject): String {
+        val seller = variant["seller"].asObject()
+        return string(seller, "domain")?.let(MerchantUrls::domain)
+            ?: string(seller, "url")?.let(MerchantUrls::httpsUrl)?.let { MerchantUrls.domain(URI(it).host) }
+            ?: ""
+    }
+
+    private fun merchantDomainFromUrl(url: String): String =
+        url.takeIf { it.isNotBlank() }?.let { URI(it).host.lowercase() }
+            ?.takeUnless { it == "shop.app" || it.endsWith(".shop.app") || it == "catalog.shopify.com" }.orEmpty()
 
     private fun string(o: JsonObject?, key: String): String? =
         (o?.get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
@@ -226,9 +297,10 @@ object UcpCatalog {
         val variants = o["variants"].asArray()?.mapNotNull { it.asObject()?.let(::parseVariant) }.orEmpty()
         val range = o["price_range"].asObject()
         val url = o.text("url").orEmpty()
-        val shop = if (defaultShop.isNotBlank()) defaultShop
-            else o.text("shop_domain")?.let(MerchantUrls::domain)
-                ?: MerchantUrls.httpsUrl(url)?.let { URI(it).host }.orEmpty()
+        val shop = MerchantUrls.domain(defaultShop)
+            ?: variants.firstOrNull()?.shopDomain?.takeIf { it.isNotBlank() }
+            ?: o.text("shop_domain")?.let(MerchantUrls::domain)
+            ?: MerchantUrls.httpsUrl(url)?.let(::merchantDomainFromUrl).orEmpty()
         val images = o["media"].asArray()?.mapNotNull { item ->
             val media = item.asObject() ?: return@mapNotNull null
             if (media.text("type") != "image") return@mapNotNull null
@@ -241,7 +313,10 @@ object UcpCatalog {
             id = id,
             title = o.text("title").orEmpty(),
             description = o["description"].asObject()?.text("plain") ?: o.text("description").orEmpty(),
+            descriptionHtml = o["description"].asObject()?.text("html").orEmpty(),
+            storeName = variants.firstOrNull { it.shopDomain.isBlank() || it.shopDomain == shop }?.storeName.orEmpty(),
             priceRange = range?.get("min").asObject()?.let(::parseMoney) ?: variants.firstOrNull()?.price ?: Money(),
+            priceRangeMax = range?.get("max").asObject()?.let(::parseMoney),
             url = url,
             platformId = platformId,
             shopDomain = shop,
@@ -265,6 +340,9 @@ object UcpCatalog {
             available = (o["availability"].asObject()?.get("available").isTruthy() == true) && supportedQuantity,
             optionValues = o["options"].asArray()?.mapNotNull { it.asObject()?.text("label") }.orEmpty(),
             sku = o.text("sku"),
+            storeName = sellerName(o),
+            shopDomain = sellerDomain(o),
+            selectedOptions = parseSelectedOptions(o),
         )
     }
 

@@ -164,8 +164,8 @@ private fun ProductResults(
     ) {
         items(results, key = { "${it.platformId}|${it.shopDomain}|${it.id}" }) { product ->
             ProductCard(product = product, onClick = {
-                val variantId = product.variants.firstOrNull()?.id ?: return@ProductCard
-                onProductClick(variantId, product.platformId, product.shopDomain)
+                val variant = product.variants.firstOrNull() ?: return@ProductCard
+                onProductClick(variant.id, product.platformId, variant.shopDomain.ifBlank { product.shopDomain })
             })
         }
     }
@@ -192,7 +192,7 @@ private fun ProductCard(product: UcpProduct, onClick: () -> Unit) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = MoneyFormat.format(product.priceRange),
+                    text = MoneyFormat.formatRange(product.priceRange, product.priceRangeMax),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )

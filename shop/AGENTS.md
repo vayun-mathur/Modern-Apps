@@ -17,7 +17,9 @@ Entry types: MainActivity, Route, Navigation. Navigation remains a root-only gra
 - Checkout writes require explicit user action and a stable idempotency key per intent. Never replay an uncertain mutation automatically.
 - Preserve cart lines through partial failures and browser handoffs. A session or browser return is not a paid order.
 - No raw card entry, wallet tokenization, completion or authenticated order-read integration while provider authorization is unavailable.
-- Only supported integer quantities can be added. Product refresh must succeed before cart actions.
+- Only supported integer quantities can be added. Detail refresh sends the product ID and selected options, and must confirm the exact variant before cart actions. If a valid detail response returns only another featured option, one fresh advertised merchant search may confirm the exact SKU. Cached snapshots and empty lookup responses are not verification; denied/rate-limited calls are never retried automatically.
+- Use variant seller identity for Global Catalog routing, not the shop.app product-page host. Display the publishing store name when provided and its domain otherwise.
+- Product HTML is converted to inert styled text without a WebView; only validated public HTTPS description links may open externally.
 - Product responses remain session-scoped; persisted cart snapshots omit remote image URLs.
 - Merchant image hosts and cdn.shopify.com are allowed; other image hosts are dropped.
 - Await AppInit readiness before network operations so the standard trust bundle is initialized.

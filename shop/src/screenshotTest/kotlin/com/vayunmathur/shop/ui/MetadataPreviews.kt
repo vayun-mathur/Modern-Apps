@@ -43,7 +43,7 @@ class MetadataPreviews {
         ProductVariant(
             id = "gid://shopify/ProductVariant/12",
             title = "10 / Blue",
-            price = Money(12999, "USD"),
+            price = Money(14999, "USD"),
             optionValues = listOf("10", "Blue"),
         ),
     )
@@ -54,6 +54,7 @@ class MetadataPreviews {
             title = "Trail Runner",
             description = "Grippy shoes for muddy miles",
             priceRange = Money(12999, "USD"),
+            priceRangeMax = Money(14999, "USD"),
             platformId = "shopify",
             shopDomain = "example.myshopify.com",
             variants = variants,
@@ -64,6 +65,7 @@ class MetadataPreviews {
             title = "Wool Overshirt",
             description = "Heavyweight merino flannel",
             priceRange = Money(18900, "USD"),
+            priceRangeMax = Money(18900, "USD"),
             platformId = "shopify",
             shopDomain = "example.myshopify.com",
             variants = listOf(

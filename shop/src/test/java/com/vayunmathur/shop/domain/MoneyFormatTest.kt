@@ -33,6 +33,20 @@ class MoneyFormatTest {
     }
 
     @Test
+    fun rangeFormatsBothPricesAndCollapsesEqualPrices() {
+        assertEquals("$12.99 - $19.99", MoneyFormat.formatRange(Money(1299, "USD"), Money(1999, "USD")))
+        assertEquals("$12.99", MoneyFormat.formatRange(Money(1299, "USD"), Money(1299, "USD")))
+    }
+
+    @Test
+    fun missingOrInvalidUpperBoundsUseFromInsteadOfInventingARange() {
+        val min = Money(1299, "USD")
+        assertEquals("From $12.99", MoneyFormat.formatRange(min, null))
+        assertEquals("From $12.99", MoneyFormat.formatRange(min, Money(1000, "USD")))
+        assertEquals("From $12.99", MoneyFormat.formatRange(min, Money(1999, "EUR")))
+    }
+
+    @Test
     fun unknownCurrencyFallsBackToCode() {
         val formatted = MoneyFormat.format(Money(100, "XXQ"), Locale.US)
         assertTrue(formatted.contains("XXQ"), "was: $formatted")
