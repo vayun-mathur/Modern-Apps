@@ -520,7 +520,12 @@ fn time_decode(
     }
     if stamps {
         match net.at(gemma4::Mode::DecodeStep.at(TIER)).and_then(|at| at.op_times()) {
-            Ok(report) => print_kinds("decode step", &report),
+            Ok(report) => {
+                print_kinds("decode step", &report);
+                if let Ok(plan) = gemma4::build(&weights.offsets(), gemma4::Mode::DecodeStep.at(TIER)) {
+                    print_shapes(&report, &plan);
+                }
+            }
             Err(why) => println!("timestamps unreadable: {why}"),
         }
         if let Some(head) = head_net.as_mut() {
@@ -932,6 +937,29 @@ fn print_kinds(title: &str, report: &[(String, f64, f64)]) {
     hottest.sort_by(|a, b| b.1.total_cmp(&a.1));
     for (label, us, _) in hottest.into_iter().take(10) {
         println!("  {us:>9.1} us  {label}");
+    }
+}
+
+/// Per-(kind, in_c, out_c) GPU time for the weight-streaming kinds, with the weight bandwidth.
+fn print_shapes(report: &[(String, f64, f64)], plan: &modelrunner::nets::Plan) {
+    use modelrunner::nets::{Kind, Op};
+    let mut rows: Vec<(String, u32, u32, usize, f64, f64)> = Vec::new();
+    let dispatches = plan.ops.iter().filter_map(|op| match op { Op::Dispatch { kind, push, .. } => Some((*kind, *push)), _ => None });
+    for ((kind, push), (_, us, _)) in dispatches.zip(report) {
+        let bits = match kind { Kind::ConvVecInt4 => 4.0, Kind::ConvVecInt8 => 8.0, Kind::RmsNorm => 16.0, _ => continue };
+        let (in_c, out_c) = if kind == Kind::RmsNorm { (push.in_c, push.group.max(1)) } else { (push.in_c, push.out_c) };
+        let bytes = if kind == Kind::RmsNorm { f64::from(in_c) * 2.0 } else { f64::from(in_c) * f64::from(out_c) * bits / 8.0 };
+        let name = format!("{kind:?}");
+        let push = modelrunner::nets::Push { in_c, out_c, ..push };
+        match rows.iter_mut().find(|r| r.0 == name && r.1 == push.in_c && r.2 == push.out_c) {
+            Some(r) => { r.3 += 1; r.4 += us; r.5 += bytes; }
+            None => rows.push((name, push.in_c, push.out_c, 1, *us, bytes)),
+        }
+    }
+    rows.sort_by(|a, b| b.4.total_cmp(&a.4));
+    println!("{:>6} {:>10} {:>10} {:>8}  kind in_c -> out_c", "count", "total-ms", "mean-us", "GB/s");
+    for (kind, in_c, out_c, n, us, bytes) in rows {
+        println!("{n:>6} {:>10.2} {:>10.1} {:>8.1}  {kind} {in_c} -> {out_c}", us / 1000.0, us / n as f64, bytes / us / 1000.0);
     }
 }
 

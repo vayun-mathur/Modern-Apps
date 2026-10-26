@@ -24,12 +24,57 @@
 //! # Row mode
 //!
 //! With `p.kw == 1` one workgroup owns one (group, position) row and its lanes split the
-//! group's channels. See `reduce.glsl`.
+//! group's channels. See `reduce.glsl`. A contiguous, quad-aligned row (one position, as in
+//! every decode step) takes `quad_row`, four channels per load; its sum of squares adds in a
+//! different order, so outputs can move by fp32 rounding against the scalar row mode.
 
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_arithmetic : require
 #include "common.glsl"
 #include "reduce.glsl"
+
+/// Binding 0 as fp16 quads, for the contiguous row path. Aliases `arena`; each lane reads and
+/// writes only its own quads.
+layout(std430, binding = 0) buffer ArenaQuad {
+    f16vec4 arena_quad[];
+};
+
+/// Binding 1 as fp16 quads, for the gains on the contiguous row path.
+layout(std430, binding = 1) readonly buffer WeightsQuad {
+    f16vec4 weights_quad[];
+};
+
+/// Row mode over one contiguous, quad-aligned row (a single position): a lane moves four
+/// channels per load, so a 1536-wide decode row is six loads a lane per pass instead of 24.
+/// Latency of those dependent loads, not bandwidth, was most of each 46 us dispatch.
+void quad_row(uint base, float epsilon, uint per_group) {
+    uint lane = gl_LocalInvocationID.x;
+    uint lanes = gl_WorkGroupSize.x;
+    uint in_q = (p.in0 + base) >> 2u;
+    uint out_q = (p.out_at + base) >> 2u;
+    uint res_q = (p.res + base) >> 2u;
+    uint gain_q = p.weight >> 2u;
+    uint quads = per_group >> 2u;
+    float squares = 0.0;
+    for (uint q = lane; q < quads; q += lanes) {
+        vec4 v = vec4(arena_quad[in_q + q]);
+        squares += v.x * v.x;
+        squares += v.y * v.y;
+        squares += v.z * v.z;
+        squares += v.w * v.w;
+    }
+    float inverse = 1.0 / sqrt(workgroup_sum(squares) / float(per_group) + epsilon);
+    for (uint q = lane; q < quads; q += lanes) {
+        vec4 v = vec4(arena_quad[in_q + q]);
+        vec4 gamma = vec4(weights_quad[gain_q + q]);
+        vec4 normed = vec4(quant_store(v.x * inverse * gamma.x), quant_store(v.y * inverse * gamma.y),
+                           quant_store(v.z * inverse * gamma.z), quant_store(v.w * inverse * gamma.w));
+        if (p.res != 0xFFFFFFFFu) {
+            normed += vec4(arena_quad[res_q + q]);
+        }
+        arena_quad[out_q + q] = f16vec4(normed);
+    }
+}
 
 void row_mode() {
     uint position = reduce_row();
@@ -44,6 +89,13 @@ void row_mode() {
     uint base = (position / stride) * per_group;
     uint at_pos = position % stride;
     float epsilon = uintBitsToFloat(p.param1_bits);
+    bool quad = stride == 1u && (per_group & 3u) == 0u && ((p.in0 + base) & 3u) == 0u
+        && ((p.out_at + base) & 3u) == 0u && (p.weight & 3u) == 0u
+        && (p.res == 0xFFFFFFFFu || ((p.res + base) & 3u) == 0u);
+    if (quad) {
+        quad_row(base, epsilon, per_group);
+        return;
+    }
     float squares = 0.0;
     for (uint c = lane; c < per_group; c += lanes) {
         float value = float(arena[p.in0 + (base + c) * stride + at_pos]);
