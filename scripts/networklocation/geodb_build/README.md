@@ -1,6 +1,6 @@
 # geodb_build — offline geocoder database builder
 
-Builds `geocoder-v3.geodb`, the offline reverse/forward geocoder database that
+Builds `geocoder.db`, the offline reverse/forward geocoder database that
 `:networklocation` serves the system `GeocodeProvider` from.
 
 Replaces the `osmium tags-filter | osmium export | scripts/geocoder_gen.cpp` chain, which
@@ -15,27 +15,52 @@ was simply absent, in both directions:
 
 | Added | Why it mattered |
 | --- | --- |
-| **Named streets**, sampled along their length | Reverse geocoding could return a house number or nothing; it could never say "you are on Market Street". |
+| **Named streets**, sampled every ~250 m along their length (roads only, not footways, service aisles or bus stops) | Reverse geocoding could return a house number or nothing; it could never say "you are on Market Street". |
 | **Points of interest** — `amenity`/`shop`/`tourism`/`leisure`/`office`/`healthcare` with a name | A named building or shop was invisible. |
 | **Populated places** — `place=city\|town\|village\|hamlet\|suburb\|neighbourhood\|quarter\|borough\|island` | No way to say which neighbourhood or village a point is in. |
 | **`addr:place` addresses** | Much of Germany and Austria, and most of Japan and Korea, address buildings against a place rather than a street. Requiring `addr:street` silently discarded all of them. |
 
-Coordinates also moved from **e6 to e7**, which is the precision OSM itself stores, so the
-conversion no longer throws away a decimal digit.
+On California, v3 held 8.96 M records where the old rules would have given 3.66 M.
 
-On California the result is 8.96 M records where the old rules would have given 3.66 M.
+## v4: cut down for size
+
+v4 keeps everything v3 indexes but stores it more cheaply. The header version is 4; the
+section layout is unchanged.
+
+- **Coordinates are e5** (about 1.1 m). At e7 the two coordinate columns were nearly half the
+  file, spent on centimetres no geocoder answer needs.
+- **Fewer street samples**: ~250 m apart instead of ~100 m, roads only, and exact duplicate
+  rows (adjacent ways meeting at a shared node) written once.
+- **The forward index holds only records with a street.** A forward query always names one;
+  keying on kind instead would lose POIs and places that carry a full address but no house
+  number.
+- **The name index holds one entry per street name per grid cell**, not one per sample.
+
+## v5: read from a memory map
+
+v5 changes no content, only the layout, so the app can serve the planet without holding it in
+RAM. v4's reader inflated every dictionary on open: about 2 GB of native heap on the phone and
+more than a minute before the first answer.
+
+- **Dictionaries are stored in blocks** of 1,024 strings, each its own zstd frame, behind an
+  uncompressed table of every block's first string. A lookup binary-searches that table in the
+  mapped file and decompresses one block.
+- **Column directories store end offsets**, so any block is located straight from the mapping.
+
+On California this costs 1% of size (43.44 MiB vs 43.00 MiB).
 
 ## Building and running
 
 ```sh
-cd scripts/networklocation/geodb_build
-cargo build --release
+cargo build --release -p geodb_build
 
-# rehearse on a metro, then a state, before the planet
-./target/release/geodb_build ../../../analysis/mamaps/SanFrancisco.osm.pbf --out sf.geodb
-./target/release/geodb_build california-latest.osm.pbf --out ca.geodb
-./target/release/geodb_build planet-latest.osm.pbf --out geocoder-v3.geodb
+# The crate is a member of the repo-root workspace, so the binary lands in the root target/.
+# rehearse on a state before the planet
+target/release/geodb_build scripts/maps/inputs/california.osm.pbf --out analysis/geodb/ca.db
+target/release/geodb_build scripts/maps/inputs/planet.osm.pbf --out analysis/geodb/geocoder.db
 ```
+
+Run from the repo root.
 
 Options: `--bbox W,S,E,N` to clip, `--threads N` (default: all cores, or `MAPS_THREADS`),
 `--no-verify` to skip the read-back.
@@ -47,8 +72,8 @@ with the pure-Rust `ruzstd`, which has no encoder, and nothing here cross-compil
 ## Publishing
 
 ```sh
-sha256sum geocoder-v3.geodb
-../../maps/publish_r2.sh geocoder-v3.geodb
+sha256sum geocoder.db
+../../maps/publish_r2.sh geocoder.db
 ```
 
 Then put the hash into `OfflineDatabases.sha256For` in the app.
@@ -65,13 +90,13 @@ independent path and checks all three.
    -searches them with a UTF-16 comparator. UTF-8 and UTF-16 disagree above the BMP: `U+10000`
    sorts after `U+FFFF` in UTF-8 but before it in UTF-16, because surrogates start at `0xD800`.
    Sorting the wrong way makes forward lookups start missing entries near the disagreement.
-3. **The forward and name indexes are permutations into grid order**, each sorted by its own
-   key. Out of step with its dictionary, forward search returns the wrong rows.
+3. **The forward and name indexes point into grid order**, each sorted by its own key. Out of
+   step with its dictionary, forward search returns the wrong rows.
 
 The Z-order interleave is the format's other landmine. v2 interleaved 16 bits per axis, which
-worked only because an e6 cell is 50 000 units wide. **An e7 cell is 500 000 units and needs
-19**, so `format::morton_in_cell` interleaves 20. Getting that wrong does not fail; it silently
-produces a worse ordering, and on overflow a wrong one.
+worked only because an e6 cell is 50 000 units wide. `format::morton_in_cell` interleaves 20,
+which covers an e5 cell (5 000 units, 13 bits) with room to spare; too few bits does not fail,
+it silently produces a worse ordering, and on overflow a wrong one.
 
 ## Determinism
 
@@ -94,7 +119,7 @@ The two things that decide whether a planet build fits:
 
 ## Compression
 
-Column blocks are zstd level 19 and are compressed **in parallel** — they are independent by
-construction, and at level 19 zstd manages only a couple of megabytes a second per core. On
-California this took the write phase from 335 s to 62 s, and the output is byte-identical to
-the sequential version.
+Column blocks and dictionaries are zstd **level 3**. Measured on California's column blocks,
+level 3 is 38.85 MiB in 0.8 s against 35.48 MiB in 30 s at level 19: 9.5% larger for a ~37x
+faster write. Blocks are compressed in parallel (they are independent by construction), and the
+output is byte-identical whatever the thread count.

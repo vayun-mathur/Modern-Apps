@@ -2001,7 +2001,9 @@ dependencies = [
 name = "geodb_build"
 version = "0.1.0"
 dependencies = [
+ "mimalloc",
  "osm_ingest",
+ "rayon",
  "zstd",
 ]
 

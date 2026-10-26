@@ -27,17 +27,40 @@ use osm_ingest::nodeloc::{resolve_nodes, NodeLocations};
 use osm_ingest::osm::{visit_block, Element, Tags, MEMBER_WAY};
 use osm_ingest::pbf::{self, KIND_NODES, KIND_RELATIONS, KIND_WAYS};
 use osm_ingest::proto::{Error, Result};
+use rayon::prelude::*;
 
 use crate::codec::Interner;
 use crate::extract_extra::STREET_SAMPLE_E7;
-use crate::format::{in_range, DICTS, D_CITY, D_COUNTRY, D_HOUSE, D_NAME, D_POSTCODE, D_STATE,
-    D_STREET, K_ADDRESS, K_PLACE, K_POI, K_STREET};
+use crate::progress::Progress;
+use crate::format::{e7_to_e5, in_range, DICTS, D_CITY, D_COUNTRY, D_HOUSE, D_NAME, D_POSTCODE,
+    D_STATE, D_STREET, K_ADDRESS, K_PLACE, K_POI, K_STREET};
 
 /// Cap on samples per street way, so one enormous way cannot dominate the database.
 const STREET_MAX_SAMPLES: usize = 32;
 
 /// Tag keys that make an object a POI when it also has a name.
 const POI_KEYS: [&str; 6] = ["amenity", "shop", "tourism", "leisure", "office", "healthcare"];
+
+/// `highway=*` values that are streets someone could be standing on or addressed against.
+/// Named footways, cycleways, tracks, service aisles, links and bus stops used to be sampled
+/// too; they were a large share of the street rows and a nearest-street answer of "Parking
+/// Aisle B" or a bus stop name is worse than the road beside it.
+const ROAD_VALUES: [&str; 10] = [
+    "motorway",
+    "trunk",
+    "primary",
+    "secondary",
+    "tertiary",
+    "unclassified",
+    "residential",
+    "living_street",
+    "pedestrian",
+    "road",
+];
+
+fn is_road(highway: &str) -> bool {
+    ROAD_VALUES.contains(&highway)
+}
 
 /// `place=*` values worth indexing: inhabited places people search for and expect to be told
 /// they are in. Deliberately excludes `place=locality` (often uninhabited), `region`, `ocean`
@@ -62,10 +85,10 @@ const PLACE_VALUES: [&str; 9] = [
 /// strings stored once in [`Strings`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Row {
-    /// Latitude, e7.
-    pub lat_e7: i32,
-    /// Longitude, e7.
-    pub lon_e7: i32,
+    /// Latitude, e5.
+    pub lat: i32,
+    /// Longitude, e5.
+    pub lon: i32,
     /// One of the `K_*` constants.
     pub kind: u8,
     /// Dictionary ids, indexed by the `D_*` constants in [`crate::format`].
@@ -111,7 +134,7 @@ fn attrs_ok(kind: u8, a: &Attrs) -> bool {
 
 /// Whether a classified feature is worth storing at all.
 fn is_useful(kind: u8, a: &Attrs, lat_e7: i32, lon_e7: i32) -> bool {
-    in_range(lat_e7, lon_e7) && attrs_ok(kind, a)
+    in_range(e7_to_e5(lat_e7), e7_to_e5(lon_e7)) && attrs_ok(kind, a)
 }
 
 /// What a pass decided about one element.
@@ -169,7 +192,7 @@ fn classify(tags: &Tags) -> Option<u8> {
     if !named {
         return None;
     }
-    if tags.get("highway").is_some() {
+    if tags.get_str("highway").is_some_and(is_road) {
         return Some(K_STREET);
     }
     if let Some(place) = tags.get_str("place") {
@@ -183,8 +206,9 @@ fn classify(tags: &Tags) -> Option<u8> {
     None
 }
 
+/// OSM coordinates arrive as e7 and are rounded to the stored e5 here, once.
 fn row_from(kind: u8, ids: [u32; DICTS], lat_e7: i32, lon_e7: i32) -> Row {
-    Row { lat_e7, lon_e7, kind, ids }
+    Row { lat: e7_to_e5(lat_e7), lon: e7_to_e5(lon_e7), kind, ids }
 }
 
 // --------------------------------------------------------------------------- way handling
@@ -293,6 +317,18 @@ impl Stats {
     /// Rows produced.
     pub fn rows(&self) -> usize {
         self.addresses + self.streets + self.pois + self.places
+    }
+
+    fn add(&mut self, o: &Stats) {
+        self.from_nodes += o.from_nodes;
+        self.from_ways += o.from_ways;
+        self.from_relations += o.from_relations;
+        self.addresses += o.addresses;
+        self.streets += o.streets;
+        self.pois += o.pois;
+        self.places += o.places;
+        self.outside_bbox += o.outside_bbox;
+        self.incomplete += o.incomplete;
     }
 }
 

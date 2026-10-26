@@ -16,7 +16,10 @@
 use std::collections::HashMap;
 use std::io::{self, Write};
 
-use crate::format::{BLOCK, ZSTD_LEVEL};
+use rayon::prelude::*;
+
+use crate::format::{BLOCK, DICT_BLOCK, ZSTD_LEVEL};
+use crate::progress::Progress;
 
 // --------------------------------------------------------------------------- interner
 /// Assigns a dense id to each distinct string, in first-seen order.
@@ -76,13 +79,13 @@ impl Interner {
     pub fn finish(&self, searchable: bool) -> (Vec<&str>, Vec<u32>) {
         let mut order: Vec<u32> = (0..self.strings.len() as u32).collect();
         if searchable {
-            order.sort_unstable_by(|&a, &b| {
+            order.par_sort_unstable_by(|&a, &b| {
                 cmp_utf16(&self.strings[a as usize], &self.strings[b as usize])
             });
         } else {
             // Descending frequency, ties broken by UTF-16 order so the output is deterministic
             // rather than dependent on the order strings happened to be seen in.
-            order.sort_unstable_by(|&a, &b| {
+            order.par_sort_unstable_by(|&a, &b| {
                 self.counts[b as usize]
                     .cmp(&self.counts[a as usize])
                     .then_with(|| cmp_utf16(&self.strings[a as usize], &self.strings[b as usize]))
@@ -138,35 +141,84 @@ fn write_varint(out: &mut Vec<u8>, mut v: u32) {
     }
 }
 
-/// Encode a dictionary section body: `rawLen, compLen, zstd(count, [len, utf8]...)`.
+/// Encode a dictionary section body, in independently compressed blocks:
+///
+/// ```text
+/// u32 count, u32 strings_per_block, u32 blocks
+/// u32 first_end[blocks]   end of each block's first string within `firsts`
+/// firsts                  each block's first string, uncompressed and concatenated
+/// u32 block_end[blocks]   end of each compressed block within `data`
+/// data                    per block: zstd([u32 len, utf8]...) for its strings
+/// ```
+///
+/// The reader binary-searches the uncompressed first strings straight out of the mapped file
+/// and decompresses one block of [`DICT_BLOCK`] strings, so it never holds a dictionary in
+/// memory. Blocks are compressed in parallel and reassembled in order, so the bytes do not
+/// depend on the thread count.
 pub fn encode_dict(strings: &[&str]) -> io::Result<Vec<u8>> {
-    let mut raw = Vec::new();
-    be32(&mut raw, strings.len() as u32);
-    for s in strings {
-        be32(&mut raw, s.len() as u32);
-        raw.extend_from_slice(s.as_bytes());
+    let blocks: Vec<io::Result<Vec<u8>>> =
+        osm_ingest::par::map_chunks(strings, DICT_BLOCK, |_start, chunk| {
+            let mut raw = Vec::new();
+            for s in chunk {
+                be32(&mut raw, s.len() as u32);
+                raw.extend_from_slice(s.as_bytes());
+            }
+            zstd::encode_all(&raw[..], ZSTD_LEVEL)
+        });
+    let blocks: Vec<Vec<u8>> = blocks.into_iter().collect::<io::Result<_>>()?;
+
+    let mut out = Vec::new();
+    be32(&mut out, strings.len() as u32);
+    be32(&mut out, DICT_BLOCK as u32);
+    be32(&mut out, blocks.len() as u32);
+    let firsts: Vec<&str> = strings.iter().step_by(DICT_BLOCK).copied().collect();
+    let mut end = 0u32;
+    for s in &firsts {
+        end += s.len() as u32;
+        be32(&mut out, end);
     }
-    let comp = zstd::encode_all(&raw[..], ZSTD_LEVEL)?;
-    let mut out = Vec::with_capacity(comp.len() + 8);
-    be32(&mut out, raw.len() as u32);
-    be32(&mut out, comp.len() as u32);
-    out.extend_from_slice(&comp);
+    for s in &firsts {
+        out.extend_from_slice(s.as_bytes());
+    }
+    let mut end = 0u32;
+    for b in &blocks {
+        end += b.len() as u32;
+        be32(&mut out, end);
+    }
+    for b in &blocks {
+        out.extend_from_slice(b);
+    }
     Ok(out)
 }
 
 /// Encode a column section body.
 ///
-/// `rawLen`/`compLen` for every block come first as a directory, then the blocks. `prev` resets
-/// at each block boundary, which is what makes a block independently decodable and is exactly
-/// what the reader relies on to random-access a record without touching its neighbours.
+/// A directory of `(raw_len, end)` per block comes first, where `end` is the block's end
+/// offset within the data that follows, so the reader finds any block straight from the mapped
+/// file without a table in memory. `prev` resets at each block boundary, which is what makes a
+/// block independently decodable.
 ///
 /// Blocks are compressed in parallel. At level 19 zstd manages a couple of megabytes a second
 /// per core, which on a planet-scale column is hours of the build spent in one thread; the
 /// blocks are independent by construction, so this is the one place parallelism is free. The
 /// results are reassembled in chunk order, so the output does not depend on the thread count.
 pub fn encode_column(values: &[i32], delta: bool) -> io::Result<Vec<u8>> {
+    encode_column_with(values, delta, None)
+}
+
+/// Number of blocks [`encode_column`] writes for `n` values; an empty column still gets one.
+pub fn column_blocks(n: usize) -> u64 {
+    n.div_ceil(BLOCK).max(1) as u64
+}
+
+/// [`encode_column`], advancing `progress` once per compressed block.
+pub fn encode_column_with(
+    values: &[i32],
+    delta: bool,
+    progress: Option<&Progress>,
+) -> io::Result<Vec<u8>> {
     let n = values.len();
-    let blocks = n.div_ceil(BLOCK).max(usize::from(n == 0));
+    let blocks = column_blocks(n) as usize;
 
     let encoded: Vec<io::Result<(usize, Vec<u8>)>> =
         osm_ingest::par::map_chunks(values, BLOCK, |_start, chunk| {
@@ -178,6 +230,9 @@ pub fn encode_column(values: &[i32], delta: bool) -> io::Result<Vec<u8>> {
                 prev = v;
             }
             let comp = zstd::encode_all(&raw[..], ZSTD_LEVEL)?;
+            if let Some(p) = progress {
+                p.inc();
+            }
             Ok((raw.len(), comp))
         });
 
@@ -185,23 +240,26 @@ pub fn encode_column(values: &[i32], delta: bool) -> io::Result<Vec<u8>> {
     let mut bodies: Vec<u8> = Vec::new();
     for r in encoded {
         let (raw_len, comp) = r?;
-        dir.push((raw_len as u32, comp.len() as u32));
         bodies.extend_from_slice(&comp);
+        dir.push((raw_len as u32, bodies.len() as u32));
     }
     // `map_chunks` yields nothing for an empty input, but the format still wants one empty
     // block so the directory and the reader's block count agree.
     if dir.is_empty() {
         let comp = zstd::encode_all(&[][..], ZSTD_LEVEL)?;
-        dir.push((0, comp.len() as u32));
         bodies.extend_from_slice(&comp);
+        dir.push((0, bodies.len() as u32));
+        if let Some(p) = progress {
+            p.inc();
+        }
     }
 
     let mut out = Vec::with_capacity(bodies.len() + dir.len() * 8 + 8);
     be32(&mut out, n as u32);
     be32(&mut out, dir.len() as u32);
-    for (raw_len, comp_len) in &dir {
+    for (raw_len, end) in &dir {
         be32(&mut out, *raw_len);
-        be32(&mut out, *comp_len);
+        be32(&mut out, *end);
     }
     out.extend_from_slice(&bodies);
     Ok(out)
@@ -305,12 +363,13 @@ mod tests {
         };
         let n = rd32(0) as usize;
         let blocks = rd32(4) as usize;
-        let mut offset = 8 + blocks * 8;
+        let data = 8 + blocks * 8;
         let mut out = Vec::with_capacity(n);
+        let mut start = 0usize;
         for b in 0..blocks {
-            let comp_len = rd32(8 + b * 8 + 4) as usize;
-            let raw = zstd::decode_all(&body[offset..offset + comp_len]).unwrap();
-            offset += comp_len;
+            let end = rd32(8 + b * 8 + 4) as usize;
+            let raw = zstd::decode_all(&body[data + start..data + end]).unwrap();
+            start = end;
             let mut p = 0usize;
             let mut prev = 0i32;
             let count = (n - b * BLOCK).min(BLOCK);
@@ -372,19 +431,31 @@ mod tests {
     fn dictionaries_round_trip() {
         let strings = vec!["", "Main Street", "café", "\u{10000}"];
         let body = encode_dict(&strings).unwrap();
-        let raw_len = u32::from_be_bytes([body[0], body[1], body[2], body[3]]) as usize;
-        let raw = zstd::decode_all(&body[8..]).unwrap();
-        assert_eq!(raw.len(), raw_len);
-        let count = u32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]) as usize;
-        assert_eq!(count, strings.len());
-        let mut p = 4;
-        for want in &strings {
-            let len =
-                u32::from_be_bytes([raw[p], raw[p + 1], raw[p + 2], raw[p + 3]]) as usize;
-            p += 4;
-            assert_eq!(std::str::from_utf8(&raw[p..p + len]).unwrap(), *want);
-            p += len;
-        }
+        assert_eq!(crate::write::decode_dict(&body).unwrap(), strings);
+    }
+
+    #[test]
+    fn dictionaries_round_trip_across_block_boundaries() {
+        // Not a multiple of DICT_BLOCK, so the last block is short.
+        let owned: Vec<String> = (0..DICT_BLOCK * 2 + 37).map(|i| format!("name {i:06}")).collect();
+        let strings: Vec<&str> = owned.iter().map(String::as_str).collect();
+        let body = encode_dict(&strings).unwrap();
+        assert_eq!(crate::write::decode_dict(&body).unwrap(), strings);
+
+        // The first-string table is uncompressed and names each block's first entry, which is
+        // what lets the reader binary-search without decompressing.
+        let rd32 = |p: usize| u32::from_be_bytes(body[p..p + 4].try_into().unwrap()) as usize;
+        assert_eq!(rd32(8), 3, "three blocks");
+        let firsts = 12 + 3 * 4;
+        let (e0, e1) = (rd32(12), rd32(16));
+        assert_eq!(&body[firsts..firsts + e0], strings[0].as_bytes());
+        assert_eq!(&body[firsts + e0..firsts + e1], strings[DICT_BLOCK].as_bytes());
+    }
+
+    #[test]
+    fn an_empty_dictionary_is_readable() {
+        let body = encode_dict(&[]).unwrap();
+        assert_eq!(crate::write::decode_dict(&body).unwrap(), Vec::<String>::new());
     }
 
     #[test]

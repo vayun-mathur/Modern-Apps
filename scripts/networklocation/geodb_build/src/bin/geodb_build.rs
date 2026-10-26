@@ -1,4 +1,4 @@
-//! `geodb_build IN.osm.pbf --out geocoder-v3.geodb [--bbox BOX] [--threads N]`
+//! `geodb_build IN.osm.pbf --out geocoder.db [--bbox BOX] [--threads N]`
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -6,10 +6,14 @@ use std::process::ExitCode;
 use geodb_build::{commas, extract, human_bytes, write};
 use osm_ingest::bbox::BBox;
 
+/// An allocator decides where, never what, so this cannot change a byte of the output.
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const USAGE: &str = "\
 Usage: geodb_build IN.osm.pbf --out FILE [--bbox W,S,E,N] [--threads N] [--no-verify]
 
-  --out        geocoder-v3.geodb to write
+  --out        geocoder.db to write
   --bbox       clip to a box, for a metro or region rehearsal
   --threads    worker threads (default: all cores, or MAPS_THREADS)
   --no-verify  skip the read-back check (not recommended)";
@@ -84,6 +88,9 @@ fn main() -> ExitCode {
     if let Some(n) = args.threads {
         osm_ingest::par::set_threads(n);
     }
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(osm_ingest::par::threads())
+        .build_global();
 
     let started = std::time::Instant::now();
     let (mut rows, mut strings, stats) = match extract::extract(&args.input, args.bbox.as_ref()) {

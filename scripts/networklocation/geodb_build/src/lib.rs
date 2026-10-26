@@ -1,4 +1,4 @@
-//! Build `geocoder-v3.geodb` from an OpenStreetMap `.osm.pbf`.
+//! Build `geocoder.db` from an OpenStreetMap `.osm.pbf`.
 //!
 //! Replaces the `osmium tags-filter | osmium export | geocoder_gen.cpp` chain, which needed
 //! osmium, g++, OpenMP, simdjson and POSIX mmap — so WSL only — and wrote a 101 GB GeoJSONSeq
@@ -15,6 +15,7 @@ pub mod codec;
 pub mod extract;
 pub mod extract_extra;
 pub mod format;
+pub mod progress;
 pub mod write;
 pub mod write_extra;
 

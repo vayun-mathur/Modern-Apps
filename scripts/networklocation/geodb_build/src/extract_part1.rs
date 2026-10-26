@@ -139,44 +139,72 @@ pub fn extract(
     let locs = resolve_nodes(input, &blobs, &kinds, "node coords", table)?;
 
     // --- materialize ways -------------------------------------------------
-    for w in &ways {
-        let coords: Vec<(i32, i32)> = w.refs.iter().filter_map(|&id| locs.get(id)).collect();
-        if coords.is_empty() {
-            continue;
-        }
-        let points: Vec<(i32, i32)> = if w.kind == K_STREET {
-            sample_line(&coords)
-        } else {
-            average(&coords).into_iter().collect()
-        };
-        for (lat, lon) in points {
-            if !bbox::keep_e7(bbox, lat, lon) {
-                stats.outside_bbox += 1;
-                continue;
+    // Chunks run in parallel and are collected in input order, so `rows` comes out exactly as
+    // a sequential loop would leave it.
+    let p = Progress::new("materialize ways", ways.len() as u64);
+    let parts: Vec<(Vec<Row>, Stats)> = ways
+        .par_chunks(MATERIALIZE_CHUNK)
+        .map(|chunk| {
+            let mut out = Vec::new();
+            let mut st = Stats::default();
+            for w in chunk {
+                let coords: Vec<(i32, i32)> =
+                    w.refs.iter().filter_map(|&id| locs.get(id)).collect();
+                if coords.is_empty() {
+                    continue;
+                }
+                let points: Vec<(i32, i32)> = if w.kind == K_STREET {
+                    sample_line(&coords)
+                } else {
+                    average(&coords).into_iter().collect()
+                };
+                for (lat, lon) in points {
+                    if !bbox::keep_e7(bbox, lat, lon) {
+                        st.outside_bbox += 1;
+                        continue;
+                    }
+                    push_counted(&mut out, &mut st, row_from(w.kind, w.ids, lat, lon), Origin::Way);
+                }
             }
-            push_counted(&mut rows, &mut stats, row_from(w.kind, w.ids, lat, lon), Origin::Way);
-        }
-    }
+            p.add(chunk.len() as u64);
+            (out, st)
+        })
+        .collect();
+    absorb(&mut rows, &mut stats, parts);
+    p.finish();
+    drop(ways);
 
     // --- materialize relations -------------------------------------------
-    for (kind, ids, members) in relations.drain(..) {
-        let mut coords: Vec<(i32, i32)> = Vec::new();
-        for id in &members {
-            if let Some(refs) = member_geom.get(id) {
-                coords.extend(refs.iter().filter_map(|&r| locs.get(r)));
+    let p = Progress::new("materialize relations", relations.len() as u64);
+    let parts: Vec<(Vec<Row>, Stats)> = relations
+        .par_chunks(MATERIALIZE_CHUNK)
+        .map(|chunk| {
+            let mut out = Vec::new();
+            let mut st = Stats::default();
+            for (kind, ids, members) in chunk {
+                let mut coords: Vec<(i32, i32)> = Vec::new();
+                for id in members {
+                    if let Some(refs) = member_geom.get(id) {
+                        coords.extend(refs.iter().filter_map(|&r| locs.get(r)));
+                    }
+                }
+                let Some((lat, lon)) = average(&coords) else { continue };
+                if !bbox::keep_e7(bbox, lat, lon) {
+                    st.outside_bbox += 1;
+                    continue;
+                }
+                push_counted(&mut out, &mut st, row_from(*kind, *ids, lat, lon), Origin::Relation);
             }
-        }
-        let Some((lat, lon)) = average(&coords) else { continue };
-        if !bbox::keep_e7(bbox, lat, lon) {
-            stats.outside_bbox += 1;
-            continue;
-        }
-        push_counted(&mut rows, &mut stats, row_from(kind, ids, lat, lon), Origin::Relation);
-    }
+            p.add(chunk.len() as u64);
+            (out, st)
+        })
+        .collect();
+    absorb(&mut rows, &mut stats, parts);
+    p.finish();
+    drop(relations);
 
     drop(locs);
     drop(member_geom);
-    drop(ways);
 
     // --- pass 4: node features -------------------------------------------
     {
@@ -231,10 +259,22 @@ pub(crate) enum Origin {
     Relation,
 }
 
+/// Ways or relations per parallel materialisation task.
+const MATERIALIZE_CHUNK: usize = 1 << 14;
+
+/// Append per-chunk results in chunk order, freeing each chunk as it goes.
+fn absorb(rows: &mut Vec<Row>, stats: &mut Stats, parts: Vec<(Vec<Row>, Stats)>) {
+    rows.reserve(parts.iter().map(|(r, _)| r.len()).sum());
+    for (r, s) in parts {
+        rows.extend_from_slice(&r);
+        stats.add(&s);
+    }
+}
+
 /// Record a materialized row, dropping any whose coordinates fell outside the representable
 /// range. Tag-level completeness was already decided by [`attrs_ok`] before interning.
 fn push_counted(rows: &mut Vec<Row>, stats: &mut Stats, row: Row, origin: Origin) {
-    if !in_range(row.lat_e7, row.lon_e7) {
+    if !in_range(row.lat, row.lon) {
         stats.incomplete += 1;
         return;
     }
@@ -348,11 +388,27 @@ mod tests {
     }
 
     #[test]
+    fn only_roads_are_classified_as_streets() {
+        for road in ["residential", "primary", "living_street", "pedestrian"] {
+            assert!(is_road(road), "{road}");
+        }
+        for not_road in ["footway", "service", "bus_stop", "track", "motorway_link", "cycleway"] {
+            assert!(!is_road(not_road), "{not_road}");
+        }
+    }
+
+    #[test]
+    fn rows_are_stored_at_e5() {
+        let r = row_from(K_POI, [0; DICTS], 37_7749350, -122_4194249);
+        assert_eq!((r.lat, r.lon), (3_777_494, -12_241_942));
+    }
+
+    #[test]
     fn out_of_range_coordinates_are_never_useful() {
         let a = attrs("somewhere", "", "");
         assert!(is_useful(K_POI, &a, 37_7749300, -122_4194200));
-        assert!(!is_useful(K_POI, &a, 900_000_001, -122_4194200));
-        assert!(!is_useful(K_POI, &a, 37_7749300, -1_800_000_001));
+        assert!(!is_useful(K_POI, &a, 900_000_100, -122_4194200));
+        assert!(!is_useful(K_POI, &a, 37_7749300, -1_800_000_100));
     }
 
     #[test]

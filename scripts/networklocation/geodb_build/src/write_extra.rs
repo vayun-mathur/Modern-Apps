@@ -56,8 +56,8 @@ mod tests {
                     strings.dicts[D_POSTCODE].intern(&format!("{:05}", i % 9000)),
                 ];
                 Row {
-                    lat_e7: (next() % 1_800_000_000) as i64 as i32 - 900_000_000,
-                    lon_e7: ((next() % 3_600_000_000) as i64 - 1_800_000_000) as i32,
+                    lat: (next() % 18_000_000) as i64 as i32 - 9_000_000,
+                    lon: ((next() % 36_000_000) as i64 - 18_000_000) as i32,
                     kind,
                     ids,
                 }
@@ -66,11 +66,42 @@ mod tests {
         (rows, strings)
     }
 
+    /// Split a finished database into its sections.
+    fn sections(buf: &[u8]) -> Vec<&[u8]> {
+        let mut cursor = 12usize;
+        let mut out = Vec::new();
+        for _ in 0..SECTIONS {
+            let size = u32::from_be_bytes(buf[cursor..cursor + 4].try_into().unwrap()) as usize;
+            cursor += 4;
+            out.push(&buf[cursor..cursor + size]);
+            cursor += size;
+        }
+        out
+    }
+
+    /// A street sample named `name` at an e5 position.
+    fn street(strings: &mut Strings, name: &str, lat: i32, lon: i32) -> Row {
+        Row {
+            lat,
+            lon,
+            kind: K_STREET,
+            ids: [
+                strings.dicts[D_NAME].intern(name),
+                strings.dicts[D_HOUSE].intern(""),
+                strings.dicts[D_STREET].intern(""),
+                strings.dicts[D_CITY].intern(""),
+                strings.dicts[D_STATE].intern(""),
+                strings.dicts[D_COUNTRY].intern(""),
+                strings.dicts[D_POSTCODE].intern(""),
+            ],
+        }
+    }
+
     #[test]
     fn a_database_round_trips_through_the_verifier() {
         let d = TempDir::new("roundtrip");
         let (mut rows, mut strings) = sample_rows(BLOCK * 2 + 123);
-        let out = d.0.join("geocoder-v3.geodb");
+        let out = d.0.join("geocoder.db");
         let report = write(&out, &mut rows, &mut strings).unwrap();
         assert_eq!(report.n, rows.len());
         assert!(report.total > 0);
@@ -87,12 +118,12 @@ mod tests {
         let _ = write(&out, &mut rows, &mut strings).unwrap();
         for w in rows.windows(2) {
             let (a, b) = (&w[0], &w[1]);
-            let ca = cell_id(a.lat_e7, a.lon_e7);
-            let cb = cell_id(b.lat_e7, b.lon_e7);
+            let ca = cell_id(a.lat, a.lon);
+            let cb = cell_id(b.lat, b.lon);
             assert!(ca <= cb, "cells out of order");
             if ca == cb {
                 assert!(
-                    morton_in_cell(a.lat_e7, a.lon_e7) <= morton_in_cell(b.lat_e7, b.lon_e7),
+                    morton_in_cell(a.lat, a.lon) <= morton_in_cell(b.lat, b.lon),
                     "z-order broken inside a cell"
                 );
             }
@@ -121,8 +152,8 @@ mod tests {
             .iter()
             .enumerate()
             .map(|(i, name)| Row {
-                lat_e7: 37_0000000 + i as i32 * 1000,
-                lon_e7: -122_0000000,
+                lat: 3_700_000 + i as i32 * 10,
+                lon: -12_200_000,
                 kind: K_POI,
                 ids: [
                     strings.dicts[D_NAME].intern(name),
@@ -151,22 +182,97 @@ mod tests {
     fn the_name_index_covers_named_records_and_excludes_the_rest() {
         let d = TempDir::new("nameidx");
         let (mut rows, mut strings) = sample_rows(500);
-        let named = rows.iter().filter(|r| r.kind != K_ADDRESS).count();
         let out = d.0.join("n.geodb");
         let _ = write(&out, &mut rows, &mut strings).unwrap();
         verify(&out, &rows).unwrap();
 
+        let mut street_keys = std::collections::HashSet::new();
+        let named = rows
+            .iter()
+            .filter(|r| match r.kind {
+                K_ADDRESS => false,
+                K_STREET => street_keys.insert((cell_id(r.lat, r.lon), r.ids[D_NAME])),
+                _ => true,
+            })
+            .count();
         let buf = std::fs::read(&out).unwrap();
-        let mut cursor = 12usize;
-        let mut sections = Vec::new();
-        for _ in 0..SECTIONS {
-            let size = u32::from_be_bytes(buf[cursor..cursor + 4].try_into().unwrap()) as usize;
-            cursor += 4;
-            sections.push(&buf[cursor..cursor + size]);
-            cursor += size;
-        }
-        let nm_rec = decode_column(sections[DICTS + COLUMNS + 3], false).unwrap();
+        let nm_rec = decode_column(sections(&buf)[DICTS + COLUMNS + 3], false).unwrap();
         assert_eq!(nm_rec.len(), named, "every named record must be indexed, and only those");
+    }
+
+    #[test]
+    fn a_street_is_name_indexed_once_per_cell() {
+        let d = TempDir::new("streetidx");
+        let mut strings = Strings::default();
+        // Three samples of one street inside one cell, and a fourth a cell to the north.
+        let mut rows = vec![
+            street(&mut strings, "Elm St", 3_700_010, -12_200_010),
+            street(&mut strings, "Elm St", 3_700_200, -12_200_010),
+            street(&mut strings, "Elm St", 3_700_400, -12_200_010),
+            street(&mut strings, "Elm St", 3_700_010 + CELL as i32, -12_200_010),
+        ];
+        let out = d.0.join("s.geodb");
+        let _ = write(&out, &mut rows, &mut strings).unwrap();
+        verify(&out, &rows).unwrap();
+        let buf = std::fs::read(&out).unwrap();
+        let nm_rec = decode_column(sections(&buf)[DICTS + COLUMNS + 3], false).unwrap();
+        assert_eq!(rows.len(), 4, "every sample stays a record for reverse lookup");
+        assert_eq!(nm_rec.len(), 2, "one name entry per cell: {nm_rec:?}");
+    }
+
+    #[test]
+    fn the_forward_index_holds_exactly_the_records_with_a_street() {
+        let d = TempDir::new("fwd");
+        let (mut rows, mut strings) = sample_rows(800);
+        let out = d.0.join("f.geodb");
+        let _ = write(&out, &mut rows, &mut strings).unwrap();
+        verify(&out, &rows).unwrap();
+        let buf = std::fs::read(&out).unwrap();
+        let fwd = decode_column(sections(&buf)[DICTS + COLUMNS + 1], true).unwrap();
+        let streets = decode_dict(sections(&buf)[D_STREET]).unwrap();
+        let has_street = |i: usize| !streets[rows[i].ids[D_STREET] as usize].is_empty();
+        let expected = (0..rows.len()).filter(|&i| has_street(i)).count();
+        assert!(expected > 0 && expected < rows.len(), "premise: some records lack a street");
+        assert_eq!(fwd.len(), expected);
+        assert!(fwd.iter().all(|&i| has_street(i as usize)));
+    }
+
+    #[test]
+    fn a_place_with_a_full_address_but_no_house_number_is_forward_indexed() {
+        // Amundsen-Scott South Pole Station is a place tagged with street/city/state/country
+        // and no house number. An address-only forward index made it unfindable.
+        let d = TempDir::new("fwdplace");
+        let mut strings = Strings::default();
+        let mut place = street(&mut strings, "South Pole Station", -9_000_000, 0);
+        place.kind = K_PLACE;
+        place.ids[D_STREET] = strings.dicts[D_STREET].intern("PSC 798");
+        place.ids[D_CITY] = strings.dicts[D_CITY].intern("APO");
+        place.ids[D_STATE] = strings.dicts[D_STATE].intern("AP");
+        place.ids[D_COUNTRY] = strings.dicts[D_COUNTRY].intern("US");
+        let lone = street(&mut strings, "Elm St", 3_700_010, -12_200_010);
+        let mut rows = vec![place, lone];
+        let out = d.0.join("p.geodb");
+        let _ = write(&out, &mut rows, &mut strings).unwrap();
+        verify(&out, &rows).unwrap();
+        let buf = std::fs::read(&out).unwrap();
+        let fwd = decode_column(sections(&buf)[DICTS + COLUMNS + 1], true).unwrap();
+        let place_at = rows.iter().position(|r| r.kind == K_PLACE).unwrap() as i32;
+        assert_eq!(fwd, vec![place_at], "the place is indexed; the bare street sample is not");
+    }
+
+    #[test]
+    fn identical_rows_are_written_once() {
+        let d = TempDir::new("dedup");
+        let mut strings = Strings::default();
+        let a = street(&mut strings, "Elm St", 3_700_010, -12_200_010);
+        let b = street(&mut strings, "Oak St", 3_700_010, -12_200_010);
+        // Two ways of Elm St meeting at a shared node, plus a different street at that node.
+        let mut rows = vec![a, b, a];
+        let out = d.0.join("d.geodb");
+        let report = write(&out, &mut rows, &mut strings).unwrap();
+        assert_eq!(report.n, 2, "the shared end point must be stored once");
+        assert_eq!(rows.len(), 2);
+        verify(&out, &rows).unwrap();
     }
 
     #[test]

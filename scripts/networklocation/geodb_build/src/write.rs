@@ -1,4 +1,4 @@
-//! Assembling extracted rows into a `geocoder-v3.geodb`.
+//! Assembling extracted rows into a `geocoder.db`.
 //!
 //! Three orderings decide whether the finished database works, and none of them fails loudly:
 //!
@@ -6,19 +6,25 @@
 //!    outward from the query's cell, so this ordering *is* the spatial index.
 //! 2. **Searchable dictionaries are UTF-16 sorted**, because the reader binary-searches them
 //!    with a UTF-16 comparator. See `codec::cmp_utf16`.
-//! 3. **The forward and name indexes are permutations** into grid order, each sorted by its own
-//!    key. Get one out of step with its dictionary and forward search returns the wrong rows.
+//! 3. **The forward and name indexes point into grid order**, each sorted by its own key. Get
+//!    one out of step with its dictionary and forward search returns the wrong rows.
 //!
 //! [`verify`] reads the finished file back through a path that shares no code with the writer,
 //! which is the only real check that all three held.
 
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 use std::path::Path;
 
-use crate::codec::{cmp_utf16, encode_column, encode_dict, encode_grid, write_section};
+use rayon::prelude::*;
+
+use crate::codec::{
+    cmp_utf16, column_blocks, encode_column_with, encode_dict, encode_grid, write_section,
+};
 use crate::extract::{Row, Strings};
 use crate::format::*;
+use crate::progress::Progress;
 
 /// Sizes of each part of the finished file, for the build report.
 #[derive(Debug, Default, Clone)]
@@ -55,60 +61,58 @@ impl Report {
 const DICT_NAME: [&str; DICTS] =
     ["name", "house", "street", "city", "state", "country", "postcode"];
 
-/// Sort `rows` into grid order and write the database to `out_path`.
+/// Sort `rows` into grid order, drop exact duplicates, and write the database to `out_path`.
 ///
 /// `strings` holds the dictionaries the rows' ids refer to, filled during extraction. Consumes
 /// both in place: at planet scale this is tens of gigabytes and copying would double the peak.
+/// On return `rows` is exactly what the file holds, in file order.
 pub fn write(out_path: &Path, rows: &mut Vec<Row>, strings: &mut Strings) -> io::Result<Report> {
-    // --- ordering -------------------------------------------------------
-    // Cell first so the grid directory is contiguous, Z-order within it so both coordinate
-    // columns delta well, then a total tiebreak so two runs produce identical bytes.
-    //
-    // The tiebreak compares dictionary ids rather than strings. Ids are assigned in
-    // first-seen order, which depends on how the PBF's blobs were chunked, so this alone
-    // would not be deterministic — `sort_rows_deterministically` below re-sorts each tied run
-    // once the final (content-derived) ids are known.
-    rows.sort_unstable_by(|a, b| {
-        cell_id(a.lat_e7, a.lon_e7)
-            .cmp(&cell_id(b.lat_e7, b.lon_e7))
-            .then_with(|| {
-                morton_in_cell(a.lat_e7, a.lon_e7).cmp(&morton_in_cell(b.lat_e7, b.lon_e7))
-            })
-            .then_with(|| a.kind.cmp(&b.kind))
-            .then_with(|| a.lat_e7.cmp(&b.lat_e7))
-            .then_with(|| a.lon_e7.cmp(&b.lon_e7))
-    });
-
-    let n = rows.len();
+    // Record order is decided once, after the dictionaries, by `sort_rows_deterministically`:
+    // only then are ids content-derived, and nothing before it depends on the order.
 
     // --- dictionaries ---------------------------------------------------
+    let p = Progress::coarse("dictionaries", DICTS as u64);
     let mut dict_bodies: Vec<Vec<u8>> = Vec::with_capacity(DICTS);
     let mut dict_counts = Vec::with_capacity(DICTS);
     let mut remaps: Vec<Vec<u32>> = Vec::with_capacity(DICTS);
+    let mut empty_ids: Vec<Option<u32>> = Vec::with_capacity(DICTS);
     for d in 0..DICTS {
         let (sorted, remap) = strings.dicts[d].finish(SEARCHABLE[d]);
         dict_counts.push((DICT_NAME[d], sorted.len()));
+        empty_ids.push(sorted.iter().position(|s| s.is_empty()).map(|i| i as u32));
         dict_bodies.push(encode_dict(&sorted)?);
         remaps.push(remap);
+        p.inc();
     }
+    p.finish();
     // Interned ids are first-seen order; the file stores final order.
-    for row in rows.iter_mut() {
-        for d in 0..DICTS {
-            row.ids[d] = remaps[d][row.ids[d] as usize];
+    let p = Progress::new("remap ids", rows.len() as u64);
+    rows.par_chunks_mut(1 << 16).for_each(|chunk| {
+        for row in chunk.iter_mut() {
+            for d in 0..DICTS {
+                row.ids[d] = remaps[d][row.ids[d] as usize];
+            }
         }
-    }
+        p.add(chunk.len() as u64);
+    });
+    p.finish();
     drop(remaps);
     strings.dicts = Vec::new();
 
-    // Now that ids are content-derived, break the remaining ties by them, so the output does
-    // not depend on the order the PBF happened to be read in.
+    let p = Progress::stage("sort records + dedup");
     sort_rows_deterministically(rows);
+    // Adjacent ways of one street share their end node, and at e5 a building's node and its
+    // outline often land on the same point; both arrive as identical rows, now adjacent.
+    rows.dedup();
+    p.finish();
+    let n = rows.len();
 
     // --- columns --------------------------------------------------------
+    let p = Progress::new("columns", n as u64);
     let mut cols: Vec<Vec<i32>> = (0..COLUMNS).map(|_| Vec::with_capacity(n)).collect();
     for r in rows.iter() {
-        cols[C_LAT].push(r.lat_e7);
-        cols[C_LON].push(r.lon_e7);
+        cols[C_LAT].push(r.lat);
+        cols[C_LON].push(r.lon);
         cols[C_NAME].push(r.ids[D_NAME] as i32);
         cols[C_HOUSE].push(r.ids[D_HOUSE] as i32);
         cols[C_STREET].push(r.ids[D_STREET] as i32);
@@ -117,20 +121,28 @@ pub fn write(out_path: &Path, rows: &mut Vec<Row>, strings: &mut Strings) -> io:
         cols[C_COUNTRY].push(r.ids[D_COUNTRY] as i32);
         cols[C_POSTCODE].push(r.ids[D_POSTCODE] as i32);
         cols[C_KIND].push(r.kind as i32);
+        p.inc();
     }
+    p.finish();
 
     // --- grid directory --------------------------------------------------
     let mut grid: Vec<(i64, u32)> = Vec::new();
     for (i, r) in rows.iter().enumerate() {
-        let cell = cell_id(r.lat_e7, r.lon_e7);
+        let cell = cell_id(r.lat, r.lon);
         if grid.last().map(|&(c, _)| c) != Some(cell) {
             grid.push((cell, i as u32));
         }
     }
 
-    // --- forward index: sorted by (country, state, city, street, house) ---
-    let mut fwd: Vec<u32> = (0..n as u32).collect();
-    fwd.sort_unstable_by(|&a, &b| {
+    // --- forward index: records with a street, by (country, state, city, street, house) ---
+    // A forward query always names a street, so a record without one can never match. Keying
+    // on the street rather than on kind keeps a POI or place that carries a full address but
+    // no house number findable, which an address-only index silently lost.
+    let p = Progress::stage("forward index");
+    let empty_street = empty_ids[D_STREET];
+    let mut fwd: Vec<u32> =
+        (0..n as u32).filter(|&i| Some(rows[i as usize].ids[D_STREET]) != empty_street).collect();
+    fwd.par_sort_unstable_by(|&a, &b| {
         let (x, y) = (&rows[a as usize].ids, &rows[b as usize].ids);
         x[D_COUNTRY]
             .cmp(&y[D_COUNTRY])
@@ -140,22 +152,26 @@ pub fn write(out_path: &Path, rows: &mut Vec<Row>, strings: &mut Strings) -> io:
             .then(x[D_HOUSE].cmp(&y[D_HOUSE]))
             .then(a.cmp(&b))
     });
+    p.finish();
 
-    // --- name index: every named record, by name id ----------------------
-    // Records with no name are excluded rather than bunched at id 0: they can never match a
-    // name query, and leaving them in would put tens of millions of dead entries in front of
-    // every binary search.
-    let empty_name = find_empty_name_id(&dict_bodies[D_NAME]);
-    let mut named: Vec<u32> = (0..n as u32)
-        .filter(|&i| Some(rows[i as usize].ids[D_NAME]) != empty_name)
-        .collect();
-    named.sort_unstable_by(|&a, &b| {
+    // --- name index: named records, by name id ---------------------------
+    let p = Progress::stage("name index");
+    let empty_name = empty_ids[D_NAME];
+    let mut named = name_index_records(rows, empty_name);
+    named.par_sort_unstable_by(|&a, &b| {
         rows[a as usize].ids[D_NAME].cmp(&rows[b as usize].ids[D_NAME]).then(a.cmp(&b))
     });
     let nm_name: Vec<i32> = named.iter().map(|&i| rows[i as usize].ids[D_NAME] as i32).collect();
     let nm_rec: Vec<i32> = named.iter().map(|&i| i as i32).collect();
+    drop(named);
+    p.finish();
 
     // --- write ------------------------------------------------------------
+    // Compression is the slow step, so it gets a meter over every block.
+    let p = Progress::coarse(
+        "compress + write",
+        COLUMNS as u64 * column_blocks(n) + column_blocks(fwd.len()) + 2 * column_blocks(nm_name.len()),
+    );
     let mut out = BufWriter::with_capacity(1 << 22, File::create(out_path)?);
     out.write_all(&MAGIC.to_be_bytes())?;
     out.write_all(&VERSION.to_be_bytes())?;
@@ -167,58 +183,63 @@ pub fn write(out_path: &Path, rows: &mut Vec<Row>, strings: &mut Strings) -> io:
     }
     drop(dict_bodies);
     for c in 0..COLUMNS {
-        let body = encode_column(&cols[c], DELTA[c])?;
+        let body = encode_column_with(&cols[c], DELTA[c], Some(&p))?;
         report.columns.push((COL_NAME[c], write_section(&mut out, &body)?));
         cols[c] = Vec::new();
     }
     report.grid = write_section(&mut out, &encode_grid(&grid))?;
 
     let fwd_col: Vec<i32> = fwd.iter().map(|&v| v as i32).collect();
-    report.fwd = write_section(&mut out, &encode_column(&fwd_col, true)?)?;
-    report.name_index = write_section(&mut out, &encode_column(&nm_name, true)?)?
-        + write_section(&mut out, &encode_column(&nm_rec, false)?)?;
+    report.fwd = write_section(&mut out, &encode_column_with(&fwd_col, true, Some(&p))?)?;
+    report.name_index = write_section(&mut out, &encode_column_with(&nm_name, true, Some(&p))?)?
+        + write_section(&mut out, &encode_column_with(&nm_rec, false, Some(&p))?)?;
 
     out.flush()?;
+    p.finish();
     report.dict_counts = dict_counts;
     report.total = std::fs::metadata(out_path)?.len();
     Ok(report)
 }
 
-/// Break ties among records that share a cell, Z-order, kind and position, using their final
-/// dictionary ids.
+/// Records that belong in the name index, in grid order.
 ///
-/// Without this the output depends on the order the PBF's blobs happened to be chunked into,
-/// because interned ids are assigned in first-seen order. Sorting once more on the *final*
-/// ids — which are derived from the content, not the reading order — makes two runs over the
-/// same input produce identical bytes.
-fn sort_rows_deterministically(rows: &mut [Row]) {
-    rows.sort_unstable_by(|a, b| {
-        cell_id(a.lat_e7, a.lon_e7)
-            .cmp(&cell_id(b.lat_e7, b.lon_e7))
-            .then_with(|| {
-                morton_in_cell(a.lat_e7, a.lon_e7).cmp(&morton_in_cell(b.lat_e7, b.lon_e7))
-            })
-            .then_with(|| a.kind.cmp(&b.kind))
-            .then_with(|| a.lat_e7.cmp(&b.lat_e7))
-            .then_with(|| a.lon_e7.cmp(&b.lon_e7))
-            .then_with(|| a.ids.cmp(&b.ids))
-    });
+/// Unnamed records can never match a name query. A street is sampled every few hundred metres,
+/// so indexing every sample would repeat one name dozens of times; one entry per street name per
+/// grid cell still finds the street and still puts the hit near the right place.
+fn name_index_records(rows: &[Row], empty_name: Option<u32>) -> Vec<u32> {
+    let mut out = Vec::new();
+    let mut cell = i64::MIN;
+    let mut streets_in_cell: HashSet<u32> = HashSet::new();
+    for (i, r) in rows.iter().enumerate() {
+        if Some(r.ids[D_NAME]) == empty_name {
+            continue;
+        }
+        if r.kind == K_STREET {
+            // Rows are in cell order, so a per-cell set stays small at planet scale.
+            let c = cell_id(r.lat, r.lon);
+            if c != cell {
+                cell = c;
+                streets_in_cell.clear();
+            }
+            if !streets_in_cell.insert(r.ids[D_NAME]) {
+                continue;
+            }
+        }
+        out.push(i as u32);
+    }
+    out
 }
 
-/// Id of the empty string in an encoded dictionary, if it holds one.
-fn find_empty_name_id(dict_body: &[u8]) -> Option<u32> {
-    let raw = zstd::decode_all(dict_body.get(8..)?).ok()?;
-    let count = u32::from_be_bytes(raw.get(0..4)?.try_into().ok()?);
-    let mut p = 4usize;
-    for id in 0..count {
-        let len = u32::from_be_bytes(raw.get(p..p + 4)?.try_into().ok()?) as usize;
-        p += 4;
-        if len == 0 {
-            return Some(id);
-        }
-        p += len;
-    }
-    None
+/// Order records by grid cell, then Z-order within the cell, then every remaining field.
+///
+/// Cell first so the grid directory is contiguous, Z-order so both coordinate columns delta
+/// well. The key is total over the row's content, and the ids are already the final,
+/// content-derived ones, so two runs over the same input produce identical bytes whatever
+/// order the PBF was read in.
+fn sort_rows_deterministically(rows: &mut [Row]) {
+    rows.par_sort_unstable_by_key(|r| {
+        (cell_id(r.lat, r.lon), morton_in_cell(r.lat, r.lon), r.kind, r.lat, r.lon, r.ids)
+    });
 }
 
 // --------------------------------------------------------------------------- verify
@@ -230,8 +251,10 @@ fn find_empty_name_id(dict_body: &[u8]) -> Option<u32> {
 /// written in a different order from the one the grid describes, an off-by-one in a block
 /// directory.
 pub fn verify(path: &Path, expected: &[Row]) -> io::Result<()> {
+    let p = Progress::stage("verify: read back");
     let mut buf = Vec::new();
     let _ = File::open(path)?.read_to_end(&mut buf)?;
+    p.finish();
     let bad = |m: String| io::Error::new(io::ErrorKind::InvalidData, m);
 
     let rd32 = |p: usize| -> u32 {
@@ -267,6 +290,7 @@ pub fn verify(path: &Path, expected: &[Row]) -> io::Result<()> {
         return Err(bad(format!("{} trailing byte(s)", buf.len() - cursor)));
     }
 
+    let p = Progress::stage("verify: dictionaries");
     let dicts: Vec<Vec<String>> =
         sections[..DICTS].iter().map(|s| decode_dict(s)).collect::<io::Result<_>>()?;
     for (d, dict) in dicts.iter().enumerate() {
@@ -281,58 +305,44 @@ pub fn verify(path: &Path, expected: &[Row]) -> io::Result<()> {
             }
         }
     }
+    p.finish();
 
-    let cols: Vec<Vec<i32>> = (0..COLUMNS)
-        .map(|c| decode_column(sections[DICTS + c], DELTA[c]))
-        .collect::<io::Result<_>>()?;
-    for (c, col) in cols.iter().enumerate() {
+    // One column at a time: each is decoded, compared field by field with `expected`, and
+    // dropped. Holding all ten at once doubled the planet's peak memory (10 x 4 bytes x n on
+    // top of the rows themselves) and pushed the read-back into paging. Once every column has
+    // matched, `expected` *is* the file's content, so the index checks below read from it.
+    let col_sections = &sections[DICTS..DICTS + COLUMNS];
+    let blocks: u64 = col_sections
+        .iter()
+        .map(|s| s.get(4..8).map_or(0, |b| u32::from_be_bytes(b.try_into().unwrap()) as u64))
+        .sum();
+    let p = Progress::coarse("verify: columns", blocks);
+    for c in 0..COLUMNS {
+        let col = decode_column_with(col_sections[c], DELTA[c], Some(&p))?;
         if col.len() != n {
             return Err(bad(format!("column {} has {} values, expected {n}", COL_NAME[c], col.len())));
         }
-    }
-
-    let text = |c: usize, d: usize, i: usize| -> io::Result<&str> {
-        let id = cols[c][i];
-        dicts[d]
-            .get(id as usize)
-            .map(|s| s.as_str())
-            .ok_or_else(|| bad(format!("record {i}: {} id {id} out of range", COL_NAME[c])))
-    };
-
-    for i in 0..n {
-        let e = &expected[i];
-        if cols[C_LAT][i] != e.lat_e7 || cols[C_LON][i] != e.lon_e7 {
+        let dict = (C_NAME..=C_POSTCODE).contains(&c).then(|| &dicts[c - C_NAME]);
+        let mismatch = col.par_iter().zip(expected.par_iter()).position_first(|(&v, e)| {
+            let want = match c {
+                C_LAT => e.lat,
+                C_LON => e.lon,
+                C_KIND => e.kind as i32,
+                _ => e.ids[c - C_NAME] as i32,
+            };
+            v != want || dict.is_some_and(|d| v < 0 || v as usize >= d.len())
+        });
+        if let Some(i) = mismatch {
             return Err(bad(format!(
-                "record {i}: coords ({}, {}) != ({}, {})",
-                cols[C_LAT][i], cols[C_LON][i], e.lat_e7, e.lon_e7
+                "record {i}: {} is {} on disk; expected {:?}",
+                COL_NAME[c], col[i], expected[i]
             )));
         }
-        if cols[C_KIND][i] != e.kind as i32 {
-            return Err(bad(format!("record {i}: kind {} != {}", cols[C_KIND][i], e.kind)));
-        }
-        // `write` rewrites each row's ids to their final, dictionary-order values, so the rows
-        // handed back are exactly what should be on disk. Every id must also address a real
-        // dictionary entry, which is what `text` checks.
-        for (c, d, label) in [
-            (C_NAME, D_NAME, "name"),
-            (C_HOUSE, D_HOUSE, "house"),
-            (C_STREET, D_STREET, "street"),
-            (C_CITY, D_CITY, "city"),
-            (C_STATE, D_STATE, "state"),
-            (C_COUNTRY, D_COUNTRY, "country"),
-            (C_POSTCODE, D_POSTCODE, "postcode"),
-        ] {
-            let _ = text(c, d, i)?;
-            if cols[c][i] != e.ids[d] as i32 {
-                return Err(bad(format!(
-                    "record {i}: {label} id {} != {}",
-                    cols[c][i], e.ids[d]
-                )));
-            }
-        }
     }
+    p.finish();
 
     // The grid must describe the record order that was actually written.
+    let p = Progress::stage("verify: indexes");
     let grid = decode_grid(sections[DICTS + COLUMNS])?;
     let mut prev_cell = i64::MIN;
     for &(cell, start) in &grid {
@@ -341,40 +351,48 @@ pub fn verify(path: &Path, expected: &[Row]) -> io::Result<()> {
         }
         prev_cell = cell;
         let s = start as usize;
-        if s >= n || cell_id(cols[C_LAT][s], cols[C_LON][s]) != cell {
+        if s >= n || cell_id(expected[s].lat, expected[s].lon) != cell {
             return Err(bad(format!("grid entry for cell {cell} points at the wrong record")));
         }
     }
     for i in 1..n {
-        let a = cell_id(cols[C_LAT][i - 1], cols[C_LON][i - 1]);
-        let b = cell_id(cols[C_LAT][i], cols[C_LON][i]);
-        if b < a {
+        let (a, b) = (&expected[i - 1], &expected[i]);
+        if cell_id(b.lat, b.lon) < cell_id(a.lat, a.lon) {
             return Err(bad(format!("records are not in cell order at {i}")));
         }
     }
 
-    // Both indexes must be permutations of valid record ids, each sorted by its own key.
+    // The forward index must hold every record with a street exactly once and nothing else,
+    // sorted by its key; the name index must hold valid named records, sorted by name id.
+    let empty_street = dicts[D_STREET].iter().position(|s| s.is_empty()).map(|i| i as u32);
+    let has_street = |r: &Row| Some(r.ids[D_STREET]) != empty_street;
     let fwd = decode_column(sections[DICTS + COLUMNS + 1], true)?;
-    if fwd.len() != n {
-        return Err(bad(format!("forward index has {} entries, expected {n}", fwd.len())));
+    let with_street = expected.iter().filter(|r| has_street(r)).count();
+    if fwd.len() != with_street {
+        return Err(bad(format!(
+            "forward index has {} entries, expected {with_street} records with a street",
+            fwd.len()
+        )));
     }
     let mut seen = vec![false; n];
-    let mut prev_key: Option<[i32; 5]> = None;
+    let mut prev_key: Option<[u32; 5]> = None;
     for &r in &fwd {
         let i = r as usize;
         if i >= n || seen[i] {
-            return Err(bad("forward index is not a permutation".into()));
+            return Err(bad("forward index repeats or overruns a record".into()));
+        }
+        let e = &expected[i];
+        if !has_street(e) {
+            return Err(bad(format!("forward index points at record {i}, which has no street")));
         }
         seen[i] = true;
-        let key =
-            [cols[C_COUNTRY][i], cols[C_STATE][i], cols[C_CITY][i], cols[C_STREET][i], cols[C_HOUSE][i]];
-        if let Some(p) = prev_key {
-            if key < p {
-                return Err(bad("forward index is not sorted by its key".into()));
-            }
+        let key = [e.ids[D_COUNTRY], e.ids[D_STATE], e.ids[D_CITY], e.ids[D_STREET], e.ids[D_HOUSE]];
+        if prev_key.is_some_and(|p| key < p) {
+            return Err(bad("forward index is not sorted by its key".into()));
         }
         prev_key = Some(key);
     }
+    drop(seen);
 
     let nm_name = decode_column(sections[DICTS + COLUMNS + 2], true)?;
     let nm_rec = decode_column(sections[DICTS + COLUMNS + 3], false)?;
@@ -391,39 +409,75 @@ pub fn verify(path: &Path, expected: &[Row]) -> io::Result<()> {
         if i >= n {
             return Err(bad(format!("name index entry {k} points past the end")));
         }
-        if cols[C_NAME][i] != name_id {
+        if expected[i].ids[D_NAME] as i32 != name_id {
             return Err(bad(format!("name index entry {k} disagrees with the name column")));
         }
         if dicts[D_NAME][name_id as usize].is_empty() {
             return Err(bad(format!("name index entry {k} points at an unnamed record")));
         }
     }
+    p.finish();
     Ok(())
 }
 
+/// Decode a whole blocked dictionary (see `codec::encode_dict`), checking that every block
+/// holds the expected number of strings and that the uncompressed first-string table agrees
+/// with what each block actually starts with, since the reader trusts that table to search.
 pub(crate) fn decode_dict(body: &[u8]) -> io::Result<Vec<String>> {
     let bad = |m: &str| io::Error::new(io::ErrorKind::InvalidData, m.to_string());
-    if body.len() < 8 {
-        return Err(bad("dictionary section too short"));
+    let rd32 = |p: usize| -> io::Result<usize> {
+        let b = body.get(p..p + 4).ok_or_else(|| bad("dictionary section truncated"))?;
+        Ok(u32::from_be_bytes(b.try_into().map_err(|_| bad("short dict"))?) as usize)
+    };
+    let (count, per, blocks) = (rd32(0)?, rd32(4)?, rd32(8)?);
+    if per == 0 || blocks != count.div_ceil(per) {
+        return Err(bad("dictionary block count does not match its string count"));
     }
-    let raw = zstd::decode_all(&body[8..])?;
-    let count = u32::from_be_bytes(raw[0..4].try_into().map_err(|_| bad("short dict"))?) as usize;
+    let first_dir = 12;
+    let firsts = first_dir + blocks * 4;
+    let firsts_len = if blocks == 0 { 0 } else { rd32(firsts - 4)? };
+    let block_dir = firsts + firsts_len;
+    let data = block_dir + blocks * 4;
+
     let mut out = Vec::with_capacity(count);
-    let mut p = 4usize;
-    for _ in 0..count {
-        let len =
-            u32::from_be_bytes(raw[p..p + 4].try_into().map_err(|_| bad("short dict"))?) as usize;
-        p += 4;
-        out.push(
-            String::from_utf8(raw[p..p + len].to_vec())
-                .map_err(|_| bad("dictionary entry is not UTF-8"))?,
-        );
-        p += len;
+    for b in 0..blocks {
+        let start = if b == 0 { 0 } else { rd32(block_dir + (b - 1) * 4)? };
+        let end = rd32(block_dir + b * 4)?;
+        let comp = body.get(data + start..data + end).ok_or_else(|| bad("dictionary block truncated"))?;
+        let raw = zstd::decode_all(comp)?;
+        let want = per.min(count - b * per);
+        let mut p = 0usize;
+        for k in 0..want {
+            let len = raw.get(p..p + 4).ok_or_else(|| bad("dictionary block ran out"))?;
+            let len = u32::from_be_bytes(len.try_into().map_err(|_| bad("short dict"))?) as usize;
+            p += 4;
+            let s = raw.get(p..p + len).ok_or_else(|| bad("dictionary block ran out"))?;
+            let s = String::from_utf8(s.to_vec()).map_err(|_| bad("dictionary entry is not UTF-8"))?;
+            p += len;
+            if k == 0 {
+                let f0 = if b == 0 { 0 } else { rd32(first_dir + (b - 1) * 4)? };
+                let f1 = rd32(first_dir + b * 4)?;
+                if body.get(firsts + f0..firsts + f1) != Some(s.as_bytes()) {
+                    return Err(bad("first-string table disagrees with its block"));
+                }
+            }
+            out.push(s);
+        }
+        if p != raw.len() {
+            return Err(bad("dictionary block has trailing bytes"));
+        }
+    }
+    if data + if blocks == 0 { 0 } else { rd32(data - 4)? } != body.len() {
+        return Err(bad("dictionary section has trailing bytes"));
     }
     Ok(out)
 }
 
 pub(crate) fn decode_column(body: &[u8], delta: bool) -> io::Result<Vec<i32>> {
+    decode_column_with(body, delta, None)
+}
+
+fn decode_column_with(body: &[u8], delta: bool, progress: Option<&Progress>) -> io::Result<Vec<i32>> {
     let bad = |m: &str| io::Error::new(io::ErrorKind::InvalidData, m.to_string());
     let rd32 = |p: usize| -> u32 {
         u32::from_be_bytes([body[p], body[p + 1], body[p + 2], body[p + 3]])
@@ -433,12 +487,14 @@ pub(crate) fn decode_column(body: &[u8], delta: bool) -> io::Result<Vec<i32>> {
     }
     let n = rd32(0) as usize;
     let blocks = rd32(4) as usize;
-    let mut offset = 8 + blocks * 8;
+    let data = 8 + blocks * 8;
     let mut out = Vec::with_capacity(n);
+    let mut start = 0usize;
     for b in 0..blocks {
-        let comp_len = rd32(8 + b * 8 + 4) as usize;
-        let raw = zstd::decode_all(&body[offset..offset + comp_len])?;
-        offset += comp_len;
+        let end = rd32(8 + b * 8 + 4) as usize;
+        let comp = body.get(data + start..data + end).ok_or_else(|| bad("column block out of range"))?;
+        let raw = zstd::decode_all(comp)?;
+        start = end;
         let mut p = 0usize;
         let mut prev = 0i32;
         let count = n.saturating_sub(b * BLOCK).min(BLOCK);
@@ -458,6 +514,9 @@ pub(crate) fn decode_column(body: &[u8], delta: bool) -> io::Result<Vec<i32>> {
             let value = if delta { prev.wrapping_add(dec) } else { dec };
             out.push(value);
             prev = value;
+        }
+        if let Some(p) = progress {
+            p.inc();
         }
     }
     Ok(out)

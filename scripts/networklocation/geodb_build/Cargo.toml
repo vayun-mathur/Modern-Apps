@@ -1,4 +1,4 @@
-# Host-side builder for `geocoder-v3.geodb`, the offline reverse/forward geocoder database
+# Host-side builder for `geocoder.db`, the offline reverse/forward geocoder database
 # that `:networklocation` reads.
 #
 # Replaces the `osmium tags-filter | osmium export | geocoder_gen.cpp` chain. That pipeline
@@ -16,7 +16,7 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 license = "GPL-2.0-only"
-description = "OSM .osm.pbf -> geocoder-v3.geodb for :networklocation"
+description = "OSM .osm.pbf -> geocoder.db for :networklocation"
 
 [lib]
 name = "geodb_build"
@@ -36,6 +36,15 @@ osm_ingest = { path = "../../maps/osm_ingest" }
 # `ruzstd`, which has no encoder, so the writer needs a real zstd. This is a host tool that
 # never cross-compiles, so the C dependency stops here and does not reach the app.
 zstd.workspace = true
+
+# Sorting and materialisation run on every core. Every parallel step here collects in input
+# order, so the output stays byte-identical whatever the thread count.
+rayon.workspace = true
+
+# The Windows process heap serialises 64 threads that each allocate a few small `String`s per
+# OSM feature: on North America the node-features pass sat at 1.4 of 64 cores. Same reason and
+# same crate as `scripts/maps/mamaps_build`.
+mimalloc.workspace = true
 
 [profile.release]
 opt-level = 3
