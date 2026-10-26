@@ -34,32 +34,31 @@ impl Gemma4Handle {
     /// The per-layer block for already-gathered rows: on `gather_net` when it built, else the
     /// host `combine_cached` (same projection + grouped norm + scaled add).
     fn combine(&mut self, hidden: &[f32], embedded: &[f32]) -> Result<Vec<f32>, String> {
+        self.combine_block(hidden, embedded, 1)
+    }
+
+    /// The per-layer block for `width` gathered columns laid out `[C, 1, width]`: one
+    /// `gather_net` submit for all of them, else the host `combine_cached` column by column.
+    fn combine_block(&mut self, hidden: &[f32], embedded: &[f32], width: u32) -> Result<Vec<f32>, String> {
+        let len = (gemma4::PER_LAYER as usize) * gemma4::LAYERS * width as usize;
         if let Some(net) = self.gather_net.as_mut() {
-            let out = net.at(())?.infer_raw_many(&[hidden, embedded])?;
-            if out.len() == 1 && out[0].len() == (gemma4::PER_LAYER as usize) * gemma4::LAYERS {
+            let out = net.at(width)?.infer_raw_many(&[hidden, embedded])?;
+            if out.len() == 1 && out[0].len() == len {
                 return Ok(out.into_iter().next().unwrap_or_default());
             }
             // Wrong shape: fall through to the host combine rather than failing.
         }
-        gather_combine_host(&self.embed, hidden, embedded)
-    }
-
-    /// The per-layer block for a **soft token**: an encoder's output standing in for a token's
-    /// embedding. The table rows come from the pad token, which is what the reference does - it
-    /// rewrites the placeholder id to `pad_token_id` before gathering, then overwrites only the
-    /// hidden state with the encoder's row.
-    fn gather_soft(&mut self, hidden: &[f32]) -> Result<Vec<f32>, String> {
-        if hidden.len() != gemma4::D_MODEL as usize {
-            return Err(format!("a soft hidden state of {} values, not {}", hidden.len(), gemma4::D_MODEL));
+        if width == 1 {
+            return gather_combine_host(&self.embed, hidden, embedded);
         }
-        let reader = self.embed.reader();
-        let mut embedded = Vec::with_capacity((gemma4::PER_LAYER as usize) * gemma4::LAYERS);
-        for i in 0..gemma4::LAYERS {
-            let at = gemma4::embed::table(i);
-            embedded.extend(reader.int4_row(at, at + 1, &[gemma4::VOCAB, gemma4::PER_LAYER], 0)?);
+        let (wide, mut out) = (width as usize, vec![0f32; len]);
+        for at in 0..wide {
+            let h = crate::nets::gemma4_gather::column(hidden, at, wide);
+            let e = crate::nets::gemma4_gather::column(embedded, at, wide);
+            let combined = gather_combine_host(&self.embed, &h, &e)?;
+            crate::nets::gemma4_gather::place(&mut out, &combined, at, wide);
         }
-        drop(reader);
-        self.combine(hidden, &embedded)
+        Ok(out)
     }
 
     /// Feed one token and return the greedy next token, reduced on the device.
@@ -327,6 +326,7 @@ impl Gemma4Handle {
             gemma4::Mode::DecodeStep.at(tier),
             gemma4_plan,
         )?;
+        warm_gemma4(&mut rebuilt, tier)?;
         if let Some(bytes) = &carried {
             let at = rebuilt.at(gemma4::Mode::DecodeStep.at(tier))?;
             at.import_pinned(gemma4::CACHE_TENSORS, self.position, bytes)?;
@@ -367,11 +367,17 @@ impl Gemma4Handle {
             ));
         }
         // Every chunk attends the whole cache (`attn_cached_multi`), so any split and any
-        // starting position is correct.
+        // starting position is correct. A chunk's rows gather on the host straight into the
+        // `[C, 1, T]` layout and combine in one submit, instead of a combine per token.
         for chunk in tokens.chunks(CHUNK as usize) {
             let gathering = std::time::Instant::now();
-            let rows = chunk.iter().map(|&token| self.gather(token)).collect::<Result<Vec<_>, _>>()?;
-            self.prefill_rows(&rows, gathering.elapsed())?;
+            let reader = self.embed.reader();
+            let hidden = crate::nets::gemma4_gather::token_rows(&reader, chunk)?;
+            let embedded = crate::nets::gemma4_gather::layer_rows(&reader, chunk)?;
+            drop(reader);
+            let rows = gathering.elapsed();
+            let per_layer = self.combine_block(&hidden, &embedded, chunk.len() as u32)?;
+            self.prefill_block(&hidden, &per_layer, chunk.len() as u32, rows, gathering.elapsed() - rows)?;
         }
         Ok(())
     }
@@ -393,37 +399,42 @@ impl Gemma4Handle {
         }
         for chunk in values.chunks(width * CHUNK as usize) {
             let gathering = std::time::Instant::now();
-            let rows = chunk
-                .chunks_exact(width)
-                .map(|row| Ok((row.to_vec(), self.gather_soft(row)?)))
-                .collect::<Result<Vec<_>, String>>()?;
-            self.prefill_rows(&rows, gathering.elapsed())?;
+            let count = chunk.len() / width;
+            let mut hidden = vec![0f32; chunk.len()];
+            for (at, row) in chunk.chunks_exact(width).enumerate() {
+                crate::nets::gemma4_gather::place(&mut hidden, row, at, count);
+            }
+            // Soft rows take the pad token's per-layer rows: the reference rewrites the
+            // placeholder id to `pad_token_id` before gathering, then overwrites only the hidden.
+            let reader = self.embed.reader();
+            let embedded = crate::nets::gemma4_gather::layer_rows(&reader, &vec![0; count])?;
+            drop(reader);
+            let rows = gathering.elapsed();
+            let per_layer = self.combine_block(&hidden, &embedded, count as u32)?;
+            self.prefill_block(&hidden, &per_layer, count as u32, rows, gathering.elapsed() - rows)?;
         }
         Ok(())
     }
 
-    /// One batched `Prefill` submit over `(hidden, per_layer)` rows at the current position.
-    fn prefill_rows(
+    /// One batched `Prefill` submit over `[C, 1, width]` blocks at the current position.
+    fn prefill_block(
         &mut self,
-        rows: &[(Vec<f32>, Vec<f32>)],
-        gathered: std::time::Duration,
+        hidden: &[f32],
+        per_layer: &[f32],
+        width: u32,
+        rows: std::time::Duration,
+        combined: std::time::Duration,
     ) -> Result<(), String> {
-        let width = rows.len() as u32;
-        // Laid out `[C, 1, T]` - channel-major, which is what every op in the pass expects and
-        // what `cache_write` transposes on the way in.
-        let mut hidden = vec![0f32; (gemma4::D_MODEL * width) as usize];
-        let mut per_layer = vec![0f32; (gemma4::PER_LAYER * gemma4::LAYERS as u32 * width) as usize];
+        let wide = width as usize;
         let mut local = vec![0f32; (gemma4::HEAD_DIM * width) as usize];
         let mut global = vec![0f32; (gemma4::GLOBAL_HEAD_DIM * width) as usize];
-        for (offset, (h, p)) in rows.iter().enumerate() {
-            let column = offset as u32;
-            let position = self.position + column;
-            place(&mut hidden, h, column, width);
-            place(&mut per_layer, p, column, width);
-            let from = (position * gemma4::HEAD_DIM) as usize;
-            place(&mut local, &self.local[from..from + gemma4::HEAD_DIM as usize], column, width);
-            let from = (position * gemma4::GLOBAL_HEAD_DIM) as usize;
-            place(&mut global, &self.global[from..from + gemma4::GLOBAL_HEAD_DIM as usize], column, width);
+        for at in 0..wide {
+            let position = self.position as usize + at;
+            let (l, g) = (gemma4::HEAD_DIM as usize, gemma4::GLOBAL_HEAD_DIM as usize);
+            let local_row = self.local.get(position * l..(position + 1) * l).ok_or("past the rotary table")?;
+            let global_row = self.global.get(position * g..(position + 1) * g).ok_or("past the rotary table")?;
+            crate::nets::gemma4_gather::place(&mut local, local_row, at, wide);
+            crate::nets::gemma4_gather::place(&mut global, global_row, at, wide);
         }
         let submitted = std::time::Instant::now();
         let mode = if self.position == 0 {
@@ -438,12 +449,13 @@ impl Gemma4Handle {
             window_start: self.position.saturating_sub(gemma4::WINDOW - 1),
         })?;
         let ran = std::time::Instant::now();
-        at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
+        at.infer_raw_many(&[hidden, per_layer, &local, &global])?;
         // `Reshaped` re-records whenever the width changes, so record time is logged apart.
         log(&format!(
-            "gemma4 prefill {width} positions at {}: {:.0} ms gather, {:.0} ms record, {:.0} ms gpu",
+            "gemma4 prefill {width} positions at {}: {:.0} ms rows, {:.0} ms combine, {:.0} ms record, {:.0} ms gpu",
             self.position,
-            gathered.as_secs_f64() * 1000.0,
+            rows.as_secs_f64() * 1000.0,
+            combined.as_secs_f64() * 1000.0,
             recorded.as_secs_f64() * 1000.0,
             ran.elapsed().as_secs_f64() * 1000.0,
         ));

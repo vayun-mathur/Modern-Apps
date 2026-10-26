@@ -24,13 +24,14 @@ fn gather_combine_host(
 
 /// The device combine plan over an EMBED file, uploading only the ~13 MB it reads
 /// (`Reshaped::windowed`), or `None` when the file predates the plan's tensors.
-fn gemma4_gather_plan(embed: &Streamed) -> Option<Reshaped<()>> {
+/// Keyed by column count: 1 for a decode step, the chunk width for a prefill.
+fn gemma4_gather_plan(embed: &Streamed) -> Option<Reshaped<u32>> {
     Reshaped::windowed(
         context::shared().ok()?,
         embed.offsets(),
         embed,
-        &[()],
-        |offsets, ()| crate::nets::gemma4_gather::build_plan(offsets),
+        &[1],
+        |offsets, width| crate::nets::gemma4_gather::build_plan_at(offsets, width),
     )
     .ok()
 }
@@ -56,18 +57,15 @@ fn gemma4_head_file_plan(head: &Streamed) -> Option<Reshaped<crate::nets::gemma4
 /// trades GEMM width against the `8 x CHUNK x context` score maps (4 MB each at 256 x 1024).
 const CHUNK: u32 = 256;
 
-/// Write one position's `values` into column `column` of a `[C, 1, width]` block.
-///
-/// The layout is channel-major - channel `c` at `c * width + column` - which is the transpose of
-/// how the values arrive. Getting this backwards is not a shape error and produces a prompt whose
-/// tokens are scrambled across channels.
-fn place(into: &mut [f32], values: &[f32], column: u32, width: u32) {
-    for (channel, &value) in values.iter().enumerate() {
-        let at = channel * width as usize + column as usize;
-        if let Some(slot) = into.get_mut(at) {
-            *slot = value;
-        }
-    }
+/// Grow the arena to the widest prefill chunk, then record the decode step. An arena growth drops
+/// every kept recording, so without this the first prompt re-records the decode step for the
+/// first token; after it a prompt only records its own width and the decode step stays warm.
+fn warm_gemma4(net: &mut Reshaped<gemma4::Pass>, context: u32) -> Result<(), String> {
+    let width = CHUNK.min(context);
+    net.at(gemma4::Mode::Prefill { tokens: width }.at(context))?;
+    net.at(gemma4::Mode::PrefillFresh { tokens: width }.at(context))?;
+    net.at(gemma4::Mode::DecodeStep.at(context))?;
+    Ok(())
 }
 
 /// The most likely token, and nothing else.
@@ -203,17 +201,22 @@ fn build_gemma4<'l>(
         (u64::from(cache) * u64::from(gemma4::BYTES_PER_POSITION)) / 1_000_000,
         budget / 1_000_000,
     ));
-    let net = Reshaped::streamed(
+    let mut net = Reshaped::streamed(
         context::shared()?,
         weights.offsets(),
         &weights,
         gemma4::Mode::DecodeStep.at(gemma4::CONTEXT_TIERS[0]),
         gemma4_plan,
     )?;
+    warm_gemma4(&mut net, gemma4::CONTEXT_TIERS[0])?;
     // Never `Reshaped::streamed` over EMBED: it uploads the whole 3.6 GB file, which on top of
     // TEXT OOM-kills a Pixel 8. The gather net is windowed to the tensors it reads.
     let head = head_file.as_ref().and_then(gemma4_head_file_plan);
-    let gather_net = gemma4_gather_plan(&embed);
+    let mut gather_net = gemma4_gather_plan(&embed);
+    if let Some(gather) = gather_net.as_mut() {
+        gather.at(CHUNK)?;
+        gather.at(1)?;
+    }
     Ok(Gemma4Handle {
         net,
         head,

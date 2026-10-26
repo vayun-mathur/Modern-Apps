@@ -83,7 +83,7 @@ struct Args {
     positional: Vec<String>,
     head: Option<PathBuf>,
     time: Option<usize>,
-    prefill: Option<u32>,
+    prefill: Option<Vec<u32>>,
     sample: bool,
     topk: bool,
     split: Option<u32>,
@@ -102,7 +102,7 @@ fn parse_args() -> Args {
         match arg.as_str() {
             "--head" => args.head = it.next().map(PathBuf::from),
             "--time" => args.time = it.next().and_then(|n| n.parse().ok()),
-            "--prefill" => args.prefill = it.next().and_then(|n| n.parse().ok()),
+            "--prefill" => args.prefill = it.next().map(|n| n.split(',').filter_map(|w| w.parse().ok()).collect()),
             "--sample" => args.sample = true,
             "--topk" => args.topk = true,
             "--split" => args.split = it.next().and_then(|n| n.parse().ok()),
@@ -185,8 +185,8 @@ fn main() {
         }
         return print_memory();
     }
-    if let Some(width) = args.prefill {
-        time_prefill(&context, &weights, &embed_weights, head_weights.as_ref(), &tokens, width);
+    if let Some(widths) = args.prefill {
+        time_prefill(&context, &weights, &embed_weights, head_weights.as_ref(), &tokens, &widths);
         return print_memory();
     }
     match run(&context, &weights, &embed_weights, head_weights.as_ref(), &tokens) {
@@ -352,7 +352,7 @@ struct StepTimes {
 fn decode_one(
     net: &mut Reshaped<gemma4::Pass>,
     head: Option<&mut Reshaped<HeadOut>>,
-    gather: Option<&mut Reshaped<()>>,
+    gather: Option<&mut Reshaped<u32>>,
     embed: &modelrunner::weights::Reader<'_>,
     rotary: &modelrunner::weights::Reader<'_>,
     token: u32,
@@ -378,7 +378,7 @@ fn decode_one(
             }
             let rows_ms = tick.elapsed().as_secs_f64() * 1000.0;
             let tick = Instant::now();
-            let out = gather.at(())?.infer_raw_many(&[&hidden, &embedded])?;
+            let out = gather.at(1)?.infer_raw_many(&[&hidden, &embedded])?;
             let per_layer = out.into_iter().next().ok_or("the gather net returned nothing")?;
             let matmul_ms = tick.elapsed().as_secs_f64() * 1000.0;
             (hidden, per_layer, gemma4::GatherTimes { rows_ms, bulk_ms: 0.0, matmul_ms })
@@ -456,9 +456,7 @@ fn time_decode(
         Err(why) => return println!("the net does not build: {why}"),
     };
     let mut gather_net = if device_gather {
-        match Reshaped::windowed(Arc::clone(context), embed.offsets(), embed, &[()], |offsets, ()| {
-            modelrunner::nets::gemma4_gather::build_plan(offsets)
-        }) {
+        match gather_plan(context, embed) {
             Ok(net) => Some(net),
             Err(why) => return println!("the gather net does not build: {why}"),
         }
@@ -544,16 +542,79 @@ fn place(into: &mut [f32], values: &[f32], column: u32, width: u32) {
     }
 }
 
-/// Prefill + TTFT probe: a `width`-token prompt (the golden's tokens cycled)
-/// in one `Prefill` submit, as `bridge_part6::prefill` does it, then the first
-/// decode step with the greedy head. Run twice: cold (records the plan) and warm.
+/// The device combine over the EMBED file, uploading only the tensors it reads, keyed by width.
+fn gather_plan(context: &Arc<context::Context>, embed: &Streamed) -> Result<Reshaped<u32>, String> {
+    Reshaped::windowed(Arc::clone(context), embed.offsets(), embed, &[1], |offsets, width| {
+        modelrunner::nets::gemma4_gather::build_plan_at(offsets, width)
+    })
+}
+
+/// Positions one prefill submit covers. Mirrors the bridge's `CHUNK`.
+const CHUNK: usize = 256;
+
+/// Milliseconds per stage of one prompt, summed over its chunks.
+#[derive(Default)]
+struct PrefillTimes {
+    rows: f64,
+    combine: f64,
+    rotary: f64,
+    record: f64,
+    gpu: f64,
+}
+
+/// `prompt` at position 0 exactly as `Gemma4Handle::prefill` feeds it: per chunk, the host rows
+/// straight into `[C, 1, T]`, one device combine, the rotary rows, then the Prefill record + submit.
+fn prefill_app(
+    net: &mut Reshaped<gemma4::Pass>,
+    gather: &mut Reshaped<u32>,
+    embed: &modelrunner::weights::Reader<'_>,
+    rotary: &modelrunner::weights::Reader<'_>,
+    prompt: &[u32],
+) -> Result<PrefillTimes, String> {
+    use modelrunner::nets::gemma4_gather as g;
+    use std::time::Instant;
+    let mut times = PrefillTimes::default();
+    for (index, chunk) in prompt.chunks(CHUNK).enumerate() {
+        let start = (index * CHUNK) as u32;
+        let width = chunk.len() as u32;
+        let tick = Instant::now();
+        let hidden = g::token_rows(embed, chunk)?;
+        let embedded = g::layer_rows(embed, chunk)?;
+        times.rows += tick.elapsed().as_secs_f64() * 1000.0;
+        let tick = Instant::now();
+        let per_layer = gather.at(width)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no combine")?;
+        times.combine += tick.elapsed().as_secs_f64() * 1000.0;
+        let tick = Instant::now();
+        let mut local = vec![0f32; (gemma4::HEAD_DIM * width) as usize];
+        let mut global = vec![0f32; (gemma4::GLOBAL_HEAD_DIM * width) as usize];
+        for column in 0..width {
+            let position = start + column;
+            place(&mut local, &rotary_row(rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position)?, column, width);
+            place(&mut global, &rotary_row(rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?, column, width);
+        }
+        times.rotary += tick.elapsed().as_secs_f64() * 1000.0;
+        let mode = if start == 0 { gemma4::Mode::PrefillFresh { tokens: width } } else { gemma4::Mode::Prefill { tokens: width } };
+        let tick = Instant::now();
+        let at = net.at(mode.at(TIER))?;
+        times.record += tick.elapsed().as_secs_f64() * 1000.0;
+        let tick = Instant::now();
+        at.set_params(StepParams { prefix: start, window_start: start.saturating_sub(gemma4::WINDOW - 1) })?;
+        at.infer_raw_many(&[&hidden, &per_layer, &local, &global])?;
+        times.gpu += tick.elapsed().as_secs_f64() * 1000.0;
+    }
+    Ok(times)
+}
+
+/// TTFT as the app sees it: `prefill_app` for a prompt of each width (the golden's tokens cycled),
+/// then the first greedy step (device combine, DecodeStep record, step, head). Each width runs
+/// cold then warm, and the widths run back to back as consecutive prompts would.
 fn time_prefill(
     context: &Arc<context::Context>,
     weights: &Streamed,
     embed: &Streamed,
     head: Option<&Streamed>,
     tokens: &[u32],
-    width: u32,
+    widths: &[u32],
 ) {
     use std::time::Instant;
     let mut net = match streamed_net(context, weights, gemma4::Mode::DecodeStep.at(TIER), gemma4_plan) {
@@ -564,66 +625,66 @@ fn time_prefill(
         Ok(net) => net,
         Err(why) => return println!("the head does not build: {why}"),
     };
+    let mut gather = match gather_plan(context, embed) {
+        Ok(net) => net,
+        Err(why) => return println!("the gather net does not build: {why}"),
+    };
+    // As `build_gemma4` warms at load: the arena at the widest chunk, then the decode step.
+    let tick = Instant::now();
+    let chunk = CHUNK as u32;
+    let warmed = (|| -> Result<(), String> {
+        net.at(gemma4::Mode::Prefill { tokens: chunk }.at(TIER))?;
+        net.at(gemma4::Mode::PrefillFresh { tokens: chunk }.at(TIER))?;
+        net.at(gemma4::Mode::DecodeStep.at(TIER))?;
+        gather.at(chunk)?;
+        gather.at(1)?;
+        Ok(())
+    })();
+    if let Err(why) = warmed {
+        return println!("the warm-up failed: {why}");
+    }
+    println!("load-time warm-up {:.0} ms", tick.elapsed().as_secs_f64() * 1000.0);
     let reader = embed.reader();
     let rotary = weights.reader();
-    if width >= TIER {
-        return println!("a {width}-token prompt does not fit the {TIER}-position cache");
-    }
-    let prompt: Vec<u32> = tokens.iter().copied().cycle().take(width as usize).collect();
-    let next = tokens[width as usize % tokens.len()];
-    let mode = gemma4::Mode::PrefillFresh { tokens: width }.at(TIER);
     let stamps = modelrunner::knobs::is_set("timestamps");
     let mut prefill_report = None;
-    for run in 0..2 {
-        let start = Instant::now();
-        let mut hidden = vec![0f32; (gemma4::D_MODEL * width) as usize];
-        let mut per_layer = vec![0f32; (gemma4::PER_LAYER * gemma4::LAYERS as u32 * width) as usize];
-        let mut local = vec![0f32; (gemma4::HEAD_DIM * width) as usize];
-        let mut global = vec![0f32; (gemma4::GLOBAL_HEAD_DIM * width) as usize];
-        for (column, &token) in prompt.iter().enumerate() {
-            let column = column as u32;
-            let gathered = gemma4::gather(&reader, token)
-                .and_then(|(h, p)| Ok((h, p, rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, column)?)))
-                .and_then(|(h, p, l)| Ok((h, p, l, rotary_row(&rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, column)?)));
-            let Ok((h, p, l, g)) = gathered else { return println!("gather failed at {column}") };
-            place(&mut hidden, &h, column, width);
-            place(&mut per_layer, &p, column, width);
-            place(&mut local, &l, column, width);
-            place(&mut global, &g, column, width);
+    for &width in widths {
+        if width == 0 || width >= TIER {
+            println!("a {width}-token prompt does not fit the {TIER}-position cache");
+            continue;
         }
-        let gather_ms = start.elapsed().as_secs_f64() * 1000.0;
-        let tick = Instant::now();
-        let at = match net.at(mode) {
-            Ok(at) => at,
-            Err(why) => return println!("the prefill plan does not build: {why}"),
-        };
-        let record_ms = tick.elapsed().as_secs_f64() * 1000.0;
-        let tick = Instant::now();
-        let ran = at
-            .set_params(StepParams { prefix: 0, window_start: 0 })
-            .and_then(|()| at.infer_raw_many(&[&hidden, &per_layer, &local, &global]));
-        if let Err(why) = ran {
-            return println!("the prefill failed: {why}");
+        let prompt: Vec<u32> = tokens.iter().copied().cycle().take(width as usize).collect();
+        let next = tokens[width as usize % tokens.len()];
+        for run in 0..2 {
+            let start = Instant::now();
+            let p = match prefill_app(&mut net, &mut gather, &reader, &rotary, &prompt) {
+                Ok(p) => p,
+                Err(why) => return println!("the prefill failed: {why}"),
+            };
+            let prefill_ms = start.elapsed().as_secs_f64() * 1000.0;
+            if stamps && run == 1 {
+                prefill_report = net.at(gemma4::Mode::PrefillFresh { tokens: width.min(CHUNK as u32) }.at(TIER)).and_then(|at| at.op_times()).ok();
+            }
+            let tick = Instant::now();
+            if let Err(why) = net.at(gemma4::Mode::DecodeStep.at(TIER)) {
+                return println!("the decode plan does not build: {why}");
+            }
+            let first_record = tick.elapsed().as_secs_f64() * 1000.0;
+            let mut s = StepTimes::default();
+            let id = match decode_one(&mut net, head_net.as_mut(), Some(&mut gather), &reader, &rotary, next, width, HeadOut::Greedy, &mut s) {
+                Ok(id) => id,
+                Err(why) => return println!("the first decode step failed: {why}"),
+            };
+            let first_ms = tick.elapsed().as_secs_f64() * 1000.0;
+            println!(
+                "{} prefill {width} tokens: rows {:.0} + combine {:.0} + rotary {:.0} + record {:.0} + gpu {:.0} = {prefill_ms:.0} ms; \
+                 first token {first_ms:.0} ms (record {first_record:.0}, gather {:.0}, step {:.0}, head {:.0}; id {id:?}); TTFT {:.0} ms",
+                if run == 0 { "cold" } else { "warm" },
+                p.rows, p.combine, p.rotary, p.record, p.gpu,
+                s.rows + s.combine, s.infer, s.head,
+                prefill_ms + first_ms,
+            );
         }
-        let gpu_ms = tick.elapsed().as_secs_f64() * 1000.0;
-        let prefill_ms = start.elapsed().as_secs_f64() * 1000.0;
-        if stamps && run == 1 {
-            prefill_report = at.op_times().ok();
-        }
-        let tick = Instant::now();
-        let mut times = StepTimes::default();
-        let id = match decode_one(&mut net, head_net.as_mut(), None, &reader, &rotary, next, width, HeadOut::Greedy, &mut times) {
-            Ok(id) => id,
-            Err(why) => return println!("the first decode step failed: {why}"),
-        };
-        let first_ms = tick.elapsed().as_secs_f64() * 1000.0;
-        println!(
-            "{} prefill {width} tokens: gather {gather_ms:.0} ms, record {record_ms:.0} ms, gpu {gpu_ms:.0} ms \
-             = {prefill_ms:.0} ms ({:.1} tok/s); first token {first_ms:.0} ms (id {id:?}); TTFT {:.0} ms",
-            if run == 0 { "cold" } else { "warm" },
-            f64::from(width) * 1000.0 / prefill_ms,
-            prefill_ms + first_ms,
-        );
     }
     if let Some(report) = prefill_report {
         print_kinds("prefill", &report);
@@ -769,6 +830,16 @@ fn split_check(
         ("batched head + batched tail", run("batched head + batched tail", true, true, false)?),
     ];
     let want = top10(&reference);
+    let mut gather = gather_plan(context, embed)?;
+    prefill_app(&mut net, &mut gather, &reader, &rotary, body)?;
+    let app = last_logits(&mut net, &mut head_net, &reader, &rotary, last, (n - 1) as u32)?;
+    println!("  {:<32} top10 {:?}", "app path (rows + device combine)", top10(&app));
+    let variants = [
+        variants[0].clone(),
+        variants[1].clone(),
+        variants[2].clone(),
+        ("app path (rows + device combine)", app),
+    ];
     for (label, logits) in &variants {
         let got = top10(logits);
         let max_diff = logits.iter().zip(&reference).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max);
@@ -789,12 +860,11 @@ fn split_check(
 fn gather_check(context: &Arc<context::Context>, embed: &Streamed, tokens: &[u32]) -> Result<(), String> {
     use std::time::Instant;
     let tick = Instant::now();
-    let mut net = Reshaped::windowed(Arc::clone(context), embed.offsets(), embed, &[()], |offsets, ()| {
-        modelrunner::nets::gemma4_gather::build_plan(offsets)
-    })?;
+    let mut net = gather_plan(context, embed)?;
     println!("gather net built in {:.0} ms", tick.elapsed().as_secs_f64() * 1000.0);
     let reader = embed.reader();
     let (mut host_ms, mut device_ms, mut worst) = (0.0, 0.0, 0f32);
+    let mut device_cols = Vec::new();
     let repeats = 4;
     for pass in 0..repeats {
         for &token in tokens {
@@ -814,9 +884,12 @@ fn gather_check(context: &Arc<context::Context>, embed: &Streamed, tokens: &[u32
             let host = gemma4::combine_cached(&reader, &hidden, &embedded)?;
             let host_t = tick.elapsed().as_secs_f64() * 1000.0;
             let tick = Instant::now();
-            let out = net.at(())?.infer_raw_many(&[&hidden, &embedded])?;
+            let out = net.at(1)?.infer_raw_many(&[&hidden, &embedded])?;
             let device_t = tick.elapsed().as_secs_f64() * 1000.0;
             let device = out.into_iter().next().ok_or("the gather net returned nothing")?;
+            if pass == 0 {
+                device_cols.push(device.clone());
+            }
             if device.len() != host.len() {
                 return Err(format!("device {} values, host {}", device.len(), host.len()));
             }
@@ -834,6 +907,31 @@ fn gather_check(context: &Arc<context::Context>, embed: &Streamed, tokens: &[u32
         "combine per token: host {:.2} ms, device {:.2} ms; worst max|diff|/max|host| {worst:.5}",
         host_ms / n,
         device_ms / n
+    );
+    // The prefill's batched combine: every column at once, against the per-token device combine.
+    use modelrunner::nets::gemma4_gather as g;
+    let width = tokens.len();
+    let tick = Instant::now();
+    let hidden = g::token_rows(&reader, tokens)?;
+    let embedded = g::layer_rows(&reader, tokens)?;
+    let rows_ms = tick.elapsed().as_secs_f64() * 1000.0;
+    let mut wide = Vec::new();
+    let mut wide_ms = 0.0;
+    for _ in 0..3 {
+        let tick = Instant::now();
+        wide = net.at(width as u32)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no wide combine")?;
+        wide_ms = tick.elapsed().as_secs_f64() * 1000.0;
+    }
+    let (mut identical, mut worst) = (0, 0f32);
+    for (at, single) in device_cols.iter().enumerate() {
+        let col = g::column(&wide, at, width);
+        identical += usize::from(col == *single);
+        let scale = single.iter().fold(0f32, |m, v| m.max(v.abs())).max(1e-6);
+        worst = worst.max(col.iter().zip(single).map(|(a, b)| (a - b).abs()).fold(0f32, f32::max) / scale);
+    }
+    println!(
+        "wide combine over {width} columns: rows {rows_ms:.1} ms, combine {wide_ms:.1} ms; \
+         {identical}/{width} columns bit-identical to per-token, worst {worst:.5}"
     );
     Ok(())
 }

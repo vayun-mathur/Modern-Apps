@@ -407,7 +407,7 @@ struct Gemma4Handle {
     /// The device combine over the EMBED file, windowed to the ~13 MB it reads:
     /// host-gathered rows in, combined per-layer block out. `None` falls back to
     /// the host combine.
-    gather_net: Option<Reshaped<()>>,
+    gather_net: Option<Reshaped<u32>>,
     /// The text model, retained for the rotary tables which are also host-read.
     weights: Streamed,
     /// The two embedding tables.

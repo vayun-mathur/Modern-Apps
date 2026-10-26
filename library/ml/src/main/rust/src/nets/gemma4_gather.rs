@@ -75,6 +75,12 @@ pub const GATHER_SCALE: f32 = 16.0;
 /// Output: `combined [8960, 1, 1]` — the per-layer block the TEXT pass takes
 /// as its second input. Every other EMBED tensor is named via `host_tensor`.
 pub fn build_plan(weights: &dyn WeightSource) -> Result<Plan, String> {
+    build_plan_at(weights, 1)
+}
+
+/// [`build_plan`] over `width` columns laid out `[C, 1, width]`, the prefill's input layout, so
+/// a whole prompt chunk combines in one submit and the output feeds the prefill as it is.
+pub fn build_plan_at(weights: &dyn WeightSource, width: u32) -> Result<Plan, String> {
     use super::gemma4::embed;
     use super::gemma4::{D_MODEL, EPSILON};
 
@@ -93,8 +99,8 @@ pub fn build_plan(weights: &dyn WeightSource) -> Result<Plan, String> {
         b.host_tensor(index, &super::gemma4_head::dims_of(index));
     }
 
-    let hidden = b.input(Shape::new(D_MODEL, 1, 1));
-    let embedded = b.input(Shape::new(PER_LAYER * LAYERS as u32, 1, 1));
+    let hidden = b.input(Shape::new(D_MODEL, 1, width));
+    let embedded = b.input(Shape::new(PER_LAYER * LAYERS as u32, 1, width));
 
     // projected = W @ hidden, 8960-wide over the int8 triple. conv_int8 at
     // 1 position auto-routes to ConvVecInt8 (same as the per-layer
@@ -123,6 +129,55 @@ pub fn build_plan(weights: &dyn WeightSource) -> Result<Plan, String> {
     let summed = b.add(scaled, normed);
     let combined = b.affine(summed, 1.0 / std::f32::consts::SQRT_2, 0.0);
     builder.finish(&[combined])
+}
+
+/// Write one position's `values` into column `column` of a channel-major `[C, 1, width]` block.
+pub fn place(into: &mut [f32], values: &[f32], column: usize, width: usize) {
+    for (slot, &value) in into.iter_mut().skip(column).step_by(width.max(1)).zip(values) {
+        *slot = value;
+    }
+}
+
+/// Column `column` of a channel-major `[C, 1, width]` block.
+pub fn column(block: &[f32], column: usize, width: usize) -> Vec<f32> {
+    block.iter().skip(column).step_by(width.max(1)).copied().collect()
+}
+
+/// The working-table rows of `tokens`, channel-major `[D_MODEL, 1, tokens.len()]`.
+pub fn token_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result<Vec<f32>, String> {
+    use super::gemma4::{embed, D_MODEL, VOCAB};
+    let width = tokens.len();
+    let mut block = vec![0f32; D_MODEL as usize * width];
+    for (at, &token) in tokens.iter().enumerate() {
+        if token >= VOCAB {
+            return Err(format!("token {token} is past the {VOCAB}-entry vocabulary"));
+        }
+        let row = reader.int4_row(embed::TOKENS, embed::TOKENS + 1, &[VOCAB, D_MODEL], token)?;
+        place(&mut block, &row, at, width);
+    }
+    Ok(block)
+}
+
+/// The 35 per-layer table rows of each token, concatenated per token and laid out channel-major
+/// `[PER_LAYER * LAYERS, 1, tokens.len()]`. Placeholders read row 0, as the export masks them.
+pub fn layer_rows(reader: &crate::weights::Reader<'_>, tokens: &[u32]) -> Result<Vec<f32>, String> {
+    use super::gemma4::{embed, VOCAB};
+    let width = tokens.len();
+    let wide = PER_LAYER as usize;
+    let mut block = vec![0f32; wide * LAYERS * width];
+    for (at, &token) in tokens.iter().enumerate() {
+        let row = if embed::PLACEHOLDERS.contains(&token) { 0 } else { token };
+        for i in 0..LAYERS {
+            let table = embed::table(i);
+            let values = reader.int4_row(table, table + 1, &[VOCAB, PER_LAYER], row)?;
+            let from = i * wide * width;
+            let Some(slab) = block.get_mut(from..from + wide * width) else {
+                return Err(format!("layer {i} past a {width}-column block"));
+            };
+            place(slab, &values, at, width);
+        }
+    }
+    Ok(block)
 }
 
 #[cfg(test)]
@@ -157,5 +212,23 @@ mod tests {
         crate::nets::tests::assert_no_aliasing(&plan);
         let sched = crate::nets::schedule::schedule(&plan);
         crate::nets::schedule::is_sound(&plan, &sched).expect("the combine schedule is sound");
+    }
+
+    #[test]
+    fn the_wide_combine_pass_keeps_the_prefill_layout() {
+        let source = Shapes::new(super::super::gemma4::embed::TENSORS_WITH_HEAD8);
+        let plan = build_plan_at(&source, 200).expect("the wide combine pass builds");
+        assert_eq!(plan.inputs[0].shape, Shape::new(1536, 1, 200));
+        assert_eq!(plan.inputs[1].shape, Shape::new(8960, 1, 200));
+        assert_eq!(plan.outputs[0].shape, Shape::new(8960, 1, 200));
+        assert_eq!(plan.ops.len(), 5);
+    }
+
+    #[test]
+    fn place_and_column_round_trip() {
+        let mut block = vec![0f32; 3 * 4];
+        place(&mut block, &[1.0, 2.0, 3.0], 2, 4);
+        assert_eq!(block, vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 3.0, 0.0]);
+        assert_eq!(column(&block, 2, 4), vec![1.0, 2.0, 3.0]);
     }
 }
