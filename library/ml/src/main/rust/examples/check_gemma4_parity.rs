@@ -75,6 +75,18 @@ fn gemma4_plan(offsets: &modelrunner::weights::Offsets, pass: gemma4::Pass) -> R
     gemma4::build(offsets, pass)
 }
 
+/// Whether the text file carries the combine, so plans take raw per-layer rows (set in `main`).
+static FUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn fused() -> bool {
+    FUSED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// One token's text-plan inputs 0 and 1 for this run's text file.
+fn gather_in(embed: &modelrunner::weights::Reader<'_>, token: u32) -> Result<(Vec<f32>, Vec<f32>), String> {
+    gemma4::gather_input(embed, token, fused())
+}
+
 fn head_plan(offsets: &modelrunner::weights::Offsets, out: HeadOut) -> Result<modelrunner::nets::Plan, String> {
     modelrunner::nets::gemma4_head::build_plan_standalone(offsets, out)
 }
@@ -137,6 +149,8 @@ fn main() {
         Ok(w) => w,
         Err(why) => return println!("the text model does not stream: {why}"),
     };
+    FUSED.store(gemma4::combines_in_plan(&weights.offsets()), std::sync::atomic::Ordering::Relaxed);
+    println!("text plans combine the per-layer rows: {}", fused());
     let embed_weights = match open_streamed(&embed, graph::GEMMA4_EMBED) {
         Ok(w) => w,
         Err(why) => return println!("the embedding does not stream: {why}"),
@@ -283,7 +297,7 @@ fn trace_run(
     let mut last = (Vec::new(), Vec::new());
     for (step, &token) in tokens.iter().enumerate() {
         let position = u32::try_from(step).map_err(|_| "a step past u32")?;
-        let (hidden, per_layer) = gemma4::gather(&reader, token)?;
+        let (hidden, per_layer) = gather_in(&reader, token)?;
         let angles_local = rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position)?;
         let angles_global =
             rotary_row(&rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?;
@@ -317,7 +331,7 @@ fn tail_run(
     let mut last = [Vec::new(), Vec::new(), Vec::new(), Vec::new()];
     for (step, &token) in tokens.iter().enumerate() {
         let position = u32::try_from(step).map_err(|_| "a step past u32")?;
-        let (hidden, per_layer) = gemma4::gather(&reader, token)?;
+        let (hidden, per_layer) = gather_in(&reader, token)?;
         let angles_local = rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position)?;
         let angles_global =
             rotary_row(&rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?;
@@ -367,6 +381,12 @@ fn decode_one(
 ) -> Result<Option<u32>, String> {
     use std::time::Instant;
     let (hidden_in, per_layer, gtimes) = match gather {
+        _ if fused() => {
+            let tick = Instant::now();
+            let (hidden, embedded) = gemma4::gather_input(embed, token, true)?;
+            let rows_ms = tick.elapsed().as_secs_f64() * 1000.0;
+            (hidden, embedded, gemma4::GatherTimes { rows_ms, bulk_ms: 0.0, matmul_ms: 0.0 })
+        }
         Some(gather) => {
             let tick = Instant::now();
             let hidden = embed.int4_row(
@@ -596,7 +616,11 @@ fn prefill_app(
         let (hidden, embedded) = g::token_rows(embed, &fed).and_then(|h| Ok((h, g::layer_rows(embed, &fed)?)))?;
         times.rows += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
-        let per_layer = gather.at(width)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no combine")?;
+        let per_layer = if fused() {
+            embedded
+        } else {
+            gather.at(width)?.infer_raw_many(&[&hidden, &embedded])?.into_iter().next().ok_or("no combine")?
+        };
         times.combine += tick.elapsed().as_secs_f64() * 1000.0;
         let tick = Instant::now();
         if let Some(thread) = building {
@@ -656,7 +680,7 @@ fn time_prefill(
         net.at(gemma4::Mode::Prefill { tokens: 256 }.at(TIER))?;
         net.at(gemma4::Mode::PrefillFresh { tokens: 256 }.at(TIER))?;
         net.at(gemma4::Mode::DecodeStep.at(TIER))?;
-        for width in [256, 1] {
+        for width in [256, 1].into_iter().filter(|_| !fused()) {
             gather.at(width)?;
         }
         if let Some(head) = head_net.as_mut() {
@@ -753,7 +777,7 @@ fn feed(
     if !batched {
         for (offset, &token) in tokens.iter().enumerate() {
             let position = start + offset as u32;
-            let (hidden, per_layer) = gemma4::gather(embed, token)?;
+            let (hidden, per_layer) = gather_in(embed, token)?;
             let local = rotary_row(rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position)?;
             let global = rotary_row(rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?;
             let at = net.at(gemma4::Mode::Prefill { tokens: 1 }.at(TIER))?;
@@ -769,7 +793,7 @@ fn feed(
     let mut global = vec![0f32; (gemma4::GLOBAL_HEAD_DIM * width) as usize];
     for (column, &token) in tokens.iter().enumerate() {
         let column = column as u32;
-        let (h, p) = gemma4::gather(embed, token)?;
+        let (h, p) = gather_in(embed, token)?;
         place(&mut hidden, &h, column, width);
         place(&mut per_layer, &p, column, width);
         place(&mut local, &rotary_row(rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, start + column)?, column, width);
@@ -802,7 +826,7 @@ fn last_logits(
     token: u32,
     position: u32,
 ) -> Result<Vec<f32>, String> {
-    let (hidden, per_layer) = gemma4::gather(embed, token)?;
+    let (hidden, per_layer) = gather_in(embed, token)?;
     let local = rotary_row(rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position)?;
     let global = rotary_row(rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?;
     let at = net.at(gemma4::Mode::DecodeStep.at(TIER))?;
@@ -1014,7 +1038,7 @@ fn soft_check(
             &[gemma4::VOCAB, gemma4::D_MODEL],
             token,
         )?;
-        let per_layer = gemma4::gather_soft(&reader, &hidden, 0)?;
+        let per_layer = gemma4::gather_soft_input(&reader, &hidden, 0, fused())?;
         rows.push((hidden, per_layer));
     }
     let mut run = |batched: bool| -> Result<Vec<f32>, String> {
@@ -1143,7 +1167,7 @@ fn run(
         if position >= gemma4::MAX_CONTEXT {
             return Err(format!("position {position} is past MAX_CONTEXT"));
         }
-        let (hidden_in, per_layer) = gemma4::gather(&reader, token)?;
+        let (hidden_in, per_layer) = gather_in(&reader, token)?;
         let angles_local = rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position)?;
         let angles_global =
             rotary_row(&rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position)?;

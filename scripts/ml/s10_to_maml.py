@@ -13,7 +13,7 @@ different checkpoint's arrangement); the tied head reads it raw-scale
 Usage:
   GEMMA4_EMBED_DUMP=analysis/maml-rebuild/embed_s2_fp32.bin \
     python scripts/ml/s10_to_maml.py -o build/gemma4-s10 --print-digest
-
+  (--text-only writes gemma4_text.maml alone and needs no dump.)
 Then:
   cargo run --offline --release -p modelrunner --example check_gemma4_parity -- \
     build/gemma4-s10/gemma4_text.maml build/gemma4-s10/gemma4_embed.maml \
@@ -357,14 +357,28 @@ def collect_text(rdr):
         layers.append(mc.Layer(len(layers), 'MulScalar',
                                f'transformer.layer_{index}.skip.scale',
                                'MulScalar s=[1]', len(tensors) - 1, 1))
+    # The per-layer combine's projection + norm, byte-identical to the embed
+    # file's tensors 3-6, appended so the text plans combine in their own
+    # submit (nets::gemma4::COMBINE_PROJ). Last, so every other index holds.
+    emit_combine(fid, layers, tensors, rdr)
     fid.report(mc.MIN_INT4_COSINE)
     return layers, tensors
+
+
+def emit_combine(fid, layers, tensors, rdr):
+    """S10 t312 (int8 [8960,1536], 1 scale/row) + norm gamma t305 (256)."""
+    emit8(fid, layers, tensors, 'transformer.embedder.per_layer_model_projection.w',
+          rdr.dequant8(312, 8960, 1536))
+    emit_vec(layers, tensors, 'transformer.embedder.per_layer_projection_norm.scale',
+             rdr.f32(305))
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('-o', '--outdir', required=True)
     ap.add_argument('--print-digest', action='store_true')
+    ap.add_argument('--text-only', action='store_true',
+                    help='write gemma4_text.maml only (no embed dump needed)')
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
     rdr = S10Reader(S10)
@@ -377,6 +391,8 @@ def main():
     out = os.path.join(args.outdir, 'gemma4_text.maml')
     open(out, 'wb').write(blob)
     print(f'wrote {out} ({len(blob)} bytes)')
+    if args.text_only:
+        return
     elayers, etensors = collect_embed(rdr)
     edigest = mc.layer_table_digest(elayers)
     print(f's10_embed: {len(elayers)} layers, {len(etensors)} tensors, digest {edigest}')
@@ -450,10 +466,7 @@ def collect_embed(rdr):
     art = lt.LitertlmReader(art_path) if s3rdr is None else None
     if s3rdr is None and art is None:
         raise SystemExit('collect_embed needs S3 (analysis/base-sections/...) or the artisan file')
-    emit8(fid, layers, tensors, 'transformer.embedder.per_layer_model_projection.w',
-          rdr.dequant8(312, 8960, 1536))
-    emit_vec(layers, tensors, 'transformer.embedder.per_layer_projection_norm.scale',
-             rdr.f32(305))
+    emit_combine(fid, layers, tensors, rdr)
     for index in range(35):
         if s3rdr is not None:
             out = s3rdr.table(index)

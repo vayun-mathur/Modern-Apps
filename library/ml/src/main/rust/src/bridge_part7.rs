@@ -456,7 +456,8 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_benchmark
     }
     // SAFETY: the caller guarantees the handle came from `createGemma4` and is still live.
     let handle = unsafe { &mut *(handle as *mut Gemma4Handle) };
-    let Ok((hidden, per_layer)) = gemma4::gather(&handle.embed.reader(), 2) else {
+    let fused = handle.fused();
+    let Ok((hidden, per_layer)) = gemma4::gather_input(&handle.embed.reader(), 2, fused) else {
         return -1;
     };
     let local = handle.local[..gemma4::HEAD_DIM as usize].to_vec();

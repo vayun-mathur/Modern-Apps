@@ -401,7 +401,7 @@ impl Gemma4Handle {
         let building = pending.map(|(plan, offsets)| std::thread::spawn(move || plan(&offsets, mode)));
         let (hidden, embedded) = rows(&self.embed.reader())?;
         let gathered = started.elapsed();
-        let per_layer = self.combine_block(&hidden, &embedded, width)?;
+        let per_layer = if self.fused() { embedded } else { self.combine_block(&hidden, &embedded, width)? };
         let combined = started.elapsed() - gathered;
         if let Some(thread) = building {
             let plan = thread.join().map_err(|_| "the plan thread panicked".to_string())?;

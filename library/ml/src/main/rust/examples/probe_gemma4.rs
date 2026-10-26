@@ -187,7 +187,7 @@ fn main() {
     // `<bos>` is 2, and 105 is an ordinary piece. A placeholder is included because it takes the
     // masked path, which is the one a gather written from the shapes alone would get wrong.
     for token in [2u32, 105, gemma4::embed::PLACEHOLDERS[0]] {
-        match gemma4::gather(&reader, token) {
+        match gemma4::gather_input(&reader, token, gemma4::combines_in_plan(&weights)) {
             Ok((hidden, per_layer)) => {
                 let rms = |v: &[f32]| (v.iter().map(|x| x * x).sum::<f32>() / v.len() as f32).sqrt();
                 println!(

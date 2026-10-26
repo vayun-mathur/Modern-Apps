@@ -62,7 +62,7 @@ fn main() {
         let want_all = dump_all();
         for (step, &token) in TOKENS.iter().enumerate() {
             let position = step as u32;
-            let (hidden, per_layer) = gemma4::gather(&reader, token).unwrap();
+            let (hidden, per_layer) = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(&weights)).unwrap();
             let angles_local =
                 rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position);
             let angles_global =

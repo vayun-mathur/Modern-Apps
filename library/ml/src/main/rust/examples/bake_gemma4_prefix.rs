@@ -53,6 +53,13 @@ const MARKERS: [&str; 11] = [
     "<|tool_response>", "<tool_response|>", "<|\"|>",
 ];
 
+/// Whether the text file carries the combine, so plans take raw per-layer rows.
+static FUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn gather_in(reader: &modelrunner::weights::Reader<'_>, token: u32) -> Result<(Vec<f32>, Vec<f32>), String> {
+    gemma4::gather_input(reader, token, FUSED.load(std::sync::atomic::Ordering::Relaxed))
+}
+
 fn main() {
     // Reads gemma4_embed.maml whole (3.6 GB of host RAM): an OOM kernel panic on a Pixel 8.
     if cfg!(target_os = "android") {
@@ -83,6 +90,7 @@ fn main() {
     ) else {
         return println!("the weights do not parse");
     };
+    FUSED.store(gemma4::combines_in_plan(&weights), std::sync::atomic::Ordering::Relaxed);
     let table = match Table::parse_with(&table_bytes, GEMMA) {
         Ok(table) => table,
         Err(why) => return println!("the tokenizer does not parse: {why}"),
@@ -130,7 +138,7 @@ fn main() {
         for (offset, &token) in chunk.iter().enumerate() {
             let column = offset as u32;
             let position = base + column;
-            let Ok((h, p)) = gemma4::gather(&reader, token) else {
+            let Ok((h, p)) = gather_in(&reader, token) else {
                 return println!("token {token} is not in the embedding");
             };
             place(&mut hidden, &h, column, width);
@@ -256,7 +264,7 @@ fn argmax_next(
     token: u32,
     position: u32,
 ) -> Option<u32> {
-    let (hidden, per_layer) = gemma4::gather(reader, token).ok()?;
+    let (hidden, per_layer) = gather_in(reader, token).ok()?;
     let from = (position * gemma4::HEAD_DIM) as usize;
     let al = local[from..from + gemma4::HEAD_DIM as usize].to_vec();
     let from = (position * gemma4::GLOBAL_HEAD_DIM) as usize;
@@ -321,7 +329,7 @@ fn argmax_at(
     token: u32,
     position: u32,
 ) -> Option<u32> {
-    let (hidden, per_layer) = gemma4::gather(reader, token).ok()?;
+    let (hidden, per_layer) = gather_in(reader, token).ok()?;
     let from = (position * gemma4::HEAD_DIM) as usize;
     let al = local[from..from + gemma4::HEAD_DIM as usize].to_vec();
     let from = (position * gemma4::GLOBAL_HEAD_DIM) as usize;

@@ -70,7 +70,7 @@ fn main() {
         let mut ok = true;
         for (step, &token) in TOKENS.iter().enumerate() {
             let position = step as u32;
-            let gathered = gemma4::gather(&reader, token);
+            let gathered = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(&weights));
             let (hidden_in, per_layer) = match gathered {
                 Ok(g) => g,
                 Err(why) => {

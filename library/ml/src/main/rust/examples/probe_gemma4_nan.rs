@@ -70,7 +70,7 @@ fn main() {
     let rotary = weights.reader();
 
     // Gather outputs for the last prompt token, as the parity harness feeds them.
-    let (hidden_in, per_layer) = gemma4::gather(&reader, *TOKENS.last().unwrap()).unwrap();
+    let (hidden_in, per_layer) = gemma4::gather_input(&reader, *TOKENS.last().unwrap(), gemma4::combines_in_plan(&weights)).unwrap();
     stats("gather hidden", &hidden_in);
     stats("gather per_layer", &per_layer);
 
@@ -93,7 +93,7 @@ fn main() {
         let mut failed = None;
         for (step, &token) in TOKENS.iter().enumerate() {
             let position = step as u32;
-            let (hidden_in, per_layer) = gemma4::gather(&reader, token).unwrap();
+            let (hidden_in, per_layer) = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(&weights)).unwrap();
             let angles_local =
                 rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position);
             let angles_global =

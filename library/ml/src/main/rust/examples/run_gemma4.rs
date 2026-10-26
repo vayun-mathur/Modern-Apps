@@ -461,7 +461,7 @@ fn generate(
         for (offset, &token) in chunk.iter().enumerate() {
             let column = offset as u32;
             let position = base + column;
-            let (h, p) = gemma4::gather(&reader, token)?;
+            let (h, p) = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(weights))?;
             place(&mut hidden, &h, column, width);
             place(&mut per_layer, &p, column, width);
             let take = |table: &[f32], dim: u32| {
@@ -498,7 +498,7 @@ fn generate(
             break;
         }
         let token = tokens[step];
-        let (hidden, per_layer) = gemma4::gather(&reader, token)?;
+        let (hidden, per_layer) = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(weights))?;
         let row = |table: &[f32], width: u32| {
             let from = (position * width) as usize;
             table[from..from + width as usize].to_vec()
@@ -620,7 +620,7 @@ fn run_chat(
         for (offset, &token) in chunk.iter().enumerate() {
             let column = offset as u32;
             let position = base + column;
-            let Ok((h, p)) = gemma4::gather(&reader, token) else { return };
+            let Ok((h, p)) = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(weights)) else { return };
             place(&mut hidden, &h, column, width);
             place(&mut per_layer, &p, column, width);
             let from = (position * gemma4::HEAD_DIM) as usize;
@@ -658,7 +658,7 @@ fn run_chat(
     for step in 0..limit {
         let position = (fed + step) as u32;
         let at_gather = Instant::now();
-        let Ok((hidden, per_layer)) = gemma4::gather(&reader, next) else { break };
+        let Ok((hidden, per_layer)) = gemma4::gather_input(&reader, next, gemma4::combines_in_plan(weights)) else { break };
         let from = (position * gemma4::HEAD_DIM) as usize;
         let al = local[from..from + gemma4::HEAD_DIM as usize].to_vec();
         let from = (position * gemma4::GLOBAL_HEAD_DIM) as usize;

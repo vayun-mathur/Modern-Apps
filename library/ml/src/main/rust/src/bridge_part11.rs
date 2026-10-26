@@ -220,7 +220,9 @@ fn build_gemma4<'l>(
             head.at(out)?;
         }
     }
-    let mut gather_net = gemma4_gather_plan(&embed);
+    // A text file that carries the combine needs no gather net.
+    let fused = weights.len() == gemma4::TENSORS_WITH_COMBINE;
+    let mut gather_net = if fused { None } else { gemma4_gather_plan(&embed) };
     if let Some(gather) = gather_net.as_mut() {
         gather.at(CHUNK)?;
         gather.at(1)?;

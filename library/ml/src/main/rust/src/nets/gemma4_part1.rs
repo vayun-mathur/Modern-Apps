@@ -173,11 +173,12 @@ pub fn build(weights: &dyn WeightSource, pass: Pass) -> Result<Plan, String> {
         _ => 1,
     };
     let mut x = b.input(Shape::new(D_MODEL, 1, width));
-    // Already combined by the host (see [`super::gather`]): the shared projection
-    // lives in the embed file, so the device never sees the two halves.
-    let per_layer_inputs = b.input(Shape::new(PER_LAYER * LAYERS as u32, 1, width));
+    // Combined by the host, or raw rows this plan combines (see `combines_in_plan`).
+    let per_layer_in = b.input(Shape::new(PER_LAYER * LAYERS as u32, 1, width));
     let angles_local = b.input(Shape::new(HEAD_DIM, 1, width));
     let angles_global = b.input(Shape::new(GLOBAL_HEAD_DIM, 1, width));
+    let fused = combines_in_plan(weights);
+    let per_layer_inputs = if fused { combine_in_plan(b, x, per_layer_in) } else { per_layer_in };
     // The rotary tables. Read on the host, a row at a time, and handed back as the two angle
     // inputs above - the same arrangement as the embedding.
     b.host_tensor(ROTARY_LOCAL, &[MAX_CONTEXT, HEAD_DIM]);

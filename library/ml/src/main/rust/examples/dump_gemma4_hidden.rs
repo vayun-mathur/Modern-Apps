@@ -58,7 +58,7 @@ fn main() {
     let mut hidden = Vec::new();
     for (step, &token) in TOKENS.iter().enumerate() {
         let position = step as u32;
-        let (hidden_in, per_layer) = gemma4::gather(&reader, token).unwrap();
+        let (hidden_in, per_layer) = gemma4::gather_input(&reader, token, gemma4::combines_in_plan(&weights)).unwrap();
         let angles_local = rotary_row(&rotary, gemma4::ROTARY_LOCAL, gemma4::HEAD_DIM, position);
         let angles_global =
             rotary_row(&rotary, gemma4::ROTARY_GLOBAL, gemma4::GLOBAL_HEAD_DIM, position);

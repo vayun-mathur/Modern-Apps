@@ -30,8 +30,16 @@ impl Gemma4Handle {
             embedded.extend(reader.int4_row(at, at + 1, &[gemma4::VOCAB, gemma4::PER_LAYER], per_layer_row)?);
         }
         drop(reader);
+        if self.fused() {
+            return Ok((hidden, embedded));
+        }
         let per_layer = self.combine(&hidden, &embedded)?;
         Ok((hidden, per_layer))
+    }
+
+    /// Whether the text plans combine the raw per-layer rows themselves (`combines_in_plan`).
+    fn fused(&self) -> bool {
+        self.weights.len() == gemma4::TENSORS_WITH_COMBINE
     }
 
     /// The per-layer block for already-gathered rows: on `gather_net` when it built, else the
