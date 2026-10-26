@@ -43,6 +43,8 @@ use modelrunner::logmel::{self, LogMel};
 use modelrunner::nets::gemma4_audio as audio;
 use modelrunner::vulkan::context;
 use modelrunner::vulkan::reshape::Reshaped;
+#[path = "common/gemma4_tower_time.rs"]
+mod tower_time;
 use modelrunner::weights::{graph, Weights};
 
 /// The bar every probe must clear against the int4 control.
@@ -179,11 +181,29 @@ fn against(got: &[f32], clip: &str, label: &str, golden: &str) -> (String, f64, 
     }
 }
 
+/// `--time N`: the clip pass at `seconds` of synthetic audio, built once and run `N` times.
+fn time_clip(context: &Arc<context::Context>, weights: &Weights, seconds: f64, repeats: usize) -> Result<(), String> {
+    let real = ((seconds * 16_000.0) as usize).min(audio::MAX_SAMPLES);
+    let (mel, frames) = mel_for(real)?;
+    let input = audio::prepare(&mel, frames)?;
+    let mode = audio::Mode::Clip { frames };
+    println!();
+    println!("=== {seconds} s: {frames} frames, T {}", audio::tokens(frames));
+    let tick = std::time::Instant::now();
+    let mut net = Reshaped::new(Arc::clone(context), weights, mode, |offsets, mode| audio::build(offsets, mode))?;
+    println!("clip net built in {:.0} ms", tick.elapsed().as_secs_f64() * 1000.0);
+    tower_time::time_runs(&mut net, mode, &[&input], repeats)
+}
+
 fn main() {
     let mut args = std::env::args().skip(1);
     let (Some(model), Some(path)) = (args.next().map(PathBuf::from), args.next()) else {
-        println!("usage: check_gemma4_audio_parity <gemma4_audio.maml> <audio_golden.json>");
+        println!("usage: check_gemma4_audio_parity <gemma4_audio.maml> <audio_golden.json> [--time N]");
         return;
+    };
+    let repeats = match (args.next().as_deref(), args.next()) {
+        (Some("--time"), n) => Some(n.and_then(|n| n.parse().ok()).unwrap_or(3)),
+        _ => None,
     };
     let bytes = match std::fs::read(&model) {
         Ok(bytes) => bytes,
@@ -204,6 +224,14 @@ fn main() {
         Ok(context) => context,
         Err(why) => return println!("no Vulkan device: {why}"),
     };
+    if let Some(repeats) = repeats {
+        for seconds in [5.0, 30.0] {
+            if let Err(why) = time_clip(&context, &weights, seconds, repeats) {
+                println!("timing {seconds} s failed: {why}");
+            }
+        }
+        return;
+    }
 
     let mut worst = (1.0_f64, String::new());
     let mut any_control = false;

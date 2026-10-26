@@ -36,6 +36,8 @@ use std::sync::Arc;
 use modelrunner::nets::gemma4_vision as vision;
 use modelrunner::vulkan::context;
 use modelrunner::vulkan::reshape::Reshaped;
+#[path = "common/gemma4_tower_time.rs"]
+mod tower_time;
 use modelrunner::weights::{graph, Weights};
 
 /// A reproducible byte for pixel `(y, x)`, channel `(0, 1, 2)` = `(r, g, b)`.
@@ -74,8 +76,12 @@ fn synthetic_image(grid: vision::Grid) -> Vec<i32> {
 fn main() {
     let mut args = std::env::args().skip(1);
     let (Some(model), Some(golden)) = (args.next().map(PathBuf::from), args.next()) else {
-        println!("usage: check_gemma4_vision_parity <vision.maml> <vision_golden.json>");
+        println!("usage: check_gemma4_vision_parity <vision.maml> <vision_golden.json> [--time N]");
         return;
+    };
+    let repeats = match (args.next().as_deref(), args.next()) {
+        (Some("--time"), n) => Some(n.and_then(|n| n.parse().ok()).unwrap_or(3)),
+        _ => None,
     };
     let bytes = match std::fs::read(&model) {
         Ok(bytes) => bytes,
@@ -119,6 +125,20 @@ fn main() {
         Ok(inputs) => inputs,
         Err(why) => return println!("the host preprocessing failed: {why}"),
     };
+    if let Some(repeats) = repeats {
+        let mode = vision::Mode::Image(grid);
+        let tick = std::time::Instant::now();
+        let built = Reshaped::new(Arc::clone(&context), &weights, mode, |offsets, mode| vision::build(offsets, mode));
+        let mut net = match built {
+            Ok(net) => net,
+            Err(why) => return println!("the image net does not build: {why}"),
+        };
+        println!("image net built in {:.0} ms", tick.elapsed().as_secs_f64() * 1000.0);
+        if let Err(why) = tower_time::time_runs(&mut net, mode, &[&inputs[0], &inputs[1], &inputs[2]], repeats) {
+            println!("timing failed: {why}");
+        }
+        return;
+    }
 
     // Bisect first: a whole-tower disagreement is much easier to read once the layers below it
     // have been placed.

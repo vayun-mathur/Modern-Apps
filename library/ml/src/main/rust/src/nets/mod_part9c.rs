@@ -161,8 +161,17 @@ impl<'a> Builder<'a> {
                     && in0 % 4 == 0
                     && in1 % 4 == 0;
                 let tiles = so.c * so.h.div_ceil(ATTN_TILE) * so.w.div_ceil(ATTN_TILE);
-                let (kw, count, invocations) =
-                    if tiled { (1, tiles, tiles * 64) } else { (0, so.len(), so.len()) };
+                // Otherwise the same blocking through scalar loads (`kw` 2), e.g. a vision tower's
+                // 594 patches. Long maps only: the shorter ragged ones (NLLB sources, OCR lines,
+                // TinyCLIP's 197 tokens) keep the per-element shader and so their exact outputs.
+                let ragged = !tiled && so.h >= 256 && so.w >= 256;
+                let (kw, count, invocations) = if tiled {
+                    (1, tiles, tiles * 64)
+                } else if ragged {
+                    (2, tiles, tiles * 64)
+                } else {
+                    (0, so.len(), so.len())
+                };
                 ops.push(Op::Dispatch {
                     kind: Kind::AttnScores,
                     push: Push {

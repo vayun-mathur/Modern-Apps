@@ -20,8 +20,16 @@ impl<'a> Builder<'a> {
                     && in0 % 4 == 0
                     && in1 % 4 == 0;
                 let tiles = so.c.div_ceil(ATTN_TILE) * so.w.div_ceil(ATTN_TILE);
-                let (kw, count, invocations) =
-                    if tiled { (1, tiles, tiles * 64) } else { (0, so.len(), so.len()) };
+                // Otherwise the same blocking through scalar loads (`kw` 2) when the key count or a
+                // base is not a multiple of four. Long maps only, as for the scores.
+                let ragged = !tiled && so.w >= 256 && sv.w >= 256 && head_dim % 4 == 0;
+                let (kw, count, invocations) = if tiled {
+                    (1, tiles, tiles * 64)
+                } else if ragged {
+                    (2, tiles, tiles * 64)
+                } else {
+                    (0, so.len(), so.len())
+                };
                 ops.push(Op::Dispatch {
                     kind: Kind::AttnApply,
                     push: Push {

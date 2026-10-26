@@ -58,6 +58,32 @@ layout(std430, binding = 0) readonly buffer ArenaQuad {
 
 #define TILE 32u
 
+/// The tiled mode for lengths or bases that are not multiples of four (`p.kw == 2`): the same
+/// 4 x 4 block per invocation through scalar loads, edge queries and keys clamped on load and
+/// dropped on store. The per-element shader re-read a whole `head_dim` column pair per score;
+/// with the apply's, a Gemma vision tower (594 patches) spent 1.05 s of an image there on a Pixel 8.
+void ragged(uint queries, uint keys, uint head_dim, uint head, uint query_base, uint key_base) {
+    uint q_at = p.in0 + head * head_dim * queries;
+    uint k_at = p.in1 + kv_head_of(head) * head_dim * keys;
+    uvec4 qi = min(uvec4(query_base) + uvec4(0u, 1u, 2u, 3u), uvec4(queries - 1u));
+    uvec4 kj = min(uvec4(key_base) + uvec4(0u, 1u, 2u, 3u), uvec4(keys - 1u));
+    mat4 acc = mat4(0.0);
+    for (uint d = 0u; d < head_dim; d++) {
+        uint qd = q_at + d * queries;
+        uint kd = k_at + d * keys;
+        vec4 q = vec4(float(arena[qd + qi.x]), float(arena[qd + qi.y]), float(arena[qd + qi.z]), float(arena[qd + qi.w]));
+        vec4 k = vec4(float(arena[kd + kj.x]), float(arena[kd + kj.y]), float(arena[kd + kj.z]), float(arena[kd + kj.w]));
+        acc += outerProduct(q, k);
+    }
+    float scale = uintBitsToFloat(p.param0_bits);
+    for (uint j = 0u; j < 4u && key_base + j < keys; j++) {
+        for (uint i = 0u; i < 4u && query_base + i < queries; i++) {
+            uint at = (head * queries + query_base + i) * keys + key_base + j;
+            arena[p.out_at + at] = float16_t(acc[j][i] * scale);
+        }
+    }
+}
+
 void tiled() {
     uint tile = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
     if (tile >= p.count) {
@@ -74,6 +100,10 @@ void tiled() {
     uint query_base = (within / across) * TILE + (lid >> 3u) * 4u;
     uint key_base = (within % across) * TILE + (lid & 7u) * 4u;
     if (query_base >= queries || key_base >= keys) {
+        return;
+    }
+    if (p.kw == 2u) {
+        ragged(queries, keys, head_dim, head, query_base, key_base);
         return;
     }
     // Both lengths are multiples of four, so a quad is wholly inside its sequence.
@@ -98,7 +128,7 @@ void tiled() {
 }
 
 void main() {
-    if (p.kw == 1u) {
+    if (p.kw != 0u) {
         tiled();
         return;
     }

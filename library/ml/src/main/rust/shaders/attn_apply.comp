@@ -47,6 +47,33 @@ layout(std430, binding = 0) readonly buffer ArenaQuad {
 #define TILE 32u
 #define BLOCK 4u
 
+/// The tiled mode for key counts or bases that are not multiples of four (`p.kw == 2`): the same
+/// four channels by four queries per invocation through scalar loads. Edge channels and queries
+/// are clamped on load and dropped on store.
+void ragged(uint channel_base, uint query_base, uint queries, uint keys, uint head_dim) {
+    uint head = channel_base / head_dim;
+    uvec4 v_row;
+    uvec4 s_row;
+    for (uint i = 0u; i < BLOCK; i++) {
+        uint channel = min(channel_base + i, p.out_c - 1u);
+        v_row[i] = p.in1 + (kv_head_of(head) * head_dim + channel % head_dim) * keys;
+        uint query = min(query_base + i, queries - 1u);
+        s_row[i] = p.in0 + (head * queries + query) * keys;
+    }
+    mat4 acc = mat4(0.0);
+    for (uint j = 0u; j < keys; j++) {
+        vec4 v = vec4(float(arena[v_row.x + j]), float(arena[v_row.y + j]), float(arena[v_row.z + j]), float(arena[v_row.w + j]));
+        vec4 s = vec4(float(arena[s_row.x + j]), float(arena[s_row.y + j]), float(arena[s_row.z + j]), float(arena[s_row.w + j]));
+        // Column `q` of `acc` is query `q`: `acc[q][c] += v[c] * s[q]`.
+        acc += outerProduct(v, s);
+    }
+    for (uint i = 0u; i < BLOCK && channel_base + i < p.out_c; i++) {
+        for (uint j = 0u; j < BLOCK && query_base + j < queries; j++) {
+            arena[p.out_at + (channel_base + i) * queries + query_base + j] = float16_t(acc[j][i]);
+        }
+    }
+}
+
 void tiled() {
     uint tile = gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.x;
     if (tile >= p.count) {
@@ -60,6 +87,10 @@ void tiled() {
     uint channel_base = (tile / tiles_across) * TILE + (lid >> 3u) * BLOCK;
     uint query_base = (tile % tiles_across) * TILE + (lid & 7u) * BLOCK;
     if (channel_base >= p.out_c || query_base >= queries) {
+        return;
+    }
+    if (p.kw == 2u) {
+        ragged(channel_base, query_base, queries, keys, head_dim);
         return;
     }
     // `head_dim` is a multiple of four, so a block of four channels never spans two heads.
@@ -108,7 +139,7 @@ void tiled() {
 }
 
 void main() {
-    if (p.kw == 1u) {
+    if (p.kw != 0u) {
         tiled();
         return;
     }
