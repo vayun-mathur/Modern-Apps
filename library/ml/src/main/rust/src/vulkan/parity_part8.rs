@@ -211,3 +211,41 @@ fn a_widened_int8_gemm_matches_the_int8_paths_bit_for_bit() {
         }
     }
 }
+
+/// Record cost of row-mode reductions by kind and width (24 dispatches each, 512-long rows):
+/// prints how long `Net::rebuild` takes to re-record at `width` rows. Measures, asserts nothing.
+#[test]
+#[ignore = "needs a Vulkan device"]
+fn report_row_reduce_record_cost() {
+    type Make = fn(&mut Builder, Id) -> Id;
+    let kinds: [(&str, Make, usize, bool); 4] = [
+        ("rms_norm", |b, x| b.rms_norm(x, 0, 1e-5), 1, false),
+        ("layer_norm", |b, x| b.layer_norm(x, 0, 1e-5), 2, false),
+        ("softmax", |b, x| b.softmax(x), 0, true),
+        ("rms_norm", |b, x| b.rms_norm(x, 0, 1e-5), 1, false),
+    ];
+    for (name, make, count, rows_in_channels) in kinds {
+        for width in [1u32, 16, 68, 200] {
+            let source = Invented::new(count);
+            let plan_at = |rows: u32| {
+                let shape =
+                    if rows_in_channels { Shape::new(rows, 1, 512) } else { Shape::new(512, 1, rows) };
+                let mut b = Builder::new(&source);
+                let mut x = b.input(shape);
+                for _ in 0..24 {
+                    x = make(&mut b, x);
+                }
+                b.finish(&[x]).expect("the probe plan builds")
+            };
+            let (small, big) = (plan_at(1), plan_at(width));
+            let weights = Weights::from_data(source.into_data());
+            let mut net = Net::new(device(), small, &weights, RESCALE_ONLY).expect("the net records");
+            let started = std::time::Instant::now();
+            net.rebuild(big).expect("the net re-records");
+            println!(
+                "record-probe {name} rows {width}: rebuild {:.2} ms for 24 dispatches",
+                started.elapsed().as_secs_f64() * 1e3
+            );
+        }
+    }
+}

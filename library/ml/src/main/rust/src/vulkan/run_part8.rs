@@ -139,3 +139,70 @@ impl Net {
         self.widened.iter().map(|w| 2 * w.bytes).sum()
     }
 }
+
+impl Net {
+    /// Row-mode reductions (one 64-lane workgroup per row, shared memory) recorded per command
+    /// buffer, and the rows each covers: the row-mode cap, `ROW_REDUCE_MAX_ROWS` in `nets`.
+    const WARM_DISPATCHES: u32 = 96;
+    const WARM_ROWS: u32 = 256;
+
+    /// Once per process, record (never submit) row-mode reductions at the largest size into the
+    /// transfer buffer.
+    ///
+    /// On Mali the driver's `vkCmdDispatch` for a shared-memory shader costs ~0.5-1 ms whenever
+    /// the dispatch needs more of its internal memory than any recorded before, and that memory
+    /// is kept process-wide. Without this, every Supertonic sentence longer than all earlier
+    /// ones paid 50-90 ms re-recording the sampler's 72 row-mode layer norms. Only a net with a
+    /// row-mode layer norm triggers it, so nets that never record one skip the ~47 ms.
+    fn warm_row_dispatches(&self) -> Result<(), String> {
+        static WARMED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        let row_layer_norm = self.plan.ops.iter().any(|op| {
+            matches!(op, Op::Dispatch { kind: crate::nets::Kind::LayerNorm, push, .. } if push.kw == 1)
+        });
+        if !row_layer_norm || WARMED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+            return Ok(());
+        }
+        let started = std::time::Instant::now();
+        let device = &self.context.device;
+        let set = self.pipelines.descriptor_sets.first().copied().ok_or("no descriptor set")?;
+        // Zero rows: were this ever submitted, every workgroup would return at once.
+        let push = crate::nets::Push { kw: 1, ..crate::nets::Push::default() };
+        // SAFETY: `transfer` is this net's own idle buffer; it is recorded and ended here and
+        // never submitted, and the next transfer re-begins (resets) it.
+        unsafe {
+            device
+                .begin_command_buffer(self.transfer, &vk::CommandBufferBeginInfo::default())
+                .map_err(|e| format!("begin: {e:?}"))?;
+            device.cmd_bind_pipeline(
+                self.transfer,
+                vk::PipelineBindPoint::COMPUTE,
+                self.pipelines.for_kind(crate::nets::Kind::LayerNorm),
+            );
+            device.cmd_bind_descriptor_sets(
+                self.transfer,
+                vk::PipelineBindPoint::COMPUTE,
+                self.pipelines.layout(),
+                0,
+                &[set],
+                &[],
+            );
+            device.cmd_push_constants(
+                self.transfer,
+                self.pipelines.layout(),
+                vk::ShaderStageFlags::COMPUTE,
+                0,
+                push_bytes(&push),
+            );
+            for _ in 0..Self::WARM_DISPATCHES {
+                device.cmd_dispatch(self.transfer, Self::WARM_ROWS, 1, 1);
+            }
+            device.end_command_buffer(self.transfer).map_err(|e| format!("end: {e:?}"))?;
+            // Hand the grown memory back so other command buffers can take it.
+            device
+                .reset_command_buffer(self.transfer, vk::CommandBufferResetFlags::RELEASE_RESOURCES)
+                .map_err(|e| format!("reset: {e:?}"))?;
+        }
+        timing!("row-dispatch warm-up {:.1} ms", started.elapsed().as_secs_f64() * 1e3);
+        Ok(())
+    }
+}

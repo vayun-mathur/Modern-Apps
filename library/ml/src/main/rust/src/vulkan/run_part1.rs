@@ -133,6 +133,7 @@ impl Net {
             window,
             command_pool,
             command_buffer: vk::CommandBuffer::null(),
+            transfer: vk::CommandBuffer::null(),
             recorded: Vec::new(),
             spare: Vec::new(),
             pinned_seen,
@@ -157,6 +158,8 @@ impl Net {
             staged.elapsed().as_secs_f64() * 1000.0
         );
         net.command_buffer = net.allocate_command_buffer()?;
+        net.transfer = net.allocate_command_buffer()?;
+        net.warm_row_dispatches()?;
         net.fence = net.create_fence()?;
         // Written before the first record so a shader reading it never sees uninitialised
         // memory, even on a plan that never calls `set_params`.

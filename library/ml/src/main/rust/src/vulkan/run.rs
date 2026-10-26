@@ -290,6 +290,9 @@ pub struct Net {
     /// time, and nothing else can reach this pool.
     command_pool: vk::CommandPool,
     command_buffer: vk::CommandBuffer,
+    /// One-shot transfers (arena copies, persistent-tensor writes and reads), kept apart from
+    /// `command_buffer` so they never disturb the plan's recording. See [`Net::run_once`].
+    transfer: vk::CommandBuffer,
     /// Other plans' recordings, oldest first, each still valid against the current arena,
     /// staging buffer and descriptor sets. A rebuild into one of these plans swaps buffers
     /// instead of re-recording.

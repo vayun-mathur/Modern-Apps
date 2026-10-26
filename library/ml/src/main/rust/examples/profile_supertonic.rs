@@ -398,6 +398,34 @@ fn run() -> Result<(), String> {
     print_kinds("vocoder", &stages.vocoder_times);
 
     assert_eq!(stages.sampler_ms.len(), STEPS as usize, "one dual submit per step");
+
+    // Further, differently sized sentences in the same process (`MODELRUNNER_SECOND`, split on
+    // `|`): what each new sentence length costs once everything is warm.
+    let more = std::env::var("MODELRUNNER_SECOND").unwrap_or_default();
+    for second in more.split('|').filter(|s| !s.is_empty()) {
+        let reshaped = stages.reshape_ms;
+        let (text, sampler, vocoder) =
+            (stages.reshape_text_ms, stages.reshape_sampler_ms, stages.reshape_vocoder_ms);
+        let whole = Instant::now();
+        let samples = supertonic::synthesise(
+            &mut stages,
+            &conditioning,
+            &indexer,
+            &voice,
+            second,
+            LANGUAGE,
+            &|count| noise.borrow_mut().normal(count),
+        )?;
+        println!(
+            "second    {:>8.1} ms, {} samples, reshape {:.1} ms (ttl {:.1}, ve {:.1}, voc {:.1})",
+            ms(whole),
+            samples.len(),
+            stages.reshape_ms - reshaped,
+            stages.reshape_text_ms - text,
+            stages.reshape_sampler_ms - sampler,
+            stages.reshape_vocoder_ms - vocoder
+        );
+    }
     Ok(())
 }
 

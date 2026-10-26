@@ -23,8 +23,13 @@
 // Every call is reached by the whole workgroup: the row index is per workgroup, so an early
 // `return` on it is uniform, and `p.kw` is a push constant.
 
-// One slot per subgroup. 64 covers a subgroup size of 1, which no device has but costs nothing.
-shared float reduce_partial[64];
+// Sixteen slots: a 64-lane workgroup has at most 16 subgroups whenever subgroups have at least
+// 4 lanes (every real device), and the loops below take more in batches of 16, summing in the
+// same order, so the result never depends on it. Not 64: on Mali the driver's per-dispatch
+// recording cost grows with shared bytes x workgroups, and 64 slots made Supertonic's row-mode
+// layer norms cost up to ~1 ms each to record at a new sentence length.
+#define REDUCE_SLOTS 16u
+shared float reduce_partial[REDUCE_SLOTS];
 
 // The row this workgroup owns in row mode, across the same 2-D grid `global_index` flattens.
 uint reduce_row() {
@@ -39,30 +44,38 @@ bool reduce_row_mode() {
 // The sum of `value` over every lane of the workgroup, returned to every lane.
 float workgroup_sum(float value) {
     float summed = subgroupAdd(value);
-    if (subgroupElect()) {
-        reduce_partial[gl_SubgroupID] = summed;
-    }
-    barrier();
     float total = 0.0;
-    for (uint i = 0u; i < gl_NumSubgroups; i++) {
-        total += reduce_partial[i];
+    for (uint first = 0u; first < gl_NumSubgroups; first += REDUCE_SLOTS) {
+        if (subgroupElect() && gl_SubgroupID >= first && gl_SubgroupID < first + REDUCE_SLOTS) {
+            reduce_partial[gl_SubgroupID - first] = summed;
+        }
+        barrier();
+        uint count = min(REDUCE_SLOTS, gl_NumSubgroups - first);
+        for (uint i = 0u; i < count; i++) {
+            total += reduce_partial[i];
+        }
+        // The next batch or reduction reuses the slots, so nobody may write them until everyone
+        // has read.
+        barrier();
     }
-    // The next reduction reuses the slots, so nobody may write them until everyone has read.
-    barrier();
     return total;
 }
 
 // The maximum of `value` over every lane of the workgroup, returned to every lane.
 float workgroup_max(float value) {
     float top = subgroupMax(value);
-    if (subgroupElect()) {
-        reduce_partial[gl_SubgroupID] = top;
+    float peak = 0.0;
+    for (uint first = 0u; first < gl_NumSubgroups; first += REDUCE_SLOTS) {
+        if (subgroupElect() && gl_SubgroupID >= first && gl_SubgroupID < first + REDUCE_SLOTS) {
+            reduce_partial[gl_SubgroupID - first] = top;
+        }
+        barrier();
+        peak = first == 0u ? reduce_partial[0] : max(peak, reduce_partial[0]);
+        uint count = min(REDUCE_SLOTS, gl_NumSubgroups - first);
+        for (uint i = 1u; i < count; i++) {
+            peak = max(peak, reduce_partial[i]);
+        }
+        barrier();
     }
-    barrier();
-    float peak = reduce_partial[0];
-    for (uint i = 1u; i < gl_NumSubgroups; i++) {
-        peak = max(peak, reduce_partial[i]);
-    }
-    barrier();
     return peak;
 }

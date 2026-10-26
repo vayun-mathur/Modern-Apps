@@ -64,16 +64,16 @@ impl Net {
         // is recorded and waited on entirely within this call.
         unsafe {
             device
-                .begin_command_buffer(self.command_buffer, &vk::CommandBufferBeginInfo::default())
+                .begin_command_buffer(self.transfer, &vk::CommandBufferBeginInfo::default())
                 .map_err(|e| format!("begin: {e:?}"))?;
             let region = vk::BufferCopy::default().src_offset(0).dst_offset(0).size(self.arena.size);
             device.cmd_copy_buffer(
-                self.command_buffer,
+                self.transfer,
                 self.arena.buffer,
                 into.buffer,
                 std::slice::from_ref(&region),
             );
-            device.end_command_buffer(self.command_buffer).map_err(|e| format!("end: {e:?}"))?;
+            device.end_command_buffer(self.transfer).map_err(|e| format!("end: {e:?}"))?;
             self.run_once()
         }
     }
@@ -105,7 +105,7 @@ impl Net {
         // so nothing else observes it and the fence outlives the work.
         unsafe {
             device
-                .begin_command_buffer(self.command_buffer, &vk::CommandBufferBeginInfo::default())
+                .begin_command_buffer(self.transfer, &vk::CommandBufferBeginInfo::default())
                 .map_err(|e| format!("begin: {e:?}"))?;
             let mut at = 0u64;
             for &(from, elems) in ranges {
@@ -114,14 +114,14 @@ impl Net {
                     .dst_offset(at)
                     .size(u64::from(elems) * 2);
                 device.cmd_copy_buffer(
-                    self.command_buffer,
+                    self.transfer,
                     self.arena.buffer,
                     self.staging.buffer,
                     std::slice::from_ref(&region),
                 );
                 at += u64::from(elems) * 2;
             }
-            device.end_command_buffer(self.command_buffer).map_err(|e| format!("end: {e:?}"))?;
+            device.end_command_buffer(self.transfer).map_err(|e| format!("end: {e:?}"))?;
             self.run_once()?;
         }
         let mut halves = vec![0u16; (total / 2) as usize];
@@ -154,7 +154,7 @@ impl Net {
         // SAFETY: as `read_arena`.
         unsafe {
             device
-                .begin_command_buffer(self.command_buffer, &vk::CommandBufferBeginInfo::default())
+                .begin_command_buffer(self.transfer, &vk::CommandBufferBeginInfo::default())
                 .map_err(|e| format!("begin: {e:?}"))?;
             let mut at = 0u64;
             for &(to, elems) in ranges {
@@ -163,39 +163,33 @@ impl Net {
                     .dst_offset(u64::from(to) * 2)
                     .size(u64::from(elems) * 2);
                 device.cmd_copy_buffer(
-                    self.command_buffer,
+                    self.transfer,
                     self.staging.buffer,
                     self.arena.buffer,
                     std::slice::from_ref(&region),
                 );
                 at += u64::from(elems) * 2;
             }
-            device.end_command_buffer(self.command_buffer).map_err(|e| format!("end: {e:?}"))?;
+            device.end_command_buffer(self.transfer).map_err(|e| format!("end: {e:?}"))?;
             self.run_once()
         }
     }
 
-    /// Submit the recorded command buffer and wait for it, then restore the plan's recording.
+    /// Submit the one-shot transfer buffer and wait for it.
     ///
-    /// # The restore is not optional
-    ///
-    /// `Net` records its plan into `command_buffer` **once** and re-submits it for every
-    /// inference. The transfer helpers above record into that same buffer, which resets it - so
-    /// without putting the plan back, the next `infer` submits a buffer holding nothing but a
-    /// `vkCmdCopyBuffer`. No shader runs, the outputs are whatever the arena already held, and
-    /// the model answers with fluent nonsense.
-    ///
-    /// That is exactly what shipping the precomputed cache did: the bake prefilled correctly,
-    /// exported, and every generation *after* the export was reading a net that no longer had a
-    /// plan recorded.
+    /// The transfer helpers above record into `transfer`, never into `command_buffer`, so the
+    /// plan's recording survives and nothing is re-recorded: writing persistent tensors (or
+    /// copying the arena on a growth) costs a submit, not a ~400-dispatch record. The plan's
+    /// first barrier, after its input copies, names TRANSFER_WRITE as a source, so it orders
+    /// these writes before the plan's reads.
     ///
     /// # Safety
     ///
-    /// The command buffer must be recorded and ended, and not already in flight.
+    /// `transfer` must be recorded and ended, and nothing may be in flight on this net.
     unsafe fn run_once(&mut self) -> Result<(), String> {
         let device = &self.context.device;
         let submit =
-            vk::SubmitInfo::default().command_buffers(std::slice::from_ref(&self.command_buffer));
+            vk::SubmitInfo::default().command_buffers(std::slice::from_ref(&self.transfer));
         unsafe {
             device.reset_fences(&[self.fence]).map_err(|e| format!("reset: {e:?}"))?;
             // The queue is shared with every other net in the process, so the lock is not
@@ -210,9 +204,7 @@ impl Net {
                 .wait_for_fences(&[self.fence], true, FENCE_TIMEOUT_NS)
                 .map_err(|e| format!("wait_for_fences {e:?}"))?;
         }
-        // SAFETY: the transfer above is complete - the fence was waited on - so the buffer is
-        // free to re-record.
-        unsafe { self.record() }
+        Ok(())
     }
 
     /// Bytes a second, measured by copying the arena to a scratch buffer of the same size.
