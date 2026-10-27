@@ -55,9 +55,8 @@ class InferenceService : Service() {
 
         /** DataStore key holding the user-editable chat system prompt. */
         const val KEY_SYSTEM_PROMPT = "system_prompt"
-        internal const val EMBEDDING_ERROR_CODE = -1
-        internal const val EMBEDDING_DOWNLOADING_CODE = 2
-        internal const val EMBEDDING_OK_CODE = 0
+        private const val RESULT_ERROR_CODE = -1
+        private const val RESULT_OK_CODE = 0
         private const val INTENT_TIMEOUT_MILLIS = 45000L
         private const val INTENT_QUEUE_TTL_MILLIS = 45000L
         private const val HISTORY_RECENCY_MILLIS = 1000L
@@ -97,38 +96,11 @@ class InferenceService : Service() {
             val imagePaths: Array<String>,
             val audioPath: String?,
         ) : InferenceJob()
-
-        /**
-         * A SigLIP2 embedding request from another app (photos). [mode] is
-         * "text", "image", or "info". Runs on [SiglipEmbedder], independent of
-         * the chat [MamlChatEngine], so it can be served while the LLM is busy.
-         */
-        data class Embedding(
-            val mode: String,
-            val userText: String,
-            val imagePath: String?,
-            val receiver: ResultReceiver,
-        ) : InferenceJob()
-    }
-
-    /** Public aliases so [InferenceEmbeddingHandler] can consume the queue types. */
-    object InferenceJobPublic {
-        data class Embedding(
-            val mode: String,
-            val userText: String,
-            val imagePath: String?,
-            val receiver: ResultReceiver,
-        )
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val standardQueue = Channel<InferenceJob.Standard>(Channel.UNLIMITED)
     private val intentQueue = Channel<InferenceJob.Intent>(Channel.UNLIMITED)
-    private val embeddingQueue = Channel<InferenceJobPublic.Embedding>(Channel.UNLIMITED)
-
-    private val embeddingHandler by lazy {
-        InferenceEmbeddingHandler(applicationContext, serviceScope)
-    }
 
     private var engine: MamlChatEngine? = null
     private val engineLock = Mutex()
@@ -146,7 +118,6 @@ class InferenceService : Service() {
         startForegroundTask()
         launchPrewarm()
         launchJobLoop()
-        launchEmbeddingLoop()
     }
 
     private fun launchPrewarm() {
@@ -191,24 +162,6 @@ class InferenceService : Service() {
         return false
     }
 
-    // Embeddings run on their own consumer so they don't wait behind the
-    // (possibly long) chat/intent LLM jobs — they use SiglipEmbedder, not the
-    // chat engine.
-    private fun launchEmbeddingLoop() {
-        serviceScope.launch {
-            for (job in embeddingQueue) {
-                try {
-                    embeddingHandler.process(job)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (expected: Exception) {
-                    Log.error("InferenceService", "Error processing embedding job", expected)
-                    embeddingHandler.reportError(job, expected)
-                }
-            }
-        }
-    }
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.debug("InferenceService", "onStartCommand received intent")
         if (intent == null) return START_STICKY
@@ -218,7 +171,6 @@ class InferenceService : Service() {
         val userText = intent.getStringExtra("user_text") ?: ""
         val audioPath = intent.getStringExtra("audio_path")
         val schema = intent.getStringExtra("schema")
-        val embedMode = intent.getStringExtra("embed_mode")
         val receiver = IntentCompat.getParcelableExtra(intent, "RECEIVER", ResultReceiver::class.java)
 
         val imageUris = IntentCompat.getParcelableArrayListExtra(intent, "image_uris", Uri::class.java)
@@ -231,18 +183,7 @@ class InferenceService : Service() {
 
             val imagePaths = staticImagePaths + imagePathsFromUris
 
-            if (embedMode != null && receiver != null) {
-                // Embedding request from another app (photos): text/image/info.
-                Log.status("InferenceService", "Queueing Embedding request mode=$embedMode")
-                embeddingQueue.trySend(
-                    InferenceJobPublic.Embedding(
-                        embedMode,
-                        userText,
-                        imagePaths.firstOrNull(),
-                        receiver,
-                    ),
-                )
-            } else if (receiver != null && schema != null) {
+            if (receiver != null && schema != null) {
                 Log.status("InferenceService", "Queueing Intent Inference request")
                 intentQueue.trySend(InferenceJob.Intent(userText, imagePaths, schema, receiver))
             } else if (conversationId != -1L) {
@@ -296,7 +237,7 @@ class InferenceService : Service() {
         } catch (e: TimeoutCancellationException) {
             Log.error("InferenceService", "Intent inference timed out after 45 seconds")
             job.receiver.send(
-                EMBEDDING_ERROR_CODE,
+                RESULT_ERROR_CODE,
                 Bundle().apply { putString("error", getString(R.string.error_inference_timeout)) },
             )
         } catch (e: CancellationException) {
@@ -304,7 +245,7 @@ class InferenceService : Service() {
         } catch (expected: Exception) {
             Log.error("InferenceService", "Error during intent inference", expected)
             job.receiver.send(
-                EMBEDDING_ERROR_CODE,
+                RESULT_ERROR_CODE,
                 Bundle().apply {
                     putString(
                         "error",
@@ -319,16 +260,13 @@ class InferenceService : Service() {
         if (System.currentTimeMillis() - job.enqueuedTime > INTENT_QUEUE_TTL_MILLIS) {
             Log.status("InferenceService", "Intent job expired in queue, discarding.")
             job.receiver.send(
-                EMBEDDING_ERROR_CODE,
+                RESULT_ERROR_CODE,
                 Bundle().apply { putString("error", getString(R.string.error_request_expired)) },
             )
         } else {
             executeIntentInference(job)
         }
     }
-
-    // ---------- SigLIP2 embedding provider (served to the photos app) ----------
-    // Dispatch lives in [InferenceEmbeddingHandler]; queue types are public aliases above.
 
     private suspend fun loadHistory(conversationId: Long, userText: String): List<HistoryTurn> {
         val cutoff = Clock.System.now().toEpochMilliseconds() - HISTORY_RECENCY_MILLIS
@@ -404,7 +342,7 @@ class InferenceService : Service() {
             val candidate = tryExtractLargestJson(text)
             if (candidate != null && JsonSchemaValidator.validateJsonAgainstSchema(candidate, schema) == null) {
                 Log.status("InferenceService", "Valid JSON extracted and verified against schema. Halting.")
-                receiver.send(EMBEDDING_OK_CODE, Bundle().apply { putString("json_result", candidate) })
+                receiver.send(RESULT_OK_CODE, Bundle().apply { putString("json_result", candidate) })
                 sent = true
                 false
             } else {
@@ -417,14 +355,14 @@ class InferenceService : Service() {
 
         val finalJson = tryExtractLargestJson(reply)
         if (finalJson != null && JsonSchemaValidator.validateJsonAgainstSchema(finalJson, schema) == null) {
-            receiver.send(EMBEDDING_OK_CODE, Bundle().apply { putString("json_result", finalJson) })
+            receiver.send(RESULT_OK_CODE, Bundle().apply { putString("json_result", finalJson) })
             Log.dev("InferenceService", "AI produced output: $finalJson")
             return
         }
 
         Log.error("InferenceService", "AI finished generation without providing a schema-matching JSON.")
         receiver.send(
-            EMBEDDING_ERROR_CODE,
+            RESULT_ERROR_CODE,
             Bundle().apply { putString("error", getString(R.string.error_ai_json_schema_mismatch)) },
         )
     }

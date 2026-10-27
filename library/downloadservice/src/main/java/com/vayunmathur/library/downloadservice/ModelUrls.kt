@@ -12,45 +12,9 @@ import java.io.File
  * Mirror contents (path = file served under MIRROR_BASE):
  *   models/gemma4/gemma4_text.maml, gemma4_embed.maml, gemma4_head.maml,
  *     gemma4_vision.maml, gemma4_audio.maml, gemma4_tokenizer.spm1
- *   models/siglip2_vision_model_fp16.onnx
- *   models/siglip2_text_model_int8.onnx
- *   models/siglip2_tokenizer.model
  */
 object ModelUrls {
     const val MIRROR_BASE = "https://data.maproj.org/models/"
-    // On-disk file names (also the mirror path for the SigLIP2 files).
-    const val SIGLIP_VISION_FILE = "siglip2_vision_model_fp16.onnx"
-    const val SIGLIP_TEXT_FILE = "siglip2_text_model_int8.onnx"
-    const val SIGLIP_TOKENIZER_FILE = "siglip2_tokenizer.model"
-    // Mirror download URLs.
-    const val SIGLIP_VISION_URL = "${MIRROR_BASE}siglip2_vision_model_fp16.onnx"
-    const val SIGLIP_TEXT_URL = "${MIRROR_BASE}siglip2_text_model_int8.onnx"
-    const val SIGLIP_TOKENIZER_URL = "${MIRROR_BASE}siglip2_tokenizer.model"
-    // SHA-256 integrity checks (verified against the files uploaded to the mirror).
-    const val SIGLIP_VISION_SHA256 = "a1959f7bd3993a607e48839f6d01e25b876fe76afda301b028b78eef68aabd95"
-    const val SIGLIP_TEXT_SHA256 = "3a0603d3a00c05a80a6ded4743c16aaac7b1e62cdcc7e362e7ce418659b96400"
-    const val SIGLIP_TOKENIZER_SHA256 = "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2"
-    val SIGLIP_VISION = ModelDownloadItem(
-        SIGLIP_VISION_URL,
-        SIGLIP_VISION_FILE,
-        "Vision Model",
-        SIGLIP_VISION_SHA256
-    )
-    val SIGLIP_TEXT = ModelDownloadItem(
-        SIGLIP_TEXT_URL,
-        SIGLIP_TEXT_FILE,
-        "Text Model",
-        SIGLIP_TEXT_SHA256
-    )
-    val SIGLIP_TOKENIZER =
-        ModelDownloadItem(
-            SIGLIP_TOKENIZER_URL,
-            SIGLIP_TOKENIZER_FILE,
-            "Tokenizer",
-            SIGLIP_TOKENIZER_SHA256
-        )
-    /** SigLIP2 semantic-search models fetched on demand by the photos app. */
-    val SIGLIP = listOf(SIGLIP_VISION, SIGLIP_TEXT, SIGLIP_TOKENIZER)
 
     /**
      * Gemma 4 E2B for `:library:ml`'s maml runtime (`Gemma4Handle` and its vision and audio
@@ -112,8 +76,8 @@ object ModelUrls {
         }
     }
 
-    /** Everything downloaded on OpenAssistant first launch (Gemma + SigLIP2). */
-    val INITIAL = GemmaMaml.FILES + SIGLIP
+    /** Everything downloaded on OpenAssistant first launch. */
+    val INITIAL = GemmaMaml.FILES
 }
 /** A single model file fetched from the self-hosted mirror, with optional SHA-256. */
 data class ModelDownloadItem(

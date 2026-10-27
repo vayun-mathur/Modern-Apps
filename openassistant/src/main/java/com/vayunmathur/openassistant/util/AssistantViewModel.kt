@@ -235,41 +235,30 @@ class AssistantViewModel(
         audioRecorder = null
     }
 
-    /**
-     * Version the on-demand SigLIP2 model files: if [SiglipEmbedder.MODEL_VERSION]
-     * changed since we last downloaded them, delete the stale files and clear the
-     * downloadservice `dlid_`/`progress_` keys so they re-download on the next
-     * embedding request. Unlike the gemma path this never touches
-     * `dbSetupComplete` — SigLIP2 is optional and fetched on demand.
-     */
+    /** Deletes the SigLIP2 files and their download records left by versions that served image search. */
     private fun cleanupStaleSiglipModels() {
         val context = getApplication<Application>()
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val ds = DataStoreUtils.getInstance(context)
-                val stored = ds.getLong("siglip_model_version") ?: 0L
-                if (stored == SiglipEmbedder.MODEL_VERSION.toLong()) return@launch
-
                 val externalDir = context.getExternalFilesDir(null)
-                val files = listOf(
-                    SiglipEmbedder.VISION_FILE,
-                    SiglipEmbedder.TEXT_FILE,
-                    SiglipEmbedder.TOKENIZER_FILE,
-                )
-                for (name in files) {
-                    externalDir?.let { File(it, name).takeIf { f -> f.exists() }?.delete() }
-                    ds.setLong("dlid_$name", 0L)
-                    ds.setDouble("progress_$name", 0.0)
+                for (name in LEGACY_SIGLIP_FILES) {
+                    externalDir?.let { File(it, name).delete(); File(it, "$name.part").delete() }
                 }
-                ds.setLong("siglip_model_version", SiglipEmbedder.MODEL_VERSION.toLong())
+                ds.removeKeys(LEGACY_SIGLIP_FILES.map { "dlid_$it" } + "siglip_model_version")
             } catch (expected: Exception) {
-                Log.error(TAG, "Error cleaning up stale SigLIP2 model files", expected)
+                Log.error(TAG, "Error deleting legacy SigLIP2 model files", expected)
             }
         }
     }
 
     companion object {
         private const val TAG = "AssistantViewModel"
+        private val LEGACY_SIGLIP_FILES = listOf(
+            "siglip2_vision_model_fp16.onnx",
+            "siglip2_text_model_int8.onnx",
+            "siglip2_tokenizer.model",
+        )
     }
 }
 

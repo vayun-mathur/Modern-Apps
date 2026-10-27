@@ -15,13 +15,6 @@ android {
         applicationId = "com.vayunmathur.openassistant"
     }
 
-    androidResources {
-        // SigLIP2 .onnx encoders are downloaded to external files at runtime,
-        // but the SentencePiece tokenizer.model is downloaded too; keep .onnx
-        // uncompressed for consistency with the ONNX Runtime memory-mapped read.
-        noCompress += "onnx"
-    }
-
     packaging {
         jniLibs {
             pickFirsts.add("**/libc++_shared.so")
@@ -45,9 +38,6 @@ dependencies {
     // Gemma 4 chat runs on `:library:ml`'s Vulkan runtime (Gemma4Handle).
     implementation(project(":library:ml"))
     implementation(libs.kotlinx.coroutines.android)
-    // SigLIP2 image/text embedding (semantic photo search served to the photos
-    // app) runs on ONNX Runtime.
-    implementation(libs.onnxruntime.android)
 
     implementation(project(":library:downloadservice"))
 }

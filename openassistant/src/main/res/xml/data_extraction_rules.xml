@@ -6,10 +6,9 @@
                               conversation history plus remembered facts. Free-form user
                               text, so it can contain anything.
        external/              on-demand model downloads in getExternalFilesDir(null):
-                              the gemma4/ maml model files, the SigLIP2 ONNX encoders and
-                              tokenizer.model. Gigabytes, and re-downloadable.
+                              the gemma4/ maml model files. Gigabytes, and re-downloadable.
        file/datastore_default.preferences_pb  model download progress and version markers
-                              (progress_*, dlid_*, siglip_model_version). Meaningless once
+                              (progress_*, dlid_*). Meaningless once
                               the models are gone.
        cache/                 recordings and attachment scratch files; Android never backs
                               up cacheDir.

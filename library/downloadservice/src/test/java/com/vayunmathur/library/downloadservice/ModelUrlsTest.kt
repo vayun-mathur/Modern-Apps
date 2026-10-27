@@ -14,17 +14,9 @@ class ModelUrlsTest {
 
     private val shaShape = Regex("[0-9a-f]{64}")
 
-    private fun allUrls() = ModelUrls.GemmaMaml.FILES.map { it.url } + listOf(
-        ModelUrls.SIGLIP_VISION_URL,
-        ModelUrls.SIGLIP_TEXT_URL,
-        ModelUrls.SIGLIP_TOKENIZER_URL,
-    )
+    private fun allUrls() = ModelUrls.GemmaMaml.FILES.map { it.url }
 
-    private fun allShas() = ModelUrls.GemmaMaml.FILES.map { it.sha256.orEmpty() } + listOf(
-        ModelUrls.SIGLIP_VISION_SHA256,
-        ModelUrls.SIGLIP_TEXT_SHA256,
-        ModelUrls.SIGLIP_TOKENIZER_SHA256,
-    )
+    private fun allShas() = ModelUrls.GemmaMaml.FILES.map { it.sha256.orEmpty() }
 
     @Test
     fun mirror_base_is_https_and_ends_with_a_slash() {
@@ -57,29 +49,8 @@ class ModelUrlsTest {
     }
 
     @Test
-    fun siglip_mirror_paths_match_their_on_disk_file_names() {
-        assertEquals(ModelUrls.SIGLIP_VISION_FILE, ModelUrls.SIGLIP_VISION_URL.removePrefix(ModelUrls.MIRROR_BASE))
-        assertEquals(ModelUrls.SIGLIP_TEXT_FILE, ModelUrls.SIGLIP_TEXT_URL.removePrefix(ModelUrls.MIRROR_BASE))
-        assertEquals(
-            ModelUrls.SIGLIP_TOKENIZER_FILE,
-            ModelUrls.SIGLIP_TOKENIZER_URL.removePrefix(ModelUrls.MIRROR_BASE),
-        )
-    }
-
-    @Test
-    fun siglip_bundle_holds_the_three_search_models() {
-        assertEquals(3, ModelUrls.SIGLIP.size)
-        assertEquals(
-            listOf(ModelUrls.SIGLIP_VISION, ModelUrls.SIGLIP_TEXT, ModelUrls.SIGLIP_TOKENIZER),
-            ModelUrls.SIGLIP,
-        )
-    }
-
-    @Test
-    fun initial_bundle_is_gemma_first_then_siglip_with_distinct_files() {
-        assertEquals(9, ModelUrls.INITIAL.size)
-        assertEquals(ModelUrls.GemmaMaml.FILES, ModelUrls.INITIAL.take(6))
-        assertEquals(ModelUrls.SIGLIP, ModelUrls.INITIAL.drop(6))
+    fun initial_bundle_is_the_gemma_set_with_distinct_files() {
+        assertEquals(ModelUrls.GemmaMaml.FILES, ModelUrls.INITIAL)
         val files = ModelUrls.INITIAL.map { it.fileName }
         assertEquals(files.size, files.toSet().size, "duplicate on-disk file names would overwrite each other")
     }
@@ -101,13 +72,14 @@ class ModelUrlsTest {
 
     @Test
     fun item_sha_defaults_to_null_for_unpinned_files() {
-        assertNull(ModelDownloadItem(ModelUrls.SIGLIP_TEXT_URL, ModelUrls.SIGLIP_TEXT_FILE, "Model").sha256)
-        assertEquals(ModelUrls.SIGLIP_TEXT_SHA256, ModelUrls.SIGLIP_TEXT.sha256)
+        val tokenizer = ModelUrls.GemmaMaml.FILES.last()
+        assertNull(ModelDownloadItem(tokenizer.url, tokenizer.fileName, "Model").sha256)
     }
 
     @Test
     fun items_compare_by_value() {
-        assertEquals(ModelUrls.SIGLIP_TEXT, ModelUrls.SIGLIP_TEXT.copy())
-        assertFalse(ModelUrls.SIGLIP_TEXT == ModelUrls.SIGLIP_TEXT.copy(url = "${ModelUrls.MIRROR_BASE}other.bin"))
+        val tokenizer = ModelUrls.GemmaMaml.FILES.last()
+        assertEquals(tokenizer, tokenizer.copy())
+        assertFalse(tokenizer == tokenizer.copy(url = "${ModelUrls.MIRROR_BASE}other.bin"))
     }
 }

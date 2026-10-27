@@ -128,9 +128,6 @@ chicory = "1.4.0"
 # Git
 jgit = "7.8.0.202609011348-r"
 
-# On-device AI (openassistant: SigLIP2 ONNX embeddings)
-onnxruntimeAndroid = "1.31.0"
-
 # Crypto, security & credential storage
 sqlcipherAndroid = "4.19.1"
 sqldelight = "2.2.0"
@@ -336,9 +333,6 @@ chicory-runtime = { module = "com.dylibso.chicory:runtime", version.ref = "chico
 
 # Git
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
-
-# On-device AI (openassistant: SigLIP2 ONNX embeddings)
-onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntimeAndroid" }
 
 # Crypto, security & credential storage
 sqlcipher-android = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipherAndroid" }
