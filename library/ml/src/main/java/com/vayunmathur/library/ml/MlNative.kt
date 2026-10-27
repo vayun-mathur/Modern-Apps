@@ -710,6 +710,9 @@ internal object MlNative {
      */
     external fun seekGemma4(handle: Long, position: Int): Int
 
+    /** Prefill what [pushGemma4] deferred, now rather than with the next step. Position, or -1. */
+    external fun flushGemma4(handle: Long): Int
+
     /**
      * Time a decode pass with and without the logits head, and log both.
      *

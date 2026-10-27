@@ -62,12 +62,40 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
     private var audio: Gemma4AudioHandle? = null
     private var towerIdleJob: Job? = null
     private var prefixKey: Int? = null
+    private var warm: Pair<String, AssistantTools>? = null
 
     /** Loads the model if needed; false when it cannot come up. */
     suspend fun load(): Boolean = mutex.withLock { withContext(engineThread) { model() != null } }
 
+    /**
+     * Prefills the chat system block now, so the first message only feeds its own turn.
+     *
+     * Remembered, so [extract] (a different system prompt, which replaces the cache) can put it
+     * back afterwards.
+     */
+    suspend fun warmUp(system: String, tools: AssistantTools): Boolean = mutex.withLock {
+        warm = system to tools
+        withContext(engineThread) { primeLocked(system, tools) }
+    }
+
+    private fun primeLocked(system: String, tools: AssistantTools): Boolean {
+        val model = model() ?: return false
+        val declarations = tools.declarations
+        seedPrefix(model, system, declarations)
+        val started = System.nanoTime()
+        val primed = model.prime(system, declarations, CHAT_REPLY_LIMIT)
+        Log.status(TAG, "warm-up ${if (primed) "done" else "failed"} in ${(System.nanoTime() - started) / NANOS_PER_MILLI} ms")
+        return primed
+    }
+
+    private fun rewarmAfterExtract() {
+        val (system, tools) = warm ?: return
+        scope.launch { mutex.withLock { withContext(engineThread) { primeLocked(system, tools) } } }
+    }
+
     suspend fun chat(request: ChatRequest, tools: AssistantTools, onText: (String) -> Boolean): ChatResult =
         mutex.withLock {
+            warm = request.system to tools
             val model = withContext(engineThread) { model() } ?: return@withLock ChatResult.Unavailable
             val declarations = tools.declarations
             val current = withContext(engineThread) { currentTurn(request) }
@@ -116,7 +144,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
                 val turn = currentTurn(ChatRequest(system, emptyList(), userText, imagePaths))
                 model.generate(listOf(turn), system, emptyList(), EXTRACT_REPLY_LIMIT, "", Sampling.Greedy, onText)
             }
-        }
+        }.also { rewarmAfterExtract() }
 
     private fun model(): Gemma4Handle? {
         handle?.takeIf { it.isAvailable }?.let { return it }
@@ -215,6 +243,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         const val TOWER_IDLE_MILLIS = 3 * 60_000L
         const val MAX_IMAGE_SIDE = 1024
         const val LOG_CHARS = 120
+        const val NANOS_PER_MILLI = 1_000_000L
 
         fun decodeDownscaled(path: String): Bitmap? {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
