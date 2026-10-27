@@ -153,7 +153,6 @@ class InferenceService : Service() {
         serviceScope.launch {
             try {
                 ensureEngineInitialized()
-                engine?.warmUp(systemPrompt(), tools)
             } catch (expected: Exception) {
                 Log.error("InferenceService", "Error pre-warming engine", expected)
             }

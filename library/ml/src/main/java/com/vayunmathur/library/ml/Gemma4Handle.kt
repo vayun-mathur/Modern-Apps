@@ -159,31 +159,6 @@ class Gemma4Handle private constructor(internal val directory: File) : AutoClose
         return generateTokens(tail, limit, sampling, onToken)
     }
 
-    /**
-     * Prefill the system block ([system] + [tools]) now, so the first [generate] with the same
-     * pair reuses it and only feeds its own turn.
-     *
-     * The block is the bulk of a first prompt - about 1,900 positions with 25 tools - and without
-     * this it is prefilled after the user has already sent the message. Also grows the cache to
-     * the tier a first turn with a [limit] reply needs, so that turn does not re-plan either.
-     * Returns false when the model is unavailable or the prefill fails.
-     */
-    fun prime(system: String?, tools: List<ToolDeclaration> = emptyList(), limit: Int = DEFAULT_REPLY): Boolean {
-        if (handle == 0L) return false
-        val ids = encodePrompt(PromptBuilder().apply { appendHeader(system, declareTools(tools)) }.text())
-        val prior = cachedIds
-        if (prior != null && prior.size >= ids.size && ids.indices.all { prior[it] == ids[it] }) return true
-        val wanted = ids.size + limit + PromptConstants.PROMPT_SLACK_POSITIONS
-        if (MlNative.capacityGemma4(handle) in 1 until wanted) MlNative.growGemma4(handle, wanted)
-        reset()
-        if (MlNative.pushGemma4(handle, ids) < 0 || MlNative.flushGemma4(handle) != ids.size) {
-            reset()
-            return false
-        }
-        cachedIds = ids
-        return true
-    }
-
     /** Last text part of the prompt, or null (with a log) when the prompt is empty. */
     private fun validatePromptTail(parts: List<Part>): Part.Tokens? {
         // The last part is always the generation prompt, so it is text and it is not empty.
@@ -519,9 +494,6 @@ class Gemma4Handle private constructor(internal val directory: File) : AutoClose
             // showed it, because that is the one the system prompt forces a tool call on.
             text.append(continuation)
         }
-
-        /** The text so far, for a builder that holds no media. */
-        fun text(): String = text.toString()
 
         fun build(): List<Part> {
             if (text.isNotEmpty()) {

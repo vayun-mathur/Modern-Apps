@@ -172,34 +172,6 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_seekGemma
     }
 }
 
-/// Run the pushed tokens now instead of with the next step. Returns the position, or -1.
-///
-/// For warming a prompt prefix ahead of the first turn: without this the prefill would wait
-/// for the step that ends the user's turn.
-///
-/// # Safety
-///
-/// Called only by the JVM, with a live handle from `createGemma4`.
-#[no_mangle]
-pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_flushGemma4<'l>(
-    _env: EnvUnowned<'l>,
-    _class: JClass<'l>,
-    handle: jlong,
-) -> jint {
-    if handle == 0 {
-        return -1;
-    }
-    // SAFETY: the caller guarantees the handle came from `createGemma4` and is still live.
-    let handle = unsafe { &mut *(handle as *mut Gemma4Handle) };
-    match handle.flush() {
-        Ok(()) => jint::try_from(handle.position).unwrap_or(-1),
-        Err(e) => {
-            log(&format!("gemma4 cannot flush: {e}"));
-            -1
-        }
-    }
-}
-
 /// Start a new conversation on the same handle.
 ///
 /// Only the position is reset. Attention reads `[window_start, prefix]`, so cache rows past the
