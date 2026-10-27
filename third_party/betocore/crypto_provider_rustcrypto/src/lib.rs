@@ -106,7 +106,6 @@ pub struct RcRng<R>(R);
 
 impl<R: rand_core::CryptoRng + Rng + SeedableRng> crypto_provider::CryptoRng for RcRng<R> {
     fn new() -> Self {
-        use rand_core::TryRng;
         let mut sys = rand::rngs::SysRng;
         Self(R::try_from_rng(&mut sys).unwrap_or_else(|_| R::from_seed(Default::default())))
     }

@@ -54,7 +54,7 @@ pub(crate) fn parse_sections(
     adv_header: V1AdvHeader,
     adv_body: &[u8],
 ) -> Result<
-    ArrayVecOption<IntermediateSection, NP_V1_ADV_MAX_SECTION_COUNT>,
+    ArrayVecOption<IntermediateSection<'_>, NP_V1_ADV_MAX_SECTION_COUNT>,
     nom::Err<error::Error<&[u8]>>,
 > {
     let mut result = ArrayVecOption::default();

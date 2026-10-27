@@ -410,7 +410,7 @@ mod jni_bindings {
 
             match env.new_float_array(values.len()) {
                 Ok(arr) => {
-                    if env.set_float_array_region(&arr, 0, &values).is_err() {
+                    if arr.set_region(env, 0, &values).is_err() {
                         return Ok(null);
                     }
                     Ok(arr.into_raw())

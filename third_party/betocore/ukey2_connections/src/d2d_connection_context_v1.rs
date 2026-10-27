@@ -16,8 +16,6 @@
 use std::fmt::Formatter;
 
 use bytes::BufMut;
-use nom::Parser as _;
-use rand::SeedableRng as _;
 
 use crypto_provider::aead::Aead;
 use crypto_provider::{hkdf::Hkdf, hmac::Hmac, sha2::Sha256, CryptoProvider};

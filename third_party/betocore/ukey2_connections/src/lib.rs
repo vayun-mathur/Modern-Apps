@@ -50,7 +50,6 @@ pub use ukey2_rs::{HandshakeImplementation, NextProtocol};
 /// falls back to a fixed seed rather than panicking across JNI.
 pub(crate) fn os_rng() -> rand::rngs::StdRng {
     use rand::SeedableRng;
-    use rand::TryRng;
     let mut sys = rand::rngs::SysRng;
     rand::rngs::StdRng::try_from_rng(&mut sys).unwrap_or_else(|_| rand::rngs::StdRng::from_seed([0u8; 32]))
 }

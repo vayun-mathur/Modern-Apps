@@ -59,7 +59,7 @@ mod android {
     }
 
     fn text(env: &mut Env<'_>, value: &JString<'_>) -> String {
-        env.get_string(value).map(Into::into).unwrap_or_default()
+        value.try_to_string(env).unwrap_or_default()
     }
 
     /// Optional strings arrive as null; treat empty as absent too.

@@ -636,7 +636,7 @@ impl CompletedHandshake {
     }
 
     /// Returns an HKDF for the UKEY2 `AUTH_STRING`.
-    pub fn auth_string<C: CryptoProvider>(&self) -> HandshakeHkdf<C> {
+    pub fn auth_string<C: CryptoProvider>(&self) -> HandshakeHkdf<'_, C> {
         HandshakeHkdf::new(
             &self.client_init_bytes,
             &self.server_init_bytes,
@@ -645,7 +645,7 @@ impl CompletedHandshake {
     }
 
     /// Returns an HKDF for the UKEY2 `NEXT_SECRET`.
-    pub fn next_protocol_secret<C: CryptoProvider>(&self) -> HandshakeHkdf<C> {
+    pub fn next_protocol_secret<C: CryptoProvider>(&self) -> HandshakeHkdf<'_, C> {
         HandshakeHkdf::new(
             &self.client_init_bytes,
             &self.server_init_bytes,

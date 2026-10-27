@@ -48,7 +48,7 @@ pub type ArrayVecOptionIntoIter<A, const N: usize> =
 
 impl<A, const N: usize> ArrayVecOption<A, N> {
     /// Returns an iterator over this vec.
-    pub fn iter(&self) -> ArrayVecOptionRefIter<A> {
+    pub fn iter(&self) -> ArrayVecOptionRefIter<'_, A> {
         self.0
             .iter()
             .map(|v| v.as_ref().expect("ArrayVecOption value before .len() should not be None"))

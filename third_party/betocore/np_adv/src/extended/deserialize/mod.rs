@@ -396,7 +396,7 @@ impl<'adv, M: MatchedCredential> V1AdvertisementContents<'adv, M> {
     }
 
     /// The sections that could be successfully deserialized and decrypted
-    pub fn sections(&self) -> impl ExactSizeIterator<Item = &V1DeserializedSection<M>> {
+    pub fn sections(&self) -> impl ExactSizeIterator<Item = &V1DeserializedSection<'_, M>> {
         self.sections.iter()
     }
 

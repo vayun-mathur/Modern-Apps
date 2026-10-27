@@ -15,7 +15,6 @@
 
 use crate::d2d_connection_context_v1::D2DConnectionContextV1;
 use crypto_provider::CryptoProvider;
-use rand::SeedableRng as _;
 use std::{collections::HashSet, mem};
 use ukey2_rs::{
     CompletedHandshake, HandshakeImplementation, NextProtocol, StateMachine, Ukey2Client,

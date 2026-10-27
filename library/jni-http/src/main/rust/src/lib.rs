@@ -228,7 +228,8 @@ pub fn request_batch(url: &str, ranges: &[String]) -> Result<Vec<ResponseFrame>>
             let jrange: JString = env
                 .new_string(range)
                 .map_err(|e| Error::Bridge(format!("range: {e}")))?;
-            env.set_object_array_element(&jranges, i, jrange)
+            jranges
+                .set_element(env, i, jrange)
                 .map_err(|e| Error::Bridge(format!("ranges: {e}")))?;
         }
 

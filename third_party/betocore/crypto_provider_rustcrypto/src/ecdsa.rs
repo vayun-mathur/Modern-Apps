@@ -24,6 +24,8 @@ use crypto_provider::ecdsa::{
     InvalidSignatureBytes, P256EcdsaProvider, VerifyError, PUBLIC_KEY_LENGTH,
 };
 use p256::ecdsa::signature::{Signer, Verifier};
+#[cfg(feature = "std")]
+use p256::elliptic_curve::Generate;
 
 pub struct P256Ecdsa;
 
@@ -70,7 +72,7 @@ impl crypto_provider::ecdsa::KeyPair for P256SigningKey {
     #[cfg(feature = "std")]
     fn generate() -> Self {
         let mut csprng = rand::rngs::ThreadRng::default();
-        Self(p256::ecdsa::SigningKey::random(&mut csprng))
+        Self(p256::ecdsa::SigningKey::generate_from_rng(&mut csprng))
     }
 
     #[allow(clippy::clone_on_copy)]
@@ -91,7 +93,7 @@ impl crypto_provider::ecdsa::PublicKey for P256VerifyingKey {
     where
         Self: Sized,
     {
-        let encoded_point = p256::Sec1Point::from_bytes(bytes)
+        let _encoded_point = p256::Sec1Point::from_bytes(bytes)
             .map_err(|_| crypto_provider::ecdsa::InvalidPublicKeyBytes)?;
         // Unwrap is safe here, as we've verified during construction that the public key is
         // of the correct size and that it is a point on the curve, so this cannot fail.

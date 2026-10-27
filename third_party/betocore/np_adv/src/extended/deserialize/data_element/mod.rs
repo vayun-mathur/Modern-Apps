@@ -482,7 +482,7 @@ pub struct ProtoDataElement<'d> {
 }
 
 impl ProtoDataElement<'_> {
-    pub(crate) fn parse(input: &[u8]) -> nom::IResult<&[u8], ProtoDataElement> {
+    pub(crate) fn parse(input: &[u8]) -> nom::IResult<&[u8], ProtoDataElement<'_>> {
         let (remaining, header) = DeHeader::parse(input)?;
         let len = header.contents_len;
         let de_type = header.de_type;

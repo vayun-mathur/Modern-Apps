@@ -3,7 +3,6 @@ use crate::noise::handshake::{LABEL_COOKIE, LABEL_MAC1};
 use crate::noise::{TunnResult, WireGuardError};
 use crate::packet::{Packet, WgCookieReply, WgHandshakeBase, WgKind};
 use constant_time_eq::constant_time_eq;
-use rand::Rng;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -95,9 +94,9 @@ impl RateLimiter {
         rep.receiver_idx.set(idx);
         rep.nonce = self.nonce();
         let cipher = XChaCha20Poly1305::new(&self.cookie_key);
-        let iv = chacha20poly1305::XNonce::from_slice(&rep.nonce);
+        let iv = chacha20poly1305::XNonce::from(rep.nonce);
         rep.encrypted_cookie.encrypted = cookie;
-        let tag = cipher.encrypt_inout_detached(iv, mac1, InOutBuf::from(&mut rep.encrypted_cookie.encrypted[..]))
+        let tag = cipher.encrypt_inout_detached(&iv, mac1, InOutBuf::from(&mut rep.encrypted_cookie.encrypted[..]))
             .expect("wg_cookie_reply size ok");
         rep.encrypted_cookie.tag = tag.into();
         rep

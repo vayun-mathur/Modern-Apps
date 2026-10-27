@@ -41,8 +41,13 @@ impl<A: BlockCipherEncrypt<BlockSize = U16> + KeyInit> crypto_provider::aead::Ae
 impl<K: crypto_provider::aes::AesKey, A: BlockCipherEncrypt<BlockSize = U16> + KeyInit>
     AeadInit<K> for AesGcmSiv<A>
 {
+    #[allow(clippy::unwrap_used)]
     fn new(key: &K) -> Self {
-        Self(aes_gcm_siv::AesGcmSiv::<A>::new(aes_gcm_siv::Key::<A>::from_slice(key.as_slice())))
+        // `try_from(...).unwrap()` preserves the old `from_slice` behavior, which
+        // panicked on length mismatch. In practice `K` is always the correctly-sized key.
+        Self(aes_gcm_siv::AesGcmSiv::<A>::new(
+            <&aes_gcm_siv::Key<A>>::try_from(key.as_slice()).unwrap(),
+        ))
     }
 }
 
@@ -54,7 +59,7 @@ impl<A: aes::cipher::BlockCipherEncrypt<BlockSize = U16> + KeyInit> Aead for Aes
     #[cfg(feature = "alloc")]
     fn encrypt(&self, msg: &[u8], aad: &[u8], nonce: &Self::Nonce) -> Result<Vec<u8>, AeadError> {
         self.0
-            .encrypt(aes_gcm_siv::Nonce::from_slice(nonce), Payload { msg, aad })
+            .encrypt(<&aes_gcm_siv::Nonce>::from(nonce), Payload { msg, aad })
             .map_err(|_| AeadError)
     }
 
@@ -67,7 +72,7 @@ impl<A: aes::cipher::BlockCipherEncrypt<BlockSize = U16> + KeyInit> Aead for Aes
         let tag = self
             .0
             .encrypt_inout_detached(
-                aes_gcm_siv::Nonce::from_slice(nonce),
+                <&aes_gcm_siv::Nonce>::from(nonce),
                 aad,
                 InOutBuf::from(msg),
             )
@@ -80,7 +85,7 @@ impl<A: aes::cipher::BlockCipherEncrypt<BlockSize = U16> + KeyInit> Aead for Aes
     #[cfg(feature = "alloc")]
     fn decrypt(&self, msg: &[u8], aad: &[u8], nonce: &Self::Nonce) -> Result<Vec<u8>, AeadError> {
         self.0
-            .decrypt(aes_gcm_siv::Nonce::from_slice(nonce), Payload { msg, aad })
+            .decrypt(<&aes_gcm_siv::Nonce>::from(nonce), Payload { msg, aad })
             .map_err(|_| AeadError)
     }
 
@@ -93,7 +98,7 @@ impl<A: aes::cipher::BlockCipherEncrypt<BlockSize = U16> + KeyInit> Aead for Aes
     ) -> Result<(), AeadError> {
         self.0
             .decrypt_inout_detached(
-                aes_gcm_siv::Nonce::from_slice(nonce),
+                <&aes_gcm_siv::Nonce>::from(nonce),
                 aad,
                 InOutBuf::from(msg),
                 tag.into(),

@@ -508,7 +508,7 @@ where
 #[cfg(any(feature = "alloc", test))]
 fn reference_crypto_and_match_data<C, M: MatchedCredential>(
     pair_ref: &(C, M),
-) -> (&C, ReferencedMatchedCredential<M>) {
+) -> (&C, ReferencedMatchedCredential<'_, M>) {
     let (c, m) = pair_ref;
     (c, m.into())
 }

@@ -277,7 +277,7 @@ impl<'adv> DeserializedActionsContainer<'adv> {
         Ok((input, DeserializedActionsContainer { container_type, offset, payload }))
     }
 
-    fn iter_action_ids(&self) -> ActionsContainerIterator {
+    fn iter_action_ids(&self) -> ActionsContainerIterator<'_> {
         ActionsContainerIterator::new(self)
     }
 }

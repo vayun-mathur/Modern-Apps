@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 
 pub struct IndexTable<Rng = StdRng>(Arc<Mutex<(Rng, HashSet<u32>)>>);
 

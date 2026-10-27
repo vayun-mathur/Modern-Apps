@@ -41,16 +41,17 @@ pub mod aead {
     pub struct LessSafeKey { inner: ChaCha20Poly1305 }
     impl LessSafeKey {
         pub fn new(unbound: UnboundKey) -> Self {
-            Self { inner: ChaCha20Poly1305::new(CKey::from_slice(&unbound.bytes)) }
+            Self { inner: ChaCha20Poly1305::new(&CKey::from(unbound.bytes)) }
         }
 
         pub fn seal_in_place_separate_tag(
             &self, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8],
         ) -> Result<Tag, error::Unspecified> {
+            let nonce = chacha20poly1305::Nonce::from(nonce.0);
             let tag = self
                 .inner
                 .encrypt_inout_detached(
-                    chacha20poly1305::Nonce::from_slice(&nonce.0),
+                    &nonce,
                     aad.0,
                     InOutBuf::from(in_out),
                 )
@@ -67,14 +68,14 @@ pub mod aead {
             let len = in_out.len();
             if len < 16 { return Err(error::Unspecified); }
             let (ct, tag_bytes) = in_out.split_at_mut(len - 16);
-            let tag = Tag::from_slice(tag_bytes);
+            let tag = Tag::try_from(&*tag_bytes).map_err(|_| error::Unspecified)?;
             let ct_len = ct.len();
             self.inner
                 .decrypt_inout_detached(
-                    chacha20poly1305::Nonce::from_slice(&nonce.0),
+                    &chacha20poly1305::Nonce::from(nonce.0),
                     aad.0,
                     InOutBuf::from(&mut ct[..]),
-                    tag,
+                    &tag,
                 )
                 .map_err(|_| error::Unspecified)?;
             let plain_len = len - 16;

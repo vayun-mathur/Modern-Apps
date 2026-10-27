@@ -18,12 +18,8 @@
 #![no_std]
 
 cfg_if::cfg_if! {
-    if #[cfg(all(feature = "rustcrypto", feature = "boringssl"))] {
-        compile_error!("Conflicting crypto_providers specified, must only enable a single crypto provider");
-    } else if #[cfg(feature = "rustcrypto")] {
+    if #[cfg(feature = "rustcrypto")] {
         pub use crypto_provider_rustcrypto::RustCrypto as CryptoProviderImpl;
-    } else if #[cfg(feature = "boringssl")] {
-        pub use crypto_provider_boringssl::Boringssl as CryptoProviderImpl;
     } else {
         compile_error!("No crypto_provider feature enabled!");
     }

@@ -323,7 +323,7 @@ impl DecryptedAdvContents {
     /// Iterator over the data elements in an advertisement, except for any DEs related to resolving
     /// the identity or otherwise validating the payload (e.g. any identity DEs like Private
     /// Identity).
-    pub fn data_elements(&self) -> DeIterator<Ciphertext> {
+    pub fn data_elements(&self) -> DeIterator<'_, Ciphertext> {
         DeIterator::new(self.data.as_slice())
     }
 

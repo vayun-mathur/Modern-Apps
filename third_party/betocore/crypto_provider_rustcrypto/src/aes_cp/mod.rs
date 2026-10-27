@@ -55,13 +55,13 @@ impl AesCipher for Aes128Cipher {
 
 impl AesEncryptCipher for Aes128Cipher {
     fn encrypt(&self, block: &mut AesBlock) {
-        self.0.encrypt_block(Array::from_mut_slice(block.as_mut_slice()));
+        self.0.encrypt_block(<&mut Array<_, _>>::from(&mut *block));
     }
 }
 
 impl AesDecryptCipher for Aes128Cipher {
     fn decrypt(&self, block: &mut AesBlock) {
-        self.0.decrypt_block(Array::from_mut_slice(block.as_mut_slice()))
+        self.0.decrypt_block(<&mut Array<_, _>>::from(&mut *block))
     }
 }
 
@@ -78,13 +78,13 @@ impl AesCipher for Aes256Cipher {
 
 impl AesEncryptCipher for Aes256Cipher {
     fn encrypt(&self, block: &mut AesBlock) {
-        self.0.encrypt_block(Array::from_mut_slice(block.as_mut_slice()));
+        self.0.encrypt_block(<&mut Array<_, _>>::from(&mut *block));
     }
 }
 
 impl AesDecryptCipher for Aes256Cipher {
     fn decrypt(&self, block: &mut AesBlock) {
-        self.0.decrypt_block(Array::from_mut_slice(block.as_mut_slice()))
+        self.0.decrypt_block(<&mut Array<_, _>>::from(&mut *block))
     }
 }
 

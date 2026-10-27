@@ -47,7 +47,6 @@ fn b64e(k: &[u8]) -> String { use base64::Engine; base64::engine::general_purpos
 /// so this expect-matches the pre-existing `from_entropy().unwrap()` behavior.
 pub(crate) fn os_rng() -> rand::rngs::StdRng {
     use rand::SeedableRng;
-    use rand_core::TryRng;
     let mut sys = rand::rngs::SysRng;
     rand::rngs::StdRng::try_from_rng(&mut sys).expect("OS RNG unavailable")
 }

@@ -169,7 +169,7 @@ impl<A: Aes<Key = K::BlockCipherKey>, K: XtsKey> XtsEncrypter<A, K> {
     }
 
     /// Returns an [`XtsEncrypterTweaked`] configured with the specified tweak and a block number of 0.
-    fn tweaked(&self, tweak: Tweak) -> XtsEncrypterTweaked<A> {
+    fn tweaked(&self, tweak: Tweak) -> XtsEncrypterTweaked<'_, A> {
         let mut bytes = tweak.bytes;
         self.tweak_encryption_cipher.encrypt(&mut bytes);
 
@@ -260,7 +260,7 @@ impl<A: Aes<Key = K::BlockCipherKey>, K: XtsKey> XtsDecrypter<A, K> {
     }
 
     /// Returns an [`XtsDecrypterTweaked`] configured with the specified tweak and a block number of 0.
-    fn tweaked(&self, tweak: Tweak) -> XtsDecrypterTweaked<A> {
+    fn tweaked(&self, tweak: Tweak) -> XtsDecrypterTweaked<'_, A> {
         let mut bytes = tweak.bytes;
         self.tweak_encryption_cipher.encrypt(&mut bytes);
 
@@ -274,7 +274,7 @@ impl<A: Aes<Key = K::BlockCipherKey>, K: XtsKey> XtsDecrypter<A, K> {
 type DataUnitPartsResult<'a> = Result<(&'a mut [u8], &'a mut [u8], &'a mut [u8]), XtsError>;
 
 /// Returns `(standalone blocks, last complete block, partial last block)`.
-fn data_unit_parts(data_unit: &mut [u8]) -> DataUnitPartsResult {
+fn data_unit_parts(data_unit: &mut [u8]) -> DataUnitPartsResult<'_> {
     if data_unit.len() < BLOCK_SIZE {
         return Err(XtsError::DataTooShort);
     } else if data_unit.len() > MAX_XTS_SIZE {

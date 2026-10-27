@@ -50,7 +50,7 @@ impl<V: ProtocolVersion, M: MatchedCredential> MatchableCredential<V, M> {
     /// Views this credential as a (borrowed) discovery-credential
     /// combined with some matched credential data
     /// (which is copied - see documentation on [`MatchedCredential`])
-    pub fn as_pair(&self) -> (&V::DiscoveryCredential, ReferencedMatchedCredential<M>) {
+    pub fn as_pair(&self) -> (&V::DiscoveryCredential, ReferencedMatchedCredential<'_, M>) {
         (&self.discovery_credential, ReferencedMatchedCredential::from(&self.match_data))
     }
 }
