@@ -93,7 +93,7 @@ object TransitousDataSource {
         // arriveBy is fixed false server-side — the only value this client uses.
         val url = "$BASE_URL/stoptimes" +
             "?stopId=${enc(stopId)}&n=$DEPARTURE_COUNT"
-        val resp: MotisStoptimes = NetworkClient.getJson(url, REQUEST_HEADERS, useSystemTrust = true)
+        val resp: MotisStoptimes = NetworkClient.getJson(url, REQUEST_HEADERS)
         resp.stopTimes.mapNotNull { it.toDeparture() }
     }
 
