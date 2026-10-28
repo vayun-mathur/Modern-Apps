@@ -95,6 +95,7 @@ class AppStoreViewModel(
     internal val modernRecentFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
     internal val proprietaryRecentFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
     internal val fdroidRecentFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
+    internal val izzyRecentFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
 
     /** Accrescent listings for the home carousel, from the gRPC listing API. */
     internal val accrescentAppsFlow = MutableStateFlow<List<UnifiedApp>>(emptyList())
@@ -208,8 +209,9 @@ class AppStoreViewModel(
             modernRecentFlow,
             proprietaryRecentFlow,
             fdroidRecentFlow,
-        ) { modernRecent, proprietaryRecent, fdroidRecent ->
-            Triple(modernRecent, proprietaryRecent, fdroidRecent)
+            izzyRecentFlow,
+        ) { modernRecent, proprietaryRecent, fdroidRecent, izzyRecent ->
+            RecentRows(modernRecent, proprietaryRecent, fdroidRecent, izzyRecent)
         },
         playSectionsFlow,
         combine(
@@ -217,10 +219,10 @@ class AppStoreViewModel(
             selectedCategoryFlow,
             accrescentAppsFlow,
         ) { apps, category, accrescent -> Triple(apps, category, accrescent) },
-    ) { modern, (modernRecent, proprietaryRecent, fdroidRecent), playSections,
+    ) { modern, recent, playSections,
         (categoryApps, category, accrescentApps) ->
         buildSections(
-            modern, modernRecent, proprietaryRecent, fdroidRecent,
+            modern, recent.modern, recent.proprietary, recent.fdroid, recent.izzy,
             playSections, accrescentApps, categoryApps, category,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -628,6 +630,14 @@ class AppStoreViewModel(
         val stages: Map<String, InstallStage> = emptyMap(),
     )
 
+    /** Newest builds per offline repo, one home row each. */
+    private data class RecentRows(
+        val modern: List<UnifiedApp> = emptyList(),
+        val proprietary: List<UnifiedApp> = emptyList(),
+        val fdroid: List<UnifiedApp> = emptyList(),
+        val izzy: List<UnifiedApp> = emptyList(),
+    )
+
     private data class LibraryInputs(
         val index: Map<String, com.vayunmathur.appstore.data.PackageIndexRow> = emptyMap(),
         val playPackages: Set<String> = emptySet(),
@@ -646,7 +656,7 @@ class AppStoreViewModel(
     internal companion object {
         internal const val SEARCH_DEBOUNCE_MS = 350L
         internal const val INSTALL_SETTLE_MS = 1_500L
-        /** Per-repo cap for the three home rows; the three lists stay additive. */
+        /** Per-repo cap for the home rows; the lists stay additive. */
         internal const val RECENT_PER_SOURCE_LIMIT = 20
         internal const val CAROUSEL_LIMIT = 20
         internal const val PLAY_CLUSTER_LIMIT = 4

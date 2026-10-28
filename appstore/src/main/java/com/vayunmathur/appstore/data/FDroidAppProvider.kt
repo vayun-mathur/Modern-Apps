@@ -10,7 +10,10 @@ import kotlinx.coroutines.withContext
  *
  * The whole catalogue is imported (newest version of every app). For repositories that
  * support it, F-Droid's reproducibility feed ([ReproducibleBuilds]) is consulted only to
- * badge versions independently reproduced bit-for-bit. That feed is best-effort; signed-index
+ * badge versions independently reproduced bit-for-bit. IzzyOnDroid is the exception:
+ * it ships developers' own binaries, so its rbtlog feed ([IzzyReproducibleBuilds]) is
+ * an admission gate — versions no independent builder reproduced are dropped, and a
+ * failed feed fetch imports nothing. Either feed is best-effort; signed-index
  * verification always fails closed, so unauthenticated hashes and signer keys never replace
  * cached rows.
  */
@@ -27,11 +30,24 @@ class FDroidAppProvider(
 
     /** Refresh [descriptor] and replace only that repository's cached rows. */
     suspend fun syncIntoDb(): Int = withContext(Dispatchers.IO) {
-        val result = try {
+        var result = try {
             fetchVerifiedIndex()
         } catch (expected: Exception) {
             Log.status(TAG, "sync of ${descriptor.displayName} failed", expected)
             throw expected
+        }
+        // Izzy ships developers' own binaries rather than source builds, so only
+        // versions an independent builder reproduced bit-for-bit are listed at
+        // all (issue #492). The feed callback above only badges; the gate is here.
+        // A failed feed fetch imports nothing rather than everything unfiltered.
+        if (descriptor.source == AppSource.IZZY) {
+            val kept = result.apps.filter { it.reproducible }
+            Log.status(
+                TAG,
+                "sync of ${descriptor.displayName}: kept ${kept.size} of " +
+                    "${result.apps.size} apps with reproduced builds"
+            )
+            result = result.copy(apps = kept)
         }
         Log.status(
             TAG,
@@ -62,6 +78,13 @@ class FDroidAppProvider(
         } else {
             null
         }
+        // Izzy ships developers' own binaries, so unverified versions are dropped outright
+        // rather than badged: a failed feed fetch then imports nothing, never everything.
+        val izzyVerified = if (descriptor.source == AppSource.IZZY) {
+            runCatching { IzzyReproducibleBuilds.fetch(appContext) }.getOrNull()
+        } else {
+            null
+        }
         var reproduced = 0
         val result = FDroidRepository.fetchRepoIndex(
             context = appContext,
@@ -69,10 +92,16 @@ class FDroidAppProvider(
             pinnedFingerprint = descriptor.pinnedFingerprint,
             source = descriptor.source,
         ) { pkg, versionCode ->
-            val ok = descriptor.supportsReproducibilityFeed &&
-                verified?.contains(pkg, versionCode) == true
-            if (ok) reproduced++
-            ok
+            if (descriptor.source == AppSource.IZZY) {
+                val ok = IzzyReproducibleBuilds.admits(izzyVerified, pkg, versionCode)
+                if (ok) reproduced++
+                ok
+            } else {
+                val ok = descriptor.supportsReproducibilityFeed &&
+                    verified?.contains(pkg, versionCode) == true
+                if (ok) reproduced++
+                ok
+            }
         }
         lastReproducibleCount = reproduced
         return result

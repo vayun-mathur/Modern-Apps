@@ -45,6 +45,7 @@ enum class SourceFilter(val source: AppSource?) {
     MODERN_APPS(AppSource.MODERN_APPS),
     PROPRIETARY(AppSource.PROPRIETARY),
     FDROID(AppSource.FDROID),
+    IZZY(AppSource.IZZY),
     PLAYSTORE(AppSource.PLAYSTORE),
     ACCRESCENT(AppSource.ACCRESCENT),
 }

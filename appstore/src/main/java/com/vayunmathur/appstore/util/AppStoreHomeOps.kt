@@ -27,8 +27,9 @@ internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enable
     isLoadingHomeFlow.value = true
     val modernEnabled = AppSource.MODERN_APPS in enabled
     val fdroidEnabled = AppSource.FDROID in enabled
+    val izzyEnabled = AppSource.IZZY in enabled
     val proprietaryEnabled = AppSource.PROPRIETARY in enabled
-    if (modernEnabled || fdroidEnabled || proprietaryEnabled) {
+    if (modernEnabled || fdroidEnabled || izzyEnabled || proprietaryEnabled) {
         modernRecentFlow.value = if (modernEnabled) {
             catalog.recentlyUpdatedBySource(AppSource.MODERN_APPS, RECENT_PER_SOURCE_LIMIT)
         } else {
@@ -36,6 +37,11 @@ internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enable
         }
         fdroidRecentFlow.value = if (fdroidEnabled) {
             catalog.recentlyUpdatedBySource(AppSource.FDROID, RECENT_PER_SOURCE_LIMIT)
+        } else {
+            emptyList()
+        }
+        izzyRecentFlow.value = if (izzyEnabled) {
+            catalog.recentlyUpdatedBySource(AppSource.IZZY, RECENT_PER_SOURCE_LIMIT)
         } else {
             emptyList()
         }
@@ -47,10 +53,12 @@ internal suspend fun AppStoreViewModel.loadHome(enabled: Set<AppSource> = enable
     } else {
         modernRecentFlow.value = emptyList()
         fdroidRecentFlow.value = emptyList()
+        izzyRecentFlow.value = emptyList()
         proprietaryRecentFlow.value = emptyList()
     }
     recentlyUpdatedFlow.value =
-        modernRecentFlow.value + proprietaryRecentFlow.value + fdroidRecentFlow.value
+        modernRecentFlow.value + proprietaryRecentFlow.value + fdroidRecentFlow.value +
+            izzyRecentFlow.value
 
     if (AppSource.PLAYSTORE !in enabled) {
         isLoadingHomeFlow.value = false
@@ -92,6 +100,7 @@ internal fun AppStoreViewModel.buildSections(
     modernRecent: List<UnifiedApp>,
     proprietaryRecent: List<UnifiedApp>,
     fdroidRecent: List<UnifiedApp>,
+    izzyRecent: List<UnifiedApp>,
     playSections: List<AppSection>,
     accrescent: List<UnifiedApp>,
     categoryApps: List<UnifiedApp>,
@@ -163,6 +172,16 @@ internal fun AppStoreViewModel.buildSections(
             )
         )
     }
+    if (izzyRecent.isNotEmpty()) {
+        add(
+            AppSection(
+                id = "izzy-recent",
+                title = context.getString(R.string.section_izzy_recent),
+                apps = izzyRecent,
+                subtitle = context.getString(R.string.section_izzy_recent_subtitle),
+            )
+        )
+    }
 }
 
 /**
@@ -179,10 +198,11 @@ internal fun AppStoreViewModel.buildSections(
  */
 internal fun AppStoreViewModel.syncIfNeverSynced(enabled: Set<AppSource>) {
     if (recentlyUpdatedFlow.value.isNotEmpty()) return
-    // Nothing to fetch if all three offline sources are switched off; syncSources() would only
+    // Nothing to fetch if all four offline sources are switched off; syncSources() would only
     // report "all sources off" at someone who never asked for a sync.
     val offlineSources = setOf(
-        DefaultRepos.FDROID.source, DefaultRepos.MODERN_APPS.source, DefaultRepos.PROPRIETARY.source
+        DefaultRepos.FDROID.source, DefaultRepos.MODERN_APPS.source, DefaultRepos.PROPRIETARY.source,
+        DefaultRepos.IZZY.source,
     )
     if (enabled.intersect(offlineSources).isEmpty()) return
     syncSources()
@@ -212,6 +232,8 @@ fun AppStoreViewModel.openBrowse(section: AppSection) {
                 catalog.allBySource(AppSource.PROPRIETARY)
             section.id == "fdroid-recent" ->
                 catalog.allBySource(AppSource.FDROID)
+            section.id == "izzy-recent" ->
+                catalog.allBySource(AppSource.IZZY)
             section.id == "accrescent" ->
                 accrescent.allListings()
             else ->
@@ -236,6 +258,7 @@ fun AppStoreViewModel.syncSources() {
             statusMessageFlow.value = context.getString(
                 when (step) {
                     SyncStep.FDROID -> R.string.sync_step_fdroid
+                    SyncStep.IZZY -> R.string.sync_step_izzy
                     SyncStep.MODERN_APPS -> R.string.sync_step_modern_apps
                     SyncStep.PROPRIETARY -> R.string.sync_step_proprietary
                 }
@@ -250,12 +273,14 @@ fun AppStoreViewModel.syncSources() {
                 !report.anyFailed -> context.getString(
                     R.string.sync_done,
                     (report.fdroidCount ?: 0) + (report.modernCount ?: 0) +
-                        (report.proprietaryCount ?: 0),
+                        (report.proprietaryCount ?: 0) + (report.izzyCount ?: 0),
                 )
                 report.fdroidCount == null && report.modernCount == null &&
-                    report.proprietaryCount == null ->
+                    report.proprietaryCount == null && report.izzyCount == null ->
                     context.getString(R.string.sync_failed_all)
                 report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
+                report.izzyCount == null && AppSource.IZZY in enabled ->
+                    context.getString(R.string.sync_failed_izzy)
                 report.proprietaryCount == null ->
                     context.getString(R.string.sync_failed_proprietary)
                 else -> context.getString(R.string.sync_failed_modern_apps)

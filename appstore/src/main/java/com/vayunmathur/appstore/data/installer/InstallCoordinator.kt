@@ -239,7 +239,10 @@ class InstallCoordinator(
                     requiredSigners = app.expectedSigners.toSet(),
                     expectedSha256 = app.apkSha256
                         ?.let { mapOf("${app.packageName}.apk" to it) } ?: emptyMap(),
-                    signerOrigin = "F-Droid's signed app list",
+                    signerOrigin = when (app.source) {
+                        AppSource.IZZY -> "IzzyOnDroid's signed app list"
+                        else -> "F-Droid's signed app list"
+                    },
                     requireTvCompatible = isTv,
                 )
             }

@@ -24,7 +24,7 @@ data class StoreRule(
  *
  * These live here rather than being repeated on each profile so that a profile card only
  * ever describes what is *distinctive* about that source. If something is true of all
- * three, it belongs in this list.
+ * of them, it belongs in this list.
  */
 object StoreGuarantees {
 
@@ -79,6 +79,14 @@ enum class TrustProfile {
      */
     FDROID,
 
+    /**
+     * IzzyOnDroid, from the one hard-pinned repository. Only versions an independent
+     * verification builder rebuilt bit-for-bit from published source are listed at
+     * all — reproducibility is the admission gate, since Izzy ships the developers'
+     * own binaries rather than source builds.
+     */
+    IZZY,
+
     /** Google Play, via an anonymous account. */
     PLAY,
 
@@ -102,6 +110,7 @@ enum class TrustProfile {
         get() = when (this) {
             MODERN_APPS -> R.string.trust_modern_apps_title
             FDROID -> R.string.source_chip_fdroid
+            IZZY -> R.string.source_chip_izzy
             PLAY -> R.string.trust_play_title
             ACCRESCENT -> R.string.source_chip_accrescent
             PROPRIETARY -> R.string.source_chip_proprietary
@@ -113,6 +122,7 @@ enum class TrustProfile {
         get() = when (this) {
             MODERN_APPS -> R.string.trust_modern_apps_summary
             FDROID -> R.string.trust_fdroid_summary
+            IZZY -> R.string.trust_izzy_summary
             PLAY -> R.string.trust_play_summary
             ACCRESCENT -> R.string.trust_accrescent_summary
             PROPRIETARY -> R.string.trust_proprietary_summary
@@ -129,6 +139,11 @@ enum class TrustProfile {
                 R.string.trust_fdroid_practice_source,
                 R.string.trust_fdroid_practice_rebuild,
                 R.string.trust_fdroid_practice_antifeatures,
+            )
+            IZZY -> listOf(
+                R.string.trust_izzy_practice_binaries,
+                R.string.trust_izzy_practice_reproduced,
+                R.string.trust_izzy_practice_screened,
             )
             PLAY -> listOf(
                 R.string.trust_play_practice_identity,
@@ -162,6 +177,12 @@ enum class TrustProfile {
                 R.string.trust_fdroid_check_rebuilt,
                 R.string.trust_fdroid_check_hash_and_key,
             )
+            IZZY -> listOf(
+                R.string.trust_izzy_check_index_signed,
+                R.string.trust_izzy_check_chained,
+                R.string.trust_izzy_check_reproduced,
+                R.string.trust_izzy_check_hash_and_key,
+            )
             PLAY -> listOf(
                 R.string.trust_play_check_hash,
                 R.string.trust_play_check_key,
@@ -184,6 +205,7 @@ enum class TrustProfile {
         get() = when (this) {
             MODERN_APPS -> R.string.trust_modern_apps_limits
             FDROID -> R.string.trust_fdroid_limits
+            IZZY -> R.string.trust_izzy_limits
             PLAY -> R.string.trust_play_limits
             ACCRESCENT -> R.string.trust_accrescent_limits
             PROPRIETARY -> R.string.trust_proprietary_limits
@@ -195,6 +217,9 @@ enum class TrustProfile {
             // The whole F-Droid catalogue is listed; whether a given version was reproduced
             // is shown per-app as a badge (see UnifiedApp.reproducible).
             AppSource.FDROID -> FDROID
+            // Only reproduced Izzy versions are ever listed, so every Izzy row carries
+            // the badge — the gate is the profile's distinctive fact, not the badge.
+            AppSource.IZZY -> IZZY
             AppSource.PLAYSTORE -> PLAY
             // Accrescent apps are signed by their developers, not by Accrescent; trust is the
             // ed25519-signed allowlist that pins each app's signing certificate + min version.

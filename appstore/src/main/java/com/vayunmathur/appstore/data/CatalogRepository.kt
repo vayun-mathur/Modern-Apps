@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 
 /** Which source a sync run is currently working on, for a progress line. */
-enum class SyncStep { FDROID, MODERN_APPS, PROPRIETARY }
+enum class SyncStep { FDROID, MODERN_APPS, PROPRIETARY, IZZY }
 
 /** What one sync run managed to do, per source. */
 data class SyncReport(
@@ -20,13 +20,16 @@ data class SyncReport(
     val fdroidReproducible: Int = 0,
     val modernCount: Int? = null,
     val proprietaryCount: Int? = null,
+    /** How many Izzy apps passed the reproducible-build gate this sync. */
+    val izzyCount: Int? = null,
     /** Sources the user has switched off, which this run skipped rather than attempted. */
     val skipped: Set<AppSource> = emptySet(),
 ) {
     val anyFailed: Boolean
         get() = (AppSource.FDROID !in skipped && fdroidCount == null) ||
             (AppSource.MODERN_APPS !in skipped && modernCount == null) ||
-            (AppSource.PROPRIETARY !in skipped && proprietaryCount == null)
+            (AppSource.PROPRIETARY !in skipped && proprietaryCount == null) ||
+            (AppSource.IZZY !in skipped && izzyCount == null)
 
     /** True when every offline source is switched off, so there was nothing to sync. */
     val allSkipped: Boolean
@@ -54,6 +57,7 @@ class CatalogRepository(
     private val fdroidProvider = FDroidAppProvider(db, appContext, DefaultRepos.FDROID)
     private val modernProvider = FDroidAppProvider(db, appContext, DefaultRepos.MODERN_APPS)
     private val proprietaryProvider = FDroidAppProvider(db, appContext, DefaultRepos.PROPRIETARY)
+    private val izzyProvider = FDroidAppProvider(db, appContext, DefaultRepos.IZZY)
 
     /**
      * Whether this device is a TV. Read once: the leanback feature set cannot change
@@ -215,7 +219,10 @@ class CatalogRepository(
      * every app in this repo is also on F-Droid, and the copy signed with this store's own
      * key is the one that can be verified end to end. Proprietary goes between F-Droid
      * and Modern Apps: its allowlist is curated to avoid F-Droid overlap, and nothing
-     * outranks a first-party row.
+     * outranks a first-party row. Izzy goes before F-Droid: an Izzy row means an
+     * independent builder reproduced that exact binary, which is a stronger statement
+     * than an F-Droid source build — but its developer-held signing key must not
+     * displace a first-party row.
      *
      * Each source is independent: one failing leaves the other's rows updated and its own
      * previous rows untouched, rather than aborting the whole run.
@@ -229,6 +236,13 @@ class CatalogRepository(
     ): SyncReport = withContext(Dispatchers.IO) {
         ensureDefaultRepos()
         purgeDisabled(enabled)
+
+        val izzy = if (DefaultRepos.IZZY.source in enabled) {
+            onProgress(SyncStep.IZZY)
+            runCatching { izzyProvider.syncIntoDb() }.getOrNull()
+        } else {
+            null
+        }
 
         val fdroid = if (DefaultRepos.FDROID.source in enabled) {
             onProgress(SyncStep.FDROID)
@@ -256,6 +270,7 @@ class CatalogRepository(
             fdroidReproducible = fdroidProvider.lastReproducibleCount,
             modernCount = modern,
             proprietaryCount = proprietary,
+            izzyCount = izzy,
             skipped = DefaultRepos.ALL.mapNotNullTo(mutableSetOf()) {
                 it.source.takeIf { source -> source !in enabled }
             },

@@ -24,6 +24,7 @@
     <!-- Source chips. Factual labels; the sources are not ranked. -->
     <string name="source_chip_modern_apps" translatable="false">Modern Apps</string>
     <string name="source_chip_fdroid">F-Droid</string>
+    <string name="source_chip_izzy">IzzyOnDroid</string>
     <string name="source_chip_play">Play Store</string>
     <string name="source_chip_accrescent">Accrescent</string>
     <string name="source_chip_proprietary">Proprietary</string>
@@ -44,6 +45,8 @@
     <string name="section_proprietary_recent_subtitle">The newest builds from the Play mirror</string>
     <string name="section_fdroid_recent">New on F-Droid</string>
     <string name="section_fdroid_recent_subtitle">The newest builds on F-Droid</string>
+    <string name="section_izzy_recent">New on IzzyOnDroid</string>
+    <string name="section_izzy_recent_subtitle">The newest reproduced builds on IzzyOnDroid</string>
     <string name="section_category_subtitle">Apps from the offline catalogue in this category</string>
     <string name="section_accrescent">On Accrescent</string>
     <string name="section_accrescent_subtitle">Developer-signed apps from Accrescent\'s signed app list</string>
@@ -53,11 +56,13 @@
     <string name="updates_banner_subtitle">Tap to review and install</string>
     <string name="sync_in_progress">Syncing…</string>
     <string name="sync_step_fdroid">Checking F-Droid builds…</string>
+    <string name="sync_step_izzy">Checking IzzyOnDroid builds…</string>
     <string name="sync_step_modern_apps">Checking Modern Apps…</string>
     <string name="sync_step_proprietary">Checking proprietary mirror…</string>
     <string name="sync_done">Catalogue updated — %1$d apps</string>
     <string name="sync_failed_all">No source would sync. Your existing catalogue is unchanged.</string>
     <string name="sync_failed_fdroid">F-Droid didn\'t sync. Its existing apps are unchanged.</string>
+    <string name="sync_failed_izzy">IzzyOnDroid didn\'t sync. Its existing apps are unchanged.</string>
     <string name="sync_failed_modern_apps">Modern Apps didn\'t sync. Its existing apps are unchanged.</string>
     <string name="sync_failed_proprietary">The proprietary mirror didn\'t sync. Its existing apps are unchanged.</string>
     <!-- Message after tapping Sync sources with every source switched off. -->
@@ -181,11 +186,11 @@
     <string name="store_rule_updates_stay_title">Updates stay with this store</string>
     <string name="store_rule_updates_stay_detail">Nothing else on your phone can quietly replace an app you installed here.</string>
     <string name="store_rule_fixed_sources_title">Sources are fixed</string>
-    <string name="store_rule_fixed_sources_detail">The three sources below are built in and you cannot add more. Nothing above could be promised for a repo you added yourself.</string>
+    <string name="store_rule_fixed_sources_detail">The sources below are built in and you cannot add more. Nothing above could be promised for a repo you added yourself.</string>
 
     <!-- How each source is checked. Deliberately not a ranking. -->
     <string name="trust_page_title">How apps are checked</string>
-    <string name="trust_intro">The three sources here protect you in different ways, and none of them is simply the safest. Each card says what the source does itself, what this app checks on the download, and where that source is weaker than the others.</string>
+    <string name="trust_intro">The sources here protect you in different ways, and none of them is simply the safest. Each card says what the source does itself, what this app checks on the download, and where that source is weaker than the others.</string>
     <string name="trust_every_app">True of every app here</string>
     <string name="trust_every_app_detail">These hold wherever the app came from. Each source adds its own on top.</string>
     <string name="trust_heading_source_does">What the source does</string>
@@ -217,6 +222,15 @@
     <string name="trust_fdroid_check_rebuilt">Versions F-Droid\'s second build server reproduced bit-for-bit are badged as reproducible</string>
     <string name="trust_fdroid_check_hash_and_key">The hash and the signing key both come from the signed list</string>
     <string name="trust_fdroid_limits">F-Droid holds the signing key, not the developer, so its build servers can sign anything. Nobody checks what an app does, only that it matches its source. Updates wait to be rebuilt, which can take days or weeks, security fixes included.</string>
+    <string name="trust_izzy_summary">Developer-built apps, listed only when an independent builder reproduced the exact version bit-for-bit from published source.</string>
+    <string name="trust_izzy_practice_binaries">Apps are the developers\' own signed builds, taken from their release pages</string>
+    <string name="trust_izzy_practice_reproduced">Independent verification builders rebuild each covered version from its published source tag and compare the result byte for byte</string>
+    <string name="trust_izzy_practice_screened">Listings are screened and badged with the result, visible in this store as a reproducible badge</string>
+    <string name="trust_izzy_check_index_signed">IzzyOnDroid\'s app list is signed, and checked against a key built into this store</string>
+    <string name="trust_izzy_check_chained">Every entry in that list is chained back to the signature</string>
+    <string name="trust_izzy_check_reproduced">Only versions an independent builder reproduced bit-for-bit are listed at all</string>
+    <string name="trust_izzy_check_hash_and_key">The hash and the signing key both come from the signed list</string>
+    <string name="trust_izzy_limits">The signing key belongs to the developer, so a reproduced build still trusts that developer\'s release pipeline — the rebuild only proves the binary matches the published source. Versions no builder has covered are not offered here. Nobody scans what an app does.</string>
     <string name="trust_play_title">Google Play</string>
     <string name="trust_play_summary">Reviewed, scanned and signed by Google, who verify who the developer is and can pull an app from every phone at once.</string>
     <string name="trust_play_practice_identity">Developers have to prove who they are, with a real name and address on file</string>
@@ -250,6 +264,7 @@
     <string name="source_modern_apps" translatable="false">Modern Apps</string>
     <string name="source_modern_apps_pin">Pinned to this app\'s own signing key</string>
     <string name="source_fdroid_pin">Pinned to F-Droid\'s app list signing key</string>
+    <string name="source_izzy_pin">Pinned to IzzyOnDroid\'s app list signing key</string>
     <string name="source_play">Play Store (anonymous)</string>
     <string name="source_play_pin">Nothing to pin: Google holds the signing key</string>
     <string name="source_accrescent_pin">Pinned to Accrescent\'s repodata signing key (ed25519)</string>

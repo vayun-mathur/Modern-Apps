@@ -44,7 +44,7 @@ import com.vayunmathur.library.util.sharedCrop
 import java.util.Locale
 
 /**
- * The app icon, from whichever of the three places actually has one.
+ * The icon, from whichever of the places actually has one.
  *
  * A locally installed app has a real launcher icon in PackageManager, which beats
  * re-downloading the listing's copy; a catalogue entry has a URL; a Play cluster row
@@ -102,6 +102,7 @@ fun SourceChip(source: AppSource, modifier: Modifier = Modifier) {
         when (source) {
             AppSource.MODERN_APPS -> R.string.source_chip_modern_apps
             AppSource.FDROID -> R.string.source_chip_fdroid
+            AppSource.IZZY -> R.string.source_chip_izzy
             AppSource.PLAYSTORE -> R.string.source_chip_play
             AppSource.ACCRESCENT -> R.string.source_chip_accrescent
             AppSource.PROPRIETARY -> R.string.source_chip_proprietary

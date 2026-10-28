@@ -9,6 +9,14 @@ enum class AppSource {
     PLAYSTORE,
 
     /**
+     * IzzyOnDroid (apt.izzysoft.de/fdroid/repo). Ships the developers' own signed
+     * binaries (not source-built), so only apps whose advertised version an
+     * independent verification builder rebuilt bit-for-bit are listed — see
+     * [com.vayunmathur.appstore.data.IzzyReproducibleBuilds]. Off by default.
+     */
+    IZZY,
+
+    /**
      * Accrescent (accrescent.app). Listings and per-device split download URLs come from
      * Accrescent's gRPC API (appstore-api.accrescent.app); the trust anchor is a separate
      * ed25519-signed allowlist (repo.accrescent.app/repodata) that records each app's expected
@@ -43,12 +51,12 @@ enum class AppSource {
          * signed with this store's own key.
          */
         val PRIORITY: List<AppSource> =
-            listOf(MODERN_APPS, PROPRIETARY, FDROID, ACCRESCENT, PLAYSTORE)
+            listOf(MODERN_APPS, PROPRIETARY, FDROID, IZZY, ACCRESCENT, PLAYSTORE)
 
         /**
          * Sources the user may switch off, in the order the sources screen lists them.
          */
-        val TOGGLEABLE: List<AppSource> = listOf(MODERN_APPS, PROPRIETARY, FDROID, PLAYSTORE, ACCRESCENT)
+        val TOGGLEABLE: List<AppSource> = listOf(MODERN_APPS, PROPRIETARY, FDROID, IZZY, PLAYSTORE, ACCRESCENT)
     }
 }
 
@@ -76,8 +84,11 @@ data class UnifiedApp(
     val targetSdk: Int? = null,
     /**
      * True when this exact version (packageName + versionCode) was independently
-     * reproduced bit-for-bit by F-Droid's verification server. F-Droid only; a badge,
-     * not a gate — apps are listed regardless. See [com.vayunmathur.appstore.data.ReproducibleBuilds].
+     * reproduced bit-for-bit: by F-Droid's verification server for F-Droid rows, or
+     * by an rbtlog verification builder for IzzyOnDroid rows (where it is also the
+     * admission gate — see [com.vayunmathur.appstore.data.IzzyReproducibleBuilds]).
+     * A badge, not a gate, for F-Droid — apps are listed regardless. See
+     * [com.vayunmathur.appstore.data.ReproducibleBuilds].
      */
     val reproducible: Boolean = false,
     val license: String? = null,
@@ -199,12 +210,15 @@ data class RepoDescriptor(
 /**
  * The only repositories this store will talk to.
  *
- * Third-party F-Droid-format repos (IzzyOnDroid and friends) are deliberately not
+ * Third-party F-Droid-format repos beyond what's listed here are deliberately not
  * supported and cannot be added: they republish binaries built by the upstream developer
  * rather than building from source, so an app from one carries the developer's release
  * pipeline *and* the mirror operator in its trusted set, with no published source to
- * check the binary against. The f-droid.org archive is excluded for a different reason:
- * it exists to serve superseded versions, which is the opposite of what we want.
+ * check the binary against. IzzyOnDroid is the controlled exception: it is only listed
+ * with its reproducible-builds gate (see [IZZY]), so every app offered from it has had
+ * its binary independently rebuilt from published source. The f-droid.org archive is
+ * excluded for a different reason: it exists to serve superseded versions, which is
+ * the opposite of what we want.
  *
  * [PROPRIETARY] is the deliberate exception to the no-mirror rule: it is operated by
  * the same party that ships this store (not a third party), serves only an explicit
@@ -242,7 +256,16 @@ object DefaultRepos {
         supportsReproducibilityFeed = false,
     )
 
-    val ALL: List<RepoDescriptor> = listOf(FDROID, MODERN_APPS, PROPRIETARY)
+    val IZZY = RepoDescriptor(
+        url = "https://apt.izzysoft.de/fdroid/repo",
+        displayName = "IzzyOnDroid",
+        pinnedFingerprint =
+            "3bf0d6abfeae2f401707b6d966be743bf0eee49c2561b9ba39073711f628937a",
+        source = AppSource.IZZY,
+        supportsReproducibilityFeed = false,
+    )
+
+    val ALL: List<RepoDescriptor> = listOf(FDROID, MODERN_APPS, PROPRIETARY, IZZY)
 
     /** Cache key written by the retired GitHub releases provider. */
     const val LEGACY_MODERN_APPS_REPO_KEY = "https://github.com/vayun-mathur/Modern-Apps"

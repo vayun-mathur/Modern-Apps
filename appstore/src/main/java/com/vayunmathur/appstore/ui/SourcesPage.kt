@@ -95,6 +95,12 @@ fun SourcesPage(
                 onEnabledChange = { viewModel.setSourceEnabled(AppSource.FDROID, it) },
             )
             SourceCard(
+                title = stringResource(R.string.source_chip_izzy),
+                subtitle = DefaultRepos.IZZY.url,
+                enabled = AppSource.IZZY in enabledSources,
+                onEnabledChange = { viewModel.setSourceEnabled(AppSource.IZZY, it) },
+            )
+            SourceCard(
                 title = stringResource(R.string.source_chip_proprietary),
                 subtitle = DefaultRepos.PROPRIETARY.url,
                 enabled = AppSource.PROPRIETARY in enabledSources,

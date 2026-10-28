@@ -341,12 +341,13 @@ class TvStoreViewModel(
         val enabled = enabledSourcesFlow.value
         val offlineSources = setOf(
             DefaultRepos.FDROID.source, DefaultRepos.MODERN_APPS.source,
-            DefaultRepos.PROPRIETARY.source,
+            DefaultRepos.PROPRIETARY.source, DefaultRepos.IZZY.source,
         )
         if (enabled.intersect(offlineSources).isEmpty()) return
         if (catalog.recentlyUpdatedBySource(AppSource.FDROID, 1).isNotEmpty() ||
             catalog.recentlyUpdatedBySource(AppSource.MODERN_APPS, 1).isNotEmpty() ||
-            catalog.recentlyUpdatedBySource(AppSource.PROPRIETARY, 1).isNotEmpty()
+            catalog.recentlyUpdatedBySource(AppSource.PROPRIETARY, 1).isNotEmpty() ||
+            catalog.recentlyUpdatedBySource(AppSource.IZZY, 1).isNotEmpty()
         ) {
             // The offline gate stays quiet, but Accrescent is network-backed: refresh its
             // allowlist + listings on every cold start that reaches this far, same as the phone.
@@ -358,6 +359,7 @@ class TvStoreViewModel(
             statusMessageFlow.value = context.getString(
                 when (step) {
                     SyncStep.FDROID -> R.string.sync_step_fdroid
+                    SyncStep.IZZY -> R.string.sync_step_izzy
                     SyncStep.MODERN_APPS -> R.string.sync_step_modern_apps
                     SyncStep.PROPRIETARY -> R.string.sync_step_proprietary
                 },
@@ -371,12 +373,14 @@ class TvStoreViewModel(
                 !report.anyFailed -> context.getString(
                     R.string.sync_done,
                     (report.fdroidCount ?: 0) + (report.modernCount ?: 0) +
-                        (report.proprietaryCount ?: 0),
+                        (report.proprietaryCount ?: 0) + (report.izzyCount ?: 0),
                 )
                 report.fdroidCount == null && report.modernCount == null &&
-                    report.proprietaryCount == null ->
+                    report.proprietaryCount == null && report.izzyCount == null ->
                     context.getString(R.string.sync_failed_all)
                 report.fdroidCount == null -> context.getString(R.string.sync_failed_fdroid)
+                report.izzyCount == null && AppSource.IZZY in enabled ->
+                    context.getString(R.string.sync_failed_izzy)
                 report.proprietaryCount == null ->
                     context.getString(R.string.sync_failed_proprietary)
                 else -> context.getString(R.string.sync_failed_modern_apps)
@@ -439,22 +443,7 @@ class TvStoreViewModel(
                             }
                     }
                 }
-                if (AppSource.PROPRIETARY in enabled) {
-                    catalog.recentlyUpdatedBySource(AppSource.PROPRIETARY, ROW_LIMIT)
-                        .takeIf { it.isNotEmpty() }?.let {
-                            add(
-                                TvSection(
-                                    id = "proprietary-recent",
-                                    title = context.getString(R.string.section_proprietary_recent),
-                                    subtitle = context.getString(
-                                        R.string.section_proprietary_recent_subtitle
-                                    ),
-                                    source = AppSource.PROPRIETARY,
-                                    apps = it,
-                                )
-                            )
-                        }
-                }
+                addAll(offlineRows(enabled, ROW_LIMIT))
                 if (AppSource.PLAYSTORE in enabled) {
                     val clusters = play.homeClusters().filter { it.apps.isNotEmpty() }
                         .take(CLUSTER_LIMIT)
@@ -485,20 +474,6 @@ class TvStoreViewModel(
                             )
                         }
                     }
-                }
-                if (AppSource.FDROID in enabled) {
-                    catalog.recentlyUpdatedBySource(AppSource.FDROID, ROW_LIMIT)
-                        .takeIf { it.isNotEmpty() }?.let {
-                            add(
-                                TvSection(
-                                    id = "fdroid-recent",
-                                    title = context.getString(R.string.section_fdroid_recent),
-                                    subtitle = context.getString(R.string.section_fdroid_recent_subtitle),
-                                    source = AppSource.FDROID,
-                                    apps = it,
-                                )
-                            )
-                        }
                 }
                 if (AppSource.ACCRESCENT in enabled) {
                     accrescentAppsFlow.value.take(ROW_LIMIT).takeIf { it.isNotEmpty() }?.let {

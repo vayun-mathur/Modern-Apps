@@ -168,6 +168,7 @@ internal fun UnifiedApp.tvSourceLabel(): String = stringResource(
     when (source) {
         AppSource.MODERN_APPS -> R.string.source_chip_modern_apps
         AppSource.FDROID -> R.string.source_chip_fdroid
+        AppSource.IZZY -> R.string.source_chip_izzy
         AppSource.PLAYSTORE -> R.string.source_chip_play
         AppSource.ACCRESCENT -> R.string.source_chip_accrescent
         AppSource.PROPRIETARY -> R.string.source_chip_proprietary

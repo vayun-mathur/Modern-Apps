@@ -19,6 +19,59 @@ import kotlinx.coroutines.launch
 // Moved from TvStoreViewModel.kt (FileLength split); behavior identical.
 
 /**
+ * The offline catalogue rows that are all the same shape: recent builds with a title
+ * and subtitle, no fallback. Modern Apps is not here — its home row falls back to an
+ * A-Z slice when nothing is recent, so it stays inline in `loadHome`.
+ */
+internal suspend fun TvStoreViewModel.offlineRows(enabled: Set<AppSource>, limit: Int): List<TvSection> =
+    buildList {
+        for (row in OFFLINE_ROWS) {
+            if (row.source in enabled) {
+                catalog.recentlyUpdatedBySource(row.source, limit)
+                    .takeIf { it.isNotEmpty() }?.let {
+                        add(
+                            TvSection(
+                                id = row.sectionId,
+                                title = context.getString(row.titleRes),
+                                subtitle = context.getString(row.subtitleRes),
+                                source = row.source,
+                                apps = it,
+                            )
+                        )
+                    }
+            }
+        }
+    }
+
+private data class OfflineRow(
+    val source: AppSource,
+    val sectionId: String,
+    val titleRes: Int,
+    val subtitleRes: Int,
+)
+
+private val OFFLINE_ROWS = listOf(
+    OfflineRow(
+        AppSource.PROPRIETARY,
+        "proprietary-recent",
+        R.string.section_proprietary_recent,
+        R.string.section_proprietary_recent_subtitle,
+    ),
+    OfflineRow(
+        AppSource.FDROID,
+        "fdroid-recent",
+        R.string.section_fdroid_recent,
+        R.string.section_fdroid_recent_subtitle,
+    ),
+    OfflineRow(
+        AppSource.IZZY,
+        "izzy-recent",
+        R.string.section_izzy_recent,
+        R.string.section_izzy_recent_subtitle,
+    ),
+)
+
+/**
  * Two-wave search: the on-disk catalogues answer instantly, then Accrescent's cached
  * listings and Play's reply merge in. Mirrors the phone's `setSearchImpl`: the local
  * half is published first so the user never waits on the network to see something.

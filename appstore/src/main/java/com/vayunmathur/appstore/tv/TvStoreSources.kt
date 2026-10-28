@@ -96,6 +96,7 @@ private data class TvSourceRow(
 private val SOURCES_IN_ORDER = listOf(
     TvSourceRow(AppSource.MODERN_APPS, R.string.source_modern_apps, ModernAppsRepo.PROJECT_URL),
     TvSourceRow(AppSource.FDROID, R.string.source_chip_fdroid, DefaultRepos.FDROID.url),
+    TvSourceRow(AppSource.IZZY, R.string.source_chip_izzy, DefaultRepos.IZZY.url),
     TvSourceRow(
         AppSource.PROPRIETARY,
         R.string.source_chip_proprietary,
