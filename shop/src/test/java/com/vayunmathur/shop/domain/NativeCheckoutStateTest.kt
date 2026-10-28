@@ -1,7 +1,6 @@
 package com.vayunmathur.shop.domain
 
 import com.vayunmathur.shop.data.*
-import com.vayunmathur.shop.network.UcpService
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -14,13 +13,17 @@ class NativeCheckoutStateTest {
         var reads = 0
         var response: Result<UcpCheckout> = Result.success(NativeCheckoutFixtures.checkout())
         var gate: CompletableDeferred<Unit>? = null
-        override suspend fun resolve(shop: String, version: String?): Result<UcpService> = Result.success(NativeCheckoutFixtures.service())
-        override suspend fun mutate(service: UcpService, lines: List<CartLine>, inputs: CheckoutInputs, previous: UcpCheckout?, intent: String): Result<UcpCheckout> {
+        override suspend fun create(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, intent: String): Result<UcpCheckout> {
             intents += intent; sentInputs += inputs
             gate?.await()
             return response
         }
-        override suspend fun get(service: UcpService, id: String): Result<UcpCheckout> { reads++; return Result.success(NativeCheckoutFixtures.checkout(status = "ready_for_complete")) }
+        override suspend fun update(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, intent: String): Result<UcpCheckout> {
+            intents += intent; sentInputs += inputs
+            gate?.await()
+            return response
+        }
+        override suspend fun get(shop: String, sessionId: String): Result<UcpCheckout> { reads++; return Result.success(NativeCheckoutFixtures.checkout(status = "ready_for_complete")) }
     }
     private val lines = NativeCheckoutFixtures.lines
     private val stored = mutableListOf<PlacedOrder>()
@@ -156,7 +159,9 @@ class NativeCheckoutStateTest {
     }
 
     @Test fun staleMerchantLineItemsAreBrowserOnlyButPendingCartIsPreserved() = runBlocking {
-        val gateway = FakeGateway().apply { response = Result.success(NativeCheckoutFixtures.checkout(itemId = "stale-variant")) }
+        val gateway = FakeGateway().apply {
+            response = Result.success(NativeCheckoutFixtures.checkout(submitted = listOf(SubmittedLine("stale-variant", 2))))
+        }
         val coordinator = coordinator(gateway)
         coordinator.submit("generic", "shop.example", lines, sink)
         assertEquals(CheckoutPhase.BrowserRequired, coordinator.snapshot.single().phase)

@@ -1,10 +1,9 @@
 package com.vayunmathur.shop.domain
 
 import com.vayunmathur.shop.data.*
-import com.vayunmathur.shop.network.UcpCheckoutApi
-import com.vayunmathur.shop.network.UcpDiscovery
-import com.vayunmathur.shop.network.UcpHttpException
-import com.vayunmathur.shop.network.UcpService
+import com.vayunmathur.shop.network.ShopBackend
+import com.vayunmathur.shop.network.ShopBackendException
+import com.vayunmathur.shop.network.ShopHttpBackend
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import java.time.Instant
@@ -12,29 +11,33 @@ import java.util.UUID
 
 /** Deliberately has no completion operation. Tests never need a merchant or payment credentials. */
 internal interface NativeCheckoutGateway {
-    suspend fun resolve(shop: String, version: String? = null): Result<UcpService>
-    suspend fun mutate(service: UcpService, lines: List<CartLine>, inputs: CheckoutInputs, previous: UcpCheckout?, intent: String): Result<UcpCheckout>
-    suspend fun get(service: UcpService, id: String): Result<UcpCheckout>
+    suspend fun create(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, intent: String): Result<UcpCheckout>
+    suspend fun update(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, intent: String): Result<UcpCheckout>
+    suspend fun get(shop: String, sessionId: String): Result<UcpCheckout>
 }
 
-internal object MerchantCheckoutGateway : NativeCheckoutGateway {
-    override suspend fun resolve(shop: String, version: String?): Result<UcpService> = UcpDiscovery.resolve(shop, "dev.ucp.shopping.checkout", version)
-    override suspend fun mutate(service: UcpService, lines: List<CartLine>, inputs: CheckoutInputs, previous: UcpCheckout?, intent: String): Result<UcpCheckout> = UcpCheckoutApi.mutate(service, lines, inputs, previous, intent)
-    override suspend fun get(service: UcpService, id: String): Result<UcpCheckout> = UcpCheckoutApi.getCheckout(service, id)
+internal class ServerCheckoutGateway(
+    private val backend: ShopBackend = ShopHttpBackend,
+) : NativeCheckoutGateway {
+    override suspend fun create(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, intent: String): Result<UcpCheckout> =
+        backend.createCheckout(shop, lines, inputs, intent)
+    override suspend fun update(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, intent: String): Result<UcpCheckout> =
+        backend.updateCheckout(shop, sessionId, lines, inputs, intent)
+    override suspend fun get(shop: String, sessionId: String): Result<UcpCheckout> =
+        backend.getCheckout(shop, sessionId)
 }
 
 internal fun interface PendingCheckoutSink { suspend fun save(order: PlacedOrder) }
 
 /** Single-owner ephemeral state; mutex guards each merchant against overlapping writes and reads. */
 internal class NativeCheckoutCoordinator(
-    private val gateway: NativeCheckoutGateway = MerchantCheckoutGateway,
+    private val gateway: NativeCheckoutGateway = ServerCheckoutGateway(),
     private val now: () -> Long = System::currentTimeMillis,
     private val newIntent: () -> String = { UUID.randomUUID().toString() },
     private val changed: (List<NativeCheckoutState>) -> Unit = {},
 ) {
     private val states = linkedMapOf<Pair<String, String>, NativeCheckoutState>()
     private val locks = mutableMapOf<Pair<String, String>, Mutex>()
-    private val services = mutableMapOf<Pair<String, String>, UcpService>()
     private val createdAt = mutableMapOf<Pair<String, String>, Long>()
     val snapshot: List<NativeCheckoutState> get() = states.values.toList()
 
@@ -89,31 +92,26 @@ internal class NativeCheckoutCoordinator(
                 publish(key, state.copy(phase = CheckoutPhase.BrowserRequired, message = "Removing a submitted shipping address requires the merchant website.")); return
             }
             publish(key, state.copy(phase = if (previous == null) CheckoutPhase.Preparing else CheckoutPhase.Updating, message = null))
-            val service = services[key] ?: gateway.resolve(shop, previous?.version).getOrElse {
-                publish(key, state.copy(phase = CheckoutPhase.Error, message = "Merchant checkout discovery failed. Use the merchant website.")); return
-            }.also { services[key] = it }
-            if (service.version !in CheckoutProjection.versions || service.transport !in setOf("rest", "mcp")) {
-                publish(key, state.copy(phase = CheckoutPhase.BrowserRequired, message = "This merchant's checkout version or transport requires its website.")); return
-            }
-            // Validate everything before handing a write to the transport. No ambiguous failures are retried.
+            // The server builds the exact dated projection and owns the idempotency
+            // ledger: a write is attempted exactly once and never auto-retried.
             val sentInputs = if (previous == null) state.inputs.copy(street = "", extendedAddress = "", city = "", region = "", country = "", postalCode = "", options = emptyMap(), shippingRequested = false) else state.inputs
-            val projection = runCatching { CheckoutProjection.checkout(service.version, lines, sentInputs, previous, "dev.ucp.shopping.fulfillment" in service.capabilities) }
-            if (projection.isFailure) {
-                publish(key, state.copy(phase = CheckoutPhase.BrowserRequired, message = "The merchant's writable checkout requirements are unsupported. Use its website.")); return
-            }
             val intent = newIntent()
             mutationStarted = true
-            val checkout = gateway.mutate(service, lines.toList(), sentInputs, previous, intent).getOrElse {
-                val unsupported = (it as? UcpHttpException)?.error is UcpError.Unsupported
+            val checkout = (if (previous == null) gateway.create(shop, lines.toList(), sentInputs, intent)
+                else gateway.update(shop, previous.checkoutId, lines.toList(), sentInputs, intent)).getOrElse {
+                val unsupported = (it as? ShopBackendException)?.error is UcpError.Unsupported
                 publish(key, state.copy(phase = if (unsupported) CheckoutPhase.BrowserRequired else CheckoutPhase.Uncertain,
                     message = if (unsupported) "These requirements need the merchant website." else "The request may have reached the merchant. Do not retry; check the session or use its website."))
                 return
             }
-            if (previous != null && checkout.checkoutId != previous.checkoutId || checkout.version != service.version) {
+            if (previous != null && checkout.checkoutId != previous.checkoutId) {
                 publish(key, state.copy(phase = CheckoutPhase.Uncertain, message = "The merchant returned a different session. Do not retry.")); return
             }
             createdAt.putIfAbsent(key, now())
-            val responseMatchesCart = runCatching { CheckoutProjection.checkout(service.version, lines, sentInputs, checkout, "dev.ucp.shopping.fulfillment" in service.capabilities) }.isSuccess
+            val responseMatchesCart = checkout.submittedLines.size == lines.size &&
+                checkout.submittedLines.all { submitted ->
+                    lines.any { it.variantId == submitted.variantId && it.quantity == submitted.quantity }
+                }
             val reason = checkout.review.browserOnlyReason ?: if (!responseMatchesCart) "The merchant returned changed or unsupported line items. Review them on its website." else null
             val next = state.copy(checkout = checkout, submittedInputs = sentInputs, submittedLines = lines.toList(),
                 phase = if (expired(key, checkout)) CheckoutPhase.Expired else if (reason != null) CheckoutPhase.BrowserRequired else CheckoutPhase.Reviewing,
@@ -140,11 +138,13 @@ internal class NativeCheckoutCoordinator(
         try {
             val state = states[key] ?: return
             val checkout = state.checkout ?: return
-            val service = services[key] ?: return
-            val refreshed = gateway.get(service, checkout.checkoutId).getOrNull() ?: return
-            if (refreshed.checkoutId != checkout.checkoutId || refreshed.version != checkout.version) return
+            val refreshed = gateway.get(shop, checkout.checkoutId).getOrNull() ?: return
+            if (refreshed.checkoutId != checkout.checkoutId) return
             // A GET can show authoritative review but cannot prove that an uncertain write was applied.
-            val responseMatchesCart = runCatching { CheckoutProjection.checkout(service.version, state.submittedLines, state.submittedInputs ?: CheckoutInputs(), refreshed, "dev.ucp.shopping.fulfillment" in service.capabilities) }.isSuccess
+            val responseMatchesCart = refreshed.submittedLines.isEmpty() || (refreshed.submittedLines.size == state.submittedLines.size &&
+                refreshed.submittedLines.all { submitted ->
+                    state.submittedLines.any { it.variantId == submitted.variantId && it.quantity == submitted.quantity }
+                })
             val browserReason = refreshed.review.browserOnlyReason ?: if (!responseMatchesCart) "The merchant session's line items changed. Continue on its website." else null
             publish(key, state.copy(checkout = refreshed,
                 phase = if (state.phase == CheckoutPhase.Uncertain) CheckoutPhase.Uncertain else if (browserReason != null) CheckoutPhase.BrowserRequired else state.phase,

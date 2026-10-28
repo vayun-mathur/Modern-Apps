@@ -40,14 +40,15 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.shop.R
+import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.ProductVariant
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
 import com.vayunmathur.shop.domain.MerchantUrls
 import com.vayunmathur.shop.domain.MoneyFormat
-import com.vayunmathur.shop.network.UcpCatalog
-import com.vayunmathur.shop.network.UcpCheckoutApi
-import com.vayunmathur.shop.network.UcpHttpException
+import com.vayunmathur.shop.network.ShopBackend
+import com.vayunmathur.shop.network.ShopBackendException
+import com.vayunmathur.shop.network.ShopHttpBackend
 import com.vayunmathur.shop.platform.AppInit
 import com.vayunmathur.shop.platform.ShopViewModel
 import kotlinx.coroutines.CancellationException
@@ -62,6 +63,7 @@ fun ProductScreen(
     onBack: () -> Unit,
     onCheckout: () -> Unit,
 ) {
+    val backend: ShopBackend = ShopHttpBackend
     val context = LocalContext.current
     val messenger = rememberMessenger()
     var product by remember(variantId, platformId, shopDomain) {
@@ -97,9 +99,9 @@ fun ProductScreen(
                 failure = "The publishing store domain is missing. Cart actions are disabled."
             } else {
                 AppInit.awaitReady()
-                val platform = UcpCheckoutApi.platformFor(platformId)
-                UcpCatalog.refreshProduct(
-                    platform, publisherDomain, selectedVariant, snapshot?.id, selected?.selectedOptions.orEmpty(), snapshot?.title,
+                backend.getProduct(
+                    publisherDomain, snapshot?.id?.takeIf { it.isNotBlank() } ?: selectedVariant,
+                    selectedVariant, snapshot?.title, selected?.selectedOptions.orEmpty(),
                 ).fold(
                     onSuccess = { live ->
                         if (live.variants.none { it.id == selectedVariant }) {
@@ -124,7 +126,7 @@ fun ProductScreen(
                     },
                     onFailure = { error ->
                         if (error is CancellationException) throw error
-                        failure = (error as? UcpHttpException)?.error?.message()
+                        failure = (error as? ShopBackendException)?.error?.message()
                             ?: "Couldn't refresh this product from the publishing store. Check your connection and retry."
                     },
                 )
@@ -132,7 +134,7 @@ fun ProductScreen(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            failure = (error as? UcpHttpException)?.error?.message()
+            failure = (error as? ShopBackendException)?.error?.message()
                 ?: "Couldn't refresh this product from the publishing store. Check your connection and retry."
         } finally {
             refreshing = false
@@ -143,8 +145,9 @@ fun ProductScreen(
     val canAdd = verified && product?.checkoutEligible == true && selected?.available == true
     val addToCart: () -> Unit = {
         val current = product
-        if (canAdd && current != null) {
-            val cartProduct = current.copy(shopDomain = selected?.shopDomain?.takeIf { it.isNotBlank() } ?: current.shopDomain)
+        val liveVariant = current?.variants?.firstOrNull { it.id == selectedVariant }
+        if (canAdd && current != null && liveVariant != null) {
+            val cartProduct = current.copy(shopDomain = liveVariant.shopDomain.takeIf { it.isNotBlank() } ?: current.shopDomain)
             viewModel.addToCart(cartProduct, selectedVariant, quantity, context)
         }
     }

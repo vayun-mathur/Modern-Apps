@@ -5,14 +5,11 @@ Package roots: ui, data, domain, platform, network.
 Entry types: MainActivity, Route, Navigation. Navigation remains a root-only graph.
 
 ## Behavior
-- Anonymous catalog and checkout preparation using supported UCP 2026-08-25 and 2026-04-08 profiles.
-- Select one complete advertised profile and exact capability/service versions; do not merge releases.
-- Merchant services must advertise a supported REST or MCP binding and a public HTTPS endpoint.
-- Empty merchant input uses Shopify Global Catalog subject to its access policy; manual merchant input remains supported.
-- The Merchants tab explicitly loads the public UCPList directory. Cache/filter locally and validate live discovery on selection.
-- Directory status labels are informational leads, never access grants or independently verified integrations.
-- MCP handles negotiated sessions and bounded JSON/SSE responses; unsafe endpoints and redirects are rejected.
-- REST uses the selected dated operation schema and app-owned platform identity, not MCP wrapper bodies.
+- All merchant traffic goes through the first-party proxy (`api.maproj.org/shop/v1/*`); the device never speaks UCP directly and never fetches merchant hosts (product images arrive as proxied `/shop/v1/image?url=` URLs).
+- The `network/` package holds only the thin `ShopBackend` interface + DTOs over `library:network`. Dated discovery, REST/MCP transport, versioning, SSRF guards, wire limits, and the idempotency ledger live server-side.
+- Anonymous catalog and checkout preparation using supported UCP 2026-08-25 and 2026-04-08 profiles, resolved server-side. The server selects one complete advertised profile and exact capability/service versions; it never merges releases.
+- Server error codes mirror the former client `UcpError` (`transport | rate_limited | http | malformed | rpc | unsupported | uncertain`, plus `retryAfterMs`): `unsupported` routes to the merchant website, anything else on a write is uncertain and never auto-retried on either side.
+- The Merchants tab loads the directory through the proxy. Cache/filter locally; the server validates on first use.
 - Buyer/fulfillment review is ephemeral. Merchant totals and legal links are authoritative.
 - Checkout writes require explicit user action and a stable idempotency key per intent. Never replay an uncertain mutation automatically.
 - Preserve cart lines through partial failures and browser handoffs. A session or browser return is not a paid order.
@@ -25,7 +22,7 @@ Entry types: MainActivity, Route, Navigation. Navigation remains a root-only gra
 - Await AppInit readiness before network operations so the standard trust bundle is initialized.
 
 ## Responsibilities
-- Network adapters own dated discovery, REST/MCP transport, error envelopes and merchant directory parsing.
+- `ShopBackend` owns the four server calls (search/product/checkout/merchants) plus error-envelope mapping. It never talks to merchant hosts.
 - ShopViewModel owns explicit cart and per-merchant native-review state. Buyer PII must never enter logs or persisted history.
 - Local stores retain pending checkout records for browser recovery, not order confirmations.
 - UI uses shared app scaffolds and controls; one public composable per file. Metadata previews are class members with PreviewTest and Preview.
@@ -34,5 +31,5 @@ Entry types: MainActivity, Route, Navigation. Navigation remains a root-only gra
 Run scoped Shop compilation, unit tests, lint and metadata rendering. If shared networking changes, run its focused tests and lint too.
 Use fake transports/fixtures for checkout writes and stream lifecycle tests. No live checkout creation/update/completion or order-read checks without an authorized sandbox.
 
-The sibling server hosts app-owned platform identities at https://maproj.org/.well-known/ucp?version=2026-08-25 and the April equivalent. The original profile URL and pinned routes remain available. Validate both profiles against dated official platform schemas and deploy aliases before exercising the updated client identity.
+The sibling server proxies all merchant traffic at https://api.maproj.org/shop/v1/* (search, product, checkout-sessions, merchants, image). The app-owned UCP platform identities remain at https://maproj.org/.well-known/ucp?version=2026-08-25 and the April equivalent; the server presents them to merchants on the app's behalf.
 Never borrow a third party's profile, infer permissions from platform labels, or assert that every directory entry interoperates.

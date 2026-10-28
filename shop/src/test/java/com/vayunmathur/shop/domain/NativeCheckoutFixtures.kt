@@ -1,31 +1,58 @@
 package com.vayunmathur.shop.domain
 
 import com.vayunmathur.shop.data.CartLine
+import com.vayunmathur.shop.data.CheckoutReview
+import com.vayunmathur.shop.data.CheckoutShippingGroup
+import com.vayunmathur.shop.data.CheckoutShippingMethod
+import com.vayunmathur.shop.data.CheckoutShippingOption
+import com.vayunmathur.shop.data.Money
+import com.vayunmathur.shop.data.SubmittedLine
 import com.vayunmathur.shop.data.UcpCheckout
-import com.vayunmathur.shop.network.UcpCheckoutApi
-import com.vayunmathur.shop.network.UcpService
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
+import com.vayunmathur.shop.data.UcpMessage
+import com.vayunmathur.shop.data.UcpTotalEntry
+import com.vayunmathur.shop.data.UcpTotals
 
 internal object NativeCheckoutFixtures {
-    val capabilities = setOf("dev.ucp.shopping.checkout", "dev.ucp.shopping.fulfillment")
     val lines = listOf(CartLine(variantId = "variant-1", productTitle = "Test product", platformId = "generic", shopDomain = "shop.example", quantity = 2))
-    fun service(version: String = "2026-08-25", transport: String = "rest") = UcpService(version, transport, "https://shop.example/ucp", capabilities, emptySet())
-    fun checkout(version: String = "2026-08-25", status: String = "incomplete", itemId: String = "variant-1", expiry: String = "2026-10-27T00:00:00Z", methodType: String = "shipping"): UcpCheckout =
-        UcpCheckoutApi.parseCheckout(response(version, status, itemId, expiry, methodType), version, capabilities)
-
-    fun response(version: String = "2026-08-25", status: String = "incomplete", itemId: String = "variant-1", expiry: String = "2026-10-27T00:00:00Z", methodType: String = "shipping"): JsonObject = Json.parseToJsonElement("""
-        {"ucp":{"version":"$version","capabilities":{"dev.ucp.shopping.checkout":[{"version":"$version"}],"dev.ucp.shopping.fulfillment":[{"version":"$version"}]},"payment_handlers":{}},
-         "id":"checkout-1","status":"$status","currency":"KWD","expires_at":"$expiry",
-         "line_items":[{"id":"merchant-line-1","item":{"id":"$itemId","title":"Test product","price":500},"quantity":2,"totals":[]}],
-         "buyer":{"email":"ephemeral@example.com"},
-         "totals":[{"type":"subtotal","display_text":"Items","amount":1000},{"type":"fulfillment","display_text":"Shipping","amount":200},{"type":"total","display_text":"Total","amount":1200}],
-         "messages":[{"type":"error","severity":"recoverable","code":"missing","path":"$.buyer.phone_number","content":"Add phone"}],
-         "links":[{"type":"terms_of_service","title":"Terms","url":"https://shop.example/terms"}],
-         "fulfillment":{"methods":[{"id":"merchant-shipping","type":"$methodType","line_item_ids":["merchant-line-1"],
-           "destinations":[{"id":"merchant-address","type":"shipping_address","street_address":"old"}],"selected_destination_id":"merchant-address",
-           "groups":[{"id":"merchant-group","line_item_ids":["merchant-line-1"],"selected_option_id":"standard",
-             "options":[{"id":"standard","title":"Standard","totals":[{"type":"total","amount":200}]},{"id":"express","title":"Express","totals":[{"type":"total","amount":400}]}]}]}]}}
-    """).jsonObject
+    fun checkout(
+        status: String = "incomplete",
+        submitted: List<SubmittedLine> = listOf(SubmittedLine("variant-1", 2)),
+        methodType: String = "shipping",
+        review: CheckoutReview? = null,
+    ): UcpCheckout = UcpCheckout(
+        checkoutId = "checkout-1",
+        status = status,
+        currency = "KWD",
+        totals = UcpTotals(subtotal = Money(1000, "KWD"), total = Money(1200, "KWD")),
+        totalEntries = listOf(
+            UcpTotalEntry("subtotal", "subtotal", Money(1000, "KWD")),
+            UcpTotalEntry("fulfillment", "fulfillment", Money(200, "KWD")),
+            UcpTotalEntry("total", "total", Money(1200, "KWD")),
+        ),
+        expiresAt = "2026-10-27T00:00:00Z",
+        continueUrl = "",
+        messages = listOf(UcpMessage("error", "Add phone", "$.buyer.phone_number", "missing", "recoverable")),
+        version = "2026-08-25",
+        review = review ?: CheckoutReview(
+            shipping = if (methodType == "shipping") listOf(
+                CheckoutShippingMethod(
+                    "merchant-shipping",
+                    listOf(
+                        CheckoutShippingGroup(
+                            "merchant-group",
+                            "standard",
+                            listOf(
+                                CheckoutShippingOption("standard", "Standard", "", listOf(UcpTotalEntry("total", "total", Money(200, "KWD")))),
+                                CheckoutShippingOption("express", "Express", "", listOf(UcpTotalEntry("total", "total", Money(400, "KWD")))),
+                            ),
+                        ),
+                    ),
+                ),
+            ) else emptyList(),
+            links = listOf(com.vayunmathur.shop.data.CheckoutLegalLink("terms_of_service", "Terms", "https://shop.example/terms")),
+            browserOnlyReason = if (methodType == "shipping") null else "This fulfillment method requires the merchant website.",
+            availableShippingLineIds = emptyList(),
+        ),
+        submittedLines = submitted,
+    )
 }

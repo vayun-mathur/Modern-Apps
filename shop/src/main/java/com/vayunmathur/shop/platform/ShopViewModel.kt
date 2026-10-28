@@ -18,14 +18,16 @@ import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
 import com.vayunmathur.shop.domain.MerchantUrls
-import com.vayunmathur.shop.network.UcpCatalog
-import com.vayunmathur.shop.network.UcpCheckoutApi
-import com.vayunmathur.shop.network.UcpHttpException
-import com.vayunmathur.shop.network.UcpPlatforms
+import com.vayunmathur.shop.network.ShopBackend
+import com.vayunmathur.shop.network.ShopBackendException
+import com.vayunmathur.shop.network.ShopHttpBackend
+import com.vayunmathur.shop.network.splitByShop
 import kotlinx.coroutines.launch
 
 /** Session catalog state plus persisted cart and pending checkout history. */
-class ShopViewModel : ViewModel() {
+class ShopViewModel(
+    private val backend: ShopBackend = ShopHttpBackend,
+) : ViewModel() {
     var query by mutableStateOf("")
         private set
     var searchShopDomain by mutableStateOf("")
@@ -99,11 +101,9 @@ class ShopViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 AppInit.awaitReady()
-                val response = if (shop == null) UcpCatalog.search(q)
-                    else UcpCatalog.searchStore(UcpPlatforms.GENERIC, shop, q)
-                response.fold(
+                backend.search(q, shop).fold(
                     onSuccess = { results = it },
-                    onFailure = { searchError = it.toUcpMessage() },
+                    onFailure = { searchError = it.toBackendMessage() },
                 )
             } finally {
                 searching = false
@@ -111,7 +111,7 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    fun addToCart(product: UcpProduct, variantId: String, quantity: Int, context: Context) {
+    fun addToCart(product: com.vayunmathur.shop.data.UcpProduct, variantId: String, quantity: Int, context: Context) {
         val variant = product.variants.firstOrNull { it.id == variantId } ?: return
         if (!variant.available || !product.checkoutEligible || quantity !in 1..99) return
         val existing = cart.indexOfFirst {
@@ -156,7 +156,7 @@ class ShopViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 AppInit.awaitReady()
-                for ((key, lines) in UcpCheckoutApi.splitByShop(snapshot)) {
+                for ((key, lines) in splitByShop(snapshot)) {
                     nativeCheckout.submit(key.first, key.second, lines, PendingCheckoutSink { OrderStore.add(context, it) })
                     nativeCheckout.cartChanged(cart)
                 }
@@ -170,7 +170,7 @@ class ShopViewModel : ViewModel() {
     fun dismissCheckoutError() { checkoutError = null }
     fun dismissSearchError() { searchError = null }
 
-    private fun Throwable.toUcpMessage(): String =
-        (this as? UcpHttpException)?.error?.message()
+    private fun Throwable.toBackendMessage(): String =
+        (this as? ShopBackendException)?.error?.message()
             ?: "Couldn't reach the store. Check your connection and try again."
 }

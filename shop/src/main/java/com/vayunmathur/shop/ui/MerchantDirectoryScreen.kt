@@ -29,21 +29,21 @@ import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.message
-import com.vayunmathur.shop.network.MerchantDirectoryApi
-import com.vayunmathur.shop.network.UcpDiscovery
-import com.vayunmathur.shop.network.UcpHttpException
+import com.vayunmathur.shop.network.ShopBackend
+import com.vayunmathur.shop.network.ShopBackendException
+import com.vayunmathur.shop.network.ShopHttpBackend
 import com.vayunmathur.shop.platform.AppInit
 import kotlinx.coroutines.launch
 
 @Composable
 fun MerchantDirectoryScreen(onMerchantSelected: (String) -> Unit) {
+    val backend: ShopBackend = ShopHttpBackend
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var rows by remember { mutableStateOf(emptyList<MerchantListing>()) }
     var query by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(false) }
-    var checking by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     AppScaffold(title = "Merchants", scrollBehavior = appBarScrollBehavior()) { padding ->
         MerchantDirectoryContent(
@@ -52,7 +52,7 @@ fun MerchantDirectoryScreen(onMerchantSelected: (String) -> Unit) {
             onQueryChange = { query = it },
             loaded = loaded,
             loading = loading,
-            checking = checking,
+            checking = null,
             error = error,
             onLoad = {
                 if (!loading) scope.launch {
@@ -60,26 +60,16 @@ fun MerchantDirectoryScreen(onMerchantSelected: (String) -> Unit) {
                     error = null
                     try {
                         AppInit.awaitReady()
-                        MerchantDirectoryApi.load(force = loaded).fold(
+                        backend.listMerchants(refresh = loaded).fold(
                             onSuccess = { listings -> rows = listings; loaded = true },
-                            onFailure = { failure -> error = (failure as? UcpHttpException)?.error?.message() ?: "Couldn't load the merchant directory." },
+                            onFailure = { failure -> error = (failure as? ShopBackendException)?.error?.message() ?: "Couldn't load the merchant directory." },
                         )
                     } finally { loading = false }
                 }
             },
-            onUse = { row ->
-                if (checking == null) scope.launch {
-                    checking = row.id
-                    error = null
-                    try {
-                        AppInit.awaitReady()
-                        UcpDiscovery.resolve(row.domain, "dev.ucp.shopping.catalog.search").fold(
-                            onSuccess = { onMerchantSelected(row.domain) },
-                            onFailure = { error = (it as? UcpHttpException)?.error?.message() ?: "This merchant's catalog is unavailable. You can still open its site." },
-                        )
-                    } finally { checking = null }
-                }
-            },
+            // Compatibility is checked server-side on first search; the
+            // directory entry is only a discovery lead.
+            onUse = { row -> onMerchantSelected(row.domain) },
             onOpenSite = { openContinueUrl(context, it.siteUrl) },
             modifier = Modifier.fillMaxSize().padding(padding),
         )

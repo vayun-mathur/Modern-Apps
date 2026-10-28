@@ -70,6 +70,10 @@ data class UcpTotalEntry(val type: String, val label: String, val money: Money)
 @Serializable
 data class UcpMessage(val type: String = "", val text: String = "", val path: String? = null, val code: String? = null, val severity: String? = null)
 
+/** Server-echoed cart fingerprint: the variant ids + quantities the proxy sent to the merchant. */
+@Serializable
+data class SubmittedLine(val variantId: String = "", val quantity: Int = 0)
+
 @Serializable
 data class UcpCheckout(
     val checkoutId: String = "",
@@ -84,6 +88,7 @@ data class UcpCheckout(
     @Transient val review: CheckoutReview = CheckoutReview(),
     // Session-only source for exact writable projections. Never serialize buyer-bearing responses.
     @Transient internal val writableSource: JsonObject? = null,
+    val submittedLines: List<SubmittedLine> = emptyList(),
 ) {
     override fun toString(): String = "UcpCheckout(redacted)"
 }

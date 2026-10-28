@@ -1,6 +1,6 @@
 package com.vayunmathur.shop.network
 
-/** Labels only. Merchant endpoint and access permissions must be discovered, not inferred. */
+/** Labels only. Merchant endpoint and access permissions are resolved server-side, not inferred. */
 data class UcpPlatform(val id: String, val displayName: String, val globalCatalogMcp: String? = null)
 
 object UcpPlatforms {
