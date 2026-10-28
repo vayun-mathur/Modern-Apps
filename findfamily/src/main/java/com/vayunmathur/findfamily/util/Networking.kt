@@ -36,7 +36,7 @@ import kotlin.time.Clock
 /**
  * FindFamily networking — **WebSocket only**. Every server interaction (register,
  * key lookup, publish, receive) rides one persistent binary socket at
- * `wss://findfamily.cc/api/ws`; there are deliberately no HTTP requests and no
+ * `wss://api.maproj.org/api/ws`; there are deliberately no HTTP requests and no
  * HTTP fallback. If the socket drops, [startLive] reconnects (1s→15s backoff) and
  * re-registers on connect.
  *
@@ -48,6 +48,13 @@ import kotlin.time.Clock
 object Networking {
     internal const val TAG = "FF-Networking"
     private const val PLATFORM = "android"
+
+    /**
+     * Base for recipient share links (`$SHARE_BASE/<base26-id>#s=<seed>`).
+     * Served by the same `/view/:id` route that `findfamily.cc` serves, so
+     * links minted on either host resolve identically.
+     */
+    internal const val SHARE_BASE = "https://api.maproj.org/view"
 
     internal val json = Json { ignoreUnknownKeys = true }
 

@@ -9,7 +9,7 @@ import kotlin.time.Instant
 
 /**
  * A link id is the server-side *recipient id* — it is what `/api/location/publish` addresses
- * and what the `findfamily.cc/view/<id>` URL resolves to — and it shares that namespace with
+ * and what the share-link `/view/<id>` URL resolves to — and it shares that namespace with
  * [com.vayunmathur.findfamily.data.User] ids, which are random 64-bit values.
  *
  * So it must be globally unique, not a per-device row number: with Room's `autoGenerate` every

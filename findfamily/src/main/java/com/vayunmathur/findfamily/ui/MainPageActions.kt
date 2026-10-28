@@ -177,8 +177,8 @@ internal fun rememberMainPageActions(
                 // SMS; links minted before that still carry their full private bundle.
                 val seed = link.pqcSeed
                 platform.copy(
-                    if (seed != null) "https://findfamily.cc/view/${link.id.encodeBase26()}#s=$seed"
-                    else "https://findfamily.cc/view/${link.id}#pqc_key=${link.pqcKey}"
+                    if (seed != null) "${Networking.SHARE_BASE}/${link.id.encodeBase26()}#s=$seed"
+                    else "${Networking.SHARE_BASE}/${link.id}#pqc_key=${link.pqcKey}"
                 )
             }
         }

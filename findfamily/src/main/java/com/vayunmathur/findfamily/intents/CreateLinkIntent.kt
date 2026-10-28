@@ -41,6 +41,6 @@ class CreateLinkIntent : AssistantIntent<CreateLinkData, String>(
         // The id is generated with the link (newTemporaryLinkId), not handed back by the
         // insert, so read it off the entity — @Upsert returns -1 on the update path.
         // Must match the URL format produced by TemporaryLinkCard in MainPage.
-        return "https://findfamily.cc/view/${link.id.encodeBase26()}#s=${linkKey.seedB64Url}"
+        return "${Networking.SHARE_BASE}/${link.id.encodeBase26()}#s=${linkKey.seedB64Url}"
     }
 }
