@@ -17,7 +17,7 @@ target re-derives them.
 
 ## Relay contract
 
-- Base `https://findfamily.cc/personal`, WS `wss://…/ws`.
+- Base `https://api.maproj.org/personal` (migrated from `https://findfamily.cc/personal`; findfamily.cc remains valid for backward compatibility), WS `wss://api.maproj.org/personal/ws`.
 - Endpoints: `POST /register | /getkey | /append | /pull`.
 - Channels: `<type>:<vaultId>` records, `members:`, `keys:`, `owner:`, `title:`, `inbox:<device>`, `notes-blobs:<vaultId>`.
 - The relay is an untrusted append-only log: records are never rewritten, only appended; authority is client-side (owner-signed roster/epochs/transfers); vault keys never user-visible.
@@ -46,7 +46,7 @@ target re-derives them.
 
 - Slices: `:library:everysync-core:compileKotlinJvm`, `:library:everysync-core:lint` (no Gradle run in this change per scope).
 - Tests (existing, must stay green): `RelayConformanceTest`, `SharedTransportTest`, `SyncDigestTest`, `TodoKindTest` (commonTest, 25 tests) + `JvmPqcVectorConformanceTest` (jvmTest, 6 tests).
-- Live-relay checklist: register → getkey → append → pull round-trip against `https://findfamily.cc/personal`; null-pull abort; tombstone propagation per type; re-enable repopulation after purge.
+- Live-relay checklist: register → getkey → append → pull round-trip against `https://api.maproj.org/personal` (migrated from findfamily.cc; findfamily.cc remains valid for backward compatibility); null-pull abort; tombstone propagation per type; re-enable repopulation after purge.
 
 ## Next steps
 

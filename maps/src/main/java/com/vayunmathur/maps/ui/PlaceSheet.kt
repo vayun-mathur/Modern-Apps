@@ -117,6 +117,7 @@ fun PlaceSheet(
         menu = null,
         openingHours = feature.openingHours,
         address = feature.address,
+        reviewSummary = feature.reviewSummary,
         onDepartures = onDepartures,
     )
 }
@@ -160,6 +161,7 @@ fun PlaceSheet(
     menu = null,
     openingHours = feature.openingHours,
     address = feature.address,
+    reviewSummary = feature.reviewSummary,
     onDepartures = onDepartures,
 )
 
@@ -171,6 +173,7 @@ private fun PlaceSheetContent(
     menu: String?,
     openingHours: OpeningHours?,
     address: String? = null,
+    reviewSummary: String? = null,
     onDepartures: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -203,6 +206,7 @@ private fun PlaceSheetContent(
         }
         address?.let { AddressRow(it) }
         openingHours?.let { OsmHours(it, todayOverride) }
+        reviewSummary?.let { ReviewSummaryRow(it) }
     }
 }
 
@@ -284,6 +288,25 @@ private fun AddressRow(address: String) {
         scope.launch {
             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("address", address)))
         }
+    }
+}
+
+/** The archive's short AI summary of the place's reviews, available offline. */
+@Composable
+private fun ReviewSummaryRow(summary: String) {
+    Card {
+        ListItem({
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.review_summary_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(summary, style = MaterialTheme.typography.bodyMedium)
+            }
+        }, leadingContent = {
+            IconStar(tint = MaterialTheme.colorScheme.tertiary)
+        }, colors = ListItemDefaults.colors(Color.Transparent))
     }
 }
 

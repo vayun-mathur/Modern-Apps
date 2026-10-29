@@ -186,7 +186,7 @@ private fun PlaceSheetHeaderContent(
     val orderDeepLink by rememberOrderDeepLink(context, feature, poi?.category)
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PlaceHeader(feature.name, poi)
+        PlaceHeader(feature.name, poi, feature as? SpecificFeature.GenericPlace)
         PlaceActionRow(
             feature = feature,
             // OSM first, Google as the fallback. These used to be handed the OSM
@@ -255,7 +255,12 @@ internal fun resolvePoiSection(selected: PoiSection, poi: GooglePoiInfo?): PoiSe
     if (selected in poiTabs(poi)) selected else PoiSection.DETAILS
 
 @Composable
-private fun PlaceHeader(name: String, poi: GooglePoiInfo?, modifier: Modifier = Modifier) {
+private fun PlaceHeader(
+    name: String,
+    poi: GooglePoiInfo?,
+    offline: SpecificFeature.GenericPlace?,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(name, style = MaterialTheme.typography.titleLarge)
 
@@ -265,11 +270,15 @@ private fun PlaceHeader(name: String, poi: GooglePoiInfo?, modifier: Modifier = 
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        poi?.rating?.let { rating ->
+        // The archive's rating first, so it shows offline and with Google turned off.
+        // Rating and count come from the same source, never one from each.
+        val (rating, reviewCount) = offline?.rating?.let { it to offline.reviewCount }
+            ?: (poi?.rating to poi?.reviewCount)
+        rating?.let {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RatingStars(rating)
+                RatingStars(it)
                 Text(
-                    stringResource(R.string.reviews_summary, rating, poi.reviewCount ?: 0),
+                    stringResource(R.string.reviews_summary, it, reviewCount ?: 0),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

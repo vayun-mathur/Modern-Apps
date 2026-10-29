@@ -1,8 +1,11 @@
 package com.vayunmathur.everysync.core.network
 
-/** Relay service endpoints. Contract reference: the Android `RelaySync` transport. */
-const val RELAY_BASE_URL = "https://findfamily.cc/personal"
-const val RELAY_WS_URL = "wss://findfamily.cc/personal/ws"
+/** Relay service endpoints. Contract reference: the Android `RelaySync` transport.
+ *  Host migrated from findfamily.cc to api.maproj.org (same Cloudflare FIRST_PARTY pins);
+ *  old findfamily.cc hostnames remain valid for backward compatibility during the transition.
+ */
+const val RELAY_BASE_URL = "https://api.maproj.org/personal"
+const val RELAY_WS_URL = "wss://api.maproj.org/personal/ws"
 
 /** Channel name for a vault's record log, e.g. `passwords:<vaultId>`. */
 fun recordChannel(dataType: String, vaultId: String): String = "$dataType:$vaultId"

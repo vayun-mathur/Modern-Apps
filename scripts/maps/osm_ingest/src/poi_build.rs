@@ -46,6 +46,7 @@ use crate::names::NamePool;
 use crate::osm::{self, visit_block, Element, MEMBER_WAY};
 use crate::pbf::{self, KIND_NODES, KIND_RELATIONS, KIND_WAYS};
 use crate::poi_attrs::AttrPool;
+use crate::poi_reviews::{ReviewTable, ELEMENT_NODE, ELEMENT_RELATION, ELEMENT_WAY};
 use crate::poi_side;
 use crate::proto::{Error, Result};
 use crate::spatial::spatial_from_e7;
@@ -72,6 +73,8 @@ pub struct Stats {
     pub spatial_cells: usize,
     /// `(record, word)` entries in `poi_name_index.bin`.
     pub name_entries: usize,
+    /// POIs that matched a row of the `--reviews` table.
+    pub with_reviews: usize,
 }
 
 struct Poi {
@@ -149,6 +152,23 @@ pub fn build_with(
     spatial: &Path,
     name_index: &Path,
     bbox: Option<crate::bbox::BBox>,
+) -> Result<Stats> {
+    build_with_reviews(input, geojson, names, index, attrs, spatial, name_index, bbox, None)
+}
+
+/// [`build_with`] plus an external review table whose rows are appended to the
+/// matching POIs' attribute records (see [`crate::poi_reviews`]).
+#[allow(clippy::too_many_arguments)]
+pub fn build_with_reviews(
+    input: &Path,
+    geojson: &Path,
+    names: &Path,
+    index: &Path,
+    attrs: &Path,
+    spatial: &Path,
+    name_index: &Path,
+    bbox: Option<crate::bbox::BBox>,
+    reviews: Option<&ReviewTable>,
 ) -> Result<Stats> {
     // Fail before the three passes rather than after them if an output path is
     // unwritable.
@@ -297,6 +317,17 @@ pub fn build_with(
         pois.len()
     );
 
+    // Before the sort: `pois` is still nodes, then ways, then relations, which is
+    // the only place the OSM element type is known.
+    let with_reviews = match reviews {
+        Some(table) => {
+            let n = apply_reviews(&mut pois, from_nodes, from_ways, table);
+            println!("{n} POI(s) with review data ({} review row(s) loaded)", table.len());
+            n
+        }
+        None => 0,
+    };
+
     // Morton order, ties broken by osm_id, so both poi_index.bin and the geojson
     // are stable across runs.
     timer.switch("sort");
@@ -317,7 +348,29 @@ pub fn build_with(
         attr_bytes: written.attr_bytes,
         spatial_cells: written.spatial_cells,
         name_entries: written.name_entries,
+        with_reviews,
     })
+}
+
+/// Append each matching review row to its POI's attribute body; returns the match
+/// count. `pois[..from_nodes]` are nodes, the next `from_ways` closed ways, the
+/// rest relations (whose `osm_id` is stored negated).
+fn apply_reviews(pois: &mut [Poi], from_nodes: usize, from_ways: usize, table: &ReviewTable) -> usize {
+    let mut matched = 0;
+    for (i, p) in pois.iter_mut().enumerate() {
+        let (element, id) = if i < from_nodes {
+            (ELEMENT_NODE, p.osm_id)
+        } else if i < from_nodes + from_ways {
+            (ELEMENT_WAY, p.osm_id)
+        } else {
+            (ELEMENT_RELATION, -p.osm_id)
+        };
+        if let Some(review) = table.get(element, id) {
+            p.attrs = crate::poi_attrs::append(std::mem::take(&mut p.attrs), &review.fields());
+            matched += 1;
+        }
+    }
+    matched
 }
 
 fn poi_tags<'a>(t: &osm::Tags<'_, 'a>) -> PoiTags<'a> {

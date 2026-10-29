@@ -52,7 +52,9 @@ object Networking {
     /**
      * Base for recipient share links (`$SHARE_BASE/<base26-id>#s=<seed>`).
      * Served by the same `/view/:id` route that `findfamily.cc` serves, so
-     * links minted on either host resolve identically.
+     * links minted on either host resolve identically. Host migrated from
+     * findfamily.cc to api.maproj.org; findfamily.cc remains valid for
+     * backward compatibility during the transition.
      */
     internal const val SHARE_BASE = "https://api.maproj.org/view"
 
@@ -212,7 +214,7 @@ object Networking {
     // flags: bit0 = kind (0 location, 1 uwb). KEYRESP status: 0 none, 1 classic, 2 pqc.
     // ----------------------------------------------------------------
 
-    private const val WS_URL = "wss://findfamily.cc/api/ws"
+    private const val WS_URL = "wss://api.maproj.org/api/ws"
 
     internal const val WS_OP_SUB: Byte = 0x01
     private const val WS_OP_PUB: Byte = 0x02

@@ -28,7 +28,9 @@ import kotlinx.serialization.json.Json
 import kotlin.io.encoding.Base64
 
 object OfficeSync {
-    private const val URL = "https://findfamily.cc/office"
+    // Host migrated from findfamily.cc to api.maproj.org; findfamily.cc remains valid
+    // for backward compatibility during the transition. Same Cloudflare FIRST_PARTY pins.
+    private const val URL = "https://api.maproj.org/office"
     private const val TAG = "OfficeSync"
     private const val HTTP_OK = 200
     private val HTTP_SUCCESS = 200..299
@@ -153,7 +155,7 @@ object OfficeSync {
 
     // --- Live sync + presence over WebSocket (Android-only WebSocketClient) ---
 
-    private const val WS_URL = "wss://findfamily.cc/office/ws"
+    private const val WS_URL = "wss://api.maproj.org/office/ws"
     @Volatile private var wsSession: WsSession? = null
     private var liveJob: Job? = null
     private var liveChannel: String? = null

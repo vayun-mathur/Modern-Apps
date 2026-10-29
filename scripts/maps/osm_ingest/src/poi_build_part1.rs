@@ -139,10 +139,12 @@ pub struct Args {
     pub bbox: Option<crate::bbox::BBox>,
     /// `None` leaves the pool at whatever `par::threads()` decides.
     pub threads: Option<usize>,
+    /// Review table merged into the attribute sidecar (`--reviews FILE`).
+    pub reviews: Option<PathBuf>,
 }
 
 /// `poi_extract IN.osm.pbf --geojson FILE --names FILE --index FILE [--attrs FILE]`
-/// `[--spatial FILE] [--name-index FILE] [--region california|na|world] [--threads N]`
+/// `[--spatial FILE] [--name-index FILE] [--reviews FILE] [--region california|na|world] [--threads N]`
 ///
 /// The optional outputs default to their conventional names beside `--index`, so a
 /// caller that predates any of them keeps working and still emits them. Making them
@@ -157,6 +159,7 @@ pub fn parse_args(args: &[String]) -> std::result::Result<Args, String> {
     let mut name_index: Option<PathBuf> = None;
     let mut region: Option<crate::region::Region> = None;
     let mut threads: Option<usize> = None;
+    let mut reviews: Option<PathBuf> = None;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -175,7 +178,7 @@ pub fn parse_args(args: &[String]) -> std::result::Result<Args, String> {
                 region = Some(crate::region::Region::parse(value).map_err(|e| e.0)?);
             }
             flag @ ("--geojson" | "--names" | "--index" | "--attrs" | "--spatial"
-            | "--name-index") => {
+            | "--name-index" | "--reviews") => {
                 let flag = flag.to_string();
                 i += 1;
                 let value = args
@@ -188,6 +191,7 @@ pub fn parse_args(args: &[String]) -> std::result::Result<Args, String> {
                     "--attrs" => attrs = Some(value),
                     "--spatial" => spatial = Some(value),
                     "--name-index" => name_index = Some(value),
+                    "--reviews" => reviews = Some(value),
                     _ => index = Some(value),
                 }
             }
@@ -220,5 +224,6 @@ pub fn parse_args(args: &[String]) -> std::result::Result<Args, String> {
         name_index,
         bbox: region.and_then(|r| r.bbox()),
         threads,
+        reviews,
     })
 }

@@ -33,7 +33,9 @@ import kotlin.io.encoding.Base64
  * This is the voxels twin of [com.vayunmathur.office.util.OfficeSync]: same untrusted-relay model
  * (a dumb append-only log keyed by string channels over `/register|/getkey|/append|/pull` plus a
  * WebSocket), same PQC identity + AES-256-GCM content encryption. All confidentiality, authenticity
- * and authorization are enforced client-side; the relay only ever sees ciphertext.
+ * and authorization are enforced client-side; the relay only ever sees ciphertext. Host migrated
+ * from findfamily.cc to api.maproj.org; findfamily.cc remains valid for backward compatibility
+ * during the transition.
  *
  * Channels used per world:
  *  - `world:<id>`     — the authoritative op/snapshot log (host writes snapshots, clients write intents)
@@ -45,8 +47,8 @@ import kotlin.io.encoding.Base64
 // Sync protocol surface: one function per endpoint/operation by design.
 @Suppress("TooManyFunctions")
 object VoxelsSync {
-    private const val URL = "https://findfamily.cc/voxels"
-    private const val WS_URL = "wss://findfamily.cc/voxels/ws"
+    private const val URL = "https://api.maproj.org/voxels"
+    private const val WS_URL = "wss://api.maproj.org/voxels/ws"
     private const val HTTP_OK = 200
     private const val RECONNECT_INITIAL_MS = 1000L
     private const val RECONNECT_MAX_MS = 15_000

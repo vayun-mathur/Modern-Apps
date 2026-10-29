@@ -58,6 +58,12 @@ pub const KEY_CITY: u8 = 6;
 pub const KEY_POSTCODE: u8 = 7;
 pub const KEY_CUISINE: u8 = 8;
 pub const KEY_WHEELCHAIR: u8 = 9;
+/// Review data merged in from an external table at build time (see
+/// [`crate::poi_reviews`]), never from OSM tags. ASCII decimal (`"4.3"`), ASCII
+/// integer, and UTF-8 text.
+pub const KEY_RATING: u8 = 10;
+pub const KEY_REVIEW_COUNT: u8 = 11;
+pub const KEY_REVIEW_SUMMARY: u8 = 12;
 
 /// Which OSM tags each key is read from, in the order they are encoded.
 ///
@@ -112,6 +118,28 @@ pub fn encode<'a>(get: impl Fn(&str) -> Option<&'a [u8]>) -> Vec<u8> {
         out.extend_from_slice(value);
     }
     out
+}
+
+/// Append `(key, value)` fields after an [`encode`]d body.
+///
+/// `extra` must be ascending by key and every key must sort after the tag keys, so
+/// the record stays ascending. Empty values are skipped, and a value that would
+/// pass the body ceiling is dropped whole, under the same rules as [`encode`].
+pub fn append(mut body: Vec<u8>, extra: &[(u8, &[u8])]) -> Vec<u8> {
+    for &(key, value) in extra {
+        debug_assert!(key > KEY_WHEELCHAIR, "extra keys must sort after the tag keys");
+        if value.is_empty() {
+            continue;
+        }
+        let Ok(len) = u16::try_from(value.len()) else { continue };
+        if body.len() + 3 + value.len() > MAX_BODY_BYTES {
+            continue;
+        }
+        body.push(key);
+        body.extend_from_slice(&len.to_le_bytes());
+        body.extend_from_slice(value);
+    }
+    body
 }
 
 /// Deduplicating collector for the sidecar.
@@ -374,5 +402,41 @@ mod tests {
     fn an_empty_preferred_tag_falls_through_to_its_alias() {
         let body = encode(tags(&[("phone", ""), ("contact:phone", "+1-555-0100")]));
         assert_eq!(fields(&body), vec![(KEY_PHONE, "+1-555-0100".into())]);
+    }
+
+    #[test]
+    fn review_fields_are_appended_after_the_tag_fields() {
+        let body = append(
+            encode(tags(&[("opening_hours", "24/7"), ("cuisine", "pizza")])),
+            &[(KEY_RATING, b"4.3"), (KEY_REVIEW_COUNT, b"1234"), (KEY_REVIEW_SUMMARY, "Crisp crust, quick service.".as_bytes())],
+        );
+        assert_eq!(
+            fields(&body),
+            vec![
+                (KEY_OPENING_HOURS, "24/7".into()),
+                (KEY_CUISINE, "pizza".into()),
+                (KEY_RATING, "4.3".into()),
+                (KEY_REVIEW_COUNT, "1234".into()),
+                (KEY_REVIEW_SUMMARY, "Crisp crust, quick service.".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn review_fields_alone_make_a_record_and_empty_ones_are_skipped() {
+        let body = append(Vec::new(), &[(KEY_RATING, b"4.0"), (KEY_REVIEW_COUNT, b""), (KEY_REVIEW_SUMMARY, b"")]);
+        assert_eq!(fields(&body), vec![(KEY_RATING, "4.0".into())]);
+        assert!(append(Vec::new(), &[(KEY_REVIEW_SUMMARY, b"")]).is_empty());
+    }
+
+    #[test]
+    fn an_appended_value_past_the_ceiling_is_dropped_whole() {
+        let big = "x".repeat(65_000);
+        let body = append(
+            encode(tags(&[("opening_hours", big.as_str())])),
+            &[(KEY_RATING, b"4.5"), (KEY_REVIEW_SUMMARY, "y".repeat(1_000).as_bytes())],
+        );
+        assert!(body.len() <= MAX_BODY_BYTES);
+        assert_eq!(fields(&body).last().unwrap(), &(KEY_RATING, "4.5".into()));
     }
 }

@@ -34,7 +34,8 @@ import kotlin.io.encoding.Base64
  * (a dumb append-only log keyed by string channels over `/register|/getkey|/append|/pull`
  * plus a WebSocket), same PQC identity + AES-256-GCM content encryption. All
  * confidentiality, authenticity and authorization are enforced client-side; the relay
- * only ever sees ciphertext.
+ * only ever sees ciphertext. Host migrated from findfamily.cc to api.maproj.org;
+ * findfamily.cc remains valid for backward compatibility during the transition.
  *
  * Channels per vault:
  *  - `contacts:<vaultId>`, `calendar:<vaultId>`, `passwords:<id>`, `notes:<id>`
@@ -64,8 +65,8 @@ import kotlin.io.encoding.Base64
 // Transport surface: one function per endpoint/operation by design.
 @Suppress("TooManyFunctions")
 object RelaySync {
-    private const val URL = "https://findfamily.cc/personal"
-    private const val WS_URL = "wss://findfamily.cc/personal/ws"
+    private const val URL = "https://api.maproj.org/personal"
+    private const val WS_URL = "wss://api.maproj.org/personal/ws"
     private const val HTTP_OK = 200
     private const val RECONNECT_INITIAL_MS = 1000L
     private const val RECONNECT_MAX_MS = 15_000

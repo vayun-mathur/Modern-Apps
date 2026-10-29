@@ -33,7 +33,7 @@ explicit tombstones delete.
 
 ## 2. Relay conformance (simulator <-> Android/desktop, both directions)
 
-Against staging `https://findfamily.cc/personal` (see plan Phase 1F):
+Against staging `https://api.maproj.org/personal` (migrated from `https://findfamily.cc/personal`; findfamily.cc remains valid for backward compatibility) (see plan Phase 1F):
 
 - [ ] `register` / `getkey` round-trip from the simulator (device id stable
       across restarts — `personalDeviceId` in Keychain).

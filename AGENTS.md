@@ -52,6 +52,15 @@ Slash == colon for Gradle (`games/voxels` == `games:voxels`).
 ### Never scan
 `target/`, `scripts/`, `build/`, `.gradle/`, `.kotlin/`, `*/build/`, `*/schemas/` (single file ok), `metadata_data/photos/`, `third_party/`, `firmware/`, `*.onnx`, `*.log`, `personal/`.
 
+### Backend server (outside this repo)
+The backend (relay server for findfamily/everysync/office/voxels) lives outside this repo:
+
+- Server checkout: `../location_share_server` (sibling of this repo root). On this dev machine: `C:\Users\Vayun\Documents\code\location_share_server`.
+- Live server SSH: `ssh root@87.86.80.39`
+- Server env template: `../location_share_server/.env.example` (copy to `../location_share_server/.env`, never commit secrets).
+- The server is the `findfamily.cc` host; clients have been migrated to `api.maproj.org` (same Cloudflare FIRST_PARTY pins). `findfamily.cc` remains valid for backward compatibility during the transition.
+- Cloudflare R2: see `../location_share_server/src/handlers/os_admin.rs` for `R2::from_env()`; required vars `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, plus `R2_ENDPOINT` or `R2_ACCOUNT_ID`.
+
 ## 2. Conventions (check every time)
 - `Toast` banned (fatal lint). Use `rememberMessenger().show()` in composable, `AppMessages.show()` elsewhere.
 - Never `Icon()`/`painterResource()`/`androidx.compose.material.icons.*` in app. Add `IconXxx()` to `library/ui/.../Icons.kt`.

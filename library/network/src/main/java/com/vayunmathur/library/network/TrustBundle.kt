@@ -5,8 +5,9 @@ package com.vayunmathur.library.network
  * `assets/ca/`.  SYSTEM means "use platform default" (null factory) — needed for
  * user-supplied hosts (vpn, custom email servers, browser).
  *
- * - FIRST_PARTY: ~6 roots for api.maproj.org, data.maproj.org, findfamily.cc
- *   Cloudflare Universal SSL: ISRG X1/X2 + GTS R1-R4 (SSL.com optional, add if observed).
+ * - FIRST_PARTY: ~6 roots for api.maproj.org, data.maproj.org
+ *   (findfamily.cc relay hosts migrated to api.maproj.org; same Cloudflare
+ *   Universal SSL: ISRG X1/X2 + GTS R1-R4). SSL.com optional, add if observed.
  * - STANDARD: FIRST_PARTY + DigiCert G2/G3, Baltimore CyberTrust, Amazon Root CA 1-4,
  *   Sectigo AAA, USERTrust RSA, GoDaddy Root G2 — covers F-Droid (ISRG), GitHub
  *   (DigiCert), Play/Aurora (Google GTS), DuckDuckGo (DigiCert), open-meteo (ISRG),

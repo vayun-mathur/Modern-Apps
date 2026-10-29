@@ -19,6 +19,12 @@ internal const val KEY_CITY = 6
 internal const val KEY_POSTCODE = 7
 internal const val KEY_CUISINE = 8
 internal const val KEY_WHEELCHAIR = 9
+internal const val KEY_RATING = 10
+internal const val KEY_REVIEW_COUNT = 11
+internal const val KEY_REVIEW_SUMMARY = 12
+
+/** The range a place rating can take; anything outside it is a bad value, not a rating. */
+private val RATING_RANGE = 1.0..5.0
 
 /** Mask for one unsigned byte read out of the file. */
 private const val ATTR_BYTE_MASK = 0xFF
@@ -56,7 +62,8 @@ internal fun decodeAttrRecord(buf: MappedByteBuffer, from: Int, to: Int): PoiInd
 /** Known record keys (unknown ones are stepped over, not decoded). */
 private fun isKnownKey(key: Int): Boolean = when (key) {
     KEY_OPENING_HOURS, KEY_PHONE, KEY_WEBSITE, KEY_HOUSENUMBER, KEY_STREET,
-    KEY_CITY, KEY_POSTCODE, KEY_CUISINE, KEY_WHEELCHAIR -> true
+    KEY_CITY, KEY_POSTCODE, KEY_CUISINE, KEY_WHEELCHAIR,
+    KEY_RATING, KEY_REVIEW_COUNT, KEY_REVIEW_SUMMARY -> true
     else -> false
 }
 
@@ -71,6 +78,9 @@ private class AttrFields {
     var postcode: String? = null
     var cuisine: String? = null
     var wheelchair: String? = null
+    var rating: String? = null
+    var reviewCount: String? = null
+    var reviewSummary: String? = null
 
     fun set(key: Int, value: String?) {
         when (key) {
@@ -83,12 +93,18 @@ private class AttrFields {
             KEY_POSTCODE -> postcode = value
             KEY_CUISINE -> cuisine = value
             KEY_WHEELCHAIR -> wheelchair = value
+            KEY_RATING -> rating = value
+            KEY_REVIEW_COUNT -> reviewCount = value
+            KEY_REVIEW_SUMMARY -> reviewSummary = value
         }
     }
 
     fun build(): PoiIndex.PoiAttributes? {
         val decoded = PoiIndex.PoiAttributes(
             openingHours, phone, website, houseNumber, street, city, postcode, cuisine, wheelchair,
+            rating = rating?.toDoubleOrNull()?.takeIf { it in RATING_RANGE },
+            reviewCount = reviewCount?.toIntOrNull()?.takeIf { it > 0 },
+            reviewSummary = reviewSummary?.trim()?.ifEmpty { null },
         )
         return decoded.takeUnless { it.isEmpty }
     }

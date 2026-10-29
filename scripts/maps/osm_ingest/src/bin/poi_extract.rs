@@ -1,4 +1,4 @@
-//! `poi_extract IN.osm.pbf --geojson FILE --names FILE --index FILE [--attrs FILE]`
+//! `poi_extract IN.osm.pbf --geojson FILE --names FILE --index FILE [--attrs FILE] [--reviews FILE]`
 //!
 //! Replaces `scripts/maps/poi_extract.cpp`. See `osm_ingest::poi_build` for the
 //! POI type map and the on-disk record layout.
@@ -6,7 +6,7 @@
 use std::process::ExitCode;
 
 const USAGE: &str = "Usage: poi_extract IN.osm.pbf --geojson FILE --names FILE \
-                     --index FILE [--attrs FILE] [--region california|world] [--threads N]";
+                     --index FILE [--attrs FILE] [--reviews FILE] [--region california|world] [--threads N]";
 
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().skip(1).collect();
@@ -22,7 +22,19 @@ fn main() -> ExitCode {
         osm_ingest::par::set_threads(n);
     }
 
-    match osm_ingest::poi_build::build_with(
+    let reviews = match args.reviews.as_deref().map(osm_ingest::poi_reviews::ReviewTable::load) {
+        Some(Ok(table)) => {
+            println!("Loaded {} review row(s)", table.len());
+            Some(table)
+        }
+        Some(Err(e)) => {
+            eprintln!("ERROR: {e}");
+            return ExitCode::FAILURE;
+        }
+        None => None,
+    };
+
+    match osm_ingest::poi_build::build_with_reviews(
         &args.input,
         &args.geojson,
         &args.names,
@@ -31,6 +43,7 @@ fn main() -> ExitCode {
         &args.spatial,
         &args.name_index,
         args.bbox,
+        reviews.as_ref(),
     ) {
         Ok(stats) => {
             println!(
@@ -47,6 +60,9 @@ fn main() -> ExitCode {
                 "{} POI(s) with attributes, {} unique record(s), {} sidecar byte(s)",
                 stats.with_attrs, stats.unique_attrs, stats.attr_bytes
             );
+            if reviews.is_some() {
+                println!("{} POI(s) with review data", stats.with_reviews);
+            }
             println!(
                 "{} populated grid cell(s), {} name index entr(ies)",
                 stats.spatial_cells, stats.name_entries

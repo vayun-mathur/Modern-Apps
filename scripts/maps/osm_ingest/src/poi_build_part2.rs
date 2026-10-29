@@ -258,6 +258,62 @@ mod tests {
         assert_eq!(index.len(), stats.records * 14);
     }
 
+    /// Review rows join on (element, OSM id) before the Morton sort, and land on the
+    /// right ordinal after it. The relation row uses the plain id even though the
+    /// POI stores it negated.
+    #[test]
+    fn review_rows_join_by_element_and_osm_id() {
+        use crate::poi_attrs::{KEY_RATING, KEY_REVIEW_COUNT, KEY_REVIEW_SUMMARY, KEY_CUISINE};
+        let (pbf_path, dir) = testpbf::write_sample("poi_reviews_join");
+        let table = crate::poi_reviews::ReviewTable::parse(&format!(
+            "node\t{}\t4.3\t120\tGreat coffee, slow at lunch.\n\
+             way\t{}\t3.8\t15\t\n\
+             relation\t{}\t\t40\tShady lawns.\n\
+             way\t{}\t1.0\t1\tWrong element, must not match.\n",
+            testpbf::CAFE_NODE_ID,
+            testpbf::AREA_WAY_ID,
+            testpbf::RELATION_ID,
+            testpbf::CAFE_NODE_ID,
+        ))
+        .unwrap();
+        let stats = build_with_reviews(
+            &pbf_path,
+            &dir.join("pois.geojsonseq"),
+            &dir.join("poi_names.bin"),
+            &dir.join("poi_index.bin"),
+            &dir.join("poi_attrs.bin"),
+            &dir.join("poi_spatial.bin"),
+            &dir.join("poi_name_index.bin"),
+            None,
+            Some(&table),
+        )
+        .unwrap();
+        assert_eq!(stats.with_reviews, 3);
+
+        let (records, _) = read_records(&dir);
+        let attrs = read_attrs(&dir);
+        let of = |n: &str| &attrs[records.iter().position(|r| r.name == n).unwrap()];
+
+        let cafe = of("Corner Cafe");
+        assert_eq!(cafe[cafe.len() - 4], (KEY_CUISINE, "coffee_shop".to_string()), "tag fields first");
+        assert_eq!(
+            cafe[cafe.len() - 3..],
+            [
+                (KEY_RATING, "4.3".to_string()),
+                (KEY_REVIEW_COUNT, "120".to_string()),
+                (KEY_REVIEW_SUMMARY, "Great coffee, slow at lunch.".to_string()),
+            ]
+        );
+        assert_eq!(
+            of("Plaza"),
+            &vec![(KEY_RATING, "3.8".to_string()), (KEY_REVIEW_COUNT, "15".to_string())]
+        );
+        assert_eq!(
+            of("Riverside Park"),
+            &vec![(KEY_REVIEW_COUNT, "40".to_string()), (KEY_REVIEW_SUMMARY, "Shady lawns.".to_string())]
+        );
+    }
+
     #[test]
     fn args_require_all_three_outputs() {
         let ok = parse_args(&[

@@ -57,6 +57,9 @@
 #   inputs/world.transit is required
 #   unless -NoTransit is passed, which skips GTFS entirely (empty routes +
 #   no --transit sidecar, as if 0 feeds).
+#   inputs/reviews_archive.tsv is required: its per-place rating, review count
+#   and summary are always merged into the POI attribute sidecar by OSM element
+#   (see analysis/osm_reviews/summarize_reviews.py).
 #
 # Requires: cargo (https://rustup.rs). A state-sized extract needs roughly
 # 10 GB of RAM; any build wants ~6x the .pbf in free disk (checked up front),
@@ -205,6 +208,7 @@ $BuildRegion = if ($Region -eq "caonly" -or $Region -eq "naonly") { "world" } el
 $Coastline    = Join-Path $PSScriptRoot "inputs/coastline.shp"
 $WorldTransit = Join-Path $PSScriptRoot "inputs/world.transit"
 $Dem          = Join-Path $PSScriptRoot "inputs/world.mdem"
+$Reviews      = Join-Path $PSScriptRoot "inputs/reviews_archive.tsv"
 function Find-Built([string] $crate, [string] $name) {
     # The tool crates are root-workspace members (no [workspace] table), so
     # `cargo build` links into the WORKSPACE target dir (repo root
@@ -243,7 +247,7 @@ function Size([double] $b) {
 
 # --- inputs -------------------------------------------------------------
 # -NoTransit drops the GTFS inputs entirely (no world.transit, no manifest).
-$pairs = @(@($Pbf, "pbf"), @($Coastline, "coastline"), @($Dem, "dem"))
+$pairs = @(@($Pbf, "pbf"), @($Coastline, "coastline"), @($Dem, "dem"), @($Reviews, "reviews"))
 if (-not $NoTransit) { $pairs += ,@($WorldTransit, "world.transit") }
 foreach ($pair in $pairs) {
     if (-not (Test-Path $pair[0])) { throw "$($pair[1]) not found: $($pair[0])" }
@@ -252,6 +256,7 @@ $Pbf        = (Resolve-Path $Pbf).Path
 $Coastline  = (Resolve-Path $Coastline).Path
 $Dem        = (Resolve-Path $Dem).Path
 $Out        = [System.IO.Path]::GetFullPath($Out)
+$Reviews    = (Resolve-Path $Reviews).Path
 if (-not $NoTransit) {
     $WorldTransit = (Resolve-Path $WorldTransit).Path
 } else {
@@ -441,11 +446,16 @@ if ($exit -ne 0) {
 Write-Host "[5/7] Extracting POI sidecars ($Region) -> $poiDir"
 New-Item -ItemType Directory -Force -Path $poiDir | Out-Null
 $poiLog = Join-Path $tmp "poi.log"
-& $poiExtract $Pbf `
-    --geojson (Join-Path $poiDir "poi.geojsonseq") `
-    --names (Join-Path $poiDir "poi_names.bin") `
-    --index (Join-Path $poiDir "poi_index.bin") `
-    --region $BuildRegion | Tee-Object -FilePath $poiLog
+$poiArgs = @(
+    $Pbf,
+    "--geojson", (Join-Path $poiDir "poi.geojsonseq"),
+    "--names", (Join-Path $poiDir "poi_names.bin"),
+    "--index", (Join-Path $poiDir "poi_index.bin"),
+    "--region", $BuildRegion,
+    "--reviews", $Reviews
+)
+Write-Host "      merging review data from $Reviews"
+& $poiExtract @poiArgs | Tee-Object -FilePath $poiLog
 if ($LASTEXITCODE -ne 0) { throw "poi_extract failed with exit code $LASTEXITCODE" }
 
 # --- [6/7] pack the sidecars onto the tiles archive -> FINAL $Out ----------

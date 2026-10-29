@@ -80,6 +80,10 @@ sealed interface SpecificFeature {
         val poiType: Int? = null,
         /** Street address from the OSM `addr:*` tags, when we have them. */
         val address: String? = null,
+        /** Offline rating, review count and review summary from the archive, when baked in. */
+        val rating: Double? = null,
+        val reviewCount: Int? = null,
+        val reviewSummary: String? = null,
     ) : RoutableFeature
     @Serializable
     data class Route(val waypoints: List<RoutableFeature?>) : SpecificFeature
@@ -120,6 +124,9 @@ suspend fun osmPlace(
         position = position,
         poiType = poiType,
         address = attrs?.address,
+        rating = attrs?.rating,
+        reviewCount = attrs?.reviewCount,
+        reviewSummary = attrs?.reviewSummary,
     )
 }
 

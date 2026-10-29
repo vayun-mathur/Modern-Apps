@@ -32,7 +32,8 @@ import kotlin.test.assertTrue
  * Runs the checklist with the JVM actuals ([JvmRelayTransport] + [JvmPqcCrypto]
  * + file-backed [JvmFileSecureStore] identity stores under fresh temp dirs) as
  * a two-device pair (A = owner, B = joiner) in-process against staging
- * `https://findfamily.cc/personal`. Re-run with:
+ * `https://api.maproj.org/personal` (migrated from findfamily.cc;
+ * findfamily.cc remains valid for backward compatibility). Re-run with:
  *
  * `./gradlew :library:everysync-core:jvmTest --tests
  * "com.vayunmathur.everysync.core.network.LiveRelayConformanceTest"`
@@ -484,7 +485,7 @@ class LiveRelayConformanceTest {
             "BLOCKED=${verdicts.count { it.status == "BLOCKED" }} " +
             "INFO=${verdicts.count { it.status == "INFO" }})")
         println("remaining manual steps for a human with two devices:")
-        println("1. if any step is BLOCKED on relay 404: redeploy the relay at /personal/*, then re-run this test")
+        println("1. if any step is BLOCKED on relay 404: redeploy the relay at /personal/* on api.maproj.org (or findfamily.cc for backward compatibility), then re-run this test")
         println("2. physical pair: install on A+B, init (record both device ids), A creates vault, A invites B via inbox, B pulls invite")
         println("3. on B: verify records decrypt, share link shows ids only, kill-network pull aborts the cycle")
         println("4. delete a note on A, sync, pull on B: confirm deleted=true tombstone arrives (never a silent drop)")

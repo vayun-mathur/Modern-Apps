@@ -11,6 +11,9 @@ _Install: ./install travel (dev by default)._
 - Metadata: metadata_data/travel.md (present)
 - Rust: no / screenshotTest: yes
 
+### Relay server note (backend, outside this repo)
+`travel` does not use the relay directly, but `NetworkClient.init(FIRST_PARTY)` covers `api.maproj.org` (relay hosts migrated from `findfamily.cc`; `findfamily.cc` remains valid for backward compatibility). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
+
 ## Overview
 **Purpose:** Flight + hotel booking — search/comparison, seat maps, ancillaries/offers, trip management with hosted checkout; trips persist on-device so plans stay readable offline.
 **Key features:**

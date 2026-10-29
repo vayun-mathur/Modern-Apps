@@ -12,8 +12,11 @@
 
 ## Overview
 **Purpose:** Shared KMP sync brain for the EverySync E2EE relay protocol — merge, vault policy, DTOs, formats. No Android API in commonMain; platform coupling behind expect/actual (`RelayTransport`, `SecureStore`, `SyncScheduler`, `SyncSink`, `AesGcm`, `SyncDigest`).
-**Invariants (verbatim from the Android impl):** a failed pull returns null = abort, never empty; only explicit tombstones delete; vault keys never user-visible. Relay contract: `https://findfamily.cc/personal` + `wss://…/ws`, `POST /register|/getkey|/append|/pull`.
+**Invariants (verbatim from the Android impl):** a failed pull returns null = abort, never empty; only explicit tombstones delete; vault keys never user-visible. Relay contract: `https://api.maproj.org/personal` + `wss://api.maproj.org/personal/ws`, `POST /register|/getkey|/append|/pull`. Host migrated from findfamily.cc; findfamily.cc remains valid for backward compatibility during the transition.
 **Gotchas:** never depend on `:library:log` / `:library:network` / `:library:room` from commonMain (Android-only, no common variant); FIRST_PARTY pinning DERs are copied by `syncCaResources` into `src/commonMain/resources/ca/` (gitignored build output) and loaded at runtime by the OkHttp actuals.
+
+### Relay server (backend, outside this repo)
+Relay contract host migrated from `https://findfamily.cc/personal` to `https://api.maproj.org/personal` (same Cloudflare FIRST_PARTY pins; `findfamily.cc` remains valid for backward compatibility). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Verify (this module only)
 ```

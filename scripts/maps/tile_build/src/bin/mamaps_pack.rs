@@ -124,6 +124,10 @@ struct Validated {
     transit_prefix: Vec<u8>,
     /// The tile header's own build-id bytes (`tile_bytes[16..24]`), for `derive_build_id`.
     osm_id: [u8; 8],
+    /// FNV-1a of `poi_attrs.bin`, for `derive_build_id`. Empty without the file. The
+    /// attributes can change with no tile change (merged review data), and phones cache
+    /// byte ranges by build id, so the id has to move with them.
+    poi_attrs_digest: Vec<u8>,
 }
 
 /// Untimed entry point, kept for the unit tests below: identical staging and
@@ -171,6 +175,10 @@ fn load_sidecars_impl(
     push(ARCHIVE_KIND_POI_ATTRS, poi.join("poi_attrs.bin"), false)?;
     push(ARCHIVE_KIND_POI_SPATIAL, poi.join("poi_spatial.bin"), false)?;
     push(ARCHIVE_KIND_POI_WORDS, poi.join("poi_name_index.bin"), false)?;
+    let poi_attrs_digest = match std::fs::metadata(poi.join("poi_attrs.bin")) {
+        Ok(m) if m.len() > 0 => fnv64_file(&poi.join("poi_attrs.bin"))?.to_vec(),
+        _ => Vec::new(),
+    };
     // Transit is optional like the other sidecars: omitted when no pack is
     // staged (a tiles+graph+POI archive still exercises every loader's
     // degrade path on device). Callers that need it pass --transit.
@@ -209,7 +217,24 @@ fn load_sidecars_impl(
     validate_sidecars(graph, poi, &staged, timer)?;
     // The tile header's own build-id bytes are read by the caller (it holds the tiles prefix);
     // placeholder filled in `main` after the tiles prefix is parsed.
-    Ok(Validated { staged, transit_prefix, osm_id: [0u8; 8] })
+    Ok(Validated { staged, transit_prefix, osm_id: [0u8; 8], poi_attrs_digest })
+}
+
+/// FNV-1a 64 over a whole file, streamed.
+fn fnv64_file(path: &Path) -> Result<[u8; 8], String> {
+    let mut f = std::fs::File::open(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let mut buf = vec![0u8; 1 << 20];
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    loop {
+        let n = f.read(&mut buf).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+        if n == 0 {
+            return Ok(h.to_le_bytes());
+        }
+        for &b in &buf[..n] {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100_0000_01b3);
+        }
+    }
 }
 
 /// Validate each staged sidecar the way its loader checks it, without holding payloads.
@@ -655,10 +680,12 @@ fn verify_packed(tmp: &Path, entry_count: usize) -> Result<(), String> {
     Ok(())
 }
 
-/// Always-derived unified build id: hash the tile header's own id plus the
-/// transit pack prefix, so any input change moves the id.
-fn derive_build_id(osm_id: &[u8; 8], transit_prefix: &[u8]) -> u64 {
-    unified_build_id(b"graph-dir", osm_id, transit_prefix, b"", b"mamaps-pack-v1")
+/// Always-derived unified build id: hash the tile header's own id, the POI
+/// attribute digest and the transit pack prefix, so any input change moves the id.
+/// The attribute digest rides in the OSM slot: both describe per-place content.
+fn derive_build_id(osm_id: &[u8; 8], poi_attrs_digest: &[u8], transit_prefix: &[u8]) -> u64 {
+    let place_digest = [&osm_id[..], poi_attrs_digest].concat();
+    unified_build_id(b"graph-dir", &place_digest, transit_prefix, b"", b"mamaps-pack-v1")
 }
 
 fn value(args: &[String], i: usize, name: &str) -> PathBuf {
@@ -732,7 +759,7 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
     validated.osm_id.copy_from_slice(&tile_bytes_prefix[16..24]);
-    let id = derive_build_id(&validated.osm_id, &validated.transit_prefix);
+    let id = derive_build_id(&validated.osm_id, &validated.poi_attrs_digest, &validated.transit_prefix);
     // Build-id derivation is a 1 KiB hash (microseconds); it books here with the
     // streaming copy, directory/footer, header rewrite, re-verify and rename.
     timer.switch("write-output");
@@ -903,7 +930,7 @@ mod tests {
         assert_eq!(validated.staged.len(), 7, "meta+nodes+edges+intermediate+poi-index+poi-names+transit");
         let mut osm_id = [0u8; 8];
         osm_id.copy_from_slice(&v7_tiles()[16..24]);
-        let id = derive_build_id(&osm_id, &validated.transit_prefix);
+        let id = derive_build_id(&osm_id, &validated.poi_attrs_digest, &validated.transit_prefix);
         let out = dir.join("packed.mamaps");
         let final_len =
             pack_streaming(&tiles_path, &validated, 0xBEEF, &out).expect("pack");
@@ -1033,11 +1060,40 @@ mod tests {
         let tiles = v7_tiles();
         let mut osm_id = [0u8; 8];
         osm_id.copy_from_slice(&tiles[16..24]);
-        let base = derive_build_id(&osm_id, &[]);
-        let with_transit = derive_build_id(&osm_id, &transit_pack()[..1024.min(transit_pack().len())]);
+        let base = derive_build_id(&osm_id, &[], &[]);
+        let with_transit = derive_build_id(&osm_id, &[], &transit_pack()[..1024.min(transit_pack().len())]);
         assert_ne!(
             base, with_transit,
             "adding a transit pack moves the derived id"
         );
+    }
+
+    #[test]
+    fn derive_build_id_moves_with_poi_attributes() {
+        let tiles = v7_tiles();
+        let mut osm_id = [0u8; 8];
+        osm_id.copy_from_slice(&tiles[16..24]);
+        let without = derive_build_id(&osm_id, &[], &[]);
+        let a = derive_build_id(&osm_id, &1u64.to_le_bytes(), &[]);
+        let b = derive_build_id(&osm_id, &2u64.to_le_bytes(), &[]);
+        assert_ne!(without, a, "gaining an attrs sidecar moves the id");
+        assert_ne!(a, b, "changed attributes (e.g. new review data) move the id");
+        assert_eq!(a, derive_build_id(&osm_id, &1u64.to_le_bytes(), &[]), "stable");
+    }
+
+    #[test]
+    fn the_attrs_digest_is_read_from_the_staged_file() {
+        let (dir, poi) = overlay_fixture("attrs_digest");
+        assert!(load_sidecars(&dir, &poi, None).expect("no attrs").poi_attrs_digest.is_empty());
+        let mut attrs = Vec::new();
+        attrs.extend_from_slice(b"MAPA");
+        attrs.extend_from_slice(&[1, 0, 0, 0]);
+        attrs.extend_from_slice(&1u32.to_le_bytes());
+        attrs.extend_from_slice(&u32::MAX.to_le_bytes());
+        std::fs::write(poi.join("poi_attrs.bin"), &attrs).expect("fixture attrs");
+        let digest = load_sidecars(&dir, &poi, None).expect("with attrs").poi_attrs_digest;
+        assert_eq!(digest, fnv64_file(&poi.join("poi_attrs.bin")).unwrap().to_vec());
+        assert_eq!(digest.len(), 8);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -21,8 +21,9 @@ import kotlin.io.encoding.Base64
  * the three invariants (null-on-failed-pull abort, tombstone-only delete
  * lives in RelayMerge tests, keys never appear in share links).
  *
- * Live-relay conformance (against staging `findfamily.cc/personal`) reuses
- * these same assertions with a Ktor `RelayTransport` actual — see Phase 1F.
+ * Live-relay conformance (against staging `api.maproj.org/personal`, migrated
+ * from findfamily.cc — findfamily.cc remains valid for backward compatibility)
+ * reuses these same assertions with a Ktor `RelayTransport` actual — see Phase 1F.
  */
 class RelayConformanceTest {
 

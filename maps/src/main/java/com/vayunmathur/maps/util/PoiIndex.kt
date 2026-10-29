@@ -149,6 +149,11 @@ object PoiIndex {
         val postcode: String? = null,
         val cuisine: String? = null,
         val wheelchair: String? = null,
+        /** Place rating merged in at build time from the external review table, 1.0–5.0. */
+        val rating: Double? = null,
+        val reviewCount: Int? = null,
+        /** A short AI summary of the place's reviews. */
+        val reviewSummary: String? = null,
     ) {
         /**
          * The `addr:*` tags as one display line, or null when there are none.
@@ -169,7 +174,8 @@ object PoiIndex {
 
         val isEmpty: Boolean
             get() = openingHours == null && phone == null && website == null &&
-                address == null && cuisine == null && wheelchair == null
+                address == null && cuisine == null && wheelchair == null &&
+                rating == null && reviewCount == null && reviewSummary == null
     }
 
     /**

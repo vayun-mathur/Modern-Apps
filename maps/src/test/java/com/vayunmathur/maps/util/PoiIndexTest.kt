@@ -49,6 +49,8 @@ class PoiIndexTest {
     private fun load(
         pois: List<Poi>,
         attrs: Map<Int, String> = emptyMap(),
+        /** Extra `(key, value)` fields per ordinal, written after the phone. */
+        attrFields: Map<Int, List<Pair<Int, String>>> = emptyMap(),
         attrSlots: Int? = null,
         /** Whether to write `poi_spatial.bin` / `poi_name_index.bin` at all. */
         sideFiles: Boolean = true,
@@ -90,9 +92,9 @@ class PoiIndexTest {
         }
         File(dir, PoiIndex.INDEX_FILE).writeBytes(index.array())
 
-        if (attrs.isNotEmpty() || attrSlots != null) {
+        if (attrs.isNotEmpty() || attrFields.isNotEmpty() || attrSlots != null) {
             File(dir, PoiIndex.ATTRS_FILE)
-                .writeBytes(attrsFile(attrSlots ?: sorted.size, attrs))
+                .writeBytes(attrsFile(attrSlots ?: sorted.size, attrs, attrFields))
         }
         if (sideFiles) {
             val grid = spatialFile(sorted, spatialRecords ?: sorted.size)
@@ -196,17 +198,24 @@ class PoiIndexTest {
      * disagrees with the index — the mismatch the reader has to refuse, since the join is
      * positional and a stale sidecar would hand every place someone else's phone number.
      */
-    private fun attrsFile(slots: Int, phones: Map<Int, String>): ByteArray {
+    private fun attrsFile(
+        slots: Int,
+        phones: Map<Int, String>,
+        extra: Map<Int, List<Pair<Int, String>>> = emptyMap(),
+    ): ByteArray {
         val blob = java.io.ByteArrayOutputStream()
         val offsets = IntArray(slots) { -1 }
         for (ordinal in 0 until slots) {
-            val phone = phones[ordinal] ?: continue
+            val fields = listOfNotNull(phones[ordinal]?.let { 2 to it }) + extra[ordinal].orEmpty() // 2 = KEY_PHONE
+            if (fields.isEmpty()) continue
             offsets[ordinal] = blob.size()
-            val value = phone.toByteArray(Charsets.UTF_8)
-            val body = ByteBuffer.allocate(3 + value.size).order(ByteOrder.LITTLE_ENDIAN)
-            body.put(2)                        // KEY_PHONE
-            body.putShort(value.size.toShort())
-            body.put(value)
+            val encoded = fields.map { (key, v) -> key to v.toByteArray(Charsets.UTF_8) }
+            val body = ByteBuffer.allocate(encoded.sumOf { 3 + it.second.size }).order(ByteOrder.LITTLE_ENDIAN)
+            for ((key, value) in encoded) {
+                body.put(key.toByte())
+                body.putShort(value.size.toShort())
+                body.put(value)
+            }
             blob.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN)
                 .putShort(body.capacity().toShort()).array())
             blob.write(body.array())
@@ -455,6 +464,40 @@ class PoiIndexTest {
             "+1-555-BIGMAC",
             PoiIndex.attributesNear(37.7749, -122.4194, "MCDONALD'S")?.phone,
         )
+    }
+
+    @Test
+    fun `review fields decode beside the OSM tags and on their own`() {
+        val recs = load(
+            listOf(
+                Poi(377_749_000, -1_224_194_000, 1, "Diner"),
+                Poi(377_759_000, -1_224_194_000, 1, "Bakery"),
+            ),
+            attrs = emptyMap(),
+        )
+        val diner = recs.indexOfFirst { it.name == "Diner" }
+        val bakery = recs.indexOfFirst { it.name == "Bakery" }
+        load(
+            recs,
+            attrs = mapOf(diner to "+1-555-DINER"),
+            attrFields = mapOf(
+                diner to listOf(KEY_RATING to "4.3", KEY_REVIEW_COUNT to "1234", KEY_REVIEW_SUMMARY to "Huge portions."),
+                // Out-of-range values are dropped, not shown; the summary still stands alone.
+                bakery to listOf(KEY_RATING to "9.9", KEY_REVIEW_COUNT to "-4", KEY_REVIEW_SUMMARY to "Fresh croissants."),
+            ),
+        )
+
+        val d = PoiIndex.attributesNear(37.7749, -122.4194, "Diner")
+        assertEquals("+1-555-DINER", d?.phone)
+        assertEquals(4.3, d?.rating)
+        assertEquals(1234, d?.reviewCount)
+        assertEquals("Huge portions.", d?.reviewSummary)
+
+        val b = PoiIndex.attributesNear(37.7759, -122.4194, "Bakery")
+        assertNull(b?.rating)
+        assertNull(b?.reviewCount)
+        assertEquals("Fresh croissants.", b?.reviewSummary)
+        assertFalse(b?.isEmpty ?: true, "a summary alone is a record")
     }
 
     @Test

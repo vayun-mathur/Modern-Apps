@@ -52,6 +52,9 @@
     <!-- Place detail: Rating summary. %1$s=stars e.g. "4.5", %2$s=review count e.g. "128" -->
     <string name="reviews_summary"><xliff:g id="rating" example="4.5">%1$s</xliff:g> stars | <xliff:g id="review_count" example="128">%2$s</xliff:g> reviews</string>
 
+    <!-- Place detail: Label above a short summary of what reviewers say about the place. Noun phrase. -->
+    <string name="review_summary_label">Review summary</string>
+
     <!-- Place detail: Fuel price section header, shown for gas stations only. Noun phrase. -->
     <string name="poi_fuel_price_header">Fuel price</string>
     <!-- Place detail: Label of the first tab under the action buttons, holding the

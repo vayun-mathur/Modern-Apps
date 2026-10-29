@@ -59,8 +59,9 @@ class MainActivity : MaActivity() {
     private var ready by mutableStateOf(false)
 
     override fun onCreateBeforeContent() {
-        // Hardened trust: api.maproj.org + data.maproj.org + findfamily.cc are Cloudflare
+        // Hardened trust: api.maproj.org + data.maproj.org are Cloudflare
         // fronted, covered by ISRG X1/X2 + GTS R1-R4 in FIRST_PARTY bundle.
+        // (findfamily.cc relay migrated to api.maproj.org — same pins.)
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
 
         lifecycleScope.launch(Dispatchers.IO) {

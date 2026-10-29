@@ -21,7 +21,9 @@ import javax.net.ssl.X509TrustManager
 
 /**
  * `RelayHttpClient` over OkHttp3 with FIRST_PARTY pinning (ISRG X1/X2 +
- * GTS R1-R4 for `findfamily.cc`).
+ * GTS R1-R4 for `api.maproj.org`). Relay hosts migrated from findfamily.cc
+ * to api.maproj.org; same Cloudflare pins cover both — findfamily.cc remains
+ * valid for backward compatibility during the transition.
  *
  * TWIN: `jvmMain/.../OkHttpRelayClient.kt` is the same file for desktop JVM
  * (classloader resources + OkHttp are identical on both). Keep them in sync;
@@ -90,8 +92,11 @@ class OkHttpRelayClient private constructor(
 }
 
 /**
- * FIRST_PARTY pinning roots (ISRG X1/X2 + GTS R1-R4) for `findfamily.cc`,
- * copied by `syncCaResources` into `src/commonMain/resources/ca/`.
+ * FIRST_PARTY pinning roots (ISRG X1/X2 + GTS R1-R4) for `api.maproj.org`.
+ * Relay hosts migrated from findfamily.cc to api.maproj.org; same Cloudflare
+ * pins cover both — findfamily.cc remains valid for backward compatibility
+ * during the transition. Copied by `syncCaResources` into
+ * `src/commonMain/resources/ca/`.
  */
 object FirstPartyPins {
     val fileNames = listOf(

@@ -3904,7 +3904,10 @@ dependencies = [
  "memmap2",
  "miniz_oxide 0.8.9",
  "rayon",
+ "serde",
+ "serde_json",
  "tilecodec",
+ "ureq",
 ]
 
 [[package]]

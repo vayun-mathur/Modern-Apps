@@ -84,7 +84,7 @@ Channel names (`RelayContract.kt`): records `passwords:<vault>` /
 
 | Step | Date | Relay build | Pass? | Notes |
 | ---- | ---- | ----------- | ----- | ----- |
-| 1 register/getkey | 2026-10-18 | staging `https://findfamily.cc/personal` → HTTP 404 `Not Found` on all `/personal/*` routes (host serves static 200 at `/`) | BLOCKED | `POST /register` → 404 body=`Not Found` (also via pwsh `Invoke-WebRequest`, GET `/personal` → 404, trailing-slash + plain-HTTP variants → 404). `JvmRelayTransport.init()` false on both A+B. Runner: `LiveRelayConformanceTest` step 1 BLOCKED. |
+| 1 register/getkey | 2026-10-18 | staging `https://api.maproj.org/personal` → HTTP 404 `Not Found` on all `/personal/*` routes (host serves static 200 at `/`) | BLOCKED | `POST /register` → 404 body=`Not Found` (also via pwsh `Invoke-WebRequest`, GET `/personal` → 404, trailing-slash + plain-HTTP variants → 404). `JvmRelayTransport.init()` false on both A+B. Runner: `LiveRelayConformanceTest` step 1 BLOCKED. |
 | 2 append/pull | 2026-10-18 | same 404 staging | BLOCKED | No channel reachable; step never executed. Runner step 2 BLOCKED with the same 404 evidence. |
 | 3 B64 AES shape | 2026-10-18 | same 404 staging (relay half) | partial — local half PASS | Local half genuinely executed+asserted with JVM `AesGcm`: IV-prepended `[12B iv][ct\|\|tag]` (pt+28B), random IV (two encryptions differ, both decrypt), B64 envelope round-trip (runner step 3-local PASS). Relay half BLOCKED (no `pullRaw` possible). |
 | 4 roster/epoch | 2026-10-18 | same 404 staging | BLOCKED | Never executed against staging; runner step 4 BLOCKED. Scripted: roster editor + garbage-skip, `rotateKey` → epoch 1 K2, epoch isolation (runner `phaseRosterEpoch`). |
