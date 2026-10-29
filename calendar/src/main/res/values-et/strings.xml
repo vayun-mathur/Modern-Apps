@@ -180,4 +180,6 @@
     <string name="reminder_custom_title">Sinu koostatud meeldetuletus</string>
     <string name="reminder_unit_minutes">Minutid</string>
     <string name="reminder_unit_hours">Tunnid</string>
+    <string name="layout_month_agenda">Kuu + päevakava</string>
+    <string name="layout_short_month_agenda">KP</string>
 </resources>
