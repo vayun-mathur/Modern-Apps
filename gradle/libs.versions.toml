@@ -7,7 +7,7 @@
 # Build & tooling
 agp = "9.5.0-alpha09"
 # lint version = 23 + AGP major (AGP 9.x -> lint 32.x)
-lint = "32.5.0-alpha09"
+lint = "32.5.0-alpha10"
 kotlin = "2.5.0-Beta1"
 kotlinGradlePlugin = "2.5.0-Beta1"
 # KSP 2.x is versioned independently of Kotlin: the `<kotlin>-<ksp>` scheme ended at
