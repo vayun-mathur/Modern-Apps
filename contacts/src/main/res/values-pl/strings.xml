@@ -152,4 +152,11 @@
     </plurals>
     <string name="move_partial_failure">Przeniesiono: <xliff:g id="moved" example="2">%1$d</xliff:g>, nie przeniesiono: <xliff:g id="failed" example="1">%2$d</xliff:g></string>
     <string name="move_failed">Błąd przenoszenia</string>
+    <string name="name">Nazwa</string>
+    <string name="gender">Płeć</string>
+    <string name="gender_custom_hint">Opisz (opcjonalnie)</string>
+    <string name="preferred_contact_method">Preferowana forma kontaktu</string>
+    <string name="preferred_method">Preferowana metoda</string>
+    <string name="move_dropped_gender">płeć</string>
+    <string name="move_dropped_comm_pref">preferowana forma kontaktu</string>
 </resources>
