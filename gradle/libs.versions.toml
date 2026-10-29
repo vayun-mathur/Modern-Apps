@@ -112,7 +112,7 @@ brotli = "0.1.2"
 # reuse + HTTP/2 multiplexing at MapLibre's 20/host concurrency, which per-request
 # HttpURLConnection cannot give. 4.x for minSdk 21+ without the 5.x Kotlin-stdlib
 # jump; grpc-okhttp pulls its own tree, so this is pinned independently.
-okhttp = "4.12.0"
+okhttp = "5.5.0"
 # Standalone library from the AGP toolchain (com.android.tools.build), not the plugin —
 # :appstore uses it at runtime to verify APK source stamps.
 apksig = "9.4.1"
