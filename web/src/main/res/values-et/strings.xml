@@ -110,8 +110,8 @@
     <string name="accepted">Kinnitatud: %1$s</string>
     <string name="blank_new_tab_tap_the_address_pill_to_se">Tühi uus vahekaart - otsinguks klõpsa aadressiriba. Aadressiribal on näha täielik võrguaadress. Uuestilaadimine ja tühjendamine toimuvad laienenud otsinguriba kaardil.</string>
     <string name="bookmarks_inside_will_also_be_deleted">Järjehoidjad kustutatakse ka siit: „%1$s“.</string>
-    <string name="open_a_site_and_tap_menu_install_app_add">Ava veebisait ja klõpsa valikut „Menüü“ → „Paigalda rakendus“ / „Lisa avalehele“. Sellega lisandub kinnitatud otselink, mis käivitab „PwaActivity“ eraldi (ilma brauseri kasutajaliideseta). Ikoonina kasutatakse parimat 192x192 ikooni või „apple-touch-icon“ ikooni; muul juhul kasutatakse tähtedega ikooni (PWA - progressive web app ehk pseudorakendus).</string>
-    <string name="shortcuts_launch_pwaactivity_standalone">Otselingid käivitavad „PwaActivity“ iseseisva „WebView“ kestana (õiguste haldamine, allalaadimised, kolmandate osapoolte küpsised on lubatud). Nupule „Eemalda siit“ vajutamine kustutab andmebaasi kande; kinnitatud käivitusikooni saad eemaldada pika vajutusega, kui see on juba kinnitatud.</string>
+    <string name="open_a_site_and_tap_menu_install_app_add">Ava veebisait ja klõpsa valikut „Menüü“ → „Paigalda rakendus“ / „Lisa avalehele“. Sellega muutub sait avatavaks ilma brauseri nuppudeta.</string>
+    <string name="shortcuts_launch_pwaactivity_standalone">Otselingid avavad saidid justkui rakendusena ilma brauserinuppudeta. Siit eemaldamine ka kustutab ta; Kinnitatud käivitusikooni saad eemaldada pika vajutusega.</string>
     <string name="copy_link">Kopeeri link</string>
     <string name="open_in_new_tab">Ava uuel vahekaardil</string>
     <string name="link_copied">Link on kopeeritud</string>
@@ -123,4 +123,12 @@
     <string name="keeps_the_address_bar_within_thumb_reach">Kuvab aadressi- ja tööriistariba pöidlavajutuse kaugusel</string>
     <string name="open_link">Ava link</string>
     <string name="go_forward">Edasi</string>
+    <string name="retry">Proovi uuesti</string>
+    <string name="search_tab_text">Veeb</string>
+    <string name="search_tab_images">Pildid</string>
+    <string name="search_tab_news">Uudised</string>
+    <string name="search_failed">Otsimine ei õnnestunud</string>
+    <string name="search_no_results">Tulemusi ei leidu</string>
+    <string name="search_more_results">Järgmised tulemused</string>
+    <string name="search_open_classic">Ava klassikaline otsing</string>
 </resources>
