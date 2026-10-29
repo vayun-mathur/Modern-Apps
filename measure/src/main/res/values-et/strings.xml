@@ -45,4 +45,8 @@
     <string name="settings_open_diagnostics">Ava diagnostika</string>
     <string name="diagnostics_loaded">laaditud</string>
     <string name="diagnostics_unavailable">pole saadaval</string>
+    <string name="settings_use_true_north">Kasuta geograafilist põhjasuunda</string>
+    <string name="settings_use_true_north_summary">Korrigeerib geomagnetiline deklinatsiooni sinu asukohas</string>
+    <string name="settings_section_calibration">Kalibreerimine</string>
+    <string name="settings_level_uncalibrated_summary">Kasutusel on töötlemata gravitatsiooninäit</string>
 </resources>
