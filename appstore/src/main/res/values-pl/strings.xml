@@ -111,7 +111,7 @@
     <string name="store_rule_updates_stay_title">Aktualizacje są dostępne w tym sklepie</string>
     <string name="store_rule_updates_stay_detail">Nic innego na Twoim telefonie nie zastąpi aplikacji zainstalowanej tutaj.</string>
     <string name="store_rule_fixed_sources_title">Źródła zostały naprawione</string>
-    <string name="store_rule_fixed_sources_detail">Trzy poniższe źródła są wbudowane i nie możesz dodać kolejnych. Żadna z powyższych gwarancji nie mogłaby zostać zapewniona dla repozytorium dodanego samodzielnie.</string>
+    <string name="store_rule_fixed_sources_detail">Poniższe źródła są wbudowane i nie możesz dodać kolejnych. Żadna z powyższych gwarancji nie mogłaby zostać zapewniona dla repozytorium dodanego samodzielnie.</string>
     <string name="trust_page_title">Jak sprawdzane są aplikacje</string>
     <string name="trust_intro">Trzy poniższe źródła chronią Cię na różne sposoby i żadne z nich nie jest po prostu najbezpieczniejsze. Każda karta informuje o tym, co robi samo źródło, co ta aplikacja sprawdza podczas pobierania oraz w czym to źródło ustępuje pozostałym.</string>
     <string name="trust_every_app">Dotyczy każdej aplikacji tutaj</string>
@@ -132,7 +132,7 @@
     <string name="trust_modern_apps_limits">Jeden deweloper, jeden klucz, brak niezależnej weryfikacji i brak możliwości ponownej kompilacji kodu źródłowego, aby potwierdzić, że aplikacja mu odpowiada. Kod nie jest skanowany.</string>
     <string name="trust_fdroid_title">F-Droid</string>
     <string name="trust_fdroid_summary">Zbudowane z publicznego kodu źródłowego. Wersje, które druga maszyna niezależnie przebudowała do identycznego pliku, są oznaczone jako możliwe do odtworzenia.</string>
-    <string name="trust_fdroid_practice_source">Każda aplikacja jest tworzona na podstawie kodu źródłowego publikowanego przez F-Droid, a nie na podstawie pliku binarnego przesłanego przez programistę</string>
+    <string name="trust_fdroid_practice_source">Każda aplikacja jest tworzona na podstawie kodu źródłowego publikowanego przez F-Droid, a nie na podstawie pliku binarnego przesłanego przez dewelopera</string>
     <string name="trust_fdroid_practice_rebuild">Drugi serwer kompilacji przebudowuje wiele aplikacji i porównuje wynik bajt po bajcie</string>
     <string name="trust_fdroid_practice_antifeatures">Śledzenie, reklamy i zależności płatne są oznaczone na liście</string>
     <string name="trust_fdroid_check_index_signed">Lista aplikacji F-Droid jest podpisana i sprawdzana pod kątem klucza wbudowanego w ten sklep</string>
@@ -141,7 +141,7 @@
     <string name="trust_fdroid_check_hash_and_key">Zarówno suma kontrolna, jak i klucz podpisujący pochodzą z podpisanej listy</string>
     <string name="trust_fdroid_limits">Klucz podpisywania aplikacji posiada F-Droid, a nie deweloper, więc serwery kompilacji mogą podpisać cokolwiek. Nikt nie sprawdza, co robi aplikacja – weryfikuje się jedynie jej zgodność z kodem źródłowym. Aktualizacje, w tym poprawki zabezpieczeń, oczekują na ponowną kompilację, co może zająć dni lub tygodnie.</string>
     <string name="trust_play_title">Google Play</string>
-    <string name="trust_play_summary">Przejrzane, zeskanowane i podpisane przez Google, które weryfikuje tożsamość programisty i może pobrać aplikację z każdego telefonu jednocześnie.</string>
+    <string name="trust_play_summary">Przejrzane, zeskanowane i podpisane przez Google, które weryfikuje tożsamość dewelopera i może pobrać aplikację z każdego telefonu jednocześnie.</string>
     <string name="trust_play_practice_identity">Deweloperzy muszą udowodnić swoją tożsamość, podając w aktach prawdziwe imię i nazwisko oraz adres</string>
     <string name="trust_play_practice_scanning">Każde przesłanie jest skanowane, a Play Protect kontynuuje skanowanie aplikacji w telefonie</string>
     <string name="trust_play_practice_hsm">Klucze podpisu są przechowywane w modułach bezpieczeństwa sprzętowego, a nie na serwerze kompilacji</string>
@@ -179,7 +179,7 @@
         <item quantity="other">Zainstalowano %1$d aktualizacji</item>
     </plurals>
     <string name="trust_accrescent_title">Accrescent</string>
-    <string name="trust_accrescent_summary">Aplikacje podpisane przez ich własnych programistów, umieszczone na liście dozwolonych aplikacji ed25519-signed firmy Accrescent, która przypisuje klucz podpisu każdej aplikacji i najniższą dozwoloną wersję.</string>
+    <string name="trust_accrescent_summary">Aplikacje podpisane przez ich własnych deweloperów, umieszczone na liście dozwolonych aplikacji ed25519-signed firmy Accrescent, która przypisuje klucz podpisu każdej aplikacji i najniższą dozwoloną wersję.</string>
     <string name="trust_accrescent_practice_developer_key">Każda aplikacja jest podpisana własnym kluczem dewelopera, a nie kluczem Accrescent</string>
     <string name="trust_accrescent_practice_min_version">Na liście zapisywana jest minimalna wersja każdej aplikacji, więc nie można przywrócić starej wersji</string>
     <string name="trust_accrescent_check_list_signed">Lista aplikacji jest podpisana i sprawdzana na podstawie klucza wbudowanego w ten sklep, z sygnaturą czasową, której nie można cofnąć</string>
@@ -233,7 +233,7 @@
     <string name="sync_step_proprietary">Sprawdzanie własnościowego serwera lustrzanego…</string>
     <string name="sync_failed_proprietary">Własnościowy serwer lustrzany nie zsynchronizował się. Istniejące aplikacje pozostają bez zmian.</string>
     <string name="trust_no_takedown">Nie ma możliwości wycofania wadliwej wersji z telefonów, na których została już zainstalowana.</string>
-    <string name="trust_proprietary_summary">Zweryfikowane darmowe aplikacje własnościowe, pobierane z Google Play przez serwer tego sklepu i publikowane w podpisanym indeksie z podaniem hasha oraz klucza podpisującego każdej wersji.</string>
+    <string name="trust_proprietary_summary">Zweryfikowane darmowe aplikacje własnościowe, pobierane z Google Play przez serwer tego sklepu i publikowane w podpisanym indeksie z podaniem sumy kontrolnej oraz klucza podpisującego każdej wersji.</string>
     <string name="trust_proprietary_practice_curated">Kopiowana jest wyłącznie jawna lista dozwolonych aplikacji, wybrana przez operatora sklepu</string>
     <string name="trust_proprietary_practice_signed_index">Wersje, sumy kontrolne plików oraz oczekiwane klucze podpisujące są publikowane w indeksie podpisanym kluczem wydawniczym tego sklepu</string>
     <string name="trust_proprietary_practice_play_origin">Pliki to oryginalne wersje deweloperskie z Google Play, pobierane w niezmienionej formie, a nie kompilowane na nowo</string>
@@ -248,4 +248,27 @@
     <string name="tv_detail_author">Deweloper</string>
     <string name="tv_compat_declared">Działa na telewizorze — źródło wskazuje wersję na TV</string>
     <string name="tv_compat_unverified">Zgodność z TV niezweryfikowana — sprawdzane podczas instalacji</string>
+    <string name="source_chip_izzy">IzzyOnDroid</string>
+    <string name="browse_empty_title">Na razie nic tu nie ma</string>
+    <string name="browse_empty_message">Zsynchronizuj swoje źródła, aby wypełnić to miejsce, lub wyszukaj aplikację według nazwy.</string>
+    <string name="section_izzy_recent">Nowości w IzzyOnDroid</string>
+    <string name="section_izzy_recent_subtitle">Najnowsze zweryfikowane kompilacje w IzzyOnDroid</string>
+    <string name="sync_step_izzy">Sprawdzanie kompilacji IzzyOnDroid…</string>
+    <string name="sync_failed_izzy">Repozytorium IzzyOnDroid nie zostało zsynchronizowane. Dotychczasowe aplikacje pozostały bez zmian.</string>
+    <string name="trust_izzy_summary">Aplikacje skompilowane przez dewelopera. Są wyświetlane tylko wtedy, gdy niezależny podmiot odtworzył dokładnie tę samą wersję (bit po bicie) z opublikowanego kodu źródłowego.</string>
+    <string name="trust_izzy_practice_binaries">Aplikacje są podpisywane przez samych deweloperów i pobierane z ich oficjalnych stron wydań</string>
+    <string name="trust_izzy_practice_reproduced">Niezależne systemy weryfikacji kompilują ponownie każdą objętą programem wersję z jej opublikowanego tagu źródłowego i porównują wynik bajt po bajcie</string>
+    <string name="trust_izzy_practice_screened">Zgłoszenia są sprawdzane i oznaczane wynikiem, który jest widoczny w tym sklepie jako odznaka powtarzalnej kompilacji</string>
+    <string name="trust_izzy_check_index_signed">Lista aplikacji IzzyOnDroid jest podpisana i weryfikowana za pomocą klucza wbudowanego w ten sklep</string>
+    <string name="trust_izzy_check_chained">Każda pozycja na tej liście jest powiązana łańcuchem zaufania z podpisem</string>
+    <string name="trust_izzy_check_reproduced">Uwzględniono tylko te wersje, które niezależny twórca odtworzył w sposób identyczny, bit po bicie</string>
+    <string name="trust_izzy_check_hash_and_key">Zarówno suma kontrolna, jak i klucz podpisujący pochodzą z podpisanej listy</string>
+    <string name="trust_izzy_limits">Klucz podpisujący należy do dewelopera, więc odtworzona kompilacja nadal ufa procesowi wdrażania tego dewelopera – ponowne skompilowanie udowadnia jedynie, że plik binarny jest zgodny z opublikowanym kodem źródłowym. Wersje, które nie zostały objęte przez żaden system weryfikacji, nie są tutaj oferowane. Nikt nie skanuje tego, co robi aplikacja.</string>
+    <string name="source_izzy_pin">Przypięte do klucza podpisującego listę aplikacji IzzyOnDroid</string>
+    <string name="tv_updates_with_count">Aktualizacje · %1$d</string>
+    <string name="tv_searching">Wyszukiwanie…</string>
+    <string name="tv_search_prompt_tv">Modern Apps i F-Droid odpowiadają bezpośrednio z poziomu telewizora; wyniki z Play pojawią się za chwilę.</string>
+    <string name="tv_search_results">Wyniki: %1$d</string>
+    <string name="tv_detail_open">Szczegóły</string>
+    <string name="tv_detail_screenshots">Zrzuty ekranu</string>
 </resources>
