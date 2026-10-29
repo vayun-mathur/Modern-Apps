@@ -31,22 +31,33 @@ internal fun resolveTrashableUris(context: Context, files: List<File>): Map<File
         try {
             context.contentResolver.query(
                 collection,
-                arrayOf(MediaStore.MediaColumns._ID),
+                arrayOf(MediaStore.MediaColumns._ID, MediaStore.Files.FileColumns.MEDIA_TYPE),
                 "${MediaStore.MediaColumns.DATA}=?",
                 arrayOf(file.absolutePath),
                 null,
             )?.use { c ->
                 if (c.moveToFirst()) {
-                    out[file] = android.content.ContentUris.withAppendedId(
-                        collection,
-                        c.getLong(0)
-                    )
+                    mediaItemUri(c.getInt(1), c.getLong(0))?.let { out[file] = it }
                 }
             }
         } catch (_: IllegalArgumentException) {
         }
     }
     return out
+}
+
+/**
+ * The per-collection Uri MediaStore's trash/delete requests require. They reject generic
+ * `Files` Uris ("All requested items must be Media items"), so non-media files get `null`.
+ */
+private fun mediaItemUri(mediaType: Int, id: Long): Uri? {
+    val collection = when (mediaType) {
+        MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE -> MediaStore.Images.Media.getContentUri("external")
+        MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO -> MediaStore.Video.Media.getContentUri("external")
+        MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO -> MediaStore.Audio.Media.getContentUri("external")
+        else -> return null
+    }
+    return android.content.ContentUris.withAppendedId(collection, id)
 }
 
 /** All items currently in the system trash, newest first. Files only — the platform trash. */
@@ -58,6 +69,7 @@ internal fun queryTrashedItems(context: Context, limit: Int = TRASH_QUERY_LIMIT)
         MediaStore.MediaColumns.DATA,
         MediaStore.MediaColumns.SIZE,
         MediaStore.MediaColumns.DATE_MODIFIED,
+        MediaStore.Files.FileColumns.MEDIA_TYPE,
     )
     val queryArgs = android.os.Bundle().apply {
         putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
@@ -70,7 +82,7 @@ internal fun queryTrashedItems(context: Context, limit: Int = TRASH_QUERY_LIMIT)
     val out = mutableListOf<FileBrowserItem>()
     try {
         context.contentResolver.query(collection, projection, queryArgs, null)?.use { c ->
-            readTrashRows(c, collection, out)
+            readTrashRows(c, out)
         }
     } catch (_: IllegalArgumentException) {
     }
@@ -79,7 +91,6 @@ internal fun queryTrashedItems(context: Context, limit: Int = TRASH_QUERY_LIMIT)
 
 private fun readTrashRows(
     cursor: android.database.Cursor,
-    collection: Uri,
     out: MutableList<FileBrowserItem>
 ) {
     val idIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
@@ -87,6 +98,7 @@ private fun readTrashRows(
     val dataIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
     val sizeIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
     val dateIdx = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
+    val typeIdx = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE)
     while (cursor.moveToNext()) {
         val data = cursor.getString(dataIdx) ?: continue
         val file = File(data)
@@ -104,7 +116,7 @@ private fun readTrashRows(
                 zipInnerPath = null,
                 key = "trash:$id",
                 lastModified = modified,
-                mediaUri = android.content.ContentUris.withAppendedId(collection, id),
+                mediaUri = mediaItemUri(cursor.getInt(typeIdx), id),
             ),
         )
     }
