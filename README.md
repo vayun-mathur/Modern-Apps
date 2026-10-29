@@ -134,10 +134,16 @@ These MA-C apps are part of the MA-OS project and cannot be used outside of MAOS
 | **Setup Wizard** | MA-C | [Homepage](https://maproj.org/apps/setupwizard) |
 | **Updater** | MA-C | [Homepage](https://maproj.org/apps/updater) |
 
-# Contributions
+# How You Can Help
 
-## Translations
-Contribute to translations for these apps through the weblate project: https://hosted.weblate.org/projects/modern-apps/
+This is an ordered list based on impact and will change as the project evolves.
+
+1. **Identifying, reporting, and diagnosing bugs** - Open an issue on this repo with as much detail as you can (steps to reproduce, device, Android version, logs). Help narrowing down the cause is just as valuable as the report itself.
+2. **Donate** - Support development through [GitHub Sponsors](https://github.com/sponsors/vayun-mathur) or [directly](https://donate.stripe.com/00wbJ37bP5Zw7iwcMZes000).
+3. **Translations** - Contribute to translations for these apps through the Weblate project: https://hosted.weblate.org/projects/modern-apps/
+4. **Contribute to OpenStreetMap** - Several apps (especially Maps) rely on OpenStreetMap data. You can help by:
+   - Adding and updating points of interest (POIs) on [OpenStreetMap](https://www.openstreetmap.org).
+   - Uploading 360° street-level imagery to [Panoramax](https://panoramax.fr), which will help remove our dependency on google street view for the Maps app.
 
 # App Feature Descriptions
 
