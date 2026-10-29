@@ -11,6 +11,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20261028
+        versionName = "v2.6.11b"
         applicationId = "com.vayunmathur.globalesim"
     }
 }

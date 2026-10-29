@@ -11,6 +11,8 @@ launcherIcon {
 
 android {
     defaultConfig {
+        versionCode = 20261028
+        versionName = "v2.6.11b"
         applicationId = "com.vayunmathur.pdf"
     }
     // The wire parser logs via android.util.Log on its clamp/desync/non-affine paths, and the

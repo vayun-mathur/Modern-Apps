@@ -10,6 +10,8 @@ launcherIcon {
 android {
     namespace = "com.vayunmathur.email"
     defaultConfig {
+        versionCode = 20261028
+        versionName = "v2.6.11b"
         applicationId = "com.vayunmathur.email"
 
         // Outlook OAuth — own Azure public client (PKCE, no secret)

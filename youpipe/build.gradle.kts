@@ -32,6 +32,8 @@ rustNativeLib("youpipe_extractor", "youpipe", extraAbis = listOf("armeabi-v7a"))
 
 android {
     defaultConfig {
+        versionCode = 20261028
+        versionName = "v2.6.11b"
         applicationId = "com.vayunmathur.youpipe"
     }
 }

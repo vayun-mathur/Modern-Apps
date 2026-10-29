@@ -1,0 +1,1 @@
+A fully offline speech-to-text and text-to-speech app
