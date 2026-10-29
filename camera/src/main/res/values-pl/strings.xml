@@ -71,4 +71,7 @@
     <string name="settings_motion_duration">Długość zdjęcia w ruchu</string>
     <string name="motion_duration_1s">%1$d sekunda</string>
     <string name="motion_duration_ns">%1$d sekund</string>
+    <string name="create_passkey">Utwórz klucz dostępu</string>
+    <string name="sign_in_with_passkey">Zaloguj się za pomocą klucza dostępu</string>
+    <string name="use_passkey">Użyj klucza dostępu</string>
 </resources>
