@@ -152,4 +152,18 @@
     <string name="action_browse">Sirvi</string>
     <string name="sync_all_sources_off">Kuna kõik andmeallikad on kasutuselt eemaldatud, siis mitte midagi pole võimalik sünkroonida.</string>
     <string name="search_prompt_message">Modern Apps ja F-Droid vastavad otse sellest nutiseadmest ja Google Play tulemused on saadaval mõni hetk hiljem.</string>
+    <string name="tv_detail_screenshots">Ekraanitõmmised</string>
+    <string name="tv_browse_title">Rakendustepood</string>
+    <string name="tv_detail_back">Tagasi</string>
+    <string name="tv_detail_about">Teave</string>
+    <string name="tv_detail_author">Arendaja</string>
+    <string name="tv_compat_declared">Toimib teleris - allikas on märgitud teleri versiooni olemasolu</string>
+    <string name="tv_compat_unverified">Toimivus teleris pole eelnevalt kontrollitud - see tuvastatakse paigaldamisel</string>
+    <string name="tv_updates_with_count">Uuendused · %1$d</string>
+    <string name="tv_searching">Otsin…</string>
+    <string name="tv_search_prompt_tv">Modern Apps ja F-Droid vastavad otse sellest telerist ja Google Play tulemused on saadaval mõni hetk hiljem.</string>
+    <string name="tv_search_results">%1$d tulemust</string>
+    <string name="tv_detail_open">Üksikasjad</string>
+    <string name="source_proprietary_pin">Kinnitatud kasutama selle rakendustepoe Google Play peegelserveri allkirjastamisvõtit</string>
+    <string name="source_izzy_pin">Kinnitatud kasutama IzzyOnDroidi rakendusteloendi allkirjastamisvõtit</string>
 </resources>
