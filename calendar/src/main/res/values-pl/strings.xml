@@ -202,4 +202,6 @@
     <string name="reminder_custom_title">Niestandardowe przypomnienie</string>
     <string name="reminder_unit_minutes">Minuty</string>
     <string name="reminder_unit_hours">Godziny</string>
+    <string name="layout_month_agenda">Miesiąc + Harmonogram</string>
+    <string name="layout_short_month_agenda">MH</string>
 </resources>
