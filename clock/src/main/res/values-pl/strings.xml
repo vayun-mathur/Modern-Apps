@@ -55,4 +55,7 @@
     <string name="alarm_label_hint">Nazwa alarmu (opcjonalnie)</string>
     <string name="channel_alarm_playing_name">Alarm w trakcie</string>
     <string name="channel_alarm_playing_description">Wyświetlany, gdy dzwoni alarm</string>
+    <string name="alarm_missing_fullscreen_text">Dotknij, aby otworzyć — brak uprawnienia do pełnego ekranu</string>
+    <string name="alarm_fullscreen_revoked">Wyłączono alarmy na pełnym ekranie — dzwoniące budziki nie będą pojawiać się na ekranie blokady</string>
+    <string name="action_open_settings">Otwórz ustawienia</string>
 </resources>
