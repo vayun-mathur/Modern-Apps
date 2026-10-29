@@ -34,8 +34,7 @@ import kotlin.io.encoding.Base64
  * (a dumb append-only log keyed by string channels over `/register|/getkey|/append|/pull`
  * plus a WebSocket), same PQC identity + AES-256-GCM content encryption. All
  * confidentiality, authenticity and authorization are enforced client-side; the relay
- * only ever sees ciphertext. Host migrated from findfamily.cc to api.maproj.org;
- * findfamily.cc remains valid for backward compatibility during the transition.
+ * only ever sees ciphertext.
  *
  * Channels per vault:
  *  - `contacts:<vaultId>`, `calendar:<vaultId>`, `passwords:<id>`, `notes:<id>`

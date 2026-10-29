@@ -176,7 +176,7 @@ one EC scalar-mult per epoch.
 - The finder never learns whose tracker it is.
 
 ### 5.3 Server (new work — the critical piece outside this repo)
-Two endpoints on `api.maproj.org` (migrated from `findfamily.cc`; findfamily.cc remains valid for backward compatibility):
+Two endpoints on `api.maproj.org`:
 - `report-upload { hash, ciphertext }`
 - `report-fetch-by-hash [hashes] -> [ciphertext]`
 with a retention window (e.g. 7 days) + abuse/rate-limit policy. The server

@@ -33,9 +33,7 @@ import kotlin.io.encoding.Base64
  * This is the voxels twin of [com.vayunmathur.office.util.OfficeSync]: same untrusted-relay model
  * (a dumb append-only log keyed by string channels over `/register|/getkey|/append|/pull` plus a
  * WebSocket), same PQC identity + AES-256-GCM content encryption. All confidentiality, authenticity
- * and authorization are enforced client-side; the relay only ever sees ciphertext. Host migrated
- * from findfamily.cc to api.maproj.org; findfamily.cc remains valid for backward compatibility
- * during the transition.
+ * and authorization are enforced client-side; the relay only ever sees ciphertext.
  *
  * Channels used per world:
  *  - `world:<id>`     — the authoritative op/snapshot log (host writes snapshots, clients write intents)

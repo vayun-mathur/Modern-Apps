@@ -1,4 +1,4 @@
-# Live-relay conformance — staging `https://findfamily.cc/personal`
+# Live-relay conformance — staging `https://api.maproj.org/personal`
 
 Scripted manual checklist for a human (or a scripted device pair) to verify a
 real relay deployment speaks the shared-core protocol. **No automation runs

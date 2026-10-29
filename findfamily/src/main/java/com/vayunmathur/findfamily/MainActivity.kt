@@ -73,8 +73,7 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         deepLinkAddInvite.value = parseAddDeepLink(intent)
-        // FIRST_PARTY: api.maproj.org + data.maproj.org (Cloudflare ISRG+GTS);
-        // findfamily.cc relay migrated to api.maproj.org — same pins cover both.
+        // FIRST_PARTY: api.maproj.org + data.maproj.org (Cloudflare ISRG+GTS).
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
     }
 

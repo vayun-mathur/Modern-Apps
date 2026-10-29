@@ -11,7 +11,7 @@
 - Rust: no / screenshotTest: no
 
 ### Relay server (backend, outside this repo)
-Relay hosts migrated from `findfamily.cc` to `api.maproj.org` (same Cloudflare FIRST_PARTY pins; `findfamily.cc` remains valid for backward compatibility). `FIRST_PARTY` bundle pins cover both hosts. Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Full details: root `AGENTS.md` → "Backend server (outside this repo)".
+Relay host: `api.maproj.org`, covered by the `FIRST_PARTY` bundle pins (Cloudflare). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Overview
 **Purpose:** The ONLY network path in the repo — pinned-TLS HTTP engines + WebSocket + connectivity monitoring. Apps call `NetworkClient.init(context, TrustBundle.*)` first, then go through the engines; never raw OkHttp, never `TrustAll` (that lives in apps' dev-only code, never here).

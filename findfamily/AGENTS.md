@@ -12,7 +12,7 @@ _Install: ./install findfamily (dev by default)._
 - Rust: no / screenshotTest: yes
 
 ### Relay server (backend, outside this repo)
-WebSocket relay host migrated from `wss://findfamily.cc/api/ws` to `wss://api.maproj.org/api/ws` (same Cloudflare FIRST_PARTY pins; `findfamily.cc` remains valid for backward compatibility). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Full details: root `AGENTS.md` → "Backend server (outside this repo)".
+WebSocket relay host: `wss://api.maproj.org/api/ws` (Cloudflare FIRST_PARTY pins). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Overview
 **Purpose:** End-to-end encrypted location sharing for family and friends — no emails, phone numbers, or personal info required. Requires internet.

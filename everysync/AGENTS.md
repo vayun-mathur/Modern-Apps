@@ -12,7 +12,7 @@ _Install: ./install everysync (dev by default)._
 - Rust: no / screenshotTest: yes
 
 ### Relay server (backend, outside this repo)
-Host migrated from `findfamily.cc` to `api.maproj.org` (same Cloudflare FIRST_PARTY pins; `findfamily.cc` remains valid for backward compatibility). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Env template: `../location_share_server/.env.example` (copy to `.env`, never commit secrets). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
+Host: `api.maproj.org` (Cloudflare FIRST_PARTY pins). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Env template: `../location_share_server/.env.example` (copy to `.env`, never commit secrets). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Overview
 **Purpose:** Universal sync hub — multi-provider account sync (contacts/calendars/health) plus E2EE vault relay syncing notes/passwords/todos between a user's own devices and shared vaults.

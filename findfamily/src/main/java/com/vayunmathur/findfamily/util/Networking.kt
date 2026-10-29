@@ -51,10 +51,6 @@ object Networking {
 
     /**
      * Base for recipient share links (`$SHARE_BASE/<base26-id>#s=<seed>`).
-     * Served by the same `/view/:id` route that `findfamily.cc` serves, so
-     * links minted on either host resolve identically. Host migrated from
-     * findfamily.cc to api.maproj.org; findfamily.cc remains valid for
-     * backward compatibility during the transition.
      */
     internal const val SHARE_BASE = "https://api.maproj.org/view"
 

@@ -12,7 +12,7 @@ _Install: ./install office (dev by default)._
 - Rust: yes / screenshotTest: yes
 
 ### Relay server (backend, outside this repo)
-Host migrated from `findfamily.cc` to `api.maproj.org` (same Cloudflare FIRST_PARTY pins; `findfamily.cc` remains valid for backward compatibility). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Env template: `../location_share_server/.env.example` (copy to `.env`, never commit secrets). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
+Host: `api.maproj.org` (Cloudflare FIRST_PARTY pins). Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Live SSH: `ssh root@87.86.80.39`. Env template: `../location_share_server/.env.example` (copy to `.env`, never commit secrets). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Overview
 **Purpose:** Document viewer/editor for ODF (odt/ods/odp) and Microsoft (docx/xlsx/pptx) files, with E2EE collaboration over a dumb relay. Internet only for collaboration.

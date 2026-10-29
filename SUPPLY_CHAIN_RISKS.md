@@ -1,6 +1,6 @@
 # Supply Chain Risks
 
-Apps that fetch from external servers (excluding vayunmathur.com, findfamily.cc, maproj.org, maemail.org). Fetches only — no outbound intents, accepted-link hosts, comments, test fixtures, or parser identifiers.
+Apps that fetch from external servers (excluding vayunmathur.com, maproj.org, maemail.org). Fetches only — no outbound intents, accepted-link hosts, comments, test fixtures, or parser identifiers.
 
 ## Mandatory — connects during normal use, no per-service opt-in
 
