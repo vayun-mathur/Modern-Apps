@@ -31,8 +31,8 @@ use ash::vk;
 use crate::vulkan::buffers::Buffer;
 use crate::vulkan::context::Context;
 
-const SSBO: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/probe_ssbo.comp.spv"));
-const TEXEL: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/probe_texel.comp.spv"));
+const SSBO: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/probe_ssbo.comp.spv"));
+const TEXEL: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/probe_texel.comp.spv"));
 
 /// Bytes to sweep. Comfortably past any cache, and the order of a large weight tensor.
 const BYTES: u64 = 256 * 1024 * 1024;

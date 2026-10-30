@@ -1,19 +1,19 @@
 use ash::vk;
 use std::ffi::CString;
-const BLOCK_VERT_SPV: &[u8] = include_bytes!("../../shaders/block.vert.spv");
-const BLOCK_FRAG_SPV: &[u8] = include_bytes!("../../shaders/block.frag.spv");
-const SKY_VERT_SPV: &[u8] = include_bytes!("../../shaders/sky.vert.spv");
-const SKY_FRAG_SPV: &[u8] = include_bytes!("../../shaders/sky.frag.spv");
-const CLOUD_FRAG_SPV: &[u8] = include_bytes!("../../shaders/cloud.frag.spv");
-const ENTITY_VERT_SPV: &[u8] = include_bytes!("../../shaders/entity.vert.spv");
-const ENTITY_FRAG_SPV: &[u8] = include_bytes!("../../shaders/entity.frag.spv");
-const SHADOW_VERT_SPV: &[u8] = include_bytes!("../../shaders/shadow.vert.spv");
-const WATER_VERT_SPV: &[u8] = include_bytes!("../../shaders/water.vert.spv");
-const WATER_FRAG_SPV: &[u8] = include_bytes!("../../shaders/water.frag.spv");
-const POST_VERT_SPV: &[u8] = include_bytes!("../../shaders/post.vert.spv");
-const BRIGHT_FRAG_SPV: &[u8] = include_bytes!("../../shaders/bright.frag.spv");
-const BLUR_FRAG_SPV: &[u8] = include_bytes!("../../shaders/blur.frag.spv");
-const COMPOSITE_FRAG_SPV: &[u8] = include_bytes!("../../shaders/composite.frag.spv");
+const BLOCK_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/block.vert.spv"));
+const BLOCK_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/block.frag.spv"));
+const SKY_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/sky.vert.spv"));
+const SKY_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/sky.frag.spv"));
+const CLOUD_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/cloud.frag.spv"));
+const ENTITY_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/entity.vert.spv"));
+const ENTITY_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/entity.frag.spv"));
+const SHADOW_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/shadow.vert.spv"));
+const WATER_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/water.vert.spv"));
+const WATER_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/water.frag.spv"));
+const POST_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/post.vert.spv"));
+const BRIGHT_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/bright.frag.spv"));
+const BLUR_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/blur.frag.spv"));
+const COMPOSITE_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/composite.frag.spv"));
 pub struct Pipelines {
     pub layout: vk::PipelineLayout,
     pub pipeline: vk::Pipeline,

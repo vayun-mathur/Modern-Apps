@@ -2,7 +2,7 @@
 //! VARIANT A — CONTROL. Byte-for-byte the body of `shaders/probe_ssbo.comp`.
 //!
 //! TEMPORARY probe shader for task 9. Source of truth is
-//! `analysis/gemv_probe/gemv_a_control.comp`; this copy exists only because `build.rs`
+//! `analysis/gemv_probe/gemv_a_control.comp`; this copy exists only because `compileShaders`
 //! compiles `shaders/*.comp` and direct `glslc` invocation is unavailable in this
 //! environment. Not referenced by `pipeline.rs::SPIRV`, so it is compiled but not shipped.
 //! Delete both this and the other four `gemv_*.comp` when the experiment is done.

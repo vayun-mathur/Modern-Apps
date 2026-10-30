@@ -1,7 +1,7 @@
 //! GLSL ES program: compile + link the `kart_gles` shader twins.
 //!
 //! The Vulkan SPIR-V pair gains GLSL ES 3.0 sources (built untouched by
-//! `build.rs`, which only knows `kart.vert`/`kart.frag`); the UBO becomes
+//! `compileShaders`, which only knows `kart.vert`/`kart.frag`); the UBO becomes
 //! three uniforms (`uViewProj` / `uSunDir` / `uCamPos`). Every failure
 //! surfaces the driver info log so logcat names the bad line, not just
 //! "link failed".

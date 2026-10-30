@@ -1,7 +1,7 @@
 //! GLSL ES program: compile + link the `yuu_avatar_gles` shader twins.
 //!
 //! The Vulkan SPIR-V pair gains GLSL ES 3.0 sources (built untouched by
-//! `build.rs`, which only knows `yuu_avatar.vert`/`yuu_avatar.frag`); the UBO
+//! `compileShaders`, which only knows `yuu_avatar.vert`/`yuu_avatar.frag`); the UBO
 //! becomes uniforms (`uViewProj` / `uSunDir` / `uCamPos` / `uBones[32]` /
 //! `uAlbedo`). Every failure surfaces the driver info log so logcat names the
 //! bad line, not just "link failed".

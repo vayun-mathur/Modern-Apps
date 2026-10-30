@@ -29,4 +29,9 @@ dependencies {
 // Same arrangement as :library:map: the crate builds into rustJniLibs and
 // YuuAvatarNative.isAvailable gates every call, so devices without the .so
 // keep the 2D YuuFace preview. arm64 only (map precedent).
-rustNativeLib("yuu_avatar", "avatar")
+rustNativeLib(
+    "yuu_avatar",
+    "avatar",
+    // yuu_avatar_gles.* are GLSL ES, compiled at run time by the GLES path.
+    shaders = listOf("yuu_avatar.vert", "yuu_avatar.frag"),
+)

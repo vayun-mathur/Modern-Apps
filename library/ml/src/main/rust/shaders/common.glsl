@@ -1,6 +1,6 @@
 // Shared declarations for every compute shader in this runtime.
 //
-// Not a shader itself: `build.rs` compiles only `.vert`/`.frag`/`.comp`, so this is
+// Not a shader itself: `compileShaders` compiles only `*.comp` here, so this is
 // pulled in by `#include` and never compiled alone. glslc resolves the path relative
 // to the including file.
 //

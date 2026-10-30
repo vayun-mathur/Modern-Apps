@@ -566,6 +566,14 @@ The workspace denies `unsafe_code`, `unwrap_used`, `panic`, `indexing_slicing` a
 **Packaging 32-bit is two-sided:** the app opts in with `nativeAbis { armv7 = true }` *and* the
 Rust module must opt in with `extraAbis`. CI currently installs only the aarch64 Rust target.
 
+**Vulkan shaders** live in `src/main/rust/shaders/` and are compiled by Gradle, not `build.rs`.
+Pass `shaders = listOf("*.vert", "*.frag")` (globs under `shaders/`) and optionally
+`glslcArgs` to `rustNativeLib`. The `:<module>:compileShaders` task writes `<name>.spv` to
+`build/spirv/` with the NDK's glslc, and the crate loads it with
+`include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/<name>.spv"))`.
+`./check` and `./test` run the task before cargo. If you run cargo by hand, run it first.
+Don't commit `.spv` files.
+
 ---
 
 ## Dependencies

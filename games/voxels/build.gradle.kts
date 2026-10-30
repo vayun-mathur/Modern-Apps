@@ -26,7 +26,7 @@ androidComponents {
 }
 
 // Full Rust + Vulkan engine (ash) with Matcha texture atlas (16 textures → 64x64)
-rustNativeLib("voxels_engine", "voxels")
+rustNativeLib("voxels_engine", "voxels", shaders = listOf("*.vert", "*.frag"))
 
 dependencies {
     implementation(project(":sdk:games"))

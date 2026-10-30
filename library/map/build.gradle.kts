@@ -67,9 +67,8 @@ dependencies {
 // system image on such a host means full-system QEMU translation, so this is the only
 // practical way to exercise the GPU path here. Never on by default.
 //
-// Shaders are GLSL compiled to SPIR-V by the crate's own build.rs, which resolves glslc
-// from the NDK and fails the build if it cannot — deliberately unlike
-// games/voxels/src/main/rust/build.rs, which writes a 28-byte stub and then draws nothing.
+// Shaders are GLSL compiled to SPIR-V by the `compileShaders` task (build-logic
+// GlslcCompile), which fails the build if glslc is missing or a shader does not compile.
 rustNativeLib(
     "map_renderer",
     "map",
@@ -78,4 +77,6 @@ rustNativeLib(
     } else {
         emptyList()
     },
+    shaders = listOf("*.vert", "*.frag"),
+    glslcArgs = listOf("--target-env=vulkan1.1", "-O"),
 )

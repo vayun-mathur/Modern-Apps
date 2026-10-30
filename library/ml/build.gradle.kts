@@ -16,8 +16,8 @@ androidComponents {
 // (CMake was deliberately removed — see maps/build.gradle.kts:29-31), so cargo does the
 // cross-compile and the NDK is only reached for its clang wrappers and glslc.
 //
-// Shaders are GLSL compute compiled to SPIR-V by the crate's own build.rs, which resolves
-// glslc from the NDK and fails the build if it cannot.
+// Shaders are GLSL compute compiled to SPIR-V by the `compileShaders` task (build-logic
+// GlslcCompile); `*.glsl` are #include-only and not compiled on their own.
 // `-PemulatorAbi=x86_64` additionally cross-compiles for the emulator's ABI so the gate can be
 // exercised on an x86_64 host. Off unless asked for, so no default or release build is affected.
 rustNativeLib(
@@ -28,4 +28,6 @@ rustNativeLib(
     } else {
         emptyList()
     },
+    shaders = listOf("*.comp"),
+    glslcArgs = listOf("--target-env=vulkan1.1", "-O"),
 )

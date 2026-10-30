@@ -8,8 +8,8 @@
 use ash::vk;
 use std::ffi::CString;
 
-const YUU_VERT_SPV: &[u8] = include_bytes!("../../shaders/yuu_avatar.vert.spv");
-const YUU_FRAG_SPV: &[u8] = include_bytes!("../../shaders/yuu_avatar.frag.spv");
+const YUU_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/yuu_avatar.vert.spv"));
+const YUU_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/yuu_avatar.frag.spv"));
 
 /// Pipeline + layout + the UBO/sampler descriptor set.
 pub struct Pipelines {

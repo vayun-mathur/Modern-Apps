@@ -8,8 +8,8 @@
 use ash::vk;
 use std::ffi::CString;
 
-const KART_VERT_SPV: &[u8] = include_bytes!("../../shaders/kart.vert.spv");
-const KART_FRAG_SPV: &[u8] = include_bytes!("../../shaders/kart.frag.spv");
+const KART_VERT_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/kart.vert.spv"));
+const KART_FRAG_SPV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/kart.frag.spv"));
 
 /// Pipeline + layout + the single UBO descriptor set.
 pub struct Pipelines {

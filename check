@@ -90,6 +90,8 @@ TASKS=()
 for mod in "${MODS[@]}"; do
   gmod="$(echo "$mod" | tr '/' ':')"
   TASKS+=(":$gmod:detekt" ":$gmod:lint")
+  # cargo include_bytes!s the SPIR-V this task writes to build/spirv.
+  [[ -d "$ROOT/$mod/src/main/rust/shaders" ]] && TASKS+=(":$gmod:compileShaders")
 done
 echo "Modules (${#MODS[@]}): ${MODS[*]}"
 echo "Gradle tasks: ${TASKS[*]}"

@@ -1,4 +1,4 @@
-//! The fill and line pipelines, built from the SPIR-V `build.rs` compiled.
+//! The fill and line pipelines, built from the SPIR-V the Gradle `compileShaders` task compiled.
 //!
 //! # Push constants, and no descriptor sets at all
 //!

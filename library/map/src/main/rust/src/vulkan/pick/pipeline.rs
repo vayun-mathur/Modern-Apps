@@ -1,7 +1,7 @@
 use ash::vk;
 
-const PICK_VERT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/pick.vert.spv"));
-const PICK_FRAG: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/pick.frag.spv"));
+const PICK_VERT: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/pick.vert.spv"));
+const PICK_FRAG: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/pick.frag.spv"));
 
 /// Build the pick pipeline: position-only unit quad, no blend (an integer attachment cannot
 /// blend), no depth or stencil, writing the slot id.

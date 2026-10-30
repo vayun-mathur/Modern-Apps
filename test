@@ -583,6 +583,15 @@ if [[ $RUN_RUST -eq 1 ]]; then
   if [[ ! -x "$CARGO_BIN" ]] && ! command -v "$CARGO_BIN" >/dev/null 2>&1; then
     echo "Error: cargo not found ($CARGO_BIN)." >&2; exit 1
   fi
+  # cargo include_bytes!s the SPIR-V that :mod:compileShaders writes to build/spirv.
+  SHADER_TASKS=()
+  for mod in "${MODS[@]}"; do
+    [[ -d "$ROOT/$mod/src/main/rust/shaders" ]] && SHADER_TASKS+=(":$(echo "$mod" | tr '/' ':'):compileShaders")
+  done
+  if [[ ${#SHADER_TASKS[@]} -gt 0 ]]; then
+    echo "Running: $SCRIPT_DIR/gradlew ${SHADER_TASKS[*]}"
+    "$SCRIPT_DIR/gradlew" "${SHADER_TASKS[@]}" --console=plain || RUST_RC=$?
+  fi
   if [[ ${#ROOT_CRATES[@]} -eq 0 && ${#STANDALONE_DIRS[@]} -eq 0 ]]; then
     echo "No Rust crates in scope; cargo steps skipped."
   elif [[ $NO_COV -eq 1 ]]; then

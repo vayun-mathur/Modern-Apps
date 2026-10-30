@@ -14,9 +14,9 @@
 //!
 //! # SPIR-V is linked in, not shipped
 //!
-//! `build.rs` compiles `shaders/*.comp` into `$OUT_DIR` and panics if `glslc` is missing
-//! or a shader fails, so these `include_bytes!` cannot silently become stubs the way
-//! `games/voxels` does. An asset can be absent at run time; a `&'static [u8]` cannot.
+//! The Gradle `compileShaders` task compiles `shaders/*.comp` into `build/spirv` and fails if
+//! `glslc` is missing or a shader fails, so these `include_bytes!` cannot silently become stubs.
+//! An asset can be absent at run time; a `&'static [u8]` cannot.
 
 use std::sync::Arc;
 
@@ -28,67 +28,67 @@ use super::context::Context;
 use super::pipeline_extra::{CONV_POINT_Q2K, CONV_Q2K, QUANTIZE, QUANTIZE_BLOCKS};
 use super::segment::Segment;
 
-const CONV: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/conv.comp.spv"));
+const CONV: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv.comp.spv"));
 const CONV_TRANSPOSE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_transpose.comp.spv"));
-const MAXPOOL: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/maxpool.comp.spv"));
-const AVGPOOL: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/avgpool.comp.spv"));
-const RESIZE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/resize.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_transpose.comp.spv"));
+const MAXPOOL: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/maxpool.comp.spv"));
+const AVGPOOL: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/avgpool.comp.spv"));
+const RESIZE: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/resize.comp.spv"));
 const RESIZE_NEAREST: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/resize_nearest.comp.spv"));
-const GAP: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/gap.comp.spv"));
-const ADD: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/add.comp.spv"));
-const MUL_BCAST: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/mul_bcast.comp.spv"));
-const AFFINE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/affine.comp.spv"));
-const LAYERNORM: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/layernorm.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/resize_nearest.comp.spv"));
+const GAP: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/gap.comp.spv"));
+const ADD: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/add.comp.spv"));
+const MUL_BCAST: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/mul_bcast.comp.spv"));
+const AFFINE: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/affine.comp.spv"));
+const LAYERNORM: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/layernorm.comp.spv"));
 const INSTANCENORM: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/instancenorm.comp.spv"));
-const RMSNORM: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rmsnorm.comp.spv"));
-const ATTN_SCORES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/attn_scores.comp.spv"));
-const SOFTMAX: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/softmax.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/instancenorm.comp.spv"));
+const RMSNORM: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/rmsnorm.comp.spv"));
+const ATTN_SCORES: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_scores.comp.spv"));
+const SOFTMAX: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/softmax.comp.spv"));
 const SOFTMAX_CAUSAL: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/softmax_causal.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/softmax_causal.comp.spv"));
 const SOFTMAX_PREFIX: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/softmax_prefix.comp.spv"));
-const CACHE_WRITE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/cache_write.comp.spv"));
-const SOFTCAP: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/softcap.comp.spv"));
-const ACTIVATE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/activate.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/softmax_prefix.comp.spv"));
+const CACHE_WRITE: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/cache_write.comp.spv"));
+const SOFTCAP: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/softcap.comp.spv"));
+const ACTIVATE: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/activate.comp.spv"));
 const GATED_ACTIVATE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/gated_activate.comp.spv"));
-const MUL_SCALAR: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/mul_scalar.comp.spv"));
-const CLAMP: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/clamp.comp.spv"));
-const ATTN_APPLY: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/attn_apply.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/gated_activate.comp.spv"));
+const MUL_SCALAR: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/mul_scalar.comp.spv"));
+const CLAMP: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/clamp.comp.spv"));
+const ATTN_APPLY: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_apply.comp.spv"));
 const ATTN_SCORES_RELATIVE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/attn_scores_relative.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_scores_relative.comp.spv"));
 const ATTN_APPLY_RELATIVE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/attn_apply_relative.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_apply_relative.comp.spv"));
 const ATTN_SCORES_BANDED: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/attn_scores_banded.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_scores_banded.comp.spv"));
 const ATTN_APPLY_BANDED: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/attn_apply_banded.comp.spv"));
-const EMBED: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/embed.comp.spv"));
-const MUL: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/mul.comp.spv"));
-const CONV_POINT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/conv_point.comp.spv"));
-const CONV_INT8: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/conv_int8.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_apply_banded.comp.spv"));
+const EMBED: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/embed.comp.spv"));
+const MUL: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/mul.comp.spv"));
+const CONV_POINT: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point.comp.spv"));
+const CONV_INT8: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_int8.comp.spv"));
 const CONV_POINT_INT8: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_int8.comp.spv"));
-const CONSTANT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/constant.comp.spv"));
-const ADD_BCAST: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/add_bcast.comp.spv"));
-const ROTARY: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rotary.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point_int8.comp.spv"));
+const CONSTANT: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/constant.comp.spv"));
+const ADD_BCAST: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/add_bcast.comp.spv"));
+const ROTARY: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/rotary.comp.spv"));
 const ATTN_SCORES_CACHED: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/attn_scores_cached.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_scores_cached.comp.spv"));
 const ATTN_APPLY_CACHED: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/attn_apply_cached.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/attn_apply_cached.comp.spv"));
 const CONV_VEC_INT8: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_vec_int8.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_vec_int8.comp.spv"));
 const CONV_VEC_INT4: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_vec_int4.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_vec_int4.comp.spv"));
 const CONV_POINT_INT4: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_int4.comp.spv"));
-const CONV_VEC_Q2K: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/conv_vec_q2k.comp.spv"));
-const ARGMAX: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/argmax.comp.spv"));
-const ARGMAX_FOLD: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/argmax_fold.comp.spv"));
-const TOPK: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/topk.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point_int4.comp.spv"));
+const CONV_VEC_Q2K: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_vec_q2k.comp.spv"));
+const ARGMAX: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/argmax.comp.spv"));
+const ARGMAX_FOLD: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/argmax_fold.comp.spv"));
+const TOPK: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/topk.comp.spv"));
 /// Every shader, in the order `Shaders::create` destructures them (the Q2_K pair,
 /// `QUANTIZE`, and the `compute_pipeline` / `shader_module` helpers live in
 /// `pipeline_extra.rs` for length).

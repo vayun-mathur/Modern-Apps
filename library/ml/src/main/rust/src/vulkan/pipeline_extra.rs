@@ -9,19 +9,19 @@ use super::pipeline::{Cleanup, Shaders, SPIRV};
 // Lives here rather than in `pipeline.rs` so that file stays under the
 // 500-line Rust limit.
 pub(crate) const QUANTIZE: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/quantize.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/quantize.comp.spv"));
 
 // The Q2_K pair, beside the table they join (see `SPIRV`). Same reason as
 // `QUANTIZE` above: `pipeline.rs` must stay under the 500-line Rust limit.
 pub(crate) const CONV_POINT_Q2K: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_q2k.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point_q2k.comp.spv"));
 pub(crate) const CONV_Q2K: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_q2k.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_q2k.comp.spv"));
 pub(crate) const QUANTIZE_BLOCKS: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/quantize_blocks.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/quantize_blocks.comp.spv"));
 /// Declares `DotProductKHR`, so it is built only on a device that enabled the extension.
 const CONV_POINT_INT4_DOT: &[u8] =
-    include_bytes!(concat!(env!("OUT_DIR"), "/conv_point_int4_dot.comp.spv"));
+    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/conv_point_int4_dot.comp.spv"));
 
 impl Shaders {
     /// Compile every shader and build the two layouts. Called once per device.

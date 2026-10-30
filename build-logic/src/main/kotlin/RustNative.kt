@@ -1,10 +1,26 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.kotlin.dsl.register
+import org.gradle.process.ExecOperations
+import java.io.File
 import java.util.Properties
+import javax.inject.Inject
 
 /**
  * Shared build service that caps concurrent cargoBuild executions to 1.
@@ -50,6 +66,53 @@ private fun isRustLengthExempt(path: String): Boolean =
  */
 data class RustAbi(val abiDir: String, val triple: String, val clangPrefix: String)
 
+/**
+ * Compiles GLSL entry points to `<name>.spv` with the NDK's glslc. Crates load the output with
+ * `include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../build/spirv/<name>.spv"))`,
+ * so standalone cargo (./check, ./test) needs this task to have run first.
+ */
+abstract class GlslcCompile @Inject constructor(
+    private val execOps: ExecOperations,
+) : DefaultTask() {
+    /** Whole shader dir, so `#include`d files invalidate the task too. */
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val shaderDir: DirectoryProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: ConfigurableFileCollection
+
+    @get:Input
+    abstract val glslc: Property<String>
+
+    @get:Input
+    abstract val glslcArgs: ListProperty<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun compile() {
+        val compiler = File(glslc.get())
+        if (!compiler.isFile) {
+            throw GradleException("glslc not found at $compiler. Install NDK $NDK_VERSION.")
+        }
+        val shaders = sources.files.sortedBy { it.name }
+        if (shaders.isEmpty()) throw GradleException("No shaders matched in ${shaderDir.get()}")
+        val out = outputDir.get().asFile
+        // Wipe first so a deleted shader can't leave a stale .spv behind for include_bytes!.
+        out.deleteRecursively()
+        out.mkdirs()
+        for (src in shaders) {
+            val spv = File(out, "${src.name}.spv")
+            execOps.exec {
+                commandLine(compiler.path, *glslcArgs.get().toTypedArray(), "-o", spv.path, src.path)
+            }
+        }
+    }
+}
+
 private val KNOWN_RUST_ABIS = listOf(
     RustAbi(ABI_ARM64, "aarch64-linux-android", "aarch64-linux-android"),
     RustAbi(ABI_ARMV7, "armv7-linux-androideabi", "armv7a-linux-androideabi"),
@@ -80,6 +143,11 @@ private val KNOWN_RUST_ABIS = listOf(
  *                   String list at configuration time so the build stays
  *                   configuration-cache compatible (only the strings cross into
  *                   the task action, never the Project).
+ * @param shaders    Glob patterns under `$srcDir/shaders` to compile to SPIR-V into
+ *                   `build/spirv` ahead of the cargo build (see [GlslcCompile]). Empty
+ *                   means the crate has no Vulkan shaders. Only supported with the
+ *                   default [srcDir], since crates locate `build/spirv` relative to it.
+ * @param glslcArgs  Extra glslc flags, e.g. `--target-env=vulkan1.1`, `-O`.
  */
 fun Project.rustNativeLib(
     crate: String,
@@ -87,6 +155,8 @@ fun Project.rustNativeLib(
     extraAbis: List<String> = emptyList(),
     features: List<String> = emptyList(),
     srcDir: String = "src/main/rust",
+    shaders: List<String> = emptyList(),
+    glslcArgs: List<String> = emptyList(),
 ) {
     // Serialize cargoBuild across all Rust modules to avoid concurrent rustup installs.
     val rustLock = gradle.sharedServices.registerIfAbsent(
@@ -141,6 +211,19 @@ fun Project.rustNativeLib(
     val cargoFeatureArgs: List<String> =
         if (features.isNotEmpty()) listOf("--features", features.joinToString(",")) else emptyList()
 
+    val compileShaders = if (shaders.isEmpty()) null else {
+        require(srcDir == "src/main/rust") { "rustNativeLib($crate): shaders need the default srcDir" }
+        val glslcExe = if (OperatingSystem.current().isWindows) "glslc.exe" else "glslc"
+        tasks.register<GlslcCompile>("compileShaders") {
+            description = "Compiles $crate's GLSL to SPIR-V."
+            shaderDir.set(file("$srcDir/shaders"))
+            sources.from(fileTree("$srcDir/shaders") { include(shaders) })
+            glslc.set("$ndkRoot/shader-tools/$hostTag/$glslcExe")
+            this.glslcArgs.set(glslcArgs)
+            outputDir.set(layout.buildDirectory.dir("spirv"))
+        }
+    }
+
     val perAbi = rustAbis.map { abi ->
         val (abiDir, triple) = abi
         tasks.register<Exec>("cargoBuild_${crate}_${abiDir.replace('-', '_')}") {
@@ -163,15 +246,10 @@ fun Project.rustNativeLib(
 
             inputs.dir("$srcDir/src")
             inputs.file("$srcDir/Cargo.toml")
-            // The crate's own build script and whatever it generates from. `:library:ml`'s
-            // build.rs compiles `shaders/*.comp` to SPIR-V and `include_bytes!`s the result, so
-            // a shader edit changes the .so - but without these two the task stays up to date,
-            // cargo is never invoked, and the old SPIR-V ships. That failure is silent and it
-            // makes shader A/B measurements read as "no effect".
-            //
-            // Optional because not every Rust module here has either.
             file("$srcDir/build.rs").takeIf { it.isFile }?.let { inputs.file(it) }
-            file("$srcDir/shaders").takeIf { it.isDirectory }?.let { inputs.dir(it) }
+            // The crate include_bytes!s build/spirv, so a shader edit must re-run cargo;
+            // otherwise the task stays up to date and the old SPIR-V silently ships.
+            compileShaders?.let { inputs.files(it).withPropertyName("spirv") }
             // `:library:ml`'s build.rs also compiles `schema/maml2.fbs` to Rust via
             // flatc and `include!`s the result, so a schema edit changes the .so too.
             // Same staleness hazard as shaders above: without this the task stays up

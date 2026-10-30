@@ -38,7 +38,13 @@ androidComponents {
 // armeabi-v7a as well as arm64: the ONN box runs this app directly on 32-bit
 // Google TV hardware. Only kart_engine opts in (:library:e2ee-p2p precedent) —
 // no other native module changes.
-rustNativeLib("kart_engine", "kart", extraAbis = listOf(ABI_ARMV7))
+rustNativeLib(
+    "kart_engine",
+    "kart",
+    extraAbis = listOf(ABI_ARMV7),
+    // kart_gles.* are GLSL ES, compiled at run time by the GLES fallback.
+    shaders = listOf("kart.vert", "kart.frag"),
+)
 
 dependencies {
     implementation(project(":sdk:controller"))
