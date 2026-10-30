@@ -2,6 +2,7 @@ package com.vayunmathur.openassistant.ui
 
 import android.content.ClipData
 import android.content.Intent
+import androidx.a2ui.engine.model.A2uiCoreSurfaceModel
 import com.vayunmathur.library.log.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +52,7 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatBubble(message: Message) {
+fun ChatBubble(message: Message, surface: A2uiCoreSurfaceModel? = null) {
     val context = LocalContext.current
     val isUser = message.role == "user"
     val isTool = message.role == "tool"
@@ -129,6 +130,9 @@ fun ChatBubble(message: Message) {
                 Modifier.padding(vertical = 4.dp, horizontal = 0.dp).padding(end = 100.dp),
                 style = LocalTextStyle.current.copy(fontSize = 16.sp, lineHeight = 22.sp)
             )
+        }
+        if (surface != null && !isUser) {
+            A2uiSurfaceView(surface, Modifier.padding(vertical = 4.dp))
         }
         if (message.text.isNotBlank() && !isTool) {
             IconButton(

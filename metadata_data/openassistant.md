@@ -5,6 +5,7 @@ Features:
 - Multiple chats with streaming responses
 - Multimodal input (photo upload and audio recording)
 - Markdown formatted text output
+- Interactive cards and forms in replies (A2UI)
 - Tool calling into other Modern Apps over local IPC
 - A memory the model manages itself, and an editable system prompt
 - Can be set as the device's default digital assistant

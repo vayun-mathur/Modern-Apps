@@ -65,6 +65,8 @@ fun LiteRTChatUi(
     val filteredMessages by assistantViewModel.messagesFor(conversationId).collectAsState(initial = emptyList())
     val isRecording by assistantViewModel.isRecording.collectAsState()
     val recordedAudioPath by assistantViewModel.recordedAudioPath.collectAsState()
+    val surfaces by assistantViewModel.a2ui.surfaces.collectAsState()
+    LaunchedEffect(filteredMessages) { assistantViewModel.a2ui.sync(filteredMessages) }
 
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -188,6 +190,7 @@ fun LiteRTChatUi(
                 state = ChatUiState(
                     title = activeConversation?.title,
                     messages = filteredMessages,
+                    surfaces = surfaces,
                     inputText = inputText,
                     attachments = selectedImageUris,
                     isRecording = isRecording,

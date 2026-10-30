@@ -17,6 +17,7 @@ import com.vayunmathur.openassistant.data.Conversation
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.Message
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
+import com.vayunmathur.openassistant.platform.A2uiController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +77,14 @@ class AssistantViewModel(
     /** All memories. */
     val memories: StateFlow<List<Memory>> = repository.memoriesFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Renders the A2UI surfaces on assistant messages; their events come back as user turns. */
+    val a2ui = A2uiController(application, viewModelScope) { conversationId, text ->
+        viewModelScope.launch {
+            upsertMessage(Message(conversationId, text, "user"))
+            requestInference(conversationId, text, emptyList(), null)
+        }
+    }
 
     init {
         cleanupLegacyModelFile()

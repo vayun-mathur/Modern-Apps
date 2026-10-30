@@ -30,6 +30,8 @@ data class Message(
     val imagePaths: List<String> = emptyList(), // Store as paths for better persistence
     val hasAudio: Boolean = false,
     val missingAppPackage: String? = null,
+    /** The A2UI block the model attached to this reply, as written (see domain/A2uiBlocks). */
+    val a2ui: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     @PrimaryKey(autoGenerate = true)
     override val id: Long = 0,
@@ -100,7 +102,7 @@ interface MemoryDao {
 }
 
 @ColumnTypeConverters(DefaultConverters::class)
-@Database(entities = [Conversation::class, Message::class, Memory::class], version = 3, exportSchema = false)
+@Database(entities = [Conversation::class, Message::class, Memory::class], version = 4, exportSchema = false)
 abstract class AppDatabase: RoomDatabase() {
     abstract fun conversationDao(): ConversationDao
     abstract fun messageDao(): MessageDao
@@ -115,6 +117,7 @@ abstract class AppDatabase: RoomDatabase() {
                         "(`content` TEXT NOT NULL, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
                 )
             },
+            Migration(3, 4) { it.execSQL("ALTER TABLE Message ADD COLUMN a2ui TEXT") },
         )
     }
 }

@@ -30,6 +30,7 @@ import com.vayunmathur.library.ui.SnackbarHostState
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.openassistant.R
+import com.vayunmathur.openassistant.domain.a2uiSurfaceId
 import com.vayunmathur.openassistant.util.ChatActions
 import com.vayunmathur.openassistant.util.ChatUiState
 
@@ -81,7 +82,7 @@ fun ChatScreen(
     ) { padding ->
         SelectionContainer {
             LazyColumn(state = listState, modifier = Modifier.padding(padding).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(state.messages, key = { it.id }) { ChatBubble(it) }
+                items(state.messages, key = { it.id }) { ChatBubble(it, state.surfaces[a2uiSurfaceId(it.id)]) }
             }
         }
     }

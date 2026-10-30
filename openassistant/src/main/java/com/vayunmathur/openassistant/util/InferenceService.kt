@@ -17,6 +17,7 @@ import com.vayunmathur.library.util.SecureResultReceiver
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.downloadservice.ModelUrls
 import com.vayunmathur.openassistant.platform.AssistantTools
+import com.vayunmathur.openassistant.platform.AssistantCatalog
 import com.vayunmathur.openassistant.platform.ChatRequest
 import com.vayunmathur.openassistant.platform.ChatResult
 import com.vayunmathur.openassistant.platform.HistoryTurn
@@ -44,6 +45,8 @@ import kotlin.time.Clock
 import com.vayunmathur.openassistant.data.Message as DbMessage
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.R
+import com.vayunmathur.openassistant.domain.splitA2ui
+import com.vayunmathur.openassistant.domain.withA2uiBlock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
 
@@ -272,7 +275,7 @@ class InferenceService : Service() {
         val cutoff = Clock.System.now().toEpochMilliseconds() - HISTORY_RECENCY_MILLIS
         return fetchHistoryFromDb(conversationId)
             .filter { it.text != userText || it.timestamp < cutoff }
-            .map { HistoryTurn(fromUser = it.role != "assistant", text = it.text) }
+            .map { HistoryTurn(fromUser = it.role != "assistant", text = withA2uiBlock(it.text, it.a2ui)) }
     }
 
     private suspend fun executeStandardInference(job: InferenceJob.Standard) {
@@ -381,9 +384,11 @@ class InferenceService : Service() {
         engine = created
     }
 
+    /** The user's (or default) prompt plus the A2UI section, which custom prompts must not lose. */
     private suspend fun systemPrompt(): String {
         val stored = DataStoreUtils.getInstance(applicationContext).getStringAwait(KEY_SYSTEM_PROMPT)
-        return if (stored.isNullOrBlank()) DEFAULT_SYSTEM_PROMPT else stored
+        val base = if (stored.isNullOrBlank()) DEFAULT_SYSTEM_PROMPT else stored
+        return base + "\n\n" + AssistantCatalog.PROMPT_SECTION
     }
 
     private suspend fun runInferenceLoop(
@@ -429,7 +434,7 @@ class InferenceService : Service() {
                 if (halt || job?.isActive == false) {
                     false
                 } else {
-                    latest.set(text)
+                    latest.set(splitA2ui(text).visible)
                     true
                 }
             }
@@ -447,7 +452,7 @@ class InferenceService : Service() {
                 messageDao.deleteById(aiMsgId)
                 Log.status("InferenceService", "Standard inference halted successfully.")
             } else if (result.text.isNotBlank()) {
-                updateMessageInDb(aiMsgId, result.text)
+                storeReply(aiMsgId, result.text)
             }
             ChatResult.TooLong -> updateMessageInDb(
                 aiMsgId,
@@ -467,10 +472,17 @@ class InferenceService : Service() {
     }
 
     private suspend fun fetchHistoryFromDb(id: Long): List<DbMessage> = messageDao.getByConversation(id)
+
+    /** Stores a finished reply: the prose as its text, any A2UI block beside it. */
+    private suspend fun storeReply(id: Long, reply: String) {
+        val split = splitA2ui(reply, streaming = false)
+        val shown = if (split.visible.isBlank() && split.json == null) reply else split.visible
+        updateMessageInDb(id, shown, split.json)
+    }
     private suspend fun upsertMessageToDb(msg: DbMessage): Long = messageDao.upsert(msg)
-    private suspend fun updateMessageInDb(id: Long, text: String) {
+    private suspend fun updateMessageInDb(id: Long, text: String, a2ui: String? = null) {
         val existing = messageDao.getById(id) ?: return
-        upsertMessageToDb(existing.copy(text = text))
+        upsertMessageToDb(existing.copy(text = text, a2ui = a2ui))
     }
     private suspend fun updateTitleInDb(id: Long, title: String) {
         val oldConversation = conversationDao.getById(id)

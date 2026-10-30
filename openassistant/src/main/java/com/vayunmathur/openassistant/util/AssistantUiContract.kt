@@ -1,6 +1,7 @@
 package com.vayunmathur.openassistant.util
 
 import android.net.Uri
+import androidx.a2ui.engine.model.A2uiCoreSurfaceModel
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.Message
 
@@ -18,6 +19,8 @@ data class ChatUiState(
     /** Null until the conversation is persisted; the screen then shows "New conversation". */
     val title: String? = null,
     val messages: List<Message> = emptyList(),
+    /** A2UI surfaces by surface id (`m<messageId>`), drawn under their assistant message. */
+    val surfaces: Map<String, A2uiCoreSurfaceModel> = emptyMap(),
     val inputText: String = "",
     /** Images picked for the next message, not yet sent. */
     val attachments: List<Uri> = emptyList(),
