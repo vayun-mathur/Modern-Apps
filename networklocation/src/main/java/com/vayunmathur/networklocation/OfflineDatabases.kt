@@ -64,7 +64,7 @@ object OfflineDatabases {
         // A device that has a store counts it as installed and never refetches it, so new
         // content for a beacon store must ship under a new filename, not just a new hash.
         WIFI -> "c8aa83f577d90d250d76912df2adde8a8e0d0bc0dcb4c87fe9e9916a59e822db"
-        CELL -> "3c7bf475e58f1c912aa45d47ac12d7cd7e76fc2c4d10c3b46859b1027e7660c3"
+        CELL -> "831a0b961e0c37ba1b65f53bd79c70bba0fdb6698cae0cf5b6857042ab253ae7"
         else -> null
     }
 
