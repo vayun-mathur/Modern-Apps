@@ -168,7 +168,7 @@ pub fn estimate_position(measurements: &[Measurement]) -> Option<EstimatedPositi
 mod tests {
     use log::info;
     use rand::rngs::SmallRng;
-    use rand::{Rng, SeedableRng};
+    use rand::{RngExt, SeedableRng};
     use std::ops::Range;
 
     use crate::coordinate::Coordinate;
@@ -182,17 +182,17 @@ mod tests {
         real_position: Position,
         random: &mut SmallRng,
     ) -> Measurement {
-        let x = random.gen_range(x_range);
-        let y = random.gen_range(y_range);
-        let z = random.gen_range(z_range);
-        let x_six_sigma_squared: f64 = random.gen_range(3000.0..5000.0);
-        let y_six_sigma_squared: f64 = random.gen_range(3000.0..5000.0);
-        let z_six_sigma_squared: f64 = random.gen_range(50.0..100.0);
+        let x = random.random_range(x_range);
+        let y = random.random_range(y_range);
+        let z = random.random_range(z_range);
+        let x_six_sigma_squared: f64 = random.random_range(3000.0..5000.0);
+        let y_six_sigma_squared: f64 = random.random_range(3000.0..5000.0);
+        let z_six_sigma_squared: f64 = random.random_range(50.0..100.0);
         let distance = ((x - real_position.x.value).powi(2)
             + (y - real_position.y.value).powi(2)
             + (z - real_position.z.value).powi(2))
         .sqrt()
-            + random.gen_range(10.0..100.0);
+            + random.random_range(10.0..100.0);
 
         Measurement {
             position: Position {
@@ -215,21 +215,21 @@ mod tests {
             let mut random = SmallRng::seed_from_u64(s);
 
             let real_position = Position {
-                x: Coordinate::new_real(random.gen_range(-10000.0..10000.0), 0.0),
-                y: Coordinate::new_real(random.gen_range(-10000.0..10000.0), 0.0),
-                z: Coordinate::new_real(random.gen_range(-10000.0..10000.0), 0.0),
+                x: Coordinate::new_real(random.random_range(-10000.0..10000.0), 0.0),
+                y: Coordinate::new_real(random.random_range(-10000.0..10000.0), 0.0),
+                z: Coordinate::new_real(random.random_range(-10000.0..10000.0), 0.0),
             };
 
             let mut measurements = vec![];
 
             for i in 0..9 {
                 let mut measurement = generate_random_measurement(
-                    real_position.x.value - random.gen_range(0.0..1000.0)
-                        ..real_position.x.value + random.gen_range(0.0..1000.0),
-                    real_position.y.value - random.gen_range(0.0..1000.0)
-                        ..real_position.y.value + random.gen_range(0.0..1000.0),
-                    real_position.z.value - random.gen_range(0.0..1000.0)
-                        ..real_position.z.value + random.gen_range(0.0..1000.0),
+                    real_position.x.value - random.random_range(0.0..1000.0)
+                        ..real_position.x.value + random.random_range(0.0..1000.0),
+                    real_position.y.value - random.random_range(0.0..1000.0)
+                        ..real_position.y.value + random.random_range(0.0..1000.0),
+                    real_position.z.value - random.random_range(0.0..1000.0)
+                        ..real_position.z.value + random.random_range(0.0..1000.0),
                     real_position,
                     &mut random,
                 );
@@ -296,21 +296,21 @@ mod tests {
             let mut random = SmallRng::seed_from_u64(s);
 
             let real_position = Position {
-                x: Coordinate::new_real(random.gen_range(0.0..10000.0), 0.0),
-                y: Coordinate::new_real(random.gen_range(0.0..10000.0), 0.0),
-                z: Coordinate::new_real(random.gen_range(0.0..10000.0), 0.0),
+                x: Coordinate::new_real(random.random_range(0.0..10000.0), 0.0),
+                y: Coordinate::new_real(random.random_range(0.0..10000.0), 0.0),
+                z: Coordinate::new_real(random.random_range(0.0..10000.0), 0.0),
             };
 
             let mut measurements = vec![];
 
             for i in 0..9 {
                 let mut measurement = generate_random_measurement(
-                    real_position.x.value - random.gen_range(0.0..1000.0)
-                        ..real_position.x.value + random.gen_range(0.0..1000.0),
-                    real_position.y.value - random.gen_range(0.0..1000.0)
-                        ..real_position.y.value + random.gen_range(0.0..1000.0),
-                    real_position.z.value - random.gen_range(0.0..1000.0)
-                        ..real_position.z.value + random.gen_range(0.0..1000.0),
+                    real_position.x.value - random.random_range(0.0..1000.0)
+                        ..real_position.x.value + random.random_range(0.0..1000.0),
+                    real_position.y.value - random.random_range(0.0..1000.0)
+                        ..real_position.y.value + random.random_range(0.0..1000.0),
+                    real_position.z.value - random.random_range(0.0..1000.0)
+                        ..real_position.z.value + random.random_range(0.0..1000.0),
                     real_position,
                     &mut random,
                 );

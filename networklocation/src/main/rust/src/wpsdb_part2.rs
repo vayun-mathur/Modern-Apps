@@ -48,11 +48,14 @@ mod tests {
         l
     }
 
-    /// Write a valid `WPSDB2` to `path`. `records` need not be sorted or unique.
+    /// Write a valid `WPSDB2` to `path`. `records` need not be sorted or unique. The altitude
+    /// slot is written only for kind 2: `Some(metres)` lands in the record, `None` writes the
+    /// unknown sentinel.
     fn write_fixture(
         path: &std::path::Path,
         universe_bits: u8,
-        records: &[(u128, i64, i64, u64)],
+        payload_kind: u8,
+        records: &[(u128, i64, i64, u64, Option<i64>)],
         sample_log2: u8,
     ) {
         let mut recs = records.to_vec();
@@ -99,17 +102,20 @@ mod tests {
         }
 
         let mut payload = BitWriter::new();
-        for &(_, lat_e8, lon_e8, acc) in &recs {
+        for &(_, lat_e8, lon_e8, acc, alt) in &recs {
             payload.push((lat_e8 + LAT_BIAS) as u64, LAT_BITS);
             payload.push((lon_e8 + LON_BIAS) as u64, LON_BITS);
             payload.push(acc, ACC_BITS);
+            if payload_kind == PAYLOAD_LATLON_E8_ACC16_ALT16 {
+                payload.push((alt.unwrap_or(-ALT_BIAS) + ALT_BIAS) as u64, ALT_BITS);
+            }
         }
 
         let mut out: Vec<u8> = Vec::new();
         out.extend_from_slice(MAGIC);
         out.push(1); // key_kind
         out.push(universe_bits);
-        out.push(PAYLOAD_LATLON_E8_ACC16);
+        out.push(payload_kind);
         out.push(l);
         out.push(sample_log2);
         out.extend_from_slice(&[0, 0, 0]);
@@ -175,7 +181,7 @@ mod tests {
         *state
     }
 
-    fn wifi_records(count: usize) -> Vec<(u128, i64, i64, u64)> {
+    fn wifi_records(count: usize) -> Vec<(u128, i64, i64, u64, Option<i64>)> {
         let mut state = 0x1234_5678_9abc_def0u64;
         (0..count)
             .map(|i| {
@@ -183,7 +189,8 @@ mod tests {
                 let lat = (lcg(&mut state) % 18_000_000_000) as i64 - LAT_BIAS;
                 let lon = (lcg(&mut state) % 36_000_000_000) as i64 - LON_BIAS;
                 let acc = if i % 17 == 0 { ACC_UNKNOWN } else { (i % 500) as u64 };
-                (key, lat, lon, acc)
+                let alt = if i % 13 == 0 { None } else { Some((i % 9000) as i64 - 500) };
+                (key, lat, lon, acc, alt)
             })
             .collect()
     }
@@ -194,7 +201,7 @@ mod tests {
     fn header_is_parsed() {
         let f = Fixture::new("header");
         let recs = wifi_records(500);
-        write_fixture(&f.path(), 48, &recs, 12);
+        write_fixture(&f.path(), 48, PAYLOAD_LATLON_E8_ACC16_ALT16, &recs, 12);
         let r = Reader::open_path(f.path()).expect("fixture must open");
         assert_eq!(r.universe_bits, 48);
         assert!(r.n > 0 && r.n <= 500);
@@ -202,22 +209,22 @@ mod tests {
         assert!(r.l <= MAX_L);
     }
 
-    /// Every key round-trips through `index()`, and `lookup` decodes exactly the coordinate
-    /// and accuracy the builder wrote — including the "no accuracy" sentinel.
+    /// Every key round-trips through `index()`, and `lookup` decodes exactly the coordinate,
+    /// accuracy and altitude the builder wrote — including both "unknown" sentinels.
     #[test]
     fn known_keys_resolve_exactly() {
         let f = Fixture::new("known");
         let mut recs = wifi_records(2000);
         recs.sort_by_key(|r| r.0);
         recs.dedup_by_key(|r| r.0);
-        write_fixture(&f.path(), 48, &recs, 12);
+        write_fixture(&f.path(), 48, PAYLOAD_LATLON_E8_ACC16_ALT16, &recs, 12);
         let r = Reader::open_path(f.path()).unwrap();
 
         assert_eq!(reconstruct(&r), recs.iter().map(|x| x.0).collect::<Vec<_>>());
 
-        for (i, &(key, lat_e8, lon_e8, acc)) in recs.iter().enumerate() {
+        for (i, &(key, lat_e8, lon_e8, acc, alt)) in recs.iter().enumerate() {
             assert_eq!(r.index(key), Some(i as u64), "index mismatch for {key:#x}");
-            let (lat, lon, got_acc) = r.lookup(key).expect("known key resolves");
+            let (lat, lon, got_acc, got_alt) = r.lookup(key).expect("known key resolves");
             // e8 is exact in f64 (well under 2^53), so this is an equality check, not epsilon.
             assert_eq!(lat, lat_e8 as f64 / COORD_SCALE, "lat mismatch for {key:#x}");
             assert_eq!(lon, lon_e8 as f64 / COORD_SCALE, "lon mismatch for {key:#x}");
@@ -226,8 +233,30 @@ mod tests {
             } else {
                 assert_eq!(got_acc, acc as f64, "accuracy mismatch for {key:#x}");
             }
+            match alt {
+                Some(m) => assert_eq!(got_alt, m as f64, "altitude mismatch for {key:#x}"),
+                None => assert!(got_alt.is_nan(), "unknown altitude must be NaN for {key:#x}"),
+            }
             assert!((-90.0..=90.0).contains(&lat));
             assert!((-180.0..=180.0).contains(&lon));
+        }
+    }
+
+    /// Kind-1 stores (no altitude slot) stay readable; their altitude reports as NaN.
+    #[test]
+    fn kind1_stores_read_with_nan_altitude() {
+        let f = Fixture::new("kind1");
+        let recs = wifi_records(500);
+        write_fixture(&f.path(), 48, PAYLOAD_LATLON_E8_ACC16, &recs, 12);
+        let r = Reader::open_path(f.path()).unwrap();
+        for &(key, lat_e8, lon_e8, acc, _) in &recs {
+            let (lat, lon, got_acc, got_alt) = r.lookup(key).expect("known key resolves");
+            assert_eq!(lat, lat_e8 as f64 / COORD_SCALE);
+            assert_eq!(lon, lon_e8 as f64 / COORD_SCALE);
+            if acc != ACC_UNKNOWN {
+                    assert_eq!(got_acc, acc as f64);
+            }
+            assert!(got_alt.is_nan(), "kind 1 has no altitude slot");
         }
     }
 
@@ -236,7 +265,7 @@ mod tests {
     fn unknown_keys_rejected() {
         let f = Fixture::new("unknown");
         let recs = wifi_records(2000);
-        write_fixture(&f.path(), 48, &recs, 12);
+        write_fixture(&f.path(), 48, PAYLOAD_LATLON_E8_ACC16_ALT16, &recs, 12);
         let r = Reader::open_path(f.path()).unwrap();
 
         let known: HashMap<u128, ()> = reconstruct(&r).into_iter().map(|k| (k, ())).collect();
@@ -257,49 +286,54 @@ mod tests {
     fn cell_scale_keys_resolve() {
         let f = Fixture::new("cell");
         let mut state = 0x0f0f_0f0f_0f0f_0f0fu64;
-        let mut recs: Vec<(u128, i64, i64, u64)> = (0..1000)
+        let mut recs: Vec<(u128, i64, i64, u64, Option<i64>)> = (0..1000)
             .map(|_| {
                 let hi = (lcg(&mut state) & ((1u64 << 20) - 1)) as u128;
                 let key = (hi << 64) | lcg(&mut state) as u128;
-                (key, 37_77_000_000i64, -122_41_000_000i64, 250)
+                (key, 37_77_000_000i64, -122_41_000_000i64, 250, None)
             })
             .collect();
         recs.sort_by_key(|r| r.0);
         recs.dedup_by_key(|r| r.0);
-        write_fixture(&f.path(), 84, &recs, 12);
+        write_fixture(&f.path(), 84, PAYLOAD_LATLON_E8_ACC16_ALT16, &recs, 12);
 
         let r = Reader::open_path(f.path()).unwrap();
         assert_eq!(r.l, MAX_L, "an 84-bit universe at this n must hit the l cap");
         for (i, &(key, ..)) in recs.iter().enumerate() {
             assert_eq!(r.index(key), Some(i as u64), "cell key {key:#x} rejected");
         }
-        let (lat, lon, acc) = r.lookup(recs[0].0).unwrap();
+        let (lat, lon, acc, alt) = r.lookup(recs[0].0).unwrap();
         assert_eq!((lat, lon, acc), (37.77, -122.41, 250.0));
+        assert!(alt.is_nan(), "cell records carry no altitude");
     }
 
     /// Extremes must survive the bias, and a store whose payload straddles byte boundaries
-    /// (87 bits is coprime with 8) must decode every record, not just aligned ones.
+    /// (87 and 103 bits are both coprime with 8) must decode every record, not just aligned ones.
     #[test]
     fn coordinate_extremes_and_bit_alignment() {
         let f = Fixture::new("extremes");
-        let recs: Vec<(u128, i64, i64, u64)> = vec![
-            (1, -LAT_BIAS, -LON_BIAS, 0),
-            (2, LAT_BIAS, LON_BIAS, 65534),
-            (3, 0, 0, ACC_UNKNOWN),
-            (4, 1, -1, 1),
-            (5, -LAT_BIAS + 1, LON_BIAS - 1, 12345),
-            (6, 45_00_000_001, -93_26_543_210, 7),
+        let recs: Vec<(u128, i64, i64, u64, Option<i64>)> = vec![
+            (1, -LAT_BIAS, -LON_BIAS, 0, Some(-ALT_BIAS + 1)),
+            (2, LAT_BIAS, LON_BIAS, 65534, Some(ALT_BIAS - 1)),
+            (3, 0, 0, ACC_UNKNOWN, None),
+            (4, 1, -1, 1, Some(0)),
+            (5, -LAT_BIAS + 1, LON_BIAS - 1, 12345, Some(-430)),
+            (6, 45_00_000_001, -93_26_543_210, 7, Some(8848)),
         ];
-        write_fixture(&f.path(), 48, &recs, 6);
+        write_fixture(&f.path(), 48, PAYLOAD_LATLON_E8_ACC16_ALT16, &recs, 6);
         let r = Reader::open_path(f.path()).unwrap();
-        for &(key, lat_e8, lon_e8, acc) in &recs {
-            let (lat, lon, got) = r.lookup(key).expect("key resolves");
+        for &(key, lat_e8, lon_e8, acc, alt) in &recs {
+            let (lat, lon, got, got_alt) = r.lookup(key).expect("key resolves");
             assert_eq!(lat, lat_e8 as f64 / COORD_SCALE);
             assert_eq!(lon, lon_e8 as f64 / COORD_SCALE);
             if acc == ACC_UNKNOWN {
                 assert!(got < 0.0);
             } else {
                 assert_eq!(got, acc as f64);
+            }
+            match alt {
+                Some(m) => assert_eq!(got_alt, m as f64, "altitude mismatch for key {key}"),
+                None => assert!(got_alt.is_nan()),
             }
         }
         assert_eq!(r.lookup(1).unwrap().0, -90.0);
@@ -360,10 +394,11 @@ mod tests {
                         Some(idx),
                         "known key {key:#x} did not resolve to its own index"
                     );
-                    let (lat, lon, acc) = r.lookup(key).expect("known key resolves");
+                    let (lat, lon, acc, alt) = r.lookup(key).expect("known key resolves");
                     assert!((-90.0..=90.0).contains(&lat), "lat out of range: {lat}");
                     assert!((-180.0..=180.0).contains(&lon), "lon out of range: {lon}");
                     assert!(acc < 0.0 || (0.0..=65534.0).contains(&acc), "implausible acc: {acc}");
+                    assert!(alt.is_nan() || (-32767.0..=32767.0).contains(&alt), "implausible alt: {alt}");
                     checked += 1;
                 }
                 idx += 1;
@@ -395,7 +430,7 @@ mod tests {
     fn truncated_store_is_rejected() {
         let f = Fixture::new("trunc");
         let recs = wifi_records(300);
-        write_fixture(&f.path(), 48, &recs, 12);
+        write_fixture(&f.path(), 48, PAYLOAD_LATLON_E8_ACC16_ALT16, &recs, 12);
         let full = std::fs::read(f.path()).unwrap();
         for cut in [8usize, 24, 40, full.len() / 2, full.len() - 1] {
             std::fs::write(f.path(), &full[..cut]).unwrap();

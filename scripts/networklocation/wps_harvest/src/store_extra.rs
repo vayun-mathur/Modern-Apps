@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
     use crate::keys;
-    use crate::record::{Record, Source, ACC_UNKNOWN, LAT_E8_MIN, LON_E8_MIN};
+    use crate::record::{ALT_UNKNOWN, Record, Source, ACC_UNKNOWN, LAT_E8_MIN, LON_E8_MIN};
     use crate::store::{
         KeyKind, DEFAULT_SAMPLE_LOG2, MAX_L, choose_l, verify_store, write_store,
     };
@@ -46,6 +46,7 @@ mod tests {
                 lat_e8: (lcg(&mut state) % 18_000_000_000) as i64 + LAT_E8_MIN,
                 lon_e8: (lcg(&mut state) % 36_000_000_000) as i64 + LON_E8_MIN,
                 accuracy_m: if i % 13 == 0 { ACC_UNKNOWN } else { (i % 900) as u16 },
+                altitude_m: (i % 9000) as i16 - 500,
                 source: Source::Gsloc,
             })
             .collect();
@@ -83,6 +84,7 @@ mod tests {
                 lat_e8: 37_77_493_000,
                 lon_e8: -122_41_942_000,
                 accuracy_m: 900,
+                altitude_m: ALT_UNKNOWN,
                 source: Source::OpenCellId,
             })
             .collect();

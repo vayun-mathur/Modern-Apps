@@ -55,12 +55,17 @@ sealed interface BeaconId {
 /**
  * A beacon whose coordinates are known (from the offline stores or the local cache).
  * [accuracyMeters] is the beacon's own horizontal accuracy radius.
+ *
+ * [altitudeMeters] is the beacon's altitude when the source reported one (kind-2 WiFi
+ * records; Apple's `location.5`), or null when it did not — always the case for cells and
+ * for kind-1 stores. The solver is 2D and does not consume it yet.
  */
 data class BeaconFix(
     val id: BeaconId,
     val latitude: Double,
     val longitude: Double,
     val accuracyMeters: Double,
+    val altitudeMeters: Double? = null,
 )
 
 /** An estimated device position: the output of the Rust weighted-centroid solver. */

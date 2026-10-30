@@ -7,7 +7,11 @@
 
 use std::io::{self, Read, Write};
 
-/// Bytes on disk per record: key(16) + lat(8) + lon(8) + accuracy(2) + source(1) + pad(5).
+/// Bytes on disk per record: key(16) + lat(8) + lon(8) + accuracy(2) + source(1)
+/// + altitude(2) + pad(2) + flags(1).
+///
+/// The altitude slot and flag byte reuse what was the zero pad, so a shard written before
+/// altitude existed still reads cleanly: its flags byte is 0, meaning "altitude unknown".
 pub const RECORD_BYTES: usize = 40;
 
 /// `lat * 1e8`, the range the store's 35-bit latitude field covers.
@@ -21,6 +25,13 @@ pub const LON_E8_MAX: i64 = 180_00_000_000;
 
 /// Stored accuracy meaning "the source did not report one".
 pub const ACC_UNKNOWN: u16 = 0xFFFF;
+
+/// Stored altitude meaning "the source did not report one" (or the shard predates altitude,
+/// which reads as flags = 0). Metres are otherwise well inside `i16` (Dead Sea to Everest).
+pub const ALT_UNKNOWN: i16 = i16::MIN;
+
+/// Flags byte bit: the altitude slot holds a real measurement.
+const FLAG_ALTITUDE_PRESENT: u8 = 1;
 
 /// Where an observation came from. Kept per record so the merge can prefer a source and so a
 /// disagreement between sources is attributable rather than anonymous.
@@ -56,6 +67,9 @@ pub struct Record {
     pub lon_e8: i64,
     /// Horizontal accuracy in metres, or [`ACC_UNKNOWN`].
     pub accuracy_m: u16,
+    /// Altitude in metres (Apple's `location.5`), or [`ALT_UNKNOWN`]. Cells and the bulk
+    /// CSV dumps have no altitude; WiFi from gs-loc does.
+    pub altitude_m: i16,
     /// Which dataset or crawl produced it.
     pub source: Source,
 }
@@ -77,7 +91,10 @@ impl Record {
         out[24..32].copy_from_slice(&self.lon_e8.to_le_bytes());
         out[32..34].copy_from_slice(&self.accuracy_m.to_le_bytes());
         out[34] = self.source as u8;
-        out[35..40].fill(0);
+        let has_alt = self.altitude_m != ALT_UNKNOWN;
+        out[35..37].copy_from_slice(&self.altitude_m.to_le_bytes());
+        out[37..39].fill(0);
+        out[39] = if has_alt { FLAG_ALTITUDE_PRESENT } else { 0 };
     }
 
     /// Deserialize from exactly [`RECORD_BYTES`], or `None` if the source byte is unknown.
@@ -88,11 +105,17 @@ impl Record {
         a.copy_from_slice(&buf[16..24]);
         let mut b = [0u8; 8];
         b.copy_from_slice(&buf[24..32]);
+        let altitude_m = if buf[39] & FLAG_ALTITUDE_PRESENT != 0 {
+            i16::from_le_bytes([buf[35], buf[36]])
+        } else {
+            ALT_UNKNOWN
+        };
         Some(Record {
             key: u128::from_le_bytes(k),
             lat_e8: i64::from_le_bytes(a),
             lon_e8: i64::from_le_bytes(b),
             accuracy_m: u16::from_le_bytes([buf[32], buf[33]]),
+            altitude_m,
             source: Source::from_wire(buf[34])?,
         })
     }
@@ -189,6 +212,7 @@ mod tests {
             lat_e8: 37_77_493_000,
             lon_e8: -122_41_942_000,
             accuracy_m: 35,
+            altitude_m: 12,
             source: Source::Gsloc,
         }
     }
@@ -213,6 +237,26 @@ mod tests {
             r.write_into(&mut buf);
             assert_eq!(Record::read_from(&buf), Some(r));
         }
+    }
+
+    #[test]
+    fn altitude_round_trips_and_absence_is_distinct_from_zero() {
+        for alt in [ALT_UNKNOWN, -430, 0, 55, 8848] {
+            let r = Record { altitude_m: alt, ..sample() };
+            let mut buf = [0u8; RECORD_BYTES];
+            r.write_into(&mut buf);
+            assert_eq!(Record::read_from(&buf).unwrap().altitude_m, alt, "altitude {alt}");
+        }
+    }
+
+    #[test]
+    fn a_pre_altitude_shard_reads_as_altitude_unknown() {
+        // Old layout: everything past `source` was zero pad.
+        let r = Record { altitude_m: 250, ..sample() };
+        let mut buf = [0u8; RECORD_BYTES];
+        r.write_into(&mut buf);
+        buf[35..40].fill(0);
+        assert_eq!(Record::read_from(&buf).unwrap().altitude_m, ALT_UNKNOWN);
     }
 
     #[test]

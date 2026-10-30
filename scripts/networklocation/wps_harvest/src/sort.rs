@@ -177,7 +177,7 @@ impl Drop for Merge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::record::Source;
+    use crate::record::{ALT_UNKNOWN, Source};
 
     struct TempDir(PathBuf);
     impl TempDir {
@@ -200,6 +200,7 @@ mod tests {
             lat_e8: 37_00000000,
             lon_e8: -122_00000000,
             accuracy_m: acc,
+            altitude_m: ALT_UNKNOWN,
             source: Source::Gsloc,
         }
     }

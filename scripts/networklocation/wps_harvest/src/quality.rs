@@ -146,13 +146,13 @@ pub fn clamp_accuracy(meters: i32) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::record::Source;
+    use crate::record::{ALT_UNKNOWN, Source};
 
     const SF_LAT: i64 = 37_77493000;
     const SF_LON: i64 = -122_41942000;
 
     fn rec(key: u128, lat: i64, lon: i64, acc: u16, source: Source) -> Record {
-        Record { key, lat_e8: lat, lon_e8: lon, accuracy_m: acc, source }
+        Record { key, lat_e8: lat, lon_e8: lon, accuracy_m: acc, altitude_m: ALT_UNKNOWN, source }
     }
 
     fn wifi(lat: i64, lon: i64, acc: u16) -> Record {

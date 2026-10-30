@@ -40,6 +40,21 @@ const F_WIFI_DEVICES: u32 = 2;
 const F_CELL_RESPONSE: u32 = 22;
 const F_CELL_REQUEST: u32 = 25;
 
+/// Altitude (Apple's `location.5`) meaning "not reported": Apple sends -1.
+pub const ALT_NOT_REPORTED: i64 = -1;
+
+/// Clamp a source-reported altitude into the store's `i16` metres, mapping Apple's -1
+/// "not reported" to [`crate::record::ALT_UNKNOWN`]. Saturates rather than wrapping: nothing
+/// real sits outside ±32 km, so saturation can only trigger on garbage, which then reads as
+/// extreme rather than plausible.
+pub fn clamp_altitude(metres: i64) -> i16 {
+    if metres == ALT_NOT_REPORTED {
+        i16::MIN
+    } else {
+        metres.clamp(i16::MIN as i64 + 1, i16::MAX as i64) as i16
+    }
+}
+
 /// A beacon Apple knows the location of.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WifiFix {
@@ -51,6 +66,9 @@ pub struct WifiFix {
     pub lon_e8: i64,
     /// Horizontal accuracy in metres.
     pub accuracy_m: i32,
+    /// Altitude in metres, or [`crate::record::ALT_UNKNOWN`]. Present on essentially every
+    /// WiFi fix (Apple's `location.5`); cell responses have no altitude field at all.
+    pub altitude_m: i16,
 }
 
 /// A cell tower Apple knows the location of.
@@ -224,10 +242,15 @@ pub fn frame(payload: &[u8]) -> Vec<u8> {
 
 /// A location submessage. `None` when the beacon is unknown, which Apple signals by returning
 /// -180 degrees in both axes rather than by omitting the field.
-fn parse_location(body: &[u8]) -> Option<(i64, i64, i32)> {
+///
+/// Returns `(lat, lon, accuracy_m, altitude_m)`. Only WiFi carries fields 5/6 (altitude and
+/// vertical accuracy); cell locations top out at field 4, so their altitude reads as
+/// "not reported" without any special-casing.
+fn parse_location(body: &[u8]) -> Option<(i64, i64, i32, i16)> {
     let mut lat = None;
     let mut lon = None;
     let mut acc: i64 = -1;
+    let mut alt: i64 = ALT_NOT_REPORTED;
     let mut r = proto::Reader::new(body);
     while let Some((field, v)) = r.next() {
         if let Field::Varint(raw) = v {
@@ -235,6 +258,7 @@ fn parse_location(body: &[u8]) -> Option<(i64, i64, i32)> {
                 1 => lat = Some(raw as i64),
                 2 => lon = Some(raw as i64),
                 3 => acc = raw as i64,
+                5 => alt = raw as i64,
                 _ => {}
             }
         }
@@ -246,7 +270,7 @@ fn parse_location(body: &[u8]) -> Option<(i64, i64, i32)> {
     // Accuracy is int64 on the wire but only ever a plausible radius in metres; clamp rather
     // than truncate so a hostile or garbled value cannot wrap into something small and
     // confident-looking.
-    Some((lat, lon, acc.clamp(-1, i32::MAX as i64) as i32))
+    Some((lat, lon, acc.clamp(-1, i32::MAX as i64) as i32, clamp_altitude(alt)))
 }
 
 fn parse_wifi(body: &[u8]) -> Vec<WifiFix> {
@@ -267,8 +291,8 @@ fn parse_wifi(body: &[u8]) -> Vec<WifiFix> {
                 _ => {}
             }
         }
-        if let (Some(bssid), Some((lat_e8, lon_e8, accuracy_m))) = (bssid, loc) {
-            out.push(WifiFix { bssid: bssid.to_ascii_lowercase(), lat_e8, lon_e8, accuracy_m });
+        if let (Some(bssid), Some((lat_e8, lon_e8, accuracy_m, altitude_m))) = (bssid, loc) {
+            out.push(WifiFix { bssid: bssid.to_ascii_lowercase(), lat_e8, lon_e8, accuracy_m, altitude_m });
         }
     }
     out
@@ -295,7 +319,7 @@ fn parse_cells(body: &[u8]) -> Vec<CellFix> {
                 _ => {}
             }
         }
-        if let (Some(mcc), Some(mnc), Some(cell_id), Some(area), Some((lat_e8, lon_e8, acc))) =
+        if let (Some(mcc), Some(mnc), Some(cell_id), Some(area), Some((lat_e8, lon_e8, acc, _))) =
             (mcc, mnc, cell_id, area, loc)
         {
             out.push(CellFix { mcc, mnc, cell_id, area, lat_e8, lon_e8, accuracy_m: acc });
@@ -347,16 +371,17 @@ mod tests {
     }
 
     /// Build the response body the parser expects: `AppleWLoc { wifi_devices }`.
-    fn wifi_response(entries: &[(&str, Option<(i64, i64, i64)>)]) -> Vec<u8> {
+    fn wifi_response(entries: &[(&str, Option<(i64, i64, i64, i64)>)]) -> Vec<u8> {
         let mut body = Vec::new();
         for (bssid, loc) in entries {
             let mut dev = Vec::new();
             proto::put_bytes(&mut dev, 1, bssid.as_bytes());
-            if let Some((lat, lon, acc)) = loc {
+            if let Some((lat, lon, acc, alt)) = loc {
                 let mut l = Vec::new();
                 proto::put_int(&mut l, 1, *lat);
                 proto::put_int(&mut l, 2, *lon);
                 proto::put_int(&mut l, 3, *acc);
+                proto::put_int(&mut l, 5, *alt);
                 proto::put_bytes(&mut dev, 2, &l);
             }
             proto::put_bytes(&mut body, F_WIFI_DEVICES, &dev);
@@ -367,24 +392,40 @@ mod tests {
     #[test]
     fn wifi_responses_decode_and_normalize_case() {
         let body = wifi_response(&[
-            ("AA:BB:CC:DD:EE:01", Some((37_77493000, -122_41942000, 35))),
-            ("aa:bb:cc:dd:ee:02", Some((51_50735000, -0_12776000, 120))),
+            ("AA:BB:CC:DD:EE:01", Some((37_77493000, -122_41942000, 35, 12))),
+            ("aa:bb:cc:dd:ee:02", Some((51_50735000, -0_12776000, 120, 44))),
         ]);
         let fixes = parse_wifi(&body);
         assert_eq!(fixes.len(), 2);
         assert_eq!(fixes[0].bssid, "aa:bb:cc:dd:ee:01");
         assert_eq!(fixes[0].lat_e8, 37_77493000);
         assert_eq!(fixes[0].accuracy_m, 35);
+        assert_eq!(fixes[0].altitude_m, 12);
         assert_eq!(fixes[1].lon_e8, -0_12776000);
+        assert_eq!(fixes[1].altitude_m, 44);
+    }
+
+    #[test]
+    fn altitude_decodes_and_its_absence_is_unknown() {
+        // Apple's "not reported" is -1; a missing field 5 reads the same way.
+        let body = wifi_response(&[
+            ("aa:bb:cc:dd:ee:01", Some((37_00000000, -122_00000000, 30, ALT_NOT_REPORTED))),
+            ("aa:bb:cc:dd:ee:02", Some((37_00000000, -122_00000000, 30, -430))),
+        ]);
+        let fixes = parse_wifi(&body);
+        assert_eq!(fixes[0].altitude_m, i16::MIN, "-1 means altitude unknown");
+        assert_eq!(fixes[1].altitude_m, -430, "below sea level survives (Dead Sea)");
+        assert_eq!(clamp_altitude(i64::MAX), i16::MAX);
+        assert_eq!(clamp_altitude(i64::MIN + 1), i16::MIN + 1);
     }
 
     #[test]
     fn beacons_apple_does_not_know_are_dropped() {
         let body = wifi_response(&[
             // Apple's "not found": -180 degrees in both axes.
-            ("aa:bb:cc:dd:ee:01", Some((NOT_FOUND_E8, NOT_FOUND_E8, 500))),
+            ("aa:bb:cc:dd:ee:01", Some((NOT_FOUND_E8, NOT_FOUND_E8, 500, 10))),
             ("aa:bb:cc:dd:ee:02", None),
-            ("aa:bb:cc:dd:ee:03", Some((37_00000000, -122_00000000, 50))),
+            ("aa:bb:cc:dd:ee:03", Some((37_00000000, -122_00000000, 50, 10))),
         ]);
         let fixes = parse_wifi(&body);
         assert_eq!(fixes.len(), 1, "only the one real fix survives");
@@ -395,7 +436,7 @@ mod tests {
     /// it as one, as the old client did, threw away real fixes.
     #[test]
     fn a_missing_accuracy_does_not_discard_a_real_fix() {
-        let body = wifi_response(&[("aa:bb:cc:dd:ee:04", Some((37_00000000, -122_00000000, -1)))]);
+        let body = wifi_response(&[("aa:bb:cc:dd:ee:04", Some((37_00000000, -122_00000000, -1, 10)))]);
         let fixes = parse_wifi(&body);
         assert_eq!(fixes.len(), 1);
         assert_eq!(fixes[0].accuracy_m, -1, "reported as unknown, not dropped");
@@ -438,8 +479,8 @@ mod tests {
     #[test]
     fn a_truncated_response_yields_what_decoded_rather_than_failing() {
         let body = wifi_response(&[
-            ("aa:bb:cc:dd:ee:01", Some((37_00000000, -122_00000000, 30))),
-            ("aa:bb:cc:dd:ee:02", Some((38_00000000, -121_00000000, 40))),
+            ("aa:bb:cc:dd:ee:01", Some((37_00000000, -122_00000000, 30, 10))),
+            ("aa:bb:cc:dd:ee:02", Some((38_00000000, -121_00000000, 40, 10))),
         ]);
         for cut in 1..body.len() {
             let fixes = parse_wifi(&body[..cut]);

@@ -23,7 +23,7 @@ use std::io::{self, BufRead};
 
 use crate::keys::{self, CellId, RadioType};
 use crate::quality::clamp_accuracy;
-use crate::record::{Record, Source, ACC_UNKNOWN};
+use crate::record::{ALT_UNKNOWN, Record, Source, ACC_UNKNOWN};
 
 /// Column aliases accepted for each field, lowercased.
 const MAC_NAMES: &[&str] = &["bssid", "mac", "macaddress", "mac_address"];
@@ -154,7 +154,7 @@ impl Schema {
             }
         };
 
-        let record = Record { key, lat_e8, lon_e8, accuracy_m, source };
+        let record = Record { key, lat_e8, lon_e8, accuracy_m, altitude_m: ALT_UNKNOWN, source };
         Ok(record.in_range().then_some(record))
     }
 }

@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use wps_harvest::gsloc::{CellFix, Client};
 use wps_harvest::keys::{self, CellId, RadioType};
-use wps_harvest::record::{Record, RecordWriter, Source, ACC_UNKNOWN};
+use wps_harvest::record::{ALT_UNKNOWN, Record, RecordWriter, Source, ACC_UNKNOWN};
 
 const USAGE: &str = "\
 Usage: wps_cellcrawl --out SHARD --seed MCC,MNC,TAC,CID [--seed ...] [options]
@@ -108,7 +108,7 @@ fn to_record(f: &CellFix) -> Option<Record> {
     } else {
         f.accuracy_m.min(i32::from(ACC_UNKNOWN - 1)) as u16
     };
-    let r = Record { key: keys::cell_key(&id), lat_e8: f.lat_e8, lon_e8: f.lon_e8, accuracy_m, source: Source::Gsloc };
+    let r = Record { key: keys::cell_key(&id), lat_e8: f.lat_e8, lon_e8: f.lon_e8, accuracy_m, altitude_m: ALT_UNKNOWN, source: Source::Gsloc };
     r.in_range().then_some(r)
 }
 

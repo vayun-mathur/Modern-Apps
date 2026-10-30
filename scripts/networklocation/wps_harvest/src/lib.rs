@@ -16,10 +16,11 @@
 //! ## Where the accuracy comes from
 //!
 //! The store this writes keeps each beacon's coordinates as integer degrees x 1e8 — bit-exact
-//! against what the source reported — and its own horizontal accuracy. The format it replaces
-//! quantized to a 20 m grid and carried no accuracy at all, so the device substituted one
-//! constant for every beacon and the solver's uncertainty weighting, which is fully
-//! implemented, had nothing to work with.
+//! against what the source reported — and its own horizontal accuracy, plus its altitude in
+//! metres when the source reports one (Apple's WiFi `location.5`; cell responses have no
+//! altitude field). The format it replaces quantized to a 20 m grid and carried no accuracy
+//! at all, so the device substituted one constant for every beacon and the solver's
+//! uncertainty weighting, which is fully implemented, had nothing to work with.
 
 #![deny(missing_docs)]
 

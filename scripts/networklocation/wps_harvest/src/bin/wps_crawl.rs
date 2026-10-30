@@ -179,6 +179,7 @@ fn to_record(fix: &gsloc::WifiFix) -> Option<Record> {
         lat_e8: fix.lat_e8,
         lon_e8: fix.lon_e8,
         accuracy_m: clamp_accuracy(fix.accuracy_m),
+        altitude_m: fix.altitude_m,
         source: Source::Gsloc,
     };
     r.in_range().then_some(r)
@@ -421,8 +422,10 @@ mod tests {
             lat_e8: 37_77493000,
             lon_e8: -122_41942000,
             accuracy_m: 35,
+            altitude_m: 44,
         };
         assert_eq!(to_record(&good).unwrap().accuracy_m, 35);
+        assert_eq!(to_record(&good).unwrap().altitude_m, 44);
 
         let randomized = gsloc::WifiFix { bssid: "aa:bb:cc:dd:ee:ff".to_string(), ..good.clone() };
         assert_eq!(to_record(&randomized), None);
@@ -441,6 +444,7 @@ mod tests {
             lat_e8: 0,
             lon_e8: 0,
             accuracy_m: 10_000_000,
+            altitude_m: 0,
         };
         assert_eq!(to_record(&fix).unwrap().accuracy_m, 65534);
     }

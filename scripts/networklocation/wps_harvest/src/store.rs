@@ -26,15 +26,19 @@ use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
-use crate::record::{Record, LAT_E8_MIN, LON_E8_MIN};
+use crate::record::{ALT_UNKNOWN, Record, LAT_E8_MIN, LON_E8_MIN};
 
 const MAGIC: &[u8; 8] = b"WPSDB2\x00\x00";
 
 const LAT_BITS: u32 = 35;
 const LON_BITS: u32 = 36;
 const ACC_BITS: u32 = 16;
+const ALT_BITS: u32 = 16;
 
-const PAYLOAD_LATLON_E8_ACC16: u8 = 1;
+/// Payload: lat(35) | lon(36) | accuracy(16) | altitude(16), LSB-first — 103 bits.
+/// Altitude is metres biased by 32768 (two's complement in 16 bits), 0 meaning "unknown".
+/// Kind-1 stores (87 bits, no altitude) remain readable; new builds always write kind 2.
+const PAYLOAD_LATLON_E8_ACC16_ALT16: u8 = 2;
 
 /// Cap on the Elias-Fano low width, so a low value always fits the reader's `u64`. Exceeding
 /// it would only ever lengthen `high`, so the cap costs nothing at real record counts.
@@ -250,6 +254,8 @@ where
         payload.push((r.lat_e8 - LAT_E8_MIN) as u64, LAT_BITS)?;
         payload.push((r.lon_e8 - LON_E8_MIN) as u64, LON_BITS)?;
         payload.push(u64::from(r.accuracy_m), ACC_BITS)?;
+        // Altitude biased so "unknown" (i16::MIN) lands on 0 and real metres on 1..=65535.
+        payload.push((i64::from(r.altitude_m) - i64::from(ALT_UNKNOWN)) as u64, ALT_BITS)?;
 
         written += 1;
     }
@@ -274,7 +280,7 @@ where
 
     let mut out = BufWriter::new(File::create(out_path)?);
     out.write_all(MAGIC)?;
-    out.write_all(&[kind as u8, universe_bits, PAYLOAD_LATLON_E8_ACC16, l])?;
+    out.write_all(&[kind as u8, universe_bits, PAYLOAD_LATLON_E8_ACC16_ALT16, l])?;
     out.write_all(&[sample_log2, 0, 0, 0])?;
     out.write_all(&n.to_le_bytes())?;
     out.write_all(&high_len_bits.to_le_bytes())?;
@@ -407,6 +413,7 @@ where
             let lat = payload.take(LAT_BITS)? as i64 + LAT_E8_MIN;
             let lon = payload.take(LON_BITS)? as i64 + LON_E8_MIN;
             let acc = payload.take(ACC_BITS)? as u16;
+            let alt = payload.take(ALT_BITS)? as i64 + i64::from(ALT_UNKNOWN);
 
             let w = want
                 .next()
@@ -417,6 +424,12 @@ where
                     "record {idx} mismatch: got ({key:#x}, {lat}, {lon}, {acc}), \
                      want ({:#x}, {}, {}, {})",
                     w.key, w.lat_e8, w.lon_e8, w.accuracy_m
+                )));
+            }
+            if alt != i64::from(w.altitude_m) {
+                return Err(invalid(format!(
+                    "record {idx} altitude mismatch: got {alt}, want {}",
+                    w.altitude_m
                 )));
             }
             if key >= (1u128 << universe_bits) {

@@ -19,8 +19,14 @@
 //! 40 high[high_len]
 //!    zeros_len:u64,   zeros[zeros_len]      (u64 each: zeros before bit b << sample_log2)
 //!    low_len:u64,     low[low_len]          (n * l bits, bit-packed)
-//!    payload_len:u64, payload[payload_len]  (n * 87 bits, bit-packed)
+//!    payload_len:u64, payload[payload_len]  (n * record_bits bits, bit-packed)
 //! ```
+//!
+//! Two payload kinds exist. Kind 1 is 87 bits: lat(35) | lon(36) | accuracy(16). Kind 2
+//! appends altitude(16) — metres biased by 32768, 0 meaning "unknown" — for 103 bits. Both
+//! are read; the builder writes kind 2. WiFi records carry altitude (Apple's `location.5`);
+//! cell records do not (the cell response has no altitude field), so their slot reads as
+//! unknown.
 //!
 //! Membership and index come from the Elias–Fano upper bitvector (`high`). At world scale
 //! that vector is hundreds of MB, far too much to hold in an always-bound system service, so
@@ -54,11 +60,15 @@ const MAGIC: &[u8; 8] = b"WPSDB2\x00\x00";
 const HIGH_OFF: u64 = 40;
 
 // --------------------------------------------------------------------------- payload codec
-// One record is 87 bits, LSB-first: lat(35) | lon(36) | accuracy(16).
+// Kind-1 record is 87 bits, LSB-first: lat(35) | lon(36) | accuracy(16).
+// Kind-2 appends altitude(16): metres biased by 32768, 0 meaning "unknown", for 103 bits.
 const LAT_BITS: u32 = 35;
 const LON_BITS: u32 = 36;
 const ACC_BITS: u32 = 16;
-const RECORD_BITS: u32 = LAT_BITS + LON_BITS + ACC_BITS;
+const ALT_BITS: u32 = 16;
+
+/// Added to a metres altitude to make room for the "unknown" zero in a `u16` slot.
+const ALT_BIAS: i64 = 32768;
 
 /// Bias that maps `lat * 1e8` from [-90, 90] onto [0, 180e8], which fits 35 bits.
 const LAT_BIAS: i64 = 90_00_000_000;
@@ -73,6 +83,12 @@ const ACC_UNKNOWN: u64 = 0xFFFF;
 const ACC_UNKNOWN_OUT: f64 = -1.0;
 
 const PAYLOAD_LATLON_E8_ACC16: u8 = 1;
+const PAYLOAD_LATLON_E8_ACC16_ALT16: u8 = 2;
+
+/// What `lookup` reports when the store holds no altitude for the beacon (kind-1 stores, and
+/// kind-2 records whose altitude slot is the unknown sentinel). NaN cannot be mistaken for a
+/// real altitude, and `Double.isNaN` is the natural Kotlin test.
+const ALT_UNKNOWN_OUT: f64 = f64::NAN;
 
 /// `l` is the Elias–Fano low-part width. Capped so a low value always fits a `u64`, which is
 /// what the bit reader returns. The builder applies the same cap; exceeding it only ever
@@ -133,6 +149,8 @@ pub struct Reader {
     /// `zero_samples[b]` = number of zero bits in `high[0 .. b << sample_log2)`.
     zero_samples: Vec<u64>,
     sample_log2: u8,
+    /// Payload record width in bits: 87 for kind 1, 103 for kind 2 (with altitude).
+    record_bits: u32,
     low_off: u64,
     payload_off: u64,
 }
@@ -171,7 +189,12 @@ impl Reader {
         let sample_log2 = src.rd_u8(12)?;
 
         // Reject anything this build cannot decode rather than silently mis-reading it.
-        if payload_kind != PAYLOAD_LATLON_E8_ACC16 || l > MAX_L {
+        let record_bits = match payload_kind {
+            PAYLOAD_LATLON_E8_ACC16 => LAT_BITS + LON_BITS + ACC_BITS,
+            PAYLOAD_LATLON_E8_ACC16_ALT16 => LAT_BITS + LON_BITS + ACC_BITS + ALT_BITS,
+            _ => return None,
+        };
+        if l > MAX_L {
             return None;
         }
         // `index` shifts a key right by `l` into a u64 bucket number.
@@ -219,7 +242,7 @@ impl Reader {
         let payload_len_off = low_off + low_len;
         let payload_len = src.rd_u64(payload_len_off)?;
         let payload_off = payload_len_off + 8;
-        if payload_len < (n * RECORD_BITS as u64).div_ceil(8) {
+        if payload_len < (n * record_bits as u64).div_ceil(8) {
             return None;
         }
 
@@ -243,6 +266,7 @@ impl Reader {
             high,
             zero_samples,
             sample_log2,
+            record_bits,
             low_off,
             payload_off,
         })
@@ -304,23 +328,29 @@ impl Reader {
         self.read_bits(self.low_off, i * self.l as u64, self.l as u32)
     }
 
-    /// Decode record `i`. One positional read covers the whole 87-bit record, so a lookup
+    /// Decode record `i`. One positional read covers the whole record, so a lookup
     /// costs a single `pread` here rather than one per field.
-    fn record(&self, i: u64) -> Option<(f64, f64, f64)> {
-        let bit_index = i * RECORD_BITS as u64;
+    fn record(&self, i: u64) -> Option<(f64, f64, f64, f64)> {
+        let bit_index = i * self.record_bits as u64;
         let first_bit = (bit_index & 7) as u32;
         let byte_pos = self.payload_off + (bit_index >> 3);
-        let nbytes = ((first_bit + RECORD_BITS).div_ceil(8)) as usize;
+        let nbytes = ((first_bit + self.record_bits).div_ceil(8)) as usize;
         let buf = self.src.read(byte_pos, nbytes)?;
 
         let lat_u = extract_bits(&buf, first_bit, LAT_BITS);
         let lon_u = extract_bits(&buf, first_bit + LAT_BITS, LON_BITS);
         let acc_u = extract_bits(&buf, first_bit + LAT_BITS + LON_BITS, ACC_BITS);
+        let alt = if self.record_bits == LAT_BITS + LON_BITS + ACC_BITS + ALT_BITS {
+            let alt_u = extract_bits(&buf, first_bit + LAT_BITS + LON_BITS + ACC_BITS, ALT_BITS);
+            if alt_u == 0 { ALT_UNKNOWN_OUT } else { (alt_u as i64 - ALT_BIAS) as f64 }
+        } else {
+            ALT_UNKNOWN_OUT
+        };
 
         let lat = (lat_u as i64 - LAT_BIAS) as f64 / COORD_SCALE;
         let lon = (lon_u as i64 - LON_BIAS) as f64 / COORD_SCALE;
         let acc = if acc_u == ACC_UNKNOWN { ACC_UNKNOWN_OUT } else { acc_u as f64 };
-        Some((lat, lon, acc))
+        Some((lat, lon, acc, alt))
     }
 
     /// Elias–Fano index of `key`, or `None` if `key` is not in the set.
@@ -360,9 +390,10 @@ impl Reader {
         None
     }
 
-    /// Look up `key`; returns `(lat, lon, accuracy_m)` or `None` for an unknown key.
-    /// A negative accuracy means the source did not report one.
-    pub fn lookup(&self, key: u128) -> Option<(f64, f64, f64)> {
+    /// Look up `key`; returns `(lat, lon, accuracy_m, altitude_m)` or `None` for an unknown
+    /// key. A negative accuracy means the source did not report one; a NaN altitude means the
+    /// store holds none for that beacon (all kind-1 stores, and cell records generally).
+    pub fn lookup(&self, key: u128) -> Option<(f64, f64, f64, f64)> {
         let i = self.index(key)?;
         self.record(i)
     }

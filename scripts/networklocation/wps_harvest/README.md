@@ -31,7 +31,12 @@ The store this writes keeps, per beacon:
 - **coordinates as integer degrees x 1e8** — bit-exact against what the source reported, since
   gs-loc returns e8 integers and the CSV dumps are parsed as exact decimals rather than through
   `f64`;
-- **its own horizontal accuracy**, in metres.
+- **its own horizontal accuracy**, in metres;
+- **its altitude**, in metres, when the source reports one. Apple's WiFi fixes carry it
+  (`location.5`; essentially always present, -1 when not). Cell responses have no altitude
+  field at all (verified on the wire: cell locations carry only fields 1–4, 11, 12), so cell
+  records always read as unknown. The payload is kind 2: lat(35) | lon(36) | acc(16) | alt(16)
+  = 103 bits; kind-1 stores (87 bits, no altitude) stay readable and report NaN altitude.
 
 The format it replaces quantized to a **20 m grid** and stored **no accuracy at all**, so the
 device substituted one constant for every beacon. That mattered more than it sounds: the

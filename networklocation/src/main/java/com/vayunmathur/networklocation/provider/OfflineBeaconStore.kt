@@ -95,7 +95,7 @@ class OfflineBeaconStore(context: Context) {
         if (BeaconKeys.isRandomizedMac(key)) return null
         val r = WpsStoreNative.lookup(wifiHandle, 0L, key) ?: return null
         if (r.size < MIN_LOOKUP_FIELDS) return null
-        return BeaconFix(id, r[0], r[1], accuracyOf(r[2]))
+        return BeaconFix(id, r[0], r[1], accuracyOf(r[2]), altitudeOf(r[ALTITUDE_FIELD]))
     }
 
     /** Resolve cell towers present in the offline store. Absent towers are omitted. */
@@ -112,7 +112,7 @@ class OfflineBeaconStore(context: Context) {
                     BeaconKeys.cellKeyLo(id),
                 ) ?: continue
                 if (r.size >= MIN_LOOKUP_FIELDS) {
-                    out[id] = BeaconFix(id, r[0], r[1], accuracyOf(r[2]))
+                    out[id] = BeaconFix(id, r[0], r[1], accuracyOf(r[2]), altitudeOf(r[ALTITUDE_FIELD]))
                 }
             }
             return out
@@ -161,10 +161,17 @@ class OfflineBeaconStore(context: Context) {
          */
         const val UNKNOWN_ACCURACY_METERS = 100.0
 
-        /** Native lookup fields: latitude, longitude, accuracy. */
-        const val MIN_LOOKUP_FIELDS = 3
+        /** Native lookup fields: latitude, longitude, accuracy, altitude. */
+        const val MIN_LOOKUP_FIELDS = 4
+
+        /** Index of the altitude element in the native lookup result. */
+        const val ALTITUDE_FIELD = 3
 
         fun accuracyOf(stored: Double): Double =
             if (stored < 0.0) UNKNOWN_ACCURACY_METERS else stored
+
+        /** The native reader reports an absent altitude as NaN; null is the Kotlin shape. */
+        fun altitudeOf(stored: Double): Double? =
+            stored.takeUnless { it.isNaN() }
     }
 }

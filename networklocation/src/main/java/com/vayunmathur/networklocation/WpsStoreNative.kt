@@ -29,9 +29,11 @@ object WpsStoreNative {
     external fun open(fd: Int, offset: Long, length: Long): Long
 
     /**
-     * `[lat, lon, accuracyMeters]` for the 128-bit key ([keyHi], [keyLo]), or null if the
-     * store does not contain it. A negative accuracy means the store holds no radius for that
-     * beacon; callers substitute their own conservative default.
+     * `[lat, lon, accuracyMeters, altitudeMeters]` for the 128-bit key ([keyHi], [keyLo]), or
+     * null if the store does not contain it. A negative accuracy means the store holds no
+     * radius for that beacon; callers substitute their own conservative default. A NaN
+     * altitude means the store holds no altitude for that beacon — always the case for kind-1
+     * stores and for cell records, since the cell response has no altitude field.
      */
     external fun lookup(handle: Long, keyHi: Long, keyLo: Long): DoubleArray?
 
