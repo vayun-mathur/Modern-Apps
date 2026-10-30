@@ -613,13 +613,18 @@ CI does not run tests. Run them locally.
 
 ## Git
 
-**Commit messages are one line**, at most ~80 characters:
+**The first line of a commit message** is at most ~80 characters:
 
 ```
 appname: feature description in a few words (#123)
 ```
 
 Drop the issue number if there isn't one. Use the module or area as the prefix.
+
+After the first line, leave a blank line and write a full body, wrapped at ~72 characters: what
+changed and why, the context (the bug or symptom, root cause, constraints, alternatives you
+rejected), notable implementation details, the user-visible effect, and how you verified it.
+Release notes are generated from commit messages, so a complete body makes for better notes.
 
 `.gitattributes` normalises the whole tree to LF, so you should never see a line-ending diff. If
 `git diff --stat` reports far more changed lines than you actually touched, your editor rewrote

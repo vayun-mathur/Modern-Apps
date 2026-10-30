@@ -128,5 +128,5 @@ Findings fail the task. Only `notes/`, `backup/`, `library/ui/`, `games/voxels/`
 
 ## 5. Git / safety
 - Other agents share the tree. Prohibited except reading state: `stash/revert/reset/checkout . /clean` etc. Only `add` + `commit` allowed, and only paths you changed — check `git status` first, never `add -A/.`, never stage without committing instantly.
-- Commit: one line ≤80 chars always following the format: `appname: short description (#iss)`.
+- Commit message: line 1 is ≤80 chars, always in the format `appname: short description (#iss)`. Then a blank line and a full body: what changed and why, the context (bug/symptom, root cause, constraints, alternatives rejected), notable implementation details, user-visible effect, and how it was verified. Write in plain prose/bullets, wrapped at ~72 chars. The body feeds AI-written release notes, so make it complete; never stop at one line.
 - LF only; never commit line-ending churn. `FAIL_ON_PROJECT_REPOS` — never add repos in modules. Read `SUPPLY_CHAIN_RISKS.md` before new third-party dep.
