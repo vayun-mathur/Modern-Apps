@@ -9,9 +9,15 @@ import com.vayunmathur.todo.platform.TodoActions
 import com.vayunmathur.todo.platform.TodoListActions
 import com.vayunmathur.todo.platform.TodoListUiState
 import com.vayunmathur.todo.platform.TodoUiState
+import com.vayunmathur.todo.domain.TodoQuery
+import com.vayunmathur.todo.domain.TodoView
+import kotlinx.datetime.TimeZone
 
 /** Phone-shaped, roughly 1080x2340 at xxhdpi - comfortably above the F-Droid minimum. */
 private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
+
+/** 2026-10-14 09:00 UTC, so relative due labels render the same on every run. */
+private const val NOW = 1_791_968_400_000L
 
 /**
  * Store listing images for `:todo`. See `common-conventions-preview-metadata`.
@@ -53,13 +59,21 @@ class MetadataPreviews {
         ),
     )
 
+    private fun listState(query: String = "") = TodoListUiState(
+        model = TodoQuery.build(
+            TodoQuery.Input(samples, emptyList(), TodoView.Inbox, query, now = NOW, zone = TimeZone.UTC),
+        ),
+        searchQuery = query,
+        now = NOW,
+    )
+
     @PreviewTest
     @Preview(name = "1-todos", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
     fun Preview1Todos() {
         DynamicTheme(darkTheme = true) {
             TodoListScreen(
-                state = TodoListUiState(todos = samples),
+                state = listState(),
                 actions = TodoListActions.Noop,
             )
         }
@@ -88,7 +102,7 @@ class MetadataPreviews {
     fun Preview3Search() {
         DynamicTheme(darkTheme = true) {
             TodoListScreen(
-                state = TodoListUiState(todos = samples.filter { it.title.contains("book") }, searchQuery = "book"),
+                state = listState(query = "book"),
                 actions = TodoListActions.Noop,
             )
         }

@@ -89,6 +89,10 @@ import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.ui.res.painterResource
 import com.vayunmathur.library.R
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Snooze
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
 import androidx.compose.material.icons.automirrored.filled.Backspace
@@ -1784,3 +1788,21 @@ fun IconStore(modifier: Modifier = Modifier, tint: Color = LocalContentColor.cur
 @Composable
 fun IconClosedCaption(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.ClosedCaption, "Captions", modifier, tint)
+
+/** Sort order menu - list sorting in todo. */
+@Composable
+fun IconSort(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.AutoMirrored.Filled.Sort, "Sort", modifier, tint)
+
+@Composable
+fun IconFilterList(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.FilterList, "Filter", modifier, tint)
+
+/** Checklist - subtasks of a task. */
+@Composable
+fun IconChecklist(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Checklist, "Subtasks", modifier, tint)
+
+@Composable
+fun IconSnooze(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Snooze, "Snooze", modifier, tint)

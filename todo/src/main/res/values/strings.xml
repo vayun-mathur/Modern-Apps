@@ -25,4 +25,170 @@
     <string name="ok">OK</string>
     <!-- TodoListScreen: fallback title for untitled tasks. Noun. -->
     <string name="untitled">Untitled</string>
+
+    <!-- TodoListScreen: search field placeholder naming the open view, e.g. "Search Inbox". -->
+    <string name="search_in">Search <xliff:g id="view" example="Inbox">%s</xliff:g></string>
+    <!-- QuickAddBar: placeholder of the inline add field. Verb phrase. -->
+    <string name="add_task_hint">Add a task</string>
+    <!-- QuickAddBar: content description of the submit button. Verb phrase. -->
+    <string name="add_task">Add task</string>
+
+    <!-- Smart view title: tasks not in any list. Noun. -->
+    <string name="view_inbox">Inbox</string>
+    <!-- Smart view title: tasks due today or overdue. Noun. -->
+    <string name="view_today">Today</string>
+    <!-- Smart view title: tasks with an upcoming due date. Noun. -->
+    <string name="view_upcoming">Upcoming</string>
+    <!-- Smart view title: tasks with a priority set. Noun. -->
+    <string name="view_priority">Priority</string>
+    <!-- Smart view title: every task. Noun phrase. -->
+    <string name="view_all">All tasks</string>
+    <!-- Smart view title: finished tasks. Adjective used as noun. -->
+    <string name="view_completed">Completed</string>
+
+    <!-- TodoListScreen: group header for overdue tasks. Adjective. -->
+    <string name="bucket_overdue">Overdue</string>
+    <!-- Group header / due label: due today. Noun. -->
+    <string name="bucket_today">Today</string>
+    <!-- Group header / due label: due tomorrow. Noun. -->
+    <string name="bucket_tomorrow">Tomorrow</string>
+    <!-- TodoListScreen: group header for tasks due within 7 days. Noun phrase. -->
+    <string name="bucket_this_week">This week</string>
+    <!-- TodoListScreen: group header for tasks due after this week. Adverb. -->
+    <string name="bucket_later">Later</string>
+    <!-- TodoListScreen: group header for tasks without a due date. Noun phrase. -->
+    <string name="bucket_no_date">No date</string>
+    <!-- TodoListScreen: group header for tasks in a list but in no section. Noun phrase. -->
+    <string name="no_section">No section</string>
+    <!-- Due label: due yesterday. Adverb. -->
+    <string name="due_yesterday">Yesterday</string>
+    <!-- Due label: overdue by more than one day. -->
+    <plurals name="due_days_ago">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> day ago</item>
+        <item quantity="other"><xliff:g id="count" example="3">%d</xliff:g> days ago</item>
+    </plurals>
+    <!-- TodoRow: label shown on a task waiting on another task. Adjective. -->
+    <string name="blocked">Blocked</string>
+    <!-- TodoRow: subtask progress, done of total. -->
+    <string name="subtask_progress"><xliff:g id="done" example="2">%1$d</xliff:g>/<xliff:g id="total" example="5">%2$d</xliff:g></string>
+
+    <!-- TodoListScreen: header of the collapsible completed section. -->
+    <plurals name="completed_count">
+        <item quantity="one">Completed (<xliff:g id="count" example="1">%d</xliff:g>)</item>
+        <item quantity="other">Completed (<xliff:g id="count" example="4">%d</xliff:g>)</item>
+    </plurals>
+    <!-- TodoListScreen: deletes every completed task in view. Verb. -->
+    <string name="clear_completed">Clear</string>
+
+    <!-- Snackbar after completing a task. -->
+    <string name="task_completed">Task completed</string>
+    <!-- Snackbar after completing a repeating task; the argument is the next due date. -->
+    <string name="task_rolled">Next due <xliff:g id="date" example="Tomorrow">%s</xliff:g></string>
+    <!-- Snackbar after deleting a task. -->
+    <string name="task_deleted">Task deleted</string>
+    <!-- Snackbar after deleting several tasks. -->
+    <plurals name="tasks_deleted">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> task deleted</item>
+        <item quantity="other"><xliff:g id="count" example="3">%d</xliff:g> tasks deleted</item>
+    </plurals>
+    <!-- Snackbar action reverting the last change. Verb. -->
+    <string name="undo">Undo</string>
+
+    <!-- SortMenu: user-defined drag order. Adjective. -->
+    <string name="sort_manual">Manual</string>
+    <!-- SortMenu: by due date. Noun phrase. -->
+    <string name="sort_due">Due date</string>
+    <!-- SortMenu: by priority. Noun. -->
+    <string name="sort_priority">Priority</string>
+    <!-- SortMenu: most recently created first. Adjective phrase. -->
+    <string name="sort_created">Newest first</string>
+    <!-- SortMenu: alphabetical. Noun. -->
+    <string name="sort_title">Name</string>
+
+    <!-- Empty state title. Noun phrase. -->
+    <string name="empty_title">No tasks</string>
+    <!-- Empty state body. -->
+    <string name="empty_body">Type a task above, like \"Call mom tomorrow 6pm\".</string>
+    <!-- Empty state when search finds nothing. -->
+    <string name="empty_search">No matching tasks</string>
+    <!-- Empty state when everything in view is done. Exclamation. -->
+    <string name="all_done">All done!</string>
+    <!-- Empty state body when everything in view is done. -->
+    <string name="all_done_body">Nothing left here. Enjoy it.</string>
+
+    <!-- Multi-line paste dialog title. -->
+    <string name="paste_title">Add several tasks?</string>
+    <!-- Multi-line paste dialog: one task per line. -->
+    <plurals name="add_n_tasks">
+        <item quantity="one">Add <xliff:g id="count" example="1">%d</xliff:g> task</item>
+        <item quantity="other">Add <xliff:g id="count" example="3">%d</xliff:g> tasks</item>
+    </plurals>
+    <!-- Multi-line paste dialog: keep the text as one task. Verb phrase. -->
+    <string name="add_as_one">Add as one task</string>
+
+    <!-- BulkActionBar: number of selected tasks. -->
+    <plurals name="selected_count">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> selected</item>
+        <item quantity="other"><xliff:g id="count" example="3">%d</xliff:g> selected</item>
+    </plurals>
+    <!-- BulkActionBar / editor: move to another list. Verb phrase. -->
+    <string name="move_to">Move to…</string>
+    <!-- Due shortcut: next Monday. Noun phrase. -->
+    <string name="next_week">Next week</string>
+    <!-- Due shortcut: open the date picker. Verb phrase. -->
+    <string name="pick_date">Pick a date…</string>
+    <!-- Priority option label; the argument is 1 (highest) to 4 (lowest). -->
+    <string name="priority_n">Priority <xliff:g id="level" example="1">%d</xliff:g></string>
+    <!-- Priority option clearing the priority. Noun phrase. -->
+    <string name="no_priority">No priority</string>
+    <!-- Selection actions: select every task in view. Verb phrase. -->
+    <string name="select_all">Select all</string>
+
+    <!-- Accessibility state of a finished task. Adjective. -->
+    <string name="state_completed">Completed</string>
+    <!-- Accessibility state of an open task. Adjective phrase. -->
+    <string name="state_not_completed">Not completed</string>
+    <!-- Accessibility action: mark the task done. Verb phrase. -->
+    <string name="action_mark_done">Mark done</string>
+    <!-- Accessibility action: reopen a done task. Verb phrase. -->
+    <string name="action_mark_not_done">Mark not done</string>
+    <!-- Accessibility action: move the task one place up. Verb phrase. -->
+    <string name="action_move_up">Move up</string>
+    <!-- Accessibility action: move the task one place down. Verb phrase. -->
+    <string name="action_move_down">Move down</string>
+
+    <!-- Repeat label: every N days. -->
+    <plurals name="repeat_days">
+        <item quantity="one">Every day</item>
+        <item quantity="other">Every <xliff:g id="count" example="3">%d</xliff:g> days</item>
+    </plurals>
+    <!-- Repeat label: every N weeks. -->
+    <plurals name="repeat_weeks">
+        <item quantity="one">Every week</item>
+        <item quantity="other">Every <xliff:g id="count" example="2">%d</xliff:g> weeks</item>
+    </plurals>
+    <!-- Repeat label: every N weeks on the given weekdays. -->
+    <plurals name="repeat_weeks_on">
+        <item quantity="one">Weekly on <xliff:g id="days" example="Mon, Fri">%2$s</xliff:g></item>
+        <item quantity="other">Every <xliff:g id="count" example="2">%1$d</xliff:g> weeks on <xliff:g id="days" example="Mon, Fri">%2$s</xliff:g></item>
+    </plurals>
+    <!-- Repeat label: every N months. -->
+    <plurals name="repeat_months">
+        <item quantity="one">Every month</item>
+        <item quantity="other">Every <xliff:g id="count" example="3">%d</xliff:g> months</item>
+    </plurals>
+    <!-- Repeat label: monthly on a day of the month. -->
+    <string name="repeat_month_day">Monthly on day <xliff:g id="day" example="15">%d</xliff:g></string>
+    <!-- Repeat label: monthly on the last day of the month. -->
+    <string name="repeat_month_last_day">Monthly on the last day</string>
+    <!-- Repeat label: every N years. -->
+    <plurals name="repeat_years">
+        <item quantity="one">Every year</item>
+        <item quantity="other">Every <xliff:g id="count" example="2">%d</xliff:g> years</item>
+    </plurals>
+    <!-- Repeat label: due N days after the task is completed. -->
+    <plurals name="repeat_after_completion">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> day after completion</item>
+        <item quantity="other"><xliff:g id="count" example="7">%d</xliff:g> days after completion</item>
+    </plurals>
 </resources>

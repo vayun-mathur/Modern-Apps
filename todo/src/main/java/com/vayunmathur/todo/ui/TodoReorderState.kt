@@ -28,6 +28,8 @@ class TodoReorderState internal constructor(
 fun rememberTodoReorderState(
     todos: List<Todo>,
     listState: LazyListState,
+    /** Lazy items drawn before the first row (headers, the add field). */
+    indexOffset: Int,
     onMoveTick: () -> Unit,
     onCommit: (List<Todo>) -> Unit,
 ): TodoReorderState {
@@ -36,11 +38,13 @@ fun rememberTodoReorderState(
 
     val drag = rememberReorderableLazyListState(listState) { from, to ->
         val current = rows.value
-        if (from.index in current.indices && to.index in current.indices) {
-            val position = Positions.forMove(current.map { it.position }, from.index, to.index)
+        val fromRow = from.index - indexOffset
+        val toRow = to.index - indexOffset
+        if (fromRow in current.indices && toRow in current.indices) {
+            val position = Positions.forMove(current.map { it.position }, fromRow, toRow)
             val list = current.toMutableList()
-            val item = list.removeAt(from.index).withPosition(position)
-            list.add(to.index, item)
+            val item = list.removeAt(fromRow).withPosition(position)
+            list.add(toRow, item)
             rows.value = list
             moved = moved + item.id
             onMoveTick()
