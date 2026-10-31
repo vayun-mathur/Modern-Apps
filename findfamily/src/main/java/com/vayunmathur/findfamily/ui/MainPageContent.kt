@@ -43,6 +43,7 @@ fun MainPageContent(
     actions: MainPageActions,
     map: @Composable () -> Unit,
     historyScrubber: @Composable BoxScope.() -> Unit = {},
+    backupPassphrase: String? = null,
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
 
@@ -173,7 +174,7 @@ fun MainPageContent(
             // light, whatever the app's theme.
             Box(Modifier.align(Alignment.TopCenter).fillMaxWidth()) {
                 MaterialTheme(colorScheme = lightScheme) {
-                    MapOverlayBar(state, actions)
+                    MapOverlayBar(state, actions, backupPassphrase)
                 }
             }
 

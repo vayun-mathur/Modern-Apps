@@ -290,6 +290,7 @@ fun MainPage(
         familyActions = familyActions,
         personActions = personActions,
         actions = mainActions,
+        backupPassphrase = ffViewModel.backupPassphrase,
         historyScrubber = {
             if (historyMode) {
                 // Scoped to the person: a deep link can swap the selection while history

@@ -287,6 +287,10 @@
     <string name="gps_fallback_warning_content_description">Network location unavailable</string>
     <!-- MainPage: Content description for the overflow button on the map that opens the backup and restore actions. Noun phrase -->
     <string name="map_menu_content_description">More options</string>
+    <!-- BackupMenuButton: Menu item that exports the database and settings to a user-chosen file. Verb phrase -->
+    <string name="backup_menu_backup">Back up</string>
+    <!-- BackupMenuButton: Menu item that restores a previously exported backup file. Verb phrase -->
+    <string name="backup_menu_restore">Restore</string>
     <!-- MainPage: Content description for the map overlay button that starts Find Nearby (UWB) for the selected person. Verb phrase -->
     <string name="find_nearby_content_description">Find nearby</string>
     <!-- MainPage: Content description for the map overlay button that shows the end-to-end encryption security code for the selected person. Verb phrase -->

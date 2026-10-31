@@ -10,6 +10,8 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.TopAppBarOverlay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,9 +28,12 @@ import com.vayunmathur.library.ui.IconVerify
 internal fun MapOverlayBar(
     state: MainPageUiState,
     actions: MainPageActions,
+    backupPassphrase: String? = null,
 ) {
+    var backupMenuExpanded by remember { mutableStateOf(false) }
 
     val gpsWarningDescription = stringResource(R.string.gps_fallback_warning_content_description)
+    val menuDescription = stringResource(R.string.map_menu_content_description)
     val findNearbyDescription = stringResource(R.string.find_nearby_content_description)
     val verifyDescription = stringResource(R.string.verify_security_code_content_description)
     val deletePersonDescription = stringResource(R.string.delete_person_content_description)
@@ -53,7 +58,19 @@ internal fun MapOverlayBar(
                         contentDescription = gpsWarningDescription,
                         onClick = { actions.onGpsWarningClick() }
                     )
-                } else null
+                } else null,
+                // Singular backup entry point: one overflow button whose menu holds
+                // "Back up" and "Restore" (GitHub #879). Null in previews, where no
+                // passphrase exists and the button stays hidden.
+                backupPassphrase?.let { passphrase ->
+                    OverlayAction(
+                        icon = {
+                            BackupMenuButton(passphrase, backupMenuExpanded, { backupMenuExpanded = it })
+                        },
+                        contentDescription = menuDescription,
+                        onClick = { backupMenuExpanded = !backupMenuExpanded }
+                    )
+                }
             )
         } else if (selectedUserId != null && !state.historyMode) {
             if (state.isSelfSelected) emptyList() else listOfNotNull(
