@@ -4,6 +4,8 @@ plugins {
 
 dependencies {
     implementation(project(":library"))
-    // WorkManager: the download runs in ModelDownloadWorker so it outlives the gating screen.
-    implementation(project(":library:work"))
+    // WorkManager directly: this module's workers use only androidx.work APIs
+    // (the :library:work helpers schedule that module's own reminders, nothing
+    // reusable here), so no library-to-library edge is needed (#884).
+    implementation(libs.androidx.work.runtime.ktx)
 }
