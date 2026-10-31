@@ -93,6 +93,9 @@ for mod in "${MODS[@]}"; do
   # cargo include_bytes!s the SPIR-V this task writes to build/spirv.
   [[ -d "$ROOT/$mod/src/main/rust/shaders" ]] && TASKS+=(":$gmod:compileShaders")
 done
+# Guards issue #884 (no library may depend on a permission-declaring library).
+# Root task, so add once however many modules are checked.
+TASKS+=(":verifyLibraryBoundaries")
 echo "Modules (${#MODS[@]}): ${MODS[*]}"
 echo "Gradle tasks: ${TASKS[*]}"
 echo ""

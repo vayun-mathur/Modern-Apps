@@ -6,7 +6,7 @@
 - Gradle: :library:ocr / dir: library/ocr/
 - Package roots present: (on-device OCR — one package)
 - Entry files: OcrEngine.kt (no MainActivity/Route — library)
-- Deps: :library:ml
+- Deps: :library:ml (both permission-free; the OCR pipeline runs on the ml runtime, #884)
 - Metadata: metadata_data/library-ocr.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

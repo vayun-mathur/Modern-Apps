@@ -6,7 +6,7 @@
 - Gradle: :library:work / dir: library/work/
 - Package roots present: (WorkManager helpers — one package)
 - Entry files: Work.kt (no MainActivity/Route — library)
-- Deps: :library
+- Deps: :library (permission-free; daily-reminder notification resources come from base, #884)
 - Metadata: metadata_data/library-work.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

@@ -6,7 +6,7 @@
 - Gradle: :library:room / dir: library/room/
 - Package roots present: (pure-Kotlin Room3 + SQLCipher wiring — single package)
 - Entry files: RoomRepository.kt (no MainActivity/Route — library)
-- Deps: :library
+- Deps: :library (permission-free; SqlCipherDbCodec implements base's DbBackupCodec, #884)
 - Metadata: metadata_data/library-room.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

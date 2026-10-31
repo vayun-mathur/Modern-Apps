@@ -6,7 +6,7 @@
 - Gradle: :library:widgets / dir: library/widgets/
 - Package roots present: (Glance widget bases — one package)
 - Entry files: MaWidget.kt + MaWidgetReceiver.kt (no MainActivity/Route — library)
-- Deps: :library
+- Deps: :library (permission-free; only the Log facade is imported, #884)
 - Metadata: metadata_data/library-widgets.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

@@ -6,7 +6,7 @@
 - Gradle: :library:carhost / dir: library/carhost/
 - Package roots present: (car template host — one package)
 - Entry files: CarTemplateView.kt (no MainActivity/Route — library)
-- Deps: (verify in build.gradle.kts before adding)
+- Deps: :library:ui (permission-free since #884)
 - Metadata: metadata_data/library-carhost.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

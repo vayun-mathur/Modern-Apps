@@ -7,7 +7,7 @@ _Install: dev by default (library, no launcher)._
 - Gradle: :library:avatar / dir: library/avatar/
 - Package roots present: `com.vayunmathur.library.avatar` (bridge), `...avatar.components` (surface/composable), `...avatar.yuu` (pose contract)
 - Entry files: YuuAvatarNative.kt (JNI bridge), components/YuuAvatar3D.kt (hero composable)
-- Deps: :library:ui, :library:log, androidx.lifecycle.runtime.compose
+- Deps: :library:ui (permission-free since #884), :library:log, androidx.lifecycle.runtime.compose
 - Rust: yes (`src/main/rust/`, crate `yuu_avatar`, glTF + skinning)
 - Metadata: none (library, no listing)
 

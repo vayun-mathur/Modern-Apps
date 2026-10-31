@@ -170,6 +170,159 @@ tasks.register("checkMetadata") {
     }
 }
 
+// Guards issue #884: no library/SDK module may depend on another library
+// module that declares Android permissions, or those permissions silently
+// merge into every consuming app (pdf gained network access this way). A
+// second list pins the remaining permission-free lib→lib edges, so a new
+// edge (permission-free today, permission-declaring tomorrow) fails until
+// it is reviewed and documented here.
+// Runs standalone (`./gradlew verifyLibraryBoundaries`) and from ./check.
+// Configuration-cache compatible: the action captures only string literals
+// (project root path + both lists) and does all file IO at execution time.
+tasks.register("verifyLibraryBoundaries") {
+    group = "verification"
+    description = "Fails if a library/SDK module depends on another library module " +
+        "that declares Android permissions (directly or transitively), or on a " +
+        "library module outside the documented permission-free edge list."
+    val projectRoot = rootDir
+    // Permission-declaring modules: nothing in library/* or sdk/* may depend on
+    // these (directly or transitively). Declared here rather than inferred so a
+    // module that newly gains a permission fails loudly instead of silently
+    // widening the blast radius. No exceptions: map and downloadservice declare
+    // INTERNET themselves exactly so they need no edge into network.
+    val permissionDeclaringModules = setOf(
+        ":library:network",
+        ":library:map",
+        ":library:downloadservice",
+    )
+    // The only permitted lib→lib edges (all permission-free; each is justified
+    // in its module's AGENTS.md Deps line):
+    // - many modules → :library (shared nav/DTO/Room base; declares nothing)
+    // - :library:room → :library (DbBackupCodec SPI)
+    // - :library:biometric → :library (DatabaseHelper keystore)
+    // - :library:work → :library (reminder notification resources)
+    // - :library:widgets → :library (Log facade only)
+    // - :library:downloadservice → :library (DataStoreUtils)
+    // - :library:ui → :library (shell + nav base)
+    // - :library:avatar → :library:ui, :library:carhost → :library:ui,
+    //   :library:tv → :library:ui (Compose shell; ui is permission-free)
+    // - :library:tv → :library (base DTOs alongside the ui shell)
+    // - :library:ocr → :library:ml (on-device OCR runs on the ml runtime)
+    // - :sdk:controller → :library:e2ee-p2p, :cast:protocol → :library:e2ee-p2p
+    //   (Hkdf key schedule + E2EE handshake; e2ee-p2p declares nothing)
+    // - :library → :sdk:games (achievement contract in the shared base)
+    // - :auto:protocol → :library (shared DTOs)
+    // - :library:everysync-core → :library:e2ee-p2p (E2EE sync transport)
+    // - :sdk:openassistant → (none)
+    val allowedLibraryEdges = setOf(
+        ":library" to ":sdk:games",
+        ":auto:protocol" to ":library",
+        ":library:everysync-core" to ":library:e2ee-p2p",
+        ":library:avatar" to ":library:ui",
+        ":library:biometric" to ":library",
+        ":library:carhost" to ":library:ui",
+        ":library:downloadservice" to ":library",
+        ":library:ocr" to ":library:ml",
+        ":library:room" to ":library",
+        ":library:tv" to ":library",
+        ":library:tv" to ":library:ui",
+        ":library:ui" to ":library",
+        ":library:widgets" to ":library",
+        ":library:work" to ":library",
+        ":sdk:controller" to ":library:e2ee-p2p",
+        ":cast:protocol" to ":library:e2ee-p2p",
+    )
+    doLast {
+        val projectRef = Regex("""project\(["'](:[A-Za-z0-9:_\-]+)["']\)""")
+        val permissionRef = Regex("""<uses-permission[^>]*android:name="([^"]+)"""")
+        val manifestOf = { moduleDir: File ->
+            File(moduleDir, "src/main/AndroidManifest.xml").takeIf { it.isFile }
+        }
+        val permissionsOf = { moduleDir: File ->
+            val manifest = manifestOf(moduleDir)
+            if (manifest == null) {
+                emptySet()
+            } else {
+                permissionRef.findAll(manifest.readText()).map { it.groupValues[1] }.toSet()
+            }
+        }
+        // Library modules = anything applying the library/KMP convention plugin
+        // (apps apply common-conventions-app and may depend on libraries freely).
+        // aosp-stubs is compile-only; log is added to every library by the
+        // convention plugin and declares nothing.
+        val skipDirs = setOf(".git", ".gradle", ".kotlin", "build", "build-logic", "analysis",
+            "personal", "target", "third_party", "node_modules", "scripts", "firmware")
+        val libraryPlugin = Regex("""id\("common-conventions-(library|kmp)"\)""")
+        val libraryDirs = projectRoot.walkTopDown()
+            .maxDepth(3)
+            .onEnter { it == projectRoot || it.name !in skipDirs }
+            .filter { it.isDirectory && it != projectRoot }
+            .filter {
+                val build = File(it, "build.gradle.kts")
+                build.isFile && libraryPlugin.containsMatchIn(build.readText())
+            }
+            .filter {
+                val rel = it.relativeTo(projectRoot).invariantSeparatorsPath
+                rel != "library/aosp-stubs" && rel != "library/log"
+            }
+            .toList()
+        val gradlePathOf = { dir: File ->
+            ":" + dir.relativeTo(projectRoot).invariantSeparatorsPath.replace('/', ':')
+        }
+        val dirOf = { gradlePath: String ->
+            File(projectRoot, gradlePath.trimStart(':').replace(':', '/'))
+        }
+        val directDeps = libraryDirs.associate { dir ->
+            val text = File(dir, "build.gradle.kts").readText()
+            gradlePathOf(dir) to projectRef.findAll(text).map { it.groupValues[1] }.toSet()
+        }
+        val violations = mutableListOf<String>()
+        for ((module, deps) in directDeps) {
+            val seen = mutableSetOf<String>()
+            val queue = ArrayDeque(deps)
+            while (queue.isNotEmpty()) {
+                val dep = queue.removeFirst()
+                if (!seen.add(dep)) continue
+                val depDir = dirOf(dep)
+                if (!depDir.isDirectory) continue
+                val perms = permissionsOf(depDir)
+                // Belt and braces: the declared set fails fast on known
+                // permission modules, while the manifest scan catches a module
+                // that newly gains a permission without updating the set.
+                if (dep in permissionDeclaringModules || perms.isNotEmpty()) {
+                    val why = if (perms.isNotEmpty()) {
+                        "which declares " + perms.sorted().joinToString(", ")
+                    } else {
+                        "which is a permission-declaring module"
+                    }
+                    violations += "$module depends on $dep, $why"
+                }
+                directDeps[dep]?.let { queue.addAll(it) }
+            }
+            for (dep in deps) {
+                if ((module to dep) !in allowedLibraryEdges) {
+                    violations += "$module depends on $dep, which is not in the " +
+                        "documented permission-free edge list — review and document " +
+                        "it in verifyLibraryBoundaries (root build.gradle.kts) first"
+                }
+            }
+        }
+        violations.forEach { println("verifyLibraryBoundaries: VIOLATION: $it") }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "verifyLibraryBoundaries: ${violations.size} permission-leaking " +
+                    "library edge(s). Move the permission-needing code into the " +
+                    "consuming app (or the permission-declaring module) instead of " +
+                    "depending across libraries — see issue #884.",
+            )
+        }
+        println(
+            "verifyLibraryBoundaries: ${libraryDirs.size} library module(s) checked, " +
+                "no permission-leaking edges.",
+        )
+    }
+}
+
 // Jacoco XML summaries land under build/reports/coverage after unit or instrumented runs,
 // while manual runs drop .ec files under build/outputs/coverage-manual. This task only reads
 // existing outputs, so it never triggers test execution.
