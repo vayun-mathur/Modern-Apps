@@ -39,7 +39,7 @@
     <string name="metric_visibility">Widoczność</string>
     <string name="metric_cloud_cover">Zachmurzenie</string>
     <string name="metric_uv_index">Indeks UV</string>
-    <string name="block_sun">Słonecznie</string>
+    <string name="block_sun">Słońce</string>
     <string name="block_pollen">Pyłki</string>
     <string name="block_wind">Wiatr</string>
     <string name="block_air_quality">Jakość powietrza</string>
