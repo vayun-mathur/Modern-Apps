@@ -90,6 +90,10 @@ class UpdateCheckWorker(
     )
 
     private suspend fun runCheck(scope: CoroutineScope) {
+        // Crash-orphaned APKs first: the worker can cold-start the process with
+        // no activity alive, so it sweeps too rather than trusting the UI
+        // entries to have run (#871).
+        DownloadCache.sweepStale(context.cacheDir)
         val db = AppStoreDatabaseRepository.get(context).database
         val env = CheckEnv(
             scope = scope,

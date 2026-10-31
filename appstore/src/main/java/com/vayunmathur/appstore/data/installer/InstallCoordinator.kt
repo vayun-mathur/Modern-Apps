@@ -5,6 +5,7 @@ import com.aurora.gplayapi.exceptions.GooglePlayException
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
+import com.vayunmathur.appstore.data.DownloadCache
 import com.vayunmathur.appstore.data.PinnedStampEntity
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
@@ -247,7 +248,7 @@ class InstallCoordinator(
                 )
             }
 
-            val file = File(context.cacheDir, "${app.packageName}.apk")
+            val file = File(context.cacheDir, DownloadCache.apkName(app.packageName))
             download(apkUrl, file, app.sizeBytes) { fraction ->
                 stage(app.packageName, InstallStage.Downloading(fraction))
             }
@@ -258,27 +259,37 @@ class InstallCoordinator(
             // Aggregate progress mirrors installFromAccrescent's split loop.
             // Each file is size-checked after download (a truncated 200MB base
             // otherwise surfaces only as a hash mismatch) and retried once.
-            val files = if (app.splitFiles.isEmpty()) {
-                downloadVerified(apkUrl, file, app.sizeBytes, app.packageName, null, null)
-                listOf(file)
-            } else {
-                val totalSize =
-                    (app.sizeBytes + app.splitFiles.sumOf { it.size }).takeIf { it > 0 } ?: -1L
-                var downloadedBytes = 0L
-                downloadVerified(apkUrl, file, app.sizeBytes, app.packageName, totalSize, 0L)
-                downloadedBytes += file.length()
-                val siblings = app.splitFiles.mapIndexed { index, split ->
-                    val splitFile = File(context.cacheDir, "${app.packageName}.split$index.apk")
-                    val start = downloadedBytes
-                    downloadVerified(split.url, splitFile, split.size, app.packageName, totalSize, start)
-                    downloadedBytes += splitFile.length()
-                    splitFile
+            //
+            // The staged files are deleted in the finally below whatever happens:
+            // the session owns its own copy of the bytes once committed, and a
+            // failed/cancelled attempt's leftovers are what grew the cache to
+            // gigabytes (#871).
+            try {
+                val files = if (app.splitFiles.isEmpty()) {
+                    downloadVerified(apkUrl, file, app.sizeBytes, app.packageName, null, null)
+                    listOf(file)
+                } else {
+                    val totalSize =
+                        (app.sizeBytes + app.splitFiles.sumOf { it.size }).takeIf { it > 0 } ?: -1L
+                    var downloadedBytes = 0L
+                    downloadVerified(apkUrl, file, app.sizeBytes, app.packageName, totalSize, 0L)
+                    downloadedBytes += file.length()
+                    val siblings = app.splitFiles.mapIndexed { index, split ->
+                        val splitFile =
+                            File(context.cacheDir, DownloadCache.splitApkName(app.packageName, index))
+                        val start = downloadedBytes
+                        downloadVerified(split.url, splitFile, split.size, app.packageName, totalSize, start)
+                        downloadedBytes += splitFile.length()
+                        splitFile
+                    }
+                    listOf(file) + siblings
                 }
-                listOf(file) + siblings
-            }
 
-            stage(app.packageName, InstallStage.Verifying)
-            sessionInstaller.installSplits(app.packageName, files, requirement, files.sumOf { it.length() })
+                stage(app.packageName, InstallStage.Verifying)
+                sessionInstaller.installSplits(app.packageName, files, requirement, files.sumOf { it.length() })
+            } finally {
+                DownloadCache.deleteStagedApks(context.cacheDir, app.packageName)
+            }
         }
 
     /**
@@ -409,36 +420,45 @@ class InstallCoordinator(
 
             val totalSize = splits.sumOf { it.size }.takeIf { it > 0 } ?: -1L
             var downloadedBytes = 0L
-            val files = splits.mapIndexed { index, split ->
-                val file = File(context.cacheDir, "${app.packageName}.split$index.apk")
-                val start = downloadedBytes
-                download(split.url, file, split.size) { fileFraction ->
-                    if (totalSize > 0) {
-                        val overall = (start + fileFraction * split.size) / totalSize
-                        stage(app.packageName, InstallStage.Downloading(overall.coerceIn(0f, 1f)))
+            try {
+                val files = splits.mapIndexed { index, split ->
+                    val file = File(
+                        context.cacheDir,
+                        DownloadCache.splitApkName(app.packageName, index),
+                    )
+                    val start = downloadedBytes
+                    download(split.url, file, split.size) { fileFraction ->
+                        if (totalSize > 0) {
+                            val overall = (start + fileFraction * split.size) / totalSize
+                            stage(app.packageName, InstallStage.Downloading(overall.coerceIn(0f, 1f)))
+                        }
                     }
+                    downloadedBytes += file.length()
+                    file
                 }
-                downloadedBytes += file.length()
-                file
+
+                val requirement = InstallRequirement(
+                    expectedPackage = app.packageName,
+                    requiredSigners = setOf(trust.signingCertHash),
+                    expectedSha256 = emptyMap(),
+                    minVersionCode = trust.minVersionCode,
+                    signerOrigin = "Accrescent's signed app list",
+                    // Server is the authority for Accrescent: it already picks splits
+                    // per-device, so a client-side leanback refusal would second-guess
+                    // it (mirrors the tvRefusal() exemption). Every other source keeps
+                    // requireTvCompatible = isTv.
+                    requireTvCompatible = false,
+                )
+
+                stage(app.packageName, InstallStage.Verifying)
+                sessionInstaller.installSplits(
+                    app.packageName, files, requirement, files.sumOf { it.length() }
+                )
+            } finally {
+                // Same deal as the direct path: the session owns its copy once
+                // committed, and leftovers are what grew the cache (#871).
+                DownloadCache.deleteStagedApks(context.cacheDir, app.packageName)
             }
-
-            val requirement = InstallRequirement(
-                expectedPackage = app.packageName,
-                requiredSigners = setOf(trust.signingCertHash),
-                expectedSha256 = emptyMap(),
-                minVersionCode = trust.minVersionCode,
-                signerOrigin = "Accrescent's signed app list",
-                // Server is the authority for Accrescent: it already picks splits
-                // per-device, so a client-side leanback refusal would second-guess
-                // it (mirrors the tvRefusal() exemption). Every other source keeps
-                // requireTvCompatible = isTv.
-                requireTvCompatible = false,
-            )
-
-            stage(app.packageName, InstallStage.Verifying)
-            sessionInstaller.installSplits(
-                app.packageName, files, requirement, files.sumOf { it.length() }
-            )
         }
 
     // --- Play ----------------------------------------------------------------------
@@ -472,44 +492,54 @@ class InstallCoordinator(
             var files = purchase(app.packageName, versionCode, offerType, certHash)
             if (files.isEmpty()) throw java.io.IOException("Play returned no files to download")
 
-            var downloaded = playDownloader.downloadFiles(app.packageName, versionCode, files) { f ->
-                stage(app.packageName, InstallStage.Downloading(f))
-            }
+            // The package's whole Play tree goes away in the finally: the resume
+            // cache keys per version and is only ever resumed within one
+            // attempt, so old version dirs can never pay off — and they are
+            // what grew the cache to gigabytes (#871).
+            try {
+                var downloaded =
+                    playDownloader.downloadFiles(app.packageName, versionCode, files) { f ->
+                        stage(app.packageName, InstallStage.Downloading(f))
+                    }
 
-            // Delivery URLs are short-lived; one expiry is worth a second purchase call
-            // rather than making the user tap install again.
-            if (downloaded.exceptionOrNull() is PlayDownloader.ExpiredUrlException) {
-                files = purchase(app.packageName, versionCode, offerType, certHash)
-                downloaded = playDownloader.downloadFiles(app.packageName, versionCode, files) { f ->
-                    stage(app.packageName, InstallStage.Downloading(f))
+                // Delivery URLs are short-lived; one expiry is worth a second purchase call
+                // rather than making the user tap install again.
+                if (downloaded.exceptionOrNull() is PlayDownloader.ExpiredUrlException) {
+                    files = purchase(app.packageName, versionCode, offerType, certHash)
+                    downloaded =
+                        playDownloader.downloadFiles(app.packageName, versionCode, files) { f ->
+                            stage(app.packageName, InstallStage.Downloading(f))
+                        }
                 }
+                val localFiles = downloaded.getOrThrow()
+
+                stage(app.packageName, InstallStage.Verifying)
+
+                // Everything Play can actually give us, all enforced:
+                //  - per-split SHA-256 from the delivery response (PlayFile.sha256)
+                //  - the expected signing certificate from AppDetails.certificateSet
+                //  - the source stamp, pinned TOFU (survives Play App Signing)
+                //  - continuity with the installed copy (InstallVerifier, always)
+                val expectedHashes = files.mapNotNull { f ->
+                    val name = f.name.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    f.sha256.takeIf { it.isNotBlank() }?.let { name to it }
+                }.toMap()
+
+                val requirement = InstallRequirement(
+                    expectedPackage = app.packageName,
+                    requiredSigners = details.expectedSigners.toSet(),
+                    expectedSha256 = expectedHashes,
+                    signerOrigin = "Google",
+                    pinnedStamp = db.pinnedStampDao().byPackage(app.packageName)?.stampSha256,
+                    requireTvCompatible = isTv,
+                )
+
+                sessionInstaller.installSplits(
+                    app.packageName, localFiles, requirement, localFiles.sumOf { it.length() }
+                )
+            } finally {
+                DownloadCache.deletePlayDownloads(context.cacheDir, app.packageName)
             }
-            val localFiles = downloaded.getOrThrow()
-
-            stage(app.packageName, InstallStage.Verifying)
-
-            // Everything Play can actually give us, all enforced:
-            //  - per-split SHA-256 from the delivery response (PlayFile.sha256)
-            //  - the expected signing certificate from AppDetails.certificateSet
-            //  - the source stamp, pinned TOFU (survives Play App Signing)
-            //  - continuity with the installed copy (InstallVerifier, always)
-            val expectedHashes = files.mapNotNull { f ->
-                val name = f.name.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                f.sha256.takeIf { it.isNotBlank() }?.let { name to it }
-            }.toMap()
-
-            val requirement = InstallRequirement(
-                expectedPackage = app.packageName,
-                requiredSigners = details.expectedSigners.toSet(),
-                expectedSha256 = expectedHashes,
-                signerOrigin = "Google",
-                pinnedStamp = db.pinnedStampDao().byPackage(app.packageName)?.stampSha256,
-                requireTvCompatible = isTv,
-            )
-
-            sessionInstaller.installSplits(
-                app.packageName, localFiles, requirement, localFiles.sumOf { it.length() }
-            )
         }
 
     /** Retries once without the installed-copy certificate, which Play sometimes rejects. */

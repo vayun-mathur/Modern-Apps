@@ -3,6 +3,7 @@ package com.vayunmathur.appstore.data.installer
 import android.content.Context
 import com.vayunmathur.library.log.Log
 import com.aurora.gplayapi.data.models.PlayFile
+import com.vayunmathur.appstore.data.DownloadCache
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -44,7 +45,8 @@ class PlayDownloader(
         progressCallback: (Float) -> Unit = {}
     ): Result<List<File>> {
         return try {
-            val baseDir = File(context.cacheDir, "PlayDownloads/$packageName/$versionCode").apply { mkdirs() }
+            val baseDir = DownloadCache.playDir(context.cacheDir, packageName, versionCode)
+                .apply { mkdirs() }
             val totalSize = gplayFiles.sumOf { it.size }.takeIf { it > 0 } ?: -1L
             var totalDownloaded = 0L
             val localFiles = mutableListOf<File>()

@@ -13,6 +13,7 @@ import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.CatalogRepository
+import com.vayunmathur.appstore.data.DownloadCache
 import com.vayunmathur.appstore.data.InstalledAppsRepository
 import com.vayunmathur.appstore.data.InstalledInfo
 import com.vayunmathur.appstore.data.PartitionedUpdates
@@ -35,6 +36,7 @@ import com.vayunmathur.appstore.data.security.ApkCertificates
 import com.vayunmathur.appstore.data.security.VerificationResult
 import com.vayunmathur.appstore.domain.SearchRanking
 import com.vayunmathur.library.util.AppMessages
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +45,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * One ViewModel, four screens, and no data-layer logic of its own.
@@ -409,6 +412,12 @@ class AppStoreViewModel(
 
     init {
         viewModelScope.launch {
+            // Crash-orphaned APKs first: a dead install attempt's staged files are
+            // garbage, and the 24h age gate keeps this from racing anything
+            // this process started (#871).
+            withContext(Dispatchers.IO) {
+                DownloadCache.sweepStale(context.cacheDir)
+            }
             // The persisted choice rather than the flow's optimistic default: a source the
             // user switched off must not be contacted once on every cold start while the
             // stored value is still on its way.

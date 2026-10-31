@@ -11,6 +11,7 @@ import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.CatalogRepository
 import com.vayunmathur.appstore.data.DefaultRepos
+import com.vayunmathur.appstore.data.DownloadCache
 import com.vayunmathur.appstore.data.InstalledAppsRepository
 import com.vayunmathur.appstore.data.InstalledInfo
 import com.vayunmathur.appstore.data.PlayStoreLinks
@@ -28,6 +29,7 @@ import com.vayunmathur.appstore.data.security.ApkCertificates
 import com.vayunmathur.appstore.data.security.VerificationResult
 import com.vayunmathur.appstore.util.SourceFilter
 import com.vayunmathur.library.util.AppMessages
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Everything the TV browse and detail screens draw.
@@ -306,6 +309,12 @@ class TvStoreViewModel(
 
     init {
         viewModelScope.launch {
+            // Crash-orphaned APKs first: a dead install attempt's staged files are
+            // garbage, and the 24h age gate keeps this from racing anything
+            // this process started (#871).
+            withContext(Dispatchers.IO) {
+                DownloadCache.sweepStale(context.cacheDir)
+            }
             enabledSourcesFlow.value = settings.readEnabledSources()
             // Drop disabled sources' cached rows before anything reads the catalogue:
             // sync only purges when it runs, so a disabled offline source's rows would
