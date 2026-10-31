@@ -28,6 +28,7 @@ import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.R as UiR
+import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
@@ -41,6 +42,7 @@ fun HomeScreen(
     viewModel: SudokuViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val answerMode by viewModel.answerMode.collectAsState()
     var showConfig by remember { mutableStateOf(false) }
     // Seeds the picker with the last thing played, so a player grinding one setting taps twice.
     var lastConfig by remember { mutableStateOf(GameConfig()) }
@@ -77,6 +79,16 @@ fun HomeScreen(
                 onClick = { showConfig = true },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(UiR.string.new_game)) }
+
+            // The only setting: whether new puzzles reject wrong digits. Changing it never touches
+            // a game in progress — the board snapshots the value when it is dealt.
+            SettingsSwitchRow(
+                title = stringResource(R.string.answer_mode),
+                supportingText = stringResource(R.string.answer_mode_description),
+                checked = answerMode,
+                onCheckedChange = { viewModel.setAnswerMode(it) },
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Row(
                 Modifier.fillMaxWidth(),

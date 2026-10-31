@@ -3,18 +3,24 @@ package com.vayunmathur.games.sudoku.platform
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.games.sudoku.data.ANSWER_MODE_LIVES
 import com.vayunmathur.games.sudoku.data.BoardSize
 import com.vayunmathur.games.sudoku.data.Difficulty
 import com.vayunmathur.games.sudoku.data.GameConfig
+import com.vayunmathur.games.sudoku.data.SudokuDataStore
 import com.vayunmathur.games.sudoku.data.SudokuGameState
 import com.vayunmathur.games.sudoku.data.SudokuSnapshot
 import com.vayunmathur.games.sudoku.data.SudokuStatsRepository
+import com.vayunmathur.games.sudoku.domain.AnswerMode
+import com.vayunmathur.games.sudoku.domain.DigitAttempt
 import com.vayunmathur.games.sudoku.domain.SudokuGenerator
 import com.vayunmathur.library.util.AchievementsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,12 +40,30 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     val uiState: StateFlow<SudokuUiState> = _uiState.asStateFlow()
 
     private val statsRepository = SudokuStatsRepository(application)
+    private val settingsStore = SudokuDataStore(application)
+
+    /**
+     * The global default new puzzles are dealt with; the game in progress carries its own copy.
+     *
+     * Shared while the home screen is up so the switch reflects the stored value. Read once per
+     * deal — see [newGame] — rather than observed live, so toggling the switch cannot rewrite a
+     * game already in progress.
+     */
+    val answerMode: StateFlow<Boolean> = settingsStore.answerMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setAnswerMode(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.setAnswerMode(enabled) }
+    }
 
     /** Undo snapshots, oldest first. Cleared whenever a new puzzle is dealt. */
     private val history = ArrayDeque<SudokuSnapshot>()
 
     /** Set when the player ever tries a digit that disagrees with the solution. */
     private var madeMistake = false
+
+    /** Sequence numbers for answer-mode rejections, so repeats of one digit still animate. */
+    private var rejectionAttempt = 0L
 
     val achievementsManager: AchievementsManager = run {
         val json = application.assets.open("achievements.json").bufferedReader().readText()
@@ -60,18 +84,31 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
      * Deals a new puzzle for [config], replacing anything in progress.
      *
      * Generation is dispatched to [Dispatchers.Default] and the board is blanked first, so the
-     * screen shows a spinner instead of freezing while a 9x9 Expert is dug.
+     * screen shows a spinner instead of freezing while a 9x9 Expert is dug. The game snapshots the
+     * current answer-mode preference rather than observing it, so the rules it is dealt with are
+     * the rules it keeps even if the switch moves mid-game.
      */
     fun newGame(config: GameConfig) {
+        newGame(config, answerMode.value)
+    }
+
+    /**
+     * Deals a new puzzle with an explicit ruleset, for previews and tests.
+     *
+     * The no-flag overload above is the one the screens call; this one lets a caller deal an answer
+     * game without touching the persisted preference.
+     */
+    fun newGame(config: GameConfig, answerMode: Boolean) {
         history.clear()
         madeMistake = false
+        rejectionAttempt = 0
         _uiState.value = SudokuUiState(generating = true)
         viewModelScope.launch {
             val puzzle = withContext(Dispatchers.Default) {
                 SudokuGenerator.generate(config.size, config.difficulty, Random.Default)
             }
             statsRepository.recordGamePlayed(config.size, config.difficulty)
-            _uiState.value = SudokuUiState(game = SudokuGameState.from(puzzle))
+            _uiState.value = SudokuUiState(game = SudokuGameState.from(puzzle, answerMode))
         }
     }
 
@@ -89,34 +126,52 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
      * Re-entering the digit already showing clears the cell instead, so the number pad doubles as a
      * toggle and the player rarely needs the separate erase button.
      *
-     * A digit that disagrees with the solution goes in exactly like any other, with no highlight and no
-     * complaint. The player finds out only because [checkWin] never fires, which keeps the deduction
-     * theirs to do; the attempt is remembered for the `no_mistakes` achievement.
+     * What the tap *means* is decided by [AnswerMode.decide] — this only carries it out. In
+     * particular a digit that disagrees with the solution goes in silently in classic mode (the
+     * player finds out only because the win never fires), while in answer mode it is refused: never
+     * placed, one life spent, the key flashes. The refusal is remembered for the `no_mistakes`
+     * achievement exactly like a classic-mode wrong entry.
      */
     override fun enterDigit(digit: Int) {
         val game = _uiState.value.game ?: return
-        val index = game.selected
-        if (index !in 0 until game.size.cellCount || game.isGiven(index) || game.isWon) return
-
-        pushHistory(game)
-        if (game.notesMode) {
-            val bit = 1 shl (digit - 1)
-            mutate { state ->
-                state.copy(
-                    notes = state.notes.replacing(index, state.notes[index] xor bit),
-                    entries = state.entries.replacing(index, 0),
-                    moveCount = state.moveCount + 1,
-                )
-            }
-            return
+        when (val attempt = AnswerMode.decide(game, digit)) {
+            is DigitAttempt.Ignore -> return
+            is DigitAttempt.Reject -> rejectDigit(attempt.digit)
+            is DigitAttempt.Note -> enterNote(game, attempt.index, attempt.digit)
+            is DigitAttempt.Erase -> eraseEntry(game, attempt.index)
+            is DigitAttempt.Place -> placeDigit(game, attempt.index, attempt.digit)
         }
+    }
 
-        // Tapping the digit already there means "take it back".
-        val next = if (game.entries[index] == digit) 0 else digit
-        if (next != 0 && next != game.solution[index]) madeMistake = true
+    /**
+     * Clears one entered digit; re-tapping a digit is how the pad doubles as an eraser.
+     *
+     * Pencil marks on the cell go too: they were candidates for a digit the player just took back.
+     */
+    private fun eraseEntry(game: SudokuGameState, index: Int) {
+        pushHistory(game)
         mutate { state ->
             state.copy(
-                entries = state.entries.replacing(index, next),
+                entries = state.entries.replacing(index, 0),
+                notes = state.notes.replacing(index, 0),
+                moveCount = state.moveCount + 1,
+            )
+        }
+    }
+
+    /**
+     * Writes one digit onto the board.
+     *
+     * In answer mode this is only ever reached with the correct digit — wrong ones are rejected
+     * before they get here — so the mistake accounting below only ever fires for classic games,
+     * exactly as it always has.
+     */
+    private fun placeDigit(game: SudokuGameState, index: Int, digit: Int) {
+        pushHistory(game)
+        if (digit != game.solution[index]) madeMistake = true
+        mutate { state ->
+            state.copy(
+                entries = state.entries.replacing(index, digit),
                 // A written digit makes its own pencil marks meaningless.
                 notes = state.notes.replacing(index, 0),
                 moveCount = state.moveCount + 1,
@@ -125,10 +180,47 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         checkWin()
     }
 
+    /**
+     * Toggles one pencil mark, unconditionally.
+     *
+     * Extracted from [enterDigit] so the answer-mode guard sits in one place: notes are written
+     * digits' rough drafts, and refusing to pencil in a wrong digit would make the mode unusable
+     * for the elimination it is meant to encourage.
+     */
+    private fun enterNote(game: SudokuGameState, index: Int, digit: Int) {
+        pushHistory(game)
+        val bit = 1 shl (digit - 1)
+        mutate { state ->
+            state.copy(
+                notes = state.notes.replacing(index, state.notes[index] xor bit),
+                entries = state.entries.replacing(index, 0),
+                moveCount = state.moveCount + 1,
+            )
+        }
+    }
+
+    /**
+     * Refuses [digit]: no placement, one life spent, and the key flashes.
+     *
+     * The life is spent even on a game this ends — the board that hits zero shows the loss as the
+     * cost of the tap that caused it, rather than freezing first. History is untouched, so there
+     * is nothing to undo: nothing changed on the board. [madeMistake] is set too, keeping answer
+     * games eligible for the same `no_mistakes` accounting as classic ones.
+     */
+    private fun rejectDigit(digit: Int) {
+        madeMistake = true
+        rejectionAttempt++
+        mutate { state -> AnswerMode.applyRejection(state) }
+        _uiState.update { it.copy(rejectedDigit = RejectedDigit(digit, rejectionAttempt)) }
+        val game = _uiState.value.game ?: return
+        if (game.isGameOver) statsRepository.recordGameLost(game.size, game.difficulty)
+    }
+
     override fun clearCell() {
         val game = _uiState.value.game ?: return
         val index = game.selected
-        if (index !in 0 until game.size.cellCount || game.isGiven(index) || game.isWon) return
+        if (index !in 0 until game.size.cellCount || game.isGiven(index)) return
+        if (game.isWon || game.isGameOver) return
         pushHistory(game)
         mutate { state ->
             state.copy(
@@ -146,10 +238,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
      * digit sits elsewhere would leave the player deducing from something false. Only once the grid is
      * consistent does it fill a blank, preferring the selected one so help lands where they are
      * looking.
+     *
+     * A hint always places a correct digit, so it costs no life in answer mode — and in answer mode
+     * there are never wrong digits to correct first, because wrong digits are never placed.
      */
     override fun hint() {
         val game = _uiState.value.game ?: return
-        if (game.isWon) return
+        if (game.isWon || game.isGameOver) return
         val index = game.wrongIndices().firstOrNull()
             ?: game.selected.takeIf { it >= 0 && !game.isGiven(it) && game.valueAt(it) == 0 }
             ?: game.blankIndices().firstOrNull()
@@ -174,11 +269,12 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         _uiState.update { it.copy(canUndo = history.isNotEmpty()) }
     }
 
-    /** Clears the player's work but keeps the same puzzle. */
+    /** Clears the player's work but keeps the same puzzle — and, in answer mode, refills lives. */
     override fun restart() {
         val game = _uiState.value.game ?: return
         history.clear()
         madeMistake = false
+        rejectionAttempt = 0
         _uiState.value = SudokuUiState(
             game = game.copy(
                 entries = List(game.size.cellCount) { 0 },
@@ -189,6 +285,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 hintsUsed = 0,
                 isWon = false,
                 usedUndo = false,
+                livesRemaining = ANSWER_MODE_LIVES,
             )
         )
     }
@@ -203,7 +300,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     fun incrementTimer() {
         val game = _uiState.value.game ?: return
-        if (game.isWon) return
+        if (game.isWon || game.isGameOver) return
         mutate { it.copy(elapsedSeconds = it.elapsedSeconds + 1) }
     }
 

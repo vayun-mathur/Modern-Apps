@@ -17,6 +17,19 @@
     <!-- GameConfigDialog: Board size option, a 12 by 12 grid of 3x4 boxes. Noun, dimensions -->
     <string name="size_twelve" translatable="false">12x12</string>
 
+    <!-- HomeScreen: Title of the answer-mode setting row. Noun phrase -->
+    <string name="answer_mode">Answer mode</string>
+    <!-- HomeScreen: Explanation of answer mode under its title. Sentence -->
+    <string name="answer_mode_description">Wrong digits are rejected and cost a life. Three strikes ends the puzzle.</string>
+    <!-- GameBoardScreen: Lives counter next to the hearts row, e.g. Lives: 2. Noun plural -->
+    <string name="lives">Lives</string>
+    <!-- GameOverOverlay: Title shown when answer mode runs out of lives. Declarative -->
+    <string name="out_of_lives">Out of lives</string>
+    <!-- GameOverOverlay: Explains the loss and offers another try. Sentence -->
+    <string name="out_of_lives_message">Three wrong digits ended this puzzle. Try again?</string>
+    <!-- GameOverOverlay: Starts a fresh puzzle with the same size and difficulty. Verb phrase -->
+    <string name="try_again">Try Again</string>
+
     <!-- GameConfigDialog: Hardest difficulty, fewest clues given. Adjective -->
     <string name="difficulty_expert">Expert</string>
 

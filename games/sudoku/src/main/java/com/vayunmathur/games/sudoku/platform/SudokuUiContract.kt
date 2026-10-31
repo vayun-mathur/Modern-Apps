@@ -31,9 +31,24 @@ interface SudokuActions {
  * [game] is null only before the first puzzle has been generated; the board shows a spinner then.
  * Generation happens on a background dispatcher because digging a 9x9 runs the solver once per
  * removed clue.
+ *
+ * [rejectedDigit] is the last keypad digit answer mode refused to place, or null if none has been
+ * refused. It is write-once per attempt — every rejection carries a fresh sequence number, so two
+ * wrong taps on the same key still animate twice — and it is never cleared: the keypad's flash runs
+ * its course locally, and clearing here would cut a flash short if a correct digit landed meanwhile.
  */
 data class SudokuUiState(
     val game: SudokuGameState? = null,
     val canUndo: Boolean = false,
     val generating: Boolean = false,
+    val rejectedDigit: RejectedDigit? = null,
 )
+
+/**
+ * A keypad digit answer mode rejected, with a sequence number telling repeats apart.
+ *
+ * The pad needs more than the digit: tapping a wrong 7 twice in a row must flash twice, and a
+ * state that still says "7" would not recompose. Each rejection bumps [attempt], so every one is a
+ * new value even for the same [digit].
+ */
+data class RejectedDigit(val digit: Int, val attempt: Long)

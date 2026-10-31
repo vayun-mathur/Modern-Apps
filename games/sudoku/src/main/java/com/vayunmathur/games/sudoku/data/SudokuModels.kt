@@ -41,6 +41,14 @@ private const val MAX_NUMERIC_DIGIT = 9
 private const val LETTER_BASE_DIGIT = 10
 
 /**
+ * Lives granted when a puzzle starts in answer mode.
+ *
+ * One number for every board size: a wrong attempt costs the same whatever the grid, because the
+ * lives are about how many slips the player gets, not about the board's shape.
+ */
+const val ANSWER_MODE_LIVES = 3
+
+/**
  * How many cells the generator leaves filled in.
  *
  * The clue counts are fractions of the board rather than absolute numbers so one difficulty means
@@ -107,8 +115,26 @@ data class SudokuGameState(
     val hintsUsed: Int = 0,
     val isWon: Boolean = false,
     val usedUndo: Boolean = false,
+    /**
+     * Answer mode for this game, snapshotted when the puzzle is dealt.
+     *
+     * The persisted preference is a global default, but the game carries its own copy so a game in
+     * progress keeps the rules it started with — toggling the switch on the home screen cannot
+     * rewrite the rules mid-puzzle. A wrong digit is never placed; it costs a life instead.
+     */
+    val answerMode: Boolean = false,
+    /**
+     * Lives left, meaningful only when [answerMode] is on.
+     *
+     * Undo snapshots cover entries and notes only — never this — so undoing cannot refund a life
+     * spent on a rejected digit. Zero ends the game; see [isGameOver].
+     */
+    val livesRemaining: Int = ANSWER_MODE_LIVES,
 ) {
     val variant: String get() = "${size.name}_${difficulty.name}"
+
+    /** True when answer mode has run out of lives but the grid is not solved. */
+    val isGameOver: Boolean get() = answerMode && livesRemaining <= 0 && !isComplete
 
     /** The digit showing in [index], given or entered, or 0 if the cell is blank. */
     fun valueAt(index: Int): Int = givens[index].takeIf { it != 0 } ?: entries[index]
@@ -142,16 +168,27 @@ data class SudokuGameState(
     val isComplete: Boolean get() = (0 until size.cellCount).all { valueAt(it) == solution[it] }
 
     companion object {
-        /** A fresh game from [puzzle], with every non-given cell blank. */
-        fun from(puzzle: Puzzle): SudokuGameState = SudokuGameState(
+        /** A fresh game from [puzzle], with every non-given cell blank and a full set of lives. */
+        fun from(puzzle: Puzzle, answerMode: Boolean = false): SudokuGameState = SudokuGameState(
             size = puzzle.size,
             difficulty = puzzle.difficulty,
             givens = puzzle.givens,
             solution = puzzle.solution,
             entries = List(puzzle.size.cellCount) { 0 },
             notes = List(puzzle.size.cellCount) { 0 },
+            answerMode = answerMode,
+            livesRemaining = ANSWER_MODE_LIVES,
         )
     }
+
+    /**
+     * True when every copy of [digit] is on the board — givens plus correct entries.
+     *
+     * Counts the digit itself rather than cells, so a digit that appears nine times as givens (a
+     * fully-clued digit on a lucky 6x6) is complete from the first frame with nothing entered.
+     */
+    fun isDigitComplete(digit: Int): Boolean =
+        (0 until size.cellCount).count { valueAt(it) == digit } >= size.side
 }
 
 /** The one snapshot the undo stack stores per move. */

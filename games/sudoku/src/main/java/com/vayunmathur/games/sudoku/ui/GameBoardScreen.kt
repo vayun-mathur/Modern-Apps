@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.sudoku.R
+import com.vayunmathur.games.sudoku.data.ANSWER_MODE_LIVES
+import com.vayunmathur.games.sudoku.data.SudokuGameState
 import com.vayunmathur.games.sudoku.platform.SudokuActions
 import com.vayunmathur.games.sudoku.platform.SudokuUiState
 import com.vayunmathur.games.sudoku.ui.components.NumberPad
@@ -39,6 +41,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.game.GameResultOverlay
+import com.vayunmathur.library.ui.game.HeartsRow
 import com.vayunmathur.library.ui.game.formatDuration
 import com.vayunmathur.library.ui.isCompactHeight
 import com.vayunmathur.library.ui.isExpandedWidth
@@ -113,12 +116,13 @@ fun GameBoardScreen(
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     ) {
-                        HintsUsed(game.hintsUsed)
+                        StatusRow(game)
 
                         NumberPad(
                             game = game,
                             onDigit = actions::enterDigit,
                             modifier = Modifier.fillMaxWidth(),
+                            rejected = state.rejectedDigit,
                         )
 
                         ActionBar(state, actions, onExit)
@@ -149,12 +153,13 @@ fun GameBoardScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
-                    HintsUsed(game.hintsUsed)
+                    StatusRow(game)
 
                     NumberPad(
                         game = game,
                         onDigit = actions::enterDigit,
                         modifier = Modifier.fillMaxWidth(),
+                        rejected = state.rejectedDigit,
                     )
 
                     ActionBar(state, actions, onExit)
@@ -178,6 +183,20 @@ fun GameBoardScreen(
                     }
                 }
             }
+
+            // Answer mode spent its last life: the board is dead, and the only way forward is a
+            // fresh attempt at the same puzzle — restart keeps the grid and refills the lives.
+            if (game.isGameOver) {
+                GameResultOverlay(
+                    title = stringResource(R.string.out_of_lives),
+                    won = false,
+                    onPlayAgain = { actions.restart() },
+                    playAgainLabel = stringResource(R.string.try_again),
+                    onBack = onExit,
+                ) {
+                    Text(stringResource(R.string.out_of_lives_message))
+                }
+            }
         }
     }
 }
@@ -193,6 +212,27 @@ private fun HintsUsed(hintsUsed: Int) {
     }
 }
 
+/**
+ * The status line above the pad: hints so far, and the lives left in answer mode.
+ *
+ * Nothing renders for a classic game with no hints yet, exactly as before — the row only exists
+ * when it has something to say.
+ */
+@Composable
+private fun StatusRow(game: SudokuGameState) {
+    if (game.hintsUsed == 0 && !game.answerMode) return
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HintsUsed(game.hintsUsed)
+        if (game.answerMode) {
+            HeartsRow(remaining = game.livesRemaining, total = ANSWER_MODE_LIVES)
+        }
+    }
+}
+
 @Composable
 private fun ActionBar(
     state: SudokuUiState,
@@ -201,6 +241,9 @@ private fun ActionBar(
 ) {
     val game = state.game ?: return
     var confirmGiveUp by remember { mutableStateOf(false) }
+    // Won or out of lives: the board takes no more input, so erase and hint go quiet too. Undo
+    // stays as it is — it only restores entries, which cannot revive a finished game either way.
+    val ended = game.isWon || game.isGameOver
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Row(
             Modifier.fillMaxWidth(),
@@ -221,7 +264,7 @@ private fun ActionBar(
             OutlinedButton(
                 onClick = { actions.clearCell() },
                 modifier = Modifier.weight(1f),
-                enabled = !game.isWon,
+                enabled = !ended,
             ) { Text(stringResource(R.string.erase)) }
             OutlinedButton(
                 onClick = { actions.undo() },
@@ -231,7 +274,7 @@ private fun ActionBar(
             OutlinedButton(
                 onClick = { actions.hint() },
                 modifier = Modifier.weight(1f),
-                enabled = !game.isWon,
+                enabled = !ended,
             ) { Text(stringResource(R.string.hint)) }
         }
         TextButton(

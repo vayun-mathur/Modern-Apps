@@ -11,8 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -24,8 +30,11 @@ import com.vayunmathur.games.sudoku.R
 import com.vayunmathur.games.sudoku.data.BoardSize
 import com.vayunmathur.games.sudoku.data.SudokuGameState
 import com.vayunmathur.games.sudoku.data.sudokuSymbol
+import com.vayunmathur.games.sudoku.platform.RejectedDigit
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.animatedColor
+import kotlinx.coroutines.delay
 
 /**
  * The digit keys, laid out as a grid in the board's own box shape.
@@ -40,14 +49,21 @@ import com.vayunmathur.library.ui.Text
  * They are drawn like the grid's own cells — background-coloured inside, outlined — rather than as
  * filled buttons, so a block of ten of them does not dominate the screen above the board it serves.
  *
- * No key is ever disabled. A wrong digit is accepted silently, so there is nothing to gate on, and a
- * digit that already appears the maximum number of times may still be one the player wants to move.
+ * In classic mode no key is ever disabled: a wrong digit is accepted silently, so there is nothing
+ * to gate on, and a digit that already appears the maximum number of times may still be one the
+ * player wants to move. In answer mode wrong digits can never land, so a digit with every copy on
+ * the board is done — its key is greyed out — and a refused digit flashes red on its key.
+ *
+ * @param rejected the last digit answer mode refused, with a sequence number telling repeats
+ * apart. The pad flashes the matching key and settles back on its own; the state is never cleared,
+ * so a correct entry landing mid-flash cannot cut it short.
  */
 @Composable
 fun NumberPad(
     game: SudokuGameState,
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    rejected: RejectedDigit? = null,
 ) {
     val size = game.size
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -59,6 +75,11 @@ fun NumberPad(
                         digit = digit,
                         size = size,
                         notesMode = game.notesMode,
+                        // Only answer mode can complete a digit: classic entries may be wrong or
+                        // moved, so the count proves nothing there.
+                        enabled = !game.answerMode || !game.isDigitComplete(digit),
+                        flashing = rejected?.digit == digit,
+                        flashKey = rejected?.attempt,
                         onClick = { onDigit(digit) },
                     )
                 }
@@ -73,15 +94,56 @@ fun NumberPad(
  * In notes mode the digit shrinks into the slot it would occupy as a pencil mark, so the key is a
  * preview of the mark it will place — which is also what tells the player the mode is on, without
  * needing a second colour for it.
+ *
+ * A refused digit tints the key red and settles back on its own: [flashing] turns on when a
+ * rejection names this key and [flashKey] tells repeats apart, so two wrong taps on one key flash
+ * twice. The lit flag is local state rather than a round-trip through the ViewModel — a round-trip
+ * would cut the flash short whenever a correct digit lands meanwhile.
  */
 @Composable
 private fun DigitKey(
     digit: Int,
     size: BoardSize,
     notesMode: Boolean,
+    enabled: Boolean,
+    flashing: Boolean,
+    flashKey: Long?,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    var lit by remember { mutableStateOf(false) }
+    // Keyed on both: a second rejection names a new attempt even for the same digit, and a rejection
+    // of another digit must switch this key's flash off — cancelling the delay would otherwise leave
+    // it stuck red, since the cancelled coroutine never reaches the reset.
+    LaunchedEffect(flashing, flashKey) {
+        if (flashing && flashKey != null) {
+            lit = true
+            delay(FLASH_MILLIS)
+            lit = false
+        } else {
+            lit = false
+        }
+    }
+    // On the scheme's effects spec rather than a hand-rolled tween, so the fade matches the app.
+    val background = animatedColor(
+        when {
+            lit -> scheme.errorContainer
+            !enabled -> scheme.surfaceContainerHighest
+            else -> scheme.background
+        }
+    )
+    val contentColor = when {
+        lit -> scheme.onErrorContainer
+        // A finished digit reads as done, not broken: surface text rather than the error colour.
+        !enabled -> scheme.onSurface.copy(alpha = DISABLED_ALPHA)
+        else -> scheme.onSurface
+    }
+    // Pencil marks keep their own quieter colour, dimming only when the key itself is done or lit.
+    val noteColor = when {
+        lit -> scheme.onErrorContainer
+        !enabled -> scheme.onSurfaceVariant.copy(alpha = DISABLED_ALPHA)
+        else -> scheme.onSurfaceVariant
+    }
     val label = sudokuSymbol(digit)
     val description = stringResource(
         if (notesMode) R.string.cd_note_key else R.string.cd_digit_key,
@@ -90,18 +152,18 @@ private fun DigitKey(
     Box(
         Modifier
             .size(KeySize)
-            .background(scheme.background)
+            .background(background)
             .border(OutlineWidth, scheme.outline)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .clearAndSetSemantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         if (notesMode) {
-            NoteSlot(digit = digit, label = label, size = size)
+            NoteSlot(digit = digit, label = label, size = size, contentColor = noteColor)
         } else {
             Text(
                 text = label,
-                color = scheme.onSurface,
+                color = contentColor,
                 fontSize = FullFontSize,
                 textAlign = TextAlign.Center,
             )
@@ -119,7 +181,7 @@ private fun DigitKey(
  * still tells the player exactly which mark the tap will place.
  */
 @Composable
-private fun NoteSlot(digit: Int, label: String, size: BoardSize) {
+private fun NoteSlot(digit: Int, label: String, size: BoardSize, contentColor: Color) {
     val slotHeight = KeySize / size.boxRows
     val target = digit - 1
     Column(Modifier.fillMaxSize()) {
@@ -139,7 +201,7 @@ private fun NoteSlot(digit: Int, label: String, size: BoardSize) {
                         if (row * size.boxCols + col == target) {
                             Text(
                                 text = label,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = contentColor,
                                 fontSize = NoteFontSize,
                                 // Matched to the slot, or the glyph's own line box overflows it and the
                                 // bottom row of a 3x4 pad is clipped.
@@ -162,6 +224,12 @@ private val OutlineWidth = 1.dp
 
 /** Size of a digit that a tap will write into the grid. */
 private val FullFontSize = 19.sp
+
+/** How long a refused key stays red before settling back, in milliseconds. */
+private const val FLASH_MILLIS = 450L
+
+/** Alpha of a finished digit's key: reads as done rather than broken. */
+private const val DISABLED_ALPHA = 0.38f
 
 /**
  * Size of a digit a tap will pencil in.
