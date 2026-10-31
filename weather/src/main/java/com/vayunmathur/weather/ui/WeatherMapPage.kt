@@ -47,6 +47,7 @@ import com.vayunmathur.library.map.OrnamentOptions
 import com.vayunmathur.library.map.MapStyle
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.map.rememberCameraState
+import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.map.GeoPoint
 
 /**
@@ -111,6 +112,7 @@ fun WeatherMapPage(
             imageOverlay = state.overlay?.let { bmp ->
                 state.overlayBounds?.let { bounds -> ImageOverlay(bmp, bounds, 0.7f) }
             },
+            online = ConnectivityMonitor.isOnline,
         )
 
         // Top bar: back + title + measure selector.

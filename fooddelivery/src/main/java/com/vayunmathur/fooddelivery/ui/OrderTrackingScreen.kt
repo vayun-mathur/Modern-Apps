@@ -40,6 +40,7 @@ import com.vayunmathur.library.map.MapOptions
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.map.rememberCameraState
 import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.CircularProgressIndicator
@@ -227,7 +228,7 @@ private fun TrackingMap(order: Order, modifier: Modifier = Modifier) {
     }
 
     Box(modifier) {
-        VectorMap(cameraState = camera, options = MapOptions(gestureOptions = GestureOptions.TiltLocked)) {
+        VectorMap(cameraState = camera, options = MapOptions(gestureOptions = GestureOptions.TiltLocked), online = ConnectivityMonitor.isOnline) {
             // Distinct glyph per pin: menu = restaurant, arrow = courier, home = you.
             restaurant?.let {
                 MapMarker(it) { PinChrome(MaterialTheme.colorScheme.tertiary) { IconRestaurant() } }

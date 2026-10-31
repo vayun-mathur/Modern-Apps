@@ -6,7 +6,12 @@
 - Gradle: :library:map / dir: library/map/
 - Package roots present: (vector-map renderer — one package + Rust core)
 - Entry files: VectorMap.kt + MapScope.kt (no MainActivity/Route — library)
-- Deps: :library:network
+- Deps: (none — no project dependencies by design, #884)
+- Network: tile range fetches reach the host app's `NetworkClient` over JNI
+  (`NativeHttpBridge`, resolved at runtime from the app classpath — every map
+  host already depends on `:library:network` directly); the live
+  online/offline signal is injected per call site via `VectorMap(online = …)`
+  for the same reason. This module declares INTERNET itself.
 - Metadata: metadata_data/library-map.md (absent — libraries have none by design)
 - Rust: yes / screenshotTest: no
 

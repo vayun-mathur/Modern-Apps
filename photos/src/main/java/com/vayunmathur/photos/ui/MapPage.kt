@@ -135,6 +135,9 @@ fun MapPage(
                 onMapClick = {
                     selectedCluster = null
                 },
+                // Photos has no :library:network dependency (offline-first
+                // gallery) so it keeps the constant-online default: its map
+                // content is local photos plus cached tiles (#884).
             ) {
                 // Chips are centre-anchored, which is a deliberate 25 dp shift: this used to
                 // offset a 50 dp chip by the raw projected point, so every cluster was drawn

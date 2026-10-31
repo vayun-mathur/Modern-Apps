@@ -19,6 +19,7 @@ import com.vayunmathur.library.map.TileSource
 import com.vayunmathur.library.map.UserPuck
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.ui.FreeHeightSheetState
+import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.maps.data.ParkingSpot
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
@@ -186,6 +187,9 @@ fun MapSurface(
         body = body,
         moonTextures = moonTextures,
         options = mapOptions,
+        // Live online/offline into the renderer's tile policy (injected so
+        // :library:map keeps no :library:network edge, #884).
+        online = ConnectivityMonitor.isOnline,
         userPuck = userPuck,
         regionMask = regionMaskFor(selectedFeature),
         // The live traffic overlay: baked geometry gated by [LayerOptions.traffic] above,

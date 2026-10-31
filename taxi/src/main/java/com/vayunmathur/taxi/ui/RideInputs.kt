@@ -34,6 +34,7 @@ import com.vayunmathur.library.map.GestureOptions
 import com.vayunmathur.library.map.MapOptions
 import com.vayunmathur.library.map.RouteOverlay
 import com.vayunmathur.library.map.VectorMap
+import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.ui.Card
 import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconButton
@@ -60,7 +61,7 @@ internal fun RideMapPane(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier) {
-        VectorMap(cameraState = camera, route = routeOverlay, modifier = Modifier.fillMaxSize(), options = MapOptions(gestureOptions = GestureOptions.TiltLocked))
+        VectorMap(cameraState = camera, route = routeOverlay, modifier = Modifier.fillMaxSize(), options = MapOptions(gestureOptions = GestureOptions.TiltLocked), online = ConnectivityMonitor.isOnline)
         val projection = camera.projection
         if (projection != null) {
             pickup?.let {

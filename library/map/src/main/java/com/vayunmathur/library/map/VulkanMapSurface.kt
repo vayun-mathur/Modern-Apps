@@ -24,7 +24,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.vayunmathur.library.util.ConnectivityMonitor
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeoutOrNull
@@ -124,6 +124,13 @@ internal fun VulkanMapSurface(
      * The overlay polls the native copy and never wakes the frame loop.
      */
     showFrameStats: Boolean = false,
+    /**
+     * Live online/offline signal, forwarded from [VectorMap]: online the renderer
+     * fetches missing tile ranges, offline it serves stale cached ranges. Kept
+     * as a parameter (rather than read from `ConnectivityMonitor`) so this
+     * module keeps no `:library:network` edge (#884).
+     */
+    online: StateFlow<Boolean> = MapOnlineDefault,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
@@ -349,19 +356,18 @@ internal fun VulkanMapSurface(
 
     // Live connectivity, replacing a single sample taken in onSurfaceTextureAvailable.
     // Collected here rather than inside the renderer so every MapNative call stays on the
-    // composition dispatcher, like setPalette and setLayers.
-    //
-    // Two deliberate behaviour changes from the probe this replaces. ConnectivityMonitor
-    // requires NET_CAPABILITY_VALIDATED, which the probe did not — an improvement for a tile
-    // fetcher, since a captive portal handing back HTML for a byte range is worse than
-    // knowing you are offline. And it reports false where there is no ConnectivityManager,
-    // where the probe optimistically returned true; that only arises under unit/Robolectric,
-    // where the effect is to pin the map to cache.
-    LaunchedEffect(host) {
-        // Seeded synchronously so the first value is not spuriously false. This also
-        // lazily starts the monitor.
-        renderer.setOnline(ConnectivityMonitor.isOnline(context))
-        ConnectivityMonitor.isOnline.collect { renderer.setOnline(it) }
+    // composition dispatcher, like setPalette and setLayers. The signal is injected by the
+    // host (see VectorMap's `online` param): hosts with :library:network pass
+    // ConnectivityMonitor.isOnline (which requires NET_CAPABILITY_VALIDATED — an
+    // improvement for a tile fetcher over the old probe, since a captive portal handing
+    // back HTML for a byte range is worse than knowing you are offline), and hosts
+    // without it keep the constant-true default (the old probe optimistically returned
+    // true where there was no ConnectivityManager; under unit/Robolectric that pins the
+    // map to cache).
+    LaunchedEffect(host, online) {
+        // Seeded synchronously so the first value is not spuriously false.
+        renderer.setOnline(online.value)
+        online.collect { renderer.setOnline(it) }
     }
 
     Box(modifier) {

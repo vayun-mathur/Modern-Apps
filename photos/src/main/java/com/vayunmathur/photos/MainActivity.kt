@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.AppPermissionsGate
 import com.vayunmathur.library.ui.AppPermissionsSpec
 import com.vayunmathur.library.ui.MaFragmentActivity
 import com.vayunmathur.library.ui.PermissionRequirement
-import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.MorphPage
@@ -109,10 +108,12 @@ class MainActivity : MaFragmentActivity() {
                 .distinctUntilChanged()
                 .collect { dataStore.setLong(COLUMN_COUNT_KEY, it.toLong()) }
         }
-        OfflineAware {
-            CompositionLocalProvider(LocalColumnCount provides columnCount) {
-                PermissionsWrapper(viewUri = if (intent?.action == Intent.ACTION_VIEW) intent?.data else null)
-            }
+        // No OfflineAware banner: photos is offline-first and takes no
+        // :library:network dependency, so the connectivity-monitor UI (which
+        // needs ACCESS_NETWORK_STATE from :library:network) cannot live here
+        // without reintroducing the #884 leak. Failures surface per-screen.
+        CompositionLocalProvider(LocalColumnCount provides columnCount) {
+            PermissionsWrapper(viewUri = if (intent?.action == Intent.ACTION_VIEW) intent?.data else null)
         }
     }
 

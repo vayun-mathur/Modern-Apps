@@ -7,7 +7,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.vayunmathur.library.util.NavKey
 import com.vayunmathur.library.ui.MaActivity
-import com.vayunmathur.library.util.OfflineAware
 import com.vayunmathur.library.downloadservice.InitialModelDownloadChecker
 import com.vayunmathur.library.downloadservice.ModelUrls
 import com.vayunmathur.library.util.DataStoreUtils
@@ -44,10 +43,13 @@ class MainActivity : MaActivity() {
     @Composable
     override fun Content() {
         val ds = DataStoreUtils.getInstance(this)
+        // No OfflineAware banner: openassistant takes no :library:network
+        // dependency, so the connectivity-monitor UI (which needs
+        // ACCESS_NETWORK_STATE from :library:network) cannot live here without
+        // reintroducing the #884 leak. Download gating already surfaces
+        // offline state via InitialModelDownloadChecker.
         InitialModelDownloadChecker(ds, ModelUrls.INITIAL) {
-            OfflineAware {
-                Navigation(assistantViewModel)
-            }
+            Navigation(assistantViewModel)
         }
     }
 

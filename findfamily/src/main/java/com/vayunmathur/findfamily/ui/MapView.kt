@@ -52,6 +52,7 @@ import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.GestureOptions
 import com.vayunmathur.library.map.MapOptions
 import com.vayunmathur.library.map.VectorMap
+import com.vayunmathur.library.util.ConnectivityMonitor
 import kotlin.io.encoding.Base64
 import kotlin.math.abs
 import kotlin.math.cos
@@ -108,6 +109,7 @@ fun MapView(
                 zoomRange = 0f..20f,
                 options = MapOptions(gestureOptions = GestureOptions.TiltLocked),
                 onMapClick = { onMapClick() },
+                online = ConnectivityMonitor.isOnline,
             ) {
                 if (initialized) {
                     // The coordinate at the screen centre — i.e. the live position of

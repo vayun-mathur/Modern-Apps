@@ -17,6 +17,7 @@ import com.vayunmathur.library.map.CameraPosition
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.map.rememberCameraState
+import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.appBarScrollBehavior
@@ -102,7 +103,7 @@ fun ExploreMapPage(
                     emptyMessage = stringResource(R.string.explore_empty),
                 )
             } else {
-                VectorMap(cameraState = camera) {
+                VectorMap(cameraState = camera, online = ConnectivityMonitor.isOnline) {
                     state.destinations.forEach { dest ->
                         val lat = dest.latitude ?: return@forEach
                         val lng = dest.longitude ?: return@forEach

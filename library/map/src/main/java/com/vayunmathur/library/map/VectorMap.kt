@@ -28,6 +28,21 @@ import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * Default [VectorMap] online signal: constant `true`.
+ *
+ * Preserves the historical behaviour for hosts that never set the signal (the
+ * probe this replaced optimistically reported true where there was no
+ * ConnectivityManager). Hosts with `:library:network` pass
+ * `ConnectivityMonitor.isOnline` instead.
+ */
+private val OnlineAlways: StateFlow<Boolean> = MutableStateFlow(true)
+
+/** Default online signal for [VulkanMapSurface]; see [OnlineAlways]. */
+internal val MapOnlineDefault: StateFlow<Boolean> = OnlineAlways
 
 /**
  * The vector map.
@@ -163,6 +178,23 @@ fun VectorMap(
      * copy at ~3 Hz and never wakes the frame loop.
      */
     showFrameStats: Boolean = false,
+    /**
+     * Live online/offline signal driving the renderer's tile policy: online it
+     * fetches missing ranges, offline it serves stale cached ranges
+     * ([SurfaceMapRenderer.setOnline]). Defaults to a constant-true flow that
+     * preserves the historical behaviour for hosts that never set it (the old
+     * probe optimistically reported true where there was no
+     * ConnectivityManager).
+     *
+     * Hosts with `:library:network` pass `ConnectivityMonitor.isOnline`
+     * (seeded via `ConnectivityMonitor.isOnline(context)`); hosts without it
+     * pass their own signal. Injected rather than read from
+     * `ConnectivityMonitor` directly so this module keeps no
+     * `:library:network` edge (and gains no `ACCESS_NETWORK_STATE`) — the
+     * map module declares INTERNET itself and every host is an online app
+     * (#884).
+     */
+    online: kotlinx.coroutines.flow.StateFlow<Boolean> = OnlineAlways,
     content: @Composable MapScope.() -> Unit = {},
 ) {
     val density = LocalDensity.current.density
@@ -229,6 +261,7 @@ fun VectorMap(
             onFrame = onFrame,
             fallback = fallback,
             showFrameStats = showFrameStats,
+            online = online,
         )
 
         if (imageOverlay != null) {

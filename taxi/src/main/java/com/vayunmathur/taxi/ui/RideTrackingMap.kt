@@ -17,6 +17,7 @@ import com.vayunmathur.library.map.MapOptions
 import com.vayunmathur.library.map.VectorMap
 import com.vayunmathur.library.map.rememberCameraState
 import com.vayunmathur.library.ui.CircularProgressIndicator
+import com.vayunmathur.library.util.ConnectivityMonitor
 import com.vayunmathur.library.ui.IconHome
 import com.vayunmathur.library.ui.IconMyLocation
 import com.vayunmathur.library.ui.IconNavigationArrow
@@ -67,7 +68,7 @@ internal fun TrackingMap(ride: ActiveRide?, driverLoc: DriverLocation?, modifier
     }
 
     Box(modifier) {
-        VectorMap(cameraState = camera, options = MapOptions(gestureOptions = GestureOptions.TiltLocked)) {
+        VectorMap(cameraState = camera, options = MapOptions(gestureOptions = GestureOptions.TiltLocked), online = ConnectivityMonitor.isOnline) {
             pickup?.let {
                 MapMarker(it) {
                     PinChrome(MaterialTheme.colorScheme.tertiary) { IconMyLocation(tint = Color.White) }

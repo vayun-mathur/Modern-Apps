@@ -26,15 +26,17 @@ dependencies {
     // plugin: one consumer does not justify reconfiguring every module.
     implementation(libs.androidx.lifecycle.runtime.compose)
 
-    // The renderer's HTTP transport, and now also ConnectivityMonitor (package
-    // com.vayunmathur.library.util), which drives live online/offline into the renderer.
-    // The Rust crate does not open sockets: it calls back through library/jni-http into
-    // NativeHttpBridge here, so pmtiles range requests keep library:network's reduced CA
-    // bundle and HttpURLConnection-only policy, and the renderer gains no second TLS stack.
+    // The renderer's HTTP transport reaches the app's NetworkClient through JNI:
+    // the Rust core calls back through library/jni-http into NativeHttpBridge
+    // (com.vayunmathur.library.network), which the HOST app provides — all ten
+    // map hosts already depend on :library:network directly. The bridge class is
+    // resolved at runtime from the app's classpath, so this module needs no
+    // :library:network edge (and gains no ACCESS_NETWORK_STATE from it); the
+    // tile-range requests keep library:network's reduced CA bundle and
+    // HttpURLConnection-only policy with no second TLS stack (#884).
     //
     // Deliberately not :library — that would drag Room, DataStore, Navigation 3 and
     // :sdk:games onto this module's compile classpath for one object.
-    implementation(project(":library:network"))
 
     // Own GeoPoint/GeoBounds – this module has no third-party geometry dependency.
 

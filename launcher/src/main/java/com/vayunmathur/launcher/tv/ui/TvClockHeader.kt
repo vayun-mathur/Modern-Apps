@@ -1,5 +1,9 @@
 package com.vayunmathur.launcher.tv.ui
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,7 +30,6 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.rememberClock
 import com.vayunmathur.library.ui.rememberIs24Hour
-import com.vayunmathur.library.util.rememberIsOnline
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
@@ -97,7 +102,11 @@ private fun timeLabel(nowMillis: Long, is24Hour: Boolean): String {
 private fun TvNetworkTile(
     onOpenNetworkSettings: () -> Unit,
 ) {
-    val online by rememberIsOnline()
+    // Local validated-internet signal (not ConnectivityMonitor: the launcher
+    // takes no :library:network dependency, and the monitor UI lives there —
+    // importing it would reintroduce the #884 permission leak. ACCESS_WIFI_STATE
+    // / ACCESS_NETWORK_STATE are declared by this app's own manifest).
+    val online by rememberLauncherOnline()
     Box(
         modifier = Modifier
             .size(56.dp)
@@ -119,3 +128,51 @@ private fun TvNetworkTile(
     }
 }
 
+
+/**
+ * Launcher-local validated-internet signal for the TV network tile.
+ *
+ * Same semantics as `:library:network`'s `ConnectivityMonitor` (validated +
+ * internet capability), kept local so the launcher — which takes no
+ * `:library:network` dependency — does not import it and reintroduce the
+ * #884 permission leak. The required `ACCESS_NETWORK_STATE` is declared by
+ * this app's own manifest.
+ */
+@Composable
+private fun rememberLauncherOnline(): State<Boolean> {
+    val context = LocalContext.current
+    return produceState(initialValue = false, context) {
+        val cm = context.applicationContext
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (cm == null) {
+            value = false
+            return@produceState
+        }
+        fun validated(): Boolean {
+            val active = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(active) ?: return false
+            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        }
+        value = validated()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                value = validated()
+            }
+
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                value = validated()
+            }
+
+            override fun onLost(network: Network) {
+                value = validated()
+            }
+
+            override fun onUnavailable() {
+                value = false
+            }
+        }
+        runCatching { cm.registerDefaultNetworkCallback(callback) }
+        awaitDispose { runCatching { cm.unregisterNetworkCallback(callback) } }
+    }
+}
