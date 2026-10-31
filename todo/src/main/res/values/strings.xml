@@ -318,4 +318,37 @@
     <string name="settings_data">Data</string>
     <!-- Drawer footer: last sync time; the argument is relative, e.g. "5 minutes ago". -->
     <string name="synced_ago">Synced <xliff:g id="when" example="5 minutes ago">%s</xliff:g></string>
+
+    <!-- Settings section header. Noun, plural. -->
+    <string name="settings_reminders">Reminders</string>
+    <!-- Settings: daily digest toggle. Noun phrase. -->
+    <string name="settings_digest">Daily summary</string>
+    <!-- Settings: daily digest explanation. -->
+    <string name="settings_digest_summary">A morning notification with what is due today and overdue</string>
+    <!-- Settings: daily digest time. Noun phrase. -->
+    <string name="settings_digest_time">Summary time</string>
+    <!-- Settings: exact alarm access row, shown only when missing. Noun phrase. -->
+    <string name="settings_exact_alarms">Allow exact reminders</string>
+    <!-- Settings: exact alarm access explanation. -->
+    <string name="settings_exact_alarms_summary">Without it, reminders may arrive a few minutes late</string>
+    <!-- Notification channel name for the daily digest. Noun phrase. -->
+    <string name="digest_channel">Daily summary</string>
+    <!-- Daily digest notification title. Noun phrase. -->
+    <string name="digest_title">Today\'s tasks</string>
+    <!-- Daily digest: number due today. -->
+    <plurals name="digest_today">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> due today</item>
+        <item quantity="other"><xliff:g id="count" example="5">%d</xliff:g> due today</item>
+    </plurals>
+    <!-- Daily digest: number overdue. -->
+    <plurals name="digest_overdue">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> overdue</item>
+        <item quantity="other"><xliff:g id="count" example="2">%d</xliff:g> overdue</item>
+    </plurals>
+    <!-- Reminder notification action: mark done. Verb. -->
+    <string name="complete_action">Complete</string>
+    <!-- Reminder notification action: remind again in an hour. Verb phrase. -->
+    <string name="snooze_hour">In 1 hour</string>
+    <!-- Reminder notification action: remind again tomorrow morning. Adverb. -->
+    <string name="snooze_tomorrow">Tomorrow</string>
 </resources>

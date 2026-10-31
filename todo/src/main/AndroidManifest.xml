@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Task reminders and the daily summary. USE_EXACT_ALARM is install-granted on API 33+;
+        SCHEDULE_EXACT_ALARM covers 31-32. The scheduler still checks canScheduleExactAlarms()
+        and falls back to inexact alarms. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Alarms do not survive a reboot; re-armed by BootReceiver. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- Relay IPC for the everysync app's TodoSink. Signature-level: only apps signed
         with the Modern Apps key can hold it, and the provider additionally narrows the
         caller to com.vayunmathur.everysync at runtime. -->
@@ -9,6 +20,7 @@
         android:protectionLevel="signature" />
 
     <application
+        android:name=".TodoApplication"
         android:allowBackup="true"
         android:backupAgent=".platform.AppBackupAgent"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -21,6 +33,7 @@
             android:configChanges="mcc|mnc|colorMode|density|fontScale|fontWeightAdjustment|keyboard|keyboardHidden|layoutDirection|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.General">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,6 +47,23 @@
             android:exported="true"
             android:readPermission="com.vayunmathur.todo.permission.RELAY"
             android:writePermission="com.vayunmathur.todo.permission.RELAY" />
+
+        <receiver
+            android:name=".notifications.ReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".notifications.ReminderActionReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".notifications.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

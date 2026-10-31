@@ -2,6 +2,7 @@ package com.vayunmathur.todo.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,8 @@ fun ReminderSheet(
     onDismiss: () -> Unit,
 ) {
     val zone = TimeZone.currentSystemDefault()
+    val requestPermission = rememberNotificationPermissionRequest()
+    LaunchedEffect(Unit) { requestPermission() }
     var pickDate by remember { mutableStateOf(false) }
     var pickedDate by remember { mutableStateOf<LocalDate?>(null) }
 

@@ -8,6 +8,7 @@ import com.vayunmathur.library.util.MorphPage
 import com.vayunmathur.library.util.DetailPage
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.todo.platform.TodoViewModel
+import com.vayunmathur.todo.ui.IntentEffect
 import com.vayunmathur.todo.ui.SettingsPage
 import com.vayunmathur.todo.ui.TodoDetailPage
 import com.vayunmathur.todo.ui.TodoListPage
@@ -18,6 +19,7 @@ import com.vayunmathur.todo.ui.rememberTodoShellState
 fun Navigation(todoViewModel: TodoViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.TodoList)
     val shell = rememberTodoShellState()
+    IntentEffect(backStack, todoViewModel)
     TodoShell(shell, todoViewModel, backStack) {
         MainNavigation(backStack) {
             entry<Route.TodoList>(metadata = ListPage()) {

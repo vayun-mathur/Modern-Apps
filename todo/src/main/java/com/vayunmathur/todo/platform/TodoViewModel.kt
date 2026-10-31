@@ -84,6 +84,21 @@ class TodoViewModel(
         }
     }
 
+    /** Text waiting to open in the quick-add sheet (share target, shortcut, tile), or null. */
+    private val _quickAddRequest = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val quickAddRequest: StateFlow<String?> = _quickAddRequest
+
+    fun requestQuickAdd(text: String) {
+        _quickAddRequest.value = text
+    }
+
+    fun clearQuickAddRequest() {
+        _quickAddRequest.value = null
+    }
+
+    suspend fun idForSyncId(syncId: String): Long? =
+        kotlinx.coroutines.withContext(io) { repository.getBySyncId(syncId)?.takeIf { !it.deleted }?.id }
+
     fun saveList(list: TodoList) {
         viewModelScope.launch(io) {
             val toSave = if (list.id == 0L) list.copy(position = repository.nextListPosition()) else list
