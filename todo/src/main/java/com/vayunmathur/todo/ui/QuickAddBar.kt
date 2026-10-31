@@ -11,11 +11,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -44,9 +47,13 @@ fun QuickAddBar(
     modifier: Modifier = Modifier,
     initialText: String = "",
     leading: (@Composable () -> Unit)? = null,
+    autoFocus: Boolean = false,
 ) {
-    var text by remember { mutableStateOf(initialText) }
-    var pasted by remember { mutableStateOf<List<String>?>(null) }
+    val initialLines = remember { initialText.lines().map { it.trim() }.filter { it.isNotEmpty() } }
+    var text by remember { mutableStateOf(if (initialLines.size > 1) "" else initialText.trim()) }
+    var pasted by remember { mutableStateOf(initialLines.takeIf { it.size > 1 }) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(autoFocus) { if (autoFocus) focus.requestFocus() }
     val parsed = remember(text, lists) {
         QuickAddParser.parse(text, System.currentTimeMillis(), TimeZone.currentSystemDefault(), lists)
     }
@@ -70,7 +77,7 @@ fun QuickAddBar(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(focus),
             placeholder = { Text(stringResource(R.string.add_task_hint)) },
             leadingIcon = leading,
             trailingIcon = {

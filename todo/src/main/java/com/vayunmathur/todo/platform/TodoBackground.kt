@@ -6,6 +6,9 @@ import com.vayunmathur.todo.data.TodoSettings
 import com.vayunmathur.todo.notifications.DigestScheduler
 import com.vayunmathur.todo.notifications.NotificationChannels
 import com.vayunmathur.todo.notifications.ReminderScheduler
+import com.vayunmathur.todo.widget.TodayWidget
+import androidx.glance.appwidget.updateAll
+import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -45,7 +48,22 @@ object TodoBackground {
         repo.appScope.launch {
             repo.lists.distinctUntilChanged().collect { NotificationChannels.syncLists(app, it) }
         }
+        repo.appScope.launch {
+            combine(repo.todos, repo.lists) { _, _ -> }.debounce(SETTLE_MS).collect { refreshWidgets(app) }
+        }
     }
+
+    // Broad catch: a widget host failure must never take the app process down.
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun refreshWidgets(context: Context) {
+        try {
+            TodayWidget().updateAll(context)
+        } catch (e: Exception) {
+            Log.error(TAG, "widget refresh failed", e)
+        }
+    }
+
+    private const val TAG = "TodoBackground"
 
     /** Re-arms everything now; for boot, updates and clock changes. */
     suspend fun reconcileNow(context: Context) {

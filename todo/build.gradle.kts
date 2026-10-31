@@ -23,5 +23,6 @@ ksp {
 dependencies {
     implementRoom(libs)
     implementation(project(":library:room"))
+    implementation(project(":library:widgets"))
     testImplementation(libs.androidx.sqlite.bundled.jvm)
 }

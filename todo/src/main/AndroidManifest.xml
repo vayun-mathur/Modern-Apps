@@ -19,6 +19,18 @@
         android:name="com.vayunmathur.todo.permission.RELAY"
         android:protectionLevel="signature" />
 
+    <!-- Assistant tools (get_todos / create_todo / complete_todo) for openassistant. -->
+    <permission
+        android:name="com.vayunmathur.todo.permissions.ACCESS_TODO"
+        android:protectionLevel="signature" />
+
+    <!-- Voice input in quick add goes through the user's speech recognizer. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".TodoApplication"
         android:allowBackup="true"
@@ -39,7 +51,71 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Text shared from any app becomes a new task (one per line). -->
+            <intent-filter android:label="@string/share_label">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity
+            android:name=".intents.GetTodosIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.todo.permissions.ACCESS_TODO"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.InsertTodoIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.todo.permissions.ACCESS_TODO"
+            android:theme="@android:style/Theme.NoDisplay" />
+        <activity
+            android:name=".intents.CompleteTodoIntent"
+            android:exported="true"
+            android:permission="com.vayunmathur.todo.permissions.ACCESS_TODO"
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <receiver
+            android:name=".widget.TodayWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.QuickAddWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_quick_add_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_add_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".service.QuickAddTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_add"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <provider
             android:name=".sync.RelayTodoProvider"

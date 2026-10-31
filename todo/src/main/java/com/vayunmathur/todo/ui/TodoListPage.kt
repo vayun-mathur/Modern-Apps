@@ -8,6 +8,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.todo.Route
 import com.vayunmathur.todo.data.Todo
 import com.vayunmathur.todo.data.newSyncId
+import com.vayunmathur.todo.domain.QuickAddParser
 import com.vayunmathur.todo.domain.SortMode
 import com.vayunmathur.todo.platform.TodoListActions
 import com.vayunmathur.todo.platform.TodoListUiState
@@ -21,6 +22,7 @@ fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, onMen
     val view by viewModel.view.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
+    val quickAddRequest by viewModel.quickAddRequest.collectAsStateWithLifecycle()
 
     val actions = remember(backStack, viewModel, onMenu) {
         object : TodoListActions {
@@ -52,6 +54,16 @@ fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, onMen
             now = model.second,
         ),
         actions = actions,
+        quickAddLeading = { VoiceInputButton(onResult = viewModel::requestQuickAdd) },
         showMenu = onMenu != null,
     )
+
+    quickAddRequest?.let { text ->
+        QuickAddSheet(
+            initialText = text,
+            lists = remember(lists) { lists.map { QuickAddParser.ListName(it.syncId, it.name) } },
+            onAdd = viewModel::quickAdd,
+            onDismiss = viewModel::clearQuickAddRequest,
+        )
+    }
 }

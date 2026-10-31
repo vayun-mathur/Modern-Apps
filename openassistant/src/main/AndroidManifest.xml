@@ -11,6 +11,7 @@
     <uses-permission android:name="com.vayunmathur.music.permissions.ACCESS_MUSIC" />
     <uses-permission android:name="com.vayunmathur.email.permissions.ACCESS_EMAIL" />
     <uses-permission android:name="com.vayunmathur.clock.permissions.ACCESS_CLOCK" />
+    <uses-permission android:name="com.vayunmathur.todo.permissions.ACCESS_TODO" />
 
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
@@ -43,6 +44,7 @@
         <package android:name="com.vayunmathur.music" />
         <package android:name="com.vayunmathur.email" />
         <package android:name="com.vayunmathur.clock" />
+        <package android:name="com.vayunmathur.todo" />
     </queries>
 
     <application

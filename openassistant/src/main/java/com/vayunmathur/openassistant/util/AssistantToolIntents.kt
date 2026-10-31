@@ -15,6 +15,10 @@ import com.vayunmathur.library.intents.findfamily.FamilyMemberData
 import com.vayunmathur.library.intents.music.MusicSearchResult
 import com.vayunmathur.library.intents.music.PlayMusicData
 import com.vayunmathur.library.intents.notes.NoteData
+import com.vayunmathur.library.intents.todo.CompleteTodoData
+import com.vayunmathur.library.intents.todo.GetTodosQuery
+import com.vayunmathur.library.intents.todo.InsertTodoData
+import com.vayunmathur.library.intents.todo.TodoData
 import com.vayunmathur.library.intents.weather.WeatherData
 import com.vayunmathur.openassistant.data.Memory
 import com.vayunmathur.openassistant.data.MemoryDao
@@ -45,6 +49,7 @@ internal class AssistantToolIntents(private val context: Context) {
             "com.vayunmathur.email" to "Email",
             "com.vayunmathur.weather" to "Weather",
             "com.vayunmathur.clock" to "Clock",
+            "com.vayunmathur.todo" to "Todo",
         )
 
         fun getMissingAppMessage(packageName: String): String {
@@ -83,6 +88,27 @@ internal class AssistantToolIntents(private val context: Context) {
         context,
         "com.vayunmathur.notes",
         "com.vayunmathur.notes.intents.InsertIntent",
+        data,
+    )
+
+    suspend fun getTodos(query: GetTodosQuery): String = launchIntent<GetTodosQuery, List<TodoData>>(
+        context,
+        "com.vayunmathur.todo",
+        "com.vayunmathur.todo.intents.GetTodosIntent",
+        query,
+    ).toString()
+
+    suspend fun insertTodo(data: InsertTodoData): String = launchIntent<InsertTodoData, String>(
+        context,
+        "com.vayunmathur.todo",
+        "com.vayunmathur.todo.intents.InsertTodoIntent",
+        data,
+    )
+
+    suspend fun completeTodo(data: CompleteTodoData): Boolean = launchIntent<CompleteTodoData, Boolean>(
+        context,
+        "com.vayunmathur.todo",
+        "com.vayunmathur.todo.intents.CompleteTodoIntent",
         data,
     )
 

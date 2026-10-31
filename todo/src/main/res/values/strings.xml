@@ -351,4 +351,27 @@
     <string name="snooze_hour">In 1 hour</string>
     <!-- Reminder notification action: remind again tomorrow morning. Adverb. -->
     <string name="snooze_tomorrow">Tomorrow</string>
+
+    <!-- Share sheet label for sending text to this app. Verb phrase. -->
+    <string name="share_label">Add as task</string>
+    <!-- Launcher shortcut: start a new task. Verb phrase. -->
+    <string name="shortcut_new_task">New task</string>
+    <!-- Quick Settings tile label. Verb phrase. -->
+    <string name="tile_label">Add task</string>
+    <!-- Widget picker label for the Today widget. Noun. -->
+    <string name="widget_today_label">Today</string>
+    <!-- Widget picker description for the Today widget. -->
+    <string name="widget_today_description">Tasks due today; check them off from the home screen</string>
+    <!-- Widget picker label for the quick-add widget. Verb phrase. -->
+    <string name="widget_quick_add_label">Add task</string>
+    <!-- Widget picker description for the quick-add widget. -->
+    <string name="widget_quick_add_description">One tap to add a task</string>
+    <!-- Today widget preview row. -->
+    <string name="widget_preview_1">Renew passport</string>
+    <!-- Today widget preview row. -->
+    <string name="widget_preview_2">Buy oat milk</string>
+    <!-- Today widget preview row. -->
+    <string name="widget_preview_3">Call Sam about Saturday</string>
+    <!-- Quick add: voice input button description. Verb phrase. -->
+    <string name="voice_input">Speak a task</string>
 </resources>

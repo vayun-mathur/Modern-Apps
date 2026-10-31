@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutId="new_task"
+        android:shortcutShortLabel="@string/shortcut_new_task">
+        <intent
+            android:action="com.vayunmathur.todo.action.QUICK_ADD"
+            android:targetClass="com.vayunmathur.todo.MainActivity"
+            android:targetPackage="com.vayunmathur.todo" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_today"
+        android:shortcutId="today"
+        android:shortcutShortLabel="@string/view_today">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.vayunmathur.todo.MainActivity"
+            android:targetPackage="com.vayunmathur.todo">
+            <extra android:name="com.vayunmathur.todo.extra.VIEW" android:value="today" />
+        </intent>
+    </shortcut>
+</shortcuts>

@@ -7,6 +7,9 @@ import com.vayunmathur.library.intents.clock.SetTimerData
 import com.vayunmathur.library.intents.contacts.ContactData
 import com.vayunmathur.library.intents.music.PlayMusicData
 import com.vayunmathur.library.intents.notes.NoteData
+import com.vayunmathur.library.intents.todo.CompleteTodoData
+import com.vayunmathur.library.intents.todo.GetTodosQuery
+import com.vayunmathur.library.intents.todo.InsertTodoData
 import com.vayunmathur.library.ml.Gemma4Handle
 import com.vayunmathur.openassistant.data.MemoryDao
 import com.vayunmathur.openassistant.domain.ASSISTANT_TOOL_SPECS
@@ -41,6 +44,30 @@ class AssistantTools(context: Context, private val memoryDao: MemoryDao?) {
             intents.runTool {
                 intents.insertNote(NoteData(a.string("title"), a.string("content")))
                 "Success: Created note '${a.string("title")}'"
+            }
+        },
+        "get_todos" to { a -> intents.runTool { intents.getTodos(GetTodosQuery(a.string("scope", "today"))) } },
+        "create_todo" to { a ->
+            intents.runTool {
+                val title = a.string("title")
+                intents.insertTodo(
+                    InsertTodoData(
+                        title = title,
+                        notes = a.string("notes"),
+                        dueAt = a.number("due").toLong().takeIf { it > 0 },
+                        priority = a.number("priority").toInt(),
+                    ),
+                )
+                "Success: Created task '$title'"
+            }
+        },
+        "complete_todo" to { a ->
+            intents.runTool {
+                if (intents.completeTodo(CompleteTodoData(a.string("id"), a.string("title")))) {
+                    "Success: Marked the task done"
+                } else {
+                    "Error: No matching open task"
+                }
             }
         },
         "get_contacts" to { _ -> intents.runTool { intents.getContacts() } },

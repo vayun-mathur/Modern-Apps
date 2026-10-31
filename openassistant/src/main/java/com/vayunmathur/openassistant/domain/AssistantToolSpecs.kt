@@ -17,6 +17,31 @@ val ASSISTANT_TOOL_SPECS: List<ToolSpec> = listOf(
         "Create a new note in the notes app. Should only be used with EXPLICIT request by user",
         listOf(p("title"), p("content")),
     ),
+    ToolSpec(
+        "get_todos",
+        "Get the user's open tasks from the todo app. Due times are epoch milliseconds; " +
+            "each task has an id usable with complete_todo.",
+        listOf(p("scope", description = "today (default), upcoming, or all", required = false)),
+    ),
+    ToolSpec(
+        "create_todo",
+        "Create a task in the todo app. Should only be used with EXPLICIT request by user. The title may " +
+            "include words like 'tomorrow 6pm' or '#tag', which are understood when no due time is given.",
+        listOf(
+            p("title"),
+            p("due", NUMBER, "optional due time as epoch milliseconds", required = false),
+            p("notes", required = false),
+            p("priority", NUMBER, "optional priority, 1 (highest) to 4", required = false),
+        ),
+    ),
+    ToolSpec(
+        "complete_todo",
+        "Mark a task done. Should only be used with EXPLICIT request by user.",
+        listOf(
+            p("id", description = "task id from get_todos", required = false),
+            p("title", description = "exact task title, used when no id is given", required = false),
+        ),
+    ),
     ToolSpec("get_contacts", "Get a list of all contacts"),
     ToolSpec("create_contact", "Create a new contact", listOf(p("name"), p("phone_number"))),
     ToolSpec(
