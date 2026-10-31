@@ -2,12 +2,14 @@ package com.vayunmathur.contacts.ui
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,63 +86,126 @@ fun ActionButtonsRow(
     onSaveCommPref: ((CommPref) -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    // Wide windows centre the buttons with fixed gaps instead of spreading them
-    // across the full width; portrait keeps SpaceEvenly verbatim.
+    // Wide windows centre the buttons in a capped row instead of spreading
+    // them across the full width; portrait wraps them into equal-weight rows.
     val wide = isExpandedWidth() || isCompactHeight()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = if (wide) {
-            Arrangement.spacedBy(32.dp, androidx.compose.ui.Alignment.CenterHorizontally)
-        } else {
-            Arrangement.SpaceEvenly
-        }
-    ) {
+    // Every visible button is collected first so each one gets the same weight:
+    // with 1-2 actions they spread evenly, with 3-4 they split the width
+    // equally, and with 5+ they wrap onto a second row instead of squeezing
+    // into unreadable slivers. Equal weights (not SpaceEvenly on unweighted
+    // children) are what keeps the 4th button the same size as the first
+    // three at large font scales.
+    val buttons = buildList<@Composable () -> Unit> {
         if (phoneNumbers.isNotEmpty()) {
-            CommActionButton(
-                action = CommAction.CALL,
-                icon = { IconCall() },
-                label = stringResource(UiR.string.call),
-                phoneNumbers = phoneNumbers,
-                platforms = platforms,
-                isGoogleMeetInstalled = isGoogleMeetInstalled,
-                commPref = commPref,
-                onSaveCommPref = onSaveCommPref,
-            )
-            CommActionButton(
-                action = CommAction.MESSAGE,
-                icon = { IconSms() },
-                label = stringResource(R.string.action_message),
-                phoneNumbers = phoneNumbers,
-                platforms = platforms,
-                isGoogleMeetInstalled = isGoogleMeetInstalled,
-                commPref = commPref,
-                onSaveCommPref = onSaveCommPref,
-            )
-
-            if (hasVideoOptions(platforms, isGoogleMeetInstalled)) {
+            add({
                 CommActionButton(
-                    action = CommAction.VIDEO,
-                    icon = { IconVideoCamera() },
-                    label = stringResource(R.string.action_video),
+                    action = CommAction.CALL,
+                    icon = { IconCall() },
+                    label = stringResource(UiR.string.call),
                     phoneNumbers = phoneNumbers,
                     platforms = platforms,
                     isGoogleMeetInstalled = isGoogleMeetInstalled,
                     commPref = commPref,
                     onSaveCommPref = onSaveCommPref,
                 )
+            })
+            add({
+                CommActionButton(
+                    action = CommAction.MESSAGE,
+                    icon = { IconSms() },
+                    label = stringResource(R.string.action_message),
+                    phoneNumbers = phoneNumbers,
+                    platforms = platforms,
+                    isGoogleMeetInstalled = isGoogleMeetInstalled,
+                    commPref = commPref,
+                    onSaveCommPref = onSaveCommPref,
+                )
+            })
+
+            if (hasVideoOptions(platforms, isGoogleMeetInstalled)) {
+                add({
+                    CommActionButton(
+                        action = CommAction.VIDEO,
+                        icon = { IconVideoCamera() },
+                        label = stringResource(R.string.action_video),
+                        phoneNumbers = phoneNumbers,
+                        platforms = platforms,
+                        isGoogleMeetInstalled = isGoogleMeetInstalled,
+                        commPref = commPref,
+                        onSaveCommPref = onSaveCommPref,
+                    )
+                })
             }
         }
         if (email != null) {
-            ActionButton(icon = { IconMail() }, label = stringResource(UiR.string.email)) {
-                val intent = Intent(Intent.ACTION_SENDTO)
-                intent.data = "mailto:$email".toUri()
-                ExternalIntents.launch(context, intent)
+            add({
+                ActionButton(icon = { IconMail() }, label = stringResource(UiR.string.email)) {
+                    val intent = Intent(Intent.ACTION_SENDTO)
+                    intent.data = "mailto:$email".toUri()
+                    ExternalIntents.launch(context, intent)
+                }
+            })
+        }
+    }
+    if (wide) {
+        // Same equal-weight slots as portrait, but the row never spreads wider
+        // than [WideButtonsMaxWidth]: on tablets the buttons stay a centered
+        // cluster instead of drifting across the full width, and at large font
+        // scales every button still owns an equal share (this also keeps the
+        // fillMaxWidth inside ActionButton bounded by its slot).
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            Row(
+                modifier = Modifier
+                    .widthIn(max = WideButtonsMaxWidth)
+                    .fillMaxWidth(),
+            ) {
+                buttons.forEach { button ->
+                    Box(modifier = Modifier.weight(1f)) { button() }
+                }
+            }
+        }
+        return
+    }
+    /* Portrait: at most [MAX_BUTTONS_PER_ROW] buttons share one line with
+    equal weights; extras flow onto a second centered line. */
+    val rows = buttons.chunked(MAX_BUTTONS_PER_ROW)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        rows.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                // Half-slots on each side keep a short final row centered while
+                // every button stays exactly as wide as in a full row.
+                val sideWeight = (MAX_BUTTONS_PER_ROW - row.size) / 2f
+                if (sideWeight > 0f) Spacer(modifier = Modifier.weight(sideWeight))
+                row.forEach { button ->
+                    Box(modifier = Modifier.weight(1f)) { button() }
+                }
+                if (sideWeight > 0f) Spacer(modifier = Modifier.weight(sideWeight))
             }
         }
     }
 }
+
+/** Portrait buttons per line before extras wrap onto a second centered row. */
+private const val MAX_BUTTONS_PER_ROW = 4
+
+/**
+ * Wide-window cap for the action row: buttons share the space equally up to
+ * this width, then stay centered instead of spreading further apart.
+ */
+private val WideButtonsMaxWidth = 480.dp
 
 private fun hasVideoOptions(platforms: ContactPlatforms, isGoogleMeetInstalled: Boolean) =
     CommPrefResolver.availablePlatformsFor(
