@@ -8,6 +8,7 @@ sealed interface Route : NavKey {
     @Serializable
     data object TodoList : Route
 
+    /** [id] 0 opens a new task, identified across saves by [newSyncId]. */
     @Serializable
-    data class TodoDetail(val id: Long) : Route
+    data class TodoDetail(val id: Long, val newSyncId: String? = null) : Route
 }

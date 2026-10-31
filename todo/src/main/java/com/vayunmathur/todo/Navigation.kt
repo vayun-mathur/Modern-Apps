@@ -18,7 +18,7 @@ fun Navigation(todoViewModel: TodoViewModel) {
             TodoListPage(backStack, todoViewModel)
         }
         entry<Route.TodoDetail>(metadata = ListDetailPage() + MorphPage()) {
-            TodoDetailPage(backStack, todoViewModel, it.id)
+            TodoDetailPage(backStack, todoViewModel, it)
         }
     }
 }

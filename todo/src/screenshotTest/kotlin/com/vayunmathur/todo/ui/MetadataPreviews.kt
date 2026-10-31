@@ -88,9 +88,8 @@ class MetadataPreviews {
     fun Preview3Search() {
         DynamicTheme(darkTheme = true) {
             TodoListScreen(
-                state = TodoListUiState(todos = samples),
+                state = TodoListUiState(todos = samples.filter { it.title.contains("book") }, searchQuery = "book"),
                 actions = TodoListActions.Noop,
-                initialSearchQuery = "book",
             )
         }
     }

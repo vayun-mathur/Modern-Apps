@@ -31,10 +31,16 @@ abstract class TodoDao {
     abstract suspend fun getAllIncludingDeleted(): List<Todo>
 
     @Query("SELECT * FROM Todo WHERE id = :id AND deleted = 0")
-    abstract fun getByIdFlow(id: Long): Flow<Todo?>
+    abstract suspend fun getById(id: Long): Todo?
 
     @Query("SELECT * FROM Todo WHERE syncId = :syncId")
     abstract suspend fun getBySyncId(syncId: String): Todo?
+
+    @Query("SELECT * FROM Todo WHERE syncId = :syncId")
+    abstract fun getBySyncIdFlow(syncId: String): Flow<Todo?>
+
+    @Query("SELECT MAX(position) FROM Todo WHERE deleted = 0")
+    abstract suspend fun maxPosition(): Double?
 
     @Query("SELECT * FROM Todo WHERE updatedAt > :since")
     abstract suspend fun getUpdatedSince(since: Long): List<Todo>
@@ -56,8 +62,17 @@ abstract class TodoDao {
     @Query("DELETE FROM Todo")
     abstract suspend fun deleteAll()
 
-    @Upsert
-    abstract suspend fun upsertAll(t: List<Todo>)
+    /** Local bulk write: bumps updatedAt on every row so reorders reach sync. */
+    suspend fun upsertAll(values: List<Todo>) {
+        val now = System.currentTimeMillis()
+        upsertAllRaw(values.map { it.copy(updatedAt = now) })
+    }
+
+    @Query(
+        "DELETE FROM Todo WHERE deleted = 1 AND updatedAt < :before " +
+            "AND syncId NOT IN (SELECT syncId FROM SyncSnapshot)",
+    )
+    abstract suspend fun deleteUnsyncedTombstones(before: Long): Int
 
     /** Writes [values] verbatim. Only the relay sync uses this. */
     @Upsert

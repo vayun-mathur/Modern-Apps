@@ -56,21 +56,6 @@ class TodoModelTest {
     }
 
     @Test
-    fun `create trims title and notes`() {
-        val todo = Todo(title = "  buy milk  ".trim(), notes = " 2% ".trim())
-        assertEquals("buy milk", todo.title)
-        assertEquals("2%", todo.notes)
-    }
-
-    @Test
-    fun `blank titles are rejected before a todo is built`() {
-        for (blank in listOf("", "   ", "\n\t ")) {
-            assertTrue(blank.isBlank(), "title <$blank> must count as blank")
-        }
-        assertFalse("  x  ".isBlank())
-    }
-
-    @Test
     fun `clearing the due date stores null`() {
         val todo = Todo(dueAt = 123L).copy(dueAt = null)
         assertNull(todo.dueAt)

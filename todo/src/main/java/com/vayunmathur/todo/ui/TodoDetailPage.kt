@@ -1,33 +1,40 @@
 package com.vayunmathur.todo.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.todo.Route
-import com.vayunmathur.todo.data.Todo
 import com.vayunmathur.todo.platform.TodoActions
 import com.vayunmathur.todo.platform.TodoUiState
 import com.vayunmathur.todo.platform.TodoViewModel
 
-/** Binds [TodoViewModel] and the nav back stack to the stateless [TodoDetailScreen]. */
+/** Binds a [TodoEditor][com.vayunmathur.todo.platform.TodoEditor] session to the stateless [TodoDetailScreen]. */
 @Composable
-fun TodoDetailPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, id: Long) {
-    val todoState = viewModel.editableTodo(id) { Todo(title = "") }
+fun TodoDetailPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, route: Route.TodoDetail) {
+    val editor = remember(route) { viewModel.openEditor(route.id, route.newSyncId) }
+    DisposableEffect(editor) { onDispose { editor.close() } }
+    val todo by editor.state.collectAsStateWithLifecycle()
 
-    val actions = remember(backStack, viewModel, id, todoState) {
+    val actions = remember(backStack, editor) {
         object : TodoActions {
             override fun back() { backStack.pop() }
-            override fun setTitle(title: String) { todoState.value = todoState.value.copy(title = title) }
-            override fun setNotes(notes: String) { todoState.value = todoState.value.copy(notes = notes) }
-            override fun setDone(done: Boolean) { todoState.value = todoState.value.copy(done = done) }
-            override fun setDueAt(dueAt: Long?) { todoState.value = todoState.value.copy(dueAt = dueAt) }
-            override fun deleteTodo() { viewModel.deleteById(id) { backStack.pop() } }
+            override fun setTitle(title: String) = editor.update { it.copy(title = title) }
+            override fun setNotes(notes: String) = editor.update { it.copy(notes = notes) }
+            override fun setDone(done: Boolean) = editor.update { it.copy(done = done) }
+            override fun setDueAt(dueAt: Long?) = editor.update { it.copy(dueAt = dueAt) }
+            override fun deleteTodo() {
+                editor.delete()
+                backStack.pop()
+            }
         }
     }
 
-    val todo = todoState.value
+    val current = todo ?: return
     TodoDetailScreen(
-        state = TodoUiState(title = todo.title, notes = todo.notes, done = todo.done, dueAt = todo.dueAt),
+        state = TodoUiState(title = current.title, notes = current.notes, done = current.done, dueAt = current.dueAt),
         actions = actions,
     )
 }
