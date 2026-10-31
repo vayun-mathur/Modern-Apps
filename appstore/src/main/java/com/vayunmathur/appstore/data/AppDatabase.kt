@@ -70,6 +70,8 @@ data class CachedAppEntity(
     val requiredFeatures: String? = null,
     /** TV-compat verdict from the catalogue; null when the source said nothing either way. */
     val tvCompatible: Boolean? = null,
+    /** Split-set siblings, one per line as `fileName\turl\tsha256\tsize`. Null for monolithic APKs. */
+    val splitFiles: String? = null,
 )
 
 /** URLs never contain a newline, so this survives values a comma would split apart. */
@@ -80,6 +82,24 @@ private fun List<String>.packList(): String? =
 
 private fun String?.unpackList(): List<String> =
     this?.split(LIST_SEP)?.filter { it.isNotBlank() } ?: emptyList()
+
+private const val FIELD_SEP = "\t"
+private const val SPLIT_FIELDS = 4
+
+internal fun List<SplitFile>.packSplits(): String? =
+    map { listOf(it.fileName, it.url, it.sha256.orEmpty(), it.size.toString()).joinToString(FIELD_SEP) }
+        .packList()
+
+internal fun String?.unpackSplits(): List<SplitFile> = unpackList().mapNotNull { line ->
+    val fields = line.split(FIELD_SEP)
+    if (fields.size != SPLIT_FIELDS) return@mapNotNull null
+    SplitFile(
+        fileName = fields[0],
+        url = fields[1],
+        sha256 = fields[2].ifBlank { null },
+        size = fields[3].toLongOrNull() ?: 0L,
+    )
+}
 
 fun UnifiedApp.toEntity(): CachedAppEntity = CachedAppEntity(
     packageName = packageName,
@@ -117,6 +137,7 @@ fun UnifiedApp.toEntity(): CachedAppEntity = CachedAppEntity(
     tvScreenshots = tvScreenshots.packList(),
     requiredFeatures = requiredFeatures.joinToString(",").ifBlank { null },
     tvCompatible = tvCompatible,
+    splitFiles = splitFiles.packSplits(),
 )
 
 fun CachedAppEntity.toUnifiedApp(): UnifiedApp = UnifiedApp(
@@ -155,6 +176,7 @@ fun CachedAppEntity.toUnifiedApp(): UnifiedApp = UnifiedApp(
     tvScreenshots = tvScreenshots.unpackList(),
     requiredFeatures = requiredFeatures?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
     tvCompatible = tvCompatible,
+    splitFiles = splitFiles.unpackSplits(),
 )
 
 /**
@@ -369,7 +391,7 @@ interface CachedAppDao {
         PinnedStampEntity::class,
         AccrescentTrustEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -461,6 +483,15 @@ abstract class AppDatabase : RoomDatabase() {
                     connection.execSQL("ALTER TABLE CachedAppEntity ADD COLUMN tvScreenshots TEXT")
                     connection.execSQL("ALTER TABLE CachedAppEntity ADD COLUMN requiredFeatures TEXT")
                     connection.execSQL("ALTER TABLE CachedAppEntity ADD COLUMN tvCompatible INTEGER")
+                }
+            },
+            object : Migration(8, 9) {
+                override suspend fun migrate(connection: SQLiteConnection) {
+                    // Rows cached before this lost their split siblings, so a split-set
+                    // install committed only the base and failed with MISSING_SPLIT.
+                    // Drop them so no split-less row survives; the next sync repopulates.
+                    connection.execSQL("ALTER TABLE CachedAppEntity ADD COLUMN splitFiles TEXT")
+                    connection.execSQL("DELETE FROM CachedAppEntity")
                 }
             }
         )
