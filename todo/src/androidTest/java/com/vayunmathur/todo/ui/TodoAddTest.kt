@@ -125,7 +125,7 @@ class TodoAddTest {
         private const val SAVE_SETTLE_MS = 1_000L
         private const val SEARCH_PLACEHOLDER = "Search Inbox"
         private const val EDITOR_NOTES_LABEL = "Notes"
-        private const val NO_DUE_DATE = "No due date"
+        private const val NO_DUE_DATE = "Due date"
         private const val ADD_DESCRIPTION = "Add"
         private const val EDIT_TEXT_CLASS = "android.widget.EditText"
         private const val TASK_TITLE = "Journey Todo Alpha"

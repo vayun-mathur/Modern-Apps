@@ -38,6 +38,9 @@ abstract class TodoDao {
     @Query("SELECT * FROM Todo WHERE parentSyncId = :parentSyncId AND deleted = 0 ORDER BY position")
     abstract suspend fun getSubtasks(parentSyncId: String): List<Todo>
 
+    @Query("SELECT * FROM Todo WHERE parentSyncId = :parentSyncId AND deleted = 0 ORDER BY position")
+    abstract fun getSubtasksFlow(parentSyncId: String): Flow<List<Todo>>
+
     @Query("SELECT * FROM Todo WHERE updatedAt > :since")
     abstract suspend fun getUpdatedSince(since: Long): List<Todo>
 

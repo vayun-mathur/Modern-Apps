@@ -86,10 +86,22 @@ class MetadataPreviews {
         DynamicTheme(darkTheme = true) {
             TodoDetailScreen(
                 state = TodoUiState(
-                    title = "Finish the book for Sunday",
-                    notes = "Chapters 8-10, bring notes to book club",
-                    done = false,
-                    dueAt = 1_791_907_200_000L,
+                    todo = Todo(
+                        title = "Finish the book for Sunday",
+                        notes = "Chapters 8-10\n- bring notes to book club\n- https://example.org/reading-guide",
+                        dueAt = 1_791_907_200_000L,
+                        priority = 2,
+                        tags = listOf("reading"),
+                        recurrence = "FREQ=WEEKLY",
+                        createdAt = NOW - 86_400_000L,
+                        updatedAt = NOW,
+                    ),
+                    subtasks = listOf(
+                        Todo(id = 10, title = "Chapter 8", done = true),
+                        Todo(id = 11, title = "Chapter 9"),
+                        Todo(id = 12, title = "Chapter 10"),
+                    ),
+                    now = NOW,
                 ),
                 actions = TodoActions.Noop,
             )

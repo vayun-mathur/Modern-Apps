@@ -2,13 +2,21 @@ package com.vayunmathur.todo.platform
 
 import com.vayunmathur.todo.data.Todo
 import com.vayunmathur.todo.data.TodoRepository
+import com.vayunmathur.todo.domain.Completion
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -29,6 +37,10 @@ class TodoEditor internal constructor(
 ) {
     private val _state = MutableStateFlow<Todo?>(null)
     val state: StateFlow<Todo?> = _state
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val subtasks: Flow<List<Todo>> = _state.filterNotNull().map { it.syncId }.distinctUntilChanged()
+        .flatMapLatest { repository.subtasksFlow(it) }
 
     private val mutex = Mutex()
     @Volatile private var dirty = false
@@ -65,6 +77,40 @@ class TodoEditor internal constructor(
             delay(SAVE_DEBOUNCE_MS)
             save()
         }
+    }
+
+    /** Completing a repeating task rolls it forward and reopens its subtasks. */
+    fun setDone(done: Boolean) {
+        val before = _state.value ?: return
+        val now = System.currentTimeMillis()
+        val after = if (done) Completion.complete(before, now, TimeZone.currentSystemDefault()) else Completion.uncomplete(before)
+        update { after }
+        if (Completion.rolledForward(before, after)) scope.launch { repository.reopenSubtasks(before.syncId) }
+    }
+
+    /** Saves first so a brand-new parent exists before its first subtask. */
+    fun addSubtask(title: String) {
+        if (title.isBlank()) return
+        scope.launch {
+            saveNow()
+            val parent = _state.value ?: return@launch
+            if (parent.id != 0L) repository.addSubtask(parent, title.trim())
+        }
+    }
+
+    fun duplicate(onCreated: (Long) -> Unit) {
+        scope.launch {
+            saveNow()
+            val value = _state.value ?: return@launch
+            if (value.id == 0L) return@launch
+            val copy = repository.duplicate(value)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onCreated(copy.id) }
+        }
+    }
+
+    private suspend fun saveNow() {
+        saveJob?.cancel()
+        save()
     }
 
     private suspend fun save() = mutex.withLock {

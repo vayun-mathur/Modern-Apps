@@ -6,7 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.domain.Recurrence
 import java.time.format.TextStyle
-import java.util.Locale
+import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.datetime.isoDayNumber
 
 /** "Every day", "Every 2 weeks", "Weekly on Mon, Fri", "Monthly on day 15", … */
@@ -16,8 +16,9 @@ fun recurrenceLabel(recurrence: Recurrence): String = when (recurrence) {
     is Recurrence.Weekly -> if (recurrence.days.isEmpty()) {
         pluralStringResource(R.plurals.repeat_weeks, recurrence.interval, recurrence.interval)
     } else {
+        val locale = LocalConfiguration.current.locales[0]
         val days = recurrence.days.sortedBy { it.isoDayNumber }.joinToString(", ") {
-            java.time.DayOfWeek.of(it.isoDayNumber).getDisplayName(TextStyle.SHORT, Locale.getDefault())
+            java.time.DayOfWeek.of(it.isoDayNumber).getDisplayName(TextStyle.SHORT, locale)
         }
         pluralStringResource(R.plurals.repeat_weeks_on, recurrence.interval, recurrence.interval, days)
     }

@@ -28,6 +28,7 @@ class TodoRepository private constructor(
     val todos: Flow<List<Todo>> get() = dao.getAllFlow()
     val lists: Flow<List<TodoList>> get() = listDao.getAllFlow()
     fun todoBySyncIdFlow(syncId: String): Flow<Todo?> = dao.getBySyncIdFlow(syncId)
+    fun subtasksFlow(parentSyncId: String): Flow<List<Todo>> = dao.getSubtasksFlow(parentSyncId)
 
     suspend fun <R> inTransaction(block: suspend () -> R): R = db.withWriteTransaction { block() }
 
@@ -77,6 +78,23 @@ class TodoRepository private constructor(
             dao.upsertAll(dao.getSubtasks(todo.syncId).filter { it.done }.map { Completion.uncomplete(it) })
         }
         updated
+    }
+
+    suspend fun addSubtask(parent: Todo, title: String): Long {
+        val last = dao.getSubtasks(parent.syncId).maxOfOrNull { it.position }
+        return dao.upsert(
+            Todo(
+                title = title,
+                parentSyncId = parent.syncId,
+                listSyncId = parent.listSyncId,
+                position = Positions.after(last),
+            ),
+        )
+    }
+
+    /** Reopens every done subtask, after the parent rolled to its next occurrence. */
+    suspend fun reopenSubtasks(parentSyncId: String) {
+        dao.upsertAll(dao.getSubtasks(parentSyncId).filter { it.done }.map { Completion.uncomplete(it) })
     }
 
     suspend fun duplicate(todo: Todo): Todo = inTransaction {

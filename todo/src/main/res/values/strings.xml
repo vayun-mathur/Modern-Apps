@@ -4,23 +4,15 @@
     <!-- TodoDetailScreen: screen title. Noun. -->
     <string name="todo_details">Task</string>
     <!-- TodoDetailScreen: Label for the task title field. Noun. -->
-    <string name="todo_title">Task</string>
+    <string name="todo_title">Title</string>
     <!-- TodoDetailScreen: Label for the task notes field. Noun. -->
     <string name="todo_notes">Notes</string>
-    <!-- TodoDetailScreen: Checkbox label marking a task complete. Adjective. -->
-    <string name="done">Done</string>
-    <!-- TodoDetailScreen: Placeholder for the due-date row when no date is set. -->
-    <string name="no_due_date">No due date</string>
-    <!-- TodoDetailScreen: Clears the due date. Verb phrase. -->
-    <string name="clear_date">Clear date</string>
     <!-- TodoDetailScreen: Delete confirmation dialog title. Noun phrase. -->
     <string name="delete_todo">Delete task?</string>
     <!-- TodoDetailScreen: Delete confirmation dialog message. -->
     <string name="delete_todo_confirm">This task will be deleted everywhere it is synced.</string>
     <!-- TodoDetailScreen: Delete confirmation confirm button. Verb. -->
     <string name="delete">Delete</string>
-    <!-- Dialog dismiss button. Verb. -->
-    <string name="cancel">Cancel</string>
     <!-- Dialog confirm button. Noun. -->
     <string name="ok">OK</string>
     <!-- TodoListScreen: fallback title for untitled tasks. Noun. -->
@@ -191,4 +183,102 @@
         <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> day after completion</item>
         <item quantity="other"><xliff:g id="count" example="7">%d</xliff:g> days after completion</item>
     </plurals>
+
+    <!-- Editor chip with no due date set. Verb phrase. -->
+    <string name="add_due_date">Due date</string>
+    <!-- Due sheet: adds a time of day. Verb phrase. -->
+    <string name="add_time">Add time</string>
+    <!-- Due sheet: changes the time of day. Verb phrase. -->
+    <string name="change_time">Change time</string>
+    <!-- Due sheet: removes the time, making the task all-day. Adjective phrase. -->
+    <string name="all_day">All day</string>
+    <!-- Editor chip with no repeat set. Verb. -->
+    <string name="repeat">Repeat</string>
+    <!-- Repeat option: one-off task. Verb phrase. -->
+    <string name="no_repeat">Doesn\'t repeat</string>
+    <!-- Repeat option: Monday to Friday. Noun. -->
+    <string name="weekdays">Every weekday</string>
+    <!-- Repeat option: open the custom repeat editor. Adjective. -->
+    <string name="custom">Custom…</string>
+    <!-- Custom repeat: label before the interval field. Adverb. -->
+    <string name="every">Every</string>
+    <!-- Custom repeat unit. Noun, plural. -->
+    <string name="unit_days">days</string>
+    <!-- Custom repeat unit. Noun, plural. -->
+    <string name="unit_weeks">weeks</string>
+    <!-- Custom repeat unit. Noun, plural. -->
+    <string name="unit_months">months</string>
+    <!-- Custom repeat unit. Noun, plural. -->
+    <string name="unit_years">years</string>
+    <!-- Custom repeat: count the next due date from when the task is done. -->
+    <string name="from_completion">Count from completion</string>
+    <!-- Custom repeat: monthly on the last day. Noun phrase. -->
+    <string name="last_day_of_month">On the last day</string>
+    <!-- Editor chip with no reminder set. Noun. -->
+    <string name="reminder">Reminder</string>
+    <!-- Reminder option clearing it. Noun phrase. -->
+    <string name="no_reminder">No reminder</string>
+    <!-- Reminder option: when the task is due. Noun phrase. -->
+    <string name="reminder_at_due">At due time</string>
+    <!-- Reminder option: minutes before due. -->
+    <plurals name="reminder_minutes_before">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> minute before</item>
+        <item quantity="other"><xliff:g id="count" example="10">%d</xliff:g> minutes before</item>
+    </plurals>
+    <!-- Reminder option: hours before due. -->
+    <plurals name="reminder_hours_before">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> hour before</item>
+        <item quantity="other"><xliff:g id="count" example="2">%d</xliff:g> hours before</item>
+    </plurals>
+    <!-- Reminder option: days before due (at the due time, or 9am for all-day tasks). -->
+    <plurals name="reminder_days_before">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> day before</item>
+        <item quantity="other"><xliff:g id="count" example="2">%d</xliff:g> days before</item>
+    </plurals>
+    <!-- Reminder option: choose an exact date and time. Verb phrase. -->
+    <string name="pick_date_time">Pick date and time…</string>
+    <!-- Editor chip with no priority. Noun. -->
+    <string name="priority">Priority</string>
+    <!-- Editor chip for the owning list. Noun. -->
+    <string name="list">List</string>
+    <!-- Editor chip with no tags. Noun, plural. -->
+    <string name="tags">Tags</string>
+    <!-- Tag dialog: field placeholder. Verb phrase. -->
+    <string name="add_tag">Add a tag</string>
+    <!-- Editor chip with no time estimate. Noun. -->
+    <string name="estimate">Estimate</string>
+    <!-- Estimate value in minutes. -->
+    <plurals name="estimate_minutes">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> min</item>
+        <item quantity="other"><xliff:g id="count" example="30">%d</xliff:g> min</item>
+    </plurals>
+    <!-- Estimate option clearing it. Noun phrase. -->
+    <string name="no_estimate">No estimate</string>
+    <!-- Editor chip with no start date. Noun. -->
+    <string name="start_date">Start date</string>
+    <!-- Editor chip with a start date; argument is the date. -->
+    <string name="starts_on">Starts <xliff:g id="date" example="Mar 9">%s</xliff:g></string>
+    <!-- Start date option clearing it. Noun phrase. -->
+    <string name="no_start_date">No start date</string>
+    <!-- Editor chip / dialog title for task dependencies. Adjective phrase. -->
+    <string name="blocked_by">Blocked by</string>
+    <!-- Editor chip with dependencies set. -->
+    <plurals name="waiting_on">
+        <item quantity="one">Waiting on <xliff:g id="count" example="1">%d</xliff:g> task</item>
+        <item quantity="other">Waiting on <xliff:g id="count" example="2">%d</xliff:g> tasks</item>
+    </plurals>
+    <!-- Editor section header. Noun, plural. -->
+    <string name="subtasks">Subtasks</string>
+    <!-- Editor: add-subtask field placeholder. Verb phrase. -->
+    <string name="add_subtask">Add subtask</string>
+    <!-- Editor footer: creation time. -->
+    <string name="created_at">Created <xliff:g id="when" example="Mar 9, 2026">%s</xliff:g></string>
+    <!-- Editor footer: last edit time. -->
+    <string name="edited_at">Edited <xliff:g id="when" example="Mar 9, 2026">%s</xliff:g></string>
+    <!-- Editor footer: completion time. -->
+    <string name="completed_at">Completed <xliff:g id="when" example="Mar 9, 2026">%s</xliff:g></string>
+    <!-- Editor overflow: copy the task. Verb. -->
+    <string name="duplicate">Duplicate</string>
+    <!-- Dialog confirm button for a multi-choice dialog. Verb. -->
+    <string name="done_action">Done</string>
 </resources>
