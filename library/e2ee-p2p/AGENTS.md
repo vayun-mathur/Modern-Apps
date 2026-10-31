@@ -24,6 +24,7 @@
 - com/vayunmathur/e2ee/PqcNative.kt — Rust bridge
 - com/vayunmathur/e2ee/SecurityCode.kt
 - com/vayunmathur/e2ee/InviteFingerprint.kt
+- com/vayunmathur/e2ee/Hkdf.kt — HKDF-SHA256 key derivation (moved from `:library`, #884)
 
 ## Verify (this module only)
 ```

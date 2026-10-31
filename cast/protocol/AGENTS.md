@@ -6,7 +6,7 @@
 - Gradle: :cast:protocol / dir: cast/protocol/
 - Package roots present: (pure-Kotlin protocol library — single package, no Android roots)
 - Entry files: HandshakeMessages.kt + Pairing.kt (no MainActivity/Route — library)
-- Deps: :library, :library:e2ee-p2p
+- Deps: :library:e2ee-p2p
 - Metadata: metadata_data/cast-protocol.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 

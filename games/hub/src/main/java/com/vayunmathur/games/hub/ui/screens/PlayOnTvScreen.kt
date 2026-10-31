@@ -15,14 +15,13 @@ import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.library.util.NavBackStack
-import com.vayunmathur.sdk.controller.ControllerPad
 
 /**
  * "Play on TV": this phone as a controller for a TV-hosted game.
  *
  * The session owns discovery + client + rumble and reduces them to one
- * [com.vayunmathur.sdk.controller.ControllerPadState]; this screen only binds
- * it to the reusable SDK [ControllerPad] and tears the session down on leave.
+ * [ControllerPadState]; this screen only binds
+ * it to the reusable [ControllerPad] and tears the session down on leave.
  * The callbacks map one-to-one onto the session (`onConnect` → `connect`,
  * `onProveCode` → `proveCode`, …), exactly as the SDK's pad contract documents.
  *

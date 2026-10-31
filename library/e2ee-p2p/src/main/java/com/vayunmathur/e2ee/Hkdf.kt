@@ -1,4 +1,4 @@
-package com.vayunmathur.library.util
+package com.vayunmathur.e2ee
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -7,9 +7,13 @@ import javax.crypto.spec.SecretKeySpec
  * HKDF (RFC 5869) over HMAC-SHA256: derive several fixed-purpose sub-keys from one secret so
  * that compromising a key derived for one use says nothing about the others.
  *
- * Shared rather than per-app because two features already need exactly this: `:backup` expands
- * the BIP-0039 seed into the AES-256 master key, and `:cast:protocol` expands the paired session
- * secret into the control-channel and per-stream media keys.
+ * Lives in the E2EE module (not `:library`) so SDKs and apps can use key
+ * derivation without depending on the whole base library (#884).
+ *
+ * Shared rather than per-app because several features need exactly this:
+ * `:backup` expands the BIP-0039 seed into the AES-256 master key,
+ * `:cast:protocol` expands the paired session secret into the control-channel
+ * and per-stream media keys, and `:sdk:controller` expands its session secret.
  */
 object Hkdf {
     private const val HMAC = "HmacSHA256"

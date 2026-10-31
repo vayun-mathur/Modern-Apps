@@ -11,8 +11,8 @@ plugins {
 // literal in every build.gradle.kts it finds, and a library has no such properties.
 
 dependencies {
-    // Hkdf: the whole key schedule expands from one 32-byte session secret.
-    implementation(project(":library"))
-    // Pqc.encryptTo / PqcIdentity.decrypt, used only by SecretSealing.
+    // Pqc.encryptTo / PqcIdentity.decrypt (SecretSealing) and Hkdf key derivation
+    // (KeySchedule): crypto comes from one module, so this protocol SDK needs
+    // no :library dependency (#884).
     implementation(project(":library:e2ee-p2p"))
 }

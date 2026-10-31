@@ -2,8 +2,8 @@ package com.vayunmathur.backup.platform.crypto
 
 import android.content.Context
 import android.util.Base64
+import com.vayunmathur.e2ee.Hkdf
 import com.vayunmathur.library.util.DatabaseHelper
-import com.vayunmathur.library.util.Hkdf
 
 /**
  * Persists the AES-256 master backup key, wrapped by an AndroidKeyStore key, reusing

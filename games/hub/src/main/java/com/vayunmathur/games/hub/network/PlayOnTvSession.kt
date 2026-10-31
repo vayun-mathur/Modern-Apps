@@ -10,11 +10,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import com.vayunmathur.e2ee.Pqc
 import com.vayunmathur.library.log.Log
+import com.vayunmathur.games.hub.ui.screens.ControllerPadState
 import com.vayunmathur.sdk.controller.ClientState
 import com.vayunmathur.sdk.controller.ControllerClient
 import com.vayunmathur.sdk.controller.ControllerDiscovery
 import com.vayunmathur.sdk.controller.ControllerHostInfo
-import com.vayunmathur.sdk.controller.ControllerPadState
 import com.vayunmathur.sdk.controller.RumbleFeedback
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope

@@ -1,6 +1,6 @@
 package com.vayunmathur.sdk.controller
 
-import com.vayunmathur.library.util.Hkdf
+import com.vayunmathur.e2ee.Hkdf
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Mac

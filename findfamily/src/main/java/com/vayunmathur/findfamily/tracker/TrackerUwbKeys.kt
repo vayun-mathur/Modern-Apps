@@ -1,6 +1,6 @@
 package com.vayunmathur.findfamily.tracker
 
-import com.vayunmathur.library.util.Hkdf
+import com.vayunmathur.e2ee.Hkdf
 
 /**
  * FiRa session material for phone↔tracker ranging, derived on both ends from the

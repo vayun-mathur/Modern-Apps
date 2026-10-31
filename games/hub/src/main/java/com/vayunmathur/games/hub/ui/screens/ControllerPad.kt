@@ -1,4 +1,4 @@
-package com.vayunmathur.sdk.controller
+package com.vayunmathur.games.hub.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -36,14 +36,27 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.sdk.controller.ClientState
+import com.vayunmathur.sdk.controller.ControllerButton
+import com.vayunmathur.sdk.controller.ControllerClient
+import com.vayunmathur.sdk.controller.ControllerContract
+import com.vayunmathur.sdk.controller.ControllerDiscovery
+import com.vayunmathur.sdk.controller.ControllerHostInfo
+import com.vayunmathur.sdk.controller.ControllerPairCode
+import com.vayunmathur.sdk.controller.LobbyState
+import com.vayunmathur.sdk.controller.RumbleFeedback
 import kotlinx.coroutines.delay
 import kotlin.math.hypot
 
 /**
  * Everything the pad screen needs, owned by the hosting app.
  *
- * The hosting app (today: the games hub "Play on TV" screen) constructs a [ControllerDiscovery]
- * and a [ControllerClient], collects their flows into this, and wires the callbacks back to them:
+ * Lives here (not in `:sdk:controller`) so the SDK stays a headless
+ * contract: SDK consumers gain no `:library:ui` dependency — and no
+ * permissions — from it (#884).
+ *
+ * The hosting app constructs a [ControllerDiscovery] and a [ControllerClient],
+ * collects their flows into this, and wires the callbacks back to them:
  * `onConnect` → `client.connect(host)`, `onProveCode` → `client.proveCode(code)`,
  * `onJoin` → `client.join(name)`, `onInput` → `client.sendInput(...)`, `onLeave` → `client.leave()`,
  * `onRescan` → re-collect `discovery.discover()`. Rumble arrives via `client.onRumble` and is

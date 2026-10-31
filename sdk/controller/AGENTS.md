@@ -6,7 +6,8 @@
 - Gradle: :sdk:controller / dir: sdk/controller/
 - Package roots present: (public controller SDK — one package)
 - Entry files: ControllerContract.kt + ControllerModels.kt (no MainActivity/Route — SDK)
-- Deps: :library (Hkdf key schedule), :library:e2ee-p2p (E2ee AES-GCM; PQC sealing stays in the hosting app)
+- Deps: :library:e2ee-p2p (Hkdf key schedule + E2ee AES-GCM; PQC sealing stays in the hosting app)
+- UI: none — headless by design. The Compose pad screen lives in the hosting app (`:games:hub` `ui/screens/ControllerPad.kt`, #884)
 - Metadata: metadata_data/sdk-controller.md (absent — SDKs have none by design)
 - Rust: no / screenshotTest: no
 
@@ -32,7 +33,6 @@ baked in so only `ControllerSocket` changes underneath.
 - com/vayunmathur/sdk/controller/ControllerAdvertiser.kt — mDNS register (TV side)
 - com/vayunmathur/sdk/controller/ControllerHost.kt — N player slots, replay window, rate limit
 - com/vayunmathur/sdk/controller/ControllerInputGate.kt — per-player replay + rate-limit policy (JVM-testable)
-- com/vayunmathur/sdk/controller/ControllerPad.kt — reusable phone-as-controller UI (stick/buttons, PIN, lobby, rumble)
 - com/vayunmathur/sdk/controller/ControllerClient.kt — connect/pair/join/input emit
 
 ## Verify (this module only)
