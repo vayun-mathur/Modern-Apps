@@ -6,7 +6,9 @@
 - Gradle: :library:ui / dir: library/ui/
 - Package roots present: ui
 - Entry files: MaActivity.kt, AppScaffold.kt, Icons.kt (no app MainActivity/Route — this is the shared shell)
-- Deps: :library, :library:network
+- Deps: :library
+- Network: none — offline-banner connectivity UI lives in `:library:network`
+  (`util/ConnectivityCompose.kt`); network apps depend on it directly (#884)
 - Metadata: metadata_data/library-ui.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 
@@ -20,7 +22,7 @@
 **Gotchas:**
 - One public `@Composable` per file, named as the file; closed package roots still apply inside this library
 - Never `imePadding()`/`navigationBarsPadding()`/`systemBarsPadding()` in this library
-- `ConnectivityCompose.kt` lives in this module under the `com.vayunmathur.library.util` package (offline banner used by apps' `OfflineAware`)
+- Connectivity UI (`OfflineAware`/`rememberIsOnline`) lives in `:library:network`, not here (#884)
 - `MaFragmentActivity(autoSetContent=false)` + `showContent()` is the biometric-gate pattern (passwords, photos)
 
 ## Key files

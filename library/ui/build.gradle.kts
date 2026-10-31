@@ -4,10 +4,6 @@ plugins {
 
 dependencies {
     implementation(project(":library"))
-    // ConnectivityMonitor lives here (package com.vayunmathur.library.util, module
-    // :library:network) and ConnectivityCompose.kt in this module wraps it. Acyclic:
-    // :library:network has no project dependencies of its own.
-    implementation(project(":library:network"))
 
     // Expose Material 3 to consumers via `api` so the same-named wrappers/aliases in this
     // module compile in app code. Apps depend only on `:library:ui` and must not import
