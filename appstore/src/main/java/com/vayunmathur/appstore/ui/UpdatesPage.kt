@@ -30,11 +30,14 @@ import com.vayunmathur.appstore.util.UpdatesUiState
 import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.EmptyState
+import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.IconDownload
+import com.vayunmathur.library.ui.IconVisibilityOff
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Scaffold
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.TextButton
 
 /** Binds [AppStoreViewModel] to the stateless [UpdatesScreen]. */
 @Composable
@@ -55,6 +58,7 @@ fun UpdatesScreen(
     onAppClick: (UnifiedApp) -> Unit = {},
 ) {
     val anyInstalling = state.stages.values.any { it !is InstallStage.Failed }
+    val total = state.updates.size + state.foreignUpdates.size
 
     Scaffold { padding ->
         AppPullToRefreshBox(
@@ -103,7 +107,7 @@ fun UpdatesScreen(
                     )
                 }
 
-                if (state.updates.isEmpty()) {
+                if (total == 0 && state.ignoredUpdates.isEmpty()) {
                     EmptyState(
                         title = stringResource(R.string.all_apps_up_to_date),
                         message = stringResource(R.string.updates_empty_message),
@@ -114,51 +118,143 @@ fun UpdatesScreen(
                         Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp),
                     ) {
-                        item("count") {
-                            Text(
-                                pluralStringResource(
-                                    R.plurals.updates_count,
-                                    state.updates.size,
-                                    state.updates.size,
-                                ),
-                                style = MaterialTheme.typography.titleSmall,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            )
-                        }
-                        items(state.updates, key = { it.packageName }) { app ->
-                            val stage = state.stages[app.packageName]
-                            val installed = state.installedInfos[app.packageName]
-                            val versionLabel = installed?.let { info ->
-                                val old = info.versionName?.let { "$it (${info.versionCode})" }
-                                    ?: info.versionCode.toString()
-                                val new = app.versionName?.let { "$it (${app.versionCode})" }
-                                    ?: app.versionCode.toString()
-                                stringResource(R.string.version_update, old, new)
+                        if (total > 0) {
+                            item("count") {
+                                Text(
+                                    pluralStringResource(
+                                        R.plurals.updates_count,
+                                        total,
+                                        total,
+                                    ),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
                             }
-                            AppRow(
-                                app = app,
-                                isInstalled = true,
-                                stage = stage,
-                                installedIcon = state.installedIcons[app.packageName],
-                                versionLabel = versionLabel,
-                                onClick = { onAppClick(app) },
-                                trailing = {
-                                    Button(
-                                        onClick = { actions.install(app) },
-                                        enabled = stage == null || stage is InstallStage.Failed,
-                                    ) {
-                                        Text(stringResource(R.string.action_update))
-                                    }
-                                },
-                                // Library keys the same app with the same key, but the tabs are a
-                                // pager that only composes the settled page, so the two are never
-                                // origins at the same time.
-                                sharedKey = "appstore-app-${app.packageName}",
-                            )
+                            items(state.updates, key = { it.packageName }) { app ->
+                                UpdateRow(
+                                    app = app,
+                                    state = state,
+                                    onAppClick = onAppClick,
+                                    onInstall = { actions.install(app) },
+                                    onIgnore = { actions.setUpdateIgnored(app.packageName, true) },
+                                )
+                            }
+                            if (state.foreignUpdates.isNotEmpty()) {
+                                item("foreign-header") {
+                                    SectionHeader(
+                                        title = stringResource(R.string.updates_foreign_title),
+                                        subtitle = stringResource(R.string.updates_foreign_subtitle),
+                                    )
+                                }
+                                items(state.foreignUpdates, key = { "foreign-${it.packageName}" }) { app ->
+                                    UpdateRow(
+                                        app = app,
+                                        state = state,
+                                        onAppClick = onAppClick,
+                                        onInstall = { actions.install(app) },
+                                        onIgnore = { actions.setUpdateIgnored(app.packageName, true) },
+                                    )
+                                }
+                            }
+                        }
+                        if (state.ignoredUpdates.isNotEmpty()) {
+                            item("ignored-header") {
+                                SectionHeader(
+                                    title = stringResource(R.string.updates_ignored_title),
+                                    subtitle = stringResource(R.string.updates_ignored_subtitle),
+                                )
+                            }
+                            items(state.ignoredUpdates, key = { "ignored-${it.packageName}" }) { app ->
+                                IgnoredRow(
+                                    app = app,
+                                    state = state,
+                                    onAppClick = onAppClick,
+                                    onUnignore = { actions.setUpdateIgnored(app.packageName, false) },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeader(title: String, subtitle: String) {
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun UpdateRow(
+    app: UnifiedApp,
+    state: UpdatesUiState,
+    onAppClick: (UnifiedApp) -> Unit,
+    onInstall: () -> Unit,
+    onIgnore: () -> Unit,
+) {
+    val stage = state.stages[app.packageName]
+    AppRow(
+        app = app,
+        isInstalled = true,
+        stage = stage,
+        installedIcon = state.installedIcons[app.packageName],
+        versionLabel = versionLabel(app, state),
+        onClick = { onAppClick(app) },
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onIgnore) { IconVisibilityOff() }
+                Button(
+                    onClick = onInstall,
+                    enabled = stage == null || stage is InstallStage.Failed,
+                ) {
+                    Text(stringResource(R.string.action_update))
+                }
+            }
+        },
+        // Library keys the same app with the same key, but the tabs are a
+        // pager that only composes the settled page, so the two are never
+        // origins at the same time.
+        sharedKey = "appstore-app-${app.packageName}",
+    )
+}
+
+@Composable
+private fun IgnoredRow(
+    app: UnifiedApp,
+    state: UpdatesUiState,
+    onAppClick: (UnifiedApp) -> Unit,
+    onUnignore: () -> Unit,
+) {
+    AppRow(
+        app = app,
+        isInstalled = true,
+        stage = state.stages[app.packageName],
+        installedIcon = state.installedIcons[app.packageName],
+        versionLabel = versionLabel(app, state),
+        onClick = { onAppClick(app) },
+        trailing = {
+            TextButton(onClick = onUnignore) {
+                Text(stringResource(R.string.action_show_updates))
+            }
+        },
+        sharedKey = null,
+    )
+}
+
+@Composable
+private fun versionLabel(app: UnifiedApp, state: UpdatesUiState): String? {
+    val installed = state.installedInfos[app.packageName] ?: return null
+    val old = installed.versionName?.let { "$it (${installed.versionCode})" }
+        ?: installed.versionCode.toString()
+    val new = app.versionName?.let { "$it (${app.versionCode})" }
+        ?: app.versionCode.toString()
+    return stringResource(R.string.version_update, old, new)
 }

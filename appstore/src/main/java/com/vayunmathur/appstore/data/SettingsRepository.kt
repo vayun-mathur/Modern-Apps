@@ -33,6 +33,7 @@ class SettingsRepository(
 ) {
     private val _autoInstallUpdates = MutableStateFlow(DEFAULT_AUTO_INSTALL_UPDATES)
     private val _enabledSources = MutableStateFlow(AppSource.DEFAULT_ENABLED)
+    private val _ignoredUpdates = MutableStateFlow(emptySet<String>())
 
     /**
      * Whether the periodic update check may also download and install updates on its own,
@@ -54,6 +55,16 @@ class SettingsRepository(
      */
     val enabledSources: StateFlow<Set<AppSource>> = _enabledSources.asStateFlow()
 
+    /**
+     * Packages the user asked never to be offered updates for (#885).
+     *
+     * Excluded from "Update all", the update count/badge, and update
+     * notifications — but an explicit tap on the app's own Update button still
+     * installs, so ignoring is never a dead end. Persisted as a plain string
+     * set; an uninstalled package's entry is harmless and pruned on read.
+     */
+    val ignoredUpdates: StateFlow<Set<String>> = _ignoredUpdates.asStateFlow()
+
     init {
         scope.launch {
             context.settingsDataStore.data
@@ -61,7 +72,16 @@ class SettingsRepository(
                 .collect { prefs ->
                     _autoInstallUpdates.value = prefs.autoInstallUpdates()
                     _enabledSources.value = prefs.enabledSources()
+                    _ignoredUpdates.value = prefs[KEY_IGNORED_UPDATES].orEmpty()
                 }
+        }
+    }
+
+    suspend fun setUpdateIgnored(packageName: String, ignored: Boolean) {
+        context.settingsDataStore.edit { prefs ->
+            val current = prefs[KEY_IGNORED_UPDATES].orEmpty()
+            prefs[KEY_IGNORED_UPDATES] =
+                if (ignored) current + packageName else current - packageName
         }
     }
 
@@ -92,6 +112,12 @@ class SettingsRepository(
     /** One-shot read of [enabledSources], for the same cold-started callers. */
     suspend fun readEnabledSources(): Set<AppSource> = read().enabledSources()
 
+    /**
+     * One-shot read of [ignoredUpdates], for the same cold-started callers — the
+     * [UpdateCheckWorker] filters ignored packages out of notifications.
+     */
+    suspend fun readIgnoredUpdates(): Set<String> = read()[KEY_IGNORED_UPDATES].orEmpty()
+
     private suspend fun read(): Preferences =
         context.settingsDataStore.data
             .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
@@ -120,5 +146,7 @@ class SettingsRepository(
             booleanPreferencesKey("auto_install_updates")
         private val KEY_DISABLED_SOURCES =
             stringSetPreferencesKey("disabled_sources")
+        private val KEY_IGNORED_UPDATES =
+            stringSetPreferencesKey("ignored_updates")
     }
 }

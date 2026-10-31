@@ -21,6 +21,7 @@ import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
 import com.vayunmathur.appstore.data.installer.InstallCoordinator
 import com.vayunmathur.appstore.data.installer.InstallEvents
 import com.vayunmathur.appstore.data.installer.InstallStage
+import com.vayunmathur.appstore.data.partitionUpdates
 import com.vayunmathur.appstore.data.play.PlayRepository
 import com.vayunmathur.appstore.data.priority
 import com.vayunmathur.appstore.data.security.ApkCertificates
@@ -113,12 +114,17 @@ class TvStoreViewModel(
     internal val playFullClustersFlow = MutableStateFlow<Map<String, List<UnifiedApp>>>(emptyMap())
 
     val detail: StateFlow<TvDetailUiState> = combine(
-        selectedAppFlow,
-        isLoadingDetailsFlow,
-        combine(installedRepo.apps, installedRepo.icons) { installed, icons -> installed to icons },
+        combine(
+            selectedAppFlow,
+            isLoadingDetailsFlow,
+            combine(installedRepo.apps, installedRepo.icons) { installed, icons -> installed to icons },
+        ) { app, loading, installedPair -> Triple(app, loading, installedPair) },
         installer.stages,
         installer.verification,
-    ) { app, loading, (installed, icons), stages, verification ->
+        settings.ignoredUpdates,
+    ) { appTriple, stages, verification, ignored ->
+        val (app, loading, installedPair) = appTriple
+        val (installed, icons) = installedPair
         val pkg = app?.packageName
         TvDetailUiState(
             app = app,
@@ -127,6 +133,7 @@ class TvStoreViewModel(
             installedIcon = icons[pkg],
             verification = verification[pkg],
             isLoadingDetails = loading,
+            updateIgnored = pkg != null && pkg in ignored,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, TvDetailUiState())
 
@@ -165,34 +172,39 @@ class TvStoreViewModel(
      * Everything the TV updates hub draws.
      *
      * Same shape as the phone's `UpdatesUiState`: the merged update list plus the
-     * installed versions behind it, so each row can show old → new.
+     * installed versions behind it, so each row can show old → new. Ignored and
+     * foreign partitions mirror the phone: Update All runs the eligible batch
+     * only, and ignored rows surface under their own header with an unignore.
      */
     val updatesUi: StateFlow<TvUpdatesUiState> = combine(
-        catalogUpdatesFlow,
-        playUpdatesFlow,
-        accrescentUpdatesFlow,
+        combine(
+            catalogUpdatesFlow,
+            playUpdatesFlow,
+            accrescentUpdatesFlow,
+        ) { catalogUpdates, playUpdates, accrescentUpdates ->
+            catalogUpdates + playUpdates + accrescentUpdates
+        },
         combine(installedRepo.apps, installedRepo.icons, installer.stages) { installed, icons, stages ->
             Triple(installed, icons, stages)
         },
         combine(isCheckingUpdatesFlow, lastUpdateCheckFlow, statusMessageFlow) { checking, checkedAt, message ->
             Triple(checking, checkedAt, message)
         },
-    ) { catalogUpdates, playUpdates, accrescentUpdates, (installed, icons, stages), (checking, checkedAt, message) ->
-        // The surviving row's source decides which download-and-verify path the update
-        // takes, so it has to be the same precedence search and the home rows use.
-        // Re-check against what is on the device rather than trusting the lists: the
-        // Play half is a snapshot from the last network check.
-        val installedVersions = installed.associate { it.packageName to it.versionCode }
-        val list = (catalogUpdates + playUpdates + accrescentUpdates)
-            .sortedBy { it.source.priority }
-            .distinctBy { it.packageName }
-            .filter { app ->
-                val installedVersion = installedVersions[app.packageName] ?: return@filter false
-                app.versionCode > installedVersion
-            }
-            .sortedBy { it.name.lowercase() }
+        settings.ignoredUpdates,
+    ) { pending, installedTriple, statusTriple, ignored ->
+        val (installed, icons, stages) = installedTriple
+        val (checking, checkedAt, message) = statusTriple
+        val partitioned = partitionUpdates(
+            pending = pending,
+            installed = installed.associateBy { it.packageName },
+            enabled = enabledSourcesFlow.value,
+            ignoredPackages = ignored,
+            ownPackage = context.packageName,
+        )
         TvUpdatesUiState(
-            updates = list,
+            updates = partitioned.eligible,
+            foreignUpdates = partitioned.foreign,
+            ignoredUpdates = partitioned.ignored,
             installedIcons = icons,
             installedInfos = installed.associateBy { it.packageName },
             stages = stages,
@@ -632,6 +644,15 @@ class TvStoreViewModel(
 
     fun setAutoInstallUpdates(enabled: Boolean) {
         viewModelScope.launch { settings.setAutoInstallUpdates(enabled) }
+    }
+
+    /**
+     * Stop offering updates for [packageName] (or offer them again). Mirrors
+     * the phone: ignored packages leave Update All, the count and the screen's
+     * main list, and appear under the ignored header instead (#885).
+     */
+    fun setUpdateIgnored(packageName: String, ignored: Boolean) {
+        viewModelScope.launch { settings.setUpdateIgnored(packageName, ignored) }
     }
 
     /** Drop what a source had already contributed to the screens. Mirrors the phone. */

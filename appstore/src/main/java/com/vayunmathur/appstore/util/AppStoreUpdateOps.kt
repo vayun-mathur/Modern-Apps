@@ -8,6 +8,7 @@ import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.installer.InstallFailureBatch
+import com.vayunmathur.appstore.data.installer.SessionInstaller
 import com.vayunmathur.appstore.data.security.VerificationResult
 import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.delay
@@ -89,8 +90,11 @@ internal fun AppStoreViewModel.checkForUpdatesImpl() {
 /**
  * Update everything, and report the run once when it is over.
  *
- * Sequential on purpose: updates this store isn't the update owner of still get a
- * system confirmation dialog, and firing them concurrently buries the user in prompts.
+ * Only the eligible batch runs: packages this store has never installed would
+ * each cost a system confirmation dialog (or a doomed failure) and slow the
+ * whole run while the user waits for them to fail, so they stay listed for an
+ * explicit tap instead (#885). Sequential on purpose for the same reason —
+ * firing even the eligible ones concurrently buries the user in prompts.
  *
  * The reporting is the other half of issue #630. A run used to say nothing itself and
  * let each app's failure raise its own snackbar, so a phone whose updates were all
@@ -102,7 +106,9 @@ internal fun AppStoreViewModel.checkForUpdatesImpl() {
 internal fun AppStoreViewModel.updateAllImpl() {
     if (updateAllJob?.isActive == true) return
     updateAllJob = viewModelScope.launch {
-        val batch = updates.value
+        // Eligible only: foreign installs are individually updatable but never
+        // bulk-attempted, and ignored packages are excluded everywhere (#885).
+        val batch = partitionedUpdates.value.eligible
         if (batch.isEmpty()) return@launch
         val run = UpdateRun()
         InstallFailureBatch.begin()
@@ -155,7 +161,7 @@ private class UpdateRun {
      * Records one install outcome. Returns true when the run should stop:
      * the same reason has failed [REPEATED_FAILURE_LIMIT] times in a row.
      */
-    fun record(viewModel: AppStoreViewModel, outcome: com.vayunmathur.appstore.data.installer.SessionInstaller.Outcome): Boolean {
+    fun record(viewModel: AppStoreViewModel, outcome: SessionInstaller.Outcome): Boolean {
         if (outcome.started) {
             started++
             previousReason = null

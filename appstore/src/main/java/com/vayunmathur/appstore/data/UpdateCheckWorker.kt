@@ -101,6 +101,9 @@ class UpdateCheckWorker(
             settings = SettingsRepository(context, scope),
         )
         val enabled = env.settings.readEnabledSources()
+        // Ignored packages are excluded from the notification set the same way
+        // the screens exclude them from the count and badge (#885).
+        val ignored = env.settings.readIgnoredUpdates()
 
         // Drop disabled sources' cached rows before the index is read: the last sync
         // may predate the toggle, and nothing else purges on this path (#845).
@@ -110,6 +113,7 @@ class UpdateCheckWorker(
         if (AppSource.PLAYSTORE in enabled) env.play.restore()
 
         val updates = collectUpdates(env, enabled)
+            .filterNot { it.packageName in ignored }
         reportUpdates(env, updates)
 
         env.accrescent.shutdown()

@@ -15,10 +15,12 @@ import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.CatalogRepository
 import com.vayunmathur.appstore.data.InstalledAppsRepository
 import com.vayunmathur.appstore.data.InstalledInfo
+import com.vayunmathur.appstore.data.PartitionedUpdates
 import com.vayunmathur.appstore.data.PlayStoreLinks
 import com.vayunmathur.appstore.data.SettingsRepository
 import com.vayunmathur.appstore.data.SyncStep
 import com.vayunmathur.appstore.data.UnifiedApp
+import com.vayunmathur.appstore.data.partitionUpdates
 import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
 import com.vayunmathur.appstore.data.installer.InstallCoordinator
 import com.vayunmathur.appstore.data.installer.InstallEvents
@@ -181,27 +183,45 @@ class AppStoreViewModel(
         },
         installedRepo.apps,
         enabledSources,
-    ) { pending, installed, enabled ->
-        val installedVersions = installed.associate { it.packageName to it.versionCode }
-        pending
-            // A disabled source contributes nothing, even if its in-memory snapshot has not
-            // been cleared yet (issue #845): the toggle clears Play/Accrescent snapshots
-            // via forgetSource, but a cold start can repopulate them before the persisted
-            // choice arrives, so the merged list filters rather than trusting them.
-            .filter { it.source in enabled }
-            // The surviving row's source decides which download-and-verify path the update
-            // takes, so it has to be the same precedence search and the library use.
-            .sortedBy { it.source.priority }
-            .distinctBy { it.packageName }
-            // Re-check against what is on the device rather than trusting the lists.
-            // playUpdatesFlow is a snapshot from the last network check, so without this a
-            // Play app stays in the list after it has been updated, until the next check.
-            .filter { app ->
-                val installedVersion = installedVersions[app.packageName] ?: return@filter false
-                app.versionCode > installedVersion
-            }
-            .sortedBy { it.name.lowercase() }
+        settings.ignoredUpdates,
+    ) { pending, installed, enabled, ignored ->
+        // Ignored packages are excluded here — before the count, badge and
+        // notifications — but explicit taps still install via installImpl (#885).
+        partitionUpdates(
+            pending = pending,
+            installed = installed.associateBy { it.packageName },
+            enabled = enabled,
+            ignoredPackages = ignored,
+            ownPackage = context.packageName,
+        ).actionable
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * Everything an update check found, including [PartitionedUpdates.ignored]:
+     * the updates screen lists ignored rows under their own collapsed header so
+     * the user can unignore them. Update All and the badge read [updates], which
+     * excludes them.
+     */
+    val partitionedUpdates: StateFlow<PartitionedUpdates> = combine(
+        combine(
+            catalogUpdatesFlow,
+            playUpdatesFlow,
+            accrescentUpdatesFlow,
+        ) { catalogUpdates, playUpdates, accrescentUpdates ->
+            catalogUpdates + playUpdates + accrescentUpdates
+        },
+        installedRepo.apps,
+        enabledSources,
+        settings.ignoredUpdates,
+    ) { pending, installed, enabled, ignored ->
+        partitionUpdates(
+            pending = pending,
+            installed = installed.associateBy { it.packageName },
+            enabled = enabled,
+            ignoredPackages = ignored,
+            ownPackage = context.packageName,
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, PartitionedUpdates())
 
     private val sections: StateFlow<List<AppSection>> = combine(
         catalog.modernApps,
@@ -303,7 +323,8 @@ class AppStoreViewModel(
         isLoadingDetailsFlow,
         chrome,
         installer.verification,
-    ) { app, loading, rows, verification ->
+        settings.ignoredUpdates,
+    ) { app, loading, rows, verification, ignored ->
         val pkg = app?.packageName
         AppDetailUiState(
             app = app,
@@ -312,18 +333,21 @@ class AppStoreViewModel(
             stage = rows.stages[pkg],
             installedIcon = rows.icons[pkg],
             isLoadingDetails = loading,
+            updateIgnored = pkg != null && pkg in ignored,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AppDetailUiState())
 
     val updatesUi: StateFlow<UpdatesUiState> = combine(
-        updates,
+        partitionedUpdates,
         chrome,
         isCheckingUpdatesFlow,
         lastUpdateCheckFlow,
         statusLine,
-    ) { list, rows, checking, checkedAt, message ->
+    ) { partitioned, rows, checking, checkedAt, message ->
         UpdatesUiState(
-            updates = list,
+            updates = partitioned.eligible,
+            foreignUpdates = partitioned.foreign,
+            ignoredUpdates = partitioned.ignored,
             installedIcons = rows.icons,
             installedInfos = rows.installed.associateBy { it.packageName },
             stages = rows.stages,
@@ -588,6 +612,18 @@ class AppStoreViewModel(
      * another dozen times.
      */
     override fun updateAll() = updateAllImpl()
+
+    /**
+     * Stop offering updates for [packageName] (or offer them again).
+     *
+     * Ignored packages leave Update All, the count/badge and notifications, and
+     * appear under the updates screen's own ignored header — but an explicit
+     * tap on the app's Update button still installs, so ignoring is never a
+     * dead end (#885).
+     */
+    override fun setUpdateIgnored(packageName: String, ignored: Boolean) {
+        viewModelScope.launch { settings.setUpdateIgnored(packageName, ignored) }
+    }
 
     /** Turn fully unattended (no-tap) background update installation on or off. */
     fun setAutoInstallUpdates(enabled: Boolean) {

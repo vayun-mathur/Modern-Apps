@@ -196,6 +196,16 @@ data class InstalledInfo(
     val enabled: Boolean = true,
     /** When the package was last updated on this device, ms since epoch. */
     val lastUpdateTime: Long = 0L,
+    /**
+     * Last installer of record (`installingPackageName`), null for adb installs.
+     * Drives "Update all" skipping packages this store has never touched (#885).
+     */
+    val installerPackage: String? = null,
+    /**
+     * Update owner on API 34+ (`updateOwnerPackageName`), null below that or when
+     * unset. Survives another store touching the package after us.
+     */
+    val updateOwnerPackage: String? = null,
 )
 
 /** A fixed, signed F-Droid-format repository consumed by this store. */
