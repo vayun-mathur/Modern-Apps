@@ -124,14 +124,6 @@
         tap, never part of Update all. -->
     <string name="updates_foreign_title">Installed elsewhere</string>
     <string name="updates_foreign_subtitle">Update all skips these — tap Update on one to update it here.</string>
-    <!-- Header over updates the user asked never to be offered, with a way back. -->
-    <string name="updates_ignored_title">Ignored updates</string>
-    <string name="updates_ignored_subtitle">These never count, notify or join Update all. Tap Show to offer one again.</string>
-    <string name="action_ignore_updates">Ignore updates</string>
-    <string name="action_show_updates">Show updates</string>
-    <!-- Detail-page toggle. %1$s is the app name. -->
-    <string name="detail_ignore_updates">Ignore updates for %1$s</string>
-    <string name="detail_ignore_updates_summary">Skips Update all, the badge and notifications. You can still update from here.</string>
 
     <!-- Install actions and progress. -->
     <string name="action_install">Install</string>

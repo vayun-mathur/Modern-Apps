@@ -29,10 +29,8 @@ import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconDownload
 import com.vayunmathur.library.ui.IconGlobe
-import com.vayunmathur.library.ui.IconVisibilityOff
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
-import com.vayunmathur.library.ui.SettingsSwitchRow
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 
@@ -101,19 +99,6 @@ internal fun AppInstallActions(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-        }
-
-        // Per-app "ignore updates" (§885): excluded from Update All, the count/
-        // badge and notifications, but the Update button above still installs —
-        // so ignoring is never a dead end.
-        if (state.isInstalled) {
-            SettingsSwitchRow(
-                title = stringResource(R.string.detail_ignore_updates, app.name),
-                checked = state.updateIgnored,
-                onCheckedChange = { actions.setUpdateIgnored(app.packageName, it) },
-                supportingText = stringResource(R.string.detail_ignore_updates_summary),
-                leadingContent = { IconVisibilityOff() },
             )
         }
 

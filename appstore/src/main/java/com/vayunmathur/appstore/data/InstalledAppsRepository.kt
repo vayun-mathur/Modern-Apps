@@ -68,7 +68,7 @@ class InstalledAppsRepository(private val context: Context) {
     private fun PackageManager.readInstalledInfo(ai: ApplicationInfo): InstalledInfo? = try {
         val pi = getPackageInfo(ai.packageName, 0)
         // The OS fills this in for every install — including ones that predate the
-        // skip/ignore feature — so no local history table needs backfilling (#885).
+        // Update-all ownership check — so no local history table needs backfilling (#885).
         // Null (adb installs, some system packages) never equals our package name,
         // which is exactly the "not managed by us" signal the caller wants.
         val source = runCatching { getInstallSourceInfo(ai.packageName) }.getOrNull()

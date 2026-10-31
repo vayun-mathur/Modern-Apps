@@ -71,8 +71,6 @@ data class TvDetailUiState(
     val verification: VerificationResult? = null,
     /** True while richer Play/Accrescent details are being fetched over the network. */
     val isLoadingDetails: Boolean = false,
-    /** True when the user asked never to be offered updates for this package (#885). */
-    val updateIgnored: Boolean = false,
 ) {
     val isInstalled: Boolean get() = installedInfo != null
 
@@ -103,8 +101,6 @@ data class TvUpdatesUiState(
     val updates: List<UnifiedApp> = emptyList(),
     /** Newer versions of packages another store installed: listed, never bulk-run. */
     val foreignUpdates: List<UnifiedApp> = emptyList(),
-    /** Updates the user asked never to be offered: listed under their own header. */
-    val ignoredUpdates: List<UnifiedApp> = emptyList(),
     val installedIcons: Map<String, Drawable> = emptyMap(),
     /** Currently-installed info per package, so the row can show old → new versions. */
     val installedInfos: Map<String, InstalledInfo> = emptyMap(),

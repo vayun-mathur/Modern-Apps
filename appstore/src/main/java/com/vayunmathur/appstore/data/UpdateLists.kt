@@ -7,20 +7,15 @@ package com.vayunmathur.appstore.data
  * tail partitions. [eligible] is what a bulk run attempts. [foreign] is newer
  * versions of packages another store (or adb) installed — a bulk run skips
  * these rather than spending a system confirmation dialog (or a doomed
- * failure) on each one, but an explicit tap still installs them. [ignored] is
- * what the user asked never to be offered; it is excluded everywhere except
- * the ignored section that offers unignoring.
+ * failure) on each one, but an explicit tap still installs them.
  */
 data class PartitionedUpdates(
     val eligible: List<UnifiedApp> = emptyList(),
     val foreign: List<UnifiedApp> = emptyList(),
-    val ignored: List<UnifiedApp> = emptyList(),
 ) {
     /**
      * Everything the store may still draw as an update: the bulk run's targets
-     * plus the individually-updatable foreign rows. Ignored packages are in
-     * neither — that exclusion is what keeps them out of the count, the badge
-     * and the notifications.
+     * plus the individually-updatable foreign rows.
      */
     val actionable: List<UnifiedApp>
         get() = (eligible + foreign).sortedBy { it.name.lowercase() }
@@ -35,7 +30,6 @@ fun partitionUpdates(
     pending: List<UnifiedApp>,
     installed: Map<String, InstalledInfo>,
     enabled: Set<AppSource>,
-    ignoredPackages: Set<String>,
     ownPackage: String,
 ): PartitionedUpdates {
     val fresh = pending
@@ -53,8 +47,7 @@ fun partitionUpdates(
             app.versionCode > installedVersion
         }
         .sortedBy { it.name.lowercase() }
-    val (ignoredList, rest) = fresh.partition { it.packageName in ignoredPackages }
-    val (foreign, eligible) = rest.partition { app ->
+    val (foreign, eligible) = fresh.partition { app ->
         val info = installed.getValue(app.packageName)
         !com.vayunmathur.appstore.domain.UpdateEligibility.installedByStore(
             info.installerPackage,
@@ -62,5 +55,5 @@ fun partitionUpdates(
             ownPackage,
         )
     }
-    return PartitionedUpdates(eligible = eligible, foreign = foreign, ignored = ignoredList)
+    return PartitionedUpdates(eligible = eligible, foreign = foreign)
 }

@@ -52,7 +52,6 @@ fun TvStoreUpdates(
         onUpdateAll = viewModel::updateAll,
         onInstall = viewModel::install,
         onAppClick = onAppClick,
-        onIgnore = viewModel::setUpdateIgnored,
         modifier = modifier,
     )
 }
@@ -65,7 +64,6 @@ internal fun TvStoreUpdatesScreen(
     onUpdateAll: () -> Unit = {},
     onInstall: (UnifiedApp) -> Unit = {},
     onAppClick: (UnifiedApp) -> Unit = {},
-    onIgnore: (String, Boolean) -> Unit = { _, _ -> },
 ) {
     val primaryFocus = remember { FocusRequester() }
     val anyInstalling = state.stages.values.any { it !is InstallStage.Failed }
@@ -84,7 +82,7 @@ internal fun TvStoreUpdatesScreen(
     // Unkeyed: runs once per visit. Keying on the count would yank focus back to
     // "Update all" every time a check completes or an update installs and drops off.
     TvInitialFocus(primaryFocus)
-    if (total == 0 && state.ignoredUpdates.isEmpty() && !state.isChecking) {
+    if (total == 0 && !state.isChecking) {
         TvEmptyState(
             title = stringResource(R.string.all_apps_up_to_date),
             body = stringResource(R.string.updates_empty_message),
@@ -102,8 +100,6 @@ internal fun TvStoreUpdatesScreen(
     // cannot live inside it.
     val foreignTitle = stringResource(R.string.updates_foreign_title)
     val foreignSubtitle = stringResource(R.string.updates_foreign_subtitle)
-    val ignoredTitle = stringResource(R.string.updates_ignored_title)
-    val ignoredSubtitle = stringResource(R.string.updates_ignored_subtitle)
     TvGrid(columns = 3, modifier = modifier.fillMaxSize()) {
         tvFullWidth(key = "header") {
             TvScreenHeader(
@@ -142,7 +138,6 @@ internal fun TvStoreUpdatesScreen(
                 state = state,
                 onAppClick = onAppClick,
                 onInstall = { onInstall(app) },
-                onIgnore = { onIgnore(app.packageName, true) },
             )
         }
         if (state.foreignUpdates.isNotEmpty()) {
@@ -157,24 +152,6 @@ internal fun TvStoreUpdatesScreen(
                     state = state,
                     onAppClick = onAppClick,
                     onInstall = { onInstall(app) },
-                    onIgnore = { onIgnore(app.packageName, true) },
-                )
-            }
-        }
-        if (state.ignoredUpdates.isNotEmpty()) {
-            tvGridHeader(
-                key = "ignored",
-                title = ignoredTitle,
-                subtitle = ignoredSubtitle,
-            )
-            items(state.ignoredUpdates, key = { "ignored-${it.packageName}" }) { app ->
-                TvUpdateCard(
-                    app = app,
-                    state = state,
-                    onAppClick = onAppClick,
-                    onInstall = { onInstall(app) },
-                    ignored = true,
-                    onIgnore = { onIgnore(app.packageName, false) },
                 )
             }
         }
@@ -187,8 +164,6 @@ private fun TvUpdateCard(
     state: TvUpdatesUiState,
     onAppClick: (UnifiedApp) -> Unit,
     onInstall: () -> Unit,
-    ignored: Boolean = false,
-    onIgnore: () -> Unit,
 ) {
     val installed = state.installedInfos[app.packageName]
     val old = installed?.let { info ->
@@ -210,23 +185,16 @@ private fun TvUpdateCard(
         stage = stage,
         versionLabel = versionLabel,
         trailing = {
-            if (ignored) {
-                TvButton(
-                    text = stringResource(R.string.action_show_updates),
-                    onClick = onIgnore,
-                )
-            } else {
-                TvButton(
-                    text = if (busy) {
-                        stage.tvStageLabel()
-                    } else {
-                        stringResource(R.string.action_update)
-                    },
-                    onClick = { onInstall() },
-                    primary = !busy,
-                    enabled = !busy,
-                )
-            }
+            TvButton(
+                text = if (busy) {
+                    stage.tvStageLabel()
+                } else {
+                    stringResource(R.string.action_update)
+                },
+                onClick = { onInstall() },
+                primary = !busy,
+                enabled = !busy,
+            )
         },
     )
 }

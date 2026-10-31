@@ -186,25 +186,15 @@ class AppStoreViewModel(
         },
         installedRepo.apps,
         enabledSources,
-        settings.ignoredUpdates,
-    ) { pending, installed, enabled, ignored ->
-        // Ignored packages are excluded here — before the count, badge and
-        // notifications — but explicit taps still install via installImpl (#885).
+    ) { pending, installed, enabled ->
         partitionUpdates(
             pending = pending,
             installed = installed.associateBy { it.packageName },
             enabled = enabled,
-            ignoredPackages = ignored,
             ownPackage = context.packageName,
         ).actionable
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    /**
-     * Everything an update check found, including [PartitionedUpdates.ignored]:
-     * the updates screen lists ignored rows under their own collapsed header so
-     * the user can unignore them. Update All and the badge read [updates], which
-     * excludes them.
-     */
     val partitionedUpdates: StateFlow<PartitionedUpdates> = combine(
         combine(
             catalogUpdatesFlow,
@@ -215,13 +205,11 @@ class AppStoreViewModel(
         },
         installedRepo.apps,
         enabledSources,
-        settings.ignoredUpdates,
-    ) { pending, installed, enabled, ignored ->
+    ) { pending, installed, enabled ->
         partitionUpdates(
             pending = pending,
             installed = installed.associateBy { it.packageName },
             enabled = enabled,
-            ignoredPackages = ignored,
             ownPackage = context.packageName,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, PartitionedUpdates())
@@ -326,8 +314,7 @@ class AppStoreViewModel(
         isLoadingDetailsFlow,
         chrome,
         installer.verification,
-        settings.ignoredUpdates,
-    ) { app, loading, rows, verification, ignored ->
+    ) { app, loading, rows, verification ->
         val pkg = app?.packageName
         AppDetailUiState(
             app = app,
@@ -336,7 +323,6 @@ class AppStoreViewModel(
             stage = rows.stages[pkg],
             installedIcon = rows.icons[pkg],
             isLoadingDetails = loading,
-            updateIgnored = pkg != null && pkg in ignored,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AppDetailUiState())
 
@@ -350,7 +336,6 @@ class AppStoreViewModel(
         UpdatesUiState(
             updates = partitioned.eligible,
             foreignUpdates = partitioned.foreign,
-            ignoredUpdates = partitioned.ignored,
             installedIcons = rows.icons,
             installedInfos = rows.installed.associateBy { it.packageName },
             stages = rows.stages,
@@ -621,18 +606,6 @@ class AppStoreViewModel(
      * another dozen times.
      */
     override fun updateAll() = updateAllImpl()
-
-    /**
-     * Stop offering updates for [packageName] (or offer them again).
-     *
-     * Ignored packages leave Update All, the count/badge and notifications, and
-     * appear under the updates screen's own ignored header — but an explicit
-     * tap on the app's Update button still installs, so ignoring is never a
-     * dead end (#885).
-     */
-    override fun setUpdateIgnored(packageName: String, ignored: Boolean) {
-        viewModelScope.launch { settings.setUpdateIgnored(packageName, ignored) }
-    }
 
     /** Turn fully unattended (no-tap) background update installation on or off. */
     fun setAutoInstallUpdates(enabled: Boolean) {

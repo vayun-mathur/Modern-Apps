@@ -34,12 +34,10 @@ class UpdateListsTest {
             pending = listOf(app("a")),
             installed = mapOf("a" to installed("a")),
             enabled = enabled,
-            ignoredPackages = emptySet(),
             ownPackage = self,
         )
         assertEquals(listOf("a"), result.eligible.map { it.packageName })
         assertTrue(result.foreign.isEmpty())
-        assertTrue(result.ignored.isEmpty())
     }
 
     @Test
@@ -54,38 +52,10 @@ class UpdateListsTest {
                 "b" to installed("b", installer = self),
             ),
             enabled = enabled,
-            ignoredPackages = emptySet(),
             ownPackage = self,
         )
         assertEquals(listOf("b"), result.eligible.map { it.packageName })
         assertEquals(listOf("a"), result.foreign.map { it.packageName })
-    }
-
-    @Test
-    fun `ignored apps are excluded everywhere and surfaced separately`() {
-        val result = partitionUpdates(
-            pending = listOf(app("a"), app("b")),
-            installed = mapOf("a" to installed("a"), "b" to installed("b")),
-            enabled = enabled,
-            ignoredPackages = setOf("a"),
-            ownPackage = self,
-        )
-        assertEquals(listOf("b"), result.eligible.map { it.packageName })
-        assertEquals(listOf("a"), result.ignored.map { it.packageName })
-    }
-
-    @Test
-    fun `ignored foreign app is ignored not foreign`() {
-        val result = partitionUpdates(
-            pending = listOf(app("a", AppSource.PLAYSTORE)),
-            installed = mapOf("a" to installed("a", installer = "com.android.vending")),
-            enabled = enabled,
-            ignoredPackages = setOf("a"),
-            ownPackage = self,
-        )
-        assertTrue(result.eligible.isEmpty())
-        assertTrue(result.foreign.isEmpty())
-        assertEquals(listOf("a"), result.ignored.map { it.packageName })
     }
 
     @Test
@@ -97,12 +67,10 @@ class UpdateListsTest {
             ),
             installed = mapOf("stale" to installed("stale"), "disabled" to installed("disabled")),
             enabled = setOf(AppSource.MODERN_APPS),
-            ignoredPackages = emptySet(),
             ownPackage = self,
         )
         assertTrue(result.eligible.isEmpty())
         assertTrue(result.foreign.isEmpty())
-        assertTrue(result.ignored.isEmpty())
     }
 
     @Test
@@ -114,7 +82,6 @@ class UpdateListsTest {
             pending = listOf(app("a")),
             installed = mapOf("a" to info),
             enabled = enabled,
-            ignoredPackages = emptySet(),
             ownPackage = self,
         )
         assertEquals(listOf("a"), result.eligible.map { it.packageName })

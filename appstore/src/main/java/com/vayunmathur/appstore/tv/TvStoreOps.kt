@@ -183,7 +183,7 @@ internal fun TvStoreViewModel.checkForUpdatesImpl() {
  * phone's `updateAllImpl`: concurrent system dialogs would bury the user in prompts,
  * and failures are collected and summarised instead of one snackbar per app.
  * Only the eligible batch runs — foreign installs stay listed for an explicit
- * tap, ignored packages are excluded everywhere (#885).
+ * tap (#885).
  */
 internal fun TvStoreViewModel.updateAllImpl() {
     if (updateAllJob?.isActive == true) return

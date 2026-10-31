@@ -37,7 +37,6 @@ import com.vayunmathur.library.tv.TvButton
 import com.vayunmathur.library.tv.TvDialog
 import com.vayunmathur.library.tv.TvEmptyState
 import com.vayunmathur.library.tv.TvInitialFocus
-import com.vayunmathur.library.tv.TvSwitchRow
 import com.vayunmathur.library.tv.tvContentStart
 import com.vayunmathur.library.ui.IconBack
 import com.vayunmathur.library.ui.IconDelete
@@ -68,7 +67,6 @@ fun TvStoreDetail(
         onOpenInBrowser = viewModel::openInBrowser,
         onOpenInPlayStore = viewModel::openInPlayStore,
         onDismissFailure = viewModel::dismissInstallFailure,
-        onSetIgnored = viewModel::setUpdateIgnored,
         onBack = onBack,
         modifier = modifier,
     )
@@ -84,7 +82,6 @@ internal fun TvStoreDetailScreen(
     onOpenInBrowser: (String) -> Unit = {},
     onOpenInPlayStore: (String) -> Unit = {},
     onDismissFailure: (String) -> Unit = {},
-    onSetIgnored: (String, Boolean) -> Unit = { _, _ -> },
     onBack: () -> Unit = {},
 ) {
     val app = state.app
@@ -118,7 +115,6 @@ internal fun TvStoreDetailScreen(
                 onOpen = { onOpen(app.packageName) },
                 onUninstall = { showUninstallConfirm = true },
                 onDismissFailure = { onDismissFailure(app.packageName) },
-                onSetIgnored = { onSetIgnored(app.packageName, it) },
                 modifier = Modifier.weight(0.65f).fillMaxHeight(),
             )
             TvStoreDetailBody(
@@ -165,7 +161,6 @@ private fun TvStoreDetailIdentity(
     onOpen: () -> Unit,
     onUninstall: () -> Unit,
     onDismissFailure: () -> Unit,
-    onSetIgnored: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val app = state.app ?: return
@@ -257,42 +252,12 @@ private fun TvStoreDetailIdentity(
                 onClick = onDismissFailure,
             )
         }
-        // Per-app "ignore updates" (§885): same exclusion as the phone — Update
-        // All, the count and notifications skip it, but Update above still works.
-        TvStoreDetailIgnoreRow(
-            appName = app.name,
-            ignored = state.updateIgnored,
-            visible = state.isInstalled,
-            onSetIgnored = onSetIgnored,
-        )
         // Stats row: Size / Rated / Version, like the phone's facts row.
         TvStoreDetailStats(app = app)
         TvStoreVerificationLine(state = state)
     }
 }
 
-/**
- * Per-app "ignore updates" toggle (§885). Its own function so the identity
- * pane stays under the complexity cap: excluded from Update All, the count
- * and notifications, but the Update button above still installs.
- */
-@Composable
-private fun TvStoreDetailIgnoreRow(
-    appName: String,
-    ignored: Boolean,
-    visible: Boolean,
-    onSetIgnored: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    if (!visible) return
-    TvSwitchRow(
-        headline = stringResource(R.string.detail_ignore_updates, appName),
-        checked = ignored,
-        onCheckedChange = onSetIgnored,
-        supporting = stringResource(R.string.detail_ignore_updates_summary),
-        modifier = modifier,
-    )
-}
 
 /** Size / Rated / Version in whatever subset the source published. Like the phone. */
 @Composable

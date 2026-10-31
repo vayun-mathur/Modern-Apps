@@ -105,8 +105,6 @@ data class AppDetailUiState(
     val installedIcon: Drawable? = null,
     /** True while richer details are being fetched over the network. */
     val isLoadingDetails: Boolean = false,
-    /** True when the user asked never to be offered updates for this package (#885). */
-    val updateIgnored: Boolean = false,
 ) {
     val isInstalled: Boolean get() = installedInfo != null
 
@@ -123,12 +121,6 @@ data class UpdatesUiState(
      * part of an Update All run (#885).
      */
     val foreignUpdates: List<UnifiedApp> = emptyList(),
-    /**
-     * Updates the user asked never to be offered. Listed under a collapsed
-     * header so they can be unignored; excluded from Update All, the count,
-     * the badge and notifications (#885).
-     */
-    val ignoredUpdates: List<UnifiedApp> = emptyList(),
     val installedIcons: Map<String, Drawable> = emptyMap(),
     /** Currently-installed info per package, so the row can show old → new versions. */
     val installedInfos: Map<String, InstalledInfo> = emptyMap(),
@@ -189,7 +181,6 @@ interface AppDetailActions : AppActions {
     fun openInBrowser(url: String) {}
     fun shareApp(app: UnifiedApp) {}
     fun dismissInstallFailure(packageName: String) {}
-    fun setUpdateIgnored(packageName: String, ignored: Boolean) {}
 
     companion object {
         val Noop: AppDetailActions = object : AppDetailActions {}
@@ -200,7 +191,6 @@ interface AppDetailActions : AppActions {
 interface UpdatesActions : AppActions {
     fun checkForUpdates() {}
     fun updateAll() {}
-    fun setUpdateIgnored(packageName: String, ignored: Boolean) {}
 
     companion object {
         val Noop: UpdatesActions = object : UpdatesActions {}

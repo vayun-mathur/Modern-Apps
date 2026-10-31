@@ -107,7 +107,7 @@ internal fun AppStoreViewModel.updateAllImpl() {
     if (updateAllJob?.isActive == true) return
     updateAllJob = viewModelScope.launch {
         // Eligible only: foreign installs are individually updatable but never
-        // bulk-attempted, and ignored packages are excluded everywhere (#885).
+        // bulk-attempted (#885).
         val batch = partitionedUpdates.value.eligible
         if (batch.isEmpty()) return@launch
         val run = UpdateRun()
