@@ -184,14 +184,19 @@ object PersonalHealthRecords {
     /** Writes one FHIR resource, returning its Health Connect id or null if the write did not land. */
     // Broad catch is deliberate: a rejected resource must not cost the user the entry they
     // just typed, so failures are logged and swallowed and the row stays queued for retry.
+    // The null return also covers Health Connect being unavailable (client never initialised),
+    // which delete/readAll/dataSourceId already degrade on but this path previously assumed away.
     @Suppress("TooGenericExceptionCaught")
-    suspend fun upsert(dataSourceId: String, data: String): String? = try {
-        hc.upsertMedicalResources(
-            listOf(UpsertMedicalResourceRequest(dataSourceId, FHIR_VERSION, data))
-        ).firstOrNull()?.id?.fhirResourceId
-    } catch (e: Exception) {
-        Log.error(TAG, "Could not write a medical resource", e)
-        null
+    suspend fun upsert(dataSourceId: String, data: String): String? {
+        if (!isAvailable()) return null
+        return try {
+            hc.upsertMedicalResources(
+                listOf(UpsertMedicalResourceRequest(dataSourceId, FHIR_VERSION, data))
+            ).firstOrNull()?.id?.fhirResourceId
+        } catch (e: Exception) {
+            Log.error(TAG, "Could not write a medical resource", e)
+            null
+        }
     }
 
     /** Deletes one of this app's resources, returning whether Health Connect confirmed it. */

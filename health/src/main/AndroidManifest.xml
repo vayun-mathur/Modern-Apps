@@ -84,6 +84,9 @@
 
     <queries>
         <package android:name="com.vayunmathur.openassistant" />
+        <!-- Health Connect's APK provider on API 33 and below. Without this, package-visibility
+             rules hide the provider and getSdkStatus() cannot see it. -->
+        <package android:name="com.google.android.apps.healthdata" />
     </queries>
 
     <application

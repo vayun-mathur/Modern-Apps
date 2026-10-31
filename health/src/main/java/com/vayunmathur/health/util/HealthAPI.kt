@@ -34,7 +34,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 object HealthAPI {
-    lateinit var healthConnectClient: HealthConnectClient
+    private var healthConnectClient: HealthConnectClient? = null
     lateinit var preferences: SharedPreferences
 
     private var repository: HealthRepository? = null
@@ -44,6 +44,17 @@ object HealthAPI {
 
     fun init(healthConnectClient: HealthConnectClient, context: Context, repository: HealthRepository) {
         this.healthConnectClient = healthConnectClient
+        this.repository = repository
+        preferences = context.getSharedPreferences("sync", Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Local-only mode for when Health Connect is missing or too old (API 33 and below without
+     * the provider APK installed): Room and preferences work, the Health Connect mirror calls
+     * below skip their remote half. Replaced by [init] once the provider is usable.
+     */
+    fun initLocal(context: Context, repository: HealthRepository) {
+        this.healthConnectClient = null
         this.repository = repository
         preferences = context.getSharedPreferences("sync", Context.MODE_PRIVATE)
     }
@@ -62,6 +73,8 @@ object HealthAPI {
         // Delete from local Room DB
         repo().deleteByIds(listOf(record.id))
 
+        // Local-only mode (Health Connect missing or too old): nothing remote to delete.
+        val client = healthConnectClient ?: return
         // Delete from Health Connect if it has a valid ID
         try {
             val recordClass: KClass<out androidx.health.connect.client.records.Record>? = when (record.type) {
@@ -76,7 +89,7 @@ object HealthAPI {
                 else -> null
             }
             if (recordClass != null) {
-                healthConnectClient.deleteRecords(
+                client.deleteRecords(
                         recordType = recordClass,
                         recordIdsList = listOf(record.id),
                         clientRecordIdsList = listOf(record.id)
@@ -113,7 +126,9 @@ object HealthAPI {
         }
 
         try {
-            val response = healthConnectClient.insertRecords(listOf(hcRecord))
+            // Local-only mode (Health Connect missing or too old): the row just written to Room
+            // above stays the source of truth and there is nothing to mirror into.
+            val response = healthConnectClient?.insertRecords(listOf(hcRecord)) ?: return
             val newId = response.recordIdsList.firstOrNull()
             if (newId != null) {
                 Log.status("HealthAPI", "Successfully wrote record to Health Connect with ID: $newId")

@@ -7,6 +7,25 @@
     <!-- Permission wall: explains why Health Connect access is needed. Sentence -->
     <string name="grant_permissions_rationale">This app reads and writes your health data through Health Connect. Nothing leaves your device.</string>
 
+    <!-- HealthConnectRequiredPage: Setup title when the provider APK is missing. Noun phrase -->
+    <string name="health_connect_required_title">Health Connect is required</string>
+    <!-- HealthConnectRequiredPage: Setup subtitle when the provider APK is missing. Sentence -->
+    <string name="health_connect_required_subtitle">This app stores and reads your health data through Health Connect, which isn\u2019t installed on this device yet.</string>
+    <!-- HealthConnectRequiredPage: Setup body when the provider APK is missing. Sentences -->
+    <string name="health_connect_required_body">On this Android version Health Connect is a separate app you install from the Play Store — it\u2019s free and made by Google. Install it, then come back here and this screen will clear on its own. Your medical records stay in this app either way.</string>
+    <!-- HealthConnectRequiredPage: Install button when the provider APK is missing. Verb phrase -->
+    <string name="health_connect_install_action">Install Health Connect</string>
+    <!-- HealthConnectRequiredPage: Setup title when the provider APK is present but too old. Noun phrase -->
+    <string name="health_connect_update_title">Health Connect needs updating</string>
+    <!-- HealthConnectRequiredPage: Setup subtitle when the provider APK is too old. Sentence -->
+    <string name="health_connect_update_subtitle">The Health Connect app on this device is too old for this version of Health.</string>
+    <!-- HealthConnectRequiredPage: Setup body when the provider APK is too old. Sentences -->
+    <string name="health_connect_update_body">Update Health Connect from the Play Store, then come back here and this screen will clear on its own. Your medical records stay in this app either way.</string>
+    <!-- HealthConnectRequiredPage: Update button when the provider APK is too old. Verb phrase -->
+    <string name="health_connect_update_action">Update Health Connect</string>
+    <!-- HealthConnectRequiredPage: Shown when no app handles the store link. Sentence -->
+    <string name="health_connect_install_failed">Couldn\u2019t open the Play Store. Install or update the \u201cHealth Connect\u201d app by Google manually, then return here.</string>
+
     <!-- BarChartDetails: SecondaryTabRow tab for daily aggregation view. Noun -->
     <string name="tab_day">Day</string>
     <!-- BarChartDetails: Tab for weekly aggregation. Noun -->

@@ -48,6 +48,8 @@ import com.vayunmathur.health.CLASSES
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.Record
 import com.vayunmathur.health.data.RecordType
+import com.vayunmathur.health.platform.HealthConnectAvailability
+import com.vayunmathur.health.platform.HealthConnectSetup
 import com.vayunmathur.library.util.DataStoreUtils
 import java.time.Duration
 import java.time.Instant
@@ -79,6 +81,13 @@ class HealthSyncWorker(
     }
 
     private suspend fun sync() {
+        // No provider, no sync: getOrCreate throws when Health Connect is missing or too old
+        // (API 33 and below without the APK), which used to fail every run. Succeed quietly —
+        // Room stays the source of truth and the next periodic run retries once it is installed.
+        if (HealthConnectSetup.current(applicationContext) != HealthConnectAvailability.AVAILABLE) {
+            Log.status(TAG, "Health Connect is not available; skipping sync")
+            return
+        }
         val healthConnectClient = HealthConnectClient.getOrCreate(applicationContext)
         val repository = HealthRepository.get(applicationContext)
         val ds = DataStoreUtils.getInstance(applicationContext)
