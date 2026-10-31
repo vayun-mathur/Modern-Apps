@@ -2,6 +2,9 @@
 <manifest xmlns:tools="http://schemas.android.com/tools"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Offline app (#884): androidx.work merges in ACCESS_NETWORK_STATE, which nothing here uses. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
