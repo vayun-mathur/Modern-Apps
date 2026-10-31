@@ -1,6 +1,8 @@
 package com.vayunmathur.fooddelivery.platform
 
 import android.content.Context
+import com.vayunmathur.fooddelivery.data.RemoteImageFetchers
+import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.log.Log
 import androidx.core.content.edit
 import com.vayunmathur.fooddelivery.api.BitesAuth
@@ -36,6 +38,12 @@ object AppInit {
     fun start(context: Context) {
         if (!started.compareAndSet(false, true)) return
         val appCtx = context.applicationContext
+        // Merchant photos load over HTTP(S) through the shared image pipeline;
+        // the fetch function is built here from NetworkClient so no
+        // library-to-library edge is needed (#884).
+        ImageLoader.setDefault(
+            ImageLoader.Builder(appCtx).remote(RemoteImageFetchers::network).build(),
+        )
         scope.launch {
             // Kept in separate try blocks: a trust-bundle failure must not also skip the token
             // restore, or one bad DER root would silently sign the user out and — because

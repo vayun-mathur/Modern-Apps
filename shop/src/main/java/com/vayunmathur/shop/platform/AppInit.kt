@@ -1,9 +1,11 @@
 package com.vayunmathur.shop.platform
 
 import android.content.Context
+import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
+import com.vayunmathur.shop.data.RemoteImageFetchers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +31,12 @@ object AppInit {
     fun start(context: Context) {
         if (!started.compareAndSet(false, true)) return
         val appCtx = context.applicationContext
+        // Product photos load over HTTP(S) through the shared image pipeline;
+        // the fetch function is built here from NetworkClient so no
+        // library-to-library edge is needed (#884).
+        ImageLoader.setDefault(
+            ImageLoader.Builder(appCtx).remote(RemoteImageFetchers::network).build(),
+        )
         scope.launch {
             try {
                 // Shopify endpoints (myshopify.com, catalog.shopify.com, cdn.shopify.com)

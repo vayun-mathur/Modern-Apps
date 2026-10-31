@@ -28,10 +28,12 @@ import com.vayunmathur.appstore.ui.UpdatesPage
 import com.vayunmathur.appstore.util.AppSection
 import com.vayunmathur.appstore.util.AppStoreViewModel
 import com.vayunmathur.appstore.util.AppStoreViewModelFactory
+import com.vayunmathur.appstore.util.RemoteImageFetchers
 import com.vayunmathur.appstore.util.clearSelection
 import com.vayunmathur.appstore.util.openBrowse
 import com.vayunmathur.appstore.util.selectApp
 import com.vayunmathur.appstore.util.selectPackage
+import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
@@ -65,6 +67,12 @@ class MainActivity : MaActivity() {
         // + ISRG X1/X2 (F-Droid) + DigiCert G2/G3 (GitHub). Covers all appstore hosts without full system ~140 roots.
         NetworkClient.init(this, TrustBundle.STANDARD)
         UpdateCheckWorker.schedule(this)
+        // Listing artwork (iconUrl) loads over HTTP(S) through the shared image
+        // pipeline; the fetch function is built here from NetworkClient so no
+        // library-to-library edge is needed (#884).
+        ImageLoader.setDefault(
+            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+        )
 
         val repository = AppStoreDatabaseRepository.get(this)
         factoryState = AppStoreViewModelFactory(applicationContext, repository.database)

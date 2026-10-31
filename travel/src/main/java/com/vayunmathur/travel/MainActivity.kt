@@ -39,6 +39,7 @@ import com.vayunmathur.travel.ui.StayDetailPage
 import com.vayunmathur.travel.ui.StayGuestsPage
 import com.vayunmathur.travel.ui.StayResultsPage
 import com.vayunmathur.travel.ui.TripsPage
+import com.vayunmathur.travel.data.RemoteImageFetchers
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.TravelViewModelFactory
 import com.vayunmathur.travel.util.pendingTripIds
@@ -46,6 +47,7 @@ import com.vayunmathur.travel.util.pollTrip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import kotlinx.serialization.Serializable
@@ -62,6 +64,12 @@ class MainActivity : MaActivity() {
         // Hardened trust: api.maproj.org + data.maproj.org are Cloudflare
         // fronted, covered by ISRG X1/X2 + GTS R1-R4 in FIRST_PARTY bundle.
         NetworkClient.init(this, TrustBundle.FIRST_PARTY)
+        // Destination and stay photos load over HTTP(S) through the shared image
+        // pipeline; the fetch function is built here from NetworkClient so no
+        // library-to-library edge is needed (#884).
+        ImageLoader.setDefault(
+            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+        )
 
         lifecycleScope.launch(Dispatchers.IO) {
             repository = TravelRepository.get(this@MainActivity)

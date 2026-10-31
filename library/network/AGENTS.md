@@ -4,9 +4,12 @@
 
 <!-- last-reviewed: 2026-10-16 -->
 - Gradle: :library:network / dir: library/network/
-- Package roots present: network
+- Package roots present: network (+ `util` for the connectivity monitor/banner)
 - Entry files: NetworkClient.kt + TrustBundle.kt (no MainActivity/Route — library)
-- Deps: (none — pinned CAs ship in `assets/ca/`)
+- Deps: (none — no project dependencies by design, #884)
+- Remote images: network apps build their own `Fetcher` from `NetworkClient`
+  and hand it to `ImageLoader.Builder.remote()` in `:library:image`; the HTTP
+  transport lives in the app, never in a library-to-library edge
 - Metadata: metadata_data/library-network.md (absent — libraries have none by design)
 - Rust: no / screenshotTest: no
 
@@ -29,6 +32,7 @@ Relay host: `api.maproj.org`, covered by the `FIRST_PARTY` bundle pins (Cloudfla
 - com/vayunmathur/library/network/Urls.kt
 - com/vayunmathur/library/network/WebSocketClient.kt
 - com/vayunmathur/library/util/ConnectivityMonitor.kt
+- com/vayunmathur/library/util/ConnectivityCompose.kt — `OfflineAware` banner (#884)
 
 ## Verify (this module only)
 ```

@@ -11,9 +11,8 @@ import com.vayunmathur.library.image.fetchers.BitmapFetcher
 import com.vayunmathur.library.image.fetchers.ByteArrayFetcher
 import com.vayunmathur.library.image.fetchers.ContentResolverFetcher
 import com.vayunmathur.library.image.fetchers.FetchResult
-import com.vayunmathur.library.image.fetchers.FileFetcher
 import com.vayunmathur.library.image.fetchers.Fetcher
-import com.vayunmathur.library.image.fetchers.HttpFetcher
+import com.vayunmathur.library.image.fetchers.FileFetcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -62,7 +61,13 @@ class ImageLoader private constructor(
             }
         }
 
-        internal fun setDefault(loader: ImageLoader) {
+        /**
+         * Replaces the process-wide default, e.g. with a loader that has a
+         * remote source registered (see [Builder.remote]). Public so network
+         * apps can opt into HTTP(S) image loading; offline apps never call it
+         * and keep the local-only default (#884).
+         */
+        fun setDefault(loader: ImageLoader) {
             singleton = loader
         }
     }
@@ -351,11 +356,19 @@ class ImageLoader private constructor(
         data object PendingBytes : FetchOutcome
     }
 
+    /**
+     * HTTP(S) is deliberately NOT in the defaults: this module is permission-free
+     * and offline apps (pdf, music, notes, …) must gain no network permission
+     * from it. Network apps opt in per call site via [remote], handing the
+     * loader a fetch function they build from `NetworkClient` — so the HTTP
+     * transport lives in the app, not in a library-to-library edge (#884).
+     */
     class Builder(private val context: Context) {
         private var memoryCacheInstance: MemoryCache? = null
         private var diskCacheInstance: DiskCache? = null
         private var respectCacheHeaders: Boolean = true
         private val extraFetchers: MutableList<Fetcher> = mutableListOf()
+        private var remoteFetch: (suspend (data: Any?, context: Context) -> FetchResult?)? = null
 
         inner class ComponentsBuilder {
             fun add(factory: Any): ComponentsBuilder {
@@ -400,6 +413,29 @@ class ImageLoader private constructor(
             return this
         }
 
+        /**
+         * Opt-in remote (HTTP/S) source for network apps.
+         *
+         * The function runs inside the fetcher chain like any [Fetcher]: return
+         * null for data it does not handle so the local fetchers still apply.
+         * The app builds it from `NetworkClient` (it already depends on
+         * `:library:network` and declares INTERNET itself), e.g.:
+         *
+         * ```
+         * ImageLoader.Builder(context)
+         *     .remote { data, _ -> RemoteImageFetchers.network(data) }
+         *     .build()
+         * ```
+         *
+         * Without it, remote URLs resolve to "Unable to fetch data" instead of
+         * silently hitting the network — which is what keeps offline consumers
+         * of this module permission-free (#884).
+         */
+        fun remote(fetch: suspend (data: Any?, context: Context) -> FetchResult?): Builder {
+            remoteFetch = fetch
+            return this
+        }
+
         fun build(): ImageLoader {
             val mem = memoryCacheInstance ?: MemoryCache.Builder().build()
             val disk = diskCacheInstance ?: try {
@@ -413,9 +449,19 @@ class ImageLoader private constructor(
                 FileFetcher(),
                 AssetFetcher(),
                 ContentResolverFetcher(),
-                HttpFetcher(),
             )
-            val allFetchers = extraFetchers + defaultFetchers
+            val remote = remoteFetch?.let {
+                object : Fetcher {
+                    override suspend fun fetch(data: Any?, context: Context): FetchResult? =
+                        it(data, context)
+                }
+            }
+            // Remote first: a remote fetcher returns null for local data, and a
+            // local fetcher never claims an http(s) URL, so order between the two
+            // groups does not change what resolves — but trying the explicit
+            // opt-in before the defaults keeps a network failure (throw) from
+            // being masked by a later fetcher's null.
+            val allFetchers = listOfNotNull(remote) + extraFetchers + defaultFetchers
 
             return ImageLoader(
                 appContext = context.applicationContext,

@@ -29,11 +29,11 @@ Monorepo: ~100 Gradle modules + Rust workspace. Do scoped work only.
 | :--- | :--- | :--- |
 | base | `library/` | nav keys, `AssistantIntent`, IPC DTOs (`library.intents.<app>`), `RoomRepository` base |
 | ui | `library/ui/` | `Icons.kt` (ONLY `Icon()`/`painterResource()` allowed), `AppScaffold` family, `DynamicTheme`, messenger/`AppMessages`, motion helpers |
-| network | `library/network/` | `NetworkClient`, pinned CAs in `assets/ca/`, `TrustBundle` (FIRST_PARTY/STANDARD/EXTENDED/SYSTEM/ESIM) |
+| network | `library/network/` | `NetworkClient`, pinned CAs in `assets/ca/`, `TrustBundle` (FIRST_PARTY/STANDARD/EXTENDED/SYSTEM/ESIM), `OfflineAware` banner |
 | room | `library/room/` | Room 3 + SQLCipher (`implementRoom(libs)`) |
 | map / ml / ocr | `library/map/`, `library/ml/`, `library/ocr/` | vector maps (INTERNET itself) / inference / OCR |
-| image/media | `library/image/`, `library/media/` | image loading / AV playback |
-| e2ee-p2p | `library/e2ee-p2p/` | E2EE, p2p |
+| image/media | `library/image/`, `library/media/` | image loading (offline-local; network apps opt into HTTP via `Builder.remote()` with a `NetworkClient` fetch fn) / AV playback |
+| e2ee-p2p | `library/e2ee-p2p/` | E2EE, p2p, `Hkdf` |
 | widgets/work | `library/widgets/`, `library/work/` | Glance widgets / WorkManager |
 | biometric/ink | `library/biometric/`, `library/ink/` | biometric / stylus ink |
 | downloadservice | `library/downloadservice/` | foreground downloads (INTERNET itself) |

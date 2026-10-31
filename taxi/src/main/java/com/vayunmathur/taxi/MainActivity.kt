@@ -8,11 +8,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import com.vayunmathur.library.image.ImageLoader
 import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.library.network.TrustBundle
 import com.vayunmathur.library.ui.MaActivity
 import com.vayunmathur.library.util.IntentLauncher
 import com.vayunmathur.taxi.data.BookingTrip
+import com.vayunmathur.taxi.data.RemoteImageFetchers
 import com.vayunmathur.taxi.ipc.RideHandoffContract
 import com.vayunmathur.taxi.notifications.RideLiveUpdate
 
@@ -38,6 +40,12 @@ class MainActivity : MaActivity() {
 
     override fun onCreateBeforeContent() {
         NetworkClient.init(this, TrustBundle.STANDARD)
+        // Driver photos load over HTTP(S) through the shared image pipeline;
+        // the fetch function is built here from NetworkClient so no
+        // library-to-library edge is needed (#884).
+        ImageLoader.setDefault(
+            ImageLoader.Builder(this).remote(RemoteImageFetchers::network).build(),
+        )
         intentLauncher = IntentLauncher(this)
 
         trackRideId.value = intent.trackRideIdOrNull()

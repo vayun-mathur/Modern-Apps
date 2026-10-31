@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- No permissions by design: this module loads local data only. Network apps
+     opt into HTTP(S) via ImageLoader.Builder.remote(), so offline apps can
+     consume this pipeline without gaining INTERNET. Network apps declare
+     INTERNET themselves and pass a NetworkClient-backed fetch function. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
