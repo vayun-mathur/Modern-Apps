@@ -109,11 +109,13 @@ private fun ContactViewModel.ContactDraft.withListFields(
     commPref = details?.commPref,
 )
 
+// An existing contact keeps its own account even when that is on-device (null); only a new
+// contact falls back to the last account picked in the add screen.
 private fun ContactViewModel.draftAccountName(contact: Contact?): String =
-    contact?.accountName ?: lastSelectedAccountState.value?.name ?: ""
+    if (contact != null) contact.accountName.orEmpty() else lastSelectedAccountState.value?.name.orEmpty()
 
 private fun ContactViewModel.draftAccountType(contact: Contact?): String =
-    contact?.accountType ?: lastSelectedAccountState.value?.type ?: ""
+    if (contact != null) contact.accountType.orEmpty() else lastSelectedAccountState.value?.type.orEmpty()
 
 private fun ContactViewModel.draftPhoneNumbers(
     details: ContactDetails?,
@@ -290,20 +292,26 @@ private const val PHOTO_JPEG_QUALITY = 100
 /**
  * Persists the current draft via the unified save path.
  * SIM vs device routing is handled by [saveContact] based on draft.accountType.
+ * [onResult] receives the saved contact's id, which differs from the edited one for SIM rows.
  */
-fun ContactViewModel.saveEditDraft(onResult: ((Boolean, String?) -> Unit)? = null) {
+fun ContactViewModel.saveEditDraft(onResult: ((Boolean, String?, Long?) -> Unit)? = null) {
     val draft = editDraftState.value ?: return
     // For SIM accounts, validate SIM limits: at least name or phone needed, and SIM can't store extra fields
     if (isSimAccountType(draft.accountType) && !hasSimNameOrPhone(draft)) {
         val message = getApplication<Application>().getString(R.string.sim_name_or_phone_required)
-        onResult?.invoke(false, message)
+        onResult?.invoke(false, message, null)
         return
     }
     val newContact = buildContactFromDraft(draft)
     viewModelScope.launch {
         val ok = withContext(Dispatchers.IO) { persistContact(newContact) }
+        val savedId = when {
+            !ok -> null
+            isSimAccountType(newContact.accountType) -> findSavedSimContactId(newContact)
+            else -> newContact.id.takeIf { it != 0L }
+        }
         if (ok) clearEditDraft()
-        onResult?.invoke(ok, null)
+        onResult?.invoke(ok, null, savedId)
     }
 }
 

@@ -32,6 +32,28 @@ internal suspend fun ContactViewModel.persistSimContact(
     return ok
 }
 
+/**
+ * Id of the SIM contact just written from [contact], read from the post-save sync.
+ * SIM ids hash the row's contents ([SimContactsDataSource.syntheticIdFor]), so every edit
+ * changes them. Falls back to number-only, then name-only, since cards may truncate names.
+ */
+internal fun ContactViewModel.findSavedSimContactId(
+    contact: com.vayunmathur.contacts.data.Contact
+): Long? {
+    val subId = contact.accountName?.toIntOrNull()?.toString()
+    val name = simPersistName(contact)
+    val number = contact.details.phoneNumbers.firstOrNull()?.number?.trim().orEmpty()
+    val candidates = allContactsState.value.filter {
+        isSimAccountType(it.accountType) && (subId == null || it.accountName == subId)
+    }
+    fun numberOf(c: com.vayunmathur.contacts.data.Contact) =
+        c.details.phoneNumbers.firstOrNull()?.number?.trim().orEmpty()
+    val match = candidates.firstOrNull { it.name.value.trim() == name && numberOf(it) == number }
+        ?: candidates.firstOrNull { number.isNotEmpty() && numberOf(it) == number }
+        ?: candidates.firstOrNull { name.isNotEmpty() && it.name.value.trim() == name }
+    return match?.id
+}
+
 internal fun ContactViewModel.simPersistName(
     contact: com.vayunmathur.contacts.data.Contact
 ): String =

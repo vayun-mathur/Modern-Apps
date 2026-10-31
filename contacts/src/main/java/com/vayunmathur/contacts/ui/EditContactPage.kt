@@ -97,9 +97,19 @@ fun EditContactPage(backStack: NavBackStack<Route>, viewModel: ContactViewModel,
             Button(onClick = {
                 if (isSaving) return@Button
                 isSaving = true
-                viewModel.saveEditDraft { ok, err ->
+                viewModel.saveEditDraft { ok, err, savedId ->
                     isSaving = false
-                    if (ok) onExit() else saveError = err ?: context.getString(R.string.save_failed)
+                    if (ok) {
+                        // A saved SIM contact comes back under a new id; repoint the details
+                        // page underneath so it shows the edit instead of "not found"/stale data.
+                        if (contactId != null && savedId != null && savedId != contactId) {
+                            val idx = backStack.backStack.lastIndexOf(Route.ContactDetail(contactId))
+                            if (idx >= 0) backStack.set(idx, Route.ContactDetail(savedId))
+                        }
+                        onExit()
+                    } else {
+                        saveError = err ?: context.getString(R.string.save_failed)
+                    }
                 }
             }) {
                 Text(stringResource(UiR.string.save))
