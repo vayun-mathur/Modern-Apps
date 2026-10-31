@@ -163,3 +163,28 @@ private suspend fun ContactViewModel.migrateNoYearEventDatesInternal() {
     app.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
 }
 
+/**
+ * One-time rewrite of the "Show birthdays in calendar" calendar from
+ * local-midnight rows to UTC-midnight all-day rows (see issue #859):
+ * birthdays synced before the writer fix render a day early while DST is
+ * in effect. [CalendarSyncHelper.syncAll] already wipes and re-inserts the
+ * whole calendar, so running it once repairs every stale row; the flag
+ * keeps it to a single launch. Skipped (flag unset) while birthday sync
+ * is off — enabling sync runs the same full rewrite through the fixed
+ * writer anyway.
+ *
+ * Broad catch is deliberate: provider writes fail with OEM-specific
+ * RuntimeExceptions and a best-effort migration must not break contact load.
+ */
+@Suppress("TooGenericExceptionCaught")
+internal suspend fun ContactViewModel.migrateBirthdayCalendarToUtc() {
+    try {
+        if (dataStore.getBoolean("birthday_calendar_utc_migrated", false)) return
+        if (!dataStore.getBoolean("calendar_sync_enabled", false)) return
+        CalendarSyncHelper.syncAll(getApplication<Application>())
+        dataStore.setBoolean("birthday_calendar_utc_migrated", true)
+    } catch (e: Exception) {
+        Log.status("ContactViewModel", "Error migrating birthday calendar", e)
+    }
+}
+

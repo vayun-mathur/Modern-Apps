@@ -230,8 +230,11 @@ private fun EditFormSnapshot.anchoredOn(seriesStartDate: LocalDate, occurrenceDa
 }
 
 private fun occurrenceDateOf(series: Event, begin: Long): LocalDate {
-    val zone = runCatching { TimeZone.of(series.timezone) }.getOrNull()
-        ?: TimeZone.currentSystemDefault()
+    // All-day occurrences are UTC-midnight wall dates: resolve in UTC so a
+    // legacy local-zone row cannot shift the day across midnight.
+    val zone = if (series.allDay) TimeZone.UTC
+        else runCatching { TimeZone.of(series.timezone) }.getOrNull()
+            ?: TimeZone.currentSystemDefault()
     return Instant.fromEpochMilliseconds(begin).toLocalDateTime(zone).date
 }
 

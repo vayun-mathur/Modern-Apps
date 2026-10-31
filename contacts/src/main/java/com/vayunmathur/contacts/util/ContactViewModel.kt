@@ -383,6 +383,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun refreshContactsFromSystem() {
         val app = getApplication<Application>()
         migrateNoYearEventDates()
+        migrateBirthdayCalendarToUtc()
         val device = com.vayunmathur.contacts.data.Contact.getAllContacts(app)
         val sim = SimContactsDataSource.simContactsAsContacts(app)
         allContactsState.value = device + sim

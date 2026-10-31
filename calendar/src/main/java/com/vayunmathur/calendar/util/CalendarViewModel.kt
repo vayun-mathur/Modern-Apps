@@ -412,7 +412,7 @@ class CalendarViewModel(application: Application) :
             deleteEventSeries(eventId)
             return
         }
-        val zone = TimeZone.of(event.timezone)
+        val zone = if (event.allDay) TimeZone.UTC else TimeZone.of(event.timezone)
         val instanceDate = Instant.fromEpochMilliseconds(instanceBeginTime)
             .toLocalDateTime(zone).date
         if (event.rdate.contains(instanceDate)) {

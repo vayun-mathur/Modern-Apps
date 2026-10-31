@@ -29,17 +29,26 @@ data class Instance(
     val exdate: List<LocalDate> = emptyList()
 ) {
 
+    /**
+     * Zone this instance's wall time displays in. All-day times always
+     * resolve in UTC: the stored zone of a legacy local-midnight row must
+     * not move the wall date across the midnight boundary at render time.
+     * Timed instances display in the system zone.
+     */
+    private fun displayZone(): TimeZone =
+        if (allDay) TimeZone.UTC else TimeZone.currentSystemDefault()
+
     val startDateTimeDisplay: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(TimeZone.of(timezone))
+        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(displayZone())
 
     val endDateTimeDisplay: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.of(timezone))
+        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(displayZone())
 
     val startDateTime: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(displayZone(allDay))
+        get() = Instant.fromEpochMilliseconds(begin).toLocalDateTime(displayZone())
 
     val endDateTime: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(displayZone(allDay))
+        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(displayZone())
 
 
     val spanDays: List<LocalDate>
@@ -72,8 +81,8 @@ data class Instance(
                     ?: window.firstOrNull { it.eventID == eventId }
             }.getOrNull()
         }
-        /** Zone an instance's wall time displays in: UTC for all-day, system default otherwise. */
-        private fun displayZone(allDay: Boolean): TimeZone =
+        /** Zone a timed instance's wall time displays in (all-day uses UTC; see above). */
+        private fun companionDisplayZone(allDay: Boolean): TimeZone =
             if (allDay) TimeZone.UTC else TimeZone.currentSystemDefault()
         /**
          * Instances between [startTime] and [endTime] whose event still exists and
@@ -133,7 +142,13 @@ data class Instance(
                             val start = it.getLong(beginIdx)
                             val end = it.getLong(endIdx)
                             val tz = runCatching {
-                                TimeZone.of(it.getStringOrNull(tzIdx) ?: TimeZone.currentSystemDefault().id)
+                                // All-day instants are UTC-midnight wall dates: resolve
+                                // the stored zone in UTC so a legacy local-zone row
+                                // cannot shift the parsed RRULE/day across midnight.
+                                if (it.getInt(allDayIdx) > 0) TimeZone.UTC
+                                else TimeZone.of(
+                                    it.getStringOrNull(tzIdx) ?: TimeZone.currentSystemDefault().id
+                                )
                             }.getOrDefault(TimeZone.currentSystemDefault())
                             val timezone = tz.id
                             val allDay = it.getInt(allDayIdx) > 0

@@ -9,14 +9,14 @@ import android.net.Uri
 import android.provider.CalendarContract
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.contacts.R
+import com.vayunmathur.contacts.data.ALL_DAY_EVENT_TIMEZONE
 import com.vayunmathur.contacts.data.CDKEvent
 import com.vayunmathur.contacts.data.Contact
+import com.vayunmathur.contacts.data.allDayEventEndMillis
+import com.vayunmathur.contacts.data.allDayEventStartMillis
 import com.vayunmathur.contacts.data.hasYear
 import com.vayunmathur.library.ui.R as UiR
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atTime
-import kotlinx.datetime.toInstant
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.vayunmathur.contacts.data.Event as ContactEvent
@@ -26,10 +26,7 @@ object CalendarSyncHelper {
     private const val ACCOUNT_TYPE = "com.vayunmathur.contacts"
     private const val CALENDAR_NAME = "Contacts"
     private const val CALENDAR_COLOR_ARGB = 0xFF4285F4
-    private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
     private const val NO_YEAR_ANCHOR_YEAR = 2000
-    private const val MIDNIGHT_HOUR = 0
-    private const val MIDNIGHT_MINUTE = 0
     
     private val syncMutex = Mutex()
 
@@ -136,9 +133,12 @@ object CalendarSyncHelper {
                 CalendarContract.Calendars.CAL_ACCESS_READ
             )
             put(CalendarContract.Calendars.SYNC_EVENTS, 1)
+            // UTC: every event this calendar holds is an all-day birthday or
+            // anniversary stored at UTC midnight, so the calendar zone stays
+            // fixed instead of tracking the device zone across DST changes.
             put(
                 CalendarContract.Calendars.CALENDAR_TIME_ZONE,
-                TimeZone.currentSystemDefault().id
+                ALL_DAY_EVENT_TIMEZONE
             )
         }
 
@@ -231,7 +231,6 @@ object CalendarSyncHelper {
         eventUri: android.net.Uri
     ): List<ContentProviderOperation> {
         val originalDate = dateEvent.startDate
-        val deviceTimeZone = TimeZone.currentSystemDefault()
 
         val eventTypeStr = if (dateEvent.type == CDKEvent.TYPE_BIRTHDAY) {
             context.getString(R.string.birthday)
@@ -259,20 +258,23 @@ object CalendarSyncHelper {
             return emptyList()
         }
 
-        // All-day events must be anchored at local midnight in the device timezone.
-        // Using 00:00 UTC shifts the displayed day for negative-offset zones (US).
-        val startMillis = anchorDate.atTime(MIDNIGHT_HOUR, MIDNIGHT_MINUTE)
-            .toInstant(deviceTimeZone)
-            .toEpochMilliseconds()
+        // All-day rows must sit on UTC midnight with EVENT_TIMEZONE "UTC":
+        // the provider treats them as timezone-independent wall dates only
+        // in that form. Anchoring at local midnight instead bakes the sync
+        // moment's UTC offset into DTSTART, and expanding the yearly RRULE
+        // under a different DST regime slides the instance a day early
+        // (birthdays in April-October shifted for US/EU zones). Converting
+        // through UTC keeps the instant identical year-round.
+        val startMillis = anchorDate.allDayEventStartMillis()
 
         return listOf(
             ContentProviderOperation.newInsert(eventUri)
                 .withValue(CalendarContract.Events.CALENDAR_ID, calendarId)
                 .withValue(CalendarContract.Events.TITLE, title)
                 .withValue(CalendarContract.Events.DTSTART, startMillis)
-                .withValue(CalendarContract.Events.DTEND, startMillis + MILLIS_PER_DAY)
+                .withValue(CalendarContract.Events.DTEND, allDayEventEndMillis(startMillis))
                 .withValue(CalendarContract.Events.ALL_DAY, 1)
-                .withValue(CalendarContract.Events.EVENT_TIMEZONE, deviceTimeZone.id)
+                .withValue(CalendarContract.Events.EVENT_TIMEZONE, ALL_DAY_EVENT_TIMEZONE)
                 .withValue(CalendarContract.Events.RRULE, "FREQ=YEARLY")
                 .withValue(CalendarContract.Events.SYNC_DATA1, contact.id.toString())
                 .build()

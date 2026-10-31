@@ -62,11 +62,15 @@ data class Event(
             else date.toIcalUtcDateTime(startDateTimeDisplay.time, TimeZone.of(timezone))
         }
 
+    /** Zone wall times display in: UTC for all-day, the event zone otherwise. */
+    private fun displayZone(): TimeZone =
+        if (allDay) TimeZone.UTC else TimeZone.of(timezone)
+
     val startDateTimeDisplay: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(start).toLocalDateTime(TimeZone.of(timezone))
+        get() = Instant.fromEpochMilliseconds(start).toLocalDateTime(displayZone())
 
     val endDateTimeDisplay: LocalDateTime
-        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(TimeZone.of(timezone))
+        get() = Instant.fromEpochMilliseconds(end).toLocalDateTime(displayZone())
 
     fun toContentValues(calendarId: Long): ContentValues {
         val tz = if (allDay) "UTC" else timezone
@@ -199,7 +203,11 @@ data class Event(
             val start = c.getLong(cols.start)
             val allDay = c.getInt(cols.allDay) == 1
             val tz = runCatching {
-                TimeZone.of(c.getStringOrNull(cols.tz) ?: TimeZone.currentSystemDefault().id)
+                // All-day instants are UTC-midnight wall dates: resolve the
+                // stored zone in UTC so a legacy local-zone row cannot shift
+                // the parsed RRULE/EXDATE/RDATE days across midnight.
+                if (allDay) TimeZone.UTC
+                else TimeZone.of(c.getStringOrNull(cols.tz) ?: TimeZone.currentSystemDefault().id)
             }.getOrDefault(TimeZone.currentSystemDefault())
             val end = resolveEndMillis(c, cols, start)
             return Event(

@@ -36,7 +36,9 @@ fun writeIcs(
 }
 
 private fun Writer.writeEvent(event: Event, index: Int, now: Long) {
-    val zone = TimeZone.of(event.timezone)
+    // All-day dates already resolve in UTC (see startDateTimeDisplay), so the
+    // export zone only matters for timed occurrences.
+    val zone = if (event.allDay) TimeZone.UTC else TimeZone.of(event.timezone)
 
     fold("BEGIN:VEVENT")
     fold("UID:${event.id ?: "generated-$index"}@$UID_DOMAIN")
