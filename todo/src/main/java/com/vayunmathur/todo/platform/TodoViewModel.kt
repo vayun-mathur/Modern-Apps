@@ -39,7 +39,7 @@ class TodoViewModel(
     }
 
     fun toggleDone(todo: Todo) {
-        viewModelScope.launch(io) { repository.upsert(todo.copy(done = !todo.done)) }
+        viewModelScope.launch(io) { repository.setDone(todo, !todo.done) }
     }
 
     fun delete(todo: Todo) {

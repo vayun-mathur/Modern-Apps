@@ -29,6 +29,8 @@ import com.vayunmathur.library.ui.rememberDatePickerState
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.platform.TodoActions
 import com.vayunmathur.todo.platform.TodoUiState
+import com.vayunmathur.todo.domain.DueDates
+import kotlinx.datetime.TimeZone
 import kotlin.time.Instant
 import com.vayunmathur.library.ui.R as UiR
 
@@ -97,13 +99,16 @@ fun TodoDetailScreen(
     }
 
     if (showDuePicker) {
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = state.dueAt)
+        val zone = TimeZone.currentSystemDefault()
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = state.dueAt?.let { DueDates.toPickerMillis(it, zone) },
+        )
         DatePickerDialog(
             onDismissRequest = { showDuePicker = false },
             confirmButton = {
                 Button(
                     onClick = {
-                        actions.setDueAt(pickerState.selectedDateMillis)
+                        actions.setDueAt(pickerState.selectedDateMillis?.let { DueDates.fromPickerMillis(it, zone) })
                         showDuePicker = false
                     },
                     enabled = pickerState.selectedDateMillis != null,

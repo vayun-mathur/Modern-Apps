@@ -16,7 +16,12 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementRoom(libs)
     implementation(project(":library:room"))
+    testImplementation(libs.androidx.sqlite.bundled.jvm)
 }

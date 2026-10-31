@@ -164,9 +164,17 @@ object TodoIpcSink {
         }
     }
 
-    /** Bulk upsert for merge results; one IPC call per row like the single form. */
+    /** Bulk upsert for merge results: one IPC call, applied in one provider transaction. */
     fun upsertAll(context: Context, vaultId: String, todos: List<RemoteTodo>) {
-        for (todo in todos) upsert(context, vaultId, todo)
+        if (todos.isEmpty()) return
+        try {
+            context.contentResolver.bulkInsert(
+                upsertUri(vaultId),
+                todos.map { ContentValues().apply { put(COL_PAYLOAD_JSON, toRelayJson(it)) } }.toTypedArray(),
+            )
+        } catch (expected: Exception) {
+            Log.error(TAG, "upsertAll failed", expected)
+        }
     }
 
     /**

@@ -33,6 +33,7 @@ import com.vayunmathur.everysync.sync.PasswordRelayStore
 import com.vayunmathur.everysync.sync.RelayMerge
 import com.vayunmathur.everysync.sync.RelayPlan
 import com.vayunmathur.everysync.sync.RelayStore
+import com.vayunmathur.everysync.sync.TodoListRelayStore
 import com.vayunmathur.everysync.sync.TodoRelayStore
 import com.vayunmathur.everysync.sync.VaultKeys
 import com.vayunmathur.everysync.sync.VaultRoster
@@ -41,9 +42,11 @@ import com.vayunmathur.everysync.sync.adapters.ContactKind
 import com.vayunmathur.everysync.sync.adapters.NoteKind
 import com.vayunmathur.everysync.sync.adapters.PasswordKind
 import com.vayunmathur.everysync.sync.adapters.TodoKind
+import com.vayunmathur.everysync.sync.adapters.TodoListKind
 import com.vayunmathur.everysync.data.sink.NoteSink
 import com.vayunmathur.everysync.data.sink.PasswordSink
 import com.vayunmathur.everysync.data.sink.TodoIpcSink
+import com.vayunmathur.everysync.data.sink.TodoListIpcSink
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.ui.IconProvider
 import kotlin.io.encoding.Base64
@@ -216,6 +219,16 @@ class E2eeProvider : SyncProvider {
             kind = TodoKind,
             store = TodoRelayStore(context, vault.vaultId),
         )
+        if (TodoListIpcSink.isSupported(context, vault.vaultId)) {
+            driveMerge(
+                context = context,
+                vault = vault,
+                channelType = CH_TODO_LISTS,
+                direction = direction,
+                kind = TodoListKind,
+                store = TodoListRelayStore(context, vault.vaultId),
+            )
+        }
     }
 
     /**
@@ -395,6 +408,8 @@ class E2eeProvider : SyncProvider {
         const val CH_PASSWORDS = "passwords"
         const val CH_NOTES = "notes"
         const val CH_TODOS = "todos"
+        /** Lists ride their own channel beside [CH_TODOS] under the same vault. */
+        const val CH_TODO_LISTS = "todolists"
         private const val CH_RECORDS = "records"
         private val json = Json { ignoreUnknownKeys = true }
 
@@ -448,6 +463,7 @@ class E2eeProvider : SyncProvider {
                 DataType.TODOS ->
                     for (meta in VaultStore.getAll(context).filter { it.dataType == rt }) {
                         TodoIpcSink.purge(context, accountName, meta.vaultId)
+                        TodoListIpcSink.purge(context, meta.vaultId)
                     }
             }
         }

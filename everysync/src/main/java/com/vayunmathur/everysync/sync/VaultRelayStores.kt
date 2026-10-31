@@ -6,16 +6,19 @@ import com.vayunmathur.everysync.data.RemoteEvent
 import com.vayunmathur.everysync.data.RemoteNote
 import com.vayunmathur.everysync.data.RemotePassword
 import com.vayunmathur.everysync.data.RemoteTodo
+import com.vayunmathur.everysync.data.RemoteTodoList
 import com.vayunmathur.everysync.data.sink.CalendarSink
 import com.vayunmathur.everysync.data.sink.ContactsSink
 import com.vayunmathur.everysync.data.sink.NoteSink
 import com.vayunmathur.everysync.data.sink.PasswordSink
 import com.vayunmathur.everysync.data.sink.TodoIpcSink
+import com.vayunmathur.everysync.data.sink.TodoListIpcSink
 import com.vayunmathur.everysync.sync.adapters.CalendarKind
 import com.vayunmathur.everysync.sync.adapters.ContactKind
 import com.vayunmathur.everysync.sync.adapters.NoteKind
 import com.vayunmathur.everysync.sync.adapters.PasswordKind
 import com.vayunmathur.everysync.sync.adapters.TodoKind
+import com.vayunmathur.everysync.sync.adapters.TodoListKind
 
 /**
  * [RelayStore] implementations over the on-device sinks, one per vault type.
@@ -253,4 +256,40 @@ class TodoRelayStore(
 
     override fun serializeForRemote(entity: RemoteTodo): String =
         TodoKind.toJson(entity)
+}
+
+class TodoListRelayStore(
+    private val context: Context,
+    private val vaultId: String,
+) : RelayStore<RemoteTodoList> {
+    override val listLocalOk: Boolean
+        get() = TodoListIpcSink.lastListLocalOk
+
+    override suspend fun listLocal(): List<RemoteTodoList> =
+        TodoListIpcSink.listLocal(context, vaultId)
+
+    override suspend fun upsertLocal(items: List<RemoteTodoList>) {
+        TodoListIpcSink.upsertAll(context, vaultId, items)
+    }
+
+    override suspend fun deleteLocal(items: List<RemoteTodoList>) {
+        TodoListIpcSink.deleteAll(context, vaultId, items.map { it.uid })
+    }
+
+    override suspend fun loadBaseline(): Map<String, RelaySnapshot> =
+        VaultBaseline.load(context, vaultId, TodoListKind.kind)
+
+    override suspend fun saveSnapshots(snapshots: List<RelaySnapshot>) {
+        VaultBaseline.save(context, vaultId, TodoListKind.kind, snapshots)
+    }
+
+    override suspend fun removeSnapshots(syncIds: List<String>) {
+        VaultBaseline.remove(context, vaultId, TodoListKind.kind, syncIds)
+    }
+
+    override fun parseRemote(json: String): RemoteTodoList? =
+        TodoListKind.fromJson(json)?.takeIf { it.uid.isNotBlank() }
+
+    override fun serializeForRemote(entity: RemoteTodoList): String =
+        TodoListKind.toJson(entity)
 }

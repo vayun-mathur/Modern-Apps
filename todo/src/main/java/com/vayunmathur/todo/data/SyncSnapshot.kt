@@ -24,5 +24,6 @@ data class SyncSnapshot(
 ) {
     companion object {
         const val KIND_TODO = "todo"
+        const val KIND_LIST = "todolist"
     }
 }

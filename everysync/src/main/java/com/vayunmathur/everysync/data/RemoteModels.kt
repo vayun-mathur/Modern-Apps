@@ -136,4 +136,43 @@ data class RemoteTodo(
     val deleted: Boolean = false,
     /** Last local-or-remote modification (epoch ms); drives relay LWW. */
     val updatedAt: Long = 0L,
+    // v3 fields. Defaults are omitted on encode, so a task that never sets one hashes
+    // exactly as it did before they existed. Mirror of todo's `RelayTodoJson`.
+    /** Parent task uid for a subtask. */
+    val parentUid: String? = null,
+    /** Owning list uid ([RemoteTodoList.uid]); null is the Inbox. */
+    val listUid: String? = null,
+    val section: String? = null,
+    val tags: List<String> = emptyList(),
+    /** 0 none, 1 highest … 4 lowest. */
+    val priority: Int = 0,
+    /** When false, [dueAt] is an exact instant rather than local midnight. */
+    val dueAllDay: Boolean = true,
+    val startAt: Long? = null,
+    /** RRULE-style repeat; `X-FROM=COMPLETION` marks after-completion repeats. */
+    val recurrence: String? = null,
+    val reminderAt: Long? = null,
+    val completedAt: Long? = null,
+    val estimateMinutes: Int? = null,
+    /** Uids of tasks that must be done first. */
+    val blockedBy: List<String> = emptyList(),
+)
+
+/**
+ * A todo list (project), synced on its own `todolists:<vaultId>` channel so builds that
+ * predate lists never mistake one for a task. Mirror of todo's `RelayTodoListJson`.
+ */
+@Serializable
+data class RemoteTodoList(
+    val uid: String,
+    val name: String = "",
+    /** ARGB, or null for the theme accent. */
+    val color: Int? = null,
+    val icon: String? = null,
+    /** Sort position; excluded from the merge hash. */
+    val position: Double = 0.0,
+    val sections: List<String> = emptyList(),
+    val createdAt: Long = 0L,
+    val deleted: Boolean = false,
+    val updatedAt: Long = 0L,
 )
