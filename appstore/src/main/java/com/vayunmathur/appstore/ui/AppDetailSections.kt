@@ -100,6 +100,7 @@ internal fun AppInstallActions(
                 stringResource(R.string.installed_2, state.installedInfo.versionName),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
         }
 
