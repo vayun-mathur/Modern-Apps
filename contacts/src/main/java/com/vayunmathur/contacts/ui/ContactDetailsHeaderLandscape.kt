@@ -55,7 +55,17 @@ internal fun ProfileNameColumn(
     startAligned: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        // The full-width FlowRow stretches this column, so wrap-content siblings (nickname,
+        // company) need the column itself to centre them; textAlign alone does nothing there.
+        horizontalAlignment = if (startAligned) {
+            androidx.compose.ui.Alignment.Start
+        } else {
+            androidx.compose.ui.Alignment.CenterHorizontally
+        },
+    ) {
+        // Composed
         // Composed from the structured name rather than the joined display name, so that each part can
         // travel to the field that owns it when this page morphs into the editor. A single Text could
         // only ever land in one of them.
