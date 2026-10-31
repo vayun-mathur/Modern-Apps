@@ -101,4 +101,16 @@ class LensSelectionLogicTest {
         assertEquals("1x", LensSelectionLogic.displayLabel(lens("wide", LensType.WIDE)))
         assertEquals(".5", LensSelectionLogic.displayLabel(lens("uw", LensType.ULTRA_WIDE, ratio = 0.5f)))
     }
+
+    @Test
+    fun gs6ProPickerLabelsReadPointFourPointFiveOne() {
+        // Murena GS6 Pro back triple (issue #876): pills must read ".4",
+        // ".5", "1x" — never duplicated "UW" buckets.
+        val family = listOf(
+            lens("0", LensType.ULTRA_WIDE, ratio = 0.4f).copy(focalLengthMm35Eq = 10.8f),
+            lens("1", LensType.ULTRA_WIDE, ratio = 0.5f).copy(focalLengthMm35Eq = 13.5f),
+            lens("2", LensType.WIDE).copy(focalLengthMm35Eq = 27f),
+        )
+        assertEquals(listOf(".4", ".5", "1x"), LensLabels.labelsFor(family))
+    }
 }

@@ -47,7 +47,9 @@ object LensSelectionLogic {
 
     /**
      * Display label for a lens: 35mm-equivalent focal length ("24mm") when
-     * known, else the nominal zoom ratio ("0.5x"/"1x"/"3x").
+     * known, else the nominal zoom ratio ("0.5x"/"1x"/"3x"). Prefer
+     * [LensLabels.labelsFor] for picker pills (zoom-factor style); this stays
+     * for non-picker readouts and backward-compatible tests.
      */
     fun displayLabel(lens: PhysicalLens): String {
         val mm = lens.focalLengthMm35Eq

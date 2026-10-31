@@ -8,6 +8,7 @@ import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import com.vayunmathur.camera.domain.LensFacing
+import com.vayunmathur.camera.domain.LensLabels
 import com.vayunmathur.camera.domain.LensSelectionLogic
 import com.vayunmathur.camera.domain.LensType
 import com.vayunmathur.camera.domain.PhysicalLens
@@ -42,7 +43,13 @@ fun Int.toLensFacing(): LensFacing? = when (this) {
 fun enumerateLenses(provider: ProcessCameraProvider): List<PhysicalLens> {
     val raws = provider.availableCameraInfos.mapNotNull { info -> readRawLens(info) }
 
-    return LensFacing.entries.flatMap { facing -> buildFamily(facing, raws) }
+    // Logical multi-camera (e.g. a UW stop reachable via the wide camera's
+    // zoom range) plus same-physical-lens duplicates would each render an
+    // extra identical pill — `buildFamily` handles the former per facing,
+    // and the dedupe collapses the latter (issue #876).
+    return LensLabels.dedupe(
+        LensFacing.entries.flatMap { facing -> buildFamily(facing, raws) }
+    )
 }
 
 /** Full-frame diagonal (mm) of 35mm film; wide-reference eq focal length + family ratios. */
@@ -88,7 +95,14 @@ private fun readRawLensOrThrow(info: androidx.camera.core.CameraInfo): RawLens? 
     val mono = cam2.getCameraCharacteristic(
         CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT
     ) == CameraMetadata.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_MONO
-    return RawLens(cam2.getCameraId(), facing, focal, eq35, mono)
+    // Logical multi-camera reach: the UW stop served through the wide logical
+    // camera's zoom range (intrinsic ratio < 1), so the picker can skip a
+    // duplicate UW pill. Unknown on most HALs — the eq-35mm ratio stays primary.
+    val intrinsic = info.intrinsicZoomRatio.takeUnless {
+        it == androidx.camera.core.CameraInfo.INTRINSIC_ZOOM_RATIO_UNKNOWN
+    }
+    val zoomFloor = info.zoomState.value?.minZoomRatio
+    return RawLens(cam2.getCameraId(), facing, focal, eq35, mono, intrinsic, zoomFloor)
 }
 
 private data class RawLens(
@@ -97,6 +111,8 @@ private data class RawLens(
     val focalMm: Float,
     val eq35Mm: Float?,
     val mono: Boolean,
+    val intrinsicZoomRatio: Float?,
+    val minZoomRatio: Float?,
 )
 
 /** Classifies one facing family into [PhysicalLens] entries with fallback priorities. */
@@ -110,7 +126,15 @@ private fun buildFamily(facing: LensFacing, raws: List<RawLens>): List<PhysicalL
     }
         ?: nonMono.getOrNull(nonMono.size / 2)
         ?: family.first()
-    return family.map { raw -> classifyLens(raw, reference, facing) }
+    val classified = family.map { raw -> classifyLens(raw, reference, facing) }
+    // Logical multi-camera dedup: when the wide logical camera already
+    // reaches a UW stop via zoom-out (min zoom at/below its factor),
+    // a separate UW pill would duplicate the zoom bar's sub-1x range —
+    // drop it (issue #876).
+    val wideFloor = classified.firstOrNull {
+        it.lensType == LensType.WIDE || it.lensType == LensType.FRONT
+    }?.let { ref -> family.firstOrNull { it.id == ref.logicalCameraId }?.minZoomRatio }
+    return LensLabels.dropCoveredUltrawides(classified, wideFloor)
 }
 
 /** Classifies one raw lens against the family reference into a [PhysicalLens]. */
@@ -122,6 +146,7 @@ private fun classifyLens(raw: RawLens, reference: RawLens, facing: LensFacing): 
         facing = facing,
         focalLengthMm35Eq = raw.eq35Mm,
         nominalZoomRatio = raw.focalMm / reference.focalMm,
+        intrinsicZoomRatio = raw.intrinsicZoomRatio,
         fallbackPriority = priorityOf(type),
         labelKey = labelOf(type),
     )
@@ -249,7 +274,10 @@ fun CameraViewModel.bindWithFallback(
             first = false
             val camera = bind(lensSelector(facingInt, candidate))
             if (candidate != requested) {
-                Log.status("LensSelector", "Fell back to lens=${candidate?.labelKey} (requested=${requested?.labelKey})")
+                Log.status(
+                    "LensSelector",
+                    "Fell back to lens=${candidate?.labelKey} (requested=${requested?.labelKey})",
+                )
             }
             return candidate to camera
         } catch (e: IllegalStateException) {
