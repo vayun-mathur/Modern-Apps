@@ -6,7 +6,7 @@
 - Gradle: :sdk:openassistant / dir: sdk/openassistant/
 - Package roots present: (public assistant SDK — one package)
 - Entry files: OpenAssistant.kt (no MainActivity/Route — SDK)
-- Deps: :library
+- Deps: (none — SecureResultReceiver is owned by this module, #884)
 - Metadata: metadata_data/sdk-openassistant.md (absent — SDKs have none by design)
 - Rust: no / screenshotTest: no
 
