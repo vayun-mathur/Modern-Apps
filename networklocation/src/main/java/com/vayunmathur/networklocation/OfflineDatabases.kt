@@ -63,7 +63,7 @@ object OfflineDatabases {
         GEOCODER -> "6032d718e3553d4790c35339adaca3bc0f3087b5db59ba6838abaa8a376647b4"
         // A device that has a store counts it as installed and never refetches it, so new
         // content for a beacon store must ship under a new filename, not just a new hash.
-        WIFI -> "c8aa83f577d90d250d76912df2adde8a8e0d0bc0dcb4c87fe9e9916a59e822db"
+        WIFI -> "38ceeca09ee161a72444d5227318acdade364434e906e199a675311d0fe5f96a"
         CELL -> "831a0b961e0c37ba1b65f53bd79c70bba0fdb6698cae0cf5b6857042ab253ae7"
         else -> null
     }
