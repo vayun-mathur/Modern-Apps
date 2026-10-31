@@ -15,18 +15,19 @@ import com.vayunmathur.todo.platform.TodoViewModel
 
 /** Binds [TodoViewModel] and the nav back stack to the stateless [TodoListScreen]. */
 @Composable
-fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel) {
+fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel, onMenu: (() -> Unit)?) {
     val model by viewModel.model.collectAsStateWithLifecycle()
     val query by viewModel.searchQuery.collectAsStateWithLifecycle()
     val view by viewModel.view.collectAsStateWithLifecycle()
     val sort by viewModel.sort.collectAsStateWithLifecycle()
     val lists by viewModel.lists.collectAsStateWithLifecycle()
 
-    val actions = remember(backStack, viewModel) {
+    val actions = remember(backStack, viewModel, onMenu) {
         object : TodoListActions {
             override fun openTodo(id: Long) { backStack.add(Route.TodoDetail(id)) }
             override fun createTodo() { backStack.add(Route.TodoDetail(0, newSyncId())) }
             override fun setSearchQuery(query: String) = viewModel.setSearchQuery(query)
+            override fun openDrawer() { onMenu?.invoke() }
             override fun setSort(sort: SortMode) = viewModel.setSort(sort)
             override fun quickAdd(texts: List<String>) = viewModel.quickAdd(texts)
             override fun toggleDone(todo: Todo) = viewModel.toggleDone(todo)
@@ -51,7 +52,6 @@ fun TodoListPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel) {
             now = model.second,
         ),
         actions = actions,
-        extraActions = { TodoBackupButtons() },
-        showMenu = false,
+        showMenu = onMenu != null,
     )
 }

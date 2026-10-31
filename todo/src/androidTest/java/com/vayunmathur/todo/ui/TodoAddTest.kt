@@ -123,7 +123,7 @@ class TodoAddTest {
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val SHORT_TIMEOUT_MS = 5_000L
         private const val SAVE_SETTLE_MS = 1_000L
-        private const val SEARCH_PLACEHOLDER = "Search Inbox"
+        private const val SEARCH_PLACEHOLDER = "Search Today"
         private const val EDITOR_NOTES_LABEL = "Notes"
         private const val NO_DUE_DATE = "Due date"
         private const val ADD_DESCRIPTION = "Add"

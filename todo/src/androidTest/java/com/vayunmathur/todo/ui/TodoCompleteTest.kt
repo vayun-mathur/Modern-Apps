@@ -91,9 +91,10 @@ class TodoCompleteTest {
         Thread.sleep(SAVE_SETTLE_MS)
         device.pressBack()
 
+        // Done tasks collapse into the "Completed (n)" section under the open ones.
         assertNotNull(
-            "completed todo is not listed after returning",
-            device.wait(Until.findObject(By.text(TASK_TITLE)), CONTENT_TIMEOUT_MS),
+            "completed section is not shown after returning",
+            device.wait(Until.findObject(By.textStartsWith(COMPLETED_HEADER)), CONTENT_TIMEOUT_MS),
         )
         // Still alive in front: the process did not crash through the journey.
         assertEquals(packageName, device.currentPackageName)
@@ -135,7 +136,8 @@ class TodoCompleteTest {
         private const val GATE_TIMEOUT_MS = 5_000L
         private const val SHORT_TIMEOUT_MS = 5_000L
         private const val SAVE_SETTLE_MS = 1_000L
-        private const val SEARCH_PLACEHOLDER = "Search Inbox"
+        private const val COMPLETED_HEADER = "Completed ("
+        private const val SEARCH_PLACEHOLDER = "Search Today"
         private const val EDITOR_NOTES_LABEL = "Notes"
         private const val ADD_DESCRIPTION = "Add"
         private const val EDIT_TEXT_CLASS = "android.widget.EditText"

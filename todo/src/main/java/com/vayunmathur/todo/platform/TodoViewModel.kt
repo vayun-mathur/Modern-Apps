@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.vayunmathur.todo.data.Todo
 import com.vayunmathur.todo.data.TodoList
 import com.vayunmathur.todo.data.TodoRepository
+import com.vayunmathur.todo.data.TodoSettings
 import com.vayunmathur.todo.domain.QuickAddParser
 import com.vayunmathur.todo.domain.SortMode
 import com.vayunmathur.todo.domain.TodoListModel
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -30,6 +32,7 @@ import kotlinx.datetime.TimeZone
 class TodoViewModel(
     application: Application,
     private val repository: TodoRepository,
+    val settings: TodoSettings,
     private val savedState: SavedStateHandle,
 ) : AndroidViewModel(application) {
 
@@ -60,12 +63,45 @@ class TodoViewModel(
 
     private val params = combine(view, searchQuery, sort, clock) { v, q, s, now -> Params(v, q, s, now) }
 
-    val model: StateFlow<Pair<TodoListModel, Long>> = combine(todos, lists, params) { todos, lists, p ->
-        TodoQuery.build(TodoQuery.Input(todos, lists, p.view, p.query, p.sort, p.now, TimeZone.currentSystemDefault())) to p.now
+    val model: StateFlow<Pair<TodoListModel, Long>> = combine(todos, lists, params, settings.showCompleted) { todos, lists, p, showDone ->
+        val built = TodoQuery.build(TodoQuery.Input(todos, lists, p.view, p.query, p.sort, p.now, TimeZone.currentSystemDefault()))
+        (if (showDone) built else built.copy(completed = emptyList())) to p.now
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), TodoListModel() to System.currentTimeMillis())
+
+    /** Open-task counts per view, for the drawer badges. */
+    val counts: StateFlow<Map<TodoView, Int>> = combine(todos, lists, clock) { todos, lists, now ->
+        TodoQuery.counts(todos, lists, now, TimeZone.currentSystemDefault())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyMap())
+
+    val tags: StateFlow<List<String>> = todos.map { TodoQuery.allTags(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
     init {
         viewModelScope.launch(io) { repository.maintain() }
+        viewModelScope.launch {
+            if (!savedState.contains(KEY_VIEW)) savedState[KEY_VIEW] = settings.defaultView.first().key
+            if (!savedState.contains(KEY_SORT)) savedState[KEY_SORT] = settings.defaultSort.first().name
+        }
+    }
+
+    fun saveList(list: TodoList) {
+        viewModelScope.launch(io) {
+            val toSave = if (list.id == 0L) list.copy(position = repository.nextListPosition()) else list
+            repository.upsertList(toSave)
+        }
+    }
+
+    fun deleteList(list: TodoList) {
+        if (view.value == TodoView.InList(list.syncId)) setView(TodoView.Inbox)
+        viewModelScope.launch(io) { repository.tombstoneList(list) }
+    }
+
+    fun reorderLists(moved: List<TodoList>) {
+        viewModelScope.launch(io) { repository.upsertLists(moved) }
+    }
+
+    fun updateSettings(block: suspend TodoSettings.() -> Unit) {
+        viewModelScope.launch(io) { settings.block() }
     }
 
     fun setSearchQuery(query: String) {
@@ -96,19 +132,27 @@ class TodoViewModel(
 
     /** View context fills what the text left out: the open list, today's date, the tag. */
     private fun newTodo(p: QuickAddParser.Result, view: TodoView, now: Long, zone: TimeZone): Todo {
-        val dueAt = p.dueAt ?: if (view == TodoView.Today) DueDates.startOfDay(DueDates.localDate(now, zone), zone) else null
-        val tags = if (view is TodoView.Tagged && p.tags.none { it.equals(view.tag, true) }) p.tags + view.tag else p.tags
-        return Todo(
+        val base = templateFor(view, now, zone)
+        return base.copy(
             title = p.title.ifBlank { p.tokens.joinToString(" ") { it.text } },
-            dueAt = dueAt,
-            dueAllDay = p.dueAllDay,
+            dueAt = p.dueAt ?: base.dueAt,
+            dueAllDay = if (p.dueAt != null) p.dueAllDay else base.dueAllDay,
             recurrence = p.recurrence?.serialize(),
-            tags = tags,
-            priority = if (p.priority == 0 && view == TodoView.Priority) 1 else p.priority,
-            listSyncId = p.listSyncId ?: (view as? TodoView.InList)?.listSyncId,
+            tags = (base.tags + p.tags).distinctBy { it.lowercase() },
+            priority = if (p.priority != 0) p.priority else base.priority,
+            listSyncId = p.listSyncId ?: base.listSyncId,
             createdAt = now,
         )
     }
+
+    /** A blank task belonging to [view], so it shows up where it was created. */
+    private fun templateFor(view: TodoView, now: Long, zone: TimeZone): Todo = Todo(
+        dueAt = if (view == TodoView.Today) DueDates.startOfDay(DueDates.localDate(now, zone), zone) else null,
+        listSyncId = (view as? TodoView.InList)?.listSyncId,
+        tags = (view as? TodoView.Tagged)?.let { listOf(it.tag) }.orEmpty(),
+        priority = if (view == TodoView.Priority) 1 else Todo.PRIORITY_NONE,
+        createdAt = now,
+    )
 
     fun toggleDone(todo: Todo) {
         viewModelScope.launch(io) { repository.setDone(todo, !todo.done) }
@@ -140,11 +184,7 @@ class TodoViewModel(
     fun setPriority(todos: List<Todo>, priority: Int) = upsertAll(todos.map { it.copy(priority = priority) })
 
     fun openEditor(id: Long, newSyncId: String?): TodoEditor {
-        val currentView = view.value
-        val template = Todo(
-            listSyncId = (currentView as? TodoView.InList)?.listSyncId,
-            tags = (currentView as? TodoView.Tagged)?.let { listOf(it.tag) }.orEmpty(),
-        )
+        val template = templateFor(view.value, System.currentTimeMillis(), TimeZone.currentSystemDefault())
         return TodoEditor(repository, repository.appScope, id, newSyncId, template)
     }
 
@@ -155,8 +195,8 @@ class TodoViewModel(
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val TICK_MS = 60_000L
 
-        fun factory(application: Application, repository: TodoRepository) = viewModelFactory {
-            initializer { TodoViewModel(application, repository, createSavedStateHandle()) }
+        fun factory(application: Application, repository: TodoRepository, settings: TodoSettings) = viewModelFactory {
+            initializer { TodoViewModel(application, repository, settings, createSavedStateHandle()) }
         }
     }
 }

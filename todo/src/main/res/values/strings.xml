@@ -281,4 +281,41 @@
     <string name="duplicate">Duplicate</string>
     <!-- Dialog confirm button for a multi-choice dialog. Verb. -->
     <string name="done_action">Done</string>
+
+    <!-- Drawer section header for user lists. Noun, plural. -->
+    <string name="lists">Lists</string>
+    <!-- Drawer item / dialog title creating a list. Verb phrase. -->
+    <string name="new_list">New list</string>
+    <!-- List dialog title when editing. Verb phrase. -->
+    <string name="edit_list">Edit list</string>
+    <!-- List dialog: name field label. Noun. -->
+    <string name="list_name">Name</string>
+    <!-- List dialog: sections header. Noun, plural. -->
+    <string name="sections">Sections</string>
+    <!-- List dialog: add-section field placeholder. Verb phrase. -->
+    <string name="add_section">New section</string>
+    <!-- Generic add button. Verb. -->
+    <string name="add">Add</string>
+    <!-- Generic save button. Verb. -->
+    <string name="save">Save</string>
+    <!-- List dialog: delete button. Verb phrase. -->
+    <string name="delete_list">Delete list</string>
+    <!-- Delete list confirmation title; the argument is the list name. -->
+    <string name="delete_list_title">Delete \"<xliff:g id="name" example="Work">%s</xliff:g>\"?</string>
+    <!-- Delete list confirmation message. -->
+    <string name="delete_list_message">Its tasks move to the Inbox.</string>
+    <!-- Drawer item and settings screen title. Noun. -->
+    <string name="settings">Settings</string>
+    <!-- Settings section header. Adjective. -->
+    <string name="settings_general">General</string>
+    <!-- Settings: which view opens on launch. Noun phrase. -->
+    <string name="settings_start_view">Open on launch</string>
+    <!-- Settings: initial sort order. Noun phrase. -->
+    <string name="settings_default_sort">Default sort</string>
+    <!-- Settings: show the completed section under lists. Verb phrase. -->
+    <string name="settings_show_completed">Show completed tasks</string>
+    <!-- Settings section header for backup, import and export. Noun. -->
+    <string name="settings_data">Data</string>
+    <!-- Drawer footer: last sync time; the argument is relative, e.g. "5 minutes ago". -->
+    <string name="synced_ago">Synced <xliff:g id="when" example="5 minutes ago">%s</xliff:g></string>
 </resources>

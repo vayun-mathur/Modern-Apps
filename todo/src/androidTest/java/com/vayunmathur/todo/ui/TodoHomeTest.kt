@@ -104,7 +104,7 @@ class TodoHomeTest {
     private companion object {
         private const val CONTENT_TIMEOUT_MS = 15_000L
         private const val GATE_TIMEOUT_MS = 5_000L
-        private const val SEARCH_PLACEHOLDER = "Search Inbox"
+        private const val SEARCH_PLACEHOLDER = "Search Today"
         private const val EDIT_TEXT_CLASS = "android.widget.EditText"
         private const val QUERY = "hello"
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"

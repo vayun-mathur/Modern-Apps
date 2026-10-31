@@ -32,7 +32,7 @@ fun SortMenu(sort: SortMode, onSort: (SortMode) -> Unit) {
     }
 }
 
-private fun sortLabel(mode: SortMode): Int = when (mode) {
+internal fun sortLabel(mode: SortMode): Int = when (mode) {
     SortMode.MANUAL -> R.string.sort_manual
     SortMode.DUE -> R.string.sort_due
     SortMode.PRIORITY -> R.string.sort_priority
