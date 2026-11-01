@@ -30,6 +30,10 @@ def fetch_domains() -> list[str]:
         merchants = json.load(response)["merchants"]
     hosts = set()
     for merchant in merchants:
+        # Only the curated UCPList entries ("live"/"announced"); the ~10k directly verified
+        # seed stores ("verified") would make Android's open-by-default list unusable.
+        if merchant.get("directoryStatus") == "verified":
+            continue
         domain = str(merchant.get("domain", "")).strip().lower()
         if not HOST.match(domain):
             continue
