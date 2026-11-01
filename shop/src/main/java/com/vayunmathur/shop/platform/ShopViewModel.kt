@@ -20,7 +20,6 @@ import com.vayunmathur.shop.data.PlacedOrder
 import com.vayunmathur.shop.data.ProfileRepository
 import com.vayunmathur.shop.data.ShopCartStore
 import com.vayunmathur.shop.data.ShopProfile
-import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
 import com.vayunmathur.shop.domain.EmbeddedCheckout
@@ -31,7 +30,6 @@ import com.vayunmathur.shop.domain.ProfileCheckout
 import com.vayunmathur.shop.network.ShopBackend
 import com.vayunmathur.shop.network.ShopBackendException
 import com.vayunmathur.shop.network.ShopHttpBackend
-import com.vayunmathur.shop.network.splitByShop
 import kotlinx.coroutines.launch
 
 /** Session catalog state plus persisted cart and pending checkout history. */
@@ -63,15 +61,10 @@ class ShopViewModel(
         private set
     var cart by mutableStateOf<List<CartLine>>(emptyList())
         private set
-    var placingCheckout by mutableStateOf(false)
-        private set
-    var checkoutError by mutableStateOf<String?>(null)
-        private set
-    var browserCheckouts by mutableStateOf<List<UcpCheckout>>(emptyList())
+    /** Store whose one-tap checkout is being prepared, as (platformId, shopDomain). */
+    var startingCheckout by mutableStateOf<Pair<String, String>?>(null)
         private set
     var orders by mutableStateOf<List<PlacedOrder>>(emptyList())
-        private set
-    var nativeCheckouts by mutableStateOf<List<NativeCheckoutState>>(emptyList())
         private set
     var profile by mutableStateOf<ShopProfile?>(null)
         private set
@@ -79,10 +72,7 @@ class ShopViewModel(
         private set
     val profileComplete: Boolean get() = profile?.validationError() == null && profile != null
     private var profileRepository: ProfileRepository? = null
-    private val nativeCheckout = NativeCheckoutCoordinator(changed = { states ->
-        nativeCheckouts = states
-        browserCheckouts = states.mapNotNull { it.checkout }.filter { MerchantUrls.httpsUrl(it.continueUrl) != null }
-    })
+    private val nativeCheckout = NativeCheckoutCoordinator()
 
     fun observeProfile(context: Context) {
         if (profileRepository != null) return
@@ -99,25 +89,40 @@ class ShopViewModel(
     fun checkoutInputs(state: NativeCheckoutState): CheckoutInputs? =
         profile?.takeIf { it.validationError() == null }?.let { ProfileCheckout.inputs(it, state) }
 
-    fun editCheckoutInputs(platformId: String, shop: String, inputs: CheckoutInputs) {
-        nativeCheckout.edit(platformId, shop, inputs)
-    }
-
-    fun refreshCheckoutExpiry() { nativeCheckout.refreshExpiry() }
-
-    fun reconcileCheckout(platformId: String, shop: String) {
-        viewModelScope.launch { nativeCheckout.reconcile(platformId, shop) }
-    }
-
-    fun prepareMerchantCheckout(platformId: String, shop: String, context: Context) {
-        if (placingCheckout) return
+    /**
+     * One tap: a fresh merchant session from the saved profile, then the merchant's checkout
+     * embedded in the app. A rejected create still carries the merchant's handoff URL.
+     */
+    fun checkoutStore(
+        platformId: String,
+        shop: String,
+        context: Context,
+        dark: Boolean,
+        onReady: () -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        if (startingCheckout != null) return
         val lines = cart.filter { it.platformId == platformId && it.shopDomain == shop }.toList()
+        if (lines.isEmpty()) return
+        startingCheckout = platformId to shop
         val sink = PendingCheckoutSink { OrderStore.add(context, it) }
         viewModelScope.launch {
-            AppInit.awaitReady()
-            submitFromProfile(platformId, shop, lines, sink)
-            nativeCheckout.cartChanged(cart)
-            orders = OrderStore.getAll(context)
+            try {
+                AppInit.awaitReady()
+                // A handoff URL may be single-use, so every tap starts a new session.
+                nativeCheckout.forget(platformId, shop)
+                submitFromProfile(platformId, shop, lines, sink)
+                val state = nativeCheckout.snapshot.firstOrNull { it.platformId == platformId && it.shopDomain == shop }
+                val url = (state?.checkout?.continueUrl?.let(MerchantUrls::httpsUrl)) ?: state?.handoffUrl
+                if (url != null && openEmbeddedCheckout(platformId, shop, url, dark)) {
+                    onReady()
+                } else {
+                    onError(state?.message ?: "This store didn't return a checkout. Please try again.")
+                }
+                orders = OrderStore.getAll(context)
+            } finally {
+                startingCheckout = null
+            }
         }
     }
 
@@ -240,7 +245,6 @@ class ShopViewModel(
                 storeName = variant.storeName.ifBlank { product.storeName },
             )
         }
-        browserCheckouts = emptyList()
         nativeCheckout.cartChanged(cart)
         ShopCartStore.save(context, cart)
     }
@@ -249,32 +253,10 @@ class ShopViewModel(
         cart = cart.filterNot {
             it.variantId == line.variantId && it.platformId == line.platformId && it.shopDomain == line.shopDomain
         }
-        browserCheckouts = emptyList()
         nativeCheckout.cartChanged(cart)
         ShopCartStore.save(context, cart)
     }
 
-    /** Explicit session preparation only. Cart lines survive every pending session or failure. */
-    fun placeCheckout(context: Context) {
-        if (placingCheckout || cart.isEmpty()) return
-        val snapshot = cart.toList()
-        placingCheckout = true
-        checkoutError = null
-        viewModelScope.launch {
-            try {
-                AppInit.awaitReady()
-                for ((key, lines) in splitByShop(snapshot)) {
-                    nativeCheckout.submit(key.first, key.second, lines, PendingCheckoutSink { OrderStore.add(context, it) })
-                    nativeCheckout.cartChanged(cart)
-                }
-                orders = OrderStore.getAll(context)
-            } finally {
-                placingCheckout = false
-            }
-        }
-    }
-
-    fun dismissCheckoutError() { checkoutError = null }
     fun dismissSearchError() { searchError = null }
 
     fun openEmbeddedCheckout(platformId: String, shop: String, continueUrl: String, dark: Boolean): Boolean {

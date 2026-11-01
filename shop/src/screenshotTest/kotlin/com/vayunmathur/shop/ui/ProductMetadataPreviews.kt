@@ -48,9 +48,9 @@ class ProductMetadataPreviews {
     )
 
     @PreviewTest
-    @Preview(name = "4-product", group = "phone", widthDp = 360, heightDp = 780)
+    @Preview(name = "3-product", group = "phone", widthDp = 360, heightDp = 780)
     @Composable
-    fun Preview4Product() {
+    fun Preview3Product() {
         DynamicTheme(darkTheme = false) {
             AppScaffold(title = product.title, scrollBehavior = appBarScrollBehavior()) { padding ->
                 ProductDetailContent(

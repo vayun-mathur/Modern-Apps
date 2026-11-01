@@ -215,7 +215,3 @@ internal data class BackendRawResponse(
 )
 
 internal fun String.encode(): String = URLEncoder.encode(this, "UTF-8")
-
-/** Split cart lines by merchant: one server checkout session per shop. */
-internal fun splitByShop(lines: List<CartLine>): Map<Pair<String, String>, List<CartLine>> =
-    lines.groupBy { Pair(it.platformId, it.shopDomain) }

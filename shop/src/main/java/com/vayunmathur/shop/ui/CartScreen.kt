@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -47,23 +47,20 @@ import com.vayunmathur.shop.platform.ShopViewModel
 @Composable
 fun CartScreen(
     viewModel: ShopViewModel,
-    onCheckout: () -> Unit,
+    onPayInApp: () -> Unit,
 ) {
     val messenger = rememberMessenger()
-    LaunchedEffect(viewModel.checkoutError) {
-        viewModel.checkoutError?.let { error ->
-            messenger.show(error)
-            viewModel.dismissCheckoutError()
-        }
-    }
     // Persistence context hoisted once: rows stay stateless and context-free.
     val context = androidx.compose.ui.platform.LocalContext.current
+    val dark = isSystemInDarkTheme()
     AppScaffold(topBar = {}) { padding ->
         CartContent(
             cart = viewModel.cart,
-            placing = viewModel.placingCheckout,
+            startingStore = viewModel.startingCheckout,
             onRemove = { viewModel.removeLine(it, context) },
-            onCheckout = onCheckout,
+            onCheckoutStore = { platformId, shop ->
+                viewModel.checkoutStore(platformId, shop, context, dark, onReady = onPayInApp, onError = messenger::show)
+            },
             modifier = Modifier.fillMaxSize().padding(padding),
         )
     }
@@ -77,9 +74,9 @@ fun CartScreen(
 internal fun CartContent(
     cart: List<CartLine>,
     modifier: Modifier = Modifier,
-    placing: Boolean = false,
+    startingStore: Pair<String, String>? = null,
     onRemove: (CartLine) -> Unit = {},
-    onCheckout: () -> Unit = {},
+    onCheckoutStore: (platformId: String, shopDomain: String) -> Unit = { _, _ -> },
 ) {
     if (cart.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,9 +102,9 @@ internal fun CartContent(
         ) {
             // One section per store: each becomes its own checkout (UCP checkouts
             // are single-merchant), so the grouping is load-bearing, not cosmetic.
-            val byShop = cart.groupBy { it.shopDomain.ifBlank { "Unknown store" } }
-            byShop.forEach { (shop, lines) ->
-                item(key = "header-$shop") {
+            val byShop = cart.groupBy { it.platformId to it.shopDomain }
+            byShop.forEach { (store, lines) ->
+                item(key = "header-${store.first}|${store.second}") {
                     Text(
                         lines.first().displayName.ifBlank { "Unknown store" },
                         style = MaterialTheme.typography.titleSmall,
@@ -117,13 +114,19 @@ internal fun CartContent(
                 items(lines, key = { "${it.platformId}|${it.shopDomain}|${it.variantId}" }) { line ->
                     CartRow(line = line, onRemove = { onRemove(line) })
                 }
+                item(key = "checkout-${store.first}|${store.second}") {
+                    Button(
+                        onClick = { onCheckoutStore(store.first, store.second) },
+                        enabled = startingStore == null,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (startingStore == store) CircularProgressIndicator(Modifier.size(20.dp))
+                        else Text(if (byShop.size > 1) "Checkout with ${lines.first().displayName}" else stringResource(R.string.checkout))
+                    }
+                }
             }
         }
-        CartFooter(
-            cart = cart,
-            placing = placing,
-            onCheckout = onCheckout,
-        )
+        CartFooter(cart = cart)
     }
 }
 
@@ -164,7 +167,7 @@ private fun CartRow(line: CartLine, onRemove: () -> Unit) {
 }
 
 @Composable
-private fun CartFooter(cart: List<CartLine>, placing: Boolean, onCheckout: () -> Unit) {
+private fun CartFooter(cart: List<CartLine>) {
     val totals = cart.groupBy { it.unitPrice.currency }.map { (currency, lines) ->
         com.vayunmathur.shop.data.Money(
             lines.sumOf { it.unitPrice.amount * it.quantity }, currency,
@@ -179,14 +182,6 @@ private fun CartFooter(cart: List<CartLine>, placing: Boolean, onCheckout: () ->
             Text(stringResource(R.string.estimated_subtotal), style = MaterialTheme.typography.labelSmall)
             totals.forEach { total ->
                 Text(MoneyFormat.format(total), style = MaterialTheme.typography.titleLarge)
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Button(onClick = onCheckout, enabled = !placing) {
-            if (placing) {
-                CircularProgressIndicator()
-            } else {
-                Text(stringResource(R.string.checkout))
             }
         }
     }

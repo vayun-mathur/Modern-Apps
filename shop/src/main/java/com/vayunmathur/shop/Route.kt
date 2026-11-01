@@ -19,9 +19,6 @@ sealed interface Route : NavKey {
     data object Cart : Route
 
     @Serializable
-    data object Checkout : Route
-
-    @Serializable
     data object Orders : Route
 
     /** Request (with its secret-bearing URL) lives in ShopViewModel, never in saved state. */

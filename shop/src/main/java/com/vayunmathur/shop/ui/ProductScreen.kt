@@ -1,5 +1,6 @@
 package com.vayunmathur.shop.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -61,9 +63,10 @@ fun ProductScreen(
     platformId: String,
     shopDomain: String,
     onBack: () -> Unit,
-    onCheckout: () -> Unit,
+    onPayInApp: () -> Unit,
 ) {
     val backend: ShopBackend = ShopHttpBackend
+    val dark = isSystemInDarkTheme()
     val context = LocalContext.current
     val messenger = rememberMessenger()
     var product by remember(variantId, platformId, shopDomain) {
@@ -143,13 +146,14 @@ fun ProductScreen(
 
     val verified = !loading && verifiedKey == refreshKey
     val canAdd = verified && product?.checkoutEligible == true && selected?.available == true
-    val addToCart: () -> Unit = {
+    /** Returns the (platformId, shopDomain) the line was added under, or null. */
+    val addToCart: () -> Pair<String, String>? = add@{
         val current = product
         val liveVariant = current?.variants?.firstOrNull { it.id == selectedVariant }
-        if (canAdd && current != null && liveVariant != null) {
-            val cartProduct = current.copy(shopDomain = liveVariant.shopDomain.takeIf { it.isNotBlank() } ?: current.shopDomain)
-            viewModel.addToCart(cartProduct, selectedVariant, quantity, context)
-        }
+        if (!canAdd || current == null || liveVariant == null) return@add null
+        val cartProduct = current.copy(shopDomain = liveVariant.shopDomain.takeIf { it.isNotBlank() } ?: current.shopDomain)
+        viewModel.addToCart(cartProduct, selectedVariant, quantity, context)
+        cartProduct.platformId to cartProduct.shopDomain
     }
     AppScaffold(
         title = product?.title ?: stringResource(R.string.app_name),
@@ -181,9 +185,14 @@ fun ProductScreen(
                 onQuantityChange = { quantity = it },
                 onRetry = { retry += 1 },
                 onAddToCart = { if (canAdd) { addToCart(); messenger.show("Added to cart") } },
-                onBuyNow = { if (canAdd) { addToCart(); onCheckout() } },
+                onBuyNow = {
+                    addToCart()?.let { (store, shop) ->
+                        viewModel.checkoutStore(store, shop, context, dark, onReady = onPayInApp, onError = messenger::show)
+                    }
+                },
                 onOpenUrl = { url -> MerchantUrls.httpsUrl(url)?.let { openContinueUrl(context, it) } },
                 modifier = Modifier.fillMaxSize().padding(padding),
+                startingCheckout = viewModel.startingCheckout != null,
             )
         }
     }
@@ -205,6 +214,7 @@ internal fun ProductDetailContent(
     onBuyNow: () -> Unit,
     onOpenUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
+    startingCheckout: Boolean = false,
 ) {
     val variant = product.variants.firstOrNull { it.id == selectedVariantId }
     val storeDomain = variant?.shopDomain?.takeIf { it.isNotBlank() } ?: product.shopDomain
@@ -277,8 +287,9 @@ internal fun ProductDetailContent(
                     Button(onClick = onAddToCart, enabled = canAdd, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.add_to_cart))
                     }
-                    Button(onClick = onBuyNow, enabled = canAdd, modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.buy_now))
+                    Button(onClick = onBuyNow, enabled = canAdd && !startingCheckout, modifier = Modifier.weight(1f)) {
+                        if (startingCheckout) CircularProgressIndicator(Modifier.size(20.dp))
+                        else Text(stringResource(R.string.buy_now))
                     }
                 }
                 if ((!product.checkoutEligible || !verified && !loading) && MerchantUrls.httpsUrl(product.url) != null) {

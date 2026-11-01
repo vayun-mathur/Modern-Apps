@@ -7,7 +7,6 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.shop.platform.ShopViewModel
 import com.vayunmathur.shop.ui.CartScreen
-import com.vayunmathur.shop.ui.CheckoutScreen
 import com.vayunmathur.shop.ui.EmbeddedCheckoutScreen
 import com.vayunmathur.shop.ui.OrdersScreen
 import com.vayunmathur.shop.ui.ProductScreen
@@ -36,7 +35,7 @@ fun Navigation(viewModel: ShopViewModel) {
                 onProductClick = { variantId, platformId, shopDomain ->
                     backStack.add(Route.ProductDetail(variantId, platformId, shopDomain))
                 },
-                onCheckout = { backStack.add(Route.Checkout) },
+                onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
             )
         }
         entry<Route.ProductDetail> { route ->
@@ -46,18 +45,11 @@ fun Navigation(viewModel: ShopViewModel) {
                 platformId = route.platformId,
                 shopDomain = route.shopDomain,
                 onBack = { backStack.pop() },
-                onCheckout = { backStack.add(Route.Checkout) },
+                onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
             )
         }
         entry<Route.Cart> {
-            CartScreen(viewModel, onCheckout = { backStack.add(Route.Checkout) })
-        }
-        entry<Route.Checkout> {
-            CheckoutScreen(
-                viewModel = viewModel,
-                onBack = { backStack.pop() },
-                onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
-            )
+            CartScreen(viewModel, onPayInApp = { backStack.add(Route.EmbeddedCheckout) })
         }
         entry<Route.EmbeddedCheckout> {
             EmbeddedCheckoutScreen(viewModel = viewModel, onClose = {

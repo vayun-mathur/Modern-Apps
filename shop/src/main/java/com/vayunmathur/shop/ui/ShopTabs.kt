@@ -16,7 +16,7 @@ import com.vayunmathur.shop.R
 import com.vayunmathur.shop.platform.ShopViewModel
 
 @Composable
-fun ShopTabs(viewModel: ShopViewModel, onProductClick: (String, String, String) -> Unit, onCheckout: () -> Unit) {
+fun ShopTabs(viewModel: ShopViewModel, onProductClick: (String, String, String) -> Unit, onPayInApp: () -> Unit) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         viewModel.loadCart(context)
@@ -32,7 +32,7 @@ fun ShopTabs(viewModel: ShopViewModel, onProductClick: (String, String, String) 
             SearchScreen(viewModel, onProductClick)
         },
         PagerTab(stringResource(R.string.cart), { IconShoppingCart() }) {
-            CartScreen(viewModel, onCheckout = onCheckout)
+            CartScreen(viewModel, onPayInApp = onPayInApp)
         },
         PagerTab(stringResource(R.string.orders), { IconReceipt() }) {
             OrdersScreen(viewModel)

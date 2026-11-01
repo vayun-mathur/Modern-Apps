@@ -140,16 +140,4 @@ class ShopBackendTest {
         assertEquals(60_000L, limited?.retryAfterMs)
         return@runBlocking
     }
-
-    @Test fun splitByShopGroupsPerMerchant() {
-        val lines = listOf(
-            CartLine(variantId = "a", platformId = "shopify", shopDomain = "one.example", quantity = 1),
-            CartLine(variantId = "b", platformId = "shopify", shopDomain = "one.example", quantity = 2),
-            CartLine(variantId = "c", platformId = "generic", shopDomain = "two.example", quantity = 1),
-        )
-        val grouped = splitByShop(lines)
-        assertEquals(2, grouped.size)
-        assertEquals(2, grouped[Pair("shopify", "one.example")]?.size)
-        assertEquals(1, grouped[Pair("generic", "two.example")]?.size)
-    }
 }

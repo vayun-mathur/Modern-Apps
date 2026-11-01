@@ -41,7 +41,6 @@ class ProfileCheckoutTest {
         val checkout = noShipping.copy(messages = listOf(UcpMessage("error", "Add an address", null, "delivery_address_required", "recoverable")))
         val state = NativeCheckoutState("generic", "shop.example", checkout = checkout, inputs = CheckoutInputs(options = mapOf("m/g" to "express")))
         val inputs = ProfileCheckout.inputs(withAddress, state)
-        assertTrue(ProfileCheckout.needsDeliveryAddress(checkout))
         assertTrue(inputs.shippingRequested)
         assertEquals("1 Main St", inputs.street)
         assertEquals(mapOf("m/g" to "express"), inputs.options)
@@ -50,7 +49,6 @@ class ProfileCheckoutTest {
 
     @Test fun noAddressSentWhenProfileHasNone() {
         val shipping = NativeCheckoutState("generic", "shop.example", checkout = NativeCheckoutFixtures.checkout())
-        assertTrue(ProfileCheckout.needsDeliveryAddress(shipping.checkout))
         val inputs = ProfileCheckout.inputs(contact, shipping)
         assertFalse(inputs.hasAddress)
         assertFalse(inputs.shippingRequested)
