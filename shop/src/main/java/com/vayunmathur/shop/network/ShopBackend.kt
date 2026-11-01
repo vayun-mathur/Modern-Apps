@@ -37,6 +37,7 @@ interface ShopBackend {
         title: String? = null,
         selectedOptions: List<CatalogOptionSelection> = emptyList(),
     ): Result<UcpProduct>
+    suspend fun getProductByHandle(shop: String, handle: String): Result<UcpProduct>
     suspend fun createCheckout(shop: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
     suspend fun getCheckout(shop: String, sessionId: String): Result<UcpCheckout>
     suspend fun updateCheckout(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
@@ -100,6 +101,12 @@ internal object ShopHttpBackend : ShopBackend {
                 append("&selected=").append(json.encodeToString(selected).encode())
             }
         }
+        get(url).parse<ShopProductResponse>().product.toModel()
+    }
+
+    override suspend fun getProductByHandle(shop: String, handle: String): Result<UcpProduct> = catching {
+        require(shop.isNotBlank() && handle.isNotBlank()) { "Invalid product request" }
+        val url = "$BASE/product?shop=${shop.encode()}&handle=${handle.encode()}"
         get(url).parse<ShopProductResponse>().product.toModel()
     }
 

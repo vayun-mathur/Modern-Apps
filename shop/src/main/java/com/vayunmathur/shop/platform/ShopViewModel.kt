@@ -6,12 +6,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vayunmathur.shop.Route
 import com.vayunmathur.shop.data.CheckoutInputs
 import com.vayunmathur.shop.data.CheckoutPhase
 import com.vayunmathur.shop.data.NativeCheckoutState
 import com.vayunmathur.shop.domain.NativeCheckoutCoordinator
 import com.vayunmathur.shop.domain.PendingCheckoutSink
 import com.vayunmathur.shop.data.CartLine
+import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.OrderStore
 import com.vayunmathur.shop.data.PlacedOrder
 import com.vayunmathur.shop.data.ProfileRepository
@@ -20,6 +22,8 @@ import com.vayunmathur.shop.data.ShopProfile
 import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
+import com.vayunmathur.shop.domain.MerchantLink
+import com.vayunmathur.shop.domain.MerchantLinks
 import com.vayunmathur.shop.domain.MerchantUrls
 import com.vayunmathur.shop.domain.ProfileCheckout
 import com.vayunmathur.shop.network.ShopBackend
@@ -34,8 +38,18 @@ class ShopViewModel(
 ) : ViewModel() {
     var query by mutableStateOf("")
         private set
-    var searchShopDomain by mutableStateOf("")
+    var scopeDomain by mutableStateOf<String?>(null)
         private set
+    var scopeName by mutableStateOf<String?>(null)
+        private set
+    var focusSearchRequest by mutableStateOf(0)
+        private set
+    var pendingRoute by mutableStateOf<Route?>(null)
+        private set
+    var linkedProducts by mutableStateOf<List<UcpProduct>>(emptyList())
+        private set
+    private var merchants: List<MerchantListing>? = null
+    var launchLinkHandled = false
     var results by mutableStateOf<List<UcpProduct>>(emptyList())
         private set
     var searching by mutableStateOf(false)
@@ -124,7 +138,59 @@ class ShopViewModel(
     }
 
     fun updateQuery(value: String) { query = value }
-    fun updateShopDomain(value: String) { searchShopDomain = value }
+
+    fun consumePendingRoute() { pendingRoute = null }
+
+    fun clearScope() {
+        scopeDomain = null
+        scopeName = null
+        results = emptyList()
+        search()
+    }
+
+    /** Opens a merchant web link: product pages in-app, anything else as a search scoped to that store. */
+    fun openLink(url: String) {
+        val link = MerchantLinks.parse(url) ?: return
+        viewModelScope.launch {
+            AppInit.awaitReady()
+            val merchant = merchantFor(link.host)
+            val domain = merchant?.domain ?: link.host
+            val name = merchant?.name?.takeIf { it.isNotBlank() } ?: domain
+            when (link) {
+                is MerchantLink.Product -> backend.getProductByHandle(domain, link.handle).fold(
+                    onSuccess = { product ->
+                        val variant = product.variants.firstOrNull()
+                        if (variant == null) {
+                            scopedSearch(domain, name, link.handle.replace('-', ' '))
+                        } else {
+                            linkedProducts = (linkedProducts + product).takeLast(LINKED_PRODUCT_LIMIT)
+                            val publisher = variant.shopDomain.ifBlank { product.shopDomain }
+                            pendingRoute = Route.ProductDetail(variant.id, product.platformId, publisher)
+                        }
+                    },
+                    onFailure = { scopedSearch(domain, name, link.handle.replace('-', ' ')) },
+                )
+                is MerchantLink.Search -> scopedSearch(domain, name, link.query)
+                is MerchantLink.Merchant -> scopedSearch(domain, name, "")
+            }
+        }
+    }
+
+    private fun scopedSearch(domain: String, name: String, scopedQuery: String) {
+        scopeDomain = domain
+        scopeName = name
+        query = scopedQuery
+        results = emptyList()
+        pendingRoute = Route.Search
+        focusSearchRequest++
+        if (scopedQuery.isNotBlank()) search()
+    }
+
+    private suspend fun merchantFor(host: String): MerchantListing? {
+        val list = merchants ?: backend.listMerchants().getOrNull()?.also { merchants = it } ?: return null
+        val bare = host.removePrefix("www.")
+        return list.firstOrNull { it.domain == host } ?: list.firstOrNull { it.domain.removePrefix("www.") == bare }
+    }
 
     fun loadCart(context: Context) {
         viewModelScope.launch { cart = ShopCartStore.getAll(context) }
@@ -137,18 +203,14 @@ class ShopViewModel(
     fun search() {
         val q = query.trim()
         if (q.isEmpty() || searching) return
-        val shop = if (searchShopDomain.isBlank()) null else MerchantUrls.domain(searchShopDomain)
-        if (searchShopDomain.isNotBlank() && shop == null) {
-            searchError = "Enter a public HTTPS merchant domain without a path."
-            return
-        }
+        val shop = scopeDomain
         searching = true
         searchError = null
         results = emptyList()
         viewModelScope.launch {
             try {
                 AppInit.awaitReady()
-                backend.search(q, shop).fold(
+                backend.search(q, shop, limit = SEARCH_LIMIT).fold(
                     onSuccess = { results = it },
                     onFailure = { searchError = it.toBackendMessage() },
                 )
@@ -178,6 +240,7 @@ class ShopViewModel(
                 platformId = product.platformId,
                 shopDomain = product.shopDomain,
                 quantity = quantity,
+                storeName = variant.storeName.ifBlank { product.storeName },
             )
         }
         browserCheckouts = emptyList()
@@ -220,4 +283,9 @@ class ShopViewModel(
     private fun Throwable.toBackendMessage(): String =
         (this as? ShopBackendException)?.error?.message()
             ?: "Couldn't reach the store. Check your connection and try again."
+
+    private companion object {
+        const val SEARCH_LIMIT = 40
+        const val LINKED_PRODUCT_LIMIT = 20
+    }
 }

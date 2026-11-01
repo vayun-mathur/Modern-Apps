@@ -67,7 +67,7 @@ fun ProductScreen(
     val context = LocalContext.current
     val messenger = rememberMessenger()
     var product by remember(variantId, platformId, shopDomain) {
-        mutableStateOf(viewModel.results.firstOrNull { candidate ->
+        mutableStateOf((viewModel.results + viewModel.linkedProducts).firstOrNull { candidate ->
             candidate.platformId == platformId && candidate.variants.any {
                 it.id == variantId && (candidate.shopDomain == shopDomain || it.shopDomain == shopDomain)
             }
@@ -242,11 +242,8 @@ internal fun ProductDetailContent(
             }
         }
         item {
-            DetailSection("Publishing store") {
-                Text(storeName.ifBlank { storeDomain.ifBlank { "Publishing store" } }, style = MaterialTheme.typography.titleMedium)
-                if (storeName.isNotBlank()) {
-                    Text(storeDomain.ifBlank { "Store domain unavailable" }, style = MaterialTheme.typography.bodyMedium)
-                }
+            DetailSection("Store") {
+                Text(storeName.ifBlank { storeDomain.ifBlank { "Store" } }, style = MaterialTheme.typography.titleMedium)
             }
         }
         item {

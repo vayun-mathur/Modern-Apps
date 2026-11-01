@@ -54,7 +54,10 @@ data class CartLine(
     val platformId: String = "shopify",
     val shopDomain: String = "",
     val quantity: Int = 1,
-)
+    val storeName: String = "",
+) {
+    val displayName: String get() = storeName.ifBlank { shopDomain }
+}
 
 @Serializable
 data class UcpTotals(
@@ -108,7 +111,10 @@ data class PlacedOrder(
     val totalEntries: List<UcpTotalEntry> = emptyList(),
     val expiresAt: String? = null,
     val version: String = "2026-08-25",
-)
+    val storeName: String = "",
+) {
+    val displayName: String get() = storeName.ifBlank { shopDomain }
+}
 
 sealed interface UcpError {
     data class Transport(val reason: String) : UcpError

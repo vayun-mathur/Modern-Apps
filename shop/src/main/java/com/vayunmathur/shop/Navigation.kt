@@ -23,6 +23,11 @@ fun Navigation(viewModel: ShopViewModel) {
         return
     }
     val backStack = rememberNavBackStack<Route>(Route.Search)
+    LaunchedEffect(viewModel.pendingRoute) {
+        val route = viewModel.pendingRoute ?: return@LaunchedEffect
+        if (route == Route.Search) backStack.reset(Route.Search) else backStack.reset(Route.Search, route)
+        viewModel.consumePendingRoute()
+    }
     MainNavigation(backStack) {
         entry<Route.Search> {
             ShopTabs(
@@ -44,7 +49,7 @@ fun Navigation(viewModel: ShopViewModel) {
             )
         }
         entry<Route.Cart> {
-            CartScreen(viewModel, onBack = { backStack.pop() }, onCheckout = { backStack.add(Route.Checkout) })
+            CartScreen(viewModel, onCheckout = { backStack.add(Route.Checkout) })
         }
         entry<Route.Checkout> {
             CheckoutScreen(viewModel = viewModel, onBack = { backStack.pop() })

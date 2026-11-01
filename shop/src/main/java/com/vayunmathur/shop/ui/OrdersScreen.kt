@@ -80,7 +80,7 @@ private fun OrderRow(order: PlacedOrder, onOpen: () -> Unit) {
                     style = MaterialTheme.typography.titleSmall,
                 )
                 Text(stringResource(R.string.checkout_pending), style = MaterialTheme.typography.labelMedium)
-                if (order.shopDomain.isNotBlank()) Text(order.shopDomain, style = MaterialTheme.typography.bodySmall)
+                if (order.displayName.isNotBlank()) Text(order.displayName, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(2.dp))
                 Text(
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)

@@ -50,7 +50,7 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit) {
                 val state = viewModel.nativeCheckouts.firstOrNull { it.platformId == key.first && it.shopDomain == key.second }
                     ?: NativeCheckoutState(key.first, key.second)
                 item(key = "merchant-${key.first}-${key.second}") {
-                    DetailSection(key.second.ifBlank { "Unknown store" }) {
+                    DetailSection(lines.first().displayName.ifBlank { "Unknown store" }) {
                         lines.forEach { line -> Text("${line.productTitle} x ${line.quantity}", style = MaterialTheme.typography.bodyMedium) }
                         val editable = !state.busy && !viewModel.placingCheckout && state.phase !in setOf(CheckoutPhase.Uncertain, CheckoutPhase.Expired, CheckoutPhase.BrowserRequired)
                         val profileInputs = viewModel.checkoutInputs(state)

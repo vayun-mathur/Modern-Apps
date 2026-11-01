@@ -128,6 +128,28 @@ fun AppScaffold(
     )
 }
 
+/**
+ * [AppScaffold] whose top bar is supplied by the screen (e.g. a search field), or
+ * omitted entirely with `topBar = {}`. Without a bar the content padding still
+ * covers the status bar.
+ */
+@Composable
+fun AppScaffold(
+    topBar: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    floatingActionButton: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
+    snackbarHost: (@Composable () -> Unit)? = null,
+    content: @Composable (PaddingValues) -> Unit,
+) = Scaffold(
+    modifier = modifier,
+    topBar = topBar,
+    floatingActionButton = floatingActionButton,
+    bottomBar = bottomBar,
+    snackbarHost = snackbarHost,
+    content = content,
+)
+
 /** [AppScaffold] for a screen that owns a back stack, wiring the back button to it. */
 @Composable
 fun <T : NavKey> AppScaffold(

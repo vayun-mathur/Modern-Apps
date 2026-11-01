@@ -33,7 +33,6 @@ import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.IconShoppingCart
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.shop.R
@@ -48,7 +47,6 @@ import com.vayunmathur.shop.platform.ShopViewModel
 @Composable
 fun CartScreen(
     viewModel: ShopViewModel,
-    onBack: (() -> Unit)?,
     onCheckout: () -> Unit,
 ) {
     val messenger = rememberMessenger()
@@ -60,11 +58,7 @@ fun CartScreen(
     }
     // Persistence context hoisted once: rows stay stateless and context-free.
     val context = androidx.compose.ui.platform.LocalContext.current
-    AppScaffold(
-        title = stringResource(R.string.cart),
-        onNavigateBack = onBack,
-        scrollBehavior = appBarScrollBehavior(),
-    ) { padding ->
+    AppScaffold(topBar = {}) { padding ->
         CartContent(
             cart = viewModel.cart,
             placing = viewModel.placingCheckout,
@@ -115,7 +109,7 @@ internal fun CartContent(
             byShop.forEach { (shop, lines) ->
                 item(key = "header-$shop") {
                     Text(
-                        shop,
+                        lines.first().displayName.ifBlank { "Unknown store" },
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -12,8 +12,6 @@
     <string name="no_orders_yet">No checkout history yet</string>
     <string name="continue_in_browser">Continue in browser</string>
     <string name="place_order">Prepare checkout</string>
-    <string name="store_domain">Merchant domain (optional)</string>
-    <string name="store_domain_hint">Leave empty for Shopify search, or enter a UCP merchant domain.</string>
     <string name="estimated_subtotal">Estimated subtotal</string>
     <string name="checkout_pending">Payment not confirmed</string>
     <string name="checkout_handoff_notice">Review final prices, shipping and payment on the merchant site. Cart items remain until you remove them.</string>

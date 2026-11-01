@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
 import com.vayunmathur.library.ui.DynamicTheme
@@ -57,6 +56,7 @@ class MetadataPreviews {
             priceRangeMax = Money(14999, "USD"),
             platformId = "shopify",
             shopDomain = "example.myshopify.com",
+            storeName = "Trail Co.",
             variants = variants,
             checkoutEligible = true,
         ),
@@ -68,6 +68,7 @@ class MetadataPreviews {
             priceRangeMax = Money(18900, "USD"),
             platformId = "shopify",
             shopDomain = "example.myshopify.com",
+            storeName = "Trail Co.",
             variants = listOf(
                 ProductVariant(
                     id = "gid://shopify/ProductVariant/21",
@@ -87,6 +88,7 @@ class MetadataPreviews {
             unitPrice = Money(12999, "USD"),
             platformId = "shopify",
             shopDomain = "example.myshopify.com",
+            storeName = "Trail Co.",
             quantity = 1,
         ),
         CartLine(
@@ -96,6 +98,7 @@ class MetadataPreviews {
             unitPrice = Money(18900, "USD"),
             platformId = "shopify",
             shopDomain = "example.myshopify.com",
+            storeName = "Trail Co.",
             quantity = 2,
         ),
     )
@@ -105,17 +108,15 @@ class MetadataPreviews {
     @Composable
     fun Preview1Search() {
         DynamicTheme(darkTheme = false) {
-            AppScaffold(title = "Shop", scrollBehavior = appBarScrollBehavior()) { padding ->
-                SearchContent(
-                    query = "trail shoes",
-                    onQueryChange = {},
-                    searching = false,
-                    results = products,
-                    onSearch = {},
-                    onProductClick = { _, _, _ -> },
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                )
-            }
+            SearchContent(
+                query = "trail shoes",
+                onQueryChange = {},
+                searching = false,
+                results = products,
+                onSearch = {},
+                onProductClick = { _, _, _ -> },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 
@@ -124,7 +125,7 @@ class MetadataPreviews {
     @Composable
     fun Preview2Cart() {
         DynamicTheme(darkTheme = false) {
-            AppScaffold(title = "Cart", scrollBehavior = appBarScrollBehavior()) { padding ->
+            AppScaffold(topBar = {}) { padding ->
                 CartContent(cart = cart, modifier = Modifier.fillMaxSize().padding(padding))
             }
         }

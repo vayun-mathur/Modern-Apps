@@ -55,9 +55,9 @@ class CheckoutMetadataPreviews {
     )
 
     @PreviewTest
-    @Preview(name = "4-checkout", group = "phone", widthDp = 360, heightDp = 780)
+    @Preview(name = "3-checkout", group = "phone", widthDp = 360, heightDp = 780)
     @Composable
-    fun Preview4Checkout() {
+    fun Preview3Checkout() {
         DynamicTheme(darkTheme = false) {
             AppScaffold(title = "Checkout review", scrollBehavior = appBarScrollBehavior()) { padding ->
                 CheckoutReviewContent(
