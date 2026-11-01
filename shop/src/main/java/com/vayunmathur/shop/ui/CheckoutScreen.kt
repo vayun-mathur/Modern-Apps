@@ -88,12 +88,9 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit) {
                             if (state.busy) CircularProgressIndicator()
                             else Text(if (checkout == null) "Create review session" else "Update review session")
                         }
-                        val browserUrl = checkout?.continueUrl?.let(MerchantUrls::httpsUrl)
-                            ?: MerchantUrls.domain(key.second)?.let { "https://$it" }
-                        if (browserUrl != null) {
-                            TextButton(onClick = { openContinueUrl(context, browserUrl) }) {
-                                Text(if (checkout?.continueUrl?.let(MerchantUrls::httpsUrl) != null) "Continue in browser" else "Open merchant website")
-                            }
+                        val merchantSiteUrl = MerchantUrls.domain(key.second)?.let { "https://$it" }
+                        if (checkout?.continueUrl?.let(MerchantUrls::httpsUrl) == null && merchantSiteUrl != null) {
+                            TextButton(onClick = { openContinueUrl(context, merchantSiteUrl) }) { Text("Open merchant website") }
                         }
                     }
                 }

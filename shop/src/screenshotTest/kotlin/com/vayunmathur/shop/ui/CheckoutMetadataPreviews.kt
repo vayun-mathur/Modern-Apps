@@ -42,7 +42,7 @@ class CheckoutMetadataPreviews {
         checkout = UcpCheckout(
             checkoutId = "fixture-checkout", status = "ready_for_complete", currency = "USD",
             totals = UcpTotals(subtotal = totals.first().money, shipping = totals[1].money, tax = totals[2].money, total = totals.last().money),
-            totalEntries = totals, expiresAt = "2026-10-27T00:00:00Z",
+            totalEntries = totals, expiresAt = "2026-10-27T00:00:00Z", continueUrl = "https://trail.example/checkout",
             review = CheckoutReview(
                 shipping = listOf(CheckoutShippingMethod("fixture-shipping", listOf(
                     CheckoutShippingGroup("fixture-group", "fixture-standard", listOf(

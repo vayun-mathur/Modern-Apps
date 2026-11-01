@@ -13,6 +13,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.shop.data.CheckoutInputs
 import com.vayunmathur.shop.data.NativeCheckoutState
+import com.vayunmathur.shop.domain.MerchantUrls
 import com.vayunmathur.shop.domain.MoneyFormat
 
 /** Pure session presentation shared by the live checkout and deterministic screenshot fixtures. */
@@ -60,8 +61,10 @@ internal fun CheckoutReviewContent(
                 }
             }
         }
-        if (checkout.status == "ready_for_complete") Text("The merchant reports payment readiness. Native payment is unavailable; no completion call will be made.", style = MaterialTheme.typography.bodySmall)
-        Button(onClick = {}, enabled = state.completionEnabled, modifier = Modifier.fillMaxWidth()) { Text("Native payment unavailable") }
+        if (checkout.status == "ready_for_complete") Text("The merchant reports payment readiness. Pay on its website to place the order.", style = MaterialTheme.typography.bodySmall)
+        MerchantUrls.httpsUrl(checkout.continueUrl)?.let { payUrl ->
+            Button(onClick = { onOpenUrl(payUrl) }, modifier = Modifier.fillMaxWidth()) { Text("Pay on merchant website") }
+        }
         Text("Pending session only. Check purchase and payment status on the merchant website.", style = MaterialTheme.typography.bodySmall)
         checkout.review.links.forEach { link ->
             TextButton(onClick = { onOpenUrl(link.url) }) { Text(link.title.ifBlank { link.type }) }
