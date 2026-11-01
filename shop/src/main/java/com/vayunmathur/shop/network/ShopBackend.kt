@@ -178,8 +178,9 @@ internal object ShopHttpBackend : ShopBackend {
                     "malformed" -> UcpError.Malformed(envelope.message.ifBlank { "The store sent an unexpected response. Please try again." })
                     "rpc" -> UcpError.Rpc(envelope.message.ifBlank { "The merchant couldn't process the request." })
                     "uncertain" -> UcpError.Transport("The request may have reached the merchant. Do not retry; check the session or use its website.")
-                    // "unsupported" and anything unknown: the merchant website is the fallback.
-                    else -> UcpError.Unsupported(envelope.message.ifBlank { "These requirements need the merchant website." })
+                    "unsupported" -> UcpError.Unsupported(envelope.message.ifBlank { "These requirements need the merchant website." })
+                    // Unknown or empty envelopes (e.g. a proxy error page) say nothing about the merchant.
+                    else -> UcpError.Http(status, envelope.message)
                 },
             )
         }

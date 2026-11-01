@@ -124,8 +124,10 @@ class ShopBackendTest {
         assertIs<UcpError.Rpc>(errorFor("rpc", 502))
         assertIs<UcpError.Malformed>(errorFor("malformed", 400))
         assertIs<UcpError.Http>(errorFor("http", 502))
-        // Unknown codes fall back to the merchant website.
-        assertIs<UcpError.Unsupported>(errorFor("something_new", 503))
+        // Unknown codes and envelope-less JSON (e.g. a proxy error page) are plain HTTP errors.
+        assertIs<UcpError.Http>(errorFor("something_new", 503))
+        stub(BackendRawResponse(502, """{"title":"Bad gateway"}""", emptyMap(), null))
+        assertIs<UcpError.Http>((ShopHttpBackend.search("trail").exceptionOrNull() as? ShopBackendException)?.error)
         return@runBlocking
     }
 
