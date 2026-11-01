@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.vayunmathur.library.ui.IconPerson
 import com.vayunmathur.library.ui.IconReceipt
 import com.vayunmathur.library.ui.IconSearch
 import com.vayunmathur.library.ui.IconStore
@@ -25,7 +26,7 @@ fun ShopTabs(viewModel: ShopViewModel, onProductClick: (String, String, String) 
         viewModel.loadOrders(context)
     }
     val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 4 })
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 5 })
     val tabs = listOf(
         PagerTab(stringResource(R.string.search), { IconSearch() }) {
             SearchScreen(viewModel, onProductClick)
@@ -41,6 +42,9 @@ fun ShopTabs(viewModel: ShopViewModel, onProductClick: (String, String, String) 
         },
         PagerTab(stringResource(R.string.orders), { IconReceipt() }) {
             OrdersScreen(viewModel)
+        },
+        PagerTab("Profile", { IconPerson() }) {
+            ProfileScreen(viewModel, required = false)
         },
     )
     TabbedPagerScaffold(tabs = tabs, pagerState = pagerState, tabStyle = TabStyle.BottomNav)

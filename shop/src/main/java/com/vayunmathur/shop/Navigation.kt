@@ -1,6 +1,8 @@
 package com.vayunmathur.shop
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.shop.platform.ShopViewModel
@@ -8,10 +10,18 @@ import com.vayunmathur.shop.ui.CartScreen
 import com.vayunmathur.shop.ui.CheckoutScreen
 import com.vayunmathur.shop.ui.OrdersScreen
 import com.vayunmathur.shop.ui.ProductScreen
+import com.vayunmathur.shop.ui.ProfileScreen
 import com.vayunmathur.shop.ui.ShopTabs
 
 @Composable
 fun Navigation(viewModel: ShopViewModel) {
+    val context = LocalContext.current
+    LaunchedEffect(viewModel) { viewModel.observeProfile(context) }
+    if (!viewModel.profileLoaded) return
+    if (!viewModel.profileComplete) {
+        ProfileScreen(viewModel, required = true)
+        return
+    }
     val backStack = rememberNavBackStack<Route>(Route.Search)
     MainNavigation(backStack) {
         entry<Route.Search> {

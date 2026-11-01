@@ -10,8 +10,9 @@ Entry types: MainActivity, Route, Navigation. Navigation remains a root-only gra
 - Anonymous catalog and checkout preparation using supported UCP 2026-08-25 and 2026-04-08 profiles, resolved server-side. The server selects one complete advertised profile and exact capability/service versions; it never merges releases.
 - Server error codes mirror the former client `UcpError` (`transport | rate_limited | http | malformed | rpc | unsupported | uncertain`, plus `retryAfterMs`): `unsupported` routes to the merchant website, anything else on a write is uncertain and never auto-retried on either side.
 - The Merchants tab loads the directory through the proxy. Cache/filter locally; the server validates on first use.
-- Buyer/fulfillment review is ephemeral. Merchant totals and legal links are authoritative.
-- Checkout writes require explicit user action and a stable idempotency key per intent. Never replay an uncertain mutation automatically.
+- The buyer profile (first name, last name, email, phone required; delivery address optional) is stored only in the module's SQLCipher Room database (`ProfileRepository`). The app is locked behind the profile form until the required fields validate; the Profile tab edits it.
+- Checkout takes no buyer input: every session field comes from the saved profile (`ProfileCheckout`). Merchant shipping-option choices remain selectable. Merchant totals and legal links are authoritative.
+- Checkout writes require explicit user action and a stable idempotency key per intent. Never replay an uncertain mutation automatically. One Create press may issue a second write that carries the saved delivery address, only after the create succeeded and the merchant advertised shipping or reported `delivery_address_required`.
 - Preserve cart lines through partial failures and browser handoffs. A session or browser return is not a paid order.
 - No raw card entry, wallet tokenization, completion or authenticated order-read integration while provider authorization is unavailable.
 - Only supported integer quantities can be added. Detail refresh sends the product ID and selected options, and must confirm the exact variant before cart actions. If a valid detail response returns only another featured option, one fresh advertised merchant search may confirm the exact SKU. Cached snapshots and empty lookup responses are not verification; denied/rate-limited calls are never retried automatically.
@@ -23,7 +24,7 @@ Entry types: MainActivity, Route, Navigation. Navigation remains a root-only gra
 
 ## Responsibilities
 - `ShopBackend` owns the four server calls (search/product/checkout/merchants) plus error-envelope mapping. It never talks to merchant hosts.
-- ShopViewModel owns explicit cart and per-merchant native-review state. Buyer PII must never enter logs or persisted history.
+- ShopViewModel owns explicit cart, profile and per-merchant native-review state. Buyer PII must never enter logs or persisted history; the encrypted profile database is its only store.
 - Local stores retain pending checkout records for browser recovery, not order confirmations.
 - UI uses shared app scaffolds and controls; one public composable per file. Metadata previews are class members with PreviewTest and Preview.
 

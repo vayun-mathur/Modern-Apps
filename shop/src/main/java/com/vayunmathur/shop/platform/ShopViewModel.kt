@@ -7,17 +7,21 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.shop.data.CheckoutInputs
+import com.vayunmathur.shop.data.CheckoutPhase
 import com.vayunmathur.shop.data.NativeCheckoutState
 import com.vayunmathur.shop.domain.NativeCheckoutCoordinator
 import com.vayunmathur.shop.domain.PendingCheckoutSink
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.OrderStore
 import com.vayunmathur.shop.data.PlacedOrder
+import com.vayunmathur.shop.data.ProfileRepository
 import com.vayunmathur.shop.data.ShopCartStore
+import com.vayunmathur.shop.data.ShopProfile
 import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
 import com.vayunmathur.shop.domain.MerchantUrls
+import com.vayunmathur.shop.domain.ProfileCheckout
 import com.vayunmathur.shop.network.ShopBackend
 import com.vayunmathur.shop.network.ShopBackendException
 import com.vayunmathur.shop.network.ShopHttpBackend
@@ -50,10 +54,31 @@ class ShopViewModel(
         private set
     var nativeCheckouts by mutableStateOf<List<NativeCheckoutState>>(emptyList())
         private set
+    var profile by mutableStateOf<ShopProfile?>(null)
+        private set
+    var profileLoaded by mutableStateOf(false)
+        private set
+    val profileComplete: Boolean get() = profile?.validationError() == null && profile != null
+    private var profileRepository: ProfileRepository? = null
     private val nativeCheckout = NativeCheckoutCoordinator(changed = { states ->
         nativeCheckouts = states
         browserCheckouts = states.mapNotNull { it.checkout }.filter { MerchantUrls.httpsUrl(it.continueUrl) != null }
     })
+
+    fun observeProfile(context: Context) {
+        if (profileRepository != null) return
+        val repository = ProfileRepository.get(context).also { profileRepository = it }
+        viewModelScope.launch { repository.profile.collect { profile = it; profileLoaded = true } }
+    }
+
+    fun saveProfile(value: ShopProfile) {
+        val repository = profileRepository ?: return
+        if (value.validationError() != null) return
+        viewModelScope.launch { repository.save(value) }
+    }
+
+    fun checkoutInputs(state: NativeCheckoutState): CheckoutInputs? =
+        profile?.takeIf { it.validationError() == null }?.let { ProfileCheckout.inputs(it, state) }
 
     fun editCheckoutInputs(platformId: String, shop: String, inputs: CheckoutInputs) {
         nativeCheckout.edit(platformId, shop, inputs)
@@ -68,12 +93,34 @@ class ShopViewModel(
     fun prepareMerchantCheckout(platformId: String, shop: String, context: Context) {
         if (placingCheckout) return
         val lines = cart.filter { it.platformId == platformId && it.shopDomain == shop }.toList()
+        val sink = PendingCheckoutSink { OrderStore.add(context, it) }
         viewModelScope.launch {
             AppInit.awaitReady()
-            nativeCheckout.submit(platformId, shop, lines, PendingCheckoutSink { OrderStore.add(context, it) })
+            val created = submitFromProfile(platformId, shop, lines, sink) == null
+            // A new session can't carry fulfillment, so the saved address follows as its own write
+            // only after the create succeeded. Nothing is replayed if either write is uncertain.
+            val state = nativeCheckout.snapshot.firstOrNull { it.platformId == platformId && it.shopDomain == shop }
+            if (created && state?.phase == CheckoutPhase.Reviewing && state.checkout != null) {
+                submitFromProfile(platformId, shop, lines, sink)
+            }
             nativeCheckout.cartChanged(cart)
             orders = OrderStore.getAll(context)
         }
+    }
+
+    /** Returns the session that existed before this write, if any. */
+    private suspend fun submitFromProfile(
+        platformId: String,
+        shop: String,
+        lines: List<CartLine>,
+        sink: PendingCheckoutSink,
+    ): UcpCheckout? {
+        val state = nativeCheckout.snapshot.firstOrNull { it.platformId == platformId && it.shopDomain == shop }
+            ?: NativeCheckoutState(platformId, shop)
+        val inputs = checkoutInputs(state) ?: return state.checkout
+        nativeCheckout.edit(platformId, shop, inputs)
+        nativeCheckout.submit(platformId, shop, lines, sink)
+        return state.checkout
     }
 
     fun updateQuery(value: String) { query = value }

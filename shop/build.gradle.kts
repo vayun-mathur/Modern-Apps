@@ -23,4 +23,7 @@ dependencies {
     implementation(project(":library:image"))
     // Hosted-checkout fallback (continue_url) in a Custom Tab.
     implementation(libs.androidx.browser)
+    // Buyer profile (name, contact, delivery address), encrypted at rest.
+    implementRoom(libs)
+    implementation(project(":library:room"))
 }
