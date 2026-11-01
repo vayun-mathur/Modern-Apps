@@ -96,4 +96,16 @@ class RecurrenceTest {
         assertNull(Recurrence.parse("FREQ=HOURLY"))
         assertEquals(Recurrence.Daily(1), Recurrence.parse("RRULE:FREQ=DAILY;INTERVAL=0"))
     }
+
+    @Test
+    fun `first occurrence is today when the schedule allows, else the next matching day`() {
+        // 2026-03-04 is a Wednesday.
+        val today = d(2026, 3, 4)
+        assertEquals(today, Recurrence.Daily().firstOnOrAfter(today))
+        assertEquals(today, Recurrence.Weekly().firstOnOrAfter(today))
+        assertEquals(d(2026, 3, 6), Recurrence.Weekly(1, setOf(DayOfWeek.FRIDAY)).firstOnOrAfter(today))
+        assertEquals(d(2026, 3, 15), Recurrence.Monthly(1, 15).firstOnOrAfter(today))
+        assertEquals(d(2026, 3, 31), Recurrence.Monthly(1, Recurrence.LAST_DAY).firstOnOrAfter(today))
+        assertEquals(d(2026, 3, 31), Recurrence.Monthly(1, Recurrence.LAST_DAY).firstOnOrAfter(d(2026, 3, 31)))
+    }
 }

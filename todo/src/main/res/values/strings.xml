@@ -184,18 +184,30 @@
         <item quantity="other"><xliff:g id="count" example="7">%d</xliff:g> days after completion</item>
     </plurals>
 
+    <!-- Editor toggle: a task done a single time. Adjective. -->
+    <string name="kind_once">One-time</string>
+    <!-- Editor toggle: a task that comes back on a schedule (daily, weekly, …). Adjective. -->
+    <string name="kind_repeating">Repeating</string>
+    <!-- Editor section header: due date, repeat and reminder. Noun. -->
+    <string name="section_schedule">Schedule</string>
+    <!-- Editor section header: list, priority and tags. Verb. -->
+    <string name="section_organize">Organize</string>
+    <!-- Editor section header: hide-until, estimate and dependencies. Noun, plural. -->
+    <string name="section_details">Details</string>
     <!-- Editor chip with no due date set. Verb phrase. -->
     <string name="add_due_date">Due date</string>
+    <!-- Repeating task chip: when it is next due; argument is e.g. "Tomorrow 8:00 AM". -->
+    <string name="next_due">Next: <xliff:g id="when" example="Tomorrow">%s</xliff:g></string>
+    <!-- Repeating task chip / due sheet title with no next date set. Noun phrase. -->
+    <string name="next_occurrence">Next occurrence</string>
     <!-- Due sheet: adds a time of day. Verb phrase. -->
     <string name="add_time">Add time</string>
     <!-- Due sheet: changes the time of day. Verb phrase. -->
     <string name="change_time">Change time</string>
     <!-- Due sheet: removes the time, making the task all-day. Adjective phrase. -->
     <string name="all_day">All day</string>
-    <!-- Editor chip with no repeat set. Verb. -->
-    <string name="repeat">Repeat</string>
-    <!-- Repeat option: one-off task. Verb phrase. -->
-    <string name="no_repeat">Doesn\'t repeat</string>
+    <!-- Repeat sheet title. Noun phrase. -->
+    <string name="repeat_how_often">How often?</string>
     <!-- Repeat option: Monday to Friday. Noun. -->
     <string name="weekdays">Every weekday</string>
     <!-- Repeat option: open the custom repeat editor. Adjective. -->
@@ -214,8 +226,23 @@
     <string name="from_completion">Count from completion</string>
     <!-- Custom repeat: monthly on the last day. Noun phrase. -->
     <string name="last_day_of_month">On the last day</string>
-    <!-- Editor chip with no reminder set. Noun. -->
-    <string name="reminder">Reminder</string>
+    <!-- Editor chip with no reminder set / reminder sheet title for one-time tasks. Verb phrase. -->
+    <string name="reminder">Remind me</string>
+    <!-- Reminder sheet title for repeating tasks: the reminder fires for every occurrence. -->
+    <string name="remind_each_time">Remind me each time</string>
+    <!-- Repeating task reminder chip, same day as the occurrence; argument is a time. -->
+    <string name="remind_at">Remind at <xliff:g id="time" example="8:00 AM">%s</xliff:g></string>
+    <!-- Repeating task reminder chip, days before each occurrence; arguments are the count and a time. -->
+    <plurals name="remind_days_before_at">
+        <item quantity="one">Remind <xliff:g id="count" example="1">%1$d</xliff:g> day before, <xliff:g id="time" example="8:00 AM">%2$s</xliff:g></item>
+        <item quantity="other">Remind <xliff:g id="count" example="2">%1$d</xliff:g> days before, <xliff:g id="time" example="8:00 AM">%2$s</xliff:g></item>
+    </plurals>
+    <!-- Reminder option for an all-day task: on the due day; argument is a time. -->
+    <string name="reminder_on_the_day">On the day at <xliff:g id="time" example="9:00 AM">%s</xliff:g></string>
+    <!-- Reminder option for an all-day task: the day before; argument is a time. -->
+    <string name="reminder_day_before_at">The day before at <xliff:g id="time" example="9:00 AM">%s</xliff:g></string>
+    <!-- Reminder option for repeating tasks: choose a time of day. Verb phrase. -->
+    <string name="pick_time">Pick a time…</string>
     <!-- Reminder option clearing it. Noun phrase. -->
     <string name="no_reminder">No reminder</string>
     <!-- Reminder option: when the task is due. Noun phrase. -->
@@ -246,7 +273,7 @@
     <!-- Tag dialog: field placeholder. Verb phrase. -->
     <string name="add_tag">Add a tag</string>
     <!-- Editor chip with no time estimate. Noun. -->
-    <string name="estimate">Estimate</string>
+    <string name="estimate">Time estimate</string>
     <!-- Estimate value in minutes. -->
     <plurals name="estimate_minutes">
         <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> min</item>
@@ -254,14 +281,14 @@
     </plurals>
     <!-- Estimate option clearing it. Noun phrase. -->
     <string name="no_estimate">No estimate</string>
-    <!-- Editor chip with no start date. Noun. -->
-    <string name="start_date">Start date</string>
+    <!-- Editor chip with no start date: keep the task out of Today/Upcoming until a date. Verb phrase. -->
+    <string name="start_date">Hide until</string>
     <!-- Editor chip with a start date; argument is the date. -->
-    <string name="starts_on">Starts <xliff:g id="date" example="Mar 9">%s</xliff:g></string>
-    <!-- Start date option clearing it. Noun phrase. -->
-    <string name="no_start_date">No start date</string>
-    <!-- Editor chip / dialog title for task dependencies. Adjective phrase. -->
-    <string name="blocked_by">Blocked by</string>
+    <string name="starts_on">Hidden until <xliff:g id="date" example="Mar 9">%s</xliff:g></string>
+    <!-- Start date option clearing it. Verb phrase. -->
+    <string name="no_start_date">Show it now</string>
+    <!-- Editor chip / dialog title for task dependencies. Verb phrase. -->
+    <string name="blocked_by">Waiting on…</string>
     <!-- Editor chip with dependencies set. -->
     <plurals name="waiting_on">
         <item quantity="one">Waiting on <xliff:g id="count" example="1">%d</xliff:g> task</item>

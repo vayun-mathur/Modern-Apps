@@ -7,6 +7,8 @@ import android.content.Intent
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.vayunmathur.todo.data.Todo
+import com.vayunmathur.todo.domain.Reminders
+import kotlinx.datetime.TimeZone
 
 /**
  * Keeps one exact alarm per pending task reminder.
@@ -26,10 +28,11 @@ object ReminderScheduler {
         val alarms = context.getSystemService(AlarmManager::class.java) ?: return
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val previous = prefs.getStringSet(KEY_SCHEDULED, emptySet()).orEmpty()
-        val pending = todos.filter { !it.done && !it.deleted && (it.reminderAt ?: 0L) > now }
-        val wanted = pending.map { it.syncId }.toSet()
+        val zone = TimeZone.currentSystemDefault()
+        val pending = todos.mapNotNull { todo -> Reminders.nextFire(todo, now, zone)?.let { todo.syncId to it } }
+        val wanted = pending.map { it.first }.toSet()
         (previous - wanted).forEach { alarms.cancel(intent(context, it)) }
-        pending.forEach { schedule(context, alarms, it.syncId, it.reminderAt!!) }
+        pending.forEach { (syncId, at) -> schedule(context, alarms, syncId, at) }
         prefs.edit { putStringSet(KEY_SCHEDULED, wanted) }
     }
 

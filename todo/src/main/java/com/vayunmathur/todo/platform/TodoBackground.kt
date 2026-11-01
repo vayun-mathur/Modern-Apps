@@ -27,7 +27,13 @@ object TodoBackground {
     private const val SETTLE_MS = 500L
     private const val MIRROR_SETTLE_MS = 2_000L
 
-    private data class ReminderKey(val syncId: String, val reminderAt: Long?, val done: Boolean)
+    private data class ReminderKey(
+        val syncId: String,
+        val reminderAt: Long?,
+        val done: Boolean,
+        val dueAt: Long?,
+        val recurrence: String?,
+    )
 
     @OptIn(FlowPreview::class)
     fun start(context: Context) {
@@ -38,7 +44,8 @@ object TodoBackground {
         repo.appScope.launch {
             repo.todos
                 .map { todos ->
-                    todos.filter { it.reminderAt != null }.map { ReminderKey(it.syncId, it.reminderAt, it.done) }
+                    todos.filter { it.reminderAt != null }
+                        .map { ReminderKey(it.syncId, it.reminderAt, it.done, it.dueAt, it.recurrence) }
                 }
                 .distinctUntilChanged()
                 .debounce(SETTLE_MS)

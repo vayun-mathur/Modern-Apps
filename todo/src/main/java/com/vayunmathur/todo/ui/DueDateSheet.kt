@@ -19,6 +19,7 @@ import com.vayunmathur.library.ui.IconAccessTime
 import com.vayunmathur.library.ui.IconCalendar
 import com.vayunmathur.library.ui.IconToday
 import com.vayunmathur.library.ui.ListItem
+import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.todo.R
@@ -28,10 +29,19 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 
-/** Due date and optional time: one-tap shortcuts, a date picker and a time picker. */
+/**
+ * Due date and optional time: one-tap shortcuts, a date picker and a time picker. For a
+ * [repeating] task this is the next occurrence, which can't be cleared.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun DueDateSheet(dueAt: Long?, allDay: Boolean, onSet: (dueAt: Long?, allDay: Boolean) -> Unit, onDismiss: () -> Unit) {
+fun DueDateSheet(
+    dueAt: Long?,
+    allDay: Boolean,
+    repeating: Boolean,
+    onSet: (dueAt: Long?, allDay: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val zone = TimeZone.currentSystemDefault()
     var pickDate by remember { mutableStateOf(false) }
     var pickTime by remember { mutableStateOf(false) }
@@ -43,11 +53,16 @@ fun DueDateSheet(dueAt: Long?, allDay: Boolean, onSet: (dueAt: Long?, allDay: Bo
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            stringResource(if (repeating) R.string.next_occurrence else R.string.add_due_date),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
         FlowRow(
             modifier = Modifier.padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            DueShortcuts.entries.forEach { shortcut ->
+            DueShortcuts.entries.filter { !repeating || it != DueShortcuts.NONE }.forEach { shortcut ->
                 val target = shortcut.dueAt()
                 val selected = target?.let { t -> dueAt?.let { DueDates.localDate(it, zone) == DueDates.localDate(t, zone) } }
                     ?: (dueAt == null)

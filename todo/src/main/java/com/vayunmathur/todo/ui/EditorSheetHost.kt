@@ -13,30 +13,34 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.todo.R
+import com.vayunmathur.todo.data.Todo
+import com.vayunmathur.todo.domain.DueDates
 import com.vayunmathur.todo.domain.Recurrence
 import com.vayunmathur.todo.platform.TodoActions
 import com.vayunmathur.todo.platform.TodoUiState
+import kotlinx.datetime.TimeZone
 import com.vayunmathur.library.ui.R as UiR
 
 /** Shows the sheet or dialog for one [EditorSheet]; every choice dismisses it. */
 @Composable
 internal fun EditorSheetHost(sheet: EditorSheet, state: TodoUiState, actions: TodoActions, onDismiss: () -> Unit) {
     val todo = state.todo
-    val set: ((com.vayunmathur.todo.data.Todo) -> com.vayunmathur.todo.data.Todo) -> Unit = { transform ->
+    val set: ((Todo) -> Todo) -> Unit = { transform ->
         actions.update(transform)
         onDismiss()
     }
+    val repeating = todo.recurrence != null
     when (sheet) {
-        EditorSheet.DUE -> DueDateSheet(todo.dueAt, todo.dueAllDay, onSet = { due, allDay ->
+        EditorSheet.DUE -> DueDateSheet(todo.dueAt, todo.dueAllDay, repeating, onSet = { due, allDay ->
             set { t ->
                 val shift = if (t.dueAt != null && due != null) due - t.dueAt else null
                 t.copy(dueAt = due, dueAllDay = allDay, reminderAt = shift?.let { s -> t.reminderAt?.plus(s) } ?: t.reminderAt)
             }
         }, onDismiss = onDismiss)
         EditorSheet.REPEAT -> RecurrenceSheet(Recurrence.parse(todo.recurrence), onSet = { r ->
-            set { it.copy(recurrence = r?.serialize()) }
+            set { it.withRecurrence(r, state.now) }
         }, onDismiss = onDismiss)
-        EditorSheet.REMINDER -> ReminderSheet(todo.dueAt, todo.dueAllDay, todo.reminderAt, onSet = { at ->
+        EditorSheet.REMINDER -> ReminderSheet(todo, onSet = { at ->
             set { it.copy(reminderAt = at) }
         }, onDismiss = onDismiss)
         EditorSheet.LIST -> ListSectionPickerDialog(state.lists, todo.listSyncId, todo.section, onPick = { list, section ->
@@ -50,6 +54,17 @@ internal fun EditorSheetHost(sheet: EditorSheet, state: TodoUiState, actions: To
             set { it.copy(blockedBy = ids) }
         }, onDismiss = onDismiss)
     }
+}
+
+/**
+ * Makes the task repeat on [recurrence]. A repeating task only rolls forward from a due date,
+ * so one without gets the schedule's first day from today.
+ */
+internal fun Todo.withRecurrence(recurrence: Recurrence, now: Long): Todo {
+    if (dueAt != null) return copy(recurrence = recurrence.serialize())
+    val zone = TimeZone.currentSystemDefault()
+    val first = recurrence.firstOnOrAfter(DueDates.localDate(now, zone))
+    return copy(recurrence = recurrence.serialize(), dueAt = DueDates.startOfDay(first, zone), dueAllDay = true)
 }
 
 /** A set start date offers clearing first; otherwise go straight to the picker. */

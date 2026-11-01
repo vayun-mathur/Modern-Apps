@@ -47,6 +47,20 @@ sealed interface Recurrence {
         }
     }
 
+    /** The first day on or after [today] this schedule lands on; seeds a repeating task's due date. */
+    fun firstOnOrAfter(today: LocalDate): LocalDate {
+        val matches = when (this) {
+            is Weekly -> days.isEmpty() || today.dayOfWeek in days
+            is Monthly -> when (dayOfMonth) {
+                null -> true
+                LAST_DAY -> today.day == lengthOfMonth(LocalDate(today.year, today.month.number, 1))
+                else -> today.day == dayOfMonth
+            }
+            else -> true
+        }
+        return if (matches) today else nextDate(today, today)
+    }
+
     fun serialize(): String {
         val parts = mutableListOf<String>()
         parts += "FREQ=" + when (this) {

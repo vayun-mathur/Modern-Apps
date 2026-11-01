@@ -1,12 +1,15 @@
 package com.vayunmathur.todo.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,10 +35,13 @@ import com.vayunmathur.library.ui.IconDelete
 import com.vayunmathur.library.ui.IconMoreVert
 import com.vayunmathur.library.ui.IconMove
 import com.vayunmathur.library.ui.MaterialTheme
+import com.vayunmathur.library.ui.OdfMarkdownEditorField
+import com.vayunmathur.library.ui.OdfMarkdownEditorToolbar
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.TextFieldDefaults
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.rememberOdfMarkdownEditorController
 import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.platform.TodoActions
@@ -56,11 +62,18 @@ fun TodoDetailScreen(state: TodoUiState, actions: TodoActions) {
     var pickList by remember { mutableStateOf(false) }
     val titleFocus = remember { FocusRequester() }
     LaunchedEffect(state.isNew) { if (state.isNew) titleFocus.requestFocus() }
+    val notes = key(todo.syncId) {
+        rememberOdfMarkdownEditorController(initialMarkdown = todo.notes) { md -> actions.update { it.copy(notes = md) } }
+    }
 
     DetailScaffold(
         title = stringResource(R.string.todo_details),
         onNavigateBack = { actions.back() },
         scrollBehavior = appBarScrollBehavior(),
+        bottomBar = {
+            // EditorBottomBar claims navigationBars ∪ ime itself; no extra imePadding.
+            if (notes.focused) OdfMarkdownEditorToolbar(notes)
+        },
         actions = {
             IconButton(onClick = { showDeleteConfirm = true }) { IconDelete() }
             IconButton(onClick = { menu = true }) { IconMoreVert() }
@@ -111,10 +124,18 @@ fun TodoDetailScreen(state: TodoUiState, actions: TodoActions) {
             )
         }
         EditorChips(state, actions, Modifier.fillMaxWidth().padding(vertical = 8.dp))
-        MarkdownNotes(
-            notes = todo.notes,
-            onChange = { notes -> actions.update { it.copy(notes = notes) } },
-            modifier = Modifier.padding(vertical = 8.dp),
+        Text(
+            stringResource(R.string.todo_notes),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+        )
+        OdfMarkdownEditorField(
+            controller = notes,
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                .padding(12.dp),
         )
         if (!todo.isSubtask) {
             SubtaskList(

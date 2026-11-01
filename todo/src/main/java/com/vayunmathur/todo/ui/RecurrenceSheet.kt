@@ -24,6 +24,7 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconCheck
 import com.vayunmathur.library.ui.ListItem
+import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Switch
@@ -40,14 +41,19 @@ private enum class Unit4 { DAYS, WEEKS, MONTHS, YEARS }
 /** Preset repeats plus a custom editor (interval, unit, weekdays, last day, from completion). */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun RecurrenceSheet(current: Recurrence?, onSet: (Recurrence?) -> Unit, onDismiss: () -> Unit) {
+fun RecurrenceSheet(current: Recurrence?, onSet: (Recurrence) -> Unit, onDismiss: () -> Unit) {
     var custom by remember { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         if (!custom) {
+            Text(
+                stringResource(R.string.repeat_how_often),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            )
+            val weekdays = Recurrence.Weekly(1, DayOfWeek.entries.take(WORKDAYS).toSet())
             val presets = listOf(
-                null,
                 Recurrence.Daily(),
-                Recurrence.Weekly(1, DayOfWeek.entries.take(WORKDAYS).toSet()),
+                weekdays,
                 Recurrence.Weekly(),
                 Recurrence.Monthly(),
                 Recurrence.Yearly(),
@@ -55,13 +61,7 @@ fun RecurrenceSheet(current: Recurrence?, onSet: (Recurrence?) -> Unit, onDismis
             presets.forEach { preset ->
                 ListItem(
                     headlineContent = {
-                        Text(
-                            when {
-                                preset == null -> stringResource(R.string.no_repeat)
-                                preset == presets[2] -> stringResource(R.string.weekdays)
-                                else -> recurrenceLabel(preset)
-                            },
-                        )
+                        Text(if (preset == weekdays) stringResource(R.string.weekdays) else recurrenceLabel(preset))
                     },
                     trailingContent = if (preset == current) ({ IconCheck() }) else null,
                     modifier = Modifier.clickable { onSet(preset) },
@@ -80,7 +80,7 @@ fun RecurrenceSheet(current: Recurrence?, onSet: (Recurrence?) -> Unit, onDismis
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CustomRecurrence(current: Recurrence?, onSet: (Recurrence?) -> Unit) {
+private fun CustomRecurrence(current: Recurrence?, onSet: (Recurrence) -> Unit) {
     var interval by remember { mutableStateOf((current?.interval ?: 1).toString()) }
     var unit by remember {
         mutableStateOf(

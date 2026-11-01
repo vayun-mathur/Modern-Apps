@@ -33,10 +33,13 @@ class ReminderReceiver : BroadcastReceiver() {
         val todo = syncId?.let { repo.getBySyncId(it) } ?: return
         val at = todo.reminderAt ?: return
         // A reminder that moved later since this alarm was set is re-armed by reconcile.
-        if (todo.done || todo.deleted || at > System.currentTimeMillis() + EARLY_SLACK_MS) return
+        val now = System.currentTimeMillis()
+        if (todo.done || todo.deleted || at > now + EARLY_SLACK_MS) return
         val channelName = todo.listSyncId?.let { repo.getListBySyncId(it)?.name }
             ?: context.getString(com.vayunmathur.todo.R.string.view_inbox)
         ReminderNotifications.postReminder(context, todo, channelName)
+        // Nothing in the data changed, so arm a repeating task's next occurrence here.
+        if (todo.recurrence != null) ReminderScheduler.reconcile(context, repo.getAll(), maxOf(now, at) + 1)
     }
 
     private suspend fun digest(context: Context, repo: TodoRepository) {
