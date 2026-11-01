@@ -115,6 +115,8 @@
     <string name="choose_fare">Choose fare</string>
     <!-- Round-trip picker title: pick outbound + return flights. Verb phrase -->
     <string name="choose_flights">Choose flights</string>
+    <!-- Date range picker title. Verb phrase -->
+    <string name="select_dates">Select dates</string>
     <!-- Round-trip picker subtitle, first step. Noun phrase -->
     <string name="step_1_of_2">Step 1 of 2</string>
     <!-- Round-trip picker subtitle, second step. Noun phrase -->
