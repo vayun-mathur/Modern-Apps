@@ -36,7 +36,7 @@ import com.vayunmathur.travel.util.AncillariesState
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.initPassengers
 import com.vayunmathur.travel.util.retrySeatMaps
-import com.vayunmathur.travel.util.saveAncillariesAndContinue
+import com.vayunmathur.travel.util.saveAncillaries
 import com.vayunmathur.travel.util.setBaggageQuantity
 import com.vayunmathur.travel.util.setExtraQuantity
 import androidx.compose.ui.res.stringResource
@@ -151,7 +151,7 @@ fun AncillariesPage(
 
             Button(
                 onClick = {
-                    viewModel.saveAncillariesAndContinue()
+                    viewModel.saveAncillaries { backStack.add(Route.Payment(offer.offerId)) }
                 },
                 enabled = !state.loading,
                 modifier = Modifier.fillMaxWidth(),

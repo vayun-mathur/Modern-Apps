@@ -271,13 +271,19 @@ internal fun TravelViewModel.selectedServices(): List<ServiceSelectionDto> {
 /**
  * Save ancillary selections (`POST /trips/:id/ancillaries`, replacing all)
  * when they differ from what the trip already has — including clearing them
- * back to none. Then moves to checkout.
+ * back to none — then call [onSaved] (the page moves on to Payment, which
+ * fetches a fresh payment intent for the new total).
  */
-fun TravelViewModel.saveAncillariesAndContinue() {
+fun TravelViewModel.saveAncillaries(onSaved: () -> Unit) {
     val tripId = currentTrip?.tripId ?: return
     val selections = selectedServices()
+    val proceed = {
+        // Any earlier intent is for the old total; Payment re-runs checkout from Idle.
+        checkoutMutable.value = CheckoutState.Idle
+        onSaved()
+    }
     if (!ancillariesNeedSaving(selections, savedServices)) {
-        startCheckout()
+        proceed()
         return
     }
     ancillariesMutable.value = ancillariesMutable.value.copy(loading = true, error = null)
@@ -286,7 +292,7 @@ fun TravelViewModel.saveAncillariesAndContinue() {
             .onSuccess { _: AncillariesSelectionResultDto ->
                 savedServices = selections
                 ancillariesMutable.value = ancillariesMutable.value.copy(loading = false)
-                startCheckout()
+                proceed()
             }
             .onFailure {
                 ancillariesMutable.value = ancillariesMutable.value.copy(loading = false, error = errorMessage(it))
