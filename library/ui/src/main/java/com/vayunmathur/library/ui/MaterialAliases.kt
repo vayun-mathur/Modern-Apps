@@ -104,6 +104,7 @@ typealias SnackbarHostState = androidx.compose.material3.SnackbarHostState
 typealias DrawerState = androidx.compose.material3.DrawerState
 typealias SwipeToDismissBoxState = androidx.compose.material3.SwipeToDismissBoxState
 typealias DatePickerState = androidx.compose.material3.DatePickerState
+typealias DateRangePickerState = androidx.compose.material3.DateRangePickerState
 typealias TimePickerState = androidx.compose.material3.TimePickerState
 typealias SheetState = androidx.compose.material3.SheetState
 typealias BottomSheetScaffoldState = androidx.compose.material3.BottomSheetScaffoldState

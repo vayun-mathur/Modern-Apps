@@ -971,6 +971,11 @@ fun TimePicker(state: TimePickerState, modifier: Modifier = Modifier) =
 fun DatePicker(state: DatePickerState, modifier: Modifier = Modifier) =
     androidx.compose.material3.DatePicker(state = state, modifier = modifier)
 
+/** Start + end date selection in one calendar (e.g. depart/return, check-in/check-out). */
+@Composable
+fun DateRangePicker(state: DateRangePickerState, modifier: Modifier = Modifier) =
+    androidx.compose.material3.DateRangePicker(state = state, modifier = modifier)
+
 @Composable
 fun DatePickerDialog(
     onDismissRequest: () -> Unit,

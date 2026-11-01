@@ -65,6 +65,18 @@ fun rememberDatePickerState(
         selectableDates = selectableDates,
     )
 
+@Composable
+fun rememberDateRangePickerState(
+    initialSelectedStartDateMillis: Long? = null,
+    initialSelectedEndDateMillis: Long? = null,
+    selectableDates: SelectableDates = androidx.compose.material3.DatePickerDefaults.AllDates,
+) =
+    androidx.compose.material3.rememberDateRangePickerState(
+        initialSelectedStartDateMillis = initialSelectedStartDateMillis,
+        initialSelectedEndDateMillis = initialSelectedEndDateMillis,
+        selectableDates = selectableDates,
+    )
+
 // --- Color scheme builder (params limited to those app themes set) ---
 private val baseDarkColorScheme = androidx.compose.material3.darkColorScheme()
 
