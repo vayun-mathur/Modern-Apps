@@ -115,6 +115,8 @@ import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.WrapText
 import androidx.compose.material.icons.automirrored.outlined.ArrowRightAlt
 import androidx.compose.material.icons.filled.AccessTime
@@ -622,6 +624,16 @@ fun IconKeyboardArrowUp(modifier: Modifier = Modifier, tint: Color = LocalConten
 @Composable
 fun IconKeyboardArrowDown(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.KeyboardArrowDown, "Down", modifier, tint)
+
+/** Previous (month/page); mirrors in RTL. */
+@Composable
+fun IconKeyboardArrowLeft(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous", modifier, tint)
+
+/** Next (month/page); mirrors in RTL. */
+@Composable
+fun IconKeyboardArrowRight(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next", modifier, tint)
 
 @Composable
 fun IconDragHandle(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
