@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import com.vayunmathur.todo.domain.format.ExportFormat
+import com.vayunmathur.todo.domain.format.ImportedTask
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -113,6 +116,31 @@ class TodoViewModel(
 
     fun reorderLists(moved: List<TodoList>) {
         viewModelScope.launch(io) { repository.upsertLists(moved) }
+    }
+
+    /** Changes the next sync still has to carry; meaningful once a sync has happened. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val pendingSync: StateFlow<Int> = settings.lastSyncAt
+        .flatMapLatest { since -> repository.pendingSyncCount(since) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), 0)
+
+    private val transfer = TodoDataTransfer(application, repository)
+
+    fun export(uri: android.net.Uri, format: ExportFormat, onDone: () -> Unit) {
+        viewModelScope.launch(io) {
+            transfer.export(uri, format)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone() }
+        }
+    }
+
+    suspend fun readImport(uri: android.net.Uri): List<ImportedTask> =
+        kotlinx.coroutines.withContext(io) { runCatching { transfer.read(uri) }.getOrDefault(emptyList()) }
+
+    fun import(tasks: List<ImportedTask>, onDone: (Int) -> Unit) {
+        viewModelScope.launch(io) {
+            val count = transfer.import(tasks)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone(count) }
+        }
     }
 
     fun updateSettings(block: suspend TodoSettings.() -> Unit) {

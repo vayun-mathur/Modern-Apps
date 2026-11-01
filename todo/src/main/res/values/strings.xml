@@ -374,4 +374,48 @@
     <string name="widget_preview_3">Call Sam about Saturday</string>
     <!-- Quick add: voice input button description. Verb phrase. -->
     <string name="voice_input">Speak a task</string>
+
+    <!-- Name of the local calendar holding mirrored tasks. Noun. -->
+    <string name="calendar_name">Tasks</string>
+    <!-- Settings section header for sync and calendar. Noun. -->
+    <string name="settings_sync">Sync</string>
+    <!-- Settings: calendar mirror toggle. Verb phrase. -->
+    <string name="settings_calendar_mirror">Show tasks in calendar</string>
+    <!-- Settings: calendar mirror explanation. -->
+    <string name="settings_calendar_mirror_summary">Due tasks appear in a read-only \"Tasks\" calendar in any calendar app</string>
+    <!-- Settings: EverySync sync status row title. Proper noun. -->
+    <string name="settings_everysync">EverySync</string>
+    <!-- Settings: sync status when never synced. -->
+    <string name="settings_everysync_never">Not synced. Set up encrypted sync in EverySync.</string>
+    <!-- Settings: local changes not yet synced. -->
+    <plurals name="pending_changes">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> change waiting</item>
+        <item quantity="other"><xliff:g id="count" example="3">%d</xliff:g> changes waiting</item>
+    </plurals>
+    <!-- Settings: import row title. Verb phrase. -->
+    <string name="import_tasks">Import tasks</string>
+    <!-- Settings: import row explanation. -->
+    <string name="import_summary">From a todo.txt, CSV or iCalendar file</string>
+    <!-- Settings: export as todo.txt. Verb phrase. -->
+    <string name="export_todo_txt">Export as todo.txt</string>
+    <!-- Settings: export as CSV. Verb phrase. -->
+    <string name="export_csv">Export as CSV</string>
+    <!-- Settings: export as iCalendar. Verb phrase. -->
+    <string name="export_ics">Export as iCalendar</string>
+    <!-- Snackbar after exporting. -->
+    <string name="export_done">Tasks exported</string>
+    <!-- Snackbar when the chosen file had no tasks. -->
+    <string name="import_nothing">No tasks found in that file</string>
+    <!-- Import confirmation title. -->
+    <plurals name="import_confirm">
+        <item quantity="one">Import <xliff:g id="count" example="1">%d</xliff:g> task?</item>
+        <item quantity="other">Import <xliff:g id="count" example="12">%d</xliff:g> tasks?</item>
+    </plurals>
+    <!-- Import confirmation button. Verb. -->
+    <string name="import_action">Import</string>
+    <!-- Snackbar after importing. -->
+    <plurals name="imported">
+        <item quantity="one"><xliff:g id="count" example="1">%d</xliff:g> task imported</item>
+        <item quantity="other"><xliff:g id="count" example="12">%d</xliff:g> tasks imported</item>
+    </plurals>
 </resources>

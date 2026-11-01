@@ -47,6 +47,10 @@ abstract class TodoDao {
     @Query("SELECT MAX(position) FROM Todo WHERE deleted = 0")
     abstract suspend fun maxPosition(): Double?
 
+    /** Rows (tombstones included) changed after [since]: what the next sync still has to carry. */
+    @Query("SELECT COUNT(*) FROM Todo WHERE updatedAt > :since")
+    abstract fun countUpdatedSinceFlow(since: Long): Flow<Int>
+
     @Query("SELECT * FROM Todo WHERE deleted = 0 AND listSyncId = :listSyncId")
     abstract suspend fun getInList(listSyncId: String): List<Todo>
 

@@ -1,11 +1,7 @@
 package com.vayunmathur.todo.ui
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.todo.Route
@@ -24,6 +20,9 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel) {
     val lists by viewModel.lists.collectAsStateWithLifecycle()
     val digestEnabled by settings.digestEnabled.collectAsStateWithLifecycle(false)
     val digestMinutes by settings.digestMinutes.collectAsStateWithLifecycle(TodoSettings.DEFAULT_DIGEST_MINUTES)
+    val calendarMirror by settings.calendarMirror.collectAsStateWithLifecycle(false)
+    val lastSyncAt by settings.lastSyncAt.collectAsStateWithLifecycle(0L)
+    val pendingSync by viewModel.pendingSync.collectAsStateWithLifecycle()
 
     SettingsScreen(
         state = SettingsUiState(defaultView, defaultSort, showCompleted, lists),
@@ -40,9 +39,13 @@ fun SettingsPage(backStack: NavBackStack<Route>, viewModel: TodoViewModel) {
                 onDigestEnabled = { on -> viewModel.updateSettings { setDigestEnabled(on) } },
                 onDigestMinutes = { m -> viewModel.updateSettings { setDigestMinutes(m) } },
             )
+            SyncSettingsSection(
+                calendarMirror = calendarMirror,
+                onCalendarMirror = { on -> viewModel.updateSettings { setCalendarMirror(on) } },
+                lastSyncAt = lastSyncAt,
+                pendingChanges = pendingSync,
+            )
         },
-        dataSection = {
-            Row(Modifier.padding(horizontal = 16.dp)) { TodoBackupButtons() }
-        },
+        dataSection = { DataSettingsSection(viewModel) },
     )
 }

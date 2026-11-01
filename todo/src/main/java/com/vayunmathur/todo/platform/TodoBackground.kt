@@ -7,6 +7,7 @@ import com.vayunmathur.todo.notifications.DigestScheduler
 import com.vayunmathur.todo.notifications.NotificationChannels
 import com.vayunmathur.todo.notifications.ReminderScheduler
 import com.vayunmathur.todo.widget.TodayWidget
+import com.vayunmathur.todo.sync.CalendarMirror
 import androidx.glance.appwidget.updateAll
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.FlowPreview
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 object TodoBackground {
     private val started = AtomicBoolean(false)
     private const val SETTLE_MS = 500L
+    private const val MIRROR_SETTLE_MS = 2_000L
 
     private data class ReminderKey(val syncId: String, val reminderAt: Long?, val done: Boolean)
 
@@ -50,6 +52,11 @@ object TodoBackground {
         }
         repo.appScope.launch {
             combine(repo.todos, repo.lists) { _, _ -> }.debounce(SETTLE_MS).collect { refreshWidgets(app) }
+        }
+        repo.appScope.launch {
+            combine(repo.todos, settings.calendarMirror) { todos, on -> todos to on }
+                .debounce(MIRROR_SETTLE_MS)
+                .collect { (todos, on) -> CalendarMirror.reconcile(app, on, todos) }
         }
     }
 

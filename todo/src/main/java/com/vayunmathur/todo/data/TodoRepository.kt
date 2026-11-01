@@ -29,6 +29,7 @@ class TodoRepository private constructor(
     val lists: Flow<List<TodoList>> get() = listDao.getAllFlow()
     fun todoBySyncIdFlow(syncId: String): Flow<Todo?> = dao.getBySyncIdFlow(syncId)
     fun subtasksFlow(parentSyncId: String): Flow<List<Todo>> = dao.getSubtasksFlow(parentSyncId)
+    fun pendingSyncCount(since: Long): Flow<Int> = dao.countUpdatedSinceFlow(since)
 
     suspend fun <R> inTransaction(block: suspend () -> R): R = db.withWriteTransaction { block() }
 

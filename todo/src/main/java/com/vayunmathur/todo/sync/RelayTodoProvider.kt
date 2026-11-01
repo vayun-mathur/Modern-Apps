@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.todo.data.SyncSnapshot
 import com.vayunmathur.todo.data.TodoRepository
+import com.vayunmathur.todo.data.TodoSettings
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -100,7 +101,9 @@ class RelayTodoProvider : ContentProvider() {
 
     private fun <T> guarded(op: String, uri: Uri, fallback: T, block: suspend (TodoRepository) -> T): T {
         enforceRelayCaller()
+        val fromEverysync = Binder.getCallingUid() != Process.myUid()
         return runBlocking(repo().io) {
+            if (fromEverysync) context?.let { TodoSettings(it).markSynced() }
             try {
                 block(repo())
             } catch (e: IllegalArgumentException) {
