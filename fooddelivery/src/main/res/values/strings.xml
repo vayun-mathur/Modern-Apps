@@ -105,4 +105,8 @@
     <string name="order_tracking_channel_desc">Ongoing updates while your order is on the way</string>
     <!-- %1$s = status label e.g. Driving to you, %2$d = minutes remaining -->
     <string name="notif_status_eta">%1$s · %2$d min</string>
+    <string name="verifying_your_email">Verifying your email address…</string>
+    <string name="email_verified">Email verified</string>
+    <string name="email_verification_failed">Email verification failed</string>
+    <string name="email_verification_failed_detail">This link may have expired or already been used. Request a new verification email and try again.</string>
 </resources>

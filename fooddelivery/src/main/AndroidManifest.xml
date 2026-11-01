@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -35,6 +36,25 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="fooddelivery" android:host="restaurant" />
+            </intent-filter>
+            <!-- Email verification links, in both forms the official Bites app accepts: the
+                 custom scheme the withbites.com verify page hands off to, and the web link in
+                 the email itself. Not autoVerify — we can't serve assetlinks on withbites.com,
+                 so the https form shows up as a choice in the "Open with" sheet. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.deliverycollective.storefront" android:host="email-verification" />
+            </intent-filter>
+            <intent-filter tools:ignore="AppLinkWarning">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="withbites.com" />
+                <data android:host="www.withbites.com" />
+                <data android:pathPrefix="/email-verification/" />
             </intent-filter>
         </activity>
 

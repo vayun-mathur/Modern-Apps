@@ -40,6 +40,7 @@ import com.vayunmathur.fooddelivery.ui.AccountScreen
 import com.vayunmathur.fooddelivery.ui.CartScreen
 import com.vayunmathur.fooddelivery.ui.CheckoutScreen
 import com.vayunmathur.fooddelivery.ui.DealsScreen
+import com.vayunmathur.fooddelivery.ui.EmailVerificationScreen
 import com.vayunmathur.fooddelivery.ui.HomeScreen
 import com.vayunmathur.fooddelivery.ui.OrderTrackingScreen
 import com.vayunmathur.fooddelivery.ui.OrdersScreen
@@ -62,6 +63,7 @@ sealed interface Route : NavKey {
     @Serializable data class Restaurant(val id: Int) : Route
     @Serializable data object Checkout : Route
     @Serializable data class OrderTracking(val orderId: Int) : Route
+    @Serializable data class EmailVerification(val customerId: String, val token: String) : Route
 }
 
 class MainActivity : MaActivity() {
@@ -73,6 +75,8 @@ class MainActivity : MaActivity() {
     // (e.g. the maps place-sheet "Order" button). Same Compose-state pattern so
     // onNewIntent can re-deep-link into the running UI.
     private val openRestaurantId = mutableStateOf<Int?>(null)
+
+    private val verifyEmail = mutableStateOf<Route.EmailVerification?>(null)
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -88,6 +92,7 @@ class MainActivity : MaActivity() {
         AppInit.start(this)
         trackOrderId.value = intent.trackOrderIdOrNull()
         openRestaurantId.value = intent.restaurantIdOrNull()
+        verifyEmail.value = intent.emailVerificationOrNull()
         requestNotificationPermissionIfNeeded()
         // The TLS trust bundle and the saved auth token are warmed up off the main thread by
         // AppInit, so nothing here touches the network or disk.
@@ -100,7 +105,7 @@ class MainActivity : MaActivity() {
 
     @Composable
     override fun Content() {
-        FoodDeliveryApp(trackOrderId, openRestaurantId)
+        FoodDeliveryApp(trackOrderId, openRestaurantId, verifyEmail)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -108,6 +113,7 @@ class MainActivity : MaActivity() {
         setIntent(intent)
         intent.trackOrderIdOrNull()?.let { trackOrderId.value = it }
         intent.restaurantIdOrNull()?.let { openRestaurantId.value = it }
+        intent.emailVerificationOrNull()?.let { verifyEmail.value = it }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -130,8 +136,35 @@ private fun Intent.restaurantIdOrNull(): Int? {
     return uri.lastPathSegment?.toIntOrNull()?.takeIf { it > 0 }
 }
 
+private const val EMAIL_VERIFICATION = "email-verification"
+
+// Both segments end up in an API path, so only plain id characters are let through.
+private val LINK_SEGMENT = Regex("[A-Za-z0-9_-]{1,256}")
+
+/**
+ * com.deliverycollective.storefront://email-verification/<customerId>/<token> or
+ * https://withbites.com/email-verification/<customerId>/<token> — the same two forms the
+ * official Bites app handles. Returns null for anything else.
+ */
+private fun Intent.emailVerificationOrNull(): Route.EmailVerification? {
+    val uri = data ?: return null
+    val segments = when {
+        uri.scheme == "com.deliverycollective.storefront" && uri.host == EMAIL_VERIFICATION ->
+            uri.pathSegments
+        uri.scheme == "https" && uri.pathSegments.firstOrNull() == EMAIL_VERIFICATION ->
+            uri.pathSegments.drop(1)
+        else -> return null
+    }
+    if (segments.size != 2 || !segments.all { LINK_SEGMENT.matches(it) }) return null
+    return Route.EmailVerification(customerId = segments[0], token = segments[1])
+}
+
 @Composable
-private fun FoodDeliveryApp(trackOrderId: MutableState<Int?>, openRestaurantId: MutableState<Int?>) {
+private fun FoodDeliveryApp(
+    trackOrderId: MutableState<Int?>,
+    openRestaurantId: MutableState<Int?>,
+    verifyEmail: MutableState<Route.EmailVerification?>,
+) {
     val context = LocalContext.current
     val backStack = rememberNavBackStack<Route>(Route.Main())
 
@@ -147,6 +180,12 @@ private fun FoodDeliveryApp(trackOrderId: MutableState<Int?>, openRestaurantId: 
         val id = openRestaurantId.value ?: return@LaunchedEffect
         backStack.add(Route.Restaurant(id))
         openRestaurantId.value = null
+    }
+
+    LaunchedEffect(verifyEmail.value) {
+        val route = verifyEmail.value ?: return@LaunchedEffect
+        backStack.add(route)
+        verifyEmail.value = null
     }
     // Restoring the cart is a prefs read plus a JSON decode, so it happens off the main
     // thread rather than in the remember initialiser. Anything added while the read was in
@@ -194,6 +233,13 @@ private fun FoodDeliveryApp(trackOrderId: MutableState<Int?>, openRestaurantId: 
         // so medium widths show it two-pane instead of covering the list.
         entry<Route.OrderTracking>(metadata = ListDetailPage() + MorphPage()) { route ->
             OrderTrackingScreen(orderId = route.orderId, onBack = { backStack.pop() })
+        }
+        entry<Route.EmailVerification>(metadata = ListDetailPage()) { route ->
+            EmailVerificationScreen(
+                customerId = route.customerId,
+                token = route.token,
+                onDone = { backStack.pop() },
+            )
         }
     }
 }
