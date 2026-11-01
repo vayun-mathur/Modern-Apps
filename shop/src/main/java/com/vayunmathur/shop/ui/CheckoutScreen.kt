@@ -1,5 +1,6 @@
 package com.vayunmathur.shop.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,7 @@ import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.CheckoutPhase
@@ -31,8 +33,9 @@ import kotlinx.coroutines.isActive
 
 /** Native session review only. Payment and purchase confirmation remain on the merchant website. */
 @Composable
-fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit) {
+fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit, onPayInApp: () -> Unit) {
     val context = LocalContext.current
+    val dark = isSystemInDarkTheme()
     LaunchedEffect(viewModel) {
         while (isActive) { viewModel.refreshCheckoutExpiry(); delay(1000) }
     }
@@ -81,13 +84,19 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit) {
                         val merchantSiteUrl = MerchantUrls.domain(key.second)?.let { "https://$it" }
                         val checkoutUrl = (checkout?.continueUrl ?: state.handoffUrl)?.let(MerchantUrls::httpsUrl)
                         val cartUrl = MerchantUrls.shopifyCartUrl(key.second, lines.map { it.variantId to it.quantity })
-                        (checkoutUrl ?: cartUrl ?: merchantSiteUrl)?.let { url ->
-                            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { openContinueUrl(context, url) }) {
-                                Text(when (url) {
-                                    checkoutUrl -> "Continue checkout on merchant website"
-                                    cartUrl -> "Open cart on merchant website"
-                                    else -> "Open merchant website"
-                                })
+                        if (checkoutUrl != null) {
+                            Button(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    if (viewModel.openEmbeddedCheckout(key.first, key.second, checkoutUrl, dark)) onPayInApp()
+                                },
+                            ) { Text("Pay in app") }
+                            TextButton(onClick = { openContinueUrl(context, checkoutUrl) }) { Text("Open in browser") }
+                        } else {
+                            (cartUrl ?: merchantSiteUrl)?.let { url ->
+                                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { openContinueUrl(context, url) }) {
+                                    Text(if (url == cartUrl) "Open cart on merchant website" else "Open merchant website")
+                                }
                             }
                         }
                     }

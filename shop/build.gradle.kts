@@ -26,4 +26,6 @@ dependencies {
     // Buyer profile (name, contact, delivery address), encrypted at rest.
     implementRoom(libs)
     implementation(project(":library:room"))
+    // Embedded Checkout bridge (origin-scoped web message listener) and in-page Payment Request.
+    implementation(libs.androidx.webkit)
 }

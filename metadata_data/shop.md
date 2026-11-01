@@ -8,6 +8,6 @@ Features:
 - Prepare checkout sessions with per-merchant totals plus authoritative checkout totals and legal links
 - Save your name, contact details and delivery address once in an encrypted profile; checkout fills them in automatically
 - Pending sessions and cart lines survive browser handoffs and partial failures without confirming a paid order
-- Native payment completion stays disabled without a supported handler, provider approval, and authorized merchant access
+- Pay in app inside the store's own secure checkout, already filled in from your profile; completed orders appear under Orders
 
 Requires internet

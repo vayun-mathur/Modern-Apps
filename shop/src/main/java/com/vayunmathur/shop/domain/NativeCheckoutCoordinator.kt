@@ -58,6 +58,12 @@ internal class NativeCheckoutCoordinator(
         }
     }
 
+    fun forget(platform: String, shop: String) {
+        val key = platform to shop
+        if (states.remove(key) != null) changed(snapshot)
+        createdAt.remove(key)
+    }
+
     fun refreshExpiry() {
         states.toMap().forEach { (key, state) ->
             if (!state.busy && state.checkout != null && state.phase != CheckoutPhase.Uncertain && expired(key, state.checkout)) {

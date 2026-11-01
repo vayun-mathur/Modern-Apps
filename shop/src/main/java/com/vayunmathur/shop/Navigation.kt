@@ -8,6 +8,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 import com.vayunmathur.shop.platform.ShopViewModel
 import com.vayunmathur.shop.ui.CartScreen
 import com.vayunmathur.shop.ui.CheckoutScreen
+import com.vayunmathur.shop.ui.EmbeddedCheckoutScreen
 import com.vayunmathur.shop.ui.OrdersScreen
 import com.vayunmathur.shop.ui.ProductScreen
 import com.vayunmathur.shop.ui.ProfileScreen
@@ -52,7 +53,14 @@ fun Navigation(viewModel: ShopViewModel) {
             CartScreen(viewModel, onCheckout = { backStack.add(Route.Checkout) })
         }
         entry<Route.Checkout> {
-            CheckoutScreen(viewModel = viewModel, onBack = { backStack.pop() })
+            CheckoutScreen(
+                viewModel = viewModel,
+                onBack = { backStack.pop() },
+                onPayInApp = { backStack.add(Route.EmbeddedCheckout) },
+            )
+        }
+        entry<Route.EmbeddedCheckout> {
+            EmbeddedCheckoutScreen(viewModel = viewModel, onClose = { backStack.pop() })
         }
         entry<Route.Orders> { OrdersScreen(viewModel = viewModel) }
     }

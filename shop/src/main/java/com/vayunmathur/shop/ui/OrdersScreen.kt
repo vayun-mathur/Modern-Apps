@@ -79,7 +79,11 @@ private fun OrderRow(order: PlacedOrder, onOpen: () -> Unit) {
                     "${order.itemCount} item(s) · ${MoneyFormat.format(order.total)}",
                     style = MaterialTheme.typography.titleSmall,
                 )
-                Text(stringResource(R.string.checkout_pending), style = MaterialTheme.typography.labelMedium)
+                val completed = order.status == "completed"
+                Text(
+                    stringResource(if (completed) R.string.order_placed else R.string.checkout_pending),
+                    style = MaterialTheme.typography.labelMedium,
+                )
                 if (order.displayName.isNotBlank()) Text(order.displayName, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -92,7 +96,7 @@ private fun OrderRow(order: PlacedOrder, onOpen: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             if (order.continueUrl.isNotBlank()) {
                 Button(onClick = onOpen) {
-                    Text(stringResource(R.string.continue_in_browser))
+                    Text(stringResource(if (order.status == "completed") R.string.view_order else R.string.continue_in_browser))
                 }
             }
         }

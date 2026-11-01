@@ -14,6 +14,8 @@ import com.vayunmathur.shop.domain.PendingCheckoutSink
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.OrderStore
+import com.vayunmathur.shop.data.EmbeddedCheckoutRequest
+import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.PlacedOrder
 import com.vayunmathur.shop.data.ProfileRepository
 import com.vayunmathur.shop.data.ShopCartStore
@@ -21,6 +23,7 @@ import com.vayunmathur.shop.data.ShopProfile
 import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpProduct
 import com.vayunmathur.shop.data.message
+import com.vayunmathur.shop.domain.EmbeddedCheckout
 import com.vayunmathur.shop.domain.MerchantLink
 import com.vayunmathur.shop.domain.MerchantLinks
 import com.vayunmathur.shop.domain.MerchantUrls
@@ -49,6 +52,9 @@ class ShopViewModel(
         private set
     private var merchants: List<MerchantListing>? = null
     var launchLinkHandled = false
+    /** Held in memory only: the URL carries a merchant session key. */
+    var embeddedCheckout by mutableStateOf<EmbeddedCheckoutRequest?>(null)
+        private set
     var results by mutableStateOf<List<UcpProduct>>(emptyList())
         private set
     var searching by mutableStateOf(false)
@@ -270,6 +276,38 @@ class ShopViewModel(
 
     fun dismissCheckoutError() { checkoutError = null }
     fun dismissSearchError() { searchError = null }
+
+    fun openEmbeddedCheckout(platformId: String, shop: String, continueUrl: String, dark: Boolean): Boolean {
+        val url = EmbeddedCheckout.embeddedUrl(continueUrl, dark) ?: return false
+        val storeName = cart.firstOrNull { it.platformId == platformId && it.shopDomain == shop }?.displayName ?: shop
+        embeddedCheckout = EmbeddedCheckoutRequest(platformId, shop, storeName, url, continueUrl)
+        return true
+    }
+
+    fun closeEmbeddedCheckout() { embeddedCheckout = null }
+
+    /** The merchant's `ec.complete` is the only signal that an order was placed and paid. */
+    fun embeddedCheckoutCompleted(orderId: String, permalinkUrl: String?, totalMinor: Long?, context: Context) {
+        val request = embeddedCheckout ?: return
+        val lines = cart.filter { it.platformId == request.platformId && it.shopDomain == request.shopDomain }
+        val currency = lines.firstOrNull()?.unitPrice?.currency ?: "USD"
+        val total = totalMinor ?: lines.sumOf { it.unitPrice.amount * it.quantity }
+        val order = PlacedOrder(
+            checkoutId = orderId, placedAtMs = System.currentTimeMillis(), total = Money(total, currency),
+            itemCount = lines.sumOf { it.quantity }, continueUrl = permalinkUrl.orEmpty(), status = "completed",
+            platformId = request.platformId, shopDomain = request.shopDomain, storeName = request.storeName,
+            lines = lines.map { it.copy(imageUrl = "") },
+        )
+        cart = cart - lines.toSet()
+        ShopCartStore.save(context, cart)
+        nativeCheckout.forget(request.platformId, request.shopDomain)
+        nativeCheckout.cartChanged(cart)
+        embeddedCheckout = null
+        viewModelScope.launch {
+            OrderStore.add(context, order)
+            orders = OrderStore.getAll(context)
+        }
+    }
 
     private fun Throwable.toBackendMessage(): String =
         (this as? ShopBackendException)?.error?.message()

@@ -14,6 +14,8 @@
     <string name="place_order">Prepare checkout</string>
     <string name="estimated_subtotal">Estimated subtotal</string>
     <string name="checkout_pending">Payment not confirmed</string>
+    <string name="order_placed">Order placed</string>
+    <string name="view_order">View order</string>
     <string name="checkout_handoff_notice">Review final prices, shipping and payment on the merchant site. Cart items remain until you remove them.</string>
     <string name="buy_now">Buy now</string>
     <string name="add_to_cart">Add to cart</string>
