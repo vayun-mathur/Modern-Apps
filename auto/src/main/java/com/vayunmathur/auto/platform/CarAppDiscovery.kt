@@ -53,6 +53,10 @@ object CarAppDiscovery {
             }
         }
         return merged.mapNotNull { (component, categories) ->
+            if (RefusedCarApps.isRefused(context, component)) {
+                Log.status(TAG, "hiding $component: it refused this host")
+                return@mapNotNull null
+            }
             runCatching {
                 val info = pm.getServiceInfo(component, 0)
                 DiscoveredApp(

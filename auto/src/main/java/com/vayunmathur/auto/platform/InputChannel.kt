@@ -71,12 +71,13 @@ class InputChannel(
     @Volatile
     private var bound = false
 
+    /** Input focus was lost after binding; the next regain re-binds. */
+    private var parked = false
+
     /**
      * The grant arrived: echo the discovery-advertised keycodes back so the
-     * head unit knows which keys we handle. Called once per channel open, and
-     * again when video focus flaps back to PROJECTED with input (a head unit
-     * that parked input may need the re-bind to resume sending reports).
-     * Idempotent: re-sending the same echo is harmless.
+     * head unit knows which keys we handle. Called once per channel open;
+     * [onInputFocusChanged] re-sends it after a park.
      */
     fun requestBinding() {
         val keycodes = service.inputSource.keycodesSupportedList
@@ -85,6 +86,21 @@ class InputChannel(
         bound = true
         Log.status(TAG, "input channel open; bound ${keycodes.size} keycodes")
         onEvent(InputEvent.BindingRequested(keycodes.size))
+    }
+
+    /**
+     * Re-binds only when input returns after NO_INPUT_FOCUS: a head unit that parked
+     * input may need the echo to resume reports. Audio/nav focus changes leave
+     * [allowed] unchanged and must not re-send.
+     */
+    fun onInputFocusChanged(allowed: Boolean) {
+        if (!bound) return
+        if (!allowed) {
+            parked = true
+        } else if (parked) {
+            parked = false
+            requestBinding()
+        }
     }
 
     /**

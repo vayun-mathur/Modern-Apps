@@ -47,7 +47,16 @@ class HostManager(private val context: Context) {
         val key = app.component
         if (sessions.containsKey(key)) return
         val category = app.categories.firstOrNull() ?: return
-        val session = HostSession(context, key, category) { template ->
+        val session = HostSession(
+            context = context,
+            component = key,
+            category = category,
+            label = app.label,
+            onRefused = {
+                RefusedCarApps.markRefused(context, key)
+                CarLauncherState.hideApp(key.flattenToString())
+            },
+        ) { template ->
             val id = key.flattenToString()
             _templates.value += id to template
             CarLauncherState.setTemplate(id, template)

@@ -28,7 +28,7 @@ fun interface NightSource {
 }
 
 /**
- * The sensor source channel: subscribes to the full 26-type set on the ch7
+ * The sensor source channel: subscribes to the advertised sensor types on the ch7
  * grant and folds the head unit's batches into a last-known snapshot.
  *
  * The channel id comes from discovery, not from [GalService]: the DHU 2.0
@@ -63,6 +63,12 @@ class SensorChannel(
     private val onValues: (SensorSnapshot) -> Unit = {},
     /** Discovery-bound channel id (DHU 2.0: 1; gearhead rro: 7). */
     val channelId: Int = GalService.SENSOR_SOURCE.id,
+    /**
+     * Types the head unit advertised in discovery. Subscribing to anything else earns
+     * STATUS_INVALID_SENSOR, and enum values newer than the HU's protocol fail its
+     * required-field parse outright (DHU 2.0 rejects types 23-26).
+     */
+    private val subscriptions: List<SensorType> = SensorCodec.STUB_SUBSCRIPTIONS,
 ) {
     // (GalService import covers the default above.)
 
@@ -73,7 +79,7 @@ class SensorChannel(
     private var open = false
 
     /**
-     * Tracks the 26 subscribes against the 2 s `rvb` timeout: each subscribe
+     * Tracks subscribes against the 2 s `rvb` timeout: each subscribe
      * marks, each 0x8002 answer clears, and unanswered subscribes surface as
      * synthesized errors on the next sweep (see [onMessage]).
      */
@@ -89,21 +95,16 @@ class SensorChannel(
     private val pendingAnswers = ArrayDeque<SensorType>()
 
     /**
-     * The grant arrived: subscribe to the full 26-type set. Called once per
+     * The grant arrived: subscribe to [subscriptions]. Called once per
      * channel open. Night follows the phone until the first NIGHT_MODE batch
      * -- the snapshot seeds from [night] now so the car UI has an answer
      * before the head unit streams anything.
-     *
-     * `SensorCodec.STUB_SUBSCRIPTIONS` is the full set in dumper order despite
-     * the kept name (see the protocol KDoc). Per-type 0x8004 errors are
-     * observed and non-fatal, so a head unit that streams only a few types
-     * still brings the channel up.
      */
     fun onChannelOpen() {
         open = true
         val seeded = _snapshot.value.copy(isNight = night.phoneNight())
         _snapshot.value = seeded
-        for (type in SensorCodec.STUB_SUBSCRIPTIONS) {
+        for (type in subscriptions) {
             val (requestType, payload) = SensorCodec.encodeSubscribe(type)
             connection.send(channelId, requestType, payload)
             requestTracker.markRequested(type, SystemClock.uptimeMillis())
@@ -177,13 +178,13 @@ class SensorChannel(
         onEvent(SensorEvent.BatchReceived(events.size))
     }
 
-    /** Unsubscribes the full set; the pump calls this on teardown before release. */
+    /** Unsubscribes [subscriptions]; the pump calls this on teardown before release. */
     fun release() {
         if (!open) return
         open = false
         // Best-effort: the socket may already be going away in teardown, and
         // an unsubscribe is courtesy, not protocol -- never fail the parting.
-        for (type in SensorCodec.STUB_SUBSCRIPTIONS) {
+        for (type in subscriptions) {
             runCatching {
                 val (requestType, payload) = SensorCodec.encodeUnsubscribe(type)
                 connection.send(channelId, requestType, payload)

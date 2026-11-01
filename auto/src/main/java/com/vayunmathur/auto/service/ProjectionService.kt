@@ -302,12 +302,7 @@ class ProjectionService : Service() {
         AutoSessionState.onFocusChanged(connection.session.focus)
         audioSys?.onFocusChanged()
         audioMedia?.onFocusChanged()
-        // Flapping back to input-allowed re-binds ch8: a head unit that
-        // parked input on NO_INPUT_FOCUS may need the echo to resume
-        // sending reports. requestBinding is idempotent.
-        if (connection.session.focus.inputAllowed) {
-            input?.requestBinding()
-        }
+        input?.onInputFocusChanged(connection.session.focus.inputAllowed)
     }
 
     /**

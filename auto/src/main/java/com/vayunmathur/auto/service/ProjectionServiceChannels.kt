@@ -16,6 +16,7 @@ import com.vayunmathur.auto.protocol.AudioSinkRole
 import com.vayunmathur.auto.protocol.GalConnection
 import com.vayunmathur.auto.protocol.GalService
 import com.vayunmathur.auto.protocol.gal.Service as GalServiceProto
+import com.vayunmathur.auto.protocol.gal.SensorType
 import com.vayunmathur.auto.service.ProjectionService.Companion.TAG
 import com.vayunmathur.auto.telephony.CarProjectionInCallService
 
@@ -157,6 +158,7 @@ private fun ProjectionService.maybeCreateSensors(next: GalServiceProto, connecti
         night = NightSource { isNightNow() },
         onEvent = AutoSessionState::onSensorEvent,
         channelId = next.id,
+        subscriptions = next.sensorSource.sensorsList.mapNotNull { SensorType.forNumber(it.type) },
     )
 }
 

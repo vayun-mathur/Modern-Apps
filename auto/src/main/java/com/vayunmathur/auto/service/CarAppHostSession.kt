@@ -37,8 +37,9 @@ class CarAppHostSession(
         val host = HostManager(context)
         manager = host
         val apps = discover()
-        host.bindAll(apps)
+        // Publish before binding: a refusing app's hideApp must land after this snapshot.
         CarLauncherState.setDiscovered(apps)
+        host.bindAll(apps)
         CarLauncherState.updateActions {
             it.copy(onAppHomeTap = { component -> resetApp(component) })
         }

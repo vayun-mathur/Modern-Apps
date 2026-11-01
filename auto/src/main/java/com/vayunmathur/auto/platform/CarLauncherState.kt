@@ -6,6 +6,7 @@ import com.vayunmathur.library.carhost.HostTemplate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * The car display's UI state, shared between the projection session and the
@@ -154,6 +155,11 @@ object CarLauncherState {
     /** Publishes one discovery snapshot for the home grid. Thread-safe. */
     fun setDiscovered(apps: List<DiscoveredApp>) {
         _discovered.value = apps
+    }
+
+    /** Drops one app from the grid and dock for the rest of the session. Thread-safe. */
+    fun hideApp(id: String) {
+        _discovered.update { apps -> apps.filterNot { it.id == id } }
     }
 
     /** Publishes one parsed template for [id]. Thread-safe. */

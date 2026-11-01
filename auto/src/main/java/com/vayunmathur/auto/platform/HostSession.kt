@@ -57,6 +57,10 @@ class HostSession(
     context: Context,
     private val component: ComponentName,
     private val category: String,
+    /** App name for car-facing error messages. */
+    private val label: CharSequence,
+    /** The app's host validator rejected us; called on the handshake thread. */
+    private val onRefused: () -> Unit = {},
     private val onTemplate: (HostTemplate) -> Unit = {},
 ) {
     private val appContext = context.applicationContext
@@ -86,10 +90,13 @@ class HostSession(
     /** The component this session hosts. */
     fun componentName(): ComponentName = component
 
-    /** Whether the car-app service resolves. */
+    /**
+     * Whether the car-app service resolves. Uses the runtime enabled state: apps such as
+     * Google Messages ship the service `enabled=false` and turn it on via
+     * `setComponentEnabledSetting`, which `ServiceInfo.enabled` never reflects.
+     */
     fun hasService(): Boolean = runCatching {
-        val info = appContext.packageManager.getServiceInfo(component, 0)
-        info.enabled
+        appContext.packageManager.resolveService(Intent().setComponent(component), 0) != null
     }.getOrDefault(false)
 
     /** Binds the service; no-op when already bound or when the service is missing. */
@@ -97,6 +104,7 @@ class HostSession(
         if (bound) return
         if (!hasService()) {
             Log.status(TAG, "$component missing; stays unhosted")
+            postError("$label has turned off its car support.")
             return
         }
         val intent = Intent(CarAppService.SERVICE_INTERFACE).apply {
@@ -109,6 +117,7 @@ class HostSession(
                 Log.status(TAG, "$component connected; starting handshake")
                 if (binder == null) {
                     Log.status(TAG, "$component connected with null binder")
+                    postError("$label didn't respond.")
                     return
                 }
                 thread(name = "ma-auto-carhost", isDaemon = true) {
@@ -126,6 +135,7 @@ class HostSession(
 
             override fun onBindingDied(name: ComponentName?) {
                 Log.status(TAG, "$component binding died")
+                postError("$label stopped unexpectedly.")
             }
 
             override fun onNullBinding(name: ComponentName?) {
@@ -140,6 +150,12 @@ class HostSession(
         }.getOrDefault(false)
         bound = ok
         Log.status(TAG, "bindService returned $ok")
+        if (!ok) postError("Couldn't connect to $label.")
+    }
+
+    /** Replaces the loading spinner with a terminal message; every dead-end bind path ends here. */
+    private fun postError(message: String) {
+        mainHandler.post { onTemplate(HostTemplate.Message(title = "Can't open $label", message = message)) }
     }
 
     /**
@@ -252,13 +268,35 @@ class HostSession(
     private fun runHandshake(app: ICarApp) {
         carApp = app
         Log.status(TAG, "starting car-app handshake for $component")
-        val handshake = bundleOf(HandshakeInfo(appContext.packageName, HOST_API_LEVEL)) ?: return
-        if (!roundTrip("onHandshakeCompleted") { cb -> app.onHandshakeCompleted(handshake, cb) }) return
+        val handshake = bundleOf(HandshakeInfo(appContext.packageName, HOST_API_LEVEL)) ?: run {
+            postError("$label couldn't start.")
+            return
+        }
+        when (roundTrip("onHandshakeCompleted") { cb -> app.onHandshakeCompleted(handshake, cb) }) {
+            CallResult.OK -> Unit
+            // An explicit handshake rejection is the app's HostValidator: it only
+            // accepts allowlisted hosts (Google Messages: Google's Android Auto).
+            CallResult.REJECTED -> {
+                Log.status(TAG, "$component refused this host")
+                onRefused()
+                postError("$label only works with car systems its developer has approved, like Android Auto.")
+                return
+            }
+            CallResult.FAILED -> {
+                postError("$label didn't respond.")
+                return
+            }
+        }
         val config = Configuration(appContext.resources.configuration)
         val intent = Intent(Intent.ACTION_MAIN)
-        if (!roundTrip("onAppCreate") { cb -> app.onAppCreate(carHostBinder, intent, config, cb) }) return
-        if (!roundTrip("onAppStart") { cb -> app.onAppStart(cb) }) return
-        if (!roundTrip("onAppResume") { cb -> app.onAppResume(cb) }) return
+        val started =
+            roundTrip("onAppCreate") { cb -> app.onAppCreate(carHostBinder, intent, config, cb) } == CallResult.OK &&
+                roundTrip("onAppStart") { cb -> app.onAppStart(cb) } == CallResult.OK &&
+                roundTrip("onAppResume") { cb -> app.onAppResume(cb) } == CallResult.OK
+        if (!started) {
+            postError("$label couldn't start.")
+            return
+        }
         handshakeDone = true
         mainHandler.post { onTemplate(HostTemplate.Pane(loading = true)) }
         fetchTemplate()
@@ -270,8 +308,10 @@ class HostSession(
         Bundleable.create(value)
     }.getOrNull()
 
-    /** One blocking binder call with a 5s cap; false means the session is dead. */
-    private fun roundTrip(name: String, call: (IOnDoneCallback) -> Unit): Boolean {
+    private enum class CallResult { OK, REJECTED, FAILED }
+
+    /** One blocking binder call with a 5s cap: REJECTED is the app saying no, FAILED is no answer. */
+    private fun roundTrip(name: String, call: (IOnDoneCallback) -> Unit): CallResult {
         Log.status(TAG, "$name: calling for $component")
         val latch = CountDownLatch(1)
         val failure = AtomicReference<Throwable?>(null)
@@ -291,12 +331,16 @@ class HostSession(
         }
         runCatching { call(cb) }.onFailure {
             Log.status(TAG, "$name binder call threw", it)
-            return false
+            return CallResult.FAILED
         }
         val done = runCatching { latch.await(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS) }.getOrDefault(false)
         if (!done) Log.status(TAG, "$name timed out")
         failure.get()?.let { Log.status(TAG, "$name rejected", it) }
-        return done && failure.get() == null
+        return when {
+            failure.get() != null -> CallResult.REJECTED
+            done -> CallResult.OK
+            else -> CallResult.FAILED
+        }
     }
 
     /** Pulls the current template and forwards it. Background thread. */
@@ -318,10 +362,15 @@ class HostSession(
             override fun getInterfaceVersion(): Int = IOnDoneCallback.VERSION
         }
         runCatching { app.getManager(CarContext.APP_SERVICE, managerCb) }
-            .onFailure { Log.status(TAG, "getManager threw", it); return }
+            .onFailure {
+                Log.status(TAG, "getManager threw", it)
+                postError("$label didn't respond.")
+                return
+            }
         latch.await(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         val manager = managerRef.get() ?: run {
             Log.status(TAG, "getManager returned no manager")
+            postError("$label didn't respond.")
             return
         }
         val templateRef = AtomicReference<Any?>(null)
@@ -340,9 +389,17 @@ class HostSession(
             override fun getInterfaceVersion(): Int = IOnDoneCallback.VERSION
         }
         runCatching { manager.getTemplate(templateCb) }
-            .onFailure { Log.status(TAG, "getTemplate threw", it); return }
+            .onFailure {
+                Log.status(TAG, "getTemplate threw", it)
+                postError("$label didn't respond.")
+                return
+            }
         templateLatch.await(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-        val wrapper = templateRef.get() as? androidx.car.app.model.TemplateWrapper
+        val wrapper = templateRef.get() as? androidx.car.app.model.TemplateWrapper ?: run {
+            Log.status(TAG, "getTemplate returned no template for $component")
+            postError("$label didn't respond.")
+            return
+        }
         val parsed = HostTemplateParsers.parse(wrapper)
         taskStack.record(parsed)
         if (!taskStack.isAllowed(parsed)) {
