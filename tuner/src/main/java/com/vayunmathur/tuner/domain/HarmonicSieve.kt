@@ -8,8 +8,13 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * The Chord tab's note extractor: FFT, score only the pitches the instrument can sound, take the
- * strongest, subtract its measured partials, repeat.
+ * The note extractor behind [ChordExtractor.SIEVE], and the source of the displayed note set
+ * under [ChordExtractor.CHROMA_HMM]: FFT, score only the pitches the instrument can sound, take
+ * the strongest, subtract its measured partials, repeat.
+ *
+ * It no longer decides chord names by default. Naming from its note set needed every pitch class
+ * in a single frame and scored 14/145 on Record-3; scoring chords directly against chroma with
+ * HMM smoothing scores 42/145 on the same recording (see `RealAudioHarnessTest`).
  *
  * This replaced NNLS as the primary extractor on measured evidence, not on preference. The
  * argument for the deconvolution is that a note's overtone series is itself a chord, so a plain

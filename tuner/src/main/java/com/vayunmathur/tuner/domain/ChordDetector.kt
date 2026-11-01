@@ -1,12 +1,19 @@
 package com.vayunmathur.tuner.domain
 
 import com.vayunmathur.tuner.data.DEFAULT_PARTIALS
+import com.vayunmathur.tuner.data.Instrument
 
-/** Which note extractor the Chord tab runs. See [ChordDetector]. */
+/** Which extractor the Chord tab runs. See [ChordDetector]. */
 enum class ChordExtractor {
     /**
-     * Greedy harmonic sieve over a closed candidate set. The default, on measured evidence -
-     * see [HarmonicSieve] for the numbers.
+     * Chords scored directly against chroma and playable voicings, smoothed by an HMM - no note
+     * set is committed to before naming. The default; see [ChordTemplates] and [ChordHmm].
+     */
+    CHROMA_HMM,
+
+    /**
+     * Greedy harmonic sieve over a closed candidate set, named by [ChordNaming]. Still runs under
+     * [CHROMA_HMM] to supply the displayed note set. See [HarmonicSieve] for its numbers.
      */
     SIEVE,
 
@@ -21,12 +28,13 @@ enum class ChordExtractor {
 }
 
 /**
- * The Chord tab's pipeline: CQT, a tonality gate, note extraction, temporal stabilisation, then
- * naming (TUNER_SPEC C.2).
+ * The Chord tab's pipeline: CQT, a tonality gate, then either direct chord scoring with HMM
+ * smoothing ([ChordExtractor.CHROMA_HMM], the default) or note extraction, temporal
+ * stabilisation and naming (TUNER_SPEC C.2).
  *
- * Extraction is [ChordExtractor.SIEVE] by default. NNLS was the original design and is still
- * reachable through [extractor], but it produced 1.89 notes on a tonal frame of Record-3 against
- * the sieve's 3.32 - and a triad needs three, so it was rarely naming anything at all.
+ * The note-first paths lost on real audio because a name needed the exact note set in a single
+ * frame: the sieve named 14 of 145 Record-3 frames correctly, NNLS none. They stay reachable
+ * through [extractor] so `RealAudioHarnessTest` keeps measuring the comparison.
  *
  * The CQT is still computed on every frame even under the sieve, because two things other than
  * extraction need it: the [Tonality] gate reads spectral flatness off the raw frame, and
@@ -44,47 +52,52 @@ class ChordDetector(
     sampleRate: Double,
     soundingRange: IntRange = NoteSalience.FULL_RANGE,
     partials: List<Double> = DEFAULT_PARTIALS,
-    private val extractor: ChordExtractor = ChordExtractor.SIEVE,
+    private val extractor: ChordExtractor = ChordExtractor.CHROMA_HMM,
     /**
      * The tonality gate's flatness threshold. Exposed so `RealAudioHarnessTest` can sweep it
      * against real audio rather than against the synthetic corpus, which cannot say anything
      * useful about where it belongs.
      */
-    private val maxFlatness: Double = Tonality.MAX_FLATNESS,
+    private val maxFlatness: Double =
+        if (extractor == ChordExtractor.CHROMA_HMM) Tonality.CHROMA_MAX_FLATNESS else Tonality.MAX_FLATNESS,
     polyphony: Int = HarmonicSieve.MAX_NOTES,
     relativeFloor: Double = HarmonicSieve.RELATIVE_FLOOR,
+    /** Supplies the playable voicings [ChordExtractor.CHROMA_HMM] scores against; null for none. */
+    instrument: Instrument? = null,
 ) {
     private val constantQ = ConstantQ(sampleRate)
     private val sieve = HarmonicSieve(sampleRate, soundingRange, partials, polyphony, relativeFloor)
     private val tuning = TuningOffset()
     private var confirmed = NoteSalience(soundingRange, partials)
     private var provisional = NoteSalience(soundingRange, partials, PROVISIONAL_FIRST_BIN)
-    private var range = soundingRange
     private var profile = partials
-    private var maxNotes = polyphony
+    private var voicingSource = instrument
     private val history = ArrayDeque<Set<Int>>()
 
+    /** Built on first use rather than in [setInstrument], which the UI calls on the main thread. */
+    private var templates: ChordTemplates? = null
+    private var hmm: ChordHmm? = null
+    private var evidence = DoubleArray(0)
+
     /**
-     * Narrows the dictionary to the notes an instrument can sound (see `Instrument.soundingRange`)
-     * and rebuilds its atoms from that instrument's measured partials (`Instrument.partials`).
+     * Narrows the analysis to what [instrument] can sound and rebuilds everything derived from its
+     * measured partials and voicings.
      *
-     * Rebuilding is a fraction of a millisecond and only happens when the user picks a different
-     * instrument, so this is a setter rather than a new detector: the CQT kernel bank and
-     * [requiredSamples] do not depend on either, and the caller's capture buffer is sized from
-     * the latter.
+     * A setter rather than a new detector: the CQT kernel bank and [requiredSamples] do not depend
+     * on the instrument, and the caller's capture buffer is sized from the latter.
      */
-    fun setInstrument(
-        soundingRange: IntRange,
-        partials: List<Double>,
-        polyphony: Int = HarmonicSieve.MAX_NOTES,
-    ) {
-        if (soundingRange == range && partials == profile && polyphony == maxNotes) return
-        range = soundingRange
+    fun setInstrument(instrument: Instrument) {
+        if (instrument == voicingSource) return
+        val range = instrument.soundingRange
+        val partials = instrument.partials
+        val polyphony = instrument.polyphony
         profile = partials
-        maxNotes = polyphony
-        sieve.setInstrument(soundingRange, partials, polyphony)
-        confirmed = NoteSalience(soundingRange, partials)
-        provisional = NoteSalience(soundingRange, partials, PROVISIONAL_FIRST_BIN)
+        voicingSource = instrument
+        sieve.setInstrument(range, partials, polyphony)
+        confirmed = NoteSalience(range, partials)
+        provisional = NoteSalience(range, partials, PROVISIONAL_FIRST_BIN)
+        templates = null
+        hmm = null
         reset()
     }
 
@@ -98,6 +111,7 @@ class ChordDetector(
     fun reset() {
         history.clear()
         tuning.reset()
+        hmm?.reset()
     }
 
     /**
@@ -109,10 +123,9 @@ class ChordDetector(
      * taken from pitch order would hard-gate the tier-B vocabulary onto the wrong root and
      * produce confidently wrong slash chords.
      *
-     * Note that `bassNoteOf` is separately vacuous above F3 today, so on a ukulele - whose
+     * Note that the bass search stops at G3 (F3 on the note-first paths), so on a ukulele - whose
      * lowest possible note is C4 - this changes nothing yet. It is here so that raising that
-     * ceiling, which is the obvious fix to the guitar-derived constant, cannot silently break
-     * the re-entrant case.
+     * ceiling cannot silently break the re-entrant case.
      */
     fun analyse(
         samples: DoubleArray,
@@ -122,8 +135,11 @@ class ChordDetector(
         val magnitudes = constantQ.magnitudes(samples)
         tuning.observe(magnitudes)
         val firstBin = if (tier == ChordTier.PROVISIONAL) PROVISIONAL_FIRST_BIN else 0
+        if (extractor == ChordExtractor.CHROMA_HMM) {
+            return chromaReading(magnitudes, samples, tier, firstBin, bassInformsRoot)
+        }
         val picked = when (extractor) {
-            ChordExtractor.SIEVE -> sieveNotes(magnitudes, samples, firstBin)
+            ChordExtractor.SIEVE, ChordExtractor.CHROMA_HMM -> sieveNotes(magnitudes, samples, firstBin)
             ChordExtractor.NNLS -> nnlsNotes(magnitudes, tier, firstBin)
         } ?: run {
             history.clear()
@@ -135,6 +151,152 @@ class ChordDetector(
 
         val bass = if (tier == ChordTier.CONFIRMED && bassInformsRoot) bassNoteOf(stable) else null
         return ChordNaming.name(stable, bass, tier)
+    }
+
+    /**
+     * Scores every chord against this frame's chroma, folds that into the HMM, and reads the
+     * posterior back out under the same honesty rules [ChordNaming] enforces.
+     *
+     * The sieve still runs, but only for [ChordReading.notes]: the display has to show what was
+     * heard, and a voicing is a suggestion, never a measurement. A gated frame returns silence as
+     * before but does not wipe the HMM - it pushes it towards no-chord, so a single gate dropout
+     * in a decay costs one frame of evidence rather than the whole strum.
+     */
+    private fun chromaReading(
+        magnitudes: DoubleArray,
+        samples: DoubleArray,
+        tier: ChordTier,
+        firstBin: Int,
+        bassInformsRoot: Boolean,
+    ): ChordReading {
+        val bank = templates ?: ChordTemplates(profile, voicingSource).also {
+            templates = it
+            evidence = DoubleArray(it.states.size)
+        }
+        val model = hmm ?: ChordHmm(bank.states.size).also { hmm = it }
+
+        val picked = sieveNotes(magnitudes, samples, firstBin)
+        if (picked == null) {
+            history.clear()
+            evidence.fill(-SILENCE_EVIDENCE)
+            evidence[bank.noChord] = 0.0
+            model.update(evidence)
+            return silence(tier)
+        }
+        val notes = stabilise(picked).ifEmpty { picked }
+
+        val withBass = tier == ChordTier.CONFIRMED && bassInformsRoot
+        val frame = Chroma.of(magnitudes, tuning.cents, firstBin, withBass)
+        val bass = frame.bassMidi?.let { pitchClassOf(it) }
+        bank.logLikelihoods(frame, firstBin / BINS_PER_SEMITONE, bass, evidence)
+        model.update(evidence)
+        return interpret(bank, model.posterior, notes, frame, bass, tier)
+    }
+
+    private fun interpret(
+        bank: ChordTemplates,
+        posterior: DoubleArray,
+        notes: List<DetectedNote>,
+        frame: ChromaFrame,
+        bass: Int?,
+        tier: ChordTier,
+    ): ChordReading {
+        var best = 0
+        for (s in posterior.indices) if (posterior[s] > posterior[best]) best = s
+        val bassConfidence = frame.bassConfidence.toFloat()
+        fun reading(label: ChordLabel, alternates: List<ChordCandidate>, confidence: Double, presentation: ChordPresentation) =
+            ChordReading(notes, bass, bassConfidence, label, alternates, confidence.toFloat(), tier, presentation)
+
+        return when (val state = bank.states[best]) {
+            ChordState.NoChord -> notesOnly(notes, frame, tier)
+            is ChordState.Note -> reading(
+                ChordLabel.SingleNote(
+                    notes.filter { pitchClassOf(it.midi) == state.pitchClass }.minOfOrNull { it.midi }
+                        ?: strongestMidiOf(frame, state.pitchClass),
+                ),
+                emptyList(),
+                posterior[best],
+                ChordPresentation.UNCERTAIN,
+            )
+            is ChordState.Named -> namedReading(bank, posterior, best, state.name, bass, ::reading)
+        }
+    }
+
+    private fun namedReading(
+        bank: ChordTemplates,
+        posterior: DoubleArray,
+        best: Int,
+        name: ChordName,
+        bass: Int?,
+        reading: (ChordLabel, List<ChordCandidate>, Double, ChordPresentation) -> ChordReading,
+    ): ChordReading {
+        val alternates = posterior.indices
+            .filter { it != best && bank.states[it] is ChordState.Named }
+            .filter { posterior[it] >= ALTERNATE_RATIO * posterior[best] }
+            .sortedByDescending { posterior[it] }
+            .take(MAX_ALTERNATES)
+            .map { ChordCandidate((bank.states[it] as ChordState.Named).name, posterior[it].toFloat()) }
+
+        val named = ChordNaming.withSlash(name, bass)
+        val bassBacked = bass != null && bass == name.root
+        val gated = name.quality.tier == QualityTier.B && !bassBacked
+        // A bass only settles rivals on another root: it cannot tell C from Cmaj7.
+        val sameRoot = alternates.firstOrNull { it.name.root == name.root }
+        val contested = if (bassBacked) sameRoot != null else alternates.isNotEmpty()
+        if (gated || contested) {
+            // A tier-B winner's rival is its pitch-class twin - Am7 for C6 - even when the twin
+            // scored below the alternate ratio, because only the bass could ever separate them.
+            val rival = (if (bassBacked) sameRoot else alternates.firstOrNull())
+                ?: twinOf(bank, posterior, name)?.let { ChordCandidate(it.first, it.second.toFloat()) }
+            if (rival != null) {
+                val confidence = posterior[best] + rival.confidence
+                if (confidence < ChordNaming.NAMING_THRESHOLD) {
+                    return reading(ChordLabel.Unnamed, emptyList(), confidence, ChordPresentation.NOTES_ONLY)
+                }
+                return reading(ChordLabel.Ambiguous(named, rival.name), alternates, confidence, ChordPresentation.AMBIGUOUS)
+            }
+            if (gated) return reading(ChordLabel.Unnamed, emptyList(), posterior[best], ChordPresentation.NOTES_ONLY)
+        }
+
+        val confidence = posterior[best]
+        return when {
+            confidence < ChordNaming.NAMING_THRESHOLD ->
+                reading(ChordLabel.Unnamed, emptyList(), confidence, ChordPresentation.NOTES_ONLY)
+            confidence >= ChordNaming.CONFIDENT_THRESHOLD ->
+                reading(ChordLabel.Chord(named), alternates, confidence, ChordPresentation.CONFIDENT)
+            else -> reading(ChordLabel.Chord(named), alternates, confidence, ChordPresentation.UNCERTAIN)
+        }
+    }
+
+    private fun twinOf(bank: ChordTemplates, posterior: DoubleArray, name: ChordName): Pair<ChordName, Double>? {
+        var twin: Pair<ChordName, Double>? = null
+        for (s in posterior.indices) {
+            val other = (bank.states[s] as? ChordState.Named)?.name ?: continue
+            if (other.root == name.root || other.pitchClasses != name.pitchClasses) continue
+            if (twin == null || posterior[s] > twin.second) twin = other to posterior[s]
+        }
+        return twin
+    }
+
+    /** No chord fits: the note set is still the measurement, so it is shown without a name. */
+    private fun notesOnly(notes: List<DetectedNote>, frame: ChromaFrame, tier: ChordTier): ChordReading {
+        if (notes.isEmpty()) return silence(tier)
+        val distinct = notes.map { pitchClassOf(it.midi) }.toSet()
+        if (distinct.size <= 2) {
+            return ChordNaming.name(notes, frame.bassMidi?.let { DetectedNote(it, frame.bassConfidence) }, tier)
+        }
+        return ChordReading(
+            notes, null, 0f, ChordLabel.Unnamed, emptyList(), 0f, tier, ChordPresentation.NOTES_ONLY,
+        )
+    }
+
+    private fun strongestMidiOf(frame: ChromaFrame, pitchClass: Int): Int {
+        var best = LOWEST_NOTE_MIDI + pitchClass
+        for (n in frame.semitones.indices) {
+            val midi = LOWEST_NOTE_MIDI + n
+            if (pitchClassOf(midi) == pitchClass && frame.semitones[n] > frame.semitones[best - LOWEST_NOTE_MIDI]) best = midi
+        }
+        return best
     }
 
     /**
@@ -218,5 +380,13 @@ class ChordDetector(
         const val PROVISIONAL_FIRST_BIN = 2 * CQT_BINS_PER_OCTAVE
         const val HISTORY_FRAMES = 3
         const val REQUIRED_FRAMES = 2
+        const val BINS_PER_SEMITONE = CQT_BINS_PER_OCTAVE / 12
+
+        /** Log-likelihood a gated frame takes off every state but no-chord. */
+        const val SILENCE_EVIDENCE = 4.0
+
+        /** A chord within this posterior ratio of the winner is shown alongside it. */
+        const val ALTERNATE_RATIO = 0.6
+        const val MAX_ALTERNATES = 2
     }
 }

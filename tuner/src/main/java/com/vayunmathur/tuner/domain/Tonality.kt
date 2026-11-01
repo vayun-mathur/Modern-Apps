@@ -74,6 +74,14 @@ data class Tonality(
         const val MAX_FLATNESS: Double = 0.40
 
         /**
+         * The gate for `ChordExtractor.CHROMA_HMM`. The note-first extractors name every frame they
+         * pass on its own; the HMM weighs a marginal frame as weak evidence instead. On Record-3,
+         * loosening its gate from 0.40 to 0.60 took correct frames from 33 to 42 with wrong ones
+         * unchanged at 2. Still below the 0.709 of the most tonal noise measured here.
+         */
+        const val CHROMA_MAX_FLATNESS: Double = 0.60
+
+        /**
          * In the units [NoteSalience.subtractBackground] produces - log-magnitude above a local
          * mean - so this is an absolute floor on how far a note stands out of its own
          * neighbourhood, not a fraction of anything in the frame.

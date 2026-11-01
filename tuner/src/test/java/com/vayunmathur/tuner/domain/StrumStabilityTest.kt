@@ -29,7 +29,13 @@ import kotlin.test.assertTrue
  */
 class StrumStabilityTest {
     private val constantQ = ConstantQ(Signals.SAMPLE_RATE)
-    private val detector = ChordDetector(Signals.SAMPLE_RATE)
+
+    /**
+     * Pinned to the note-first gate. The shipping [ChordExtractor.CHROMA_HMM] gate sits at
+     * [Tonality.CHROMA_MAX_FLATNESS] and does not drop out on this strum at all (asserted below),
+     * so it cannot produce the flickering input the presenter has to be proven against.
+     */
+    private val detector = ChordDetector(Signals.SAMPLE_RATE, maxFlatness = Tonality.MAX_FLATNESS)
     private val window = constantQ.requiredSamples
 
     /** 8 note hops of 512 samples: what TunerViewModel.CHORD_EVERY produces, ~85 ms. */
@@ -47,7 +53,10 @@ class StrumStabilityTest {
      * Ukulele, so the bass is suppressed: on a re-entrant instrument the lowest sounding pitch
      * is routinely not the root.
      */
-    private fun traces(signal: DoubleArray): Pair<List<ChordLabel?>, List<ChordLabel?>> {
+    private fun traces(
+        signal: DoubleArray,
+        detector: ChordDetector = this.detector,
+    ): Pair<List<ChordLabel?>, List<ChordLabel?>> {
         val presenter = ChordPresenter()
         detector.reset()
         val raw = ArrayList<ChordLabel?>()
@@ -85,6 +94,13 @@ class StrumStabilityTest {
 
         // One trailing clear as the note dies away is correct; more than that is a strobe.
         assertTrue(dropouts(shown) <= 1, "display flickered ${dropouts(shown)} times: $shown")
+    }
+
+    @Test
+    fun theShippingDetectorHoldsTheSameStrumWithoutThePresenter() {
+        val total = window + hop * 20
+        val (raw, _) = traces(Signals.strum(ukeC, total, roomSigma = 0.055), ChordDetector(Signals.SAMPLE_RATE))
+        assertTrue(dropouts(raw) <= 1, "the shipping gate dropped out ${dropouts(raw)} times: $raw")
     }
 
     @Test

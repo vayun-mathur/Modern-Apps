@@ -86,11 +86,7 @@ class TunerViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         // Not foldable into the field initialiser: `chord` is constructed before `state` exists.
-        chord.setInstrument(
-            state.instrument.soundingRange,
-            state.instrument.partials,
-            state.instrument.polyphony,
-        )
+        chord.setInstrument(state.instrument)
     }
 
     private fun initialState(): TunerUiState {
@@ -187,7 +183,7 @@ class TunerViewModel(application: Application) : AndroidViewModel(application) {
         val instrument = state.instruments.firstOrNull { it.id == id } ?: return
         smoother.reset()
         noteHold.reset()
-        chord.setInstrument(instrument.soundingRange, instrument.partials, instrument.polyphony)
+        chord.setInstrument(instrument)
         resetChord()
         state = state.copy(
             instrument = instrument,

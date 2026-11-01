@@ -330,7 +330,7 @@ object ChordNaming {
         }
         .toList()
 
-    private fun withSlash(bestName: ChordName, bassPitchClass: Int?): ChordName {
+    internal fun withSlash(bestName: ChordName, bassPitchClass: Int?): ChordName {
         // A slash chord only when the bass is confident and is a chord tone other than the
         // root. When it is not confident, omit the slash rather than guess an inversion.
         val slash = bassPitchClass

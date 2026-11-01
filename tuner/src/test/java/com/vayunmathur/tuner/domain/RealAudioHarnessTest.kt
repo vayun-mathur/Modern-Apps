@@ -121,6 +121,14 @@ class RealAudioHarnessTest {
             report.appendLine("  tuning self-estimated  ${"%.1f".format(cents)} cents")
             report.appendLine()
         }
+        val (chromaOnly, _) = production(
+            pcm,
+            ChordExtractor.CHROMA_HMM,
+            withVoicings = false,
+            label = "CHROMA_HMM, production path, chroma templates only (no voicings)",
+        )
+        report.appendLine(chromaOnly.report())
+        report.appendLine()
     }
 
     private fun appendPolyphonySweep(report: StringBuilder, pcm: DoubleArray) {
@@ -161,16 +169,18 @@ class RealAudioHarnessTest {
         // frame bought a note or two and no name. The sieve finds 3.39, so frames that were not
         // worth passing then may be worth passing now. Swept here rather than reasoned about,
         // because the synthetic corpus has nothing to say about where a real decay tail sits.
-        report.appendLine("=== tonality gate sweep, SIEVE, production path")
-        report.appendLine("  flatness   tonal   named   CORRECT   notes/tonal")
-        for (threshold in FLATNESS_SWEEP) {
-            val (score, _) = production(pcm, ChordExtractor.SIEVE, threshold)
-            val perTonal = if (score.tonal == 0) 0.0 else score.notes.toDouble() / score.tonal
-            report.appendLine(
-                "  %8.2f %7d %7d %9d %13.2f".format(
-                    threshold, score.tonal, score.named, score.correct, perTonal,
-                ),
-            )
+        report.appendLine("=== tonality gate sweep, production path")
+        report.appendLine("  extractor    flatness   tonal   named   CORRECT   notes/tonal")
+        for (extractor in listOf(ChordExtractor.SIEVE, ChordExtractor.CHROMA_HMM)) {
+            for (threshold in FLATNESS_SWEEP) {
+                val (score, _) = production(pcm, extractor, threshold)
+                val perTonal = if (score.tonal == 0) 0.0 else score.notes.toDouble() / score.tonal
+                report.appendLine(
+                    "  %-10s %8.2f %7d %7d %9d %13.2f".format(
+                        extractor, threshold, score.tonal, score.named, score.correct, perTonal,
+                    ),
+                )
+            }
         }
         report.appendLine()
     }
@@ -186,9 +196,11 @@ class RealAudioHarnessTest {
     private fun production(
         pcm: DoubleArray,
         extractor: ChordExtractor,
-        maxFlatness: Double = Tonality.MAX_FLATNESS,
+        maxFlatness: Double =
+            if (extractor == ChordExtractor.CHROMA_HMM) Tonality.CHROMA_MAX_FLATNESS else Tonality.MAX_FLATNESS,
         polyphony: Int = ukulele.polyphony,
         relativeFloor: Double = HarmonicSieve.RELATIVE_FLOOR,
+        withVoicings: Boolean = true,
         label: String? = null,
     ): Pair<Score, Double> {
         val constantQ = ConstantQ(RealAudioHarness.RATE)
@@ -201,6 +213,7 @@ class RealAudioHarnessTest {
             maxFlatness,
             polyphony,
             relativeFloor,
+            if (withVoicings) ukulele else null,
         )
         detector.reset()
         val score = Score(label ?: "$extractor, production path (${frames.size} frames)")
