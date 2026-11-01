@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,9 +53,18 @@ private const val BRIDGE = "EmbeddedCheckoutProtocolConsumer"
  */
 @Composable
 fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
-    val request = viewModel.embeddedCheckout
+    // Snapshot the request: the screen keeps composing through its exit animation after the
+    // ViewModel clears it, and navigation must never be triggered from composition.
+    val request = remember { viewModel.embeddedCheckout }
+    var closed by remember { mutableStateOf(false) }
+    val close = {
+        if (!closed) {
+            closed = true
+            onClose()
+        }
+    }
     if (request == null) {
-        onClose()
+        LaunchedEffect(Unit) { close() }
         return
     }
     val context = LocalContext.current
@@ -62,15 +72,16 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var failed by remember { mutableStateOf(false) }
     var webView by remember { mutableStateOf<WebView?>(null) }
-    val close = {
-        viewModel.closeEmbeddedCheckout()
-        onClose()
-    }
-    BackHandler {
+    BackHandler(enabled = !closed) {
         val view = webView
         if (view != null && view.canGoBack()) view.goBack() else close()
     }
-    DisposableEffect(Unit) { onDispose { webView?.destroy() } }
+    DisposableEffect(Unit) {
+        onDispose {
+            webView?.destroy()
+            viewModel.closeEmbeddedCheckout()
+        }
+    }
     AppScaffold(
         title = request.storeName,
         onClose = close,
@@ -105,7 +116,7 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
                             is EcAction.Completed -> {
                                 viewModel.embeddedCheckoutCompleted(action.orderId, action.permalinkUrl, action.totalMinor, context)
                                 messenger.show("Order placed with ${request.storeName}")
-                                onClose()
+                                close()
                             }
                             is EcAction.Failed -> messenger.show(action.message)
                             EcAction.Ignore -> Unit

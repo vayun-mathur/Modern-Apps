@@ -60,7 +60,9 @@ fun Navigation(viewModel: ShopViewModel) {
             )
         }
         entry<Route.EmbeddedCheckout> {
-            EmbeddedCheckoutScreen(viewModel = viewModel, onClose = { backStack.pop() })
+            EmbeddedCheckoutScreen(viewModel = viewModel, onClose = {
+                if (backStack.backStack.lastOrNull() == Route.EmbeddedCheckout) backStack.pop()
+            })
         }
         entry<Route.Orders> { OrdersScreen(viewModel = viewModel) }
     }
