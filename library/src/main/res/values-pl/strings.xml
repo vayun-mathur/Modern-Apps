@@ -1,3 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="daily_reminder_channel_name">Codzienne łamigłówki</string>
+    <string name="daily_reminder_channel_description">Codzienne przypomnienie, jeśli dzisiejsza łamigłówka nie została jeszcze rozwiązana.</string>
+    <string name="daily_reminder_title">Dzisiejsza łamigłówka już czeka</string>
+    <string name="daily_reminder_text">Dzisiejsza łamigłówka w <xliff:g id="app_name" example="Wordmaker">%1$s</xliff:g> wciąż czeka na rozwiązanie.</string>
 </resources>
