@@ -33,8 +33,6 @@ import androidx.webkit.WebViewFeature
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.IconButton
-import com.vayunmathur.library.ui.IconLanguage
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
@@ -85,9 +83,6 @@ fun EmbeddedCheckoutScreen(viewModel: ShopViewModel, onClose: () -> Unit) {
     AppScaffold(
         title = request.storeName,
         onClose = close,
-        actions = {
-            IconButton(onClick = { openContinueUrl(context, request.browserUrl) }) { IconLanguage() }
-        },
         scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
