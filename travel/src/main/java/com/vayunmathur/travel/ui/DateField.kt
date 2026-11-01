@@ -49,22 +49,7 @@ fun DateField(
         dateFormat(LocalDate.parse(value))
     }.getOrDefault(value)
 
-    Box(modifier) {
-        OutlinedTextField(
-            value = display,
-            onValueChange = {},
-            readOnly = true,
-            enabled = false,
-            label = { Text(label) },
-            leadingIcon = { IconCalendar() },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Box(
-            Modifier
-                .matchParentSize()
-                .clickable { show = true }
-        )
-    }
+    DateFieldBox(label, display, onClick = { show = true }, modifier = modifier)
 
     if (show) {
         val minMillis = minDate?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds()
@@ -96,6 +81,39 @@ fun DateField(
         ) { DatePicker(state) }
     }
 }
+
+/**
+ * The tappable date field itself: a normal (not disabled-looking) read-only
+ * text field with a calendar icon; the overlay takes the tap so the field
+ * never focuses or raises the keyboard.
+ */
+@Composable
+internal fun DateFieldBox(label: String, display: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier) {
+        OutlinedTextField(
+            value = display,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            leadingIcon = { IconCalendar() },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(
+            Modifier
+                .matchParentSize()
+                .clickable(onClick = onClick)
+        )
+    }
+}
+
+/** ISO `YYYY-MM-DD` → UTC midnight millis (null when blank/invalid). */
+internal fun isoToUtcMillis(iso: String): Long? =
+    runCatching { LocalDate.parse(iso) }.getOrNull()?.atStartOfDayIn(TimeZone.UTC)?.toEpochMilliseconds()
+
+/** UTC midnight millis → ISO `YYYY-MM-DD`. */
+internal fun utcMillisToIso(ms: Long): String =
+    Instant.fromEpochMilliseconds(ms).toLocalDateTime(TimeZone.UTC).date.toString()
 
 /** Today in UTC as a [LocalDate], for clamping pickers to no-past-dates. */
 fun todayUtc(): LocalDate = Clock.System.now().toLocalDateTime(TimeZone.UTC).date

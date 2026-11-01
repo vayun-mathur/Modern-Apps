@@ -96,8 +96,8 @@ data class StayBookingRequestDto(
 )
 
 /**
- * A stay booking after hosted checkout starts. Polling and servicing then use
- * the shared trip (`GET /travel/trips/:id`) and bookings endpoints.
+ * A quoted stay ready to pay: confirm [clientSecret] in-app, then confirm and
+ * poll through the shared trip endpoints (`/travel/trips/:id`).
  */
 @Serializable
 data class StayBookingResultDto(
@@ -109,6 +109,7 @@ data class StayBookingResultDto(
     val checkOutDate: String = "",
     val totalAmount: String = "0",
     val totalCurrency: String = "USD",
-    val checkoutUrl: String = "",
+    val clientSecret: String = "",
+    val publishableKey: String = "",
     val expiresAt: String = "",
 )

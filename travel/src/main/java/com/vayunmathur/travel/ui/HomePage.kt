@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,15 +25,17 @@ import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.ElevatedCard
 import com.vayunmathur.library.ui.ExperimentalMaterial3Api
-import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.IconFlight
+import com.vayunmathur.library.ui.IconHotel
 import com.vayunmathur.library.ui.IconSettings
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedCard
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.BottomNavBar
+import com.vayunmathur.library.util.BottomNavBarItem
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.data.BookedTrip
@@ -43,14 +46,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.annotation.StringRes
 import com.vayunmathur.travel.R
 
-private enum class Product(@StringRes val label: Int) { FLIGHTS(R.string.flights), STAYS(R.string.stays) }
+private enum class Product(@StringRes val label: Int, val icon: @Composable () -> Unit) {
+    FLIGHTS(R.string.flights, { IconFlight() }),
+    STAYS(R.string.stays, { IconHotel() }),
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
     val recents by viewModel.recentSearches.collectAsStateWithLifecycle()
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
-    var product by remember { mutableStateOf(Product.FLIGHTS) }
+    var product by rememberSaveable { mutableStateOf(Product.FLIGHTS) }
+    // Hoisted (and saved) so both forms are still filled in when the user
+    // comes back from results or switches tabs.
+    var flightForm by rememberSaveable(stateSaver = FlightFormSaver) { mutableStateOf(FlightFormState()) }
+    var stayForm by rememberSaveable(stateSaver = StayFormSaver) { mutableStateOf(StayFormState()) }
 
     AppScaffold(
         title = stringResource(R.string.app_name),
@@ -63,6 +73,18 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
             }
         },
         scrollBehavior = appBarScrollBehavior(),
+        bottomBar = {
+            BottomNavBar {
+                Product.entries.forEach { p ->
+                    BottomNavBarItem(
+                        selected = product == p,
+                        onClick = { product = p },
+                        icon = p.icon,
+                        label = stringResource(p.label),
+                    )
+                }
+            }
+        },
     ) { padding ->
         Column(
             Modifier
@@ -70,18 +92,12 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Product.entries.forEach { p ->
-                    FilterChip(selected = product == p, onClick = { product = p }, label = { Text(stringResource(p.label)) })
-                }
-            }
 
             when (product) {
                 Product.FLIGHTS -> FlightSearchForm(
                     viewModel,
+                    state = flightForm,
+                    onState = { flightForm = it },
                     onSearch = { query ->
                         if (query.isRoundTrip) {
                             backStack.add(
@@ -107,23 +123,8 @@ fun HomePage(backStack: NavBackStack<Route>, viewModel: TravelViewModel) {
                             )
                         }
                     },
-                    onExplore = { explore ->
-                        backStack.add(
-                            Route.Explore(
-                                origin = explore.origin,
-                                tripType = explore.tripType,
-                                depart = explore.depart,
-                                returnDate = explore.returnDate,
-                                cabin = explore.cabin,
-                                adults = explore.adults,
-                                children = explore.children,
-                                infants = explore.infants,
-                                maxConnections = explore.maxConnections,
-                            )
-                        )
-                    },
                 )
-                Product.STAYS -> StaySearchForm(viewModel) { place, checkIn, checkOut, rooms, adults, lat, lng ->
+                Product.STAYS -> StaySearchForm(viewModel, stayForm, { stayForm = it }) { place, checkIn, checkOut, rooms, adults, lat, lng ->
                     backStack.add(
                         Route.StayResults(
                             place = place,

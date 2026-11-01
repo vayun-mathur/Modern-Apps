@@ -54,7 +54,8 @@ interface FlightResultsActions {
 
 /** Seat-map callbacks. Same no-op-default arrangement as [FlightResultsActions]. */
 interface SeatMapActions {
-    fun toggleSeat(segmentId: String, seat: SeatElementDto) {}
+    /** Tap [seat] on [segmentId] for the passenger currently being seated. */
+    fun toggleSeat(segmentId: String, passengerId: String, seat: SeatElementDto) {}
 
     /** Finish picking seats and return to the ancillaries step. */
     fun done() {}

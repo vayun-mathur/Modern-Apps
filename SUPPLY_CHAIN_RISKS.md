@@ -16,3 +16,4 @@ Apps that fetch from external servers (excluding vayunmathur.com, maproj.org, ma
 7. **email** — only after adding an account: `imap.gmail.com` / `smtp.gmail.com`, `outlook.office365.com` / `smtp-mail.outlook.com`, `imap.mail.yahoo.com` / `smtp.mail.yahoo.com`, `imap.aol.com` / `smtp.aol.com`, `imap.mail.me.com` / `smtp.mail.me.com`, `imap.fastmail.com` / `smtp.fastmail.com`, `login.microsoftonline.com` + `outlook.office.com` (OAuth)
 8. **games/chess** — `lichess.org` (OAuth + Board API), only after sign-in
 9. **web** — whichever search engine the user picks (WebView loads it; DuckDuckGo default), only on user navigation/search
+10. **travel** — `api.stripe.com` (+ Stripe SDK hosts), only when the user pays for a booking in the in-app card sheet

@@ -6,7 +6,10 @@ import com.vayunmathur.travel.data.BookedTrip
 import com.vayunmathur.travel.data.TRIP_STATUS_PENDING_PAYMENT
 import com.vayunmathur.travel.data.TRIP_STATUS_PROCESSING
 import com.vayunmathur.travel.data.TRIP_TYPE_FLIGHT
+import com.vayunmathur.travel.domain.ancillariesNeedSaving
+import com.vayunmathur.travel.domain.assignSeat
 import com.vayunmathur.travel.domain.isTripPollingStatus
+import com.vayunmathur.travel.domain.seatSelections
 import com.vayunmathur.travel.network.AncillariesSelectionResultDto
 import com.vayunmathur.travel.network.CheckoutDto
 import com.vayunmathur.travel.network.LoyaltyAccountDto
@@ -114,6 +117,7 @@ fun TravelViewModel.createTrip() {
         }
             .onSuccess { trip ->
                 currentTrip = trip
+                savedServices = emptyList()
                 bookingMutable.value = BookingState.TripReady(trip)
                 loadAncillaries(trip.tripId)
             }
@@ -242,13 +246,9 @@ fun TravelViewModel.cityName(iataCode: String): String = AirportCatalog.cityName
 fun TravelViewModel.airlineName(iataCode: String): String =
     AirportCatalog.airlineName(iataCode).ifBlank { iataCode }
 
-/** Toggle selection of a (selectable) seat on a segment. */
-fun TravelViewModel.toggleSeat(segmentId: String, seat: SeatElementDto) {
-    if (!seat.available || seat.serviceId == null) return
-    val key = "$segmentId|${seat.designator}"
-    selectedSeatsMutable.value = selectedSeatsMutable.value.toMutableMap().also {
-        if (it.containsKey(key)) it.remove(key) else it[key] = seat
-    }
+/** Tap a seat on a segment for one passenger (see [assignSeat]). */
+fun TravelViewModel.toggleSeat(segmentId: String, passengerId: String, seat: SeatElementDto) {
+    selectedSeatsMutable.value = assignSeat(selectedSeatsMutable.value, segmentId, passengerId, seat)
 }
 
 /** Combined selected services (baggage + extras + seats) for the trip body. */
@@ -260,25 +260,23 @@ internal fun TravelViewModel.selectedServices(): List<ServiceSelectionDto> {
     val extras = selectedExtrasMutable.value.map { (id, qty) ->
         ServiceSelectionDto(id = id, quantity = qty)
     }
-    val seats = selectedSeatsMutable.value.values.mapNotNull { seat ->
-        seat.serviceId?.let { ServiceSelectionDto(id = it, quantity = 1) }
-    }
     // Include the selected passenger when the service is per-passenger.
     fun withPassenger(sel: ServiceSelectionDto): ServiceSelectionDto {
         val passengerId = available.firstOrNull { it.id == sel.id }?.passengerIds?.firstOrNull()
         return if (passengerId != null) sel.copy(passengerId = passengerId) else sel
     }
-    return (bags + extras + seats).map(::withPassenger)
+    return (bags + extras).map(::withPassenger) + seatSelections(selectedSeatsMutable.value)
 }
 
 /**
- * Save ancillary selections (`POST /trips/:id/ancillaries`); skipped when
- * nothing is selected. Then moves to checkout.
+ * Save ancillary selections (`POST /trips/:id/ancillaries`, replacing all)
+ * when they differ from what the trip already has — including clearing them
+ * back to none. Then moves to checkout.
  */
 fun TravelViewModel.saveAncillariesAndContinue() {
     val tripId = currentTrip?.tripId ?: return
     val selections = selectedServices()
-    if (selections.isEmpty()) {
+    if (!ancillariesNeedSaving(selections, savedServices)) {
         startCheckout()
         return
     }
@@ -286,6 +284,7 @@ fun TravelViewModel.saveAncillariesAndContinue() {
     viewModelScope.launch {
         runCatching { TravelApi.selectAncillaries(tripId, selections) }
             .onSuccess { _: AncillariesSelectionResultDto ->
+                savedServices = selections
                 ancillariesMutable.value = ancillariesMutable.value.copy(loading = false)
                 startCheckout()
             }
@@ -298,9 +297,8 @@ fun TravelViewModel.saveAncillariesAndContinue() {
 // --- Checkout ---------------------------------------------------------------
 
 /**
- * Start hosted checkout (`POST /trips/:id/checkout`). On 422 routes back to
- * passengers with the missing fields; on 503 retries briefly server-side is
- * already bounded, so surface the message.
+ * Get the trip's payment intent (`POST /trips/:id/checkout`). On 422 routes
+ * back to passengers with the missing fields; otherwise surface the message.
  */
 fun TravelViewModel.startCheckout() {
     val tripId = currentTrip?.tripId ?: return
@@ -333,8 +331,7 @@ fun TravelViewModel.resetCheckout() {
 
 /**
  * Persist the trip immediately (status pending_payment) so the booking
- * survives leaving for the Custom Tab / process death; the confirmation flow
- * polls from here.
+ * survives process death during payment; the confirmation flow polls from here.
  */
 internal suspend fun TravelViewModel.persistPendingTrip(checkout: CheckoutDto) {
     val trip = currentTrip ?: return
@@ -369,13 +366,32 @@ internal suspend fun TravelViewModel.persistPendingTrip(checkout: CheckoutDto) {
 
 // --- Post-checkout polling --------------------------------------------------
 
+/**
+ * The payment sheet finished: book the trip (`POST /trips/:id/confirm`), then
+ * poll to a final status. A failed confirm leaves the trip payable, so the
+ * confirmation screen can offer "Complete payment" again.
+ */
+fun TravelViewModel.confirmPaidTrip(tripId: String) {
+    pollJob?.cancel()
+    tripPollMutable.value = TripPollState.Polling
+    viewModelScope.launch {
+        runCatching { TravelApi.confirmPayment(tripId) }
+            .onSuccess { trip ->
+                currentTrip = trip
+                updateStoredTrip(trip)
+                pollTrip(tripId)
+            }
+            .onFailure { tripPollMutable.value = TripPollState.Error(errorMessage(it)) }
+    }
+}
+
 private const val TRIP_POLL_ROUNDS = 40
 private const val TRIP_POLL_INTERVAL_MS = 3_000L
 
 /**
  * Poll `GET /trips/:id` every ~3s up to ~2 minutes while the status is
- * pending_payment/processing (started on resume after the Custom Tab, and on
- * confirmation entry). Updates the local trip and surfaces the final state.
+ * pending_payment/processing (started on resume and on confirmation entry).
+ * Updates the local trip and surfaces the final state.
  */
 fun TravelViewModel.pollTrip(tripId: String) {
     pollJob?.cancel()

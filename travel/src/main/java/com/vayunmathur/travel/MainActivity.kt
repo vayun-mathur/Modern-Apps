@@ -22,7 +22,6 @@ import com.vayunmathur.travel.ui.AncillariesPage
 import com.vayunmathur.travel.ui.CancellationPage
 import com.vayunmathur.travel.ui.ChangePage
 import com.vayunmathur.travel.ui.ConfirmationPage
-import com.vayunmathur.travel.ui.ExploreMapPage
 import com.vayunmathur.travel.ui.FlightResultsPage
 import com.vayunmathur.travel.ui.FareSelectPage
 import com.vayunmathur.travel.ui.HomePage
@@ -31,7 +30,6 @@ import com.vayunmathur.travel.ui.OrderDetailPage
 import com.vayunmathur.travel.ui.OutboundSelectPage
 import com.vayunmathur.travel.ui.PassengersPage
 import com.vayunmathur.travel.ui.PaymentPage
-import com.vayunmathur.travel.ui.ReturnSelectPage
 import com.vayunmathur.travel.ui.SeatMapPage
 import com.vayunmathur.travel.ui.SettingsPage
 import com.vayunmathur.travel.ui.StayConfirmationPage
@@ -79,8 +77,7 @@ class MainActivity : MaActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Back from the hosted-checkout Custom Tab: resume polling any trip
-        // that is still awaiting payment / processing.
+        // Resume polling any trip that is still awaiting payment / processing.
         if (!::repository.isInitialized) return
         lifecycleScope.launch {
             viewModel.pendingTripIds().forEach { viewModel.pollTrip(it) }
@@ -108,23 +105,6 @@ sealed interface Route : NavKey {
         val maxConnections: Int,
     ) : Route
 
-    /**
-     * Explore map: search params only (never the destination list — the page
-     * fetches via the ViewModel). [tripType] is `oneway` or `roundtrip`.
-     */
-    @Serializable
-    data class Explore(
-        val origin: String,
-        val tripType: String,
-        val depart: String,
-        val returnDate: String? = null,
-        val cabin: String = "economy",
-        val adults: Int = 1,
-        val children: String = "",
-        val infants: Int = 0,
-        val maxConnections: Int = -1,
-    ) : Route
-
     @Serializable
     data class OfferReview(val offerId: String) : Route
 
@@ -138,8 +118,6 @@ sealed interface Route : NavKey {
         val maxConnections: Int,
     ) : Route
 
-    @Serializable
-    data class ReturnSelect(val outboundSignature: String) : Route
 
     @Serializable
     data class FareSelect(val outboundSignature: String, val inboundSignature: String) : Route
@@ -204,9 +182,7 @@ fun MainGraph(viewModel: TravelViewModel) {
         MainNavigation(backStack) {
             entry<Route.Home> { HomePage(backStack, viewModel) }
             entry<Route.FlightResults>(metadata = ListPage()) { FlightResultsPage(backStack, viewModel, it) }
-            entry<Route.Explore> { ExploreMapPage(backStack, viewModel, it) }
             entry<Route.OutboundSelect> { OutboundSelectPage(backStack, viewModel, it) }
-            entry<Route.ReturnSelect> { ReturnSelectPage(backStack, viewModel, it) }
             entry<Route.FareSelect> { FareSelectPage(backStack, viewModel, it) }
             entry<Route.OfferReview>(metadata = ListDetailPage() + MorphPage()) {
                 OfferReviewPage(backStack, viewModel, it)

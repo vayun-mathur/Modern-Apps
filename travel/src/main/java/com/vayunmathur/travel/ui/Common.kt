@@ -7,7 +7,6 @@ import com.vayunmathur.library.ui.DateString
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import com.vayunmathur.library.ui.IconCompass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,23 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.vayunmathur.library.ui.CircularProgressIndicator
-import com.vayunmathur.library.ui.ElevatedCard
-import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.travel.network.PlaceDto
-import com.vayunmathur.travel.util.TravelViewModel
-import com.vayunmathur.travel.util.autocomplete
-import androidx.compose.ui.res.stringResource
-import com.vayunmathur.travel.R
 
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
@@ -54,86 +42,6 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
         fontWeight = FontWeight.SemiBold,
         modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
-}
-
-/**
- * Airport/city autocomplete field. Owns its own text; reports the chosen code
- * back via [onCodeChange] — either an IATA/city code when a suggestion is
- * tapped, or the raw typed text as a fallback so power users can type "LON".
- *
- * When [showExploreRow] is true (the flights To field), a pinned "Explore"
- * row is always shown in the dropdown; tapping it calls [onExploreSelected]
- * instead of reporting a code.
- */
-@Composable
-fun PlaceAutocompleteField(
-    label: String,
-    viewModel: TravelViewModel,
-    onCodeChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    initialText: String = "",
-    showExploreRow: Boolean = false,
-    onExploreSelected: () -> Unit = {},
-) {
-    var text by remember { mutableStateOf(initialText) }
-    var suggestions by remember { mutableStateOf<List<PlaceDto>>(emptyList()) }
-    var justSelected by remember { mutableStateOf(false) }
-
-    LaunchedEffect(text) {
-        if (justSelected) {
-            justSelected = false
-            return@LaunchedEffect
-        }
-        if (text.length < 2) {
-            suggestions = emptyList()
-            return@LaunchedEffect
-        }
-        kotlinx.coroutines.delay(100)
-        suggestions = viewModel.autocomplete(text)
-    }
-
-    Column(modifier) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = {
-                text = it
-                onCodeChange(it.trim())
-            },
-            label = { Text(label) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (suggestions.isNotEmpty() || showExploreRow) {
-            val exploreLabel = stringResource(R.string.explore)
-            ElevatedCard(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                Column {
-                    if (showExploreRow) {
-                        ListItem(
-                            modifier = Modifier.clickable {
-                                onCodeChange("")
-                                text = exploreLabel
-                                justSelected = true
-                                suggestions = emptyList()
-                                onExploreSelected()
-                            },
-                            leadingContent = { IconCompass() },
-                        ) { Text(stringResource(R.string.explore_anywhere)) }
-                    }
-                    suggestions.take(6).forEach { place ->
-                        ListItem(
-                            modifier = Modifier.clickable {
-                                onCodeChange(place.code)
-                                text = "${place.code} · ${place.city.ifBlank { place.name }}"
-                                justSelected = true
-                                suggestions = emptyList()
-                            },
-                        ) { Text(place.label) }
-                    }
-                }
-            }
-        }
-    }
 }
 
 /** Centered loading/error/empty state used by results pages. */

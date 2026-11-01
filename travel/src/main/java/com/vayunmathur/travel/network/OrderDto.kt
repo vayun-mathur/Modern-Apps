@@ -117,13 +117,15 @@ data class AncillariesSelectionResultDto(
 )
 
 /**
- * Hosted-checkout details from `POST /api/travel/trips/:id/checkout`. Open
- * [checkoutUrl] in a Custom Tab. When [priceChanged], show [originalAmount] vs
- * [totalAmount] and require an explicit accept before allowing pay.
+ * Payment details from `POST /api/travel/trips/:id/checkout`: confirm
+ * [clientSecret] with the native payment sheet (initialized with
+ * [publishableKey]), then call `POST /trips/:id/confirm`. When [priceChanged],
+ * show [originalAmount] vs [totalAmount] and require an explicit accept first.
  */
 @Serializable
 data class CheckoutDto(
-    val checkoutUrl: String = "",
+    val clientSecret: String = "",
+    val publishableKey: String = "",
     val quoteId: String = "",
     val totalAmount: String = "0",
     val currency: String = "USD",

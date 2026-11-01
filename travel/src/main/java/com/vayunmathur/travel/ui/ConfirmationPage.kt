@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,6 +29,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.data.TRIP_STATUS_FAILED
@@ -37,10 +40,12 @@ import com.vayunmathur.travel.domain.isCheckoutUnexpired
 import com.vayunmathur.travel.domain.isTripAwaitingPayment
 import com.vayunmathur.travel.domain.isTripPollingStatus
 import com.vayunmathur.travel.domain.tripStatusLabel
-import com.vayunmathur.travel.intents.openCheckout
+import com.vayunmathur.travel.platform.CardPaymentResult
+import com.vayunmathur.travel.platform.rememberCardPayment
 import com.vayunmathur.travel.util.CheckoutState
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.TripPollState
+import com.vayunmathur.travel.util.confirmPaidTrip
 import com.vayunmathur.travel.util.pollTrip
 import com.vayunmathur.travel.util.recheckoutForStoredTrip
 import androidx.compose.ui.res.stringResource
@@ -49,7 +54,7 @@ import androidx.compose.ui.res.stringResource
  * Post-payment confirmation: polls the trip while pending/processing and
  * shows the final status (confirmed / processing / failed / partial) with the
  * booking reference. While pending_payment (and the checkout has not expired)
- * offers "Complete payment" (fresh link in a Custom Tab) + "Refresh status".
+ * offers "Complete payment" (in-app card sheet) + "Refresh status".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,11 +67,28 @@ fun ConfirmationPage(
     val trip = trips.find { it.orderId == route.orderId }
     val poll by viewModel.tripPoll.collectAsStateWithLifecycle()
     val checkout by viewModel.checkout.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val tripId = trip?.tripId?.ifBlank { route.orderId } ?: route.orderId
+    var paying by remember { mutableStateOf(false) }
+    var presentWhenReady by remember { mutableStateOf(false) }
+    val cardPayment = rememberCardPayment { result ->
+        paying = false
+        when (result) {
+            CardPaymentResult.Completed -> viewModel.confirmPaidTrip(tripId)
+            CardPaymentResult.Canceled -> Unit
+            is CardPaymentResult.Failed -> AppMessages.show(result.message)
+        }
+    }
 
     LaunchedEffect(route.orderId) {
-        val id = trip?.tripId?.ifBlank { route.orderId } ?: route.orderId
-        viewModel.pollTrip(id)
+        viewModel.pollTrip(tripId)
+    }
+
+    // "Complete payment" fetched a fresh intent: present it once it arrives.
+    LaunchedEffect(checkout, presentWhenReady) {
+        val ready = (checkout as? CheckoutState.Ready)?.checkout ?: return@LaunchedEffect
+        if (!presentWhenReady) return@LaunchedEffect
+        presentWhenReady = false
+        paying = cardPayment.present(ready.clientSecret, ready.publishableKey)
     }
 
     DetailScaffold(
@@ -129,20 +151,25 @@ fun ConfirmationPage(
             }
 
             if (isTripAwaitingPayment(trip.status)) {
+                (poll as? TripPollState.Error)?.let {
+                    Text(it.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
                 (checkout as? CheckoutState.Error)?.let {
                     Text(it.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                val fresh = (checkout as? CheckoutState.Ready)?.checkout
-                if (fresh != null && isCheckoutUnexpired(trip.checkoutExpiresAt)) {
-                    Button(
-                        onClick = { openCheckout(context, fresh.checkoutUrl) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.complete_payment)) }
-                } else if (isCheckoutUnexpired(trip.checkoutExpiresAt)) {
+                if (isCheckoutUnexpired(trip.checkoutExpiresAt)) {
                     val loading = checkout is CheckoutState.Loading
                     Button(
-                        onClick = { viewModel.recheckoutForStoredTrip(trip.orderId) },
-                        enabled = !loading,
+                        onClick = {
+                            val fresh = (checkout as? CheckoutState.Ready)?.checkout
+                            if (fresh != null && viewModel.currentTrip?.tripId == trip.tripId.ifBlank { trip.orderId }) {
+                                paying = cardPayment.present(fresh.clientSecret, fresh.publishableKey)
+                            } else {
+                                presentWhenReady = true
+                                viewModel.recheckoutForStoredTrip(trip.orderId)
+                            }
+                        },
+                        enabled = !loading && !paying,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(stringResource(R.string.complete_payment)) }
                 } else {

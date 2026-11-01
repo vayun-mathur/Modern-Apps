@@ -11,7 +11,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,7 +27,6 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.domain.isCheckoutUnexpired
-import com.vayunmathur.travel.intents.openCheckout
 import com.vayunmathur.travel.network.OrderDetailDto
 import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.util.CheckoutState
@@ -37,8 +35,6 @@ import com.vayunmathur.travel.util.OrderDetailUiState
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.acceptNewPrice
 import com.vayunmathur.travel.util.loadBookingDetail
-import com.vayunmathur.travel.util.pollTrip
-import com.vayunmathur.travel.util.recheckoutForStoredTrip
 import com.vayunmathur.travel.util.refreshBookingDetail
 import androidx.compose.ui.res.stringResource
 
@@ -52,7 +48,6 @@ fun OrderDetailPage(
     val state by viewModel.orderDetail.collectAsStateWithLifecycle()
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
     val checkout by viewModel.checkout.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val stored = trips.find { it.orderId == route.orderId }
 
     LaunchedEffect(route.orderId) {
@@ -62,17 +57,9 @@ fun OrderDetailPage(
     val actions = remember(viewModel, backStack, route) {
         object : OrderDetailActions {
             override fun refresh() = viewModel.refreshBookingDetail(route.orderId)
+            // The confirmation screen owns the in-app payment sheet and polling.
             override fun completePayment() {
-                val fresh = (viewModel.checkout.value as? CheckoutState.Ready)?.checkout
-                if (fresh != null) {
-                    openCheckout(context, fresh.checkoutUrl)
-                    // The payment result lands on the trip: show confirmation,
-                    // which polls to the final status.
-                    backStack.add(Route.Confirmation(route.orderId))
-                    viewModel.pollTrip(stored?.tripId?.ifBlank { route.orderId } ?: route.orderId)
-                } else {
-                    viewModel.recheckoutForStoredTrip(route.orderId)
-                }
+                backStack.add(Route.Confirmation(route.orderId))
             }
             override fun acceptNewPrice() = viewModel.acceptNewPrice()
             override fun openChange(orderId: String) = backStack.add(Route.Change(orderId))

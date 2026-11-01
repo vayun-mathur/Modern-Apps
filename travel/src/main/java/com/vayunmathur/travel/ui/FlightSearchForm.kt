@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,34 +51,29 @@ enum class MaxStops(val apiValue: Int, @StringRes val label: Int) {
  * Flight search form (Google-Flights style): a dropdown row (trip type,
  * passengers, cabin, max stops) above side-by-side From/To fields with a swap
  * button, then dates. Calls [onSearch] with a normalized [FlightQuery] when
- * the user taps "Search flights", or [onExplore] with the explore params when
- * the To field is in Explore mode.
+ * the user taps "Search flights".
+ *
+ * Stateless: [state] is hoisted to the home screen so the form is still
+ * filled in when the user comes back. Round trips pick both dates in one
+ * range calendar.
  *
  * Date rules: no date before today; return not before depart.
  */
 @Composable
 fun FlightSearchForm(
     viewModel: TravelViewModel,
+    state: FlightFormState,
+    onState: (FlightFormState) -> Unit,
     modifier: Modifier = Modifier,
     onSearch: (FlightQuery) -> Unit,
-    onExplore: (ExploreRequest) -> Unit = {},
 ) {
-    var tripType by remember { mutableStateOf(TripType.ROUND_TRIP) }
-    var origin by remember { mutableStateOf("") }
-    var destination by remember { mutableStateOf("") }
-    var depart by remember { mutableStateOf("") }
-    var returnDate by remember { mutableStateOf("") }
-    var mix by remember { mutableStateOf(PassengerMix()) }
-    var cabin by remember { mutableStateOf(Cabin.ECONOMY) }
-    var maxStops by remember { mutableStateOf(MaxStops.TWO_PLUS) }
-    var exploreMode by remember { mutableStateOf(false) }
-    // Bumped on swap so the autocomplete fields re-init from the swapped codes
-    // (they own their display text internally).
+    // Bumped on swap so the autocomplete fields re-init from the swapped text
+    // (they own their editing text internally).
     var swapNonce by remember { mutableIntStateOf(0) }
 
     val today = remember { todayUtc() }
-    val departDate = remember(depart) { runCatching { LocalDate.parse(depart) }.getOrNull() }
-    val returnLocalDate = remember(returnDate) { runCatching { LocalDate.parse(returnDate) }.getOrNull() }
+    val departDate = remember(state.depart) { runCatching { LocalDate.parse(state.depart) }.getOrNull() }
+    val returnLocalDate = remember(state.returnDate) { runCatching { LocalDate.parse(state.returnDate) }.getOrNull() }
 
     Column(modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -88,23 +82,23 @@ fun FlightSearchForm(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SearchDropdown(
-                display = stringResource(tripType.label),
+                display = stringResource(state.tripType.label),
                 options = TripType.entries.map { it.name to stringResource(it.label) },
-                selectedValue = tripType.name,
-                onSelect = { name -> tripType = TripType.valueOf(name) },
+                selectedValue = state.tripType.name,
+                onSelect = { name -> onState(state.copy(tripType = TripType.valueOf(name))) },
             )
-            PassengerField(mix = mix, onMix = { mix = it })
+            PassengerField(mix = state.mix, onMix = { onState(state.copy(mix = it)) })
             SearchDropdown(
-                display = stringResource(cabin.label),
+                display = stringResource(state.cabin.label),
                 options = Cabin.entries.map { it.name to stringResource(it.label) },
-                selectedValue = cabin.name,
-                onSelect = { name -> cabin = Cabin.valueOf(name) },
+                selectedValue = state.cabin.name,
+                onSelect = { name -> onState(state.copy(cabin = Cabin.valueOf(name))) },
             )
             SearchDropdown(
-                display = stringResource(maxStops.label),
+                display = stringResource(state.maxStops.label),
                 options = MaxStops.entries.map { it.name to stringResource(it.label) },
-                selectedValue = maxStops.name,
-                onSelect = { name -> maxStops = MaxStops.valueOf(name) },
+                selectedValue = state.maxStops.name,
+                onSelect = { name -> onState(state.copy(maxStops = MaxStops.valueOf(name))) },
             )
         }
 
@@ -117,89 +111,60 @@ fun FlightSearchForm(
                 PlaceAutocompleteField(
                     "From",
                     viewModel,
-                    onCodeChange = { origin = it },
+                    onChange = { code, text -> onState(state.copy(origin = code, originText = text)) },
                     modifier = Modifier.weight(1f),
-                    initialText = origin,
+                    initialText = state.originText.ifBlank { state.origin },
                 )
             }
             IconButton(onClick = {
-                val o = origin
-                origin = destination
-                destination = o
-                exploreMode = false
+                onState(state.swapped())
                 swapNonce++
             }) { IconSwapLanguages() }
             androidx.compose.runtime.key(swapNonce) {
                 PlaceAutocompleteField(
                     "To",
                     viewModel,
-                    onCodeChange = {
-                        destination = it
-                        // Typing a code exits Explore mode.
-                        if (it.isNotBlank()) exploreMode = false
-                    },
+                    onChange = { code, text -> onState(state.copy(destination = code, destinationText = text)) },
                     modifier = Modifier.weight(1f),
-                    initialText = destination,
-                    showExploreRow = true,
-                    onExploreSelected = {
-                        destination = ""
-                        exploreMode = true
-                    },
+                    initialText = state.destinationText.ifBlank { state.destination },
                 )
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            DateField(
-                stringResource(R.string.depart),
-                depart,
-                onDate = { depart = it },
-                modifier = Modifier.weight(1f),
+        if (state.tripType == TripType.ROUND_TRIP) {
+            DateRangeFields(
+                startLabel = stringResource(R.string.depart),
+                endLabel = stringResource(R.string.return_label),
+                start = state.depart,
+                end = state.returnDate,
+                onRange = { start, end -> onState(state.copy(depart = start, returnDate = end)) },
                 minDate = today,
             )
-            if (tripType == TripType.ROUND_TRIP) {
-                DateField(
-                    stringResource(R.string.return_label),
-                    returnDate,
-                    onDate = { returnDate = it },
-                    modifier = Modifier.weight(1f),
-                    minDate = departDate ?: today,
-                )
-            }
+        } else {
+            DateField(
+                stringResource(R.string.depart),
+                state.depart,
+                onDate = { onState(state.copy(depart = it)) },
+                modifier = Modifier.fillMaxWidth(),
+                minDate = today,
+            )
         }
 
         val departValid = departDate != null && departDate >= today
-        val returnValid = tripType == TripType.ONE_WAY ||
+        val returnValid = state.tripType == TripType.ONE_WAY ||
             (returnLocalDate != null && departDate != null && returnLocalDate >= departDate)
-        val valid = origin.isNotBlank() && (destination.isNotBlank() || exploreMode) && departValid && returnValid
+        val valid = state.origin.isNotBlank() && state.destination.isNotBlank() && departValid && returnValid
 
         Button(
             onClick = {
+                val mix = state.mix
                 // Infants in seats fly as children (age 1) so they hold a seat;
                 // infants on lap use the infant bucket.
                 val childAges = mix.childAges + List(mix.infantsInSeat) { 1 }
-                if (exploreMode) {
-                    onExplore(
-                        ExploreRequest(
-                            origin = origin,
-                            tripType = if (tripType == TripType.ROUND_TRIP) "roundtrip" else "oneway",
-                            depart = depart,
-                            returnDate = returnDate.takeIf { tripType == TripType.ROUND_TRIP },
-                            cabin = cabin.code,
-                            adults = mix.adults,
-                            children = childAges.joinToString(","),
-                            infants = mix.infantsOnLap,
-                            maxConnections = maxStops.apiValue,
-                        )
-                    )
-                    return@Button
-                }
-                val slices = when (tripType) {
-                    TripType.ROUND_TRIP -> "$origin:$destination:$depart,$destination:$origin:$returnDate"
-                    TripType.ONE_WAY -> "$origin:$destination:$depart"
+                val (origin, destination) = state.origin to state.destination
+                val slices = when (state.tripType) {
+                    TripType.ROUND_TRIP -> "$origin:$destination:${state.depart},$destination:$origin:${state.returnDate}"
+                    TripType.ONE_WAY -> "$origin:$destination:${state.depart}"
                 }
                 onSearch(
                     FlightQuery(
@@ -207,14 +172,14 @@ fun FlightSearchForm(
                         adults = mix.adults,
                         children = childAges.joinToString(","),
                         infants = mix.infantsOnLap,
-                        cabin = cabin.code,
-                        maxConnections = maxStops.apiValue,
-                        isRoundTrip = tripType == TripType.ROUND_TRIP,
+                        cabin = state.cabin.code,
+                        maxConnections = state.maxStops.apiValue,
+                        isRoundTrip = state.tripType == TripType.ROUND_TRIP,
                     )
                 )
             },
             enabled = valid,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(stringResource(if (exploreMode) R.string.explore_search else R.string.search_flights)) }
+        ) { Text(stringResource(R.string.search_flights)) }
     }
 }

@@ -17,6 +17,7 @@ import com.vayunmathur.travel.network.CityDto
 import com.vayunmathur.travel.network.OfferDto
 import com.vayunmathur.travel.network.PassengerInputDto
 import com.vayunmathur.travel.network.SeatElementDto
+import com.vayunmathur.travel.network.ServiceSelectionDto
 import com.vayunmathur.travel.network.StayQuoteDto
 import com.vayunmathur.travel.network.StayRateDto
 import com.vayunmathur.travel.network.TripDto
@@ -77,9 +78,12 @@ class TravelViewModel(
     internal val selectedExtrasMutable = MutableStateFlow<Map<String, Long>>(emptyMap())
     val selectedExtras: StateFlow<Map<String, Long>> = selectedExtrasMutable.asStateFlow()
 
-    /** Selected seats keyed by `"segmentId|designator"`. */
+    /** Selected seats keyed by `"segmentId|passengerId"` (see `domain/SeatAssignment.kt`). */
     internal val selectedSeatsMutable = MutableStateFlow<Map<String, SeatElementDto>>(emptyMap())
     val selectedSeats: StateFlow<Map<String, SeatElementDto>> = selectedSeatsMutable.asStateFlow()
+
+    /** Ancillary selections last saved on the current trip (to detect clearing them). */
+    internal var savedServices: List<ServiceSelectionDto> = emptyList()
 
     internal val airlinesMutable = MutableStateFlow<List<AirlineDto>>(emptyList())
     val airlines: StateFlow<List<AirlineDto>> = airlinesMutable.asStateFlow()
@@ -132,16 +136,13 @@ class TravelViewModel(
     internal val stayBookingMutable = MutableStateFlow<StayBookingState>(StayBookingState.Idle)
     val stayBooking: StateFlow<StayBookingState> = stayBookingMutable.asStateFlow()
 
-    internal val exploreMutable = MutableStateFlow(ExploreSearchState())
-    val explore: StateFlow<ExploreSearchState> = exploreMutable.asStateFlow()
-
     /** The rate the user chose to book, plus context for persistence. */
     internal var selectedRate: StayRateDto? = null
     internal var selectedStayName: String = ""
     internal var selectedCheckIn: String = ""
     internal var selectedCheckOut: String = ""
     internal var stayQuote: StayQuoteDto? = null
-    /** Hosted-checkout link for the stay being booked (opened in a Custom Tab). */
+    /** Payment intent for the stay being booked. */
     internal var stayCheckout: CheckoutDto? = null
 
     val recentSearches: StateFlow<List<RecentSearch>> = repository.observeRecent()

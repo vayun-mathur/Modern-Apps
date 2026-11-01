@@ -36,14 +36,16 @@ import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
-import com.vayunmathur.travel.intents.openCheckout
 import com.vayunmathur.travel.network.StayGuestInputDto
+import com.vayunmathur.travel.platform.CardPaymentResult
+import com.vayunmathur.travel.platform.rememberCardPayment
 import com.vayunmathur.travel.util.StayBookingState
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.bookStay
-import com.vayunmathur.travel.util.pollStayTrip
+import com.vayunmathur.travel.util.confirmPaidTrip
 import com.vayunmathur.travel.util.resetStayBooking
 import com.vayunmathur.travel.util.stayTotal
 import androidx.compose.ui.res.stringResource
@@ -55,7 +57,20 @@ fun StayGuestsPage(
     viewModel: TravelViewModel,
 ) {
     val booking by viewModel.stayBooking.collectAsStateWithLifecycle()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    var paying by remember { mutableStateOf(false) }
+    var paidTripId by remember { mutableStateOf<String?>(null) }
+    val cardPayment = rememberCardPayment { result ->
+        paying = false
+        val tripId = paidTripId ?: return@rememberCardPayment
+        when (result) {
+            CardPaymentResult.Completed -> {
+                viewModel.confirmPaidTrip(tripId)
+                backStack.reset(Route.Home, Route.StayConfirmation(tripId))
+            }
+            CardPaymentResult.Canceled -> Unit
+            is CardPaymentResult.Failed -> AppMessages.show(result.message)
+        }
+    }
     var givenName by remember { mutableStateOf("") }
     var familyName by remember { mutableStateOf("") }
     var bornOn by remember { mutableStateOf("") }
@@ -69,11 +84,9 @@ fun StayGuestsPage(
         val b = booking
         if (b is StayBookingState.Success) {
             viewModel.resetStayBooking()
-            viewModel.pollStayTrip()
-            if (b.result.checkoutUrl.isNotBlank()) {
-                openCheckout(context, b.result.checkoutUrl)
-            }
-            backStack.reset(Route.Home, Route.StayConfirmation(b.result.id))
+            paidTripId = b.result.id
+            paying = cardPayment.present(b.result.clientSecret, b.result.publishableKey)
+            if (!paying) AppMessages.show("Payment is unavailable right now. Please try again.")
         }
     }
 
@@ -150,7 +163,7 @@ fun StayGuestsPage(
                         phone,
                     )
                 },
-                enabled = !loading && givenName.isNotBlank() && familyName.isNotBlank() && bornOn.isNotBlank() && email.contains("@") && phone.isNotBlank(),
+                enabled = !loading && !paying && givenName.isNotBlank() && familyName.isNotBlank() && bornOn.isNotBlank() && email.contains("@") && phone.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (loading) {

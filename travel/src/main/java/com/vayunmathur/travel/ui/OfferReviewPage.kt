@@ -51,10 +51,9 @@ fun OfferReviewPage(
 ) {
     val review by viewModel.review.collectAsStateWithLifecycle()
 
-    // The offer is seeded by the results screen; only re-read it from the
-    // server when there is nothing in memory (process-death restore).
+    // Always re-verify: the review screen shows the guaranteed price, not the search price.
     LaunchedEffect(route.offerId) {
-        if (review.offer?.offerId != route.offerId) viewModel.refreshOffer(route.offerId)
+        viewModel.refreshOffer(route.offerId)
     }
     LaunchedEffect(Unit) {
         viewModel.loadAircraft()
@@ -148,7 +147,8 @@ fun OfferReviewPage(
                     viewModel.initPassengers(offer)
                     backStack.add(Route.Passengers(offer.offerId))
                 },
-                enabled = !review.loading,
+                // A fare that failed verification can't be prebooked either.
+                enabled = !review.loading && review.error == null,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.continue_action)) }
         }

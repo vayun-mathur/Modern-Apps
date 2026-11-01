@@ -16,7 +16,7 @@ const val TRIP_STATUS_FAILED = "failed"
 const val TRIP_STATUS_CANCELLED = "cancelled"
 
 /**
- * A booked trip, persisted after hosted checkout starts so it shows up under
+ * A booked trip, persisted when checkout starts so it shows up under
  * "My trips" and survives restarts. Keyed by [orderId]: the trip id until a
  * booking reference exists, then kept stable (the reference is stored in
  * [bookingReference] separately). [tripId] is the server trip id used for

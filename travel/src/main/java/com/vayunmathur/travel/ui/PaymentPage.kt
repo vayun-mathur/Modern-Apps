@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,21 +30,23 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
-import com.vayunmathur.travel.intents.openCheckout
+import com.vayunmathur.travel.platform.CardPaymentResult
+import com.vayunmathur.travel.platform.rememberCardPayment
 import com.vayunmathur.travel.util.CheckoutState
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.acceptNewPrice
-import com.vayunmathur.travel.util.pollTrip
+import com.vayunmathur.travel.util.confirmPaidTrip
 import com.vayunmathur.travel.util.startCheckout
 import androidx.compose.ui.res.stringResource
 
 /**
- * Hosted-checkout screen: shows the checkout total (and the original vs new
- * price when it changed, requiring an explicit accept), then "Pay securely"
- * opens the checkout URL in a Custom Tab. The trip is persisted as
- * pending_payment before leaving; on return the app polls to confirmation.
+ * Checkout screen: shows the total (and the original vs new price when it
+ * changed, requiring an explicit accept), then "Pay securely" opens the
+ * in-app card sheet. On success the trip is confirmed server-side and the app
+ * moves to the confirmation screen, which polls to the final status.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,7 +57,19 @@ fun PaymentPage(
 ) {
     val review by viewModel.review.collectAsStateWithLifecycle()
     val checkout by viewModel.checkout.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    var paying by remember { mutableStateOf(false) }
+    val cardPayment = rememberCardPayment { result ->
+        paying = false
+        val tripId = viewModel.currentTrip?.tripId.orEmpty()
+        when (result) {
+            CardPaymentResult.Completed -> if (tripId.isNotBlank()) {
+                viewModel.confirmPaidTrip(tripId)
+                backStack.add(Route.Confirmation(tripId))
+            }
+            CardPaymentResult.Canceled -> Unit
+            is CardPaymentResult.Failed -> AppMessages.show(result.message)
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (checkout is CheckoutState.Idle) viewModel.startCheckout()
@@ -119,15 +135,13 @@ fun PaymentPage(
                 ) { Text(stringResource(UiR.string.retry)) }
             }
 
-            val payEnabled = ready != null && !loading &&
+            val payEnabled = ready != null && !loading && !paying &&
                 (!ready.priceChanged || accepted)
             Button(
                 onClick = {
-                    val url = ready?.checkoutUrl.orEmpty()
-                    val tripId = viewModel.currentTrip?.tripId.orEmpty()
-                    openCheckout(context, url)
-                    if (tripId.isNotBlank()) viewModel.pollTrip(tripId)
-                    if (tripId.isNotBlank()) backStack.add(Route.Confirmation(tripId))
+                    val r = ready ?: return@Button
+                    paying = cardPayment.present(r.clientSecret, r.publishableKey)
+                    if (!paying) AppMessages.show("Payment is unavailable right now. Please try again.")
                 },
                 enabled = payEnabled,
                 modifier = Modifier.fillMaxWidth(),

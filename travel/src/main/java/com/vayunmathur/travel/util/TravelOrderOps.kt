@@ -61,13 +61,13 @@ fun TravelViewModel.refreshBookingDetail(orderId: String) {
 }
 
 /**
- * Re-run checkout for a stored pending trip to get a fresh payment link
+ * Re-run checkout for a stored pending trip to get a fresh payment intent
  * (used by "Complete payment" while the checkout has not expired).
  */
 fun TravelViewModel.recheckoutForStoredTrip(orderId: String) {
     val stored = bookedTrips.value.find { it.orderId == orderId } ?: return
     if (!isCheckoutUnexpired(stored.checkoutExpiresAt)) {
-        checkoutMutable.value = CheckoutState.Error("This payment link has expired. Please start a new booking.")
+        checkoutMutable.value = CheckoutState.Error("This booking session has expired. Please start a new booking.")
         return
     }
     val tripId = stored.tripId.ifBlank { stored.orderId }

@@ -5,7 +5,6 @@ import com.vayunmathur.travel.data.AirportCatalog
 import com.vayunmathur.travel.data.RecentSearch
 import com.vayunmathur.travel.data.Vertical
 import com.vayunmathur.travel.domain.faresForItineraryPair
-import com.vayunmathur.travel.domain.groupInboundSlices
 import com.vayunmathur.travel.domain.groupOutboundSlices
 import com.vayunmathur.travel.domain.roundTripOffers
 import com.vayunmathur.travel.network.OfferDto
@@ -84,41 +83,6 @@ fun TravelViewModel.searchFlights(query: FlightQuery) {
     }
 }
 
-/**
- * Explore destination suggestions for the map pins: cached lowest fares from
- * `find_destination` (exploration-only; the pin sheet re-searches live).
- */
-fun TravelViewModel.searchExplore(
-    origin: String,
-    tripType: String,
-    depart: String,
-    returnDate: String? = null,
-    cabin: String = "economy",
-    adults: Int = 1,
-    children: String = "",
-    infants: Int = 0,
-    maxConnections: Int = -1,
-) {
-    exploreMutable.value = ExploreSearchState(loading = true, hasSearched = true)
-    viewModelScope.launch {
-        runCatching {
-            TravelApi.explore(
-                origins = origin,
-                tripType = tripType,
-                depart = depart,
-                returnDate = returnDate,
-                cabin = cabin,
-                adults = adults,
-                children = children,
-                infants = infants,
-                maxConnections = maxConnections,
-            )
-        }
-            .onSuccess { exploreMutable.value = ExploreSearchState(destinations = it.destinations, hasSearched = true) }
-            .onFailure { exploreMutable.value = ExploreSearchState(error = errorMessage(it), hasSearched = true) }
-    }
-}
-
 /** Change the on-device sort (no re-fetch). */
 fun TravelViewModel.setSort(sort: OfferSort) {
     flightsMutable.value = flightsMutable.value.copy(sort = sort)
@@ -156,6 +120,7 @@ fun TravelViewModel.selectOffer(offer: OfferDto) {
     seatMapMutable.value = SeatMapState()
     ancillariesMutable.value = AncillariesState()
     currentTrip = null
+    savedServices = emptyList()
     bookingMutable.value = BookingState.Idle
     checkoutMutable.value = CheckoutState.Idle
     tripPollMutable.value = TripPollState.Idle
@@ -175,6 +140,7 @@ fun TravelViewModel.selectOffers(offers: List<OfferDto>) {
     seatMapMutable.value = SeatMapState()
     ancillariesMutable.value = AncillariesState()
     currentTrip = null
+    savedServices = emptyList()
     bookingMutable.value = BookingState.Idle
     checkoutMutable.value = CheckoutState.Idle
     tripPollMutable.value = TripPollState.Idle
@@ -190,7 +156,7 @@ fun TravelViewModel.refreshOffer(offerId: String) {
         runCatching { TravelApi.offer(offerId) }
             .onSuccess { reviewMutable.value = OfferReviewState(offer = it) }
             .onFailure {
-                // Keep the previously selected offer so the user can still proceed.
+                // Keep the offer on screen; the review page blocks Continue until it verifies.
                 reviewMutable.value = reviewMutable.value.copy(loading = false, error = errorMessage(it))
             }
     }
@@ -227,23 +193,7 @@ fun TravelViewModel.startPartialSearch(query: FlightQuery) {
     }
 }
 
-/** Round-trip step 2: inbound slices for the chosen outbound signature. */
-fun TravelViewModel.loadPartialReturn(outboundSignature: String) {
-    val all = partialFlowMutable.value.allOffers
-    if (all.isEmpty()) {
-        partialFlowMutable.value = partialFlowMutable.value.copy(error = "Please restart your search.")
-        return
-    }
-    partialFlowMutable.value = partialFlowMutable.value.copy(
-        loading = false,
-        error = null,
-        step = 1,
-        outboundSignature = outboundSignature,
-        offers = groupInboundSlices(all, outboundSignature),
-    )
-}
-
-/** Round-trip step 3: fares for the chosen outbound+inbound pair. */
+/** Round-trip step 2: fares for the chosen outbound+inbound pair. */
 fun TravelViewModel.loadPartialFares(outboundSignature: String, inboundSignature: String) {
     val all = partialFlowMutable.value.allOffers
     if (all.isEmpty()) {

@@ -213,8 +213,8 @@ class MetadataPreviews {
                     ),
                 ),
                 selectedSeats = mapOf(
-                    "$SEGMENT|14C" to seat("14C", "38.00"),
-                    "$SEGMENT|14D" to seat("14D", "38.00"),
+                    "$SEGMENT|pax_1" to seat("14C", "38.00"),
+                    "$SEGMENT|pax_2" to seat("14D", "38.00"),
                 ),
                 actions = SeatMapActions.Noop,
             )

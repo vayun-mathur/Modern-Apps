@@ -13,14 +13,6 @@ import com.vayunmathur.travel.network.StaySearchResultDto
 import com.vayunmathur.travel.network.TripAncillariesDto
 import com.vayunmathur.travel.network.TripDto
 
-/** State for the explore map: destination suggestions with cached fares. */
-data class ExploreSearchState(
-    val loading: Boolean = false,
-    val error: String? = null,
-    val destinations: List<com.vayunmathur.travel.network.ExploreDestinationDto> = emptyList(),
-    val hasSearched: Boolean = false,
-)
-
 /** Search state for the flight results list. */
 data class SearchUiState<T>(
     val loading: Boolean = false,
@@ -135,7 +127,7 @@ sealed interface BookingState {
     data class MissingDetails(val missingFields: List<String>, val message: String) : BookingState
 }
 
-/** Lifecycle for the hosted-checkout step (quote → Custom Tab → polling). */
+/** Lifecycle for the checkout step (payment intent → card sheet → confirm). */
 sealed interface CheckoutState {
     data object Idle : CheckoutState
     data object Loading : CheckoutState

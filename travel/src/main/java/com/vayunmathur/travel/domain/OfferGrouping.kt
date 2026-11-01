@@ -87,3 +87,4 @@ fun faresForItineraryPair(
                 sliceSignature(it.slices[1]) == inboundSignature
         }
         .sortedBy { it.totalAmount.toDoubleOrNull() ?: Double.MAX_VALUE }
+

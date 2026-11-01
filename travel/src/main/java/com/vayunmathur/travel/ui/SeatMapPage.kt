@@ -22,7 +22,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +43,10 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
+import com.vayunmathur.travel.domain.assignSeat
+import com.vayunmathur.travel.domain.seatHolder
+import com.vayunmathur.travel.domain.seatKey
+import com.vayunmathur.travel.domain.seatedPassengers
 import com.vayunmathur.travel.network.SeatCabinDto
 import com.vayunmathur.travel.network.SeatElementDto
 import com.vayunmathur.travel.network.SeatRowDto
@@ -101,14 +107,22 @@ fun SeatMapPage(
 ) {
     val state by viewModel.seatMap.collectAsStateWithLifecycle()
     val selectedSeats by viewModel.selectedSeats.collectAsStateWithLifecycle()
+    val review by viewModel.review.collectAsStateWithLifecycle()
+    val inputs by viewModel.passengers.collectAsStateWithLifecycle()
+    val passengers = seatedPassengers(review.offer?.passengers.orEmpty()).mapIndexed { i, p ->
+        val input = inputs.firstOrNull { it.id == p.id }
+        val name = listOfNotNull(input?.givenName?.ifBlank { null }, input?.familyName?.ifBlank { null })
+            .joinToString(" ")
+        SeatPassenger(p.id, name.ifBlank { "Passenger ${i + 1}" })
+    }
 
     // Seat maps ride on the trip ancillaries (loaded before this screen).
     LaunchedEffect(route.offerId) { viewModel.loadSeatMaps() }
 
     val actions = remember(viewModel, backStack) {
         object : SeatMapActions {
-            override fun toggleSeat(segmentId: String, seat: SeatElementDto) =
-                viewModel.toggleSeat(segmentId, seat)
+            override fun toggleSeat(segmentId: String, passengerId: String, seat: SeatElementDto) =
+                viewModel.toggleSeat(segmentId, passengerId, seat)
 
             override fun done() = backStack.pop()
             override fun back() = backStack.pop()
@@ -120,8 +134,10 @@ fun SeatMapPage(
         state = state,
         selectedSeats = selectedSeats,
         actions = actions,
+        passengers = passengers,
     )
 }
+
 
 /**
  * The seat picker for one segment, with no dependency on the ViewModel or the back stack so
@@ -135,7 +151,14 @@ fun SeatMapScreen(
     state: SeatMapState,
     selectedSeats: Map<String, SeatElementDto>,
     actions: SeatMapActions,
+    passengers: List<SeatPassenger> = emptyList(),
 ) {
+    var activePassenger by remember(segmentId, passengers) {
+        mutableStateOf(
+            passengers.firstOrNull { seatKey(segmentId, it.id) !in selectedSeats }?.id
+                ?: passengers.firstOrNull()?.id.orEmpty()
+        )
+    }
     AppScaffold(
         title = stringResource(R.string.choose_seats),
         onNavigateBack = { actions.back() },
@@ -156,8 +179,20 @@ fun SeatMapScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
         ) {
             SeatLegend()
+            if (passengers.size > 1) {
+                SeatPassengerPicker(passengers, segmentId, selectedSeats, activePassenger) { activePassenger = it }
+            }
+            val passengerNumbers = passengers.mapIndexed { i, p -> p.id to i + 1 }.toMap()
             cabins.forEach { cabin ->
-                CabinView(cabin, segmentId, selectedSeats) { actions.toggleSeat(segmentId, it) }
+                CabinView(cabin, segmentId, selectedSeats, passengerNumbers.takeIf { passengers.size > 1 }) { seat ->
+                    actions.toggleSeat(segmentId, activePassenger, seat)
+                    // Move on to the next passenger still without a seat.
+                    val holder = seatHolder(selectedSeats, segmentId, seat.designator)
+                    if (holder == null && passengers.size > 1) {
+                        val after = assignSeat(selectedSeats, segmentId, activePassenger, seat)
+                        passengers.firstOrNull { seatKey(segmentId, it.id) !in after }?.let { activePassenger = it.id }
+                    }
+                }
             }
             Button(
                 onClick = { actions.done() },
@@ -168,31 +203,11 @@ fun SeatMapScreen(
 }
 
 @Composable
-private fun SeatLegend() {
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LegendSwatch(MaterialTheme.colorScheme.secondaryContainer, "Available")
-        LegendSwatch(MaterialTheme.colorScheme.primary, "Selected")
-        LegendSwatch(MaterialTheme.colorScheme.surfaceVariant, "Taken")
-    }
-}
-
-@Composable
-private fun LegendSwatch(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.size(16.dp).clip(RoundedCornerShape(4.dp)).background(color))
-        Text(label, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@Composable
 private fun CabinView(
     cabin: SeatCabinDto,
     segmentId: String,
     selectedSeats: Map<String, SeatElementDto>,
+    passengerNumbers: Map<String, Int>?,
     onToggle: (SeatElementDto) -> Unit,
 ) {
     if (cabin.cabinClass.isNotBlank()) {
@@ -209,7 +224,7 @@ private fun CabinView(
         Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(GAP),
     ) {
-        cabin.rows.forEach { row -> SeatRowView(row, layout, segmentId, selectedSeats, onToggle) }
+        cabin.rows.forEach { row -> SeatRowView(row, layout, segmentId, selectedSeats, passengerNumbers, onToggle) }
     }
 }
 
@@ -219,6 +234,7 @@ private fun SeatRowView(
     layout: CabinLayout,
     segmentId: String,
     selectedSeats: Map<String, SeatElementDto>,
+    passengerNumbers: Map<String, Int>?,
     onToggle: (SeatElementDto) -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -231,8 +247,9 @@ private fun SeatRowView(
                     letters.forEach { letter ->
                         val seat = elements.firstOrNull { it.isSeat && seatLetter(it.designator) == letter }
                         if (seat != null) {
-                            val selected = selectedSeats.containsKey("$segmentId|${seat.designator}")
-                            SeatChip(seat, selected) { onToggle(seat) }
+                            val holder = seatHolder(selectedSeats, segmentId, seat.designator)
+                            val badge = holder?.let { passengerNumbers?.get(it) }?.let { "P$it" }
+                            SeatChip(seat, holder != null, badge) { onToggle(seat) }
                         } else {
                             Spacer(Modifier.size(CELL))
                         }
@@ -247,7 +264,7 @@ private fun SeatRowView(
 }
 
 @Composable
-private fun SeatChip(seat: SeatElementDto, selected: Boolean, onClick: () -> Unit) {
+private fun SeatChip(seat: SeatElementDto, selected: Boolean, badge: String?, onClick: () -> Unit) {
     val bg = when {
         selected -> MaterialTheme.colorScheme.primary
         seat.available -> MaterialTheme.colorScheme.secondaryContainer
@@ -277,7 +294,9 @@ private fun SeatChip(seat: SeatElementDto, selected: Boolean, onClick: () -> Uni
                 textAlign = TextAlign.Center,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             )
-            if (seat.available && price != null) {
+            if (badge != null) {
+                Text(badge, fontSize = 8.sp, color = fg, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
+            } else if (seat.available && price != null) {
                 Text(price, fontSize = 8.sp, color = fg, textAlign = TextAlign.Center)
             }
         }

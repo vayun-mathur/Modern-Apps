@@ -7,7 +7,7 @@ _Install: ./install travel (dev by default)._
 - Gradle: :travel / dir: travel/
 - Package roots present: ui, data, network
 - Entry files: MainActivity.kt (no Route.kt — search/results/booking/manage flow with pages)
-- Deps: :library:room, :library:network, :library:image
+- Deps: :library:room, :library:network, :library:image, Stripe Android SDK (payment sheet)
 - Metadata: metadata_data/travel.md (present)
 - Rust: no / screenshotTest: yes
 
@@ -15,10 +15,10 @@ _Install: ./install travel (dev by default)._
 `travel` does not use the relay directly, but `NetworkClient.init(FIRST_PARTY)` covers `api.maproj.org`. Server checkout: `../location_share_server` (sibling of this repo root, `C:\Users\Vayun\Documents\code\location_share_server`). Full details: root `AGENTS.md` → "Backend server (outside this repo)".
 
 ## Overview
-**Purpose:** Flight + hotel booking — search/comparison, seat maps, ancillaries/offers, trip management with hosted checkout; trips persist on-device so plans stay readable offline.
+**Purpose:** Flight + hotel booking — search/comparison, seat maps, ancillaries/offers, trip management with in-app card payment; trips persist on-device so plans stay readable offline.
 **Key features:**
-- Flight search form (one-way / round-trip) → results → offer review → passengers → trip → ancillaries → hosted checkout → confirmation; Explore map (find-destination price pins → live re-search) ; change/cancel/manage on booked trips
-- Round-trip step-by-step (grouped on-device); stays search → detail → guests → hosted checkout → confirmation; seat-map picker
+- Flight search form (one-way / round-trip) → results → offer review → passengers → trip → ancillaries → payment sheet → confirm → confirmation; cancel/manage on booked trips (online changes are not offered — server sends `canChange=false`)
+- Round-trip step-by-step (grouped on-device); stays search → detail → guests → payment sheet → confirm → confirmation; seat-map picker
 - `data/` Room (trips, local booking profiles, frequent-flyer, recent searches) + `domain/` on-device grouping/status + `network/` trip/stays DTOs + APIs
 **Architecture / data-flow:** `ui/` search/results/booking pages → `util/TravelViewModel` (+ `TravelUiContract`/`TravelUiState`, per-area `Travel*Ops`) → `domain/` grouping + `data/TravelRepository` over Room + `network/TravelApi`/`StaysApi`; booked trips stay readable from Room when offline.
 **Entry points + reading order:** `MainActivity.kt` → `ui/HomePage.kt` → `ui/FlightSearchForm.kt` → `util/TravelViewModel.kt` → `util/TravelSearchOps.kt` → `network/TravelApi.kt`.
@@ -26,6 +26,7 @@ _Install: ./install travel (dev by default)._
 - `util/` is NOT a closed package root — pending migration; don't add more files there
 - Booking is money-moving — price/availability must be re-confirmed server-side before payment, never trusted from cached offers
 - Offline readability is a feature (stored trips), offline booking is not — gate write paths on connectivity
+- Payment: `POST /trips/:id/checkout` returns a payment-intent `clientSecret` + `publishableKey` (the provider's processor account, per environment); present it with `platform/StripeCheckout.kt`, then `POST /trips/:id/confirm` books it. Never book before the sheet reports Completed
 
 ## Key files
 ### Root — entry (no Route.kt)
@@ -40,8 +41,8 @@ _Install: ./install travel (dev by default)._
 ### domain/ — on-device offer + trip logic
 - com/vayunmathur/travel/domain/OfferGrouping.kt
 - com/vayunmathur/travel/domain/TripStatus.kt
-### intents/ — hosted-checkout Custom Tab
-- com/vayunmathur/travel/intents/CheckoutTabs.kt
+### platform/ — in-app card payment (Stripe payment sheet)
+- com/vayunmathur/travel/platform/StripeCheckout.kt
 ### network/ — airline + stays APIs
 - com/vayunmathur/travel/network/TravelApi.kt
 - com/vayunmathur/travel/network/OfferDto.kt

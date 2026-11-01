@@ -99,9 +99,10 @@ fun TravelViewModel.stayTotal(): Pair<String, String> {
 }
 
 /**
- * Book a stay: upserts guests, starts hosted checkout, persists a pending
- * `stay` trip immediately, and hands the checkout URL to the UI for the
- * Custom Tab. Status then polls via the shared trip endpoint.
+ * Book a stay: records guests, gets the payment intent, persists a pending
+ * `stay` trip immediately, and hands the intent to the UI for the in-app card
+ * sheet. After payment the trip is confirmed and polled via the shared trip
+ * endpoints.
  */
 fun TravelViewModel.bookStay(guest: StayGuestInputDto, email: String, phone: String) {
     val quoteId = stayQuote?.id
@@ -124,12 +125,13 @@ fun TravelViewModel.bookStay(guest: StayGuestInputDto, email: String, phone: Str
             .onSuccess { result ->
                 persistStay(result, guest, email, phone)
                 stayCheckout = com.vayunmathur.travel.network.CheckoutDto(
-                    checkoutUrl = result.checkoutUrl,
+                    clientSecret = result.clientSecret,
+                    publishableKey = result.publishableKey,
+                    quoteId = result.id,
                     totalAmount = result.totalAmount,
                     currency = result.totalCurrency,
                     expiresAt = result.expiresAt,
                 )
-                currentTrip = currentTrip?.copy() // stays poll by trip id below
                 stayBookingMutable.value = StayBookingState.Success(result)
             }
             .onFailure { stayBookingMutable.value = StayBookingState.Error(errorMessage(it)) }
@@ -138,12 +140,6 @@ fun TravelViewModel.bookStay(guest: StayGuestInputDto, email: String, phone: Str
 
 fun TravelViewModel.resetStayBooking() {
     stayBookingMutable.value = StayBookingState.Idle
-}
-
-/** Poll the stay's trip after checkout (same ~3s loop as flights). */
-fun TravelViewModel.pollStayTrip() {
-    val tripId = stayQuote?.id ?: return
-    pollTrip(tripId)
 }
 
 private suspend fun TravelViewModel.persistStay(

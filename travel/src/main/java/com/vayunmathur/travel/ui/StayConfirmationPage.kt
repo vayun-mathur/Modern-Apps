@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -27,16 +29,21 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.AppMessages
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
 import com.vayunmathur.travel.domain.isCheckoutUnexpired
 import com.vayunmathur.travel.domain.isTripAwaitingPayment
 import com.vayunmathur.travel.domain.isTripPollingStatus
 import com.vayunmathur.travel.domain.tripStatusLabel
-import com.vayunmathur.travel.intents.openCheckout
+import com.vayunmathur.travel.platform.CardPaymentResult
+import com.vayunmathur.travel.platform.rememberCardPayment
+import com.vayunmathur.travel.util.CheckoutState
 import com.vayunmathur.travel.util.TravelViewModel
 import com.vayunmathur.travel.util.TripPollState
+import com.vayunmathur.travel.util.confirmPaidTrip
 import com.vayunmathur.travel.util.pollTrip
+import com.vayunmathur.travel.util.recheckoutForStoredTrip
 import com.vayunmathur.travel.util.refreshStoredTrip
 import androidx.compose.ui.res.stringResource
 
@@ -55,12 +62,28 @@ fun StayConfirmationPage(
     val trips by viewModel.bookedTrips.collectAsStateWithLifecycle()
     val trip = trips.find { it.orderId == route.bookingId }
     val poll by viewModel.tripPoll.collectAsStateWithLifecycle()
-    val stayCheckout = viewModel.stayCheckout
-    val context = LocalContext.current
+    val checkout by viewModel.checkout.collectAsStateWithLifecycle()
+    val tripId = trip?.tripId?.ifBlank { route.bookingId } ?: route.bookingId
+    var paying by remember { mutableStateOf(false) }
+    var presentWhenReady by remember { mutableStateOf(false) }
+    val cardPayment = rememberCardPayment { result ->
+        paying = false
+        when (result) {
+            CardPaymentResult.Completed -> viewModel.confirmPaidTrip(tripId)
+            CardPaymentResult.Canceled -> Unit
+            is CardPaymentResult.Failed -> AppMessages.show(result.message)
+        }
+    }
 
     LaunchedEffect(route.bookingId) {
-        val id = trip?.tripId?.ifBlank { route.bookingId } ?: route.bookingId
-        viewModel.pollTrip(id)
+        viewModel.pollTrip(tripId)
+    }
+
+    LaunchedEffect(checkout, presentWhenReady) {
+        val ready = (checkout as? CheckoutState.Ready)?.checkout ?: return@LaunchedEffect
+        if (!presentWhenReady) return@LaunchedEffect
+        presentWhenReady = false
+        paying = cardPayment.present(ready.clientSecret, ready.publishableKey)
     }
 
     DetailScaffold(
@@ -92,13 +115,25 @@ fun StayConfirmationPage(
                     }
                 }
                 if (isTripAwaitingPayment(trip.status) && isCheckoutUnexpired(trip.checkoutExpiresAt)) {
-                    val url = stayCheckout?.checkoutUrl.orEmpty()
-                    if (url.isNotBlank()) {
-                        Button(
-                            onClick = { openCheckout(context, url) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(stringResource(R.string.complete_payment)) }
+                    (poll as? TripPollState.Error)?.let {
+                        Text(it.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
+                    (checkout as? CheckoutState.Error)?.let {
+                        Text(it.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Button(
+                        onClick = {
+                            val fresh = viewModel.stayCheckout?.takeIf { it.quoteId == tripId }
+                            if (fresh != null) {
+                                paying = cardPayment.present(fresh.clientSecret, fresh.publishableKey)
+                            } else {
+                                presentWhenReady = true
+                                viewModel.recheckoutForStoredTrip(trip.orderId)
+                            }
+                        },
+                        enabled = !paying && checkout !is CheckoutState.Loading,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(stringResource(R.string.complete_payment)) }
                 }
                 if (isTripPollingStatus(trip.status)) {
                     OutlinedButton(

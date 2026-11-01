@@ -1,5 +1,7 @@
 package com.vayunmathur.travel.pure
 
+import com.vayunmathur.travel.domain.assignSeat
+import com.vayunmathur.travel.domain.seatSelections
 import com.vayunmathur.travel.network.PenaltyRuleDto
 import com.vayunmathur.travel.network.SeatElementDto
 import com.vayunmathur.travel.network.ServiceDto
@@ -36,11 +38,7 @@ class AncillaryErrorTest {
     )
 
     private fun toggleSeat(selected: Map<String, SeatElementDto>, segment: String, s: SeatElementDto) =
-        if (!s.available || s.serviceId == null) selected
-        else selected.toMutableMap().also {
-            val key = "$segment|${s.designator}"
-            if (it.containsKey(key)) it.remove(key) else it[key] = s
-        }
+        assignSeat(selected, segment, "pax_1", s)
 
     private fun setQuantity(selected: Map<String, Long>, id: String, qty: Long) =
         selected.toMutableMap().also { if (qty <= 0) it.remove(id) else it[id] = qty }
@@ -49,7 +47,7 @@ class AncillaryErrorTest {
     fun selectableSeatTogglesOnSegmentKey() {
         val selected = toggleSeat(emptyMap(), "seg1", seat("12A"))
         assertEquals(1, selected.size)
-        assertTrue("seg1|12A" in selected)
+        assertTrue("seg1|pax_1" in selected)
         assertEquals(emptyMap(), toggleSeat(selected, "seg1", seat("12A")))
     }
 
@@ -85,10 +83,8 @@ class AncillaryErrorTest {
 
     @Test
     fun selectedSeatMapsToQuantityOne() {
-        val selections = toggleSeat(emptyMap(), "seg1", seat("12A")).values.mapNotNull { s ->
-            s.serviceId?.let { ServiceSelectionDto(id = it, quantity = 1) }
-        }
-        assertEquals(listOf(ServiceSelectionDto("svc1", 1, null)), selections)
+        val selections = seatSelections(toggleSeat(emptyMap(), "seg1", seat("12A")))
+        assertEquals(listOf(ServiceSelectionDto("svc1", 1, "pax_1")), selections)
     }
 
     @Test

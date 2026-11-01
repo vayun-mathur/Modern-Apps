@@ -6,6 +6,11 @@
     <!-- Section header: saved and remote trips grouped -->
     <string name="my_trips">My trips</string>
     <!-- Link to view all trips in overflow card. %1$s = total count e.g. 5 -->
+    <!-- Outbound flight card: how many return flights pair with it. %1$d = count -->
+    <plurals name="return_flight_options">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> return flight</item>
+        <item quantity="other"><xliff:g id="count" example="3">%1$d</xliff:g> return flights</item>
+    </plurals>
     <plurals name="see_all_trips">
         <item quantity="one">See all <xliff:g id="count" example="3">%1$s</xliff:g> trip</item>
         <item quantity="other">See all <xliff:g id="count" example="3">%1$s</xliff:g> trips</item>
@@ -59,20 +64,6 @@
     <string name="stops_2_plus">2+ stops</string>
     <!-- CTA: search flights submit button. Verb phrase -->
     <string name="search_flights">Search flights</string>
-    <!-- Pinned row in the To field: open Explore discovery. Verb -->
-    <string name="explore">Explore</string>
-    <!-- Explore row subtitle: search anywhere. Noun phrase -->
-    <string name="explore_anywhere">Explore destinations</string>
-    <!-- CTA: search in explore mode. Verb phrase -->
-    <string name="explore_search">Explore</string>
-    <!-- Explore map title. %1$s = origin code e.g. SFO -->
-    <string name="explore_title">Explore from <xliff:g id="origin" example="SFO">%1$s</xliff:g></string>
-    <!-- Explore sheet: cached fare disclaimer. Sentence -->
-    <string name="explore_fare_note">Explore fares are estimates. Live prices load below.</string>
-    <!-- Explore sheet: live fares header. Noun phrase -->
-    <string name="explore_live_fares">Live flights</string>
-    <!-- Empty state: no explore destinations. Sentence -->
-    <string name="explore_empty">No destinations found. Try different dates.</string>
     <!-- Date field label: new requested date when changing flight -->
     <string name="new_date">New date</string>
 
@@ -120,18 +111,14 @@
     <!-- CTA to ancillaries extras page. Verb -->
     <string name="continue_action">Continue</string>
 
-    <!-- Round-trip step 1 title: choose outbound flight. Verb phrase -->
-    <string name="choose_outbound">Choose outbound</string>
-    <!-- Round-trip step 2 title: choose return flight. Verb phrase -->
-    <string name="choose_return">Choose return</string>
-    <!-- Round-trip step 3 title: choose fare. Verb phrase -->
+    <!-- Round-trip step 2 title: choose fare. Verb phrase -->
     <string name="choose_fare">Choose fare</string>
-    <!-- Step indicator 1 of 3. Noun phrase -->
-    <string name="step_1_of_3">Step 1 of 3</string>
-    <!-- Step indicator 2 of 3. Noun phrase -->
-    <string name="step_2_of_3">Step 2 of 3</string>
-    <!-- Step indicator 3 of 3. Noun phrase -->
-    <string name="step_3_of_3">Step 3 of 3</string>
+    <!-- Round-trip picker title: pick outbound + return flights. Verb phrase -->
+    <string name="choose_flights">Choose flights</string>
+    <!-- Round-trip picker subtitle, first step. Noun phrase -->
+    <string name="step_1_of_2">Step 1 of 2</string>
+    <!-- Round-trip picker subtitle, second step. Noun phrase -->
+    <string name="step_2_of_2">Step 2 of 2</string>
     <!-- Empty state: no flights for this step. Sentence -->
     <string name="no_flights_for_leg">No flights available.</string>
 
@@ -209,8 +196,8 @@
     <string name="payment">Payment</string>
     <!-- Total due amount card header. Noun phrase -->
     <string name="total_due">Total due</string>
-    <!-- Explainer: payment finishes on a secure hosted page. Sentence -->
-    <string name="secure_checkout_explainer">You\u2019ll finish payment on a secure page.</string>
+    <!-- Explainer: card details go to the payment processor. Sentence -->
+    <string name="secure_checkout_explainer">Card details go straight to our payment processor and are never stored on this device.</string>
     <!-- Loading state while the checkout link is prepared -->
     <string name="preparing_checkout">Preparing checkout…</string>
     <!-- CTA: open the hosted checkout page. Verb phrase -->
@@ -260,8 +247,8 @@
     <string name="complete_payment">Complete payment</string>
     <!-- Button: re-check booking status. Verb phrase -->
     <string name="refresh_status">Refresh status</string>
-    <!-- Notice: the payment link expired. Sentence -->
-    <string name="payment_link_expired">This payment link has expired. Please start a new booking.</string>
+    <!-- Notice: the booking session expired. Sentence -->
+    <string name="payment_link_expired">This booking session has expired. Please start a new booking.</string>
     <!-- Detail row label: booking reference. Noun phrase -->
     <string name="booking_reference">Booking reference</string>
     <!-- Detail row label: route summary. Noun -->

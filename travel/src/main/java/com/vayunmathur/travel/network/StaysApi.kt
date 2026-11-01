@@ -7,8 +7,9 @@ import kotlinx.serialization.json.Json
 /**
  * Thin wrapper over the shared [NetworkClient] for the `/api/stays` endpoints on
  * the proxy. Mirrors [TravelApi]: URL/body construction + delegation, with the
- * booking token held server-side. Booking completes via hosted checkout; the
- * trip is then polled/serviced through the shared trip + bookings endpoints.
+ * booking token held server-side. Booking returns a payment intent paid in-app;
+ * the trip is then confirmed/polled/serviced through the shared trip + bookings
+ * endpoints.
  * Callers wrap in try/catch and surface errors.
  */
 object StaysApi {
@@ -59,7 +60,7 @@ object StaysApi {
     suspend fun quote(rateId: String): StayQuoteDto =
         postJson("$BASE/quote", StayQuoteRequest(rateId), "Quote failed")
 
-    /** Book a quoted rate: upserts travelers, starts hosted checkout. */
+    /** Book a quoted rate: records guests, returns the payment intent. */
     suspend fun book(request: StayBookingRequestDto): StayBookingResultDto =
         postJson("$BASE/bookings", request, "Booking failed")
 

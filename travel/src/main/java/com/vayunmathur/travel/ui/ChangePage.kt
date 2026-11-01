@@ -35,7 +35,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.travel.Route
-import com.vayunmathur.travel.intents.openCheckout
 import com.vayunmathur.travel.network.ChangeOfferDto
 import com.vayunmathur.travel.network.SliceDto
 import com.vayunmathur.travel.util.TravelViewModel
@@ -63,7 +62,6 @@ fun ChangePage(
 
     var selectedSliceIndex by remember { mutableStateOf(0) }
     var newDate by remember { mutableStateOf("") }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     AppScaffold(
         title = stringResource(R.string.change_flights),
@@ -127,8 +125,7 @@ fun ChangePage(
                     Text(stringResource(R.string.no_change_options_available), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Text(stringResource(R.string.change_options), style = MaterialTheme.typography.titleMedium, modifier = Modifier.fillMaxWidth())
-                    change.checkoutUrl?.let { url ->
-                        LaunchedEffect(url) { openCheckout(context, url) }
+                    change.checkoutUrl?.let {
                         Text(
                             stringResource(R.string.change_payment_needed),
                             style = MaterialTheme.typography.bodyMedium,

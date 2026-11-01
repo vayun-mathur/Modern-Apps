@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":library:network"))
 
     implementation(project(":library:image"))
-    implementation(project(":library:map"))
-    implementation(libs.androidx.browser)
+    implementation(libs.stripe.android)
+    // stripe-android doesn't publish kotlin-parcelize-runtime in its POM (see fooddelivery).
+    implementation(libs.kotlin.parcelize.runtime)
 }

@@ -43,7 +43,7 @@ import androidx.compose.ui.res.stringResource
 
 /**
  * Extras step: bag services + seat maps off the created trip. Saving posts
- * the selections, then the flow moves to hosted checkout.
+ * the selections, then the flow moves to checkout.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
