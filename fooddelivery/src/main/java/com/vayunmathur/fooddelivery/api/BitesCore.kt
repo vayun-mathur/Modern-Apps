@@ -30,7 +30,12 @@ internal object BitesCore {
     /** Absolute expiry we persist alongside the token so a cold start knows if it is stale. */
     internal const val EXPIRES_AT_KEY = "expires_at_ms"
 
+    /** The reference refreshes 30s before expiry so a request can't race the cutoff. */
+    private const val REFRESH_SKEW_MS = 30_000L
+
     internal const val HTTP_UNAUTHORIZED = 401
+    private const val HTTP_REQUEST_TIMEOUT = 408
+    private const val HTTP_TOO_MANY_REQUESTS = 429
     internal const val HTTP_CLIENT_ERROR_MIN = 400
     internal const val HTTP_CLIENT_ERROR_MAX = 499
 
@@ -76,25 +81,39 @@ internal object BitesCore {
 
     /**
      * One refresh at a time. Callers that queue behind the mutex re-check [storedToken]:
-     * if it already moved on, the refresh someone else did is theirs to use.
+     * if it already moved on, the refresh someone else did is theirs to use. A refresh the
+     * server rejects signs the user out; a transient failure keeps the session.
      */
     internal suspend fun refreshToken(stale: AuthToken): AuthToken? = refreshMutex.withLock {
-        val current = storedToken
-        if (current != null && current.accessToken != stale.accessToken) {
-            return@withLock current
+        val current = storedToken ?: return@withLock null
+        if (current.accessToken != stale.accessToken) return@withLock current
+        if (current.refreshToken.isEmpty()) {
+            signOut("no refresh token")
+            return@withLock null
         }
-        val refresh = current?.refreshToken
-        if (refresh.isNullOrEmpty()) return@withLock null
-        exchangeRefreshTokenForToken(refresh)?.also { BitesAuth.setToken(it) }
+        when (val result = exchangeRefreshTokenForToken(current.refreshToken)) {
+            is RefreshResult.Ok -> result.token.also { BitesAuth.setToken(it) }
+            RefreshResult.Rejected -> {
+                signOut("refresh token rejected")
+                null
+            }
+            RefreshResult.Failed -> null
+        }
+    }
+
+    private fun signOut(reason: String) {
+        Log.status(TAG, "signing out: $reason")
+        BitesAuth.clearToken()
     }
 
     internal suspend fun getAccessToken(): String? {
         val token = storedToken ?: return null
         if (token.accessToken.isEmpty()) return null
         if (token.refreshToken.isNotEmpty() &&
-            (expiresAtMs == 0L || System.currentTimeMillis() > expiresAtMs)
+            (expiresAtMs == 0L || System.currentTimeMillis() > expiresAtMs - REFRESH_SKEW_MS)
         ) {
             refreshToken(token)?.let { return it.accessToken }
+            return storedToken?.accessToken
         }
         return token.accessToken
     }
@@ -107,11 +126,10 @@ internal object BitesCore {
         var resp = NetworkClient.performRequest(url, method, authHeaders(), body)
         logd { "$method $url -> ${resp.status}" }
         val token = storedToken
-        if (resp.status == HTTP_UNAUTHORIZED &&
-            token != null &&
-            token.refreshToken.isNotEmpty()
-        ) {
-            if (refreshToken(token) != null) {
+        if (resp.status == HTTP_UNAUTHORIZED && token != null) {
+            // On success this retries with the new token; after a sign-out it retries without
+            // one, so public endpoints like the merchant list still load.
+            if (refreshToken(token) != null || storedToken == null) {
                 resp = NetworkClient.performRequest(url, method, authHeaders(), body)
                 logd { "retry $method $url -> ${resp.status}" }
             } else {
@@ -130,9 +148,17 @@ internal object BitesCore {
         return h
     }
 
+    private sealed interface RefreshResult {
+        data class Ok(val token: AuthToken) : RefreshResult
+        /** The server refused the refresh token, so the session is over. */
+        data object Rejected : RefreshResult
+        /** Network error, timeout, rate limit or 5xx — worth trying again later. */
+        data object Failed : RefreshResult
+    }
+
     private suspend fun exchangeRefreshTokenForToken(
         refreshToken: String,
-    ): AuthToken? = withContext(Dispatchers.Default) {
+    ): RefreshResult = withContext(Dispatchers.Default) {
         try {
             val body = "grant_type=refresh_token&refresh_token=$refreshToken"
             val resp = NetworkClient.performRequest(
@@ -145,15 +171,25 @@ internal object BitesCore {
                 body,
             )
             logd { "refreshToken -> ${resp.status}" }
-            if (resp.isSuccess) json.decodeFromString<AuthToken>(resp.body) else null
+            when {
+                resp.isSuccess -> RefreshResult.Ok(json.decodeFromString<AuthToken>(resp.body))
+                isRefreshRejection(resp.status) -> RefreshResult.Rejected
+                else -> RefreshResult.Failed
+            }
         } catch (e: java.io.IOException) {
             Log.error(TAG, "refreshToken failed", e)
-            null
+            RefreshResult.Failed
         } catch (e: IllegalArgumentException) {
             Log.error(TAG, "refreshToken failed", e)
-            null
+            RefreshResult.Failed
         }
     }
+
+    /** Same rule as the reference: any 4xx except timeout and rate limiting. */
+    private fun isRefreshRejection(status: Int): Boolean =
+        status in HTTP_CLIENT_ERROR_MIN..HTTP_CLIENT_ERROR_MAX &&
+            status != HTTP_REQUEST_TIMEOUT &&
+            status != HTTP_TOO_MANY_REQUESTS
 
     /**
      * Unwrap the `{message, data}` envelope these endpoints use, falling back to the root.

@@ -8,6 +8,7 @@ import com.vayunmathur.fooddelivery.data.MerchantsWrapper
 import com.vayunmathur.fooddelivery.data.ApiResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
 
 /** Merchant catalog and serviceability endpoints. */
 object BitesMerchants {
@@ -56,16 +57,19 @@ object BitesMerchants {
             }
         }
 
-    /** POST /merchants/{id}/check-serviceability — can this merchant deliver to [address]? */
+    /** POST /merchants/{id}/check-serviceability — body is {address}. */
     suspend fun checkServiceability(
         merchantId: Int,
         address: CheckoutAddress,
     ): Boolean? = withContext(Dispatchers.Default) {
         try {
+            val body = buildJsonObject {
+                put("address", BitesCore.json.encodeToJsonElement(CheckoutAddress.serializer(), address))
+            }
             val resp = BitesCore.authenticatedRequest(
                 "${BitesCore.API}/merchants/$merchantId/check-serviceability",
                 "POST",
-                BitesCore.json.encodeToString(CheckoutAddress.serializer(), address),
+                body.toString(),
             )
             if (resp.isSuccess) {
                 true

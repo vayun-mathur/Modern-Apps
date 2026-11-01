@@ -13,12 +13,14 @@ object BitesDeals {
     suspend fun getDeals(
         lat: Double? = null,
         lng: Double? = null,
+        radius: Int = DEFAULT_RADIUS,
     ): List<Deal> = withContext(Dispatchers.Default) {
         try {
             val params = buildString {
                 val parts = mutableListOf<String>()
                 if (lat != null) parts.add("lat=$lat")
                 if (lng != null) parts.add("lng=$lng")
+                parts.add("radius=$radius")
                 if (parts.isNotEmpty()) append("?${parts.joinToString("&")}")
             }
             val resp = NetworkClient.performRequest(
@@ -61,4 +63,7 @@ object BitesDeals {
             "${BitesCore.API}/deals/$dealId/progress",
             DealProgress.serializer(),
         )
+
+    /** The reference always asks for deals within 8 (miles). */
+    private const val DEFAULT_RADIUS = 8
 }

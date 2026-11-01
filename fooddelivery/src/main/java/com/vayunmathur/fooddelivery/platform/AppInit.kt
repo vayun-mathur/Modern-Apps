@@ -65,6 +65,7 @@ object AppInit {
                 BitesAuth.onTokenUpdated = { tokenJson ->
                     prefs.edit { putString(KEY_TOKEN, tokenJson) }
                 }
+                BitesAuth.onTokenCleared = { prefs.edit { remove(KEY_TOKEN) } }
                 prefs.getString(KEY_TOKEN, null)?.let { BitesAuth.restoreToken(it) }
             } catch (e: SecurityException) {
                 Log.status("AppInit", "token warm-up failed", e)

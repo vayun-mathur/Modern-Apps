@@ -123,9 +123,10 @@ object BitesCustomers {
         false
     }
 
-    suspend fun verifyEmailToken(token: String): Boolean = try {
+    /** POST /customers/verify-email/{customerId}/{token} — both come from the email link. */
+    suspend fun verifyEmailToken(customerId: String, token: String): Boolean = try {
         BitesCore.authenticatedRequest(
-            "${BitesCore.API}/customers/verify-email/$token",
+            "${BitesCore.API}/customers/verify-email/$customerId/$token",
             "POST",
             "{}",
         ).isSuccess

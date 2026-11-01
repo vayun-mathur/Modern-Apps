@@ -14,6 +14,9 @@ object BitesAuth {
 
     var onTokenUpdated: ((String) -> Unit)? = null
 
+    /** Removes the persisted copy, so a sign-out survives a restart. */
+    var onTokenCleared: (() -> Unit)? = null
+
     fun setToken(token: AuthToken?) {
         BitesCore.storedToken = token
         if (token == null) return
@@ -44,6 +47,7 @@ object BitesAuth {
     fun clearToken() {
         BitesCore.storedToken = null
         BitesCore.expiresAtMs = 0
+        onTokenCleared?.invoke()
     }
 
     suspend fun verifyPhone(phone: String): String? = withContext(Dispatchers.Default) {
