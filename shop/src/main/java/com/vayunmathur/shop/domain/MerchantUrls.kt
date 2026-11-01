@@ -5,19 +5,6 @@ import java.util.Locale
 
 /** Public HTTPS URLs only; merchant input must not name local devices or app intents. */
 object MerchantUrls {
-    private val shopifyVariant = Regex("^gid://shopify/ProductVariant/([0-9]+)$")
-
-    /** Shopify cart permalink that opens the store's cart with these lines already added. */
-    fun shopifyCartUrl(domain: String, lines: List<Pair<String, Int>>): String? {
-        val host = domain(domain) ?: return null
-        if (lines.isEmpty()) return null
-        val items = lines.map { (variantId, quantity) ->
-            val id = shopifyVariant.find(variantId)?.groupValues?.get(1) ?: return null
-            "$id:$quantity"
-        }
-        return httpsUrl("https://$host/cart/${items.joinToString(",")}")
-    }
-
     fun httpsUrl(value: String): String? {
         val uri = runCatching { URI(value) }.getOrNull() ?: return null
         if (!uri.scheme.equals("https", ignoreCase = true) || uri.userInfo != null) return null

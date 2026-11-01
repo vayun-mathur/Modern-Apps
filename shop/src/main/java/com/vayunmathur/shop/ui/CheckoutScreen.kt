@@ -18,9 +18,7 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.CheckoutPhase
@@ -81,9 +79,7 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit, onPayInApp: () 
                             if (state.busy) CircularProgressIndicator()
                             else Text(if (checkout == null) "Create review session" else "Update review session")
                         }
-                        val merchantSiteUrl = MerchantUrls.domain(key.second)?.let { "https://$it" }
                         val checkoutUrl = (checkout?.continueUrl ?: state.handoffUrl)?.let(MerchantUrls::httpsUrl)
-                        val cartUrl = MerchantUrls.shopifyCartUrl(key.second, lines.map { it.variantId to it.quantity })
                         if (checkoutUrl != null) {
                             Button(
                                 modifier = Modifier.fillMaxWidth(),
@@ -91,13 +87,6 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit, onPayInApp: () 
                                     if (viewModel.openEmbeddedCheckout(key.first, key.second, checkoutUrl, dark)) onPayInApp()
                                 },
                             ) { Text("Pay in app") }
-                            TextButton(onClick = { openContinueUrl(context, checkoutUrl) }) { Text("Open in browser") }
-                        } else {
-                            (cartUrl ?: merchantSiteUrl)?.let { url ->
-                                OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { openContinueUrl(context, url) }) {
-                                    Text(if (url == cartUrl) "Open cart on merchant website" else "Open merchant website")
-                                }
-                            }
                         }
                     }
                 }
