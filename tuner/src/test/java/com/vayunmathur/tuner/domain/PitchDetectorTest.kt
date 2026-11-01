@@ -185,6 +185,73 @@ class PitchDetectorTest {
         assertTrue(frame is PitchFrame.Silent, "white noise was reported as $frame")
     }
 
+    /**
+     * The plucked note, not the period of everything sounding.
+     *
+     * Reported from real use: an A4 read as E2. Unrestricted YIN finds the mixture's period, so
+     * with another string ringing it answered F2 (five A4 periods, where E2 also nearly repeats)
+     * and with all six open strings it answered A0, on every frame.
+     */
+    @Test
+    fun theLoudestNoteWinsOverOtherStringsRinging() {
+        val samples = PitchBand.LOW.windowSize
+        val a4 = reference.referenceHz(69)
+        val openStrings = listOf(40, 45, 50, 55, 59, 64).map { reference.referenceHz(it) }
+        val hum = Signals.harmonic(60.0, samples, listOf(1.0, 0.5, 0.3))
+        val cases = listOf(
+            "low E ringing at -12 dB" to listOf(reference.referenceHz(40) to 0.25),
+            "six open strings at -12 dB" to openStrings.map { it to 0.25 },
+            "six open strings at -20 dB" to openStrings.map { it to 0.1 },
+        )
+        for ((label, background) in cases) {
+            val signal = pluck(a4, samples)
+            for ((hz, level) in background) {
+                val part = pluck(hz, samples)
+                for (i in signal.indices) signal[i] += level * part[i]
+            }
+            assertA4(label, signal, a4)
+        }
+        val withHum = pluck(a4, samples)
+        for (i in withHum.indices) withHum[i] += 0.25 * 0.45 * hum[i]
+        assertA4("60 Hz hum at -12 dB", withHum, a4)
+    }
+
+    @Test
+    fun aLowHumWithNoOvertonesIsNotANote() {
+        // Measured on Record-3: a 59-66 Hz tone in the gaps between strums read as B1 and C2.
+        val hum = Signals.harmonic(60.0, PitchBand.LOW.windowSize, listOf(0.3, 0.02, 0.01))
+        val frame = settle(YinPhaseSlopeAnalyzer(Signals.SAMPLE_RATE), hum, 27.5, 4186.0)
+        assertTrue(frame is PitchFrame.Silent, "a 60 Hz hum was reported as $frame")
+    }
+
+    /**
+     * A strum on the Note tab is not one note. "Not periodic" is an honest answer to it; a note
+     * that is not being played is not. Every chord tone is a partial of the chord's common root
+     * two octaves down, so harmonic summation without a low-partial check read a ukulele C as C2.
+     */
+    @Test
+    fun aStrummedChordNeverReadsAsANoteThatIsNotPlayed() {
+        for (midis in listOf(listOf(67, 60, 64, 72), listOf(69, 60, 65, 69), listOf(48, 52, 55, 60, 64))) {
+            val analyzer = YinPhaseSlopeAnalyzer(Signals.SAMPLE_RATE)
+            val frame = settle(analyzer, Signals.chord(midis, PitchBand.LOW.windowSize), 27.5, 4186.0)
+            if (frame !is PitchFrame.Detected) {
+                println("strum $midis -> $frame")
+                continue
+            }
+            val midi = reference.nearestMidi(frame.estimate.frequencyHz)
+            println("strum $midis read as ${spell(midi)}")
+            assertTrue(midi in midis, "strum $midis read as ${spell(midi)}, which is not being played")
+        }
+    }
+
+    private fun assertA4(label: String, signal: DoubleArray, a4: Double) {
+        val estimate = detected(signal, 27.5, 4186.0)
+        val cents = centsError(estimate.frequencyHz, a4)
+        println("mixture $label: ${spell(reference.nearestMidi(estimate.frequencyHz))} error=$cents cents")
+        assertEquals(69, reference.nearestMidi(estimate.frequencyHz), "$label read the wrong note")
+        assertTrue(abs(cents) < 2.0, "$label: the error was $cents cents")
+    }
+
     @Test
     fun theReportedFrequencyAndCentsAgreeWithEachOther() {
         // The two numbers on screen come from the same estimate, so they must be consistent:
