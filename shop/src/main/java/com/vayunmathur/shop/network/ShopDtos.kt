@@ -216,6 +216,7 @@ data class ShopErrorBody(
     val code: String = "",
     val message: String = "",
     val retryAfterMs: Long? = null,
+    val continueUrl: String? = null,
 )
 
 @Serializable

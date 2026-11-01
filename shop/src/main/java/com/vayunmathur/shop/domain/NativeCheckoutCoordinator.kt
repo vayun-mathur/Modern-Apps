@@ -102,6 +102,7 @@ internal class NativeCheckoutCoordinator(
                 val unsupported = (it as? ShopBackendException)?.error as? UcpError.Unsupported
                 publish(key, state.copy(
                     phase = if (unsupported != null) CheckoutPhase.BrowserRequired else CheckoutPhase.Uncertain,
+                    handoffUrl = unsupported?.continueUrl?.let(MerchantUrls::httpsUrl),
                     message = unsupported?.reason
                         ?: ("The request may have reached the merchant. " +
                             "Do not retry; check the session or use its website."),

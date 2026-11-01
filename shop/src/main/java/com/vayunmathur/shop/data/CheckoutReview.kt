@@ -45,6 +45,8 @@ data class NativeCheckoutState(
     val phase: CheckoutPhase = CheckoutPhase.Reviewing,
     val checkout: UcpCheckout? = null,
     val message: String? = null,
+    /** Merchant handoff URL from a rejected write, when no session exists to carry one. */
+    val handoffUrl: String? = null,
     val inputs: CheckoutInputs = CheckoutInputs(),
     val submittedInputs: CheckoutInputs? = null,
     val submittedLines: List<CartLine> = emptyList(),

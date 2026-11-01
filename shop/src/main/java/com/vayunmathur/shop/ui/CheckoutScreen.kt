@@ -79,7 +79,7 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit) {
                             else Text(if (checkout == null) "Create review session" else "Update review session")
                         }
                         val merchantSiteUrl = MerchantUrls.domain(key.second)?.let { "https://$it" }
-                        val checkoutUrl = checkout?.continueUrl?.let(MerchantUrls::httpsUrl)
+                        val checkoutUrl = (checkout?.continueUrl ?: state.handoffUrl)?.let(MerchantUrls::httpsUrl)
                         val cartUrl = MerchantUrls.shopifyCartUrl(key.second, lines.map { it.variantId to it.quantity })
                         (checkoutUrl ?: cartUrl ?: merchantSiteUrl)?.let { url ->
                             OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { openContinueUrl(context, url) }) {

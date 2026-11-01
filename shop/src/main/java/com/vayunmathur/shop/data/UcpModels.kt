@@ -122,7 +122,7 @@ sealed interface UcpError {
     data class Http(val status: Int, val snippet: String) : UcpError
     data class Malformed(val reason: String) : UcpError
     data class Rpc(val message: String) : UcpError
-    data class Unsupported(val reason: String) : UcpError
+    data class Unsupported(val reason: String, val continueUrl: String? = null) : UcpError
 }
 
 fun UcpError.message(): String = when (this) {

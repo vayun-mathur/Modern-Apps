@@ -33,6 +33,19 @@ class NativeCheckoutStateTest {
         return NativeCheckoutCoordinator(gateway, now = clock, newIntent = { "intent-${++intent}" })
     }
 
+    @Test fun rejectedCreateKeepsMerchantHandoffUrl() = runBlocking {
+        val url = "https://allbirds.com/checkouts/cn/abc"
+        val gateway = FakeGateway().apply {
+            response = Result.failure(com.vayunmathur.shop.network.ShopBackendException(UcpError.Unsupported("Website only", url)))
+        }
+        val coordinator = coordinator(gateway)
+        coordinator.submit("generic", "shop.example", lines, sink)
+        val state = coordinator.snapshot.single()
+        assertEquals(CheckoutPhase.BrowserRequired, state.phase)
+        assertEquals(url, state.handoffUrl)
+        assertEquals("Website only", state.message)
+    }
+
     @Test fun duplicateTapsAndUnchangedSessionReuseNeverDuplicateMutation() = runBlocking {
         val gateway = FakeGateway().apply { gate = CompletableDeferred() }
         val coordinator = coordinator(gateway)
