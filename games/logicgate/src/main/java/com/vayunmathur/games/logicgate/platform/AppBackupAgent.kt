@@ -1,14 +1,15 @@
 package com.vayunmathur.games.logicgate.platform
 
+import com.vayunmathur.games.logicgate.data.ProgressStore
 import com.vayunmathur.library.util.BaseBackupAgent
 
+/**
+ * Backs up the stats prefs and the shared DataStore file, which holds the circuit drafts
+ * (`logicgate2_circuits` is a key inside it, not a file of its own).
+ */
 class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String>
-        get() = listOf("logicgate_stats")
-    // datastore_default is the actual file from DataStoreUtils.getInstance
-    // (datastore_default.preferences_pb)
-    // logicgate_circuits_v1 is a *key* inside that file, not a separate datastore file —
-    // listing bogus names causes backup/restore crash
+        get() = listOf(ProgressStore.PREFS_NAME)
     override val datastoreNames: List<String>
         get() = listOf("datastore_default")
 }

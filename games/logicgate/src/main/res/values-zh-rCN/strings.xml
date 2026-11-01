@@ -1,27 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="cd_achievements">成就</string>
-    <string name="got">实际</string>
-    <string name="inputs">输入</string>
-    <string name="tick">时钟节拍</string>
-    <string name="gate">门 %1$s</string>
-    <string name="lock">锁定</string>
-    <string name="next_level">下一关</string>
-    <string name="keep_editing">继续编辑</string>
-    <string name="sim_speed">仿真速度</string>
-    <string name="outputs">输出</string>
-    <string name="completed"><xliff:g id="completed_count" example="5">%1$s</xliff:g> / <xliff:g id="total" example="36">%2$s</xliff:g> 已完成</string>
-    <string name="start_with_nand_end_with_a_computer">从与非门开始。以计算机结束。</string>
-    <string name="exp">预期</string>
-    <string name="back_to_map">返回地图</string>
-    <string name="hz">%1$shz</string>
-    <string name="expected">%1$s 预期</string>
-    <string name="level_complete_title">关卡完成！</string>
-    <string name="got_2">%1$s 实际</string>
-    <string name="no_chips_all">无芯片 • 全部</string>
-    <string name="tap_to_play_lines_show_dependencies_36_l">点击开始游戏 • 线条显示依赖关系 • 36 个关卡</string>
-    <string name="loading">正在加载…</string>
-    <string name="play">玩</string>
-    <string name="level_complete_body">您已解决 <xliff:g id="level_name" example="XOR">%1$s</xliff:g>。</string>
-    <string name="done">完成</string>
-</resources>
+<resources>
+    </resources>

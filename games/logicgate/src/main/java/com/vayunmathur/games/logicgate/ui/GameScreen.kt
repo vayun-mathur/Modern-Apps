@@ -1,237 +1,171 @@
 package com.vayunmathur.games.logicgate.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.toSize
 import com.vayunmathur.games.logicgate.R
-import com.vayunmathur.games.logicgate.data.ChipLibrary
-import com.vayunmathur.games.logicgate.data.Levels
-import com.vayunmathur.games.logicgate.platform.EvalStatus
+import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
+import com.vayunmathur.games.logicgate.domain.model.Chips
+import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.games.logicgate.platform.LogicActions
-import com.vayunmathur.games.logicgate.platform.UiState
-import com.vayunmathur.library.ui.AchievementNotification
-import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.IconNavigation
-import com.vayunmathur.library.ui.LoadingState
-import com.vayunmathur.library.ui.Scaffold
+import com.vayunmathur.games.logicgate.ui.canvas.CameraState
+import com.vayunmathur.games.logicgate.ui.canvas.CircuitLayout
+import com.vayunmathur.games.logicgate.ui.canvas.TrashZone
+import com.vayunmathur.library.ui.AppScaffold
+import com.vayunmathur.library.ui.FadeVisibility
+import com.vayunmathur.library.ui.IconDelete
+import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconFullscreen
+import com.vayunmathur.library.ui.IconInfo
+import com.vayunmathur.library.ui.IconRedo
+import com.vayunmathur.library.ui.IconUndo
+import com.vayunmathur.library.ui.MaterialTheme
+import com.vayunmathur.library.ui.Spacing
+import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.TopAppBar
-import com.vayunmathur.library.ui.TopAppBarDefaults
+import com.vayunmathur.library.ui.appBarScrollBehavior
+import kotlin.math.roundToInt
 
 /**
- * The circuit editor, with no dependency on the ViewModel or the back stack so it can be
- * rendered from a `@Preview` — see `src/screenshotTest`, which is where the store listing
- * images come from. Everything it derives (truth table, evaluation, terminal layout) is a
- * pure function of [state] and the static level table.
+ * The editor: the board fills the screen, with tests and the chip tray beneath it. [onNext]
+ * opens the following level from the completion overlay.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameScreen(
-    levelId: String,
-    state: UiState,
-    unlockedChips: Set<String>,
+    state: GameUiState,
     actions: LogicActions,
-    onBack: () -> Unit = {},
-    onOpenLevel: (String) -> Unit = {},
-    /**
-     * Seeds the win dialog, which the app only ever opens from the evaluation result. A
-     * preview sets it so the "level complete" moment can be captured directly.
-     */
-    initialShowWinDialog: Boolean = false,
+    onBack: () -> Unit,
+    onNext: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val level = Levels.get(levelId)
+    val density = LocalDensity.current.density
+    val cameraState = remember { CameraState(density) }
+    val lookup = remember(state.level) { Chips.lookup(state.level.io) }
+    val number = LevelRegistry.indexOf(state.level.id) + 1
+    var trayDrag by remember { mutableStateOf<TrayDrag?>(null) }
+    val trash = remember { TrashZone() }
+    var rootOrigin by remember { mutableStateOf(Offset.Zero) }
+    var canvasBounds by remember { mutableStateOf(Rect.Zero) }
 
-    var canvasPosInWindow by remember { mutableStateOf(Offset.Zero) }
-    var canvasSize by remember { mutableStateOf(Size.Zero) }
-    var canvasScale by remember { mutableStateOf(1f) }
-    var canvasOffset by remember { mutableStateOf(Offset.Zero) }
-    var draggingChipId by remember { mutableStateOf<String?>(null) }
-    var draggingChipWindowPos by remember { mutableStateOf(Offset.Zero) }
-    var selectedGroup by remember { mutableStateOf<ChipGroup?>(null) }
-    var showIoSheet by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val textMeasurer = rememberTextMeasurer()
+    fun placeNear(chipId: String, world: Offset) =
+        actions.placeChip(chipId, CircuitLayout(state.circuit, lookup).freeSpot(chipId, world, lookup))
 
-    val totalInBits = level.totalInputBits
-    val displayLimit = if (totalInBits <= 10) minOf(64, (1 shl totalInBits)) else 28
-    val inputVectors = rememberInputVectors(totalInBits, displayLimit, levelId)
-
-    var selectedIdxMutable by remember(levelId) { mutableStateOf(0) }
-    var liveFlatInputs by remember(levelId) { mutableStateOf<List<Boolean>?>(null) }
-
-    LaunchedEffect(levelId) {
-        actions.selectLevel(levelId)
-        liveFlatInputs = null
-        selectedIdxMutable = 0
-    }
-    LaunchedEffect(state.evalStatus) {
-        if (liveFlatInputs == null) {
-            val failing = (state.evalStatus as? EvalStatus.Ok)?.failingRows
-            selectedIdxMutable = if (failing != null && failing.isNotEmpty()) failing.first() % inputVectors.size else 0
-        }
-    }
-
-    val flatInSelectedBase = remember(inputVectors, selectedIdxMutable) { inputVectors.getOrNull(selectedIdxMutable) ?: emptyList() }
-    val effectiveFlat = liveFlatInputs ?: flatInSelectedBase
-
-    val derived = rememberDerivedEval(level, state, effectiveFlat)
-    val (actualBitSlices, actualDecimals) = rememberActualSlices(level, derived.evalRows, selectedIdxMutable, liveFlatInputs, inputVectors)
-
-    if (state.currentLevelId != levelId) {
-        LoadingState(
-            message = stringResource(R.string.loading),
-            modifier = Modifier.fillMaxSize().background(Color(0xFF0F1E2D)),
-        )
-        return
-    }
-
-    val gateCost = state.circuit.totalNandCost()
-
-    fun toggleInput(idx: Int) {
-        val off = level.inputBitOffset(idx)
-        val wd = level.inputWidth(idx)
-        if (off >= effectiveFlat.size && effectiveFlat.isNotEmpty()) return
-        val baseFlat = if (effectiveFlat.size == totalInBits) effectiveFlat else flatInSelectedBase.ifEmpty { List(totalInBits) { false } }
-        val mutable = baseFlat.toMutableList()
-        if (wd == 1) {
-            if (off < mutable.size) mutable[off] = !mutable[off]
-        } else {
-            val slice = if (off + wd <= mutable.size) mutable.slice(off until off + wd) else List(wd) { false }
-            var v = ChipLibrary.bitsToInt(slice)
-            v = (v + 1) % (1 shl wd)
-            for (k in 0 until wd) if (off + k < mutable.size) mutable[off + k] = ((v shr k) and 1) == 1
-        }
-        liveFlatInputs = mutable.toList()
-        val found = inputVectors.indexOfFirst { it == mutable }
-        if (found >= 0) selectedIdxMutable = found
-    }
-
-    val tableRows = rememberTableRows(inputVectors, level, derived.evalRows)
-    val failingSet = (state.evalStatus as? EvalStatus.Ok)?.failingRows?.toSet() ?: emptySet()
-
-    // Win popup: surface as soon as the level is fully correct.
-    val isWon = (state.evalStatus as? EvalStatus.Ok)?.isFullyCorrect == true
-    var showWinDialog by remember(levelId) { mutableStateOf(initialShowWinDialog) }
-    var winDismissed by remember(levelId) { mutableStateOf(false) }
-    LaunchedEffect(isWon) { if (isWon && !winDismissed) showWinDialog = true }
-    val nextLevelId = remember(levelId) {
-        val idx = Levels.all.indexOfFirst { it.id == levelId }
-        if (idx >= 0) Levels.all.getOrNull(idx + 1)?.id else null
-    }
-    val availableGroups = remember(level.allowedChipIds, unlockedChips) {
-        level.allowedChipIds.filter { it in unlockedChips }
-            .mapNotNull { try { groupForCategory(ChipLibrary.get(it).category) } catch (_: Exception) { null } }
-            .toSet()
-    }
-
-    val layoutData = GameLayoutData(
-        level = level, state = state, unlockedChips = unlockedChips,
-        selectedGroup = selectedGroup, availableGroups = availableGroups,
-        inputVectors = inputVectors, selectedIdx = selectedIdxMutable,
-        tableRows = tableRows, failingSet = failingSet,
-        inputDecimals = derived.inputDecimals, inputBitSlices = derived.inputSlices,
-        inputOnMap = derived.inputOn, desiredDecimals = derived.desiredDecimals,
-        desiredBitSlices = derived.desiredSlices, actualDecimals = actualDecimals,
-        actualBitSlices = actualBitSlices, draggingChipId = draggingChipId,
-        draggingChipWindowPos = draggingChipWindowPos,
-        canvasPosInWindow = canvasPosInWindow, canvasSize = canvasSize,
-        canvasScale = canvasScale, canvasOffset = canvasOffset, isCompact = false,
-    )
-    val layoutEvents = GameLayoutEvents(
-        actions = actions,
-        onSelectGroup = { selectedGroup = it },
-        onChipDragStart = { chipId, windowOffset -> draggingChipId = chipId; draggingChipWindowPos = windowOffset },
-        onChipDrag = { chipId, windowOffset -> draggingChipId = chipId; draggingChipWindowPos = windowOffset },
-        onChipDropAt = { chipId, windowOffset ->
-            chipDropContent(chipId, windowOffset, canvasPosInWindow, canvasSize, canvasOffset, canvasScale, density, textMeasurer)
-                ?.let { content -> actions.addGateAt(chipId, content.x, content.y) }
-            draggingChipId = null; draggingChipWindowPos = Offset.Zero
+    AppScaffold(
+        title = stringResource(R.string.lg_level_title, number, state.level.title),
+        modifier = modifier,
+        onNavigateBack = onBack,
+        actions = {
+            IconButton(onClick = actions::undo, enabled = state.canUndo) { IconUndo() }
+            IconButton(onClick = actions::redo, enabled = state.canRedo) { IconRedo() }
+            IconButton(onClick = { cameraState.fit(CircuitLayout(state.circuit, lookup).bounds) }) { IconFullscreen() }
+            IconButton(onClick = { actions.showBrief(true) }) { IconInfo() }
         },
-        onSelectRow = { rowIdx ->
-            selectedIdxMutable = rowIdx
-            liveFlatInputs = inputVectors.getOrNull(rowIdx)
-        },
-        onToggleInput = { idx -> toggleInput(idx) },
-        onViewportChange = { s, o -> canvasScale = s; canvasOffset = o },
-        onCanvasPositioned = { pos, size -> canvasPosInWindow = pos; canvasSize = size },
-    )
-
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val maxW = maxWidth
-        val maxH = maxHeight
-        val isCompact = maxW < 600.dp
-        val isPortrait = maxH > maxW
-        val isCompactPortrait = isCompact && isPortrait
-        // RAW SCAFFOLD EXCEPTION: bespoke circuit-editor surface. The top bar uses a
-        // custom Turing dark palette (TopAppBarColors) and the whole scaffold a custom
-        // containerColor, neither of which AppScaffold can express, and the canvas hosts
-        // window-coordinate drag/ghost overlays. A shared scaffold does not fit here.
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(text = level.displayName, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Turing.headerPink, maxLines = 1)
-                    },
-                    navigationIcon = { IconNavigation(onBack) },
-                    actions = {
-                        androidx.compose.foundation.layout.Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Turing.rightTabOn).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                            Text(stringResource(R.string.gate, gateCost), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        AppBarActionBtn(glyph = "↩", enabled = state.canUndo) { actions.undo() }
-                        AppBarActionBtn(glyph = "↪", enabled = state.canRedo) { actions.redo() }
-                        Spacer(modifier = Modifier.width(4.dp))
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Turing.headerBg, titleContentColor = Color.White, navigationIconContentColor = Color.White, actionIconContentColor = Color.White)
-                )
-            },
-            containerColor = Turing.headerBg
-        ) { innerPadding ->
-            Column(modifier = Modifier.fillMaxSize().padding(innerPadding).background(Turing.headerBg)) {
-                val data = layoutData.copy(isCompact = isCompact)
-                if (isCompactPortrait) {
-                    GamePortraitLayout(data = data, events = layoutEvents, modifier = Modifier.weight(1f).fillMaxWidth())
-                } else {
-                    GameLandscapeLayout(data = data, events = layoutEvents, modifier = Modifier.weight(1f).fillMaxWidth())
+        scrollBehavior = appBarScrollBehavior(),
+    ) { padding ->
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .onGloballyPositioned { rootOrigin = it.positionInRoot() },
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .onGloballyPositioned { c ->
+                            canvasBounds = Rect(c.positionInRoot(), c.size.toSize())
+                            trash.canvasOrigin = canvasBounds.topLeft
+                        },
+                ) {
+                    CircuitCanvas(state, cameraState, actions, trash)
+                    SelectionBar(state, actions, Modifier.align(Alignment.TopCenter).padding(top = Spacing.sm))
                 }
-                if (showIoSheet) {
-                    MobileIoSheet(level = level, inputDecimals = derived.inputDecimals, inputBitSlices = derived.inputSlices, desiredDecimals = derived.desiredDecimals, desiredBitSlices = derived.desiredSlices, actualDecimals = actualDecimals, actualBitSlices = actualBitSlices, onDismiss = { showIoSheet = false })
+                Box(Modifier.onGloballyPositioned { trash.bounds = Rect(it.positionInRoot(), it.size.toSize()) }) {
+                    Column {
+                        TestPanel(state, actions)
+                        ChipTray(
+                            chips = state.chips,
+                            onTap = { placeNear(it, cameraState.centerWorld()) },
+                            onDragUpdate = { trayDrag = it },
+                            onDrop = { drop ->
+                                if (canvasBounds.contains(drop.root)) {
+                                    placeNear(drop.chipId, cameraState.camera.toWorld(drop.root - canvasBounds.topLeft))
+                                }
+                            },
+                        )
+                    }
+                    TrashOverlay(trash, Modifier.matchParentSize())
                 }
             }
+            trayDrag?.let { DragGhost(Chips[it.chipId]?.label ?: it.chipId, it.root - rootOrigin) }
+            if (state.won) {
+                LevelCompleteOverlay(
+                    state = state,
+                    onNext = state.nextLevelId?.let { id -> { onNext(id) } },
+                    onDismiss = actions::dismissWin,
+                )
+            }
         }
-        if (showWinDialog) {
-            WinDialog(
-                levelName = level.displayName,
-                nextLevelId = nextLevelId,
-                onDismiss = { showWinDialog = false; winDismissed = true },
-                onOpenLevel = { id -> showWinDialog = false; onOpenLevel(id) },
-                onBack = { showWinDialog = false; onBack() },
-            )
+    }
+    if (state.showBrief) BriefSheet(state.level, number, onDismiss = { actions.showBrief(false) })
+}
+
+/** Covers the tray while a gate is carried, so it reads as the place to throw it away. */
+@Composable
+private fun TrashOverlay(trash: TrashZone, modifier: Modifier) {
+    FadeVisibility(trash.armed, modifier) {
+        val alpha = if (trash.hovering) TRASH_HOT_ALPHA else TRASH_ALPHA
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.error.copy(alpha = alpha)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                IconDelete(tint = MaterialTheme.colorScheme.onError)
+                Text(
+                    stringResource(if (trash.hovering) R.string.lg_release_to_delete else R.string.lg_drag_to_delete),
+                    color = MaterialTheme.colorScheme.onError,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun DragGhost(label: String, at: Offset) {
+    Surface(
+        modifier = Modifier.offset { IntOffset(at.x.roundToInt() - GHOST_OFFSET, at.y.roundToInt() - GHOST_OFFSET * 2) },
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
+        Text(label, Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm), style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+private const val GHOST_OFFSET = 48
+private const val TRASH_ALPHA = 0.75f
+private const val TRASH_HOT_ALPHA = 0.95f

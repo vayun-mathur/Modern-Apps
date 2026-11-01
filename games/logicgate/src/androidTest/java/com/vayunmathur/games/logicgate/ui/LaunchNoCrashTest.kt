@@ -16,16 +16,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Launch-no-crash test: launches the app, grants every requested permission, and
- * asserts it gets past the permission screen onto the level map.
+ * Launch-no-crash test: launches the app, grants every requested permission, and asserts it
+ * reaches the level map, marked by its stable tagline.
  *
- * LogicGate boots into the progression map, so the marker asserts the stable
- * NAND-to-computer subtitle rather than any level-node state.
- *
- * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
- * hidden InputManager APIs that no longer exist on current releases, so every
- * compose-rule test dies before its first line. Text polling works for Compose
- * and non-Compose screens alike.
+ * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on hidden
+ * InputManager APIs that no longer exist on current releases.
  */
 @RunWith(AndroidJUnit4::class)
 class LaunchNoCrashTest {
@@ -44,17 +39,14 @@ class LaunchNoCrashTest {
         intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
         targetContext.startActivity(intent)
 
-        // Past the permission screen: the gate wall never appears and the
-        // progression subtitle is showing.
         assertNull(
             "permission gate is showing; grants did not clear it",
             device.wait(Until.findObject(By.text(PERMISSION_GATE_TITLE)), GATE_TIMEOUT_MS),
         )
         assertNotNull(
             "level map never appeared; the app may have crashed on launch",
-            device.wait(Until.findObject(By.text(PROGRESSION_SUBTITLE)), CONTENT_TIMEOUT_MS),
+            device.wait(Until.findObject(By.text(TAGLINE)), CONTENT_TIMEOUT_MS),
         )
-        // Still alive in front: the process did not crash after painting content.
         assertEquals(packageName, device.currentPackageName)
     }
 
@@ -74,17 +66,7 @@ class LaunchNoCrashTest {
             } catch (ignored: SecurityException) {
                 // Not a headlessly grantable permission: nothing to do.
             } catch (ignored: IOException) {
-                // Shell pipe failed: the permission stays ungranted and the
-                // content assertions below report it.
-            }
-        }
-        for (command in SPECIAL_ACCESS_COMMANDS) {
-            try {
-                uiAutomation.executeShellCommand(command.format(packageName)).close()
-            } catch (ignored: SecurityException) {
-                // Appop missing on this release: the gate assertion reports it.
-            } catch (ignored: IOException) {
-                // Shell pipe failed: the gate assertion below reports it.
+                // Shell pipe failed: the content assertions below report it.
             }
         }
     }
@@ -92,17 +74,7 @@ class LaunchNoCrashTest {
     private companion object {
         private const val CONTENT_TIMEOUT_MS = 15_000L
         private const val GATE_TIMEOUT_MS = 5_000L
-        private const val PROGRESSION_SUBTITLE = "Start with NAND. End with a computer."
+        private const val TAGLINE = "Start with NAND. End with a computer."
         private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
-
-        /**
-         * Special access behind some apps' gates: exact alarms + full-screen intent
-         * have no pm-grantable permission, but the shell can flip their appops.
-         * Ignored where the appop does not exist; the gate assertion reports it.
-         */
-        private val SPECIAL_ACCESS_COMMANDS = arrayOf(
-            "appops set %s SCHEDULE_EXACT_ALARM allow",
-            "appops set %s USE_FULL_SCREEN_INTENT allow",
-        )
     }
 }

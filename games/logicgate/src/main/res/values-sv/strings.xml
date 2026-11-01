@@ -1,27 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="next_level">Nästa nivå</string>
-    <string name="loading">Läser in…</string>
-    <string name="level_complete_title">Nivån är klar!</string>
-    <string name="level_complete_body">Du löste <xliff:g id="level_name" example="XOR">%1$s</xliff:g>.</string>
-    <string name="back_to_map">Tillbaka till kartan</string>
-    <string name="keep_editing">Fortsätt redigera</string>
-    <string name="start_with_nand_end_with_a_computer">Börja med NAND. Avsluta med en dator.</string>
-    <string name="tap_to_play_lines_show_dependencies_36_l">Tryck för att spela • Linjer visar beroenden • 36 nivåer</string>
-    <string name="completed"><xliff:g id="completed_count" example="5">%1$s</xliff:g> / <xliff:g id="total" example="36">%2$s</xliff:g> klara</string>
-    <string name="lock">LÅST</string>
-    <string name="done">KLAR</string>
-    <string name="play">SPELA</string>
-    <string name="cd_achievements">Prestationer</string>
-    <string name="no_chips_all">Inga chip • ALLA</string>
-    <string name="inputs">Ingångar</string>
-    <string name="outputs">Utgångar</string>
-    <string name="tick">Tick</string>
-    <string name="sim_speed">Simuleringshastighet</string>
-    <string name="exp">Förväntat</string>
-    <string name="got">Erhållet</string>
-    <string name="gate">GRIND %1$s</string>
-    <string name="expected">%1$s förväntades</string>
-    <string name="got_2">%1$s erhölls</string>
-    <string name="hz">%1$s Hz</string>
-</resources>
+<resources>
+    </resources>

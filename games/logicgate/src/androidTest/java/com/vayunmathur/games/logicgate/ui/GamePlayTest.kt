@@ -1,133 +1,89 @@
 package com.vayunmathur.games.logicgate.ui
 
-import android.app.UiAutomation
 import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
-import java.io.IOException
+import java.util.regex.Pattern
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Journey test: launches logicgate, opens the first level from the map, taps
- * the editor undo button, and asserts the editor stays put rather than
- * navigating away or crashing.
+ * Journey test: open the first level from the map, tap NAND in the chip tray, see the circuit
+ * cost go up by one gate, then undo it back down.
  *
- * LogicGate boots into the progression map (Route.Progression); the first
- * level is always unlocked so its node carries the stable PLAY label, and the
- * editor top bar carries the level name plus the stable undo glyph. The undo
- * tap is a no-op on a fresh circuit, which is exactly what makes it safe.
- *
- * UiDevice polling, not compose-test: compose's Espresso idle-sync reflects on
- * hidden InputManager APIs that no longer exist on current releases, so every
- * compose-rule test dies before its first line. Text polling works for Compose
- * and non-Compose screens alike.
+ * The board is a single canvas with no per-gate semantics, so the cost readout in the test
+ * panel ("N NAND") is what proves a gate landed. The level brief opens on a first visit and is
+ * dismissed if present.
  */
 @RunWith(AndroidJUnit4::class)
 class GamePlayTest {
 
     @Test
-    fun play_openFirstLevel_tapUndo_editorStays() {
+    fun play_openNot_placeNand_undoRemovesIt() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val device = UiDevice.getInstance(instrumentation)
         val targetContext = instrumentation.targetContext
         val packageName = targetContext.packageName
-
-        grantAllRequestedPermissions(instrumentation.uiAutomation, targetContext.packageManager, packageName)
 
         val intent = targetContext.packageManager.getLaunchIntentForPackage(packageName)
         assertNotNull("no launcher intent for $packageName", intent)
         intent!!.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
         targetContext.startActivity(intent)
 
-        // Past the permission screen: the gate wall never appears and the
-        // progression subtitle is showing.
-        assertNull(
-            "permission gate is showing; grants did not clear it",
-            device.wait(Until.findObject(By.text(PERMISSION_GATE_TITLE)), GATE_TIMEOUT_MS),
-        )
+        val level = device.wait(Until.findObject(By.text(FIRST_LEVEL)), TIMEOUT_MS)
+        assertNotNull("level map never showed the first level", level)
+        level!!.click()
+
+        device.wait(Until.findObject(By.text(START_BUILDING)), BRIEF_TIMEOUT_MS)?.click()
+        assertNotNull("editor never appeared", device.wait(Until.findObject(By.desc(UNDO)), TIMEOUT_MS))
+
+        // Undo any draft left by an earlier run so the count starts from an empty board.
+        while (device.findObject(cost(0)) == null) {
+            val undo = device.findObject(By.desc(UNDO)) ?: break
+            if (!undo.isEnabled) break
+            undo.click()
+            device.waitForIdle()
+        }
+
+        val before = costShown(device)
+        val nand = device.wait(Until.findObject(By.descStartsWith(NAND_CARD)), TIMEOUT_MS)
+        assertNotNull("chip tray has no NAND", nand)
+        nand!!.click()
         assertNotNull(
-            "level map never appeared; the app may have crashed on launch",
-            device.wait(Until.findObject(By.text(PROGRESSION_SUBTITLE)), CONTENT_TIMEOUT_MS),
+            "placing a NAND did not raise the cost",
+            device.wait(Until.findObject(cost(before + 1)), TIMEOUT_MS),
         )
-        // Play action: open the first level, whose node always offers PLAY.
-        val play = device.wait(Until.findObject(By.text(LEVEL_PLAY_LABEL)), CONTENT_TIMEOUT_MS)
-        assertNotNull("no playable level node; the level map did not load its nodes", play)
-        play!!.click()
-        // Editor is showing: its top bar carries the undo glyph, which the map
-        // never draws, so it proves the navigation landed in the editor.
-        val board = device.wait(Until.findObject(By.text(EDITOR_UNDO_GLYPH)), CONTENT_TIMEOUT_MS)
-        assertNotNull("circuit editor never appeared; tapping play may not have navigated", board)
+
+        device.findObject(By.desc(UNDO)).click()
         assertNotNull(
-            "first level title missing; the editor may have opened the wrong level",
-            device.wait(Until.findObject(By.text(FIRST_LEVEL_NAME)), CONTENT_TIMEOUT_MS),
+            "undo did not remove the NAND",
+            device.wait(Until.findObject(cost(before)), TIMEOUT_MS),
         )
-        // One interaction: tap undo (a no-op on a fresh circuit) and confirm
-        // the editor is still there.
-        board!!.click()
-        assertNotNull(
-            "editor left after tapping undo; the app may have crashed on interaction",
-            device.wait(Until.findObject(By.text(FIRST_LEVEL_NAME)), CONTENT_TIMEOUT_MS),
-        )
-        // Still alive in front: the process did not crash after the interaction.
         assertEquals(packageName, device.currentPackageName)
     }
 
-    private fun grantAllRequestedPermissions(
-        uiAutomation: UiAutomation,
-        packageManager: PackageManager,
-        packageName: String,
-    ) {
-        val info = try {
-            packageManager.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
-        } catch (e: PackageManager.NameNotFoundException) {
-            throw AssertionError("package $packageName not installed", e)
-        }
-        for (permission in info.requestedPermissions.orEmpty()) {
-            try {
-                uiAutomation.executeShellCommand("pm grant $packageName $permission").close()
-            } catch (ignored: SecurityException) {
-                // Not a headlessly grantable permission: nothing to do.
-            } catch (ignored: IOException) {
-                // Shell pipe failed: the permission stays ungranted and the
-                // content assertions below report it.
-            }
-        }
-        for (command in SPECIAL_ACCESS_COMMANDS) {
-            try {
-                uiAutomation.executeShellCommand(command.format(packageName)).close()
-            } catch (ignored: SecurityException) {
-                // Appop missing on this release: the gate assertion reports it.
-            } catch (ignored: IOException) {
-                // Shell pipe failed: the gate assertion below reports it.
-            }
-        }
+    /** The test panel header merges its texts, so match the cost anywhere inside it. */
+    private fun cost(n: Int) = By.text(Pattern.compile("(.*\\D)?$n NAND(\\D.*)?", Pattern.DOTALL))
+
+    private fun costShown(device: UiDevice): Int {
+        val label = device.wait(Until.findObject(By.text(COST_PATTERN)), TIMEOUT_MS)
+        assertNotNull("no cost readout in the test panel", label)
+        val match = COST_PATTERN.matcher(label!!.text)
+        return if (match.matches()) match.group(1)!!.toInt() else error("unreadable cost: ${label.text}")
     }
 
     private companion object {
-        private const val CONTENT_TIMEOUT_MS = 15_000L
-        private const val GATE_TIMEOUT_MS = 5_000L
-        private const val PROGRESSION_SUBTITLE = "Start with NAND. End with a computer."
-        private const val LEVEL_PLAY_LABEL = "PLAY"
-        private const val FIRST_LEVEL_NAME = "NOT"
-        private const val EDITOR_UNDO_GLYPH = "↩"
-        private const val PERMISSION_GATE_TITLE = "Grant Required Permissions"
-
-        /**
-         * Special access behind some apps' gates: exact alarms + full-screen intent
-         * have no pm-grantable permission, but the shell can flip their appops.
-         * Ignored where the appop does not exist; the gate assertion reports it.
-         */
-        private val SPECIAL_ACCESS_COMMANDS = arrayOf(
-            "appops set %s SCHEDULE_EXACT_ALARM allow",
-            "appops set %s USE_FULL_SCREEN_INTENT allow",
-        )
+        private const val TIMEOUT_MS = 15_000L
+        private const val BRIEF_TIMEOUT_MS = 3_000L
+        private const val FIRST_LEVEL = "NOT"
+        private const val START_BUILDING = "Start building"
+        private const val UNDO = "Undo"
+        private const val NAND_CARD = "NAND, costs"
+        private val COST_PATTERN: Pattern = Pattern.compile("(?:.*\\D)?(\\d+) NAND(?:\\D.*)?", Pattern.DOTALL)
     }
 }

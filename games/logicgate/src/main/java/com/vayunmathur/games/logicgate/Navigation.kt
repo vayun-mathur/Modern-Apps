@@ -12,6 +12,7 @@ import com.vayunmathur.games.logicgate.ui.ProgressionPage
 import com.vayunmathur.library.ui.AchievementNotification
 import com.vayunmathur.library.ui.GameCenterScreen
 import com.vayunmathur.library.util.FullscreenPage
+import com.vayunmathur.library.util.GameHubComposeHook
 import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 
@@ -19,6 +20,7 @@ import com.vayunmathur.library.util.rememberNavBackStack
 fun Navigation(viewModel: LogicViewModel) {
     val backStack = rememberNavBackStack<Route>(Route.Progression)
     val newAchievement by viewModel.achievementsManager.newAchievement.collectAsState()
+    GameHubComposeHook("logicgate", viewModel.achievementsManager)
     Box(modifier = Modifier.fillMaxSize()) {
         MainNavigation(backStack) {
             entry<Route.Progression> { ProgressionPage(backStack, viewModel) }
@@ -26,7 +28,7 @@ fun Navigation(viewModel: LogicViewModel) {
             entry<Route.GameCenter> {
                 GameCenterScreen(
                     manager = viewModel.achievementsManager,
-                    onBack = { backStack.pop() }
+                    onBack = { backStack.pop() },
                 )
             }
         }

@@ -9,14 +9,11 @@ import com.vayunmathur.library.util.NavBackStack
 
 /** Binds [LogicViewModel] to the stateless [ProgressionScreen]. */
 @Composable
-fun ProgressionPage(
-    backStack: NavBackStack<Route>,
-    viewModel: LogicViewModel
-) {
-    val completed by viewModel.completedIds.collectAsState()
+fun ProgressionPage(backStack: NavBackStack<Route>, viewModel: LogicViewModel) {
+    val state by viewModel.progression.collectAsState()
     ProgressionScreen(
-        completed = completed,
-        onOpenLevel = { lvlId -> backStack.add(Route.Game(lvlId)) },
+        state = state,
+        onOpenLevel = { backStack.add(Route.Game(it)) },
         onOpenGameCenter = { backStack.add(Route.GameCenter) },
     )
 }

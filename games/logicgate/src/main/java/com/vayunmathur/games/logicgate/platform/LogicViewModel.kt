@@ -1,401 +1,282 @@
-@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
-
 package com.vayunmathur.games.logicgate.platform
 
-import kotlin.uuid.Uuid
 import android.app.Application
-import android.content.Context
-import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.vayunmathur.games.logicgate.data.ChapterId
-import com.vayunmathur.games.logicgate.data.ChipLibrary
-import com.vayunmathur.games.logicgate.data.Circuit
-import com.vayunmathur.games.logicgate.data.CircuitSampling
-import com.vayunmathur.games.logicgate.data.IoPos
-import com.vayunmathur.games.logicgate.data.LevelDef
-import com.vayunmathur.games.logicgate.data.Levels
-import com.vayunmathur.games.logicgate.data.LogicProgressRepository
-import com.vayunmathur.games.logicgate.data.OutputMapping
-import com.vayunmathur.games.logicgate.data.PlacedChip
-import com.vayunmathur.games.logicgate.data.Wire
-import com.vayunmathur.games.logicgate.data.WireEnd
-import com.vayunmathur.library.util.DataStoreUtils
+import com.vayunmathur.games.logicgate.data.CircuitStore
+import com.vayunmathur.games.logicgate.data.ProgressStore
+import com.vayunmathur.games.logicgate.domain.levels.LevelDef
+import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
+import com.vayunmathur.games.logicgate.domain.model.Chips
+import com.vayunmathur.games.logicgate.domain.model.Circuit
+import com.vayunmathur.games.logicgate.domain.model.NodeId
+import com.vayunmathur.games.logicgate.domain.model.PinRef
+import com.vayunmathur.games.logicgate.domain.model.Point
+import com.vayunmathur.games.logicgate.domain.sim.Probe
+import com.vayunmathur.games.logicgate.domain.sim.Scoring
+import com.vayunmathur.games.logicgate.domain.sim.Verifier
+import com.vayunmathur.games.logicgate.domain.sim.VerifyResult
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.withContext
 
-// Persisted format v2 with busWidth + lenient json
-@Serializable
-data class PersistedWire(
-    val id: String,
-    val fromInstance: String,
-    val fromPin: Int,
-    val toInstance: String,
-    val toPin: Int,
-    val busWidth: Int = 1,
-)
-@Serializable
-data class PersistedGate(val instanceId: String, val chipId: String, val x: Float, val y: Float)
-@Serializable
-data class PersistedOutputMap(val outputIndex: Int, val fromInstance: String, val fromPin: Int)
-@Serializable
-data class PersistedIoPos(val x: Float, val y: Float)
-@Serializable
-data class PersistedCircuit(
-    val gates: List<PersistedGate>,
-    val wires: List<PersistedWire>,
-    val outputs: List<PersistedOutputMap>,
-    val inputPos: Map<Int, PersistedIoPos> = emptyMap(),
-    val outputPos: Map<Int, PersistedIoPos> = emptyMap()
-)
-@Serializable
-data class AllSavedCircuits(val map: Map<String, PersistedCircuit> = emptyMap())
+/**
+ * Owns progression and the open level's editor: an undo/redo stack of immutable circuits, and a
+ * debounced re-verification on [compute] after every committed edit, cancelling any older run.
+ */
+class LogicViewModel @JvmOverloads constructor(
+    application: Application,
+    private val compute: CoroutineDispatcher = Dispatchers.Default,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : AndroidViewModel(application), LogicActions {
 
-data class UiState(
-    val selectedChapter: ChapterId = ChapterId.FOUNDATION,
-    val currentLevelId: String? = null,
-    val circuit: Circuit = Circuit(),
-    val evalStatus: EvalStatus = EvalStatus.Idle,
-    val selectedGateInstanceId: String? = null,
-    val wiringFrom: WireEnd? = null,
-    val dragGhostLineEnd: Offset? = null,
-    val showTruthTable: Boolean = true,
-    val draggedChipGhost: DraggedChipGhost? = null,
-    val canUndo: Boolean = false,
-    val canRedo: Boolean = false
-)
+    private val circuits = CircuitStore(application, io)
+    private val progress = ProgressStore(application)
 
-data class DraggedChipGhost(val chipId: String, val offset: Offset)
+    val achievementsManager: LogicAchievements = LogicAchievements(
+        application,
+        application.assets.open("achievements.json").bufferedReader().use { it.readText() },
+        progress,
+    )
 
-sealed class EvalStatus {
-    object Idle : EvalStatus()
-    data class Ok(
-        val passingRows: Int,
-        val totalRows: Int,
-        val isFullyCorrect: Boolean,
-        val failingRows: List<Int>,
-    ) : EvalStatus()
-    data class Error(val msg: String) : EvalStatus()
-    data class Cycle(val ids: List<String>) : EvalStatus()
-}
+    private val _progression = MutableStateFlow(ProgressionUiState())
+    val progression: StateFlow<ProgressionUiState> = _progression.asStateFlow()
 
-class LogicViewModel(application: Application) : AndroidViewModel(application), LogicActions {
-    internal val progressRepo = LogicProgressRepository(application)
-    internal val dataStore = DataStoreUtils.getInstance(application)
-    internal val appContext: Context = application.applicationContext
-    private val ctx: Context get() = getApplication()
+    private val _game = MutableStateFlow<GameUiState?>(null)
+    val game: StateFlow<GameUiState?> = _game.asStateFlow()
 
-    val achievementsManager: LogicAchievementsManager = run {
-        val json = engine.loadAchievementsJson()
-        LogicAchievementsManager(ctx, json, progressRepo)
-    }
-
-    /** Engine owning history, persistence and evaluation (TooManyFunctions cap). */
-    internal val engine by lazy { LogicEngine(this) }
-
-    private val _completedIds = MutableStateFlow(progressRepo.getCompletedLevelIds())
-    val completedIds: StateFlow<Set<String>> = _completedIds.asStateFlow()
-    internal val completedIdsMutable: MutableStateFlow<Set<String>> get() = _completedIds
-
-    private val _unlockedChips = MutableStateFlow(progressRepo.unlockedChipIds())
-    val unlockedChips: StateFlow<Set<String>> = _unlockedChips.asStateFlow()
-    internal val unlockedChipsMutable: MutableStateFlow<Set<String>> get() = _unlockedChips
-
-    private val _uiState = MutableStateFlow(UiState())
-    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-    internal val uiStateValue: UiState get() = _uiState.value
-    internal fun updateUiState(transform: (UiState) -> UiState) {
-        _uiState.update(transform)
-    }
-
-    internal var allCircuits: MutableMap<String, Circuit> = mutableMapOf()
-    internal var persistJob: Job? = null
-    internal val persistMutex = Mutex()
-    internal val undoStacks: MutableMap<String, MutableList<Circuit>> = mutableMapOf()
-    internal val redoStacks: MutableMap<String, MutableList<Circuit>> = mutableMapOf()
-    internal val maxHistory = 24
-    internal val vmScope get() = viewModelScope
-
-    internal val jsonLenient = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
+    private val history = ArrayDeque<Circuit>()
+    private val future = ArrayDeque<Circuit>()
+    private var verifyJob: Job? = null
+    private var liveJob: Job? = null
+    private var wasSolved = false
+    private var fitToken = 0
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            engine.loadAllCircuits()
-            achievementsManager.checkExistingAchievements()
+        viewModelScope.launch {
+            refreshProgression()
+            withContext(io) { achievementsManager.checkExistingAchievements() }
         }
-    }
-
-    override fun selectLevel(levelId: String) {
-        val loaded = allCircuits[levelId] ?: Circuit()
-        undoStacks.getOrPut(levelId) { mutableListOf() }
-        redoStacks.getOrPut(levelId) { mutableListOf() }
-        val canUndo = undoStacks[levelId]?.isNotEmpty() == true
-        val canRedo = redoStacks[levelId]?.isNotEmpty() == true
-        _uiState.update {
-            it.copy(
-                currentLevelId = levelId,
-                circuit = loaded,
-                evalStatus = EvalStatus.Idle,
-                wiringFrom = null,
-                selectedGateInstanceId = null,
-                dragGhostLineEnd = null,
-                canUndo = canUndo,
-                canRedo = canRedo,
-            )
-        }
-        engine.evaluateCurrent()
-    }
-
-    // NOTE: selectChapter/addGate/deleteSelected/completeWiring/toggleTruthTable and the
-    // chip-palette drag handlers were removed 2026-10-05: orphaned by the LogicActions
-    // refactor, zero callers module-wide (UI drives everything through LogicActions).
-    // showTruthTable stays true; selectedChapter stays FOUNDATION.
-
-    override fun addGateAt(chipId: String, x: Float?, y: Float?): String {
-        val state = _uiState.value
-        val newId = "G_${Uuid.random().toString().take(GATE_ID_SUFFIX)}"
-        val cnt = state.circuit.gates.size
-        // Alchemist-style responsive placement: use window-relative defaults clamped to sane visible range
-        // instead of 0..3000 which places off-screen on small portrait
-        val px = (x ?: engine.defaultGateX(cnt)).coerceIn(PLACEMENT_MIN, PLACEMENT_MAX_X)
-        val py = (y ?: engine.defaultGateY(cnt)).coerceIn(PLACEMENT_MIN, PLACEMENT_MAX_Y)
-        val gate = PlacedChip(newId, chipId, x = px, y = py)
-        val newCircuit = state.circuit.copy(gates = state.circuit.gates + gate)
-        engine.pushHistory(state.circuit)
-        updateCircuit(newCircuit, immediatePersist = true)
-        return newId
-    }
-
-    override fun removeGate(instanceId: String) {
-        val s = _uiState.value.circuit
-        engine.pushHistory(s)
-        val newGates = s.gates.filterNot { it.instanceId == instanceId }
-        val newWires = s.wires.filterNot {
-            it.from.instanceId == instanceId || it.to.instanceId == instanceId
-        }
-        val newOuts = s.outputMappings.filterNot { it.from.instanceId == instanceId }
-        updateCircuit(s.copy(gates = newGates, wires = newWires, outputMappings = newOuts))
-    }
-
-    override fun clearCircuit() {
-        val s = _uiState.value.circuit
-        if (s.gates.isEmpty() && s.wires.isEmpty() && s.outputMappings.isEmpty()) return
-        engine.pushHistory(s)
-        updateCircuit(Circuit())
-    }
-
-    override fun selectGate(id: String?) {
-        _uiState.update { it.copy(selectedGateInstanceId = id) }
-    }
-
-    override fun undo() {
-        val lvl = _uiState.value.currentLevelId ?: return
-        val uStack = undoStacks[lvl] ?: return
-        if (uStack.isEmpty()) return
-        val rStack = redoStacks.getOrPut(lvl) { mutableListOf() }
-        rStack.add(_uiState.value.circuit)
-        val prev = uStack.removeAt(uStack.lastIndex)
-        allCircuits[lvl] = prev
-        _uiState.update {
-            it.copy(circuit = prev, canUndo = uStack.isNotEmpty(), canRedo = rStack.isNotEmpty())
-        }
-        engine.schedulePersist()
-        engine.evaluateCurrent()
-    }
-
-    override fun redo() {
-        val lvl = _uiState.value.currentLevelId ?: return
-        val rStack = redoStacks[lvl] ?: return
-        if (rStack.isEmpty()) return
-        val uStack = undoStacks.getOrPut(lvl) { mutableListOf() }
-        uStack.add(_uiState.value.circuit)
-        val next = rStack.removeAt(rStack.lastIndex)
-        allCircuits[lvl] = next
-        _uiState.update {
-            it.copy(circuit = next, canUndo = uStack.isNotEmpty(), canRedo = rStack.isNotEmpty())
-        }
-        engine.schedulePersist()
-        engine.evaluateCurrent()
-    }
-
-    override fun onGateMoved(instanceId: String, x: Float, y: Float) {
-        val s = _uiState.value.circuit
-        val newGates = s.gates.map {
-            if (it.instanceId == instanceId) {
-                it.copy(x = engine.clampCanvasX(x), y = engine.clampCanvasY(y))
-            } else {
-                it
-            }
-        }
-        _uiState.update { it.copy(circuit = it.circuit.copy(gates = newGates)) }
-    }
-    override fun onGateMoveFinished(instanceId: String, x: Float, y: Float) {
-        val s = _uiState.value.circuit
-        val prevCircuit = allCircuits[_uiState.value.currentLevelId] ?: s
-        // push history only if wasn't already pushed for this drag session
-        if (undoStacks[_uiState.value.currentLevelId]?.lastOrNull() != prevCircuit) {
-            engine.pushHistory(prevCircuit)
-        }
-        val newGates = s.gates.map {
-            if (it.instanceId == instanceId) {
-                it.copy(x = engine.clampCanvasX(x), y = engine.clampCanvasY(y))
-            } else {
-                it
-            }
-        }
-        val newCircuit = s.copy(gates = newGates)
-        val lvl = _uiState.value.currentLevelId
-        if (lvl != null) allCircuits[lvl] = newCircuit
-        _uiState.update { it.copy(circuit = newCircuit) }
-        engine.schedulePersist()
-        engine.evaluateCurrent()
-    }
-
-    override fun onInputMoved(idx: Int, x: Float, y: Float) {
-        val s = _uiState.value.circuit
-        val newMap = s.inputPositions.toMutableMap()
-        newMap[idx] = IoPos(engine.clampCanvasX(x), engine.clampCanvasY(y))
-        _uiState.update { it.copy(circuit = s.copy(inputPositions = newMap)) }
-    }
-    override fun onInputMoveFinished(idx: Int, x: Float, y: Float) {
-        val s = _uiState.value.circuit
-        val prevCircuit = allCircuits[_uiState.value.currentLevelId] ?: s
-        engine.pushHistory(prevCircuit)
-        val newMap = s.inputPositions.toMutableMap()
-        newMap[idx] = IoPos(engine.clampCanvasX(x), engine.clampCanvasY(y))
-        val newCircuit = s.copy(inputPositions = newMap)
-        val lvl = _uiState.value.currentLevelId
-        if (lvl != null) allCircuits[lvl] = newCircuit
-        _uiState.update { it.copy(circuit = newCircuit) }
-        engine.schedulePersist()
-    }
-    override fun onOutputMoved(idx: Int, x: Float, y: Float) {
-        val s = _uiState.value.circuit
-        val newMap = s.outputPositions.toMutableMap()
-        newMap[idx] = IoPos(engine.clampCanvasX(x), engine.clampCanvasY(y))
-        _uiState.update { it.copy(circuit = s.copy(outputPositions = newMap)) }
-    }
-    override fun onOutputMoveFinished(idx: Int, x: Float, y: Float) {
-        val s = _uiState.value.circuit
-        val prevCircuit = allCircuits[_uiState.value.currentLevelId] ?: s
-        engine.pushHistory(prevCircuit)
-        val newMap = s.outputPositions.toMutableMap()
-        newMap[idx] = IoPos(engine.clampCanvasX(x), engine.clampCanvasY(y))
-        val newCircuit = s.copy(inputPositions = newMap)
-        val lvl = _uiState.value.currentLevelId
-        if (lvl != null) allCircuits[lvl] = newCircuit
-        _uiState.update { it.copy(circuit = newCircuit) }
-        engine.schedulePersist()
-    }
-
-    override fun startWiring(from: WireEnd) {
-        _uiState.update { it.copy(wiringFrom = from) }
-    }
-    override fun cancelWiring() {
-        _uiState.update { it.copy(wiringFrom = null, dragGhostLineEnd = null) }
-    }
-    override fun updateGhostLine(end: Offset?) {
-        _uiState.update { it.copy(dragGhostLineEnd = end) }
-    }
-
-    override fun createWire(from: WireEnd, to: WireEnd) = engine.wiring.createWire(from, to)
-
-    override fun removeWire(wireId: String) {
-        val s = _uiState.value.circuit
-        engine.pushHistory(s)
-        updateCircuit(s.copy(wires = s.wires.filterNot { it.id == wireId }))
-    }
-    override fun removeOutputMapping(outIdx: Int) {
-        val s = _uiState.value.circuit
-        engine.pushHistory(s)
-        updateCircuit(s.copy(outputMappings = s.outputMappings.filterNot { it.outputIndex == outIdx }))
-    }
-
-    internal fun updateCircuit(newCircuit: Circuit, immediatePersist: Boolean = false) {
-        val lvlId = _uiState.value.currentLevelId
-        if (lvlId != null) {
-            allCircuits[lvlId] = newCircuit
-            if (immediatePersist) engine.saveAllCircuitsNow() else engine.schedulePersist()
-        }
-        val canUndoFlag = lvlId?.let { undoStacks[it]?.isNotEmpty() } ?: false
-        val canRedoFlag = lvlId?.let { redoStacks[it]?.isNotEmpty() } ?: false
-        _uiState.update {
-            it.copy(circuit = newCircuit, canUndo = canUndoFlag, canRedo = canRedoFlag)
-        }
-        engine.evaluateCurrent()
     }
 
     fun dismissAchievement() = achievementsManager.dismissNotification()
 
-    companion object {
-        internal const val KEY_CIRCUITS = "logicgate_circuits_v1"
-        internal const val ACHIEVEMENTS_ASSET = "achievements.json"
-        internal const val EMPTY_ACHIEVEMENTS_JSON = "[]"
-
-        /** Canvas drag clamp range (world coordinates). */
-        internal const val CANVAS_MIN = -4000f
-        internal const val CANVAS_MAX_X = 6000f
-
-        /** Random suffix length for generated wire ids. */
-        internal const val WIRE_ID_SUFFIX = 6
-
-        /** Random suffix length for generated gate ids. */
-        internal const val GATE_ID_SUFFIX = 6
-
-        /** Minimum CPU<->RAM wires before the COMPUTER level checks bus usage. */
-        internal const val MIN_CPU_RAM_WIRES = 2
-
-        /** Responsive default gate placement grid (world coordinates). */
-        internal const val PLACEMENT_COLS = 4
-        internal const val PLACEMENT_BASE_X = 80f
-        internal const val PLACEMENT_BASE_Y = 100f
-        internal const val PLACEMENT_DX = 140f
-        internal const val PLACEMENT_DY = 110f
-        internal const val PLACEMENT_MIN = 8f
-        internal const val PLACEMENT_MAX_X = 1200f
-        internal const val PLACEMENT_MAX_Y = 2000f
+    fun openLevel(id: String) {
+        if (_game.value?.level?.id == id) return
+        val level = LevelRegistry[id] ?: return
+        verifyJob?.cancel()
+        liveJob?.cancel()
+        history.clear()
+        future.clear()
+        _game.value = null
+        viewModelScope.launch {
+            val saved = withContext(io) { circuits.load(id) }
+            val firstVisit = withContext(io) { progress.markBriefSeen(id) }
+            val circuit = (saved ?: Circuit.forLevel(level.io)).sanitized(level.io, Chips.lookup(level.io))
+            _game.value = GameUiState(
+                level = level,
+                circuit = circuit,
+                chips = LevelRegistry.allowedChips(id).mapNotNull { Chips[it] },
+                manualInputs = List(level.inputs.size) { 0 },
+                cost = cost(circuit),
+                bestCost = _progression.value.levels.firstOrNull { it.id == id }?.bestCost,
+                showBrief = firstVisit,
+                fitToken = ++fitToken,
+                nextLevelId = LevelRegistry.next(id)?.id,
+            )
+            wasSolved = false
+            reverify(announce = false)
+        }
     }
-}
 
-internal fun PersistedCircuit.toCircuit(): Circuit {
-    return Circuit(
-        gates = gates.map { PlacedChip(it.instanceId, it.chipId, it.x, it.y) },
-        wires = wires.map {
-            Wire(
-                it.id,
-                WireEnd(it.fromInstance, it.fromPin),
-                WireEnd(it.toInstance, it.toPin),
-                busWidth = it.busWidth.coerceIn(CircuitSampling.BIT, CircuitSampling.BUS_8),
+    override fun placeChip(chipId: String, at: Point) {
+        val s = _game.value ?: return
+        if (s.chips.any { it.id == chipId }) commit(s.circuit.addGate(chipId, at).first)
+    }
+
+    override fun moveNode(id: NodeId, to: Point) {
+        val s = _game.value ?: return
+        commit(s.circuit.moveNode(id, to))
+    }
+
+    override fun connect(a: PinRef, b: PinRef) {
+        val s = _game.value ?: return
+        s.circuit.connect(a, b, Chips.lookup(s.level.io))?.let(::commit)
+    }
+
+    override fun select(selection: Selection?) {
+        _game.update { it?.copy(selection = selection) }
+    }
+
+    override fun deleteSelection() {
+        val s = _game.value ?: return
+        val next = when (val sel = s.selection) {
+            is Selection.OfNode -> s.circuit.removeNode(sel.id)
+            is Selection.OfWire -> s.circuit.removeWire(sel.wire)
+            null -> return
+        }
+        _game.update { it?.copy(selection = null) }
+        commit(next)
+    }
+
+    override fun deleteNode(id: NodeId) {
+        val s = _game.value ?: return
+        commit(s.circuit.removeNode(id))
+    }
+
+    override fun undo() {
+        val s = _game.value ?: return
+        val previous = history.removeLastOrNull() ?: return
+        future.addLast(s.circuit)
+        show(s, previous)
+    }
+
+    override fun redo() {
+        val s = _game.value ?: return
+        val next = future.removeLastOrNull() ?: return
+        history.addLast(s.circuit)
+        show(s, next)
+    }
+
+    override fun setInput(index: Int, value: Int) {
+        _game.update { s ->
+            s?.copy(manualInputs = s.manualInputs.mapIndexed { i, v -> if (i == index) value else v }, probeCase = null)
+        }
+        refreshLive()
+    }
+
+    override fun probe(caseIndex: Int?) {
+        _game.update { it?.copy(probeCase = caseIndex) }
+        refreshLive()
+    }
+
+    override fun showBrief(show: Boolean) {
+        _game.update { it?.copy(showBrief = show) }
+    }
+
+    override fun dismissWin() {
+        _game.update { it?.copy(won = false) }
+    }
+
+    private fun commit(next: Circuit) {
+        val s = _game.value ?: return
+        if (next == s.circuit) return
+        history.addLast(s.circuit)
+        if (history.size > UNDO_LIMIT) history.removeFirst()
+        future.clear()
+        show(s, next)
+    }
+
+    private fun show(s: GameUiState, circuit: Circuit) {
+        val selection = when (val sel = s.selection) {
+            is Selection.OfNode -> sel.takeIf { circuit.node(it.id) != null }
+            is Selection.OfWire -> sel.takeIf { it.wire in circuit.wires }
+            null -> null
+        }
+        _game.value = s.copy(
+            circuit = circuit,
+            selection = selection,
+            canUndo = history.isNotEmpty(),
+            canRedo = future.isNotEmpty(),
+            cost = cost(circuit),
+        )
+        circuits.save(s.level.id, circuit)
+        reverify(announce = true)
+    }
+
+    private fun reverify(announce: Boolean) {
+        val s = _game.value ?: return
+        verifyJob?.cancel()
+        verifyJob = viewModelScope.launch {
+            delay(VERIFY_DEBOUNCE_MS)
+            val result = withContext(compute) { Verifier.verify(s.level.io, s.level.tests, s.circuit) }
+            val now = _game.value?.takeIf { it.circuit == s.circuit } ?: return@launch
+            val probed = now.copy(verify = result, probeCase = now.probeCase?.takeIf { it < result.total })
+            val live = withContext(compute) { liveProbe(probed) }
+            applyVerify(probed, result, live, announce)
+        }
+    }
+
+    private fun applyVerify(probed: GameUiState, result: VerifyResult, live: Probe, announce: Boolean) {
+        val newlySolved = announce && result.solved && !wasSolved
+        wasSolved = result.solved
+        _game.update { cur ->
+            if (cur?.circuit != probed.circuit) return@update cur
+            cur.copy(
+                verify = result,
+                probeCase = probed.probeCase,
+                live = if (cur.sameProbe(probed)) live else cur.live,
+                stars = Scoring.stars(result.solved, cur.cost, cur.level.par),
+                won = cur.won || newlySolved,
             )
-        },
-        outputMappings = outputs.map { OutputMapping(it.outputIndex, WireEnd(it.fromInstance, it.fromPin)) },
-        inputPositions = inputPos.mapValues { IoPos(it.value.x, it.value.y) },
-        outputPositions = outputPos.mapValues { IoPos(it.value.x, it.value.y) },
-    )
-}
-internal fun Circuit.toPersisted(): PersistedCircuit {
-    return PersistedCircuit(
-        gates = gates.map { PersistedGate(it.instanceId, it.chipId, it.x, it.y) },
-        wires = wires.map {
-            PersistedWire(
-                it.id,
-                it.from.instanceId,
-                it.from.pinIndex,
-                it.to.instanceId,
-                it.to.pinIndex,
-                busWidth = it.busWidth,
-            )
-        },
-        outputs = outputMappings.map { PersistedOutputMap(it.outputIndex, it.from.instanceId, it.from.pinIndex) },
-        inputPos = inputPositions.mapValues { PersistedIoPos(it.value.x, it.value.y) },
-        outputPos = outputPositions.mapValues { PersistedIoPos(it.value.x, it.value.y) },
-    )
+        }
+        if (result.solved) recordSolve(probed.level, probed.cost)
+    }
+
+    private fun recordSolve(level: LevelDef, cost: Int) {
+        viewModelScope.launch {
+            withContext(io) {
+                progress.record(level.id, cost)
+                achievementsManager.checkExistingAchievements()
+            }
+            refreshProgression()
+        }
+    }
+
+    private suspend fun refreshProgression() {
+        val best = withContext(io) { progress.bestCosts() }
+        _progression.value = ProgressionUiState(
+            LevelRegistry.levels.mapIndexed { i, l ->
+                LevelCard(
+                    id = l.id,
+                    number = i + 1,
+                    title = l.title,
+                    chapter = l.chapter,
+                    unlocked = LevelRegistry.isUnlocked(l.id, best.keys),
+                    stars = best[l.id]?.let { Scoring.stars(solved = true, cost = it, par = l.par) } ?: 0,
+                    bestCost = best[l.id],
+                    par = l.par,
+                )
+            },
+        )
+        _game.update { s -> s?.copy(bestCost = best[s.level.id]) }
+    }
+
+    private fun refreshLive() {
+        val s = _game.value ?: return
+        liveJob?.cancel()
+        liveJob = viewModelScope.launch {
+            val live = withContext(compute) { liveProbe(s) }
+            _game.update { cur ->
+                if (cur?.circuit == s.circuit && cur.sameProbe(s)) cur.copy(live = live) else cur
+            }
+        }
+    }
+
+    private fun liveProbe(s: GameUiState): Probe {
+        val case = s.probeCase
+        val total = s.verify?.total ?: 0
+        return if (case != null && case < total) {
+            Verifier.probe(s.level.io, s.level.tests, s.circuit, case)
+        } else {
+            Verifier.manual(s.level.io, s.circuit, s.manualInputs)
+        }
+    }
+
+    private fun GameUiState.sameProbe(other: GameUiState) =
+        probeCase == other.probeCase && manualInputs == other.manualInputs
+
+    private fun cost(circuit: Circuit) = Scoring.cost(circuit) { Chips[it]?.nandCost }
+
+    private companion object {
+        const val UNDO_LIMIT = 50
+        const val VERIFY_DEBOUNCE_MS = 120L
+    }
 }

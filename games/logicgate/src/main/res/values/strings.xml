@@ -1,44 +1,119 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <!-- Screens / MainActivity / launcher: App name. Noun, proper, title of logic gate puzzle game -->
+    <!-- Launcher + app bar: App name. Proper noun, title of the logic gate puzzle game -->
     <string name="app_name" translatable="false">Logic Gate</string>
 
-    <!-- MainActivity: Loading state when level data not yet ready from DataStore. Verb progressive -->
-    <string name="loading">Loading…</string>
-    <!-- GameScreen win dialog: Title shown when the level is solved. Noun phrase -->
-    <string name="level_complete_title">Level Complete!</string>
-    <!-- GameScreen win dialog: Body. %1$s = level name, e.g. XOR. Sentence -->
-    <string name="level_complete_body">You solved <xliff:g id="level_name" example="XOR">%1$s</xliff:g>.</string>
-    <!-- GameScreen win dialog: Button to return to the level map when there is no next level. Verb phrase -->
-    <string name="back_to_map">Back to Map</string>
-    <!-- GameScreen win dialog: Button to dismiss the dialog and keep editing the current level. Verb phrase -->
-    <string name="keep_editing">Keep Editing</string>
-    <!-- ProgressionScreen: Subtitle describing game progression from NAND to computer. Sentence -->
-    <string name="start_with_nand_end_with_a_computer">Start with NAND. End with a computer.</string>
-    <!-- ProgressionScreen: Second subtitle explaining tap to play, dependency lines, total levels. Sentence fragment -->
-    <string name="tap_to_play_lines_show_dependencies_36_l">Tap to play • Lines show dependencies • 36 levels</string>
-    <!-- ProgressionScreen: Bottom summary of completed levels. %1$s = completed count e.g. 5, %2$s = total e.g. 36. Status noun phrase -->
-    <string name="completed"><xliff:g id="completed_count" example="5">%1$s</xliff:g> / <xliff:g id="total" example="36">%2$s</xliff:g> completed</string>
-    <!-- ProgressionScreen: Legend explaining bus color/width coding: 1b green thin, 4b orange, 8b blue, ghost dashed yellow. Technical description -->
-    <!-- ProgressionScreen: LevelNode status when level locked (dependency not met). Noun, uppercase, keep caps -->
-    <string name="lock">LOCK</string>
-    <!-- ProgressionScreen: LevelNode status when level completed. Noun/adjective uppercase done -->
-    <string name="done">DONE</string>
-    <!-- ProgressionScreen: LevelNode action when level available to play. Verb uppercase -->
-    <string name="play">PLAY</string>
-    <!-- InventoryBar: Title explaining inventory colors and action. Sentence with bus color coding and drag instruction -->
+    <!-- Level map: tagline under the title. Sentence -->
+    <string name="lg_tagline">Start with NAND. End with a computer.</string>
+    <!-- Level map: progress line. %1$d = solved levels e.g. 5, %2$d = total e.g. 28 -->
+    <string name="lg_solved_count">Solved: <xliff:g id="solved" example="5">%1$d</xliff:g> / <xliff:g id="total" example="28">%2$d</xliff:g></string>
+    <!-- Level map: chapter 1 heading. Noun -->
+    <string name="lg_chapter_basics">Basics</string>
+    <!-- Level map: chapter 2 heading. Noun phrase -->
+    <string name="lg_chapter_routing">Routing &amp; buses</string>
+    <!-- Level map: chapter 3 heading. Noun -->
+    <string name="lg_chapter_arithmetic">Arithmetic</string>
+    <!-- Level map: chapter 4 heading. Noun -->
+    <string name="lg_chapter_memory">Memory</string>
+    <!-- Level map: chapter 5 heading. Noun, the processor -->
+    <string name="lg_chapter_cpu">CPU</string>
+    <!-- Level map: chapter 1 subtitle. Noun phrase -->
+    <string name="lg_chapter_basics_desc">Every gate, from NAND alone</string>
+    <!-- Level map: chapter 2 subtitle. Noun phrase -->
+    <string name="lg_chapter_routing_desc">Selectors, decoders and multi-bit buses</string>
+    <!-- Level map: chapter 3 subtitle. Noun phrase -->
+    <string name="lg_chapter_arithmetic_desc">Adders, all the way up to an ALU</string>
+    <!-- Level map: chapter 4 subtitle. Noun phrase -->
+    <string name="lg_chapter_memory_desc">Latches, registers, a program counter and RAM</string>
+    <!-- Level map: chapter 5 subtitle. Noun phrase -->
+    <string name="lg_chapter_cpu_desc">A stored-program computer that runs real code</string>
+    <!-- Level card: best score. %1$d = best NAND cost e.g. 12, %2$d = par e.g. 9 -->
+    <string name="lg_best_cost">Best <xliff:g id="best" example="12">%1$d</xliff:g> · par <xliff:g id="par" example="9">%2$d</xliff:g></string>
+    <!-- Level card: target score before solving. %1$d = par NAND cost e.g. 9 -->
+    <string name="lg_par">Par <xliff:g id="par" example="9">%1$d</xliff:g></string>
+    <!-- Level card: accessibility label for a locked level. Adjective -->
+    <string name="lg_cd_locked">Locked</string>
+    <!-- Level card: accessibility label for the star rating. %1$d = stars earned 0..3 -->
+    <string name="lg_cd_stars"><xliff:g id="stars" example="2">%1$d</xliff:g> of 3 stars</string>
 
+    <!-- Editor app bar: title. %1$d = level number e.g. 5, %2$s = level name e.g. XOR -->
+    <string name="lg_level_title"><xliff:g id="number" example="5">%1$d</xliff:g> · <xliff:g id="name" example="XOR">%2$s</xliff:g></string>
+    <!-- Editor app bar: current circuit cost. %1$d = NAND count e.g. 12 -->
+    <string name="lg_cost"><xliff:g id="cost" example="12">%1$d</xliff:g> NAND</string>
 
-    <!-- Screens: Content description (accessibility) for GameCenter star icon linking achievements. Noun -->
-    <string name="cd_achievements">Achievements</string>
-    <string name="no_chips_all">No chips • ALL</string>
-    <string name="inputs">Inputs</string>
-    <string name="outputs">Outputs</string>
-    <string name="tick">Tick</string>
-    <string name="sim_speed">Sim speed</string>
-    <string name="exp">Exp</string>
-    <string name="got">Got</string>
-    <string name="gate">GATE %1$s</string>
-    <string name="expected">%1$s Expected</string>
-    <string name="got_2">%1$s Got</string>
-    <string name="hz">%1$shz</string>
+    <!-- Chip tray: accessibility label for a chip card. %1$s = chip name e.g. NAND, %2$d = cost e.g. 1 -->
+    <string name="lg_cd_chip"><xliff:g id="chip" example="NAND">%1$s</xliff:g>, costs <xliff:g id="cost" example="1">%2$d</xliff:g> NAND. Tap to add it, or drag it up onto the board.</string>
+    <!-- Chip tray: badge for a chip with multi-bit pins. %1$d = widest bus width e.g. 8 -->
+    <string name="lg_bus_badge"><xliff:g id="width" example="8">%1$d</xliff:g>-bit</string>
+
+    <!-- Trash zone: shown over the chip tray while a gate is being dragged. Instruction -->
+    <string name="lg_drag_to_delete">Drag here to delete</string>
+    <!-- Trash zone: shown while a dragged gate is over the chip tray. Instruction -->
+    <string name="lg_release_to_delete">Release to delete</string>
+    <!-- Selection bar: label when a wire is selected. Noun -->
+    <string name="lg_selected_wire">Wire</string>
+    <!-- Selection bar: delete the selected gate or wire. Verb -->
+    <string name="lg_delete">Delete</string>
+
+    <!-- Test panel: shown while the circuit is being verified. Verb progressive -->
+    <string name="lg_checking">Checking…</string>
+    <!-- Test panel: all tests pass. %1$d = passing rows, %2$d = total rows -->
+    <string name="lg_tests_pass">✓ Passing: <xliff:g id="passed" example="4">%1$d</xliff:g>/<xliff:g id="total" example="4">%2$d</xliff:g></string>
+    <!-- Test panel: some tests fail. %1$d = passing rows, %2$d = total rows, %3$s = title of the first failing row, e.g. 1 OR 1 = 1 -->
+    <string name="lg_tests_fail">✗ <xliff:g id="passed" example="3">%1$d</xliff:g>/<xliff:g id="total" example="4">%2$d</xliff:g> · first failure: <xliff:g id="row" example="1 OR 1 = 1">%3$s</xliff:g></string>
+    <!-- Test panel: a combinational feedback loop oscillates. Sentence -->
+    <string name="lg_oscillating">A feedback loop never settles; it is outlined in red.</string>
+    <!-- Test panel: the computer level has no RAM16 chip. Sentence -->
+    <string name="lg_no_ram">Add a RAM16: the test programs are loaded into it.</string>
+    <!-- Test panel: column header for the row description. Short noun -->
+    <string name="lg_col_test">test</string>
+    <!-- Test panel: column header for actual outputs. Short noun -->
+    <string name="lg_col_got">got</string>
+    <!-- Test panel: sequential stepping position. %1$d = tick number e.g. 3, %2$s = what the tick checks, e.g. q=1, hold -->
+    <string name="lg_tick">Tick <xliff:g id="tick" example="3">%1$d</xliff:g>: <xliff:g id="title" example="q=1, hold">%2$s</xliff:g></string>
+    <!-- Test panel: explains probing. Sentence -->
+    <string name="lg_probe_hint">Tap a row to show its values on the wires.</string>
+    <!-- Test panel: explains live mode with no row selected. Sentence -->
+    <string name="lg_live_hint">Live: tap an input on the board to flip it.</string>
+    <!-- Test panel: button returning from a probed row to live mode. Verb phrase -->
+    <string name="lg_back_to_live">Back to live</string>
+
+    <!-- Brief sheet: section heading. Noun -->
+    <string name="lg_brief_inputs">Inputs</string>
+    <!-- Brief sheet: section heading. Noun -->
+    <string name="lg_brief_outputs">Outputs</string>
+    <!-- Brief sheet: a pin with its bus width. %1$s = pin name e.g. a, %2$d = width e.g. 8 -->
+    <string name="lg_pin_width"><xliff:g id="pin" example="a">%1$s</xliff:g> (<xliff:g id="width" example="8">%2$d</xliff:g>-bit)</string>
+    <!-- Brief sheet: shown for a level without inputs. Noun phrase -->
+    <string name="lg_brief_none">none</string>
+    <!-- Brief sheet: reveal the hint. Verb phrase -->
+    <string name="lg_show_hint">Show hint</string>
+    <!-- Brief sheet: reward line. %1$s = comma separated chip names e.g. XOR -->
+    <string name="lg_brief_unlocks">Solve it to earn: <xliff:g id="chips" example="XOR">%1$s</xliff:g></string>
+    <!-- Brief sheet: how to use the editor. Sentence -->
+    <string name="lg_brief_controls">Drag a chip up out of the tray to place it, and drag a gate back down onto the tray to delete it. Drag from a pin to wire it up. Drag empty space to pan and pinch to zoom. Bus values show in hex.</string>
+    <!-- Brief sheet: close button. Verb phrase -->
+    <string name="lg_start_building">Start building</string>
+
+    <!-- Bus input dialog: title. %1$s = input pin name e.g. a -->
+    <string name="lg_set_value">Set <xliff:g id="pin" example="a">%1$s</xliff:g></string>
+    <!-- Bus input dialog: confirm. Verb -->
+    <string name="lg_done">Done</string>
+
+    <!-- Wire error: both ends are inputs or both are outputs. Sentence -->
+    <string name="lg_wire_same_side">Wires run from an output pin to an input pin.</string>
+    <!-- Wire error: bus widths differ, with a fix. %1$d = source width, %2$d = target width, %3$s = chip name e.g. SPLIT 8 -->
+    <string name="lg_wire_width"><xliff:g id="from" example="8">%1$d</xliff:g>-bit → <xliff:g id="to" example="1">%2$d</xliff:g>-bit: add a <xliff:g id="chip" example="SPLIT 8">%3$s</xliff:g></string>
+
+    <!-- Level complete overlay: title. Short exclamation -->
+    <string name="lg_solved_title">Circuit verified!</string>
+    <!-- Level complete overlay: title for the final level. Exclamation -->
+    <string name="lg_computer_title">You built a computer!</string>
+    <!-- Level complete overlay: score line. %1$d = cost e.g. 12, %2$d = par e.g. 9 -->
+    <string name="lg_cost_vs_par">Cost <xliff:g id="cost" example="12">%1$d</xliff:g> NAND · par <xliff:g id="par" example="9">%2$d</xliff:g></string>
+    <!-- Level complete overlay: reward line. %1$s = chip names e.g. XOR -->
+    <string name="lg_new_chips">New chips: <xliff:g id="chips" example="XOR">%1$s</xliff:g></string>
+    <!-- Level complete overlay: primary action. Verb phrase -->
+    <string name="lg_next_level">Next level</string>
+    <!-- Level complete overlay: dismiss and stay in the editor. Verb phrase -->
+    <string name="lg_keep_editing">Keep editing</string>
 </resources>

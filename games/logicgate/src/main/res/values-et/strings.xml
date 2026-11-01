@@ -1,27 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="next_level">Järgmine tase</string>
-    <string name="keep_editing">Jätka muutmist</string>
-    <string name="back_to_map">Tagasi kaardi juurde</string>
-    <string name="tap_to_play_lines_show_dependencies_36_l">Mängimiseks klõpsa • Jooned näitavad sõltuvusi • 36 taset</string>
-    <string name="completed"><xliff:g id="completed_count" example="5">%1$s</xliff:g> / <xliff:g id="total" example="36">%2$s</xliff:g> taset</string>
-    <string name="lock">LUKUS</string>
-    <string name="loading">Laadin…</string>
-    <string name="level_complete_title">Tase on läbitud!</string>
-    <string name="level_complete_body">Sa lahendasid <xliff:g id="level_name" example="XOR">%1$s</xliff:g> taseme.</string>
-    <string name="start_with_nand_end_with_a_computer">Alustuseks võta „NAND“ ja lõpetuseks arvuti.</string>
-    <string name="done">LÄBITUD</string>
-    <string name="play">MÄNGI</string>
-    <string name="cd_achievements">Saavutused</string>
-    <string name="inputs">Sisendid</string>
-    <string name="outputs">Väljundid</string>
-    <string name="got">Teg.</string>
-    <string name="gate">%1$s. VÄRAV</string>
-    <string name="exp">Eeld.</string>
-    <string name="hz">%1$s hz</string>
-    <string name="expected">Eeldatud: %1$s</string>
-    <string name="got_2">Tegelik: %1$s</string>
-    <string name="tick">Märgi</string>
-    <string name="sim_speed">Sim kiirus</string>
-    <string name="no_chips_all">Kive pole • KÕIK</string>
-</resources>
+<resources>
+    </resources>

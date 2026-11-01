@@ -1,9 +1,9 @@
 [
-  {"id": "first_gate", "name": "First Light", "description": "Complete your first gate"},
-  {"id": "foundation_complete", "name": "Foundation", "description": "Complete Foundation chapter (6 levels)", "targetProgress": 6},
-  {"id": "routing_complete", "name": "Router", "description": "Complete Routing chapter (12 levels)", "targetProgress": 12},
-  {"id": "arith_complete", "name": "Arithmetician", "description": "Complete Arithmetic chapter (6 levels)", "targetProgress": 6},
-  {"id": "memory_complete", "name": "Mnemosyne", "description": "Complete Memory chapter (8 levels)", "targetProgress": 8},
-  {"id": "cpu_complete", "name": "CPU Architect", "description": "Complete CPU chapter (4 levels)", "targetProgress": 4},
-  {"id": "all_levels", "name": "NAND to CPU", "description": "Complete all 36 levels and build the stored-program computer", "targetProgress": 36}
+  {"id": "lg2_first_circuit", "name": "First Light", "description": "Solve your first circuit"},
+  {"id": "lg2_basics", "name": "Gatekeeper", "description": "Finish the Basics chapter", "targetProgress": 6},
+  {"id": "lg2_routing", "name": "Router", "description": "Finish the Routing & buses chapter", "targetProgress": 5},
+  {"id": "lg2_arith", "name": "Arithmetician", "description": "Finish the Arithmetic chapter", "targetProgress": 8},
+  {"id": "lg2_memory", "name": "Total Recall", "description": "Finish the Memory chapter", "targetProgress": 6},
+  {"id": "lg2_computer", "name": "NAND to Computer", "description": "Run three programs on a computer you built from NAND"},
+  {"id": "lg2_three_stars_10", "name": "Efficiency Expert", "description": "Earn three stars on 10 levels", "targetProgress": 10}
 ]
