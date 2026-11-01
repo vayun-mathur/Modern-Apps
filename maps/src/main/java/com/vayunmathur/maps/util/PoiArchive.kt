@@ -127,19 +127,11 @@ object PoiArchive {
         if (!paired) {
             Log.status(TAG, "half-paired POI override; using base index+names")
         }
-        val indexBuf = if (paired) {
-            overrideIndex ?: slice(whole, sections, KIND_INDEX)
-        } else {
-            slice(whole, sections, KIND_INDEX)
-        } ?: run {
+        val indexBuf = overrideIndex.takeIf { paired } ?: slice(whole, sections, KIND_INDEX) ?: run {
             Log.status(TAG, "archive carries no POI index section")
             return null
         }
-        val namesBuf = if (paired) {
-            overrideNames ?: slice(whole, sections, KIND_NAMES)
-        } else {
-            slice(whole, sections, KIND_NAMES)
-        } ?: run {
+        val namesBuf = overrideNames.takeIf { paired } ?: slice(whole, sections, KIND_NAMES) ?: run {
             Log.status(TAG, "archive carries a POI index but no POI names")
             return null
         }

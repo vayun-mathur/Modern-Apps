@@ -216,33 +216,7 @@ class MainActivity : MaActivity() {
     private fun navigateTo(link: MapLink) {
         lifecycleScope.launch {
             val mode = link.mode ?: RouteService.TravelMode.DRIVE
-            // Destination position: an explicit coord, else geocode the query.
-            val destPos: GeoPoint?
-            val destName: String
-            if (link.lat != null && link.lng != null) {
-                destPos = GeoPoint(link.lng, link.lat)
-                destName = link.query ?: getString(R.string.dropped_pin)
-            } else if (!link.query.isNullOrBlank()) {
-                val near = biasPosition()
-                // Offline OSM POI search (no query-bar side effects: this path
-                // must not prefill the search text like searchAndSelectFirst
-                // does). Free-text addresses have no OSM path and stay
-                // unresolvable, handled below.
-                val query = link.query
-                val first = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    runCatching {
-                        com.vayunmathur.maps.util.PoiIndex.initialize(applicationContext)
-                        com.vayunmathur.maps.util.PoiIndex.searchByName(
-                            query, near.latitude, near.longitude, limit = 1,
-                        ).firstOrNull()
-                    }.getOrNull()
-                }
-                destPos = first?.let { GeoPoint(it.lon, it.lat) }
-                destName = first?.name ?: query
-            } else {
-                destPos = null
-                destName = getString(R.string.dropped_pin)
-            }
+            val (destPos, destName) = resolveDestination(link)
             if (destPos == null) {
                 Log.status(TAG, "navigateTo: could not resolve destination for $link")
                 return@launch
@@ -289,6 +263,29 @@ class MainActivity : MaActivity() {
             )
             Log.status(TAG, "navigateTo: started $mode navigation to $destName")
         }
+    }
+
+    /** The link's destination: an explicit coord, else an offline POI lookup of the query. */
+    private suspend fun resolveDestination(link: MapLink): Pair<GeoPoint?, String> {
+        if (link.lat != null && link.lng != null) {
+            return GeoPoint(link.lng, link.lat) to (link.query ?: getString(R.string.dropped_pin))
+        }
+        val query = link.query
+        if (query.isNullOrBlank()) return null to getString(R.string.dropped_pin)
+        val near = biasPosition()
+        // Offline OSM POI search (no query-bar side effects: this path
+        // must not prefill the search text like searchAndSelectFirst
+        // does). Free-text addresses have no OSM path and stay
+        // unresolvable, handled by the caller.
+        val first = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                com.vayunmathur.maps.util.PoiIndex.initialize(applicationContext)
+                com.vayunmathur.maps.util.PoiIndex.searchByName(
+                    query, near.latitude, near.longitude, limit = 1,
+                ).firstOrNull()
+            }.getOrNull()
+        }
+        return first?.let { GeoPoint(it.lon, it.lat) } to (first?.name ?: query)
     }
 
     /** First valid GPS fix within [timeoutMs], or null. (0,0) means "no fix yet". */

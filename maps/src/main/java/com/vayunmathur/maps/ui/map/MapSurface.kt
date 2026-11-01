@@ -211,28 +211,13 @@ fun MapSurface(
                 val offset = click.screen
                 // Renderer-drawn pins resolve through the GPU id buffer first: correct under tilt,
                 // and never a frame behind the basemap the way the old Compose hit-test was. On a
-                // miss (e.g. a pin pushed this very frame, before the id buffer caught up) fall back
-                // to the CPU hit-test over the same features, which is tilt-aware via Projection.
+                // miss fall back to the CPU hit-test over the same features.
                 val hit = markerHits[projection.pickMarker(offset.x.value, offset.y.value)]
-                    ?: run {
-                        val pins = pinFeatures(
-                            searchResults = searchResults,
-                            savedPlaces = savedPlaces,
-                            parkingSpot = parkingSpot,
-                            familyMembers = familyMembers,
-                        )
-                        val picker = MapFeaturePicker(
-                            source = FeatureSource { box, layerIds ->
-                                featuresInBox(
-                                    pins.filter { it.layerId in layerIds }.map { it.feature },
-                                    box,
-                                    projection,
-                                )
-                            },
-                            transitEnabled = transitEnabled,
-                        )
-                        picker.pickPin(offset)
-                    }
+                    ?: pickPinOnCpu(
+                        offset, projection,
+                        searchResults, savedPlaces, parkingSpot, familyMembers,
+                        transitEnabled,
+                    )
 
                 when (hit) {
                     MapHit.Parking -> {
@@ -303,7 +288,6 @@ fun MapSurface(
                 // pick, so this is populated whenever a placed label is under the finger;
                 // when nothing is, it falls through to reverse-geocode exactly like a
                 // blank tap.
-                // to reverse-geocode exactly like a blank tap.
                 // A slop box, not the bare point: a place label is a thin line of text, and a
                 // zero-size query only hit when the finger landed exactly on a glyph — so a tap
                 // "on" a city almost always fell through to reverse-geocode. The same

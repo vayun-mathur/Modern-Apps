@@ -242,6 +242,38 @@ internal fun pickVehicle(
 }
 
 /**
+ * CPU hit-test over the app's pins: the fallback when the GPU id buffer misses (e.g. a pin
+ * pushed this very frame, before the id buffer caught up). Tilt-aware via [projection].
+ */
+internal suspend fun pickPinOnCpu(
+    offset: androidx.compose.ui.unit.DpOffset,
+    projection: com.vayunmathur.library.map.Projection,
+    searchResults: List<SearchResult>,
+    savedPlaces: List<SavedPlace>,
+    parkingSpot: ParkingSpot?,
+    familyMembers: List<FamilyMember>,
+    transitEnabled: Boolean,
+): MapHit? {
+    val pins = pinFeatures(
+        searchResults = searchResults,
+        savedPlaces = savedPlaces,
+        parkingSpot = parkingSpot,
+        familyMembers = familyMembers,
+    )
+    val picker = MapFeaturePicker(
+        source = FeatureSource { box, layerIds ->
+            featuresInBox(
+                pins.filter { it.layerId in layerIds }.map { it.feature },
+                box,
+                projection,
+            )
+        },
+        transitEnabled = transitEnabled,
+    )
+    return picker.pickPin(offset)
+}
+
+/**
  * Open the trip sheet for the vehicle sprite under [offset]. True when a
  * sprite was hit (the caller returns from the tap); false to fall through to
  * ambient furniture. Replaces any place sheet rather than stacking it.

@@ -46,7 +46,6 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
         // WorkManager can cold-start the process without MainActivity's TLS
         // init; without it the pinned manifest fetch below has no trust store.
         NetworkClient.init(applicationContext, TrustBundle.FIRST_PARTY)
-        val ds = DataStoreUtils.getInstance(applicationContext)
         val root = applicationContext.getExternalFilesDir(null) ?: return Result.failure()
         recoverRebaseCrash(root)
         // No base, no overlay: the startup gate owns the full download.
@@ -60,8 +59,18 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
             Log.status(TAG, "manifest unparseable or too new; skipping")
             return Result.success()
         }
+        val ds = DataStoreUtils.getInstance(applicationContext)
         ds.setString(KEY_LAST_MANIFEST, text.take(MANIFEST_TEXT_CAP))
         ds.setLong(KEY_LAST_CHECK, System.currentTimeMillis())
+        return applyManifest(root, ds, manifest, text)
+    }
+
+    private suspend fun applyManifest(
+        root: File,
+        ds: DataStoreUtils,
+        manifest: MapOverlay.Manifest,
+        text: String,
+    ): Result {
         val pinned = MapOverlay.pinned(root)
         if (pinned != null && pinned.overlaySeq >= manifest.overlaySeq) {
             Log.status(TAG, "overlay seq ${manifest.overlaySeq} already applied")
@@ -80,31 +89,7 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
             return Result.success()
         }
         val missing = MapOverlay.missing(root, manifest)
-        if (missing.isEmpty()) {
-            MapOverlay.pin(root, text)
-            ds.setLong(KEY_APPLIED_SEQ, manifest.overlaySeq)
-            return Result.success()
-        }
-        ds.setLong(KEY_PENDING_BYTES, missing.sumOf { it.len })
-        val items = missing.map { seg ->
-            val file = MapOverlay.segmentFile(root, manifest.overlaySeq, seg)
-            val rel = root.toURI().relativize(file.toURI()).path
-            ModelDownloadItem(
-                url = seg.url,
-                fileName = rel,
-                description = "Map update ${manifest.overlaySeq} part ${seg.seq + 1}/${manifest.segments.size}",
-                sha256 = seg.sha256,
-            )
-        }
-        // Sequential, one segment at a time: peak transient is one segment.
-        var ok = true
-        for (item in items) {
-            if (!downloadModels(applicationContext, ds, listOf(item))) {
-                ok = false
-                break
-            }
-        }
-        if (!ok) return Result.retry()
+        if (missing.isNotEmpty() && !downloadSegments(root, ds, manifest, missing)) return Result.retry()
         if (!MapOverlay.isApplied(root, manifest)) {
             Log.status(TAG, "segments landed but failed verification")
             return Result.retry()
@@ -112,8 +97,29 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
         MapOverlay.pin(root, text)
         ds.setLong(KEY_APPLIED_SEQ, manifest.overlaySeq)
         ds.setLong(KEY_PENDING_BYTES, 0L)
-        Log.status(TAG, "overlay seq ${manifest.overlaySeq} stored (${items.size} segments)")
+        Log.status(TAG, "overlay seq ${manifest.overlaySeq} stored (${missing.size} segments)")
         return Result.success()
+    }
+
+    /** Download [missing] sequentially, one segment at a time: peak transient is one segment. */
+    private suspend fun downloadSegments(
+        root: File,
+        ds: DataStoreUtils,
+        manifest: MapOverlay.Manifest,
+        missing: List<MapOverlay.SegmentRef>,
+    ): Boolean {
+        ds.setLong(KEY_PENDING_BYTES, missing.sumOf { it.len })
+        return missing.all { seg ->
+            val file = MapOverlay.segmentFile(root, manifest.overlaySeq, seg)
+            val rel = root.toURI().relativize(file.toURI()).path
+            val item = ModelDownloadItem(
+                url = seg.url,
+                fileName = rel,
+                description = "Map update ${manifest.overlaySeq} part ${seg.seq + 1}/${manifest.segments.size}",
+                sha256 = seg.sha256,
+            )
+            downloadModels(applicationContext, ds, listOf(item))
+        }
     }
 
     private fun recoverRebaseCrash(root: File) {
@@ -138,7 +144,8 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
         }
         val id = readBaseBuildId(File(root, MapTileCache.BASEMAP_ARCHIVE_FILE)) ?: return false
         if (id != manifest.baseBuildId) {
-            Log.status(TAG, "base build ${id.toString(16)} != manifest ${manifest.baseBuildId.toString(16)}")
+            val radix = MapOverlay.BUILD_ID_RADIX
+            Log.status(TAG, "base build ${id.toString(radix)} != manifest ${manifest.baseBuildId.toString(radix)}")
             return false
         }
         return true
@@ -276,6 +283,10 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
     }
 }
 
+private const val HTTP_OK = 200
+private const val BUILD_ID_OFFSET = 16L
+private const val BUILD_ID_BYTES = 8
+
 /**
  * GET [url] as text over the pinned FIRST_PARTY bundle, or null on any
  * failure (caller retries). Pinned, not plain HTTPS: the manifest names
@@ -284,16 +295,16 @@ class MapOverlayWorker(context: Context, params: WorkerParameters) :
  */
 private suspend fun fetchText(url: String): String? = runCatching {
     val (status, body) = NetworkClient.performRequestBytes(url)
-    if (status != 200) return null
+    if (status != HTTP_OK) return null
     body.toString(Charsets.UTF_8)
 }.getOrNull()
 
 /** The base archive's header `build_id` (bytes 16..24 LE), or null. */
 private fun readBaseBuildId(file: File): Long? = runCatching {
-    if (!file.isFile || file.length() < 24) return null
+    if (!file.isFile || file.length() < BUILD_ID_OFFSET + BUILD_ID_BYTES) return null
     java.io.RandomAccessFile(file, "r").use { raf ->
-        raf.seek(16)
-        val buf = ByteArray(8)
+        raf.seek(BUILD_ID_OFFSET)
+        val buf = ByteArray(BUILD_ID_BYTES)
         raf.readFully(buf)
         java.nio.ByteBuffer.wrap(buf).order(java.nio.ByteOrder.LITTLE_ENDIAN).long
     }

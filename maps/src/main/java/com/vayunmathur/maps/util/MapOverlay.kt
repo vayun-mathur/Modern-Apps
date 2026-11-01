@@ -146,7 +146,10 @@ object MapOverlay {
      * Build ids are opaque equality tokens here (match the base or refuse).
      */
     fun parseBuildId(raw: String): Long =
-        raw.removePrefix("0x").removePrefix("0X").toLongOrNull(16) ?: 0L
+        raw.removePrefix("0x").removePrefix("0X").toLongOrNull(BUILD_ID_RADIX) ?: 0L
+
+    /** Build ids are hex in the manifest and in logs. */
+    const val BUILD_ID_RADIX = 16
 
     /** On-disk file for segment [seg] of overlay [overlaySeq] under [root]. */
     fun segmentFile(root: File, overlaySeq: Long, seg: SegmentRef): File =

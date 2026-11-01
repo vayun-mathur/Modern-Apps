@@ -206,14 +206,14 @@ class NavigationService : Service() {
         val destLabel = NavigationSessionManager.session.value.destinationName
             ?: getString(R.string.nav_default_destination)
 
-        val (title, content, progressPercent, chipText, smallIcon) = describe(state, mode, destLabel)
+        val info = describe(state, mode, destLabel)
         val isOngoing = state !is NavigationSessionManager.NavState.Arrived &&
             state !is NavigationSessionManager.NavState.Failed
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(content)
-            .setSmallIcon(smallIcon)
+            .setContentTitle(info.title)
+            .setContentText(info.content)
+            .setSmallIcon(info.smallIcon)
             .setOngoing(isOngoing)
             .setSilent(true)
             .setOnlyAlertOnce(true)
@@ -243,10 +243,10 @@ class NavigationService : Service() {
             }
             builder.setStyle(
                 NotificationCompat.ProgressStyle()
-                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(100)))
+                    .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(FULL_PROGRESS_PERCENT)))
                     .setProgress(percent),
             )
-            if (chipText != null) builder.setShortCriticalText(chipText)
+            info.chipText?.let { builder.setShortCriticalText(it) }
             if (isOngoing && state !is NavigationSessionManager.NavState.Failed &&
                 LiveUpdateSupport.canPostPromoted(this)
             ) {
@@ -254,7 +254,7 @@ class NavigationService : Service() {
                 builder.setRequestPromotedOngoing(true)
             }
         } else {
-            progressPercent?.let { p -> builder.setProgress(FULL_PROGRESS_PERCENT, p, false) }
+            info.progressPercent?.let { p -> builder.setProgress(FULL_PROGRESS_PERCENT, p, false) }
         }
         return builder.build()
     }
