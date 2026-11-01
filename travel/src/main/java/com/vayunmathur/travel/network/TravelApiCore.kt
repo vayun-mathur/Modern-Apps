@@ -15,6 +15,23 @@ internal const val MAX_ERROR_SNIPPET_LENGTH = 300
 
 internal val travelJson = Json { ignoreUnknownKeys = true }
 
+/**
+ * Request bodies: every field is sent (the server requires e.g. `title` and
+ * `email` even when empty), nulls are omitted.
+ */
+internal val travelRequestJson = Json {
+    encodeDefaults = true
+    explicitNulls = false
+}
+
+/**
+ * JSON text for a POST body; null for "no body" (an empty string). The shared
+ * network client sends non-String bodies via `toString()`, so DTOs must be
+ * encoded here.
+ */
+internal inline fun <reified B> travelRequestBody(body: B): String? =
+    if (body is String) body.ifEmpty { null } else travelRequestJson.encodeToString(body)
+
 internal fun travelEnc(s: String): String = URLEncoder.encode(s, "UTF-8")
 
 /** Fallback text when an error body carries no usable message. */
@@ -85,12 +102,12 @@ internal suspend inline fun <reified T> travelGetJson(url: String, fallback: Str
 }
 
 /** POST [body] to [url] and decode the JSON result, surfacing server errors. */
-internal suspend inline fun <reified T> travelPostJson(url: String, body: Any, fallback: String): T {
+internal suspend inline fun <reified B, reified T> travelPostJson(url: String, body: B, fallback: String): T {
     val res = NetworkClient.performRequest(
         url = url,
         method = "POST",
         headers = mapOf("Content-Type" to "application/json"),
-        body = if (body is String && body.isEmpty()) null else body,
+        body = travelRequestBody(body),
     )
     if (!res.isSuccess) throw travelHttpError(res.status, res.body, fallback)
     return travelJson.decodeFromString(res.body)

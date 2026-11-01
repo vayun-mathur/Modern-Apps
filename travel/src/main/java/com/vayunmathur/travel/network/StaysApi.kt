@@ -66,12 +66,12 @@ object StaysApi {
 
     private const val MAX_ERROR_SNIPPET_LENGTH = 300
 
-    private suspend inline fun <reified T> postJson(url: String, body: Any, fallback: String): T {
+    private suspend inline fun <reified B, reified T> postJson(url: String, body: B, fallback: String): T {
         val res = NetworkClient.performRequest(
             url = url,
             method = "POST",
             headers = mapOf("Content-Type" to "application/json"),
-            body = if (body is String && body.isEmpty()) null else body,
+            body = travelRequestBody(body),
         )
         if (!res.isSuccess) throw travelHttpError(res.status, res.body, fallback)
         return json.decodeFromString(res.body)
