@@ -17,8 +17,8 @@ import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.DetailSection
 import com.vayunmathur.library.ui.MaterialTheme
+import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.shop.R
 import com.vayunmathur.shop.data.CheckoutPhase
@@ -79,8 +79,16 @@ fun CheckoutScreen(viewModel: ShopViewModel, onBack: () -> Unit) {
                             else Text(if (checkout == null) "Create review session" else "Update review session")
                         }
                         val merchantSiteUrl = MerchantUrls.domain(key.second)?.let { "https://$it" }
-                        if (checkout?.continueUrl?.let(MerchantUrls::httpsUrl) == null && merchantSiteUrl != null) {
-                            TextButton(onClick = { openContinueUrl(context, merchantSiteUrl) }) { Text("Open merchant website") }
+                        val checkoutUrl = checkout?.continueUrl?.let(MerchantUrls::httpsUrl)
+                        val cartUrl = MerchantUrls.shopifyCartUrl(key.second, lines.map { it.variantId to it.quantity })
+                        (checkoutUrl ?: cartUrl ?: merchantSiteUrl)?.let { url ->
+                            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = { openContinueUrl(context, url) }) {
+                                Text(when (url) {
+                                    checkoutUrl -> "Continue checkout on merchant website"
+                                    cartUrl -> "Open cart on merchant website"
+                                    else -> "Open merchant website"
+                                })
+                            }
                         }
                     }
                 }

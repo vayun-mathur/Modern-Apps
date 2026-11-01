@@ -2,18 +2,15 @@ package com.vayunmathur.shop.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.shop.data.CheckoutInputs
 import com.vayunmathur.shop.data.NativeCheckoutState
-import com.vayunmathur.shop.domain.MerchantUrls
 import com.vayunmathur.shop.domain.MoneyFormat
 
 /** Pure session presentation shared by the live checkout and deterministic screenshot fixtures. */
@@ -62,9 +59,6 @@ internal fun CheckoutReviewContent(
             }
         }
         if (checkout.status == "ready_for_complete") Text("The merchant reports payment readiness. Pay on its website to place the order.", style = MaterialTheme.typography.bodySmall)
-        MerchantUrls.httpsUrl(checkout.continueUrl)?.let { payUrl ->
-            Button(onClick = { onOpenUrl(payUrl) }, modifier = Modifier.fillMaxWidth()) { Text("Pay on merchant website") }
-        }
         Text("Pending session only. Check purchase and payment status on the merchant website.", style = MaterialTheme.typography.bodySmall)
         checkout.review.links.forEach { link ->
             TextButton(onClick = { onOpenUrl(link.url) }) { Text(link.title.ifBlank { link.type }) }

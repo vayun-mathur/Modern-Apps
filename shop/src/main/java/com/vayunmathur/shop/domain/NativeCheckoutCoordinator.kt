@@ -99,9 +99,9 @@ internal class NativeCheckoutCoordinator(
             mutationStarted = true
             val checkout = (if (previous == null) gateway.create(shop, lines.toList(), sentInputs, intent)
                 else gateway.update(shop, previous.checkoutId, lines.toList(), sentInputs, intent)).getOrElse {
-                val unsupported = (it as? ShopBackendException)?.error is UcpError.Unsupported
-                publish(key, state.copy(phase = if (unsupported) CheckoutPhase.BrowserRequired else CheckoutPhase.Uncertain,
-                    message = if (unsupported) "These requirements need the merchant website." else "The request may have reached the merchant. Do not retry; check the session or use its website."))
+                val unsupported = (it as? ShopBackendException)?.error as? UcpError.Unsupported
+                publish(key, state.copy(phase = if (unsupported != null) CheckoutPhase.BrowserRequired else CheckoutPhase.Uncertain,
+                    message = unsupported?.reason ?: "The request may have reached the merchant. Do not retry; check the session or use its website."))
                 return
             }
             if (previous != null && checkout.checkoutId != previous.checkoutId) {
