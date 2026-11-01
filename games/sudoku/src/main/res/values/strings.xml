@@ -3,18 +3,16 @@
     <!-- Manifest / HomeScreen TopAppBar: App name. Noun, proper -->
     <string name="app_name" translatable="false">Sudoku</string>
 
-    <!-- GameConfigDialog: Title of the size and difficulty picker dialog. Verb phrase -->
-    <string name="new_puzzle">New Puzzle</string>
-    <!-- GameConfigDialog: Label above the board size segmented buttons. Noun -->
+    <!-- HomeScreen: Label above the board size segmented buttons. Noun -->
     <string name="board_size">Board size</string>
-    <!-- GameConfigDialog: Label above the difficulty segmented buttons. Noun -->
+    <!-- HomeScreen: Label above the difficulty segmented buttons. Noun -->
     <string name="difficulty">Difficulty</string>
 
-    <!-- GameConfigDialog: Board size option, a 6 by 6 grid of 2x3 boxes. Noun, dimensions -->
+    <!-- HomeScreen: Board size option, a 6 by 6 grid of 2x3 boxes. Noun, dimensions -->
     <string name="size_six" translatable="false">6x6</string>
-    <!-- GameConfigDialog: Board size option, a 9 by 9 grid of 3x3 boxes. Noun, dimensions -->
+    <!-- HomeScreen: Board size option, a 9 by 9 grid of 3x3 boxes. Noun, dimensions -->
     <string name="size_nine" translatable="false">9x9</string>
-    <!-- GameConfigDialog: Board size option, a 12 by 12 grid of 3x4 boxes. Noun, dimensions -->
+    <!-- HomeScreen: Board size option, a 12 by 12 grid of 3x4 boxes. Noun, dimensions -->
     <string name="size_twelve" translatable="false">12x12</string>
 
     <!-- HomeScreen: Title of the answer-mode setting row. Noun phrase -->
@@ -30,7 +28,7 @@
     <!-- GameOverOverlay: Starts a fresh puzzle with the same size and difficulty. Verb phrase -->
     <string name="try_again">Try Again</string>
 
-    <!-- GameConfigDialog: Hardest difficulty, fewest clues given. Adjective -->
+    <!-- HomeScreen: Hardest difficulty, fewest clues given. Adjective -->
     <string name="difficulty_expert">Expert</string>
 
     <!-- GameBoardScreen action bar: Toggles whether taps write pencil marks. Noun used as a label -->

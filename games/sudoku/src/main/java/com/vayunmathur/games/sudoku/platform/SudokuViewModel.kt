@@ -84,21 +84,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
      * Deals a new puzzle for [config], replacing anything in progress.
      *
      * Generation is dispatched to [Dispatchers.Default] and the board is blanked first, so the
-     * screen shows a spinner instead of freezing while a 9x9 Expert is dug. The game snapshots the
-     * current answer-mode preference rather than observing it, so the rules it is dealt with are
-     * the rules it keeps even if the switch moves mid-game.
+     * screen shows a spinner instead of freezing while a 9x9 Expert is dug.
      */
     fun newGame(config: GameConfig) {
-        newGame(config, answerMode.value)
-    }
-
-    /**
-     * Deals a new puzzle with an explicit ruleset, for previews and tests.
-     *
-     * The no-flag overload above is the one the screens call; this one lets a caller deal an answer
-     * game without touching the persisted preference.
-     */
-    fun newGame(config: GameConfig, answerMode: Boolean) {
         history.clear()
         madeMistake = false
         rejectionAttempt = 0
@@ -108,7 +96,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 SudokuGenerator.generate(config.size, config.difficulty, Random.Default)
             }
             statsRepository.recordGamePlayed(config.size, config.difficulty)
-            _uiState.value = SudokuUiState(game = SudokuGameState.from(puzzle, answerMode))
+            _uiState.value = SudokuUiState(game = SudokuGameState.from(puzzle, config.answerMode))
         }
     }
 

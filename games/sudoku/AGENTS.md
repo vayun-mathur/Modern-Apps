@@ -13,7 +13,7 @@ _Install: ./install games/sudoku (dev by default)._
 
 ## Overview
 **Purpose:** Classic sudoku — 6×6/9×9/12×12 generated boards, exactly one solution each; pencil marks, hints, undo; illegal digits rejected. 100% offline.
-**Game shape:** `ui/` board + home + config → `platform/SudokuViewModel` → `domain/` generator + solver → `data/` models + stats; achievements → `:sdk:games` → hub.
+**Game shape:** `ui/` board + home → `platform/SudokuViewModel` → `domain/` generator + solver → `data/` models + stats; achievements → `:sdk:games` → hub.
 **Entry points:** `Route` → `MainActivity.kt` → `Navigation.kt` → `ui/GameBoardScreen.kt` → `platform/SudokuViewModel.kt` → `domain/SudokuGenerator.kt`.
 **Gotchas:** Unique-solution guarantee is the product — generator changes must pass the solver's uniqueness check.
 
@@ -32,14 +32,13 @@ _Install: ./install games/sudoku (dev by default)._
 - com/vayunmathur/games/sudoku/platform/SudokuUiContract.kt
 - com/vayunmathur/games/sudoku/platform/SudokuAchievementsManager.kt
 - com/vayunmathur/games/sudoku/platform/AppBackupAgent.kt
-### ui/ — board + home + config
+### ui/ — board + home
 - com/vayunmathur/games/sudoku/ui/GameBoardScreen.kt
 - com/vayunmathur/games/sudoku/ui/GameScreen.kt
 - com/vayunmathur/games/sudoku/ui/HomeScreen.kt
 - com/vayunmathur/games/sudoku/ui/DisplayNames.kt
 - com/vayunmathur/games/sudoku/ui/components/NumberPad.kt
 - com/vayunmathur/games/sudoku/ui/components/SudokuGrid.kt
-- com/vayunmathur/games/sudoku/ui/dialogs/GameConfigDialog.kt
 
 ## Verify (this module only)
 ```

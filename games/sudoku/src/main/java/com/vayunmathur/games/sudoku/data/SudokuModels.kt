@@ -74,6 +74,7 @@ enum class Difficulty(val clueFraction: Double) {
 data class GameConfig(
     val size: BoardSize = BoardSize.NINE,
     val difficulty: Difficulty = Difficulty.MEDIUM,
+    val answerMode: Boolean = false,
 ) {
     /** Stats key component, so records are tracked per board shape and difficulty. */
     val variant: String get() = "${size.name}_${difficulty.name}"
