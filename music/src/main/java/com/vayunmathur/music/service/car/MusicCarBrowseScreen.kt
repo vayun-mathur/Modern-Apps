@@ -265,7 +265,7 @@ class MusicCarBrowseScreen(
             row.build()
         }
 
-    /** Single FAB: Play-all (media apps get max 1 on API 9+ hosts). */
+    /** Single FAB: Play-all. Media FABs must be icon-only (0 custom titles allowed). */
     @Suppress("DEPRECATION")
     private fun playAllAction(): Action? {
         val items = state.tree.children(nodeId)
@@ -273,7 +273,7 @@ class MusicCarBrowseScreen(
             return null
         }
         return Action.Builder()
-            .setTitle("Play")
+            .setIcon(CarIcon.Builder(IconCompat.createWithResource(carContext, R.drawable.ic_car_play)).build())
             .setOnClickListener { playAll(items.map { it.mediaId }) }
             .build()
     }
