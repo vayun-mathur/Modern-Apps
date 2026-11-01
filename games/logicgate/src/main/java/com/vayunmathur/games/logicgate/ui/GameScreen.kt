@@ -45,6 +45,7 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.rememberHaptics
 import kotlin.math.roundToInt
 
 /**
@@ -65,6 +66,7 @@ fun GameScreen(
     val number = LevelRegistry.indexOf(state.level.id) + 1
     var trayDrag by remember { mutableStateOf<TrayDrag?>(null) }
     val trash = remember { TrashZone() }
+    val haptics = rememberHaptics()
     var rootOrigin by remember { mutableStateOf(Offset.Zero) }
     var canvasBounds by remember { mutableStateOf(Rect.Zero) }
 
@@ -108,7 +110,10 @@ fun GameScreen(
                         ChipTray(
                             chips = state.chips,
                             onTap = { placeNear(it, cameraState.centerWorld()) },
-                            onDragUpdate = { trayDrag = it },
+                            onDragUpdate = { drag ->
+                                trayDrag = drag
+                                if (trash.carry(drag?.root)) haptics.tick()
+                            },
                             onDrop = { drop ->
                                 if (canvasBounds.contains(drop.root)) {
                                     placeNear(drop.chipId, cameraState.camera.toWorld(drop.root - canvasBounds.topLeft))

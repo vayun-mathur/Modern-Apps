@@ -9,7 +9,8 @@ import androidx.compose.ui.geometry.Rect
 
 /**
  * The area under the board that a dragged gate can be dropped on to delete it. [armed] while a
- * gate is being carried, [hovering] while it is over the zone.
+ * gate (or a chip just pulled from the tray) is being carried, [hovering] while it is over the
+ * zone, where letting go places nothing.
  */
 @Stable
 class TrashZone {
@@ -23,4 +24,16 @@ class TrashZone {
     var hovering by mutableStateOf(false)
 
     fun contains(canvasPoint: Offset): Boolean = bounds.contains(canvasPoint + canvasOrigin)
+
+    /**
+     * Tracks a chip dragged out of the tray at [root] (root coordinates; null when the drag ends).
+     * Returns true when it has just moved back over the zone.
+     */
+    fun carry(root: Offset?): Boolean {
+        val over = root != null && bounds.contains(root)
+        val entered = over && !hovering && armed
+        armed = root != null
+        hovering = over
+        return entered
+    }
 }

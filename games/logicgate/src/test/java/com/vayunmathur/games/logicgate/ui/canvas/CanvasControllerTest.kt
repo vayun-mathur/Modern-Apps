@@ -64,6 +64,21 @@ class CanvasControllerTest {
     }
 
     @Test
+    fun aChipPulledFromTheTrayShowsTheTrashUntilItLeavesTheBottomArea() {
+        val trash = TrashZone().apply { bounds = Rect(0f, trayTop, 2000f, 1400f) }
+        assertFalse(trash.carry(Offset(300f, trayTop + 50f)), "picking up is not re-entering")
+        assertTrue(trash.armed)
+        assertTrue(trash.hovering)
+        trash.carry(Offset(300f, 400f))
+        assertTrue(trash.armed)
+        assertFalse(trash.hovering)
+        assertTrue(trash.carry(Offset(300f, trayTop + 10f)), "coming back over the tray")
+        trash.carry(null)
+        assertFalse(trash.armed)
+        assertFalse(trash.hovering)
+    }
+
+    @Test
     fun levelPinsCannotBeThrownAway() {
         val (controller, actions, circuit) = setup()
         val input = circuit.nodes.first { it is LevelInput }.id
