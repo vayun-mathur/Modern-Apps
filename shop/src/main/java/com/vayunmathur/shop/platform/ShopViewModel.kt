@@ -8,7 +8,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vayunmathur.shop.Route
 import com.vayunmathur.shop.data.CheckoutInputs
-import com.vayunmathur.shop.data.CheckoutPhase
 import com.vayunmathur.shop.data.NativeCheckoutState
 import com.vayunmathur.shop.domain.NativeCheckoutCoordinator
 import com.vayunmathur.shop.domain.PendingCheckoutSink
@@ -110,31 +109,23 @@ class ShopViewModel(
         val sink = PendingCheckoutSink { OrderStore.add(context, it) }
         viewModelScope.launch {
             AppInit.awaitReady()
-            val created = submitFromProfile(platformId, shop, lines, sink) == null
-            // A new session can't carry fulfillment, so the saved address follows as its own write
-            // only after the create succeeded. Nothing is replayed if either write is uncertain.
-            val state = nativeCheckout.snapshot.firstOrNull { it.platformId == platformId && it.shopDomain == shop }
-            if (created && state?.phase == CheckoutPhase.Reviewing && state.checkout != null) {
-                submitFromProfile(platformId, shop, lines, sink)
-            }
+            submitFromProfile(platformId, shop, lines, sink)
             nativeCheckout.cartChanged(cart)
             orders = OrderStore.getAll(context)
         }
     }
 
-    /** Returns the session that existed before this write, if any. */
     private suspend fun submitFromProfile(
         platformId: String,
         shop: String,
         lines: List<CartLine>,
         sink: PendingCheckoutSink,
-    ): UcpCheckout? {
+    ) {
         val state = nativeCheckout.snapshot.firstOrNull { it.platformId == platformId && it.shopDomain == shop }
             ?: NativeCheckoutState(platformId, shop)
-        val inputs = checkoutInputs(state) ?: return state.checkout
+        val inputs = checkoutInputs(state) ?: return
         nativeCheckout.edit(platformId, shop, inputs)
         nativeCheckout.submit(platformId, shop, lines, sink)
-        return state.checkout
     }
 
     fun updateQuery(value: String) { query = value }

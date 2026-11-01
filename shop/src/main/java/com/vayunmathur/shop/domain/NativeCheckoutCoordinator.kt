@@ -94,7 +94,9 @@ internal class NativeCheckoutCoordinator(
             publish(key, state.copy(phase = if (previous == null) CheckoutPhase.Preparing else CheckoutPhase.Updating, message = null))
             // The server builds the exact dated projection and owns the idempotency
             // ledger: a write is attempted exactly once and never auto-retried.
-            val sentInputs = if (previous == null) state.inputs.copy(street = "", extendedAddress = "", city = "", region = "", country = "", postalCode = "", options = emptyMap(), shippingRequested = false) else state.inputs
+            // The first write carries the whole profile (name, contact and address); only
+            // shipping-option choices wait until the merchant has offered them.
+            val sentInputs = if (previous == null) state.inputs.copy(options = emptyMap()) else state.inputs
             val intent = newIntent()
             mutationStarted = true
             val checkout = (if (previous == null) gateway.create(shop, lines.toList(), sentInputs, intent)

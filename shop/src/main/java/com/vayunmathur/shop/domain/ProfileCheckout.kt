@@ -12,11 +12,9 @@ object ProfileCheckout {
             checkout.messages.any { it.code == "delivery_address_required" }
         )
 
-    /** The address is only sent once the merchant has issued shipping lines it can attach to. */
+    /** Every write carries the full saved profile, including the delivery address when one is saved. */
     fun inputs(profile: ShopProfile, state: NativeCheckoutState): CheckoutInputs {
-        val shipping = profile.hasAddress && needsDeliveryAddress(state.checkout)
         val inputs = profile.checkoutInputs()
-        return if (shipping) inputs.copy(shippingRequested = true, options = state.inputs.options)
-        else inputs.copy(street = "", extendedAddress = "", city = "", region = "", country = "", postalCode = "")
+        return if (profile.hasAddress) inputs.copy(shippingRequested = true, options = state.inputs.options) else inputs
     }
 }

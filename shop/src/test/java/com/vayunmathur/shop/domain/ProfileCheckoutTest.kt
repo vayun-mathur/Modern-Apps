@@ -27,11 +27,14 @@ class ProfileCheckoutTest {
         assertFalse(withAddress.toString().contains("Ada"))
     }
 
-    @Test fun createNeverCarriesAddress() {
+    @Test fun createCarriesTheWholeProfile() {
         val inputs = ProfileCheckout.inputs(withAddress, NativeCheckoutState("generic", "shop.example"))
         assertEquals("Ada", inputs.firstName)
-        assertFalse(inputs.hasAddress)
-        assertFalse(inputs.shippingRequested)
+        assertEquals("Lovelace", inputs.lastName)
+        assertEquals("1 Main St", inputs.street)
+        assertEquals("78701", inputs.postalCode)
+        assertTrue(inputs.shippingRequested)
+        assertNull(inputs.validationError())
     }
 
     @Test fun deliveryAddressRequiredSendsSavedAddress() {
@@ -45,8 +48,7 @@ class ProfileCheckoutTest {
         assertNull(inputs.validationError())
     }
 
-    @Test fun addressWithheldWhenMerchantDoesNotShipOrProfileHasNone() {
-        assertFalse(ProfileCheckout.inputs(withAddress, NativeCheckoutState("generic", "shop.example", checkout = noShipping)).hasAddress)
+    @Test fun noAddressSentWhenProfileHasNone() {
         val shipping = NativeCheckoutState("generic", "shop.example", checkout = NativeCheckoutFixtures.checkout())
         assertTrue(ProfileCheckout.needsDeliveryAddress(shipping.checkout))
         val inputs = ProfileCheckout.inputs(contact, shipping)
