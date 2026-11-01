@@ -6,6 +6,7 @@
 #   ./dhu                                # full loop, log to analysis/dhu-<timestamp>.log
 #   ./dhu --no-log                       # skip the logcat capture (DHU only)
 #   ./dhu --device-id 44050DLJH001PC     # target a different device
+#                                        # (default: the Pixel 8, else the first non-emulator device)
 #
 # Notes:
 #   DHU is interactive: piping its stdout closes stdin and it exits, so it
@@ -14,13 +15,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEVICE_ID="44050DLJH001PC"
+DEVICE_ID=""
 NO_LOG=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help|help)
-      sed -n '2,/^set -euo/p' "$SCRIPT_DIR/dhu" | sed 's/^# \{0,1\}//' | head -n -1; exit 0;;
+      sed -n '2,/^set -euo/p' "$SCRIPT_DIR/dhu" | sed 's/^# \{0,1\}//' | sed '$d'; exit 0;;
     --no-log|--nolog|-NoLog) NO_LOG=1; shift;;
     --device-id|-DeviceId) DEVICE_ID="${2:?--device-id needs a value}"; shift 2;;
     --device-id=*) DEVICE_ID="${1#--device-id=}"; shift;;
@@ -40,6 +41,15 @@ if [[ -z "$DHU_EXE" ]]; then
 fi
 
 # The phone listens; the DHU reaches it through the forward.
+if [[ -z "$DEVICE_ID" ]]; then
+  attached="$(adb devices | awk 'NR>1 && $2=="device" && $1 !~ /^emulator/ {print $1}')"
+  if grep -qx "44050DLJH001PC" <<<"$attached"; then
+    DEVICE_ID="44050DLJH001PC"
+  else
+    DEVICE_ID="$(head -n1 <<<"$attached")"
+  fi
+  [[ -n "$DEVICE_ID" ]] || { echo "Error: no physical device attached." >&2; exit 1; }
+fi
 adb -s "$DEVICE_ID" forward tcp:5277 tcp:5277
 echo "forward tcp:5277 -> $DEVICE_ID"
 
@@ -59,6 +69,7 @@ if [[ "${OS:-}" == "Windows_NT" ]]; then
   # git-bash: `start` detaches the GUI like Start-Process did.
   start "" "$DHU_EXE"
 else
-  nohup "$DHU_EXE" >/dev/null 2>&1 &
+  # DHU exits on stdin EOF, and nohup points stdin at an unreadable file; keep a pipe open.
+  (cd "$(dirname "$DHU_EXE")" && nohup sh -c 'tail -f /dev/null | "$0"' "$DHU_EXE" >/dev/null 2>&1 &)
 fi
 echo "DHU launched (detached)"

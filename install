@@ -515,7 +515,7 @@ built_apk() {
 # on-device versionCode for a package, empty when not installed.
 device_version_code() {
   "$ADB_BIN" -s "$TARGET_SERIAL" shell pm list packages --show-versioncode "$1" 2>/dev/null \
-    | sed -nE 's/^package:\S+[[:space:]]+versionCode:([0-9]+).*/\1/p' | head -1
+    | sed -nE "s/^package:${1//./\\.}[[:space:]]+versionCode:([0-9]+).*/\\1/p" | head -1
 }
 
 # exit 0 when the package is installed as a system app.
