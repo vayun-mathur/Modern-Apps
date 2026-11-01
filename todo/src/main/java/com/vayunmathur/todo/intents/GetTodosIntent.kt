@@ -1,5 +1,6 @@
 package com.vayunmathur.todo.intents
 
+import com.vayunmathur.todo.data.getLists
 import com.vayunmathur.library.intents.todo.GetTodosQuery
 import com.vayunmathur.library.intents.todo.TodoData
 import com.vayunmathur.library.util.AssistantIntent
@@ -22,9 +23,9 @@ class GetTodosIntent : AssistantIntent<GetTodosQuery, List<TodoData>>(
             "all" -> TodoView.All
             else -> TodoView.Today
         }
-        val model = TodoQuery.build(
-            TodoQuery.Input(repo.getAll(), lists, view, now = System.currentTimeMillis(), zone = TimeZone.currentSystemDefault()),
-        )
+        val now = System.currentTimeMillis()
+        val zone = TimeZone.currentSystemDefault()
+        val model = TodoQuery.build(TodoQuery.Input(repo.getAll(), lists, view, now = now, zone = zone))
         return model.groups.flatMap { it.rows }.take(MAX_RESULTS).map { row ->
             val t = row.todo
             TodoData(t.syncId, t.title, t.notes, t.dueAt, t.done, t.priority, row.list?.name)

@@ -1,5 +1,8 @@
 package com.vayunmathur.todo.platform
 
+import com.vayunmathur.todo.data.getLists
+import com.vayunmathur.todo.data.nextListPosition
+import com.vayunmathur.todo.data.upsertList
 import android.content.Context
 import android.net.Uri
 import com.vayunmathur.todo.data.Todo
@@ -31,12 +34,12 @@ class TodoDataTransfer(private val context: Context, private val repo: TodoRepos
 
     /** Reads a file and picks the format from its content. */
     fun read(uri: Uri): List<ImportedTask> {
-        val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }.orEmpty()
-            .removePrefix("\uFEFF")
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+        val text = bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF")
         val zone = TimeZone.currentSystemDefault()
         return when {
             text.contains("BEGIN:VCALENDAR", ignoreCase = true) -> VTodo.parse(text, zone)
-            text.lineSequence().firstOrNull()?.startsWith("Title,", ignoreCase = true) == true -> TodoCsv.parse(text, zone)
+            text.lineSequence().firstOrNull().orEmpty().startsWith("Title,", true) -> TodoCsv.parse(text, zone)
             else -> TodoTxt.parse(text, zone)
         }.filter { it.title.isNotBlank() }
     }

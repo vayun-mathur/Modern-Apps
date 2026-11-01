@@ -1,5 +1,20 @@
 package com.vayunmathur.todo.sync
 
+import com.vayunmathur.todo.data.getListBySyncId
+import com.vayunmathur.todo.data.getUpdatedSince
+import com.vayunmathur.todo.data.upsertRaw
+import com.vayunmathur.todo.data.tombstoneBySyncId
+import com.vayunmathur.todo.data.purge
+import com.vayunmathur.todo.data.getListsUpdatedSince
+import com.vayunmathur.todo.data.upsertListRaw
+import com.vayunmathur.todo.data.tombstoneListBySyncId
+import com.vayunmathur.todo.data.purgeLists
+import com.vayunmathur.todo.data.getTodoSnapshots
+import com.vayunmathur.todo.data.getListSnapshots
+import com.vayunmathur.todo.data.upsertSnapshot
+import com.vayunmathur.todo.data.deleteSnapshotBySyncId
+import com.vayunmathur.todo.data.deleteTodoSnapshots
+import com.vayunmathur.todo.data.deleteListSnapshots
 import android.content.ContentProvider
 import android.content.ContentProviderOperation
 import android.content.ContentProviderResult
@@ -142,7 +157,9 @@ class RelayTodoProvider : ContentProvider() {
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
         val v = values ?: return null
-        return guarded("insert", uri, null) { repo -> handleUpsert(repo, uri, v)?.let { Uri.withAppendedPath(uri, it) } }
+        return guarded("insert", uri, null) { repo ->
+            handleUpsert(repo, uri, v)?.let { Uri.withAppendedPath(uri, it) }
+        }
     }
 
     override fun bulkInsert(uri: Uri, values: Array<out ContentValues>): Int =
@@ -207,7 +224,8 @@ class RelayTodoProvider : ContentProvider() {
         selection: String?,
         selectionArgs: Array<out String>?,
     ): Int {
-        val syncId = selectionArgs?.firstOrNull()?.takeIf { selection != null || uriMatcher.match(uri) == CODE_SNAPSHOTS }
+        val bySelection = selection != null || uriMatcher.match(uri) == CODE_SNAPSHOTS
+        val syncId = selectionArgs?.firstOrNull()?.takeIf { bySelection }
         return when (uriMatcher.match(uri)) {
             CODE_TODOS_PURGE -> purgeTodos(repo)
             CODE_LISTS_PURGE -> purgeLists(repo)

@@ -107,7 +107,7 @@ private fun PriorityChip(priority: Int, onSet: (Int) -> Unit) {
             leadingIcon = { IconFlag(Modifier.size(18.dp), tint = priorityColor(priority) ?: Color.Unspecified) },
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            (1..Todo.PRIORITY_MAX).forEach { p ->
+            for (p in 1..Todo.PRIORITY_MAX) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.priority_n, p)) },
                     leadingIcon = { IconFlag(tint = priorityColor(p) ?: Color.Unspecified) },

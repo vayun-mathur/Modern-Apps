@@ -1,5 +1,6 @@
 package com.vayunmathur.todo.notifications
 
+import com.vayunmathur.todo.data.getListBySyncId
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -18,7 +19,8 @@ class ReminderReceiver : BroadcastReceiver() {
         repo.appScope.launch {
             try {
                 when (intent.action) {
-                    ReminderScheduler.ACTION_REMINDER -> remind(app, repo, intent.getStringExtra(ReminderScheduler.EXTRA_SYNC_ID))
+                    ReminderScheduler.ACTION_REMINDER ->
+                        remind(app, repo, intent.getStringExtra(ReminderScheduler.EXTRA_SYNC_ID))
                     DigestScheduler.ACTION_DIGEST -> digest(app, repo)
                 }
             } finally {
@@ -32,7 +34,8 @@ class ReminderReceiver : BroadcastReceiver() {
         val at = todo.reminderAt ?: return
         // A reminder that moved later since this alarm was set is re-armed by reconcile.
         if (todo.done || todo.deleted || at > System.currentTimeMillis() + EARLY_SLACK_MS) return
-        val channelName = todo.listSyncId?.let { repo.getListBySyncId(it)?.name } ?: context.getString(com.vayunmathur.todo.R.string.view_inbox)
+        val channelName = todo.listSyncId?.let { repo.getListBySyncId(it)?.name }
+            ?: context.getString(com.vayunmathur.todo.R.string.view_inbox)
         ReminderNotifications.postReminder(context, todo, channelName)
     }
 
@@ -42,7 +45,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val zone = TimeZone.currentSystemDefault()
         val open = repo.getAll().filter { !it.done && it.parentSyncId == null }
         val overdue = open.count { DueBuckets.isOverdue(it, now, zone) }
-        val today = open.count { it.dueAt != null && !DueBuckets.isOverdue(it, now, zone) && DueBuckets.isDueByToday(it, now, zone) }
+        val today = open.count { DueBuckets.isDueByToday(it, now, zone) } - overdue
         if (today + overdue > 0) ReminderNotifications.postDigest(context, today, overdue)
         DigestScheduler.schedule(context, settings.digestEnabledNow(), settings.digestMinutesNow(), now + 1)
     }

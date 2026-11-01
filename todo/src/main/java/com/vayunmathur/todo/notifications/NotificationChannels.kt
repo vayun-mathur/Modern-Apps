@@ -17,21 +17,23 @@ object NotificationChannels {
     private const val LIST_PREFIX = "todo_list_"
     const val INBOX = "todo_inbox"
     const val DIGEST = "todo_digest"
+    private const val HIGH = NotificationManager.IMPORTANCE_HIGH
+    private const val DEFAULT = NotificationManager.IMPORTANCE_DEFAULT
 
     fun forList(listSyncId: String?): String = listSyncId?.let { LIST_PREFIX + it } ?: INBOX
 
     fun ensureInbox(context: Context) =
-        context.ensureNotificationChannel(INBOX, context.getString(R.string.view_inbox), NotificationManager.IMPORTANCE_HIGH)
+        context.ensureNotificationChannel(INBOX, context.getString(R.string.view_inbox), HIGH)
 
     fun ensureDigest(context: Context) =
-        context.ensureNotificationChannel(DIGEST, context.getString(R.string.digest_channel), NotificationManager.IMPORTANCE_DEFAULT)
+        context.ensureNotificationChannel(DIGEST, context.getString(R.string.digest_channel), DEFAULT)
 
     /** Creates/renames a channel per list and removes channels of deleted lists. */
     fun syncLists(context: Context, lists: List<TodoList>) {
         ensureInbox(context)
         val wanted = lists.associateBy { forList(it.syncId) }
         wanted.forEach { (id, list) ->
-            context.ensureNotificationChannel(id, list.name.ifBlank { context.getString(R.string.untitled) }, NotificationManager.IMPORTANCE_HIGH)
+            context.ensureNotificationChannel(id, list.name.ifBlank { context.getString(R.string.untitled) }, HIGH)
         }
         context.getSystemService<NotificationManager>()?.notificationChannels.orEmpty()
             .map { it.id }

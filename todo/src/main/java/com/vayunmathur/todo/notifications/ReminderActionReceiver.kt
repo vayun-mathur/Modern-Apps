@@ -24,7 +24,10 @@ class ReminderActionReceiver : BroadcastReceiver() {
                 val todo = repo.getBySyncId(syncId) ?: return@launch
                 when (intent.action) {
                     ACTION_COMPLETE -> repo.setDone(todo, true)
-                    ACTION_SNOOZE -> repo.upsert(todo.copy(reminderAt = snoozeUntil(intent.getIntExtra(EXTRA_SNOOZE, SNOOZE_HOUR))))
+                    ACTION_SNOOZE -> {
+                        val until = snoozeUntil(intent.getIntExtra(EXTRA_SNOOZE, SNOOZE_HOUR))
+                        repo.upsert(todo.copy(reminderAt = until))
+                    }
                 }
             } finally {
                 pending.finish()

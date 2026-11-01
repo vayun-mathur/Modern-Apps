@@ -64,7 +64,7 @@ fun BulkActionBar(count: Int, lists: List<TodoList>, actions: BulkActions) {
                 }
                 item(R.string.pick_date) { pickDate = true }
                 HorizontalDivider()
-                (1..Todo.PRIORITY_MAX).forEach { p ->
+                for (p in 1..Todo.PRIORITY_MAX) {
                     DropdownMenuItem(text = { Text(stringResource(R.string.priority_n, p)) }, onClick = {
                         menu = false
                         actions.setPriority(p)

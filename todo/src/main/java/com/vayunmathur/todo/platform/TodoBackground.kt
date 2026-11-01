@@ -37,7 +37,9 @@ object TodoBackground {
         val settings = TodoSettings(app)
         repo.appScope.launch {
             repo.todos
-                .map { todos -> todos.filter { it.reminderAt != null }.map { ReminderKey(it.syncId, it.reminderAt, it.done) } }
+                .map { todos ->
+                    todos.filter { it.reminderAt != null }.map { ReminderKey(it.syncId, it.reminderAt, it.done) }
+                }
                 .distinctUntilChanged()
                 .debounce(SETTLE_MS)
                 .collect { ReminderScheduler.reconcile(app, repo.getAll()) }

@@ -83,7 +83,11 @@ class TodoEditor internal constructor(
     fun setDone(done: Boolean) {
         val before = _state.value ?: return
         val now = System.currentTimeMillis()
-        val after = if (done) Completion.complete(before, now, TimeZone.currentSystemDefault()) else Completion.uncomplete(before)
+        val after = if (done) {
+            Completion.complete(before, now, TimeZone.currentSystemDefault())
+        } else {
+            Completion.uncomplete(before)
+        }
         update { after }
         if (Completion.rolledForward(before, after)) scope.launch { repository.reopenSubtasks(before.syncId) }
     }

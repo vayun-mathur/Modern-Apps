@@ -89,18 +89,29 @@ object TodoQuery {
 
     private fun inView(row: TodoRow, input: Input): Boolean {
         val todo = row.todo
-        val started = todo.startAt == null || todo.startAt <= input.now
-        return when (val view = input.view) {
-            TodoView.Inbox -> todo.listSyncId == null && started
-            TodoView.Today -> started && !row.blocked && (todo.done || DueBuckets.isDueByToday(todo, input.now, input.zone)) &&
-                (!todo.done || completedToday(todo, input))
-            TodoView.Upcoming -> started && todo.dueAt != null && !row.overdue
-            TodoView.Priority -> started && todo.priority != Todo.PRIORITY_NONE
+        val view = input.view
+        if (hidesDeferred(view) && (todo.startAt ?: 0L) > input.now) return false
+        return when (view) {
+            TodoView.Inbox -> todo.listSyncId == null
+            TodoView.Today -> inToday(row, input)
+            TodoView.Upcoming -> todo.dueAt != null && !row.overdue
+            TodoView.Priority -> todo.priority != Todo.PRIORITY_NONE
             TodoView.All -> true
             TodoView.Completed -> todo.done
             is TodoView.InList -> todo.listSyncId == view.listSyncId
-            is TodoView.Tagged -> started && todo.tags.any { it.equals(view.tag, ignoreCase = true) }
+            is TodoView.Tagged -> todo.tags.any { it.equals(view.tag, ignoreCase = true) }
         }
+    }
+
+    /** Tasks with a future start date stay out of the focus views until then. */
+    private fun hidesDeferred(view: TodoView) =
+        view !is TodoView.InList && view != TodoView.All && view != TodoView.Completed
+
+    /** Open and due by today, or completed today; never while blocked. */
+    private fun inToday(row: TodoRow, input: Input): Boolean {
+        val todo = row.todo
+        if (row.blocked) return false
+        return if (todo.done) completedToday(todo, input) else DueBuckets.isDueByToday(todo, input.now, input.zone)
     }
 
     private fun completedToday(todo: Todo, input: Input): Boolean {
@@ -108,7 +119,12 @@ object TodoQuery {
         return DueBuckets.dayDelta(at, input.now, input.zone) == 0
     }
 
-    private fun group(rows: List<TodoRow>, input: Input, listsById: Map<String, TodoList>, searching: Boolean): List<TodoGroup> {
+    private fun group(
+        rows: List<TodoRow>,
+        input: Input,
+        listsById: Map<String, TodoList>,
+        searching: Boolean,
+    ): List<TodoGroup> {
         if (searching) return listOf(TodoGroup(GroupKey.None, rows))
         val byBucket = input.sort == SortMode.DUE || input.view == TodoView.Today || input.view == TodoView.Upcoming
         val view = input.view
@@ -126,7 +142,8 @@ object TodoQuery {
         val bySection = rows.groupBy { row -> row.todo.section?.takeIf { it in sections } }
         val unsectioned = bySection[null].orEmpty()
         val named = sections.map { TodoGroup(GroupKey.Section(it), bySection[it].orEmpty()) }
-        return (if (unsectioned.isEmpty()) emptyList() else listOf(TodoGroup(GroupKey.Section(null), unsectioned))) + named
+        val head = if (unsectioned.isEmpty()) emptyList() else listOf(TodoGroup(GroupKey.Section(null), unsectioned))
+        return head + named
     }
 
     fun comparator(sort: SortMode): Comparator<TodoRow> {
@@ -138,7 +155,8 @@ object TodoQuery {
             SortMode.PRIORITY -> compareBy<TodoRow> { priorityRank(it.todo) }
                 .then(compareBy(nullsLast()) { it.todo.dueAt }).then(byPosition)
             SortMode.CREATED -> compareByDescending<TodoRow> { it.todo.createdAt }
-            SortMode.TITLE -> compareBy<TodoRow, String>(String.CASE_INSENSITIVE_ORDER) { it.todo.title }.then(byPosition)
+            SortMode.TITLE -> compareBy<TodoRow, String>(String.CASE_INSENSITIVE_ORDER) { it.todo.title }
+                .then(byPosition)
         }
     }
 

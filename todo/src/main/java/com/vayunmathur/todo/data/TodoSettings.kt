@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.onStart
 class TodoSettings(context: Context) {
     private val store = DataStoreUtils.getInstance(context.applicationContext)
 
-    private fun string(key: String, default: String): Flow<String> = store.stringFlow(key).onStart { emit(store.getString(key) ?: default) }
+    private fun string(key: String, default: String): Flow<String> =
+        store.stringFlow(key).onStart { emit(store.getString(key) ?: default) }
 
     val defaultView: Flow<TodoView> = string(KEY_DEFAULT_VIEW, TodoView.Today.key).map { TodoView.fromKey(it) }
     val defaultSort: Flow<SortMode> = string(KEY_DEFAULT_SORT, SortMode.MANUAL.name)

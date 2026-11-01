@@ -36,6 +36,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextField
 import com.vayunmathur.library.ui.TextFieldDefaults
 import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.util.sharedContainer
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.platform.TodoActions
 import com.vayunmathur.todo.platform.TodoUiState
@@ -94,7 +95,8 @@ fun TodoDetailScreen(state: TodoUiState, actions: TodoActions) {
             TextField(
                 value = todo.title,
                 onValueChange = { title -> actions.update { it.copy(title = title) } },
-                modifier = Modifier.weight(1f).focusRequester(titleFocus),
+                modifier = Modifier.weight(1f).focusRequester(titleFocus)
+                    .then(if (todo.id != 0L) Modifier.sharedContainer(sharedTitleKey(todo.id)) else Modifier),
                 placeholder = { Text(stringResource(R.string.todo_title)) },
                 textStyle = MaterialTheme.typography.headlineSmall.copy(
                     textDecoration = if (todo.done) TextDecoration.LineThrough else null,

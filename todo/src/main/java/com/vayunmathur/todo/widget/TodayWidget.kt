@@ -1,5 +1,6 @@
 package com.vayunmathur.todo.widget
 
+import com.vayunmathur.todo.data.getLists
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -53,7 +54,8 @@ class TodayWidget : MaWidget<TodayWidgetData>() {
         val repo = TodoRepository.get(context)
         val now = System.currentTimeMillis()
         val zone = TimeZone.currentSystemDefault()
-        val model = TodoQuery.build(TodoQuery.Input(repo.getAll(), repo.getLists(), TodoView.Today, now = now, zone = zone))
+        val input = TodoQuery.Input(repo.getAll(), repo.getLists(), TodoView.Today, now = now, zone = zone)
+        val model = TodoQuery.build(input)
         val rows = model.groups.flatMap { it.rows }.map { row ->
             TodayWidgetRow(row.todo.syncId, row.todo.title, DueBuckets.isOverdue(row.todo, now, zone))
         }
@@ -97,31 +99,46 @@ private fun TodayContent(data: TodayWidgetData) {
         horizontalPadding = 0.dp,
     ) {
         if (data.rows.isEmpty()) {
-            Box(GlanceModifier.fillMaxSize().background(GlanceTheme.colors.surface), contentAlignment = Alignment.Center) {
-                Text(context.getString(R.string.all_done), style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant))
+            Box(
+                GlanceModifier.fillMaxSize().background(GlanceTheme.colors.surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    context.getString(R.string.all_done),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant),
+                )
             }
             return@Scaffold
         }
         LazyColumn(GlanceModifier.fillMaxSize().background(GlanceTheme.colors.surface)) {
-            items(data.rows, itemId = { it.syncId.hashCode().toLong() }) { row ->
-                Row(GlanceModifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CheckBox(
-                        checked = false,
-                        onCheckedChange = actionRunCallback<CompleteTaskAction>(actionParametersOf(CompleteTaskAction.SYNC_ID to row.syncId)),
-                    )
-                    Column(
-                        GlanceModifier.defaultWeight().clickable(
-                            actionStartActivity(ReminderNotifications.openTaskIntent(context, row.syncId)),
-                        ),
-                    ) {
-                        Text(
-                            row.title.ifBlank { context.getString(R.string.untitled) },
-                            maxLines = 2,
-                            style = TextStyle(color = if (row.overdue) GlanceTheme.colors.error else GlanceTheme.colors.onSurface),
-                        )
-                    }
-                }
-            }
+            items(data.rows, itemId = { it.syncId.hashCode().toLong() }) { row -> TodayRow(row) }
+        }
+    }
+}
+
+@Composable
+private fun TodayRow(row: TodayWidgetRow) {
+    val context = LocalContext.current
+    Row(
+        GlanceModifier.fillMaxWidth().padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CheckBox(
+            checked = false,
+            onCheckedChange = actionRunCallback<CompleteTaskAction>(
+                actionParametersOf(CompleteTaskAction.SYNC_ID to row.syncId),
+            ),
+        )
+        Column(
+            GlanceModifier.defaultWeight().clickable(
+                actionStartActivity(ReminderNotifications.openTaskIntent(context, row.syncId)),
+            ),
+        ) {
+            Text(
+                row.title.ifBlank { context.getString(R.string.untitled) },
+                maxLines = 2,
+                style = TextStyle(color = if (row.overdue) GlanceTheme.colors.error else GlanceTheme.colors.onSurface),
+            )
         }
     }
 }

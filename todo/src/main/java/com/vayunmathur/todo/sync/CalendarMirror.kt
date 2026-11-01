@@ -33,8 +33,10 @@ object CalendarMirror {
     private const val TIMED_LENGTH_MS = 30 * 60_000L
     private const val DAY_MS = 86_400_000L
 
-    fun hasPermission(context: Context): Boolean = listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
-        .all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+    private val PERMISSIONS = listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
+
+    fun hasPermission(context: Context): Boolean =
+        PERMISSIONS.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
 
     // Broad catch: the calendar provider throws undocumented runtime exceptions, and a mirror
     // failure must never break the app.
@@ -43,11 +45,14 @@ object CalendarMirror {
         if (!hasPermission(context)) return
         try {
             if (!enabled) {
-                findCalendar(context)?.let { context.contentResolver.delete(asSync(ContentUris.withAppendedId(Calendars.CONTENT_URI, it)), null, null) }
+                findCalendar(context)?.let { id ->
+                    val uri = asSync(ContentUris.withAppendedId(Calendars.CONTENT_URI, id))
+                    context.contentResolver.delete(uri, null, null)
+                }
                 return
             }
             val calendarId = findCalendar(context) ?: createCalendar(context) ?: return
-            write(context, calendarId, todos.filter { !it.done && !it.deleted && it.dueAt != null && it.parentSyncId == null })
+            write(context, calendarId, todos.filter { it.isMirrored() })
         } catch (e: Exception) {
             Log.error(TAG, "reconcile failed", e)
         }
@@ -70,13 +75,14 @@ object CalendarMirror {
             val fingerprint = values.getAsString(Events.SYNC_DATA1)
             val current = existing.remove(todo.syncId)
             when {
-                current == null -> ops += ContentProviderOperation.newInsert(asSync(Events.CONTENT_URI)).withValues(values).build()
-                current.second != fingerprint -> ops += ContentProviderOperation
-                    .newUpdate(asSync(ContentUris.withAppendedId(Events.CONTENT_URI, current.first))).withValues(values).build()
+                current == null -> ops += ContentProviderOperation.newInsert(asSync(Events.CONTENT_URI))
+                    .withValues(values).build()
+                current.second != fingerprint -> ops += ContentProviderOperation.newUpdate(eventUri(current.first))
+                    .withValues(values).build()
             }
         }
         existing.values.forEach { (id, _) ->
-            ops += ContentProviderOperation.newDelete(asSync(ContentUris.withAppendedId(Events.CONTENT_URI, id))).build()
+            ops += ContentProviderOperation.newDelete(eventUri(id)).build()
         }
         if (ops.isNotEmpty()) context.contentResolver.applyBatch(android.provider.CalendarContract.AUTHORITY, ops)
     }
@@ -103,7 +109,9 @@ object CalendarMirror {
                 putNull(Events.RRULE)
                 putNull(Events.DURATION)
             }
-            put(Events.SYNC_DATA1, listOf(todo.title, todo.notes, start, todo.dueAllDay, rrule, zone.id).joinToString("\u0000").hashCode().toString())
+            val fingerprint = listOf(todo.title, todo.notes, start, todo.dueAllDay, rrule, zone.id)
+                .joinToString("\u0000")
+            put(Events.SYNC_DATA1, fingerprint.hashCode().toString())
         }
     }
 
@@ -129,6 +137,10 @@ object CalendarMirror {
         }
         return context.contentResolver.insert(asSync(Calendars.CONTENT_URI), values)?.let { ContentUris.parseId(it) }
     }
+
+    private fun Todo.isMirrored() = !done && !deleted && dueAt != null && parentSyncId == null
+
+    private fun eventUri(id: Long) = asSync(ContentUris.withAppendedId(Events.CONTENT_URI, id))
 
     private fun asSync(uri: Uri): Uri = uri.buildUpon()
         .appendQueryParameter(android.provider.CalendarContract.CALLER_IS_SYNCADAPTER, "true")

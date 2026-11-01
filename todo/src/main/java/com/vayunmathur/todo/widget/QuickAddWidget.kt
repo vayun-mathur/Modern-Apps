@@ -39,7 +39,10 @@ class QuickAddWidget : MaWidget<Unit>() {
         ) {
             Image(ImageProvider(R.drawable.ic_add), contentDescription = null)
             Spacer(GlanceModifier.width(8.dp))
-            Text(context.getString(R.string.add_task_hint), style = TextStyle(color = GlanceTheme.colors.onPrimaryContainer))
+            Text(
+                context.getString(R.string.add_task_hint),
+                style = TextStyle(color = GlanceTheme.colors.onPrimaryContainer),
+            )
         }
     }
 }

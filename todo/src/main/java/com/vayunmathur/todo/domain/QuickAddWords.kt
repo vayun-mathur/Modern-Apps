@@ -27,7 +27,7 @@ internal object RecurrenceWords {
         "yearly" to Recurrence.Yearly(),
         "annually" to Recurrence.Yearly(),
     )
-    private val WORKDAYS = setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+    private val WORKDAYS = DayOfWeek.entries.filter { it != DayOfWeek.SATURDAY && it != DayOfWeek.SUNDAY }.toSet()
     private val ORDINAL = Regex("^(\\d{1,2})(st|nd|rd|th)$")
 
     fun parse(state: State) {
@@ -42,18 +42,19 @@ internal object RecurrenceWords {
         }
     }
 
+    private fun simpleEvery(word: String, afterCompletion: Boolean): Recurrence? = when (word) {
+        "day" -> unitRecurrence(DateTimeUnit.DAY, 1, afterCompletion)
+        "week" -> unitRecurrence(DateTimeUnit.WEEK, 1, afterCompletion)
+        "month" -> Recurrence.Monthly()
+        "year" -> Recurrence.Yearly()
+        "weekday" -> Recurrence.Weekly(1, WORKDAYS)
+        "weekend" -> Recurrence.Weekly(1, setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY))
+        else -> null
+    }
+
     private fun parseEvery(state: State, i: Int, afterCompletion: Boolean) {
         val next = state.text(i + 1) ?: return
-        val simple = when (next) {
-            "day" -> unitRecurrence(DateTimeUnit.DAY, 1, afterCompletion)
-            "week" -> unitRecurrence(DateTimeUnit.WEEK, 1, afterCompletion)
-            "month" -> Recurrence.Monthly()
-            "year" -> Recurrence.Yearly()
-            "weekday" -> Recurrence.Weekly(1, WORKDAYS)
-            "weekend" -> Recurrence.Weekly(1, setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY))
-            else -> null
-        }
-        if (simple != null) return set(state, simple, i, 2)
+        simpleEvery(next, afterCompletion)?.let { return set(state, it, i, 2) }
         val unitAfter = state.text(i + 2)?.let { UNITS[it] }
         val count = if (next == "other") 2 else next.toIntOrNull()
         if (count != null && count > 0 && unitAfter != null) {
@@ -73,7 +74,8 @@ internal object RecurrenceWords {
 
     private fun unitRecurrence(unit: DateTimeUnit, n: Int, afterCompletion: Boolean): Recurrence = when (unit) {
         DateTimeUnit.DAY -> if (afterCompletion) Recurrence.AfterCompletion(n) else Recurrence.Daily(n)
-        DateTimeUnit.WEEK -> if (afterCompletion) Recurrence.AfterCompletion(n * DAYS_PER_WEEK) else Recurrence.Weekly(n)
+        DateTimeUnit.WEEK ->
+            if (afterCompletion) Recurrence.AfterCompletion(n * DAYS_PER_WEEK) else Recurrence.Weekly(n)
         DateTimeUnit.MONTH -> Recurrence.Monthly(n)
         else -> Recurrence.Yearly(n)
     }
@@ -109,7 +111,12 @@ internal object RecurrenceWords {
             recurrence.days.minOfOrNull { QuickAddParser.nextOnOrAfter(today, it) } ?: today
         is Recurrence.Monthly -> {
             val day = recurrence.dayOfMonth
-            if (day == null) today else monthDay(today, day).let { if (it >= today) it else monthDay(firstOfNextMonth(today), day) }
+            val thisMonth = day?.let { monthDay(today, it) }
+            when {
+                day == null || thisMonth == null -> today
+                thisMonth >= today -> thisMonth
+                else -> monthDay(firstOfNextMonth(today), day)
+            }
         }
         else -> today
     }
@@ -119,7 +126,8 @@ internal object RecurrenceWords {
     private fun monthDay(inMonth: LocalDate, day: Int): LocalDate {
         val first = LocalDate(inMonth.year, inMonth.month.number, 1)
         val last = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
-        return LocalDate(first.year, first.month.number, if (day == Recurrence.LAST_DAY) last else day.coerceAtMost(last))
+        val target = if (day == Recurrence.LAST_DAY) last else day.coerceAtMost(last)
+        return LocalDate(first.year, first.month.number, target)
     }
 
     private const val DAYS_PER_WEEK = 7
@@ -208,16 +216,27 @@ internal object DateWords {
 
     private fun absolute(state: State, i: Int): Pair<LocalDate, Int>? {
         val t = state.text(i) ?: return null
+        return numeric(state, t) ?: monthFirst(state, i, t) ?: dayFirst(state, i, t)
+    }
+
+    /** "2026-03-05", "3/5", "3/5/27". */
+    private fun numeric(state: State, t: String): Pair<LocalDate, Int>? {
         ISO.find(t)?.destructured?.let { (y, m, d) -> return date(y.toInt(), m.toInt(), d.toInt())?.to(1) }
-        SLASH.find(t)?.groupValues?.let { g ->
-            val year = g[3].takeIf { it.isNotEmpty() }?.toInt()?.let { if (it < CENTURY) it + 2000 else it }
-            return dated(state, g[1].toInt(), g[2].toInt(), year)?.to(1)
-        }
-        MONTHS[t]?.let { month ->
-            val day = state.text(i + 1)?.let { DAY_NUM.find(it) }?.groupValues?.get(1)?.toInt() ?: return null
-            val year = state.text(i + 2)?.takeIf { YEAR.matches(it) }?.toInt()
-            return dated(state, month.number, day, year)?.to(if (year != null) 3 else 2)
-        }
+        val g = SLASH.find(t)?.groupValues ?: return null
+        val year = g[3].takeIf { it.isNotEmpty() }?.toInt()?.let { if (it < CENTURY) it + 2000 else it }
+        return dated(state, g[1].toInt(), g[2].toInt(), year)?.to(1)
+    }
+
+    /** "jan 5", "january 5th 2027". */
+    private fun monthFirst(state: State, i: Int, t: String): Pair<LocalDate, Int>? {
+        val month = MONTHS[t] ?: return null
+        val day = state.text(i + 1)?.let { DAY_NUM.find(it) }?.groupValues?.get(1)?.toInt() ?: return null
+        val year = state.text(i + 2)?.takeIf { YEAR.matches(it) }?.toInt()
+        return dated(state, month.number, day, year)?.to(if (year != null) 3 else 2)
+    }
+
+    /** "5 jan", "5th january 2027". */
+    private fun dayFirst(state: State, i: Int, t: String): Pair<LocalDate, Int>? {
         val day = DAY_NUM.find(t)?.groupValues?.get(1)?.toInt() ?: return null
         val month = state.text(i + 1)?.let { MONTHS[it] } ?: return null
         val year = state.text(i + 2)?.takeIf { YEAR.matches(it) }?.toInt()

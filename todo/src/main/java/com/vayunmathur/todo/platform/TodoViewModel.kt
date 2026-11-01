@@ -1,5 +1,10 @@
 package com.vayunmathur.todo.platform
 
+import com.vayunmathur.todo.data.getLists
+import com.vayunmathur.todo.data.nextListPosition
+import com.vayunmathur.todo.data.upsertList
+import com.vayunmathur.todo.data.upsertLists
+import com.vayunmathur.todo.data.tombstoneList
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -66,10 +71,16 @@ class TodoViewModel(
 
     private val params = combine(view, searchQuery, sort, clock) { v, q, s, now -> Params(v, q, s, now) }
 
-    val model: StateFlow<Pair<TodoListModel, Long>> = combine(todos, lists, params, settings.showCompleted) { todos, lists, p, showDone ->
-        val built = TodoQuery.build(TodoQuery.Input(todos, lists, p.view, p.query, p.sort, p.now, TimeZone.currentSystemDefault()))
-        (if (showDone) built else built.copy(completed = emptyList())) to p.now
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), TodoListModel() to System.currentTimeMillis())
+    val model: StateFlow<Pair<TodoListModel, Long>> =
+        combine(todos, lists, params, settings.showCompleted) { todos, lists, p, showDone ->
+            val zone = TimeZone.currentSystemDefault()
+            val built = TodoQuery.build(TodoQuery.Input(todos, lists, p.view, p.query, p.sort, p.now, zone))
+            (if (showDone) built else built.copy(completed = emptyList())) to p.now
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            TodoListModel() to System.currentTimeMillis(),
+        )
 
     /** Open-task counts per view, for the drawer badges. */
     val counts: StateFlow<Map<TodoView, Int>> = combine(todos, lists, clock) { todos, lists, now ->

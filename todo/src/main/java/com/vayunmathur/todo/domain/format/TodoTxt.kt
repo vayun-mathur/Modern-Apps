@@ -20,8 +20,9 @@ object TodoTxt {
     private val REC = Regex("^(\\+?)(\\d+)([dwmy])$")
     private const val DAYS_PER_WEEK = 7
 
-    fun export(source: ExportSource, zone: TimeZone): String =
-        source.todos.filter { !it.deleted && it.parentSyncId == null }.joinToString("\n") { line(it, source, zone) } + "\n"
+    fun export(source: ExportSource, zone: TimeZone): String = source.todos
+        .filter { !it.deleted && it.parentSyncId == null }
+        .joinToString("\n") { line(it, source, zone) } + "\n"
 
     private fun line(todo: Todo, source: ExportSource, zone: TimeZone): String {
         val parts = mutableListOf<String>()
@@ -77,7 +78,7 @@ object TodoTxt {
         }
     }
 
-    private fun parseBody(words: List<String>, zone: TimeZone): ImportedTask {
+    private class Body {
         val title = mutableListOf<String>()
         val tags = mutableListOf<String>()
         var list: String? = null
@@ -85,27 +86,45 @@ object TodoTxt {
         var start: Long? = null
         var recurrence: String? = null
         var priority = 0
-        for (w in words) {
-            val value = w.substringAfter(':', "")
-            when {
-                w.startsWith("+") && w.length > 1 && list == null -> list = w.drop(1).replace('_', ' ')
-                w.startsWith("@") && w.length > 1 -> tags += w.drop(1)
-                w.startsWith("due:") && value.matches(DATE) -> due = toMs(value, zone)
-                w.startsWith("t:") && value.matches(DATE) -> start = toMs(value, zone)
-                w.startsWith("rec:") -> recurrence = parseRec(value)
-                w.startsWith("pri:") && value.length == 1 && value[0] in 'A'..'D' -> priority = value[0] - 'A' + 1
-                else -> title += w
-            }
-        }
+    }
+
+    private fun parseBody(words: List<String>, zone: TimeZone): ImportedTask {
+        val body = Body()
+        for (w in words) if (!applyMarker(body, w, zone)) body.title += w
         return ImportedTask(
-            title = title.joinToString(" "),
-            dueAt = due,
-            priority = priority,
-            listName = list,
-            tags = tags,
-            recurrence = recurrence,
-            startAt = start,
+            title = body.title.joinToString(" "),
+            dueAt = body.due,
+            priority = body.priority,
+            listName = body.list,
+            tags = body.tags,
+            recurrence = body.recurrence,
+            startAt = body.start,
         )
+    }
+
+    /** Applies `+project`, `@context` and `key:value` words; false for plain title words. */
+    private fun applyMarker(body: Body, w: String, zone: TimeZone): Boolean = when {
+        w.length > 1 && w[0] == '+' && body.list == null -> {
+            body.list = w.drop(1).replace('_', ' ')
+            true
+        }
+        w.length > 1 && w[0] == '@' -> {
+            body.tags += w.drop(1)
+            true
+        }
+        ':' in w -> applyKeyValue(body, w.substringBefore(':'), w.substringAfter(':'), zone)
+        else -> false
+    }
+
+    private fun applyKeyValue(body: Body, key: String, value: String, zone: TimeZone): Boolean {
+        when {
+            key == "due" && value.matches(DATE) -> body.due = toMs(value, zone)
+            key == "t" && value.matches(DATE) -> body.start = toMs(value, zone)
+            key == "rec" -> body.recurrence = parseRec(value)
+            key == "pri" && value.length == 1 && value[0] in 'A'..'D' -> body.priority = value[0] - 'A' + 1
+            else -> return false
+        }
+        return true
     }
 
     private fun parseRec(value: String): String? {

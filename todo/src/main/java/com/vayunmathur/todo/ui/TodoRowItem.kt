@@ -21,6 +21,7 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.util.sharedText
 import com.vayunmathur.todo.R
 import com.vayunmathur.todo.domain.TodoRow
 
@@ -96,10 +97,13 @@ fun TodoRowItem(
             query = query,
             maxLines = 2,
             textDecoration = if (done) TextDecoration.LineThrough else null,
-            modifier = Modifier.alpha(if (done) DONE_ALPHA else 1f),
+            modifier = Modifier.sharedText(sharedTitleKey(todo.id)).alpha(if (done) DONE_ALPHA else 1f),
         )
     }
 }
+
+/** Shared-element key tying a row's title to the editor's title field. */
+internal fun sharedTitleKey(id: Long) = "todo-title-$id"
 
 private const val DONE_ALPHA = 0.6f
 private const val BLOCKED_ALPHA = 0.55f

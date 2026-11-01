@@ -18,6 +18,10 @@ import kotlinx.datetime.TimeZone
 /** Builds and posts the reminder and digest notifications. */
 object ReminderNotifications {
     private const val DIGEST_ID = 0x7D16E5
+    private const val COMPLETE = ReminderActionReceiver.ACTION_COMPLETE
+    private const val SNOOZE = ReminderActionReceiver.ACTION_SNOOZE
+    private const val IN_HOUR = ReminderActionReceiver.SNOOZE_HOUR
+    private const val TOMORROW = ReminderActionReceiver.SNOOZE_TOMORROW
 
     fun notificationId(syncId: String): Int = syncId.hashCode()
 
@@ -39,9 +43,13 @@ object ReminderNotifications {
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
-                .addAction(0, context.getString(R.string.complete_action), action(context, todo.syncId, ReminderActionReceiver.ACTION_COMPLETE, 0))
-                .addAction(0, context.getString(R.string.snooze_hour), action(context, todo.syncId, ReminderActionReceiver.ACTION_SNOOZE, ReminderActionReceiver.SNOOZE_HOUR))
-                .addAction(0, context.getString(R.string.snooze_tomorrow), action(context, todo.syncId, ReminderActionReceiver.ACTION_SNOOZE, ReminderActionReceiver.SNOOZE_TOMORROW))
+                .addAction(0, context.getString(R.string.complete_action), action(context, todo.syncId, COMPLETE, 0))
+                .addAction(0, context.getString(R.string.snooze_hour), action(context, todo.syncId, SNOOZE, IN_HOUR))
+                .addAction(
+                    0,
+                    context.getString(R.string.snooze_tomorrow),
+                    action(context, todo.syncId, SNOOZE, TOMORROW),
+                )
         }
     }
 
@@ -66,7 +74,8 @@ object ReminderNotifications {
         }
     }
 
-    fun cancel(context: Context, syncId: String) = NotificationManagerCompat.from(context).cancel(notificationId(syncId))
+    fun cancel(context: Context, syncId: String) =
+        NotificationManagerCompat.from(context).cancel(notificationId(syncId))
 
     fun openTaskIntent(context: Context, syncId: String): Intent =
         Intent(context, MainActivity::class.java)
@@ -87,6 +96,7 @@ object ReminderNotifications {
         val due = todo.dueAt ?: return null
         val zone = TimeZone.currentSystemDefault()
         val date = DateString.dateWeekdayNoYear(DueDates.localDate(due, zone))
-        return if (todo.dueAllDay) date else date + " " + DateString.time(DueDates.localTime(due, zone), is24Hour(context))
+        if (todo.dueAllDay) return date
+        return date + " " + DateString.time(DueDates.localTime(due, zone), is24Hour(context))
     }
 }

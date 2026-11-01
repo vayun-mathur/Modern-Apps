@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 
 const val DB_NAME = "todo-db"
 
-/** Backup config shared by [AppBackupAgent][com.vayunmathur.todo.platform.AppBackupAgent] and the in-app backup buttons. */
+/** Backup config shared by the backup agent and the in-app backup buttons. */
 fun todoDbConfigs(context: Context): List<Pair<String, String>> =
     listOf(DB_NAME to DatabaseHelper(context).getPassphrase())
 

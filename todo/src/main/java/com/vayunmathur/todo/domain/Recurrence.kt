@@ -71,6 +71,7 @@ sealed interface Recurrence {
         const val LAST_DAY = -1
         private const val X_FROM = "X-FROM"
         private const val MAX_INTERVAL = 999
+        private const val MAX_DAY = 31
 
         private val DAY_CODES = mapOf(
             DayOfWeek.MONDAY to "MO", DayOfWeek.TUESDAY to "TU", DayOfWeek.WEDNESDAY to "WE",
@@ -89,11 +90,14 @@ sealed interface Recurrence {
             return when (parts["FREQ"]?.uppercase()) {
                 "DAILY" -> if (parts[X_FROM].equals("COMPLETION", true)) AfterCompletion(interval) else Daily(interval)
                 "WEEKLY" -> Weekly(interval, parseDays(parts["BYDAY"]))
-                "MONTHLY" -> Monthly(interval, parts["BYMONTHDAY"]?.toIntOrNull()?.takeIf { it == LAST_DAY || it in 1..31 })
+                "MONTHLY" -> Monthly(interval, parseMonthDay(parts["BYMONTHDAY"]))
                 "YEARLY" -> Yearly(interval)
                 else -> null
             }
         }
+
+        private fun parseMonthDay(raw: String?): Int? =
+            raw?.toIntOrNull()?.takeIf { it == LAST_DAY || it in 1..MAX_DAY }
 
         private fun parseDays(raw: String?): Set<DayOfWeek> =
             raw.orEmpty().split(',').mapNotNull { CODE_DAYS[it.trim().takeLast(2).uppercase()] }.toSet()
