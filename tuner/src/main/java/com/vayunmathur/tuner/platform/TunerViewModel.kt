@@ -141,7 +141,7 @@ class TunerViewModel(application: Application) : AndroidViewModel(application) {
         // Flipped before the first frame arrives so a capture that never produces audio still
         // looks different from one that was never asked for. The failure branch below puts it
         // back.
-        state = state.copy(listening = true, failure = null, captureSource = null)
+        state = state.copy(listening = true, failure = null)
         captureJob = viewModelScope.launch {
             capture.frames(NOTE_HOP).conflate().collect { result ->
                 val failure = result.exceptionOrNull()
@@ -151,9 +151,6 @@ class TunerViewModel(application: Application) : AndroidViewModel(application) {
                     wantsCapture = false
                     state = state.copy(listening = false, failure = failure.failure)
                     return@collect
-                }
-                if (state.captureSource == null) {
-                    state = state.copy(captureSource = capture.activeSource)
                 }
                 withContext(Dispatchers.Default) {
                     analyseNote()

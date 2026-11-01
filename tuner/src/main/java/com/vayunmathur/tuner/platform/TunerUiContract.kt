@@ -51,8 +51,6 @@ data class TunerUiState(
     val instruments: List<Instrument>,
     val listening: Boolean = false,
     val failure: CaptureFailure? = null,
-    /** Null until the microphone has been opened once. */
-    val captureSource: CaptureSource? = null,
     val note: NoteUiState = NoteUiState(),
     val chord: ChordUiState = ChordUiState(),
 )

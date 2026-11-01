@@ -19,7 +19,6 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.tuner.R
 import com.vayunmathur.tuner.domain.TuningBand
-import com.vayunmathur.tuner.platform.CaptureSource
 import com.vayunmathur.tuner.platform.TunerUiState
 
 /**
@@ -50,19 +49,6 @@ fun NoteScreen(state: TunerUiState) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val readout = state.note.readout
-            if (state.listening &&
-                state.captureSource != null &&
-                state.captureSource != CaptureSource.UNPROCESSED
-            ) {
-                // Loud on purpose. A processed feed silently removes the bottom of the range, and
-                // a tuner that looks confident while doing that is worse than no tuner.
-                Text(
-                    text = stringResource(R.string.unprocessed_unavailable),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                )
-            }
             Text(
                 text = readout?.let { "${it.letter}${it.octave}" } ?: EMPTY_NOTE,
                 style = MaterialTheme.typography.displayLarge,

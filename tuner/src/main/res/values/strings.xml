@@ -48,8 +48,6 @@
     <string name="shape_recommended">Recommended</string>
     <!-- Spells out that a chord diagram is a suggestion rather than a record of what was played. -->
     <string name="shapes_caveat">The app cannot hear which part of the neck you used, so this is one valid shape, not the one you played.</string>
-    <!-- Warns that the device would not give the app a clean, unprocessed microphone feed. -->
-    <string name="unprocessed_unavailable">This device will not provide an unprocessed microphone feed, so it filters out low frequencies. Readings on low strings may be wrong or missing.</string>
     <!-- Prompt on the chord tab before anything has been played. -->
     <string name="chord_prompt">Play a chord</string>
     <!-- Heading over the list of notes the app actually heard. This is a measurement. -->

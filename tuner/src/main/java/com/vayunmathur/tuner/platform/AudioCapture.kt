@@ -21,14 +21,6 @@ import kotlin.concurrent.thread
 enum class CaptureFailure { NO_PERMISSION, UNAVAILABLE }
 
 /**
- * The source the platform actually opened, read back off the stream rather than assumed.
- *
- * Anything other than [UNPROCESSED] means the low strings cannot be trusted, and the UI says so
- * out loud: a tuner that is quietly wrong below 100 Hz is worse than one that admits it.
- */
-enum class CaptureSource { UNPROCESSED, VOICE_RECOGNITION, OTHER }
-
-/**
  * Microphone capture into a lock-free-enough ring buffer, with the settings a tuner needs.
  *
  * The source selection is the part that matters most, and getting it wrong is not recoverable
@@ -48,11 +40,6 @@ class AudioCapture(private val context: Context) {
 
     /** Samples captured since this instance started. */
     val capturedSamples: Long get() = synchronized(lock) { total }
-
-    /** What [open] actually got, or null before the first successful open. */
-    @Volatile
-    var activeSource: CaptureSource? = null
-        private set
 
     /**
      * Copies the most recent `into.size` samples. Returns false while the buffer is still
@@ -151,17 +138,13 @@ class AudioCapture(private val context: Context) {
                 null
             }
             if (record != null && record.state == AudioRecord.STATE_INITIALIZED) {
-                // Read the source back off the stream instead of trusting what we asked for.
-                // This still cannot prove the HAL applied no processing - nothing can from here -
-                // but it does catch the platform substituting a source behind our back.
-                val honoured = classify(record.audioSource)
-                activeSource = honoured
-                if (honoured != CaptureSource.UNPROCESSED) {
+                // Read the source back off the stream instead of trusting what we asked for, so a
+                // platform substituting a processed source at least shows up in the log.
+                if (record.audioSource != MediaRecorder.AudioSource.UNPROCESSED) {
                     Log.status(
                         TAG,
-                        "UNPROCESSED unavailable, capturing with $honoured instead - the voice " +
-                            "high-pass will attenuate everything below ~100 Hz, so readings on " +
-                            "low strings are not trustworthy",
+                        "UNPROCESSED unavailable, capturing with source ${record.audioSource} - " +
+                            "a voice high-pass may attenuate everything below ~100 Hz",
                     )
                 }
                 return record
@@ -179,12 +162,6 @@ class AudioCapture(private val context: Context) {
             unprocessed -> MediaRecorder.AudioSource.UNPROCESSED
             else -> MediaRecorder.AudioSource.VOICE_RECOGNITION
         }
-    }
-
-    private fun classify(source: Int): CaptureSource = when (source) {
-        MediaRecorder.AudioSource.UNPROCESSED -> CaptureSource.UNPROCESSED
-        MediaRecorder.AudioSource.VOICE_RECOGNITION -> CaptureSource.VOICE_RECOGNITION
-        else -> CaptureSource.OTHER
     }
 
     /** Some platforms attach these to the session regardless of the source; turn them off. */
