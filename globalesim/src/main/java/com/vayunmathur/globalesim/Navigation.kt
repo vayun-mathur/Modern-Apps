@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.vayunmathur.globalesim.platform.EsimViewModel
+import com.vayunmathur.globalesim.ui.CardPaymentLaunchers
 import com.vayunmathur.globalesim.ui.HomeScreen
 import com.vayunmathur.globalesim.ui.PricingScreen
 import com.vayunmathur.library.ui.IconGlobe
@@ -19,12 +20,12 @@ import com.vayunmathur.library.util.MainNavigation
 import com.vayunmathur.library.util.rememberNavBackStack
 
 @Composable
-fun Navigation(viewModel: EsimViewModel) {
+fun Navigation(viewModel: EsimViewModel, launchers: CardPaymentLaunchers? = null) {
     val backStack = rememberNavBackStack<Route>(Route.Tabs)
 
     MainNavigation(backStack) {
         entry<Route.Tabs> {
-            EsimTabs(viewModel = viewModel)
+            EsimTabs(viewModel = viewModel, launchers = launchers)
         }
     }
 }
@@ -35,7 +36,7 @@ fun Navigation(viewModel: EsimViewModel) {
  * rather than by each tab (both tabs stay composed in the pager).
  */
 @Composable
-private fun EsimTabs(viewModel: EsimViewModel) {
+private fun EsimTabs(viewModel: EsimViewModel, launchers: CardPaymentLaunchers?) {
     val context = LocalContext.current
     val messenger = rememberMessenger()
     val message = viewModel.state.message
@@ -50,8 +51,8 @@ private fun EsimTabs(viewModel: EsimViewModel) {
         PagerTab("Purchase", { IconSim() }) {
             HomeScreen(
                 state = viewModel.state,
+                launchers = launchers,
                 onStartCardPurchase = viewModel::startCardPurchase,
-                onCardPurchaseDone = viewModel::finishCardPurchase,
                 onStartCryptoPurchase = { cents ->
                     viewModel.startCryptoPurchase(cents) { url ->
                         context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))

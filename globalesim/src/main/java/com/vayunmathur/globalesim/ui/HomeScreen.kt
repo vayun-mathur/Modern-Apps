@@ -17,19 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.stripe.android.PaymentConfiguration
-import com.stripe.android.paymentsheet.PaymentSheet
-import com.stripe.android.paymentsheet.PaymentSheetResult
-import com.stripe.android.paymentsheet.rememberPaymentSheet
+import androidx.core.net.toUri
 import com.vayunmathur.globalesim.data.api.ProfileDto
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.domain.buildActivationCode
@@ -50,66 +45,41 @@ import com.vayunmathur.library.ui.rememberMessenger
  * and Copy SIM ID for moving to another phone. Without an eSIM it shows
  * the setup terms, the first top-up, and Claim for an eSIM copied from
  * another phone. Pull down anywhere to refresh status and balance.
+ *
+ * Card top-ups use our own form ([CardPaymentSheet]) confirmed via Stripe's
+ * [PaymentLauncher]; Google Pay goes through [GooglePayLauncher]. The
+ * ViewModel still owns secret fetch + credit watch — this screen only
+ * presents and confirms.
  */
 @Composable
 fun HomeScreen(
     state: EsimUiState,
+    launchers: CardPaymentLaunchers? = null,
     onStartCardPurchase: (amountCents: Long, publishableKey: String?, onKey: (String) -> Unit) -> Unit,
-    onCardPurchaseDone: (paid: Boolean) -> Unit,
     onStartCryptoPurchase: (Long) -> Unit,
     onClearCryptoInvoice: () -> Unit,
     onClaim: (simId: String) -> Unit,
     onRefresh: () -> Unit,
     /**
-     * Presents the Stripe payment sheet for a client secret. Hoisted so previews
-     * can render without it: Stripe's launcher holds a ViewModel, which needs a
-     * SavedStateRegistryOwner that Layoutlib does not provide. Production always
-     * takes the default (null = real sheet).
+     * Presents the custom card sheet for a client secret. Hoisted so previews
+     * can render without it: production passes the activity-created
+     * [launchers]; previews pass neither and render launcher-free.
      */
     onPresentPaymentSheet: ((secret: String) -> Unit)? = null,
 ) {
     val messenger = rememberMessenger()
     val context = LocalContext.current
-    var publishableKey by remember { mutableStateOf<String?>(null) }
-    var sheetError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(sheetError) {
-        sheetError?.let {
-            messenger.show(it)
-            sheetError = null
-        }
-    }
-    // The Stripe launcher holds a ViewModel, which Layoutlib cannot provide — so
-    // previews pass onPresentPaymentSheet and skip creating the real sheet
-    // entirely. rememberPaymentSheet itself would crash composition, not just
-    // presentation, so the branch has to be around the remember, not the call.
-    val paymentSheet = if (onPresentPaymentSheet == null) {
-        rememberPaymentSheet { result ->
-            when (result) {
-                is PaymentSheetResult.Completed -> {
-                    messenger.show("Payment complete — credit lands shortly.")
-                    onCardPurchaseDone(true)
-                }
-                is PaymentSheetResult.Canceled -> onCardPurchaseDone(false)
-                is PaymentSheetResult.Failed -> {
-                    sheetError = result.error.localizedMessage ?: "Payment failed"
-                    onCardPurchaseDone(false)
-                }
-            }
-        }
-    } else {
-        null
-    }
-    // Present each client secret once. Saved across recreation so a rotation
-    // with the secret still pending doesn't present the sheet a second time.
-    val pendingSecret = state.pendingClientSecret
-    var presentedSecret by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(pendingSecret) {
-        if (pendingSecret != null && pendingSecret != presentedSecret) {
-            presentedSecret = pendingSecret
-            onPresentPaymentSheet?.invoke(pendingSecret)
-                ?: paymentSheet?.presentWithPaymentIntent(pendingSecret, PaymentSheet.Configuration("Global eSIM"))
-        }
-    }
+    // Amount chosen in TopUpCard; the host shows the sheet and confirms.
+    var sheetAmountCents by rememberSaveable { mutableStateOf<Long?>(null) }
+    CardPaymentHost(
+        state = state,
+        launchers = launchers,
+        sheetAmountCents = sheetAmountCents,
+        onDismissSheet = { sheetAmountCents = null },
+        onSheetAmountConsumed = { sheetAmountCents = null },
+        onStartCardPurchase = onStartCardPurchase,
+        onPresentPaymentSheet = onPresentPaymentSheet,
+    )
     AppScaffold(
         title = "Purchase",
         scrollBehavior = appBarScrollBehavior(),
@@ -143,12 +113,7 @@ fun HomeScreen(
                 if (state.statusLoaded) {
                     TopUpCard(
                         busy = state.loading || state.pendingClientSecret != null,
-                        onBuyWithCard = { cents ->
-                            onStartCardPurchase(cents, publishableKey) { key ->
-                                publishableKey = key
-                                PaymentConfiguration.init(context, key)
-                            }
-                        },
+                        onBuyWithCard = { cents -> sheetAmountCents = cents },
                         onBuyWithCrypto = onStartCryptoPurchase,
                         pendingInvoiceUrl = state.pendingInvoiceUrl,
                         onClearCryptoInvoice = onClearCryptoInvoice,

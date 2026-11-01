@@ -54,7 +54,6 @@ class MetadataPreviews {
             HomeScreen(
                 state = EsimUiState(statusLoaded = true, simId = "demo", profile = demoProfile),
                 onStartCardPurchase = { _, _, _ -> },
-                onCardPurchaseDone = {},
                 onStartCryptoPurchase = {},
                 onClearCryptoInvoice = {},
                 onClaim = {},

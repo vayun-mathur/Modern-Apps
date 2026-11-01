@@ -6,7 +6,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.stripe.android.PaymentConfiguration
 import com.vayunmathur.globalesim.data.AnonymousIdStore
+import com.vayunmathur.globalesim.data.StripeKeyStore
 import com.vayunmathur.globalesim.data.api.EsimApi
 import com.vayunmathur.globalesim.data.api.ProfileDto
 import com.vayunmathur.globalesim.data.api.RateDto
@@ -43,6 +45,7 @@ data class EsimUiState(
 
 class EsimViewModel(app: Application) : AndroidViewModel(app) {
     private val idStore = AnonymousIdStore(app.applicationContext)
+    private val keyStore = StripeKeyStore(app.applicationContext)
 
     var state by mutableStateOf(EsimUiState())
         private set
@@ -56,15 +59,37 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
             // Mint the anonymous id only. The server creates the eSIM itself
             // once the account's first payment lands.
             state = state.copy(simId = idStore.getOrCreate())
+            prefetchStripeKey()
             refreshRates()
             refreshStatus()
         }
+    }
+
+    /**
+     * Fetch + cache the publishable key at startup (silent on failure — the
+     * purchase flow fetches it on demand anyway). Warms the cache
+     * [StripeKeyStore] so the next cold start can create the Google Pay
+     * launcher in onCreate.
+     */
+    private suspend fun prefetchStripeKey() {
+        runCatching { EsimApi.stripeKey().publishableKey }
+            .onSuccess { key ->
+                if (key.isNotBlank()) {
+                    keyStore.save(key)
+                    PaymentConfiguration.init(getApplication(), key)
+                }
+            }
     }
 
     private suspend fun accountId(): String = idStore.getOrCreate()
 
     fun dismissMessage() {
         state = state.copy(message = null)
+    }
+
+    /** One-shot message from non-composable callers (e.g. payment launcher callbacks). */
+    fun notifyMessage(text: String) {
+        state = state.copy(message = text)
     }
 
     fun refreshStatus() {
@@ -212,6 +237,11 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
     fun finishCardPurchase(paid: Boolean) {
         state = state.copy(pendingClientSecret = null, loading = false)
         if (paid) watchForCredit(crypto = false)
+    }
+
+    /** Launcher failure: surface the error, then clear exactly like a cancel. */
+    fun finishCardPurchaseWithError(error: String) {
+        state = state.copy(pendingClientSecret = null, loading = false, message = error)
     }
 
     /**
