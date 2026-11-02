@@ -59,18 +59,29 @@ object MimeCodec {
     private const val ARMOR_BEGIN = "-----BEGIN PGP MESSAGE-----"
 
     /**
-     * Parses a MIME message into (subject, body, from): our own composer's
-     * text/plain, and whatever other providers send (Proton, Gmail): folded
-     * headers, RFC 2047 encoded-words, quoted-printable/base64 bodies in any
-     * charset, and multipart trees. Plain text is preferred; HTML-only mail is
-     * reduced to readable text.
+     * A parsed message. [body] is always plain text (previews, quoting, and the
+     * fallback view); [html] is the sender's HTML part when there is one, which
+     * the reader renders so links and formatting survive.
      */
-    fun parseMime(mime: String): Triple<String, String, String> {
+    data class MimeContent(val subject: String, val body: String, val from: String, val html: String?)
+
+    /**
+     * Parses a MIME message: our own composer's text/plain, and whatever other
+     * providers send (Proton, Gmail): folded headers, RFC 2047 encoded-words,
+     * quoted-printable/base64 bodies in any charset, and multipart trees.
+     */
+    fun parseMime(mime: String): MimeContent {
         val (headers, body) = splitEntity(mime)
-        return Triple(
-            decodeWords(headers["subject"].orEmpty()),
-            readableBody(headers, body).trimEnd(),
-            decodeWords(headers["from"].orEmpty()),
+        val html = findPart(headers, body, "text/html")
+        val charset = param(headers["content-type"].orEmpty(), "charset")
+        val text = findPart(headers, body, "text/plain")
+            ?: html?.let(::htmlToText)
+            ?: decodeTransfer(body, headers["content-transfer-encoding"], charset)
+        return MimeContent(
+            subject = decodeWords(headers["subject"].orEmpty()),
+            body = text.trimEnd(),
+            from = decodeWords(headers["from"].orEmpty()),
+            html = html,
         )
     }
 
@@ -101,22 +112,19 @@ object MimeCodec {
         return headers to body
     }
 
-    private fun readableBody(headers: Map<String, String>, body: String): String {
+    /** Decoded text of the first part of [wanted] type, searching multipart trees depth-first. */
+    private fun findPart(headers: Map<String, String>, body: String, wanted: String): String? {
         val type = headers["content-type"].orEmpty()
         val mediaType = type.substringBefore(';').trim().lowercase().ifEmpty { "text/plain" }
         if (mediaType.startsWith("multipart/")) {
-            val boundary = param(type, "boundary") ?: return body
-            val parts = multipartParts(body, boundary).map { splitEntity(it) }
-            fun typeOf(h: Map<String, String>) =
-                h["content-type"].orEmpty().substringBefore(';').trim().lowercase().ifEmpty { "text/plain" }
-            val chosen = parts.firstOrNull { typeOf(it.first) == "text/plain" }
-                ?: parts.firstOrNull { typeOf(it.first).startsWith("multipart/") }
-                ?: parts.firstOrNull { typeOf(it.first) == "text/html" }
-                ?: return ""
-            return readableBody(chosen.first, chosen.second)
+            val boundary = param(type, "boundary") ?: return null
+            return multipartParts(body, boundary).firstNotNullOfOrNull { part ->
+                val (h, b) = splitEntity(part)
+                findPart(h, b, wanted)
+            }
         }
-        val decoded = decodeTransfer(body, headers["content-transfer-encoding"], param(type, "charset"))
-        return if (mediaType == "text/html") htmlToText(decoded) else decoded
+        if (mediaType != wanted) return null
+        return decodeTransfer(body, headers["content-transfer-encoding"], param(type, "charset"))
     }
 
     private fun multipartParts(body: String, boundary: String): List<String> {
@@ -187,7 +195,8 @@ object MimeCodec {
             }.getOrDefault(m.value)
         }
 
-    private fun htmlToText(html: String): String = html
+    /** Readable plain text from an HTML body (for previews and the no-HTML fallback). */
+    fun htmlToText(html: String): String = html
         .replace(Regex("(?is)<(style|script|head)[^>]*>.*?</\\1>"), "")
         .replace(Regex("(?i)<br\\s*/?>"), "\n")
         .replace(Regex("(?i)</(p|div|tr|li|h[1-6]|blockquote)>"), "\n")

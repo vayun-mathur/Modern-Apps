@@ -87,15 +87,21 @@ class MimeCodecTest {
 
     @Test
     fun multipartAlternativePrefersPlainText() {
-        val (_, body, _) = MimeCodec.parseMime(
+        val parsed = MimeCodec.parseMime(
             "Subject: x\r\n" +
                 "Content-Type: multipart/alternative;\r\n boundary=\"b1\"\r\n" +
                 "\r\n" +
-                "--b1\r\nContent-Type: text/html\r\n\r\n<p>html version</p>\r\n" +
+                "--b1\r\nContent-Type: text/html\r\n\r\n<p>html <a href=\"https://proton.me\">version</a></p>\r\n" +
                 "--b1\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nplain version\r\n" +
                 "--b1--\r\n",
         )
-        assertEquals("plain version", body)
+        assertEquals("plain version", parsed.body)
+        assertEquals("<p>html <a href=\"https://proton.me\">version</a></p>\n", parsed.html)
+    }
+
+    @Test
+    fun plainOnlyMailHasNoHtml() {
+        assertNull(MimeCodec.parseMime("Subject: x\r\nContent-Type: text/plain\r\n\r\nhi\r\n").html)
     }
 
     @Test

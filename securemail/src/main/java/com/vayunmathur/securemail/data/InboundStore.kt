@@ -37,7 +37,7 @@ object InboundStore {
         val keyManager = KeyManager(app)
         val folder = if (flags.spam) MailFolder.SPAM else MailFolder.INBOX
         if (flags.unencrypted) {
-            val (subject, body, from) = MimeCodec.parseMime(raw.toString(Charsets.UTF_8))
+            val (subject, body, from, html) = MimeCodec.parseMime(raw.toString(Charsets.UTF_8))
             repo.messageDao().upsert(
                 StoredMessage(
                     id = id,
@@ -50,6 +50,7 @@ object InboundStore {
                     decryptedSubject = subject,
                     unencrypted = true,
                     folder = folder,
+                    decryptedHtml = html,
                 ),
             )
             return
@@ -90,7 +91,7 @@ object InboundStore {
                 } else {
                     provisional to null
                 }
-                val (subject, body, from) = MimeCodec.parseMime(mime)
+                val (subject, body, from, html) = MimeCodec.parseMime(mime)
                 StoredMessage(
                     id = id,
                     from = from,
@@ -103,6 +104,7 @@ object InboundStore {
                     verifiedSigner = verified,
                     unencrypted = false,
                     folder = folder,
+                    decryptedHtml = html,
                 )
             }.getOrNull()
         } else {

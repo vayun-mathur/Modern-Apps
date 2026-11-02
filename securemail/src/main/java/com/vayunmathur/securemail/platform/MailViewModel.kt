@@ -384,10 +384,11 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     } else {
                         provisional to null
                     }
-                    val (subject, body, resolvedFrom) = parseMime(mime)
+                    val (subject, body, resolvedFrom, html) = parseMime(mime)
                     repo.messageDao().storeDecrypted(
                         id, body, subject,
                         verified = verified,
+                        html = html,
                     )
                     if (resolvedFrom.isNotBlank()) {
                         repo.messageDao().upsert(stored.copy(from = resolvedFrom))
@@ -740,7 +741,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
      * trailing `--boundary--`). Returns (subject, body, from). The payload is
      * already authenticated PGP plaintext at this point; this only splits it.
      */
-    private fun parseMime(mime: String): Triple<String, String, String> =
+    private fun parseMime(mime: String): com.vayunmathur.securemail.domain.mail.MimeCodec.MimeContent =
         com.vayunmathur.securemail.domain.mail.MimeCodec.parseMime(mime)
 
     private fun newMessageId(): String = "${UUID.randomUUID()}@maemail.org"

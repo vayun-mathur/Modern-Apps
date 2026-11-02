@@ -48,6 +48,8 @@ data class StoredMessage(
     val isRead: Boolean = false,
     /** Folder assignment; defaults to INBOX (v2→v3 backfills existing rows). */
     val folder: MailFolder = MailFolder.INBOX,
+    /** Sender's HTML part, when the message had one (rendered by the reader). */
+    val decryptedHtml: String? = null,
 )
 
 /** Cached public key for a recipient (own directory, WKD, or VKS result). */
@@ -92,9 +94,9 @@ interface MessageDao {
 
     @Query(
         "UPDATE StoredMessage SET decryptedBody = :body, decryptedSubject = :subject, " +
-            "verifiedSigner = :verified WHERE id = :id",
+            "verifiedSigner = :verified, decryptedHtml = :html WHERE id = :id",
     )
-    suspend fun storeDecrypted(id: String, body: String, subject: String, verified: String?)
+    suspend fun storeDecrypted(id: String, body: String, subject: String, verified: String?, html: String?)
 
     /** Permanently deletes everything in Trash (local only). */
     @Query("DELETE FROM StoredMessage WHERE folder = 'TRASH'")
@@ -145,7 +147,7 @@ interface OutboxDao {
 
 @Database(
     entities = [StoredMessage::class, CachedKey::class, OutboxMessage::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class MailDatabase : RoomDatabase() {
@@ -194,6 +196,11 @@ abstract class MailDatabase : RoomDatabase() {
             it.execSQL("ALTER TABLE StoredMessage ADD COLUMN folder TEXT NOT NULL DEFAULT 'INBOX'")
         }
 
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3)
+        /** v3 → v4: adds the nullable `decryptedHtml` column (HTML part of a message). */
+        private val MIGRATION_3_4 = Migration(3, 4) {
+            it.execSQL("ALTER TABLE StoredMessage ADD COLUMN decryptedHtml TEXT")
+        }
+
+        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
     }
 }

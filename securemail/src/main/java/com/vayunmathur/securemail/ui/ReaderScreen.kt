@@ -37,7 +37,6 @@ import com.vayunmathur.library.ui.ModalBottomSheet
 import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberModalBottomSheetState
 import com.vayunmathur.securemail.data.MailFolder
@@ -127,7 +126,7 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
         }
     }
 
-    BodyText(msg)
+    MessageBodyView(msg)
 
     Row(modifier = Modifier.padding(16.dp)) {
         OutlinedButton(onClick = onReply, modifier = Modifier.weight(1f)) {
@@ -187,23 +186,6 @@ private fun TrustLine(msg: StoredMessage) {
 }
 
 @Composable
-private fun BodyText(msg: StoredMessage) {
-    val body = msg.decryptedBody ?: "(decrypting\u2026)"
-    var showQuotes by remember(msg.id) { mutableStateOf(false) }
-    val (main, quoted) = remember(body) { splitQuotedText(body) }
-    Text(
-        if (showQuotes || quoted.isEmpty()) body else main,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-    if (quoted.isNotEmpty()) {
-        TextButton(onClick = { showQuotes = !showQuotes }, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text(if (showQuotes) "Hide quoted text" else "Show quoted text")
-        }
-    }
-}
-
-@Composable
 private fun DetailRow(label: String, address: String, avatarColor: Color) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
@@ -221,17 +203,4 @@ private fun Avatar(address: String, color: Color, contentColor: Color, sizeDp: I
             Text(address.take(1).uppercase(), color = contentColor, style = MaterialTheme.typography.titleMedium)
         }
     }
-}
-
-private fun splitQuotedText(body: String): Pair<String, String> {
-    val lines = body.split("\n")
-    val onWrote = Regex("^On .+ wrote:\\s*$")
-    val origMsg = Regex("^-{2,}\\s*Original Message\\s*-{2,}\\s*$", RegexOption.IGNORE_CASE)
-    for (i in lines.indices) {
-        val line = lines[i].trim()
-        if (i > 0 && (onWrote.matches(line) || origMsg.matches(line) || line.startsWith(">"))) {
-            return lines.subList(0, i).joinToString("\n").trimEnd() to lines.subList(i, lines.size).joinToString("\n")
-        }
-    }
-    return body to ""
 }

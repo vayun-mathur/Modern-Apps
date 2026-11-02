@@ -24,6 +24,12 @@ import java.io.File
  *   embedded in a scrolling column, so in-place navigation would strand the user
  *   on a full web page inside a message. Only turn this off for content that is
  *   genuinely meant to be browsed in place.
+ * @param javaScriptEnabled runs scripts in the content. Untrusted mail should
+ *   pass false: a sender's script otherwise executes on open.
+ * @param blockRemoteContent refuses every network fetch (images, CSS, fonts,
+ *   iframes, script requests) - not just `<img>` like [blockRemoteImages] - so
+ *   opening a message cannot ping the sender's server. Inline `cid:` images
+ *   and `data:` URIs still load.
  */
 @Composable
 fun HtmlText(
@@ -33,6 +39,8 @@ fun HtmlText(
     hideQuotes: Boolean = false,
     cidMap: Map<String, File> = emptyMap(),
     openLinksExternally: Boolean = true,
+    javaScriptEnabled: Boolean = true,
+    blockRemoteContent: Boolean = false,
 ) {
     val backgroundColor = MaterialTheme.colorScheme.surface
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
@@ -41,7 +49,7 @@ fun HtmlText(
     val backgroundHex = String.format("#%06X", 0xFFFFFF and backgroundColor.toArgb())
     val textHex = String.format("#%06X", 0xFFFFFF and onSurfaceColor.toArgb())
     val quoteCss = if (hideQuotes) {
-        "blockquote, .gmail_quote, .yahoo_quoted, .moz-cite-prefix, .gmail_extra { display: none !important; }"
+        "blockquote, .gmail_quote, .yahoo_quoted, .moz-cite-prefix, .gmail_extra, .protonmail_quote { display: none !important; }"
     } else ""
 
     // Rewrite cid: -> https://cid.local/ to allow intercept without network permission
@@ -60,6 +68,13 @@ fun HtmlText(
     val webClient = remember { HtmlTextWebViewClient() }
     webClient.cidMap = cidMap
     webClient.openLinksExternally = openLinksExternally
+    webClient.blockRemoteContent = blockRemoteContent
+    // Defence in depth alongside the request interceptor: the document itself
+    // forbids any non-local fetch when remote content is blocked.
+    val csp = if (blockRemoteContent) {
+        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; " +
+            "img-src data: https://cid.local; style-src 'unsafe-inline'; font-src data:\">"
+    } else ""
 
     AndroidView(
         modifier = modifier,
@@ -70,7 +85,7 @@ fun HtmlText(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
                 isVerticalScrollBarEnabled = false
-                settings.javaScriptEnabled = true
+                settings.javaScriptEnabled = javaScriptEnabled
                 settings.useWideViewPort = true
                 settings.loadWithOverviewMode = false
                 settings.builtInZoomControls = false
@@ -82,7 +97,8 @@ fun HtmlText(
             }
         },
         update = { webView ->
-            webView.settings.blockNetworkImage = blockRemoteImages
+            webView.settings.blockNetworkImage = blockRemoteImages || blockRemoteContent
+            webView.settings.javaScriptEnabled = javaScriptEnabled
             val htmlToLoad = if (cidMap.isEmpty()) html else rewrittenHtml
             val richCss = """
                 h1,h2,h3 { margin:0.5em 0; font-weight:600; line-height:1.25; }
@@ -102,6 +118,7 @@ fun HtmlText(
                     <html>
                     <head>
                         <meta name="viewport" content="width=device-width, initial-scale=1">
+                        $csp
                         <style>
                             * { box-sizing: border-box; }
                             html, body { max-width: 100%; }
@@ -138,6 +155,7 @@ fun HtmlText(
                     <html>
                     <head>
                         <meta name="viewport" content="width=device-width, initial-scale=1">
+                        $csp
                         <style>
                             * { box-sizing: border-box; }
                             html, body { max-width: 100%; }
@@ -179,13 +197,14 @@ private class HtmlTextWebViewClient : WebViewClient() {
 
     var cidMap: Map<String, File> = emptyMap()
     var openLinksExternally: Boolean = true
+    var blockRemoteContent: Boolean = false
 
     override fun shouldInterceptRequest(
         view: WebView?,
         request: WebResourceRequest?,
     ): WebResourceResponse? {
         val uri = request?.url ?: return null
-        if (uri.host != CID_HOST) return null
+        if (uri.host != CID_HOST) return if (blockRemoteContent) emptyResponse() else null
 
         val cid = uri.lastPathSegment
             ?: uri.path?.removePrefix("/")?.substringAfterLast("/")
@@ -225,6 +244,9 @@ private class HtmlTextWebViewClient : WebViewClient() {
     private companion object {
         const val CID_HOST = "cid.local"
         val IN_PLACE_SCHEMES = setOf("data", "about", "javascript", "blob")
+
+        /** Answers a blocked fetch locally so nothing reaches the network. */
+        fun emptyResponse() = WebResourceResponse("text/plain", "utf-8", java.io.ByteArrayInputStream(ByteArray(0)))
     }
 }
 
