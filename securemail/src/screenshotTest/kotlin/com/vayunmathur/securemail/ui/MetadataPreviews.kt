@@ -1,12 +1,13 @@
 package com.vayunmathur.securemail.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
-import com.vayunmathur.library.ui.DrawerValue
 import com.vayunmathur.library.ui.DynamicTheme
-import com.vayunmathur.library.ui.ModalNavigationDrawer
-import com.vayunmathur.library.ui.rememberDrawerState
 import com.vayunmathur.securemail.data.MailFolder
 import com.vayunmathur.securemail.data.StoredMessage
 import com.vayunmathur.securemail.platform.MailUiState
@@ -40,6 +41,14 @@ class MetadataPreviews {
     }
 
     @Composable
+    private fun WithBottomBar(tab: MailTab, content: @Composable () -> Unit) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) { content() }
+            MailBottomBar(selected = tab, outboxCount = 2, onSelect = {})
+        }
+    }
+
+    @Composable
     private fun InboxPreviewContent() {
         InboxScreen(
             state = MailUiState(
@@ -47,15 +56,17 @@ class MetadataPreviews {
                 socketConnected = true,
             ),
             folder = MailFolder.INBOX,
-            onOpenDrawer = {},
-            onOpen = {},
-            onCompose = {},
-            onSettings = {},
-            onRefresh = {},
-            onConsumeMessage = {},
-            onTrash = {},
-            onRestore = {},
-            onEmptyTrash = {},
+            actions = FolderActions(
+                onOpen = {},
+                onCompose = {},
+                onSetRead = { _, _ -> },
+                onTrash = {},
+                onMoveTo = { _, _ -> },
+                onRestore = {},
+                onDeleteForever = {},
+                onEmptyTrash = {},
+                onConsumeMessage = {},
+            ),
             messages = listOf(
                 StoredMessage(
                     id = "m_1",
@@ -85,7 +96,7 @@ class MetadataPreviews {
     @Composable
     fun Preview2Inbox() {
         DynamicTheme(darkTheme = true) {
-            InboxPreviewContent()
+            WithBottomBar(MailTab.INBOX) { InboxPreviewContent() }
         }
     }
 
@@ -110,24 +121,20 @@ class MetadataPreviews {
     }
 
     @PreviewTest
-    @Preview(name = "4-drawer", device = PHONE, group = "phone", showSystemUi = true)
+    @Preview(name = "4-settings", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
-    fun Preview4Drawer() {
+    fun Preview4Settings() {
         DynamicTheme(darkTheme = true) {
-            ModalNavigationDrawer(
-                drawerState = rememberDrawerState(DrawerValue.Open),
-                drawerContent = {
-                    MailDrawerContent(
-                        MailFolder.INBOX,
-                        false,
-                        2,
-                        "alice@maemail.org",
-                        {},
-                        {},
-                    )
-                },
-            ) {
-                InboxPreviewContent()
+            WithBottomBar(MailTab.SETTINGS) {
+                SettingsScreen(
+                    state = MailUiState(
+                        address = "alice@maemail.org",
+                        fingerprintHex = "A1B2C3D4E5F60718293A4B5C6D7E8F90",
+                        socketConnected = true,
+                    ),
+                    onExportPublicKey = {},
+                    onForget = {},
+                )
             }
         }
     }

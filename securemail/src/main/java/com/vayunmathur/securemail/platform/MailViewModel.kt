@@ -145,28 +145,28 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Moves a message to Trash (local vault only). */
-    fun moveToTrash(id: String) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) { repo.messageDao().moveToTrash(id) }
-        }
-    }
+    /** Moves messages to Trash (local vault only). */
+    fun moveToTrash(ids: List<String>) = moveTo(ids, MailFolder.TRASH)
 
-    /** Restores a trashed message to the Inbox. */
-    fun restoreFromTrash(id: String) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) { repo.messageDao().restoreFromTrash(id) }
-        }
+    /** Moves messages to [folder]; also the undo for a Trash move. */
+    fun moveTo(ids: List<String>, folder: MailFolder) = io { repo.messageDao().moveTo(ids, folder) }
+
+    /** Restores trashed messages to the Inbox. */
+    fun restoreFromTrash(ids: List<String>) = moveTo(ids, MailFolder.INBOX)
+
+    /** Permanently deletes messages (local only). */
+    fun deleteForever(ids: List<String>) = io { repo.messageDao().deleteAll(ids) }
+
+    fun setRead(ids: List<String>, read: Boolean) = io { repo.messageDao().setRead(ids, read) }
+
+    private fun io(block: suspend () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) { block() }
     }
 
     /** Permanently deletes everything in Trash (local only). */
-    fun emptyTrash() {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                repo.messageDao().emptyTrash()
-                state = state.copy(message = "Trash emptied.")
-            }
-        }
+    fun emptyTrash() = io {
+        repo.messageDao().emptyTrash()
+        state = state.copy(message = "Trash emptied.")
     }
 
     /**
@@ -715,11 +715,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun markRead(id: String) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) { repo.messageDao().markRead(id) }
-        }
-    }
+    fun markRead(id: String) = io { repo.messageDao().markRead(id) }
 
     fun messageFlow(id: String): StoredMessage? = null
 

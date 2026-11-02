@@ -96,20 +96,21 @@ interface MessageDao {
     )
     suspend fun storeDecrypted(id: String, body: String, subject: String, verified: String?)
 
-    /** Moves a message to Trash (local vault only — the server copy is unaffected). */
-    @Query("UPDATE StoredMessage SET folder = 'TRASH' WHERE id = :id")
-    suspend fun moveToTrash(id: String)
-
-    /** Restores a trashed message to the Inbox. */
-    @Query("UPDATE StoredMessage SET folder = 'INBOX' WHERE id = :id AND folder = 'TRASH'")
-    suspend fun restoreFromTrash(id: String)
-
     /** Permanently deletes everything in Trash (local only). */
     @Query("DELETE FROM StoredMessage WHERE folder = 'TRASH'")
     suspend fun emptyTrash()
 
     @Query("DELETE FROM StoredMessage WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("UPDATE StoredMessage SET isRead = :read WHERE id IN (:ids)")
+    suspend fun setRead(ids: List<String>, read: Boolean)
+
+    @Query("UPDATE StoredMessage SET folder = :folder WHERE id IN (:ids)")
+    suspend fun moveTo(ids: List<String>, folder: MailFolder)
+
+    @Query("DELETE FROM StoredMessage WHERE id IN (:ids)")
+    suspend fun deleteAll(ids: List<String>)
 }
 
 @Dao

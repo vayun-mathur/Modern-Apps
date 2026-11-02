@@ -1,84 +1,87 @@
 package com.vayunmathur.securemail.ui
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.AppScaffold
-import com.vayunmathur.library.ui.Button
-import com.vayunmathur.library.ui.Card
-import com.vayunmathur.library.ui.DesktopMaxWidthContainer
 import com.vayunmathur.library.ui.FloatingActionButton
+import com.vayunmathur.library.ui.HorizontalDivider
 import com.vayunmathur.library.ui.IconAdd
-import com.vayunmathur.library.ui.IconButton
-import com.vayunmathur.library.ui.IconMenu
-import com.vayunmathur.library.ui.IconSettings
+import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
-import com.vayunmathur.library.ui.appBarScrollBehavior
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.securemail.data.OutboxMessage
-import com.vayunmathur.securemail.platform.MailUiState
 
-/** Outbox: queued sends awaiting reconnect, with manual retry. */
+/** Outbox: queued sends awaiting reconnect, with manual retry. No app bar (it is a tab). */
 @Composable
 fun OutboxScreen(
-    state: MailUiState,
     onRetry: () -> Unit,
-    onBack: () -> Unit,
-    onOpenDrawer: () -> Unit = {},
     onCompose: () -> Unit = {},
-    onSettings: () -> Unit = {},
     pending: List<OutboxMessage> = emptyList(),
 ) {
     AppScaffold(
-        title = "Outbox",
-        navigationIcon = { IconButton(onClick = onOpenDrawer) { IconMenu() } },
-        actions = { IconButton(onClick = onSettings) { IconSettings() } },
+        topBar = {},
         floatingActionButton = { FloatingActionButton(onClick = onCompose) { IconAdd() } },
-        scrollBehavior = appBarScrollBehavior(),
     ) { padding ->
-        DesktopMaxWidthContainer(Modifier.padding(padding)) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (pending.isEmpty()) {
-                    Text("Outbox is empty.", style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(pending, key = { it.rowId }) { entry ->
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Text(entry.subject.ifBlank { "(no subject)" }, style = MaterialTheme.typography.titleSmall)
-                                    Text(entry.toJson, style = MaterialTheme.typography.bodySmall)
-                                    entry.lastError?.let {
-                                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-                                    }
-                                    Text(
-                                        "attempts: ${entry.attemptCount}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Button(
-                        onClick = onRetry,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Retry all") }
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            if (pending.isEmpty()) {
+                Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Outbox is empty.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+            } else {
+                TextButton(onClick = onRetry, modifier = Modifier.padding(horizontal = 8.dp)) { Text("Retry all") }
+                LazyColumn(Modifier.fillMaxSize()) {
+                    items(pending, key = { it.rowId }) { entry ->
+                        ListItem(
+                            supportingContent = {
+                                Column {
+                                    Text(
+                                        "To: ${entry.toJson}",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    entry.lastError?.let {
+                                        Text(
+                                            it,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            },
+                            trailingContent = {
+                                Text(
+                                    "${entry.attemptCount} ${if (entry.attemptCount == 1) "try" else "tries"}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            },
+                        ) {
+                            Text(
+                                entry.subject.ifBlank { "(no subject)" },
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        HorizontalDivider()
+                    }
+                }
             }
         }
     }

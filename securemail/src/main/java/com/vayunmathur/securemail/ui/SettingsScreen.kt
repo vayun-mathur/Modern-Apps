@@ -19,13 +19,12 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.securemail.platform.MailUiState
 
-/** Settings: identity, public-key export, forget. */
+/** Settings tab: identity, relay status, public-key export, forget. */
 @Composable
 fun SettingsScreen(
     state: MailUiState,
     onExportPublicKey: () -> Unit,
     onForget: () -> Unit,
-    onBack: () -> Unit,
     onDismissMessages: () -> Unit = {},
 ) {
     val messenger = rememberMessenger()
@@ -74,7 +73,6 @@ fun SettingsScreen(
                 Button(onClick = onForget, modifier = Modifier.fillMaxWidth()) {
                     Text("Forget identity on this device")
                 }
-                Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }
             }
         }
     }
