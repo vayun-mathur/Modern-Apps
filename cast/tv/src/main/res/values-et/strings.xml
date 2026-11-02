@@ -1,3 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tv_ready_title">Valmis vastuvõtmiseks</string>
+    <string name="tv_name_unknown">see teler</string>
+    <string name="tv_starting">Käivitun.</string>
+    <string name="tv_local_network_blocked">Ligipääs kohtvõrgule on lülitatud välja</string>
+    <string name="tv_pair_title">Sisesta see kood oma telefonis</string>
+    <string name="tv_pair_from">%1$s küsib luba ühenduse loomiseks.</string>
+    <plurals name="tv_pair_attempts">
+        <item quantity="one">Jäänud on veel %1$d katse</item>
+        <item quantity="other">Jäänud on veel %1$d katset</item>
+    </plurals>
+    <string name="tv_now_playing_no_artwork">Kaanepilti pole</string>
+    <string name="tv_now_playing_artwork">Kaanepilt</string>
+    <string name="tv_now_playing_paused">Peatatud</string>
+    <string name="tv_now_playing_buffering">Puhverdan…</string>
+    <string name="tv_notification_channel_name">Võtan vastu</string>
 </resources>
