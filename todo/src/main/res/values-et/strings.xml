@@ -1,3 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Ülesanded</string>
+    <string name="todo_details">Ülesanne</string>
+    <string name="todo_title">Ülesanne</string>
+    <string name="todo_notes">Märkmed</string>
+    <string name="done">Tehtud</string>
+    <string name="no_due_date">Tähtaega pole</string>
+    <string name="clear_date">Eemalda kuupäev</string>
+    <string name="delete_todo">Kas kustutad ülesande?</string>
+    <string name="delete_todo_confirm">See ülesanne kustutatakse kõikjalt, kuhu ta on sünkroonitud.</string>
+    <string name="delete">Kustuta</string>
+    <string name="cancel">Katkesta</string>
+    <string name="ok">Sobib</string>
+    <string name="untitled">Ilma pealkirjata</string>
 </resources>
