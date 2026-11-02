@@ -1,3 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Käivitaja</string>
+    <string name="settings_app_drawer">Rakenduste loend</string>
+    <string name="settings_drawer_list_title">Loendivaade</string>
+    <string name="settings_drawer_list_summary">Ruudustikuvaate asemel on rakendused loendina, üks rakendus reas, mille nimi on kuvatud ikooni kõrval</string>
 </resources>
