@@ -134,7 +134,7 @@ internal class NativeCheckoutCoordinator(
             sink.save(PlacedOrder(checkoutId = checkout.checkoutId, placedAtMs = now(), total = checkout.totals.total,
                 itemCount = lines.sumOf { it.quantity }, continueUrl = MerchantUrls.httpsUrl(checkout.continueUrl).orEmpty(),
                 status = "pending", platformId = platform, shopDomain = shop, storeName = lines.firstNotNullOfOrNull { it.storeName.ifBlank { null } }.orEmpty(),
-                lines = lines.map { it.copy(imageUrl = "") },
+                lines = lines.map { it.copy(imageUrl = "") }, trackingToken = checkout.trackingToken,
                 totalEntries = checkout.totalEntries.map { it.copy(label = it.type) }, expiresAt = checkout.expiresAt, version = checkout.version))
         } catch (cancelled: CancellationException) {
             if (mutationStarted) states[key]?.let { publish(key, it.copy(phase = CheckoutPhase.Uncertain, message = "Request interrupted. Do not retry; use the merchant website.")) }

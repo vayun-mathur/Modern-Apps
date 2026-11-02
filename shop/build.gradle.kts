@@ -28,4 +28,6 @@ dependencies {
     implementation(project(":library:room"))
     // Embedded Checkout bridge (origin-scoped web message listener) and in-page Payment Request.
     implementation(libs.androidx.webkit)
+    // Background order-tracking polls while any placed order is undelivered.
+    implementation(project(":library:work"))
 }

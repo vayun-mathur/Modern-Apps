@@ -23,16 +23,24 @@ object OrderStore {
         runCatching { json.decodeFromString<List<PlacedOrder>>(raw) }.getOrDefault(emptyList())
     }
 
-    suspend fun add(context: Context, order: PlacedOrder) = writeMutex.withLock {
-        withContext(Dispatchers.IO) {
-            val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val current = prefs.getString(KEY, null)?.let {
-                runCatching { json.decodeFromString<List<PlacedOrder>>(it) }.getOrDefault(emptyList())
-            }.orEmpty()
-            val others = current.filterNot {
-                it.checkoutId == order.checkoutId && it.shopDomain == order.shopDomain
-            }
-            prefs.edit { putString(KEY, json.encodeToString((listOf(order) + others).take(MAX_ORDERS))) }
+    suspend fun add(context: Context, order: PlacedOrder) = update(context) { current ->
+        val others = current.filterNot {
+            it.checkoutId == order.checkoutId && it.shopDomain == order.shopDomain
         }
+        listOf(order) + others
     }
+
+    /** Atomically rewrites the stored list; returns the saved result. */
+    suspend fun update(context: Context, transform: (List<PlacedOrder>) -> List<PlacedOrder>): List<PlacedOrder> =
+        writeMutex.withLock {
+            withContext(Dispatchers.IO) {
+                val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val current = prefs.getString(KEY, null)?.let {
+                    runCatching { json.decodeFromString<List<PlacedOrder>>(it) }.getOrDefault(emptyList())
+                }.orEmpty()
+                val next = transform(current).take(MAX_ORDERS)
+                prefs.edit { putString(KEY, json.encodeToString(next)) }
+                next
+            }
+        }
 }

@@ -5,6 +5,8 @@ import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.CheckoutInputs
 import com.vayunmathur.shop.data.MerchantListing
+import com.vayunmathur.shop.data.OrderStatusQuery
+import com.vayunmathur.shop.data.OrderTracking
 import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpError
 import com.vayunmathur.shop.data.UcpProduct
@@ -42,6 +44,8 @@ interface ShopBackend {
     suspend fun getCheckout(shop: String, sessionId: String): Result<UcpCheckout>
     suspend fun updateCheckout(shop: String, sessionId: String, lines: List<CartLine>, inputs: CheckoutInputs, idempotencyKey: String): Result<UcpCheckout>
     suspend fun listMerchants(refresh: Boolean = false): Result<List<MerchantListing>>
+    /** Latest tracking per token; tokens without a merchant update yet are omitted. */
+    suspend fun orderStatus(orders: List<OrderStatusQuery>): Result<Map<String, OrderTracking>>
 }
 
 class ShopBackendException(val error: UcpError) : Exception(error.toString())
@@ -143,6 +147,23 @@ internal object ShopHttpBackend : ShopBackend {
             val url = "$BASE/merchants" + if (refresh) "?refresh=true" else ""
             get(url).parse<ShopMerchantsResponse>().merchants.map { it.toModel() }
         }
+
+    override suspend fun orderStatus(orders: List<OrderStatusQuery>): Result<Map<String, OrderTracking>> =
+        catching {
+            require(
+                orders.size in 1..MAX_STATUS_TOKENS &&
+                    orders.all { it.token.matches(TOKEN) && (it.orderId?.length ?: 0) <= MAX_ORDER_ID_LENGTH },
+            ) { "Invalid tracking tokens" }
+            post("$BASE/orders/status", json.encodeToString(ShopOrderStatusRequest(orders)))
+                .parse<ShopOrderStatusResponse>()
+                .orders
+                .mapNotNull { status -> status.tracking?.takeIf { status.found }?.let { status.token to it } }
+                .toMap()
+        }
+
+    private const val MAX_STATUS_TOKENS = 50
+    private const val MAX_ORDER_ID_LENGTH = 500
+    private val TOKEN = Regex("^[0-9a-f]{32}$")
 
     private fun checkLines(lines: List<CartLine>, shop: String) {
         require(lines.isNotEmpty() && lines.all { it.shopDomain == shop && it.quantity in 1..99 }) { "Invalid checkout lines" }

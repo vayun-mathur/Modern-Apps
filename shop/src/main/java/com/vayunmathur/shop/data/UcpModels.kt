@@ -92,9 +92,43 @@ data class UcpCheckout(
     // Session-only source for exact writable projections. Never serialize buyer-bearing responses.
     @Transient internal val writableSource: JsonObject? = null,
     val submittedLines: List<SubmittedLine> = emptyList(),
+    /** Opaque server token for polling order tracking; carries no merchant or buyer data. */
+    val trackingToken: String = "",
 ) {
     override fun toString(): String = "UcpCheckout(redacted)"
 }
+
+@Serializable
+data class OrderShipment(
+    val trackingNumber: String? = null,
+    val trackingUrl: String? = null,
+    val carrier: String? = null,
+    val status: String = "shipped",
+    val description: String? = null,
+    val occurredAt: String = "",
+)
+
+/** Server projection of the merchant's latest order webhook. No addresses or buyer data. */
+@Serializable
+data class OrderTracking(
+    val orderId: String = "",
+    val label: String? = null,
+    val permalinkUrl: String? = null,
+    val currency: String = "USD",
+    val total: Long? = null,
+    val status: String = "confirmed",
+    val refundedTotal: Long = 0,
+    val itemsTotal: Long = 0,
+    val itemsFulfilled: Long = 0,
+    val shipments: List<OrderShipment> = emptyList(),
+    val updatedAtMs: Long = 0,
+) {
+    val isFinal: Boolean get() = status == "delivered" || status == "canceled"
+}
+
+/** One order to poll: its tracking token plus the merchant order id from `ec.complete`. */
+@Serializable
+data class OrderStatusQuery(val token: String, val orderId: String? = null)
 
 /** Legacy storage name retained for compatibility. Handoffs are pending, not placed orders. */
 @Serializable
@@ -112,6 +146,9 @@ data class PlacedOrder(
     val expiresAt: String? = null,
     val version: String = "2026-08-25",
     val storeName: String = "",
+    val trackingToken: String = "",
+    val orderId: String = "",
+    val tracking: OrderTracking? = null,
 ) {
     val displayName: String get() = storeName.ifBlank { shopDomain }
 }

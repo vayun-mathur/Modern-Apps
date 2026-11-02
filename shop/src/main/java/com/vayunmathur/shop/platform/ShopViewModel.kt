@@ -2,6 +2,7 @@ package com.vayunmathur.shop.platform
 
 import android.content.Context
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -26,6 +27,7 @@ import com.vayunmathur.shop.domain.EmbeddedCheckout
 import com.vayunmathur.shop.domain.MerchantLink
 import com.vayunmathur.shop.domain.MerchantLinks
 import com.vayunmathur.shop.domain.MerchantUrls
+import com.vayunmathur.shop.domain.OrderTrackingUpdates
 import com.vayunmathur.shop.domain.ProfileCheckout
 import com.vayunmathur.shop.network.ShopBackend
 import com.vayunmathur.shop.network.ShopBackendException
@@ -43,6 +45,13 @@ class ShopViewModel(
     var scopeName by mutableStateOf<String?>(null)
         private set
     var focusSearchRequest by mutableStateOf(0)
+        private set
+    var focusOrdersRequest by mutableIntStateOf(0)
+        private set
+    var refreshingTracking by mutableStateOf(false)
+        private set
+    /** Set after an order is placed so the UI can ask for the delivery-notification permission. */
+    var notificationPermissionRequest by mutableIntStateOf(0)
         private set
     var pendingRoute by mutableStateOf<Route?>(null)
         private set
@@ -199,7 +208,26 @@ class ShopViewModel(
     }
 
     fun loadOrders(context: Context) {
-        viewModelScope.launch { orders = OrderStore.getAll(context) }
+        viewModelScope.launch {
+            orders = OrderStore.getAll(context)
+            OrderTrackingSync.schedule(context, orders)
+        }
+    }
+
+    fun showOrders() { focusOrdersRequest++ }
+
+    fun refreshTracking(context: Context) {
+        if (refreshingTracking) return
+        refreshingTracking = true
+        viewModelScope.launch {
+            try {
+                AppInit.awaitReady()
+                orders = OrderTrackingSync.refresh(context, backend).orders
+                OrderTrackingSync.schedule(context, orders)
+            } finally {
+                refreshingTracking = false
+            }
+        }
     }
 
     fun search() {
@@ -274,20 +302,26 @@ class ShopViewModel(
         val lines = cart.filter { it.platformId == request.platformId && it.shopDomain == request.shopDomain }
         val currency = lines.firstOrNull()?.unitPrice?.currency ?: "USD"
         val total = totalMinor ?: lines.sumOf { it.unitPrice.amount * it.quantity }
+        val session = nativeCheckout.snapshot
+            .firstOrNull { it.platformId == request.platformId && it.shopDomain == request.shopDomain }
+            ?.checkout
+        val sessionId = session?.checkoutId
         val order = PlacedOrder(
-            checkoutId = orderId, placedAtMs = System.currentTimeMillis(), total = Money(total, currency),
+            checkoutId = sessionId ?: orderId, placedAtMs = System.currentTimeMillis(), total = Money(total, currency),
             itemCount = lines.sumOf { it.quantity }, continueUrl = permalinkUrl.orEmpty(), status = "completed",
             platformId = request.platformId, shopDomain = request.shopDomain, storeName = request.storeName,
-            lines = lines.map { it.copy(imageUrl = "") },
+            lines = lines.map { it.copy(imageUrl = "") }, orderId = orderId,
+            trackingToken = session?.trackingToken.orEmpty(),
         )
         cart = cart - lines.toSet()
         ShopCartStore.save(context, cart)
         nativeCheckout.forget(request.platformId, request.shopDomain)
         nativeCheckout.cartChanged(cart)
         embeddedCheckout = null
+        notificationPermissionRequest++
         viewModelScope.launch {
-            OrderStore.add(context, order)
-            orders = OrderStore.getAll(context)
+            orders = OrderStore.update(context) { OrderTrackingUpdates.complete(it, sessionId, order) }
+            OrderTrackingSync.schedule(context, orders)
         }
     }
 

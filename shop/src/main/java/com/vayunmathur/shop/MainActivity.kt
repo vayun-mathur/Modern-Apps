@@ -27,8 +27,16 @@ class MainActivity : MaActivity() {
     }
 
     private fun handleLink(intent: Intent?) {
+        if (intent?.action == ACTION_SHOW_ORDERS) {
+            viewModel.showOrders()
+            return
+        }
         if (intent?.action != Intent.ACTION_VIEW) return
         intent.dataString?.let(viewModel::openLink)
+    }
+
+    companion object {
+        const val ACTION_SHOW_ORDERS = "com.vayunmathur.shop.action.SHOW_ORDERS"
     }
 
     @Composable

@@ -3,6 +3,7 @@ package com.vayunmathur.shop.network
 import com.vayunmathur.shop.data.CartLine
 import com.vayunmathur.shop.data.CheckoutInputs
 import com.vayunmathur.shop.data.Money
+import com.vayunmathur.shop.data.OrderStatusQuery
 import com.vayunmathur.shop.data.UcpError
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -16,6 +17,45 @@ class ShopBackendTest {
 
     private fun stub(response: BackendRawResponse) {
         ShopHttpBackend.request = { _, _, _ -> response }
+    }
+
+    @Test
+    fun orderStatusKeepsOnlyTrackedOrders() = runBlocking<Unit> {
+        var sent: String? = null
+        val tracked = "a".repeat(32)
+        val waiting = "b".repeat(32)
+        ShopHttpBackend.request = { method, url, body ->
+            assertEquals("POST", method)
+            assertTrue(url.endsWith("/orders/status"))
+            sent = body
+            ok(
+                """
+                {"orders": [
+                  {"token": "$tracked", "found": true, "tracking": {"orderId": "o1", "label": "#1042",
+                    "currency": "USD", "total": 7977, "status": "in_transit", "refundedTotal": 0,
+                    "itemsTotal": 2, "itemsFulfilled": 1, "updatedAtMs": 5,
+                    "shipments": [{"trackingNumber": "1Z9", "trackingUrl": "https://www.ups.com/t?n=1Z9",
+                      "carrier": "UPS", "status": "in_transit", "occurredAt": "2026-03-26T09:15:00-04:00"}]}},
+                  {"token": "$waiting", "found": true, "tracking": null},
+                  {"token": "${"c".repeat(32)}", "found": false}
+                ]}
+                """.trimIndent(),
+            )
+        }
+        val result = ShopHttpBackend.orderStatus(
+            listOf(OrderStatusQuery(tracked, "gid://shopify/Order/1"), OrderStatusQuery(waiting)),
+        ).getOrThrow()
+        assertEquals(setOf(tracked), result.keys)
+        assertEquals("in_transit", result.getValue(tracked).status)
+        assertEquals("UPS", result.getValue(tracked).shipments.single().carrier)
+        assertTrue(sent!!.contains("\"orderId\":\"gid://shopify/Order/1\""))
+    }
+
+    @Test
+    fun orderStatusRejectsMalformedTokens() = runBlocking<Unit> {
+        stub(ok("""{"orders": []}"""))
+        val error = (ShopHttpBackend.orderStatus(listOf(OrderStatusQuery("not-a-token"))).exceptionOrNull() as ShopBackendException).error
+        assertIs<UcpError.Malformed>(error)
     }
 
     private val productJson = """

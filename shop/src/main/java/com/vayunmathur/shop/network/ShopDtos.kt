@@ -5,6 +5,8 @@ import com.vayunmathur.shop.data.CatalogOptionSelection
 import com.vayunmathur.shop.data.CheckoutInputs
 import com.vayunmathur.shop.data.MerchantListing
 import com.vayunmathur.shop.data.Money
+import com.vayunmathur.shop.data.OrderStatusQuery
+import com.vayunmathur.shop.data.OrderTracking
 import com.vayunmathur.shop.data.UcpCheckout
 import com.vayunmathur.shop.data.UcpProduct
 import kotlinx.serialization.SerialName
@@ -140,7 +142,21 @@ data class ShopCheckoutSession(
     val version: String = "2026-08-25",
     val review: ShopReview = ShopReview(),
     val submittedLines: List<ShopSubmittedLine> = emptyList(),
+    val trackingToken: String = "",
 )
+
+@Serializable
+data class ShopOrderStatusRequest(val orders: List<OrderStatusQuery>)
+
+@Serializable
+data class ShopOrderStatus(
+    val token: String = "",
+    val found: Boolean = false,
+    val tracking: OrderTracking? = null,
+)
+
+@Serializable
+data class ShopOrderStatusResponse(val orders: List<ShopOrderStatus> = emptyList())
 
 @Serializable
 data class ShopProductImage(
@@ -319,6 +335,7 @@ internal fun ShopCheckoutSession.toModel(): UcpCheckout = UcpCheckout(
     submittedLines = submittedLines.map {
         com.vayunmathur.shop.data.SubmittedLine(it.variantId, it.quantity)
     },
+    trackingToken = trackingToken,
 )
 
 private fun Long.toModel(currency: String): Money = Money(this, currency)

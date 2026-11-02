@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Delivery updates for placed orders (shipped, out for delivery, delivered). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Lets the embedded checkout's Payment Request find wallet apps such as Google Pay. -->
     <queries>
