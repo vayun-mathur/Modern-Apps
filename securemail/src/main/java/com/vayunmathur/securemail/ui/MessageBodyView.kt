@@ -17,6 +17,8 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.HtmlText
@@ -24,6 +26,7 @@ import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.securemail.data.StoredMessage
+import com.vayunmathur.securemail.domain.mail.PlainTextMarkup
 
 /**
  * Message body: the sender's HTML part when there is one (links, lists,
@@ -81,7 +84,7 @@ private fun PlainBody(msg: StoredMessage) {
     val (main, quoted) = remember(body) { splitQuotedText(body) }
     val linkColor = MaterialTheme.colorScheme.primary
     val shown = if (showQuotes || quoted.isEmpty()) body else main
-    val annotated = remember(shown, linkColor) { linkify(shown, linkColor) }
+    val annotated = remember(shown, linkColor) { styled(shown, linkColor) }
     Text(
         annotated,
         style = MaterialTheme.typography.bodyMedium,
@@ -94,14 +97,23 @@ private fun PlainBody(msg: StoredMessage) {
     }
 }
 
-/** Plain text with http(s) URLs and email addresses turned into tappable links. */
-private fun linkify(text: String, color: androidx.compose.ui.graphics.Color): AnnotatedString = buildAnnotatedString {
-    append(text)
-    val style = TextLinkStyles(SpanStyle(color = color, textDecoration = TextDecoration.Underline))
-    URL.findAll(text).forEach { m ->
-        val raw = m.value.trimEnd('.', ',', ')', ']', ';', ':', '!', '?')
-        val target = if (raw.contains('@') && !raw.startsWith("http", ignoreCase = true)) "mailto:$raw" else raw
-        addLink(LinkAnnotation.Url(target, style), m.range.first, m.range.first + raw.length)
+/** Plain text with light markup ([text](url), **bold**, bullets...) applied; see [PlainTextMarkup]. */
+private fun styled(text: String, linkColor: androidx.compose.ui.graphics.Color): AnnotatedString = buildAnnotatedString {
+    val linkStyle = TextLinkStyles(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline))
+    for (run in PlainTextMarkup.parse(text)) {
+        val start = length
+        append(run.text)
+        if (run.bold || run.italic) {
+            addStyle(
+                SpanStyle(
+                    fontWeight = if (run.bold) FontWeight.Bold else null,
+                    fontStyle = if (run.italic) FontStyle.Italic else null,
+                ),
+                start,
+                length,
+            )
+        }
+        run.url?.let { addLink(LinkAnnotation.Url(it, linkStyle), start, length) }
     }
 }
 
@@ -118,6 +130,5 @@ private fun splitQuotedText(body: String): Pair<String, String> {
     return body to ""
 }
 
-private val URL = Regex("""https?://[^\s<>"]+|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}""")
 private val REMOTE_REF = Regex("""(?i)(src|background|srcset)\s*=\s*["']?\s*https?://|url\(\s*["']?https?://""")
 private val QUOTE_MARKERS = listOf("protonmail_quote", "gmail_quote", "yahoo_quoted", "moz-cite-prefix", "<blockquote")
