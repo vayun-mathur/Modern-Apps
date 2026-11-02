@@ -1,3 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Süsteemiuuendus</string>
+    <string name="checking">Kontrollin uuenduste olemasolu…</string>
+    <string name="up_to_date">Sinu süsteem on uuendatud</string>
+    <string name="not_checked_yet">Pole veel kontrollitud</string>
+    <string name="check_failed">Uuenduste olemasolu kontrollimine ei õnnestunud</string>
+    <string name="update_available">Saadaval on uuendus: <xliff:g id="build" example="2026090700">%1$s</xliff:g></string>
+    <string name="check_now">Kontrolli kohe</string>
+    <string name="auto_install">Paigalda uuendused automaatselt</string>
+    <string name="auto_install_desc">Laadi uuendused alla ja paigalda nad taustal ning käivita seade siis, kui ta on jõudeolekus.</string>
+    <string name="metered_allowed">Kasuta mobiilise andmeside võrgus</string>
+    <string name="metered_allowed_desc">Luba uuendamine ka andmemahupõhises võrgus. Tervikliku uuenduse andmemaht võib olla üle gigabaidi.</string>
+    <string name="channel_progress">Paigaldan uuendusi</string>
+    <string name="channel_progress_desc">Näed süsteemiuuenduste allalaadimise ja paigalduste edenemist.</string>
+    <string name="channel_result">Uuenduse olek</string>
+    <string name="channel_result_desc">Näed, kas uuendus on ootel, lõpetatud või ebaõnnestunud.</string>
+    <string name="notify_preparing">Valmistun süsteemiuuenduse paigaldamiseks…</string>
+    <string name="notify_downloading">Laadin süsteemiuuendust alla…</string>
+    <string name="notify_verifying">Kontrollin süsteemiuuenduse õigsust…</string>
+    <string name="notify_installing">Paigaldan süsteemiuuendust…</string>
+    <string name="notify_reboot_title">Uuenduse lõpetamiseks käivita nutiseade uuesti</string>
+    <string name="notify_reboot_text">Versioon <xliff:g id="build" example="2026090700">%1$s</xliff:g> on valmis. Sinu nutiseade käivitub uuesti, kui sa parasjagu seda ei kasuta.</string>
+    <string name="notify_restart_now">Taaskäivita kohe</string>
+    <string name="notify_available_title">Saadaval on süsteemiuuendus</string>
+    <string name="notify_available_text">Versioon <xliff:g id="build" example="2026090700">%1$s</xliff:g> on allalaadimiseks valmis.</string>
+    <string name="notify_failed_title">Süsteemiuuendise paigaldamine ei õnnestunud</string>
+    <string name="error_unknown_build">Kasutusel oleva versiooni tuvastamine ei õnnestunud.</string>
+    <string name="current_build">Praegune versioon/kompileerimisjärk: <xliff:g id="build" example="2026090500">%1$s</xliff:g></string>
+    <string name="build_unknown">Praegune versioon/kompileerimisjärk pole teada</string>
+    <string name="error_no_package">Selle versiooni/kompileerimisjärgu jaoks pole avaldatud ühtegi uuenduspaketti.</string>
 </resources>
