@@ -15,7 +15,6 @@ import com.vayunmathur.globalesim.data.api.RateDto
 import com.vayunmathur.globalesim.data.api.StatusResponse
 import com.vayunmathur.globalesim.domain.upgradeCheckoutUrl
 import java.io.IOException
-import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
@@ -123,10 +122,6 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
      * payment watch has nothing left to wait for.
      */
     private suspend fun applyStatus(status: StatusResponse): Boolean {
-        if (status.transferred) {
-            onMovedAway()
-            return true
-        }
         val profile = status.profile
         val landed = profile != null && !status.balanceStale &&
             profile.walletUsdCents > creditBaselineCents
@@ -149,20 +144,6 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
             watchingCrypto && serverPending == null -> true
             else -> false
         }
-    }
-
-    /** The eSIM was claimed onto another phone: start this install over fresh. */
-    private suspend fun onMovedAway() {
-        val fresh = UUID.randomUUID().toString()
-        idStore.replace(fresh)
-        state = state.copy(
-            simId = fresh,
-            profile = null,
-            pendingInvoiceUrl = null,
-            pendingCreditCents = 0,
-            balanceStale = false,
-            message = "This eSIM was moved to another phone.",
-        )
     }
 
     /**
@@ -289,18 +270,21 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Move the eSIM whose SIM ID was copied from another phone onto this one. */
+    /** Adopt the SIM ID copied from another phone as this phone's account id. */
     fun claim(simId: String) {
+        val id = simId.trim()
         viewModelScope.launch {
             state = state.copy(loading = true)
-            runCatching { EsimApi.claim(simId.trim(), accountId()) }
+            runCatching { EsimApi.claim(id, accountId()) }
                 .onSuccess {
                     creditWatch?.cancel()
+                    idStore.replace(id)
                     state = state.copy(
+                        simId = id,
                         loading = false,
                         pendingInvoiceUrl = null,
                         pendingClientSecret = null,
-                        message = "eSIM moved to this phone.",
+                        message = "eSIM claimed on this phone.",
                     )
                     loadStatus()
                 }
@@ -318,7 +302,6 @@ class EsimViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun paymentError(t: Throwable): String = when ((t as? EsimApi.ApiError)?.statusCode) {
         400 -> "Payments must be between $5 and $20."
-        410 -> "This eSIM moved to another phone."
         else -> friendly(t)
     }
 

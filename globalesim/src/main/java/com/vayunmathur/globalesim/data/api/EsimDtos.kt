@@ -60,8 +60,6 @@ data class StatusResponse(
     @SerialName("pending_credit_cents") val pendingCreditCents: Long = 0,
     /** The balance is a last-known fallback; the server couldn't read it live. */
     @SerialName("balance_stale") val balanceStale: Boolean = false,
-    /** This account's eSIM was claimed onto another phone. */
-    @SerialName("transferred") val transferred: Boolean = false,
 )
 
 @Serializable

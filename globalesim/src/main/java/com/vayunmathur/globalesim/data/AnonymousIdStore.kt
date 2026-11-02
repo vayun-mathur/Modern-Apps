@@ -29,7 +29,7 @@ class AnonymousIdStore(private val context: Context) {
         return fresh
     }
 
-    /** Replaces the id (after this install's eSIM was claimed onto another phone). */
+    /** Replaces the id with a SIM ID claimed from another phone. */
     suspend fun replace(newId: String) {
         context.esimAccountStore.edit { it[KEY_ACCOUNT_ID] = newId }
     }
