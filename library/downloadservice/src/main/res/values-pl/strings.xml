@@ -1,3 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="initializing_system">Inicjowanie systemu</string>
+    <string name="mbps"><xliff:g id="speed" example="12.5">%1$s</xliff:g> Mb/s</string>
+    <string name="downloading_required_components_for_this">Trwa pobieranie wymaganych składników dla tej aplikacji.</string>
+    <string name="completed">Zakończone</string>
+    <string name="downloading">Pobieranie.</string>
+    <string name="download_failed">Pobieranie nie powiodło się. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="retry">Ponów</string>
 </resources>
