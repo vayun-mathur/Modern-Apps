@@ -755,7 +755,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                 "Subject: $safeSubject\r\n" +
                 "Message-ID: <${newMessageId()}>\r\n" +
                 "MIME-Version: 1.0\r\n" +
-                "Content-Type: text/plain; charset=utf-8\r\n" +
+                "Content-Type: text/plain; charset=utf-8; protected-headers=\"v1\"\r\n" +
                 "Content-Transfer-Encoding: 8bit\r\n" +
                 "\r\n" +
                 "$body\r\n"
@@ -769,15 +769,16 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun buildEncryptedBody(encrypted: ByteArray): ByteArray {
         val boundary = "maemail-${UUID.randomUUID().toString().take(8)}"
-        val armor = android.util.Base64.encodeToString(encrypted, android.util.Base64.NO_WRAP)
-        // Fold armor at 64 cols per RFC 3156 line-length limits.
-        val folded = armor.chunked(64).joinToString("\r\n")
+        // RFC 3156 §4: the second part is an ASCII-armored PGP MESSAGE. Proton,
+        // GnuPG and Thunderbird reject a bare base64 body here.
+        val armored = PgpCrypto.armorMessage(encrypted).trimEnd().lines().joinToString("\r\n")
         return (
             "MIME-Version: 1.0\r\n" +
                 "Content-Type: multipart/encrypted; boundary=\"$boundary\"; protocol=\"application/pgp-encrypted\"\r\n" +
                 "\r\n" +
                 "--$boundary\r\n" +
                 "Content-Type: application/pgp-encrypted\r\n" +
+                "Content-Description: PGP/MIME version identification\r\n" +
                 "\r\n" +
                 "Version: 1\r\n" +
                 "\r\n" +
@@ -786,7 +787,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                 "Content-Description: OpenPGP encrypted message\r\n" +
                 "Content-Disposition: inline; filename=\"encrypted.asc\"\r\n" +
                 "\r\n" +
-                "$folded\r\n" +
+                "$armored\r\n" +
                 "--$boundary--\r\n"
             ).toByteArray(Charsets.UTF_8)
     }

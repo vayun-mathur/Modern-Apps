@@ -9,33 +9,54 @@ object MimeCodec {
 
     /**
      * Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope
-     * (second part, base64 `application/octet-stream`). Returns the base64
-     * payload string, or null when the input is not such an envelope (legacy
-     * bare blobs pass through undecrypted at a higher layer).
+     * as base64. The data part is normally an ASCII-armored `PGP MESSAGE`
+     * (what Proton/GnuPG/Thunderbird send, and what SecureMail sends since it
+     * federates); older SecureMail blobs carried bare base64 instead, which is
+     * still accepted. Returns null when the input is not such an envelope.
      */
     fun extractPgpPayloadB64(envelope: ByteArray): String? {
         return try {
             val text = envelope.toString(Charsets.UTF_8)
             if (!text.contains("application/pgp-encrypted")) return null
-            // Split on boundary markers; the data part follows the octet-stream header.
+            val armorStart = text.indexOf(ARMOR_BEGIN)
+            if (armorStart >= 0) return dearmorBody(text.substring(armorStart))
+            // Legacy bare-base64 part: body follows the octet-stream headers and
+            // runs to the next MIME boundary line (any boundary, not just ours).
             val octetIdx = text.indexOf("application/octet-stream")
             if (octetIdx < 0) return null
             val bodyStart = text.indexOf("\r\n\r\n", octetIdx).takeIf { it >= 0 }
                 ?: text.indexOf("\n\n", octetIdx).takeIf { it >= 0 }
                 ?: return null
-            val afterHeaders = if (text.startsWith("\r\n\r\n", bodyStart)) {
-                text.substring(bodyStart + 4)
-            } else {
-                text.substring(bodyStart + 2)
-            }
-            // Cut at the closing boundary; de-whitespace the base64.
-            val end = afterHeaders.indexOf("--maemail-").takeIf { it >= 0 } ?: afterHeaders.length
-            val b64 = afterHeaders.substring(0, end).filterNot { it.isWhitespace() }
-            if (b64.isEmpty()) null else b64
+            val b64 = text.substring(bodyStart).lineSequence()
+                .map { it.trim() }
+                .dropWhile { it.isEmpty() }
+                .takeWhile { !it.startsWith("--") }
+                .joinToString("")
+            b64.ifEmpty { null }
         } catch (_: Exception) {
             null
         }
     }
+
+    /**
+     * Base64 body of an armored block starting at `-----BEGIN PGP MESSAGE-----`
+     * (RFC 9580 §6.2): skips armor headers (`Key: value` up to the blank line),
+     * stops at the CRC24 line (`=xxxx`) or the END line.
+     */
+    private fun dearmorBody(armored: String): String? {
+        val lines = armored.lineSequence().map { it.trim() }.drop(1).toList()
+        val bodyStart = if (lines.firstOrNull()?.contains(": ") == true) {
+            lines.indexOfFirst { it.isEmpty() }.takeIf { it >= 0 }?.plus(1) ?: return null
+        } else {
+            lines.indexOfFirst { it.isNotEmpty() }.takeIf { it >= 0 } ?: return null
+        }
+        val b64 = lines.drop(bodyStart)
+            .takeWhile { !it.startsWith("=") && !it.startsWith("-----") }
+            .joinToString("")
+        return b64.ifEmpty { null }
+    }
+
+    private const val ARMOR_BEGIN = "-----BEGIN PGP MESSAGE-----"
 
     /**
      * Minimal parser for the MIME skeleton the composer emits (headers +
