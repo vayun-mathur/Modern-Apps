@@ -61,7 +61,11 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
         if (initialRoute != null) backStack.add(initialRoute)
     }
 
-    val folderActions = remember(viewModel) {
+    // Keyed on backStack too: the stack is keyed on the start route, which moves
+    // Onboarding -> Lock -> Inbox while settings load, so it is replaced during
+    // startup. Callbacks holding the first stack would push onto a stack that
+    // is no longer displayed (taps on a message silently did nothing).
+    val folderActions = remember(viewModel, backStack) {
         FolderActions(
             onOpen = { backStack.add(Route.Reader(it)) },
             onCompose = { backStack.add(Route.Composer()) },
@@ -238,7 +242,7 @@ private fun EntryProviderScope<Route>.outEntry(viewModel: MailViewModel, backSta
         val drafts by viewModel.drafts.drafts.collectAsState(emptyList())
         val sent by viewModel.drafts.sent.collectAsState(emptyList())
         val outbox by viewModel.outboxMessages.collectAsState(emptyList())
-        val actions = remember(viewModel) {
+        val actions = remember(viewModel, backStack) {
             OutActions(
                 onCompose = { backStack.add(Route.Composer()) },
                 onOpenDraft = { d ->
