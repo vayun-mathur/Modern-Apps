@@ -59,41 +59,146 @@ object MimeCodec {
     private const val ARMOR_BEGIN = "-----BEGIN PGP MESSAGE-----"
 
     /**
-     * Minimal parser for the MIME skeleton the composer emits (headers +
-     * trailing `--boundary--`). Returns (subject, body, from). The payload is
-     * already authenticated PGP plaintext at this point; this only splits it.
+     * Parses a MIME message into (subject, body, from): our own composer's
+     * text/plain, and whatever other providers send (Proton, Gmail): folded
+     * headers, RFC 2047 encoded-words, quoted-printable/base64 bodies in any
+     * charset, and multipart trees. Plain text is preferred; HTML-only mail is
+     * reduced to readable text.
      */
     fun parseMime(mime: String): Triple<String, String, String> {
-        val lines = mime.lines()
-        var from = ""
-        var subject = ""
-        var i = 0
-        while (i < lines.size && lines[i].isNotBlank()) {
-            val line = lines[i]
-            when {
-                line.startsWith("From:", ignoreCase = true) ->
-                    from = line.substringAfter(':').trim()
-                line.startsWith("Subject:", ignoreCase = true) ->
-                    subject = line.substringAfter(':').trim()
-            }
-            i++
-        }
-        // Skip the blank line plus the multipart preamble (boundary markers and
-        // the Version part); the body is the last text block before --boundary--.
-        val body = StringBuilder()
-        var inBody = false
-        for (line in lines.drop(i)) {
-            if (line.startsWith("--maemail-")) {
-                inBody = false
-                continue
-            }
-            if (line.startsWith("Content-Type: text/plain", ignoreCase = true)) {
-                inBody = false // headers of the part follow; blank line starts text
-                continue
-            }
-            if (inBody) body.appendLine(line)
-            if (line.isBlank()) inBody = true
-        }
-        return Triple(subject, body.toString().trimEnd(), from)
+        val (headers, body) = splitEntity(mime)
+        return Triple(
+            decodeWords(headers["subject"].orEmpty()),
+            readableBody(headers, body).trimEnd(),
+            decodeWords(headers["from"].orEmpty()),
+        )
     }
+
+    /** Header map (lowercase names, unfolded values; first occurrence wins) + raw body. */
+    private fun splitEntity(entity: String): Pair<Map<String, String>, String> {
+        val text = entity.replace("\r\n", "\n")
+        val end = text.indexOf("\n\n").takeIf { it >= 0 }
+        val headerBlock = if (end == null) text else text.substring(0, end)
+        val body = if (end == null) "" else text.substring(end + 2)
+        val headers = mutableMapOf<String, String>()
+        var name: String? = null
+        val value = StringBuilder()
+        fun flush() {
+            name?.let { headers.putIfAbsent(it, value.toString().trim()) }
+        }
+        for (line in headerBlock.split("\n")) {
+            if ((line.startsWith(" ") || line.startsWith("\t")) && name != null) {
+                value.append(' ').append(line.trim())
+            } else {
+                flush()
+                val colon = line.indexOf(':')
+                name = if (colon > 0) line.substring(0, colon).trim().lowercase() else null
+                value.setLength(0)
+                if (colon > 0) value.append(line.substring(colon + 1))
+            }
+        }
+        flush()
+        return headers to body
+    }
+
+    private fun readableBody(headers: Map<String, String>, body: String): String {
+        val type = headers["content-type"].orEmpty()
+        val mediaType = type.substringBefore(';').trim().lowercase().ifEmpty { "text/plain" }
+        if (mediaType.startsWith("multipart/")) {
+            val boundary = param(type, "boundary") ?: return body
+            val parts = multipartParts(body, boundary).map { splitEntity(it) }
+            fun typeOf(h: Map<String, String>) =
+                h["content-type"].orEmpty().substringBefore(';').trim().lowercase().ifEmpty { "text/plain" }
+            val chosen = parts.firstOrNull { typeOf(it.first) == "text/plain" }
+                ?: parts.firstOrNull { typeOf(it.first).startsWith("multipart/") }
+                ?: parts.firstOrNull { typeOf(it.first) == "text/html" }
+                ?: return ""
+            return readableBody(chosen.first, chosen.second)
+        }
+        val decoded = decodeTransfer(body, headers["content-transfer-encoding"], param(type, "charset"))
+        return if (mediaType == "text/html") htmlToText(decoded) else decoded
+    }
+
+    private fun multipartParts(body: String, boundary: String): List<String> {
+        val parts = mutableListOf<String>()
+        var current: StringBuilder? = null
+        for (line in body.split("\n")) {
+            val trimmed = line.trimEnd()
+            when (trimmed) {
+                "--$boundary--" -> {
+                    current?.let { parts += it.toString() }
+                    return parts
+                }
+                "--$boundary" -> {
+                    current?.let { parts += it.toString() }
+                    current = StringBuilder()
+                }
+                else -> current?.append(line)?.append('\n')
+            }
+        }
+        current?.let { parts += it.toString() }
+        return parts
+    }
+
+    private fun param(headerValue: String, key: String): String? =
+        headerValue.split(';').drop(1).map { it.trim() }
+            .firstOrNull { it.lowercase().startsWith("$key=") }
+            ?.substringAfter('=')?.trim()?.trim('"')
+
+    private fun charsetOf(name: String?): java.nio.charset.Charset =
+        runCatching { java.nio.charset.Charset.forName(name ?: "UTF-8") }.getOrDefault(Charsets.UTF_8)
+
+    private fun decodeTransfer(body: String, encoding: String?, charset: String?): String =
+        when (encoding?.trim()?.lowercase()) {
+            "base64" -> runCatching {
+                String(java.util.Base64.getMimeDecoder().decode(body.trim()), charsetOf(charset))
+            }.getOrDefault(body)
+            "quoted-printable" -> String(decodeQuotedPrintable(body, underscoreIsSpace = false), charsetOf(charset))
+            else -> body
+        }
+
+    private fun decodeQuotedPrintable(text: String, underscoreIsSpace: Boolean): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val src = text.replace("=\n", "")
+        var i = 0
+        while (i < src.length) {
+            val c = src[i]
+            val hex = if (c == '=' && i + 2 < src.length) src.substring(i + 1, i + 3).toIntOrNull(16) else null
+            when {
+                hex != null -> { out.write(hex); i += 3 }
+                c == '_' && underscoreIsSpace -> { out.write(' '.code); i++ }
+                else -> { out.write(c.toString().toByteArray(Charsets.UTF_8)); i++ }
+            }
+        }
+        return out.toByteArray()
+    }
+
+    /** RFC 2047 encoded-words (`=?charset?B|Q?text?=`), e.g. non-ASCII subjects. */
+    private fun decodeWords(value: String): String =
+        Regex("""=\?([^?]+)\?([BbQq])\?([^?]*)\?=(\s+(?==\?))?""").replace(value) { m ->
+            val (charset, enc, data) = m.destructured
+            runCatching {
+                val bytes = if (enc.equals("B", ignoreCase = true)) {
+                    java.util.Base64.getDecoder().decode(data)
+                } else {
+                    decodeQuotedPrintable(data, underscoreIsSpace = true)
+                }
+                String(bytes, charsetOf(charset))
+            }.getOrDefault(m.value)
+        }
+
+    private fun htmlToText(html: String): String = html
+        .replace(Regex("(?is)<(style|script|head)[^>]*>.*?</\\1>"), "")
+        .replace(Regex("(?i)<br\\s*/?>"), "\n")
+        .replace(Regex("(?i)</(p|div|tr|li|h[1-6]|blockquote)>"), "\n")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">")
+        .replace("&quot;", "\"").replace("&#39;", "'").replace("&apos;", "'")
+        .replace(Regex("&#(\\d+);")) { m ->
+            m.groupValues[1].toIntOrNull()?.let { String(Character.toChars(it)) } ?: m.value
+        }
+        .replace("&amp;", "&")
+        .replace(Regex("[ \\t]+\n"), "\n")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
 }
