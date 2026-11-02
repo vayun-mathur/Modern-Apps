@@ -1,3 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Uniflix</string>
+    <string name="movies">Filmid</string>
+    <string name="shows">Sarjad ja saated</string>
+    <string name="my_list">Minu loend</string>
+    <string name="see_all">Vaata kõiki</string>
+    <string name="add_to_my_list">Lisa minu loendisse</string>
+    <string name="in_my_list">Minu loendites</string>
+    <string name="add_to_list">Lisa loendisse</string>
+    <string name="choose_list">Salvesta loendisse</string>
+    <string name="new_list_hint">Uue loendi nimi</string>
+    <string name="lists_empty">Ühtegi loendit veel pole. Lisa alljärgnevast üks.</string>
+    <string name="save_settings">Salvesta seadistused</string>
+    <string name="addon_not_found">Lisamoodulit ei leidunud.</string>
+    <string name="move_up">Liiguta ülespoole</string>
+    <string name="move_down">Liiguta allapoole</string>
+    <string name="server">Server</string>
+    <string name="auto">Automaatne</string>
+    <string name="resume">Jätka</string>
+    <string name="search_hint">Otsi filme, telesaateid ja -sarju</string>
+    <string name="subtitles_cc">Subtiitrid</string>
+    <string name="subtitles_off">Pole kasutusel</string>
+    <string name="quality">Kvaliteet</string>
 </resources>
