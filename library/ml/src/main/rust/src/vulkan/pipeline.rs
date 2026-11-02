@@ -235,9 +235,9 @@ pub struct Pipelines {
     /// One set per weights segment: arena at binding 0, that segment of the weights at 1 and 2.
     ///
     /// Almost always exactly one. A second appears only when the weights are larger than
-    /// `maxStorageBufferRange`, which today means SMaLL-100 on a device reporting the guaranteed
-    /// minimum. Every set points at the same arena and the same weights buffer; they differ only
-    /// in the weights descriptor's `(offset, range)`. See [`super::segment`].
+    /// `maxStorageBufferRange` or `maxMemoryAllocationSize`. Every set points at the same arena;
+    /// they differ in which block's buffer the weights descriptor names and its
+    /// `(offset, range)`. See [`super::segment`].
     pub descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_pool: vk::DescriptorPool,
 }
@@ -275,12 +275,13 @@ impl Pipelines {
         unsafe { device.update_descriptor_sets(&writes, &[]) };
     }
 
-    /// Build all of them and point one descriptor set per segment at `arena` and `weights`.
+    /// Build all of them and point one descriptor set per segment at `arena` and the weights
+    /// buffer of that segment's block.
     pub fn new(
         context: &Context,
         arena: vk::Buffer,
         arena_size: vk::DeviceSize,
-        weights: vk::Buffer,
+        weights: &[vk::Buffer],
         params: vk::Buffer,
         segments: &[Segment],
     ) -> Result<Pipelines, String> {
@@ -295,7 +296,7 @@ impl Pipelines {
         shaders: Arc<Shaders>,
         arena: vk::Buffer,
         arena_size: vk::DeviceSize,
-        weights: vk::Buffer,
+        weights: &[vk::Buffer],
         params: vk::Buffer,
         segments: &[Segment],
     ) -> Result<Pipelines, String> {
@@ -344,15 +345,18 @@ impl Pipelines {
             .range(vk::WHOLE_SIZE);
         // Held outside the loop so the `buffer_info` borrows stay live until the one
         // `update_descriptor_sets` below.
-        let weight_infos: Vec<_> = segments
+        let weight_infos = segments
             .iter()
             .map(|segment| {
-                vk::DescriptorBufferInfo::default()
-                    .buffer(weights)
+                let buffer = weights.get(segment.block).copied().ok_or_else(|| {
+                    format!("a segment in block {} of {}", segment.block, weights.len())
+                })?;
+                Ok(vk::DescriptorBufferInfo::default()
+                    .buffer(buffer)
                     .offset(segment.base)
-                    .range(segment.len)
+                    .range(segment.len))
             })
-            .collect();
+            .collect::<Result<Vec<_>, String>>()?;
         let mut writes = Vec::with_capacity(segments.len() * BINDINGS as usize);
         for (set, info) in descriptor_sets.iter().zip(&weight_infos) {
             writes.push(

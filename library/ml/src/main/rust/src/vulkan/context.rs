@@ -114,9 +114,8 @@ pub struct Context {
 ///   256 while a `.maml` tensor is only 16-aligned. A segment base is therefore rounded **down**
 ///   to it, so the segment starts slightly before its first tensor; the extra bytes overlap the
 ///   previous segment, and both are read-only.
-/// * `max_memory_allocation_size` bounds the single allocation the whole file goes into. Its
-///   guaranteed minimum is 1 GiB, so 318 MiB has threefold headroom — but a device reporting less
-///   should fail with that sentence rather than with `VK_ERROR_OUT_OF_DEVICE_MEMORY`.
+/// * `max_memory_allocation_size` bounds one weights block. Its guaranteed minimum is 1 GiB and
+///   Adreno reports exactly that, so a larger file is split into several blocks.
 #[derive(Clone, Copy, Debug)]
 pub struct Limits {
     /// `VkPhysicalDeviceLimits::maxStorageBufferRange`. Guaranteed at least 128 MiB.
@@ -148,8 +147,17 @@ pub struct Limits {
 /// Supertonic sampler must produce identical numbers with and without it.
 const FORCED_RANGE: &str = "MODELRUNNER_MAX_STORAGE_RANGE";
 
+/// Forces [`Limits::max_memory_allocation_size`] down, so the multi-block path can be exercised
+/// on a device that reports more than Adreno's 1 GiB: `MODELRUNNER_MAX_ALLOCATION` for the test
+/// binary, `adb shell setprop debug.modelrunner.max_allocation` for the app. `1073741824` loads
+/// Gemma 4 as an Adreno part would; `33554432`, together with
+/// `MODELRUNNER_MAX_STORAGE_RANGE=33554432`, splits the parity fixtures. It only lowers the
+/// limit, never raises it.
+const FORCED_ALLOCATION: &str = "max_allocation";
+
 impl Limits {
-    /// Query them, applying [`FORCED_RANGE`] if it is set to a parseable non-zero value.
+    /// Query them, applying [`FORCED_RANGE`] and [`FORCED_ALLOCATION`] if set to parseable
+    /// non-zero values.
     fn query(instance: &ash::Instance, physical_device: vk::PhysicalDevice) -> Limits {
         let mut maintenance3 = vk::PhysicalDeviceMaintenance3Properties::default();
         let mut properties =
@@ -159,6 +167,8 @@ impl Limits {
         unsafe { instance.get_physical_device_properties2(physical_device, &mut properties) };
         let device = properties.properties.limits;
         let forced = std::env::var(FORCED_RANGE).ok().and_then(|v| v.parse::<u64>().ok());
+        let forced_allocation =
+            crate::knobs::get(FORCED_ALLOCATION).and_then(|v| v.parse::<u64>().ok());
         // Timestamp validity lives on the queue family in Vulkan 1.3, not on
         // the device: the best any compute family offers is what the query
         // pool can rely on.
@@ -177,7 +187,11 @@ impl Limits {
                 .filter(|&v| v > 0)
                 .unwrap_or_else(|| u64::from(device.max_storage_buffer_range)),
             min_storage_buffer_offset_alignment: device.min_storage_buffer_offset_alignment,
-            max_memory_allocation_size: maintenance3.max_memory_allocation_size,
+            max_memory_allocation_size: forced_allocation
+                .filter(|&v| v > 0)
+                .map_or(maintenance3.max_memory_allocation_size, |v| {
+                    v.min(maintenance3.max_memory_allocation_size)
+                }),
             timestamp_period: device.timestamp_period,
             timestamp_valid_bits,
         }

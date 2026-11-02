@@ -18,21 +18,27 @@ impl Net {
             // making that TRANSFER_WRITE visible to every SHADER_READ below needs a real
             // barrier. Recorded once at the top rather than folded into `barrier`, because
             // the weights buffer is never written again.
-            let weights_visible = vk::BufferMemoryBarrier::default()
-                .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
-                .dst_access_mask(vk::AccessFlags::SHADER_READ)
-                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
-                .buffer(self.weights.buffer)
-                .offset(0)
-                .size(vk::WHOLE_SIZE);
+            let weights_visible: Vec<_> = self
+                .weights
+                .iter()
+                .map(|block| {
+                    vk::BufferMemoryBarrier::default()
+                        .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                        .dst_access_mask(vk::AccessFlags::SHADER_READ)
+                        .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                        .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                        .buffer(block.buffer)
+                        .offset(0)
+                        .size(vk::WHOLE_SIZE)
+                })
+                .collect();
             device.cmd_pipeline_barrier(
                 buffer,
                 vk::PipelineStageFlags::TRANSFER,
                 vk::PipelineStageFlags::COMPUTE_SHADER,
                 vk::DependencyFlags::empty(),
                 &[],
-                std::slice::from_ref(&weights_visible),
+                &weights_visible,
                 &[],
             );
             // Timestamps start clean: a query pool left over from an earlier

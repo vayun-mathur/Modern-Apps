@@ -13,16 +13,19 @@
 //!
 //! # One buffer, several descriptors
 //!
-//! The file stays a **single** `VkBuffer` and a single allocation — nothing about the upload,
-//! [`crate::weights::Blob::read_at`] or `Net::CHUNK_BYTES` changes. What is split is the
+//! A file that fits in one allocation stays a **single** `VkBuffer`. What is split is the
 //! *descriptor*: one set per segment, each pointing at the same buffer with its own
 //! `(offset, range)`, and `Net::record` binds the set an op needs before dispatching it.
 //!
-//! Per-segment `VkBuffer`s would work too, and would sidestep `minStorageBufferOffsetAlignment`
-//! entirely, at the price of N allocations, an upload that has to know which buffer each byte
-//! belongs to, and N sets of aliasing rules. The alignment is not actually a problem: it is at
-//! most 256, a segment base is a multiple of the window stride which is rounded down to it, and
-//! the overlap that creates is read-only in every segment.
+//! # Several buffers, when one allocation is not enough
+//!
+//! `maxMemoryAllocationSize` is only guaranteed to be 1 GiB, and Adreno reports exactly that.
+//! Gemma 4's text file is 1.03 GiB. So a file past the limit becomes several **blocks**, one
+//! `VkBuffer` each, laid out by the same trick as the windows below: fixed blocks at a stride,
+//! overlapping by [`BLOCK_OVERLAP`] at most, so any span no longer than the overlap is entirely
+//! inside one block. The overlap is uploaded twice — device memory, not file reads — and the
+//! layout depends only on the length, so `rebuild` still recomputes nothing. Each block is then
+//! windowed on its own exactly as a single buffer is.
 //!
 //! # Overlapping windows, so the split does not depend on the plan
 //!
@@ -73,29 +76,57 @@ pub(crate) const ALIGNMENT: u64 = 16;
 /// back absurdly small, and thousands of descriptor sets would be a worse failure than a message.
 pub(crate) const MAX_SEGMENTS: usize = 1024;
 
-/// One descriptor's worth of the weights buffer.
+/// The most two neighbouring blocks overlap by: the reach of a window at the spec's guaranteed
+/// 128 MiB range, so every op that loads on such a device already fits.
+pub(crate) const BLOCK_OVERLAP: u64 = 96 << 20;
+
+/// One descriptor's worth of one weights block.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Segment {
-    /// Byte offset of the descriptor. A multiple of the device's required alignment.
+    /// The block, and so the `VkBuffer`, this descriptor points into.
+    pub block: usize,
+    /// Byte offset of the descriptor inside its block. A multiple of the device's required
+    /// alignment.
     pub base: u64,
     /// Bytes the descriptor covers, never more than `max_storage_buffer_range`.
     pub len: u64,
 }
 
-/// The weights file as overlapping windows, one descriptor set each.
+/// One weights allocation and the windows over it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Block {
+    /// Byte offset of the block in the uploaded weights.
+    pub base: u64,
+    /// Bytes in the block, never more than `max_memory_allocation_size`.
+    pub len: u64,
+    /// Index of the block's first segment in [`Segments::all`].
+    pub(crate) first: usize,
+    /// Distance between this block's window bases. Zero when it has one window.
+    pub(crate) stride: u64,
+    /// The longest span one of its windows is guaranteed to contain.
+    pub(crate) reach: u64,
+}
+
+/// The weights as overlapping blocks of overlapping windows, one descriptor set per window.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Segments {
     pub(crate) segments: Vec<Segment>,
-    /// Distance between window bases. Zero when there is only one window.
-    pub(crate) stride: u64,
-    /// The longest span a window is guaranteed to contain, `range - stride`.
-    pub(crate) reach: u64,
+    pub(crate) blocks: Vec<Block>,
+    /// Distance between block bases. Zero when there is only one block.
+    pub(crate) block_stride: u64,
+    /// The longest span a block is guaranteed to contain. Unbounded with one block.
+    pub(crate) overlap: u64,
 }
 
 impl Segments {
     /// The segments, in the order their descriptor sets are allocated.
     pub fn all(&self) -> &[Segment] {
         &self.segments
+    }
+
+    /// The blocks, one `VkBuffer` each.
+    pub fn blocks(&self) -> &[Block] {
+        &self.blocks
     }
 
     /// The window op `step` should be dispatched through, or `None` if it reads no weights.
@@ -111,11 +142,31 @@ impl Segments {
         let Some((from, to)) = self.span(step, kind, push, tensors)? else {
             return Ok(None);
         };
-        if self.stride == 0 {
-            return Ok(Some(0));
+        let block_index = match from.checked_div(self.block_stride) {
+            None => 0,
+            Some(index) => usize::try_from(index)
+                .map_err(|_| "a block index overflowed")?
+                .min(self.blocks.len().saturating_sub(1)),
+        };
+        let Some(block) = self.blocks.get(block_index) else {
+            return Err(format!("step {step} reads at byte {from}, past the last block"));
+        };
+        if from < block.base || to > block.base + block.len {
+            return Err(format!(
+                "step {step} ({kind:?}) reads bytes {from}..{to} of the weights, a span of {} \
+                 against the {} one allocation is guaranteed to hold. Split the tensor in the \
+                 converter.",
+                to - from,
+                self.overlap
+            ));
         }
-        let index = usize::try_from(from / self.stride).map_err(|_| "a segment index overflowed")?;
-        let Some(segment) = self.segments.get(index) else {
+        let (from, to) = (from - block.base, to - block.base);
+        if block.stride == 0 {
+            return Ok(Some(block.first));
+        }
+        let window = usize::try_from(from / block.stride).map_err(|_| "a segment index overflowed")?;
+        let index = block.first + window;
+        let Some(segment) = self.segments.get(index).filter(|s| s.block == block_index) else {
             return Err(format!("step {step} reads at byte {from}, past the last segment"));
         };
         if to > segment.base + segment.len {
@@ -124,7 +175,7 @@ impl Segments {
                  against the {} one descriptor window is guaranteed to hold. Split the tensor in \
                  the converter.",
                 to - from,
-                self.reach
+                block.reach
             ));
         }
         Ok(Some(index))
@@ -140,7 +191,10 @@ impl Segments {
     /// The kinds named below must stay in step with the word-unit arm of [`Kind::weight_reads`],
     /// which is the only place that decides what a `weight` offset counts in.
     pub fn rebase(&self, index: usize, kind: Kind, push: &Push) -> Push {
-        rebase_push(self.segments.get(index).map_or(0, |segment| segment.base), kind, push)
+        let base = self.segments.get(index).map_or(0, |segment| {
+            self.blocks.get(segment.block).map_or(0, |block| block.base) + segment.base
+        });
+        rebase_push(base, kind, push)
     }
 
     /// The `[from, to)` byte span of the weights one op reads, or `None` if it reads none.

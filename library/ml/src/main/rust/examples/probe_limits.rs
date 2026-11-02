@@ -7,12 +7,9 @@
 //!
 //! # Why this exists
 //!
-//! `modelrunner::vulkan::run` puts the **entire** weights data section into one
-//! `Buffer::device_local`, so a model is bounded by `maxMemoryAllocationSize` and not merely by
-//! how much memory the device has. `maxStorageBufferRange` is handled by
-//! `modelrunner::vulkan::segment`, which windows the *descriptor*; nothing windows the
-//! *allocation*. The largest file the runtime loads today is NLLB at 617 MB, comfortably under
-//! the 1 GiB the spec guarantees, so the ceiling has never been approached and never measured.
+//! `modelrunner::vulkan::run` splits the weights into blocks of at most `maxMemoryAllocationSize`
+//! (see `modelrunner::vulkan::segment`), so the reported limit decides how many allocations a
+//! model takes. What it cannot decide is whether each one actually succeeds.
 //!
 //! A reported limit and a limit that works are different things — a driver may advertise a
 //! number it cannot honour once the heap is shared with a compositor — so this asks the device
@@ -116,6 +113,9 @@ fn describe_limits(context: &Arc<Context>) {
     if std::env::var("MODELRUNNER_MAX_STORAGE_RANGE").is_ok() {
         println!("  (MODELRUNNER_MAX_STORAGE_RANGE is set, so the range above is forced)");
     }
+    if std::env::var("MODELRUNNER_MAX_ALLOCATION").is_ok() {
+        println!("  (MODELRUNNER_MAX_ALLOCATION is set, so the allocation limit above is forced)");
+    }
     println!();
 }
 
@@ -184,7 +184,7 @@ fn probe_allocations(context: &Arc<Context>) {
         println!("verdict  fits Gemma 3n E2B at int4 ({}) in one buffer", bytes(needed));
     } else {
         println!("verdict  does NOT fit Gemma 3n E2B at int4 ({}) in one buffer", bytes(needed));
-        println!("         weights would have to become multi-buffer, or the model must change");
+        println!("         the runtime will split its weights across several blocks");
     }
     println!();
     println!("A desktop GPU passing this says nothing about a phone. See the module docs.");

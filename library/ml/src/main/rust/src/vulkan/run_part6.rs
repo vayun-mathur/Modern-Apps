@@ -107,15 +107,25 @@ impl Net {
                                 .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT),
                         )
                         .map_err(|e| format!("begin_command_buffer {e:?}"))?;
-                    let region = vk::BufferCopy::default()
-                        .dst_offset((dst + written) as vk::DeviceSize)
-                        .size(size as vk::DeviceSize);
-                    device.cmd_copy_buffer(
-                        command_buffer,
-                        staging[side].buffer,
-                        self.weights.buffer,
-                        std::slice::from_ref(&region),
-                    );
+                    // Once into every block holding any of these bytes: twice across an overlap,
+                    // from the same staging buffer.
+                    let (start, end) = (dst + written, dst + written + size);
+                    for (block, target) in self.segments.blocks().iter().zip(&self.weights) {
+                        let (from, to) = (start.max(block.base), end.min(block.base + block.len));
+                        if from >= to {
+                            continue;
+                        }
+                        let region = vk::BufferCopy::default()
+                            .src_offset((from - start) as vk::DeviceSize)
+                            .dst_offset((from - block.base) as vk::DeviceSize)
+                            .size((to - from) as vk::DeviceSize);
+                        device.cmd_copy_buffer(
+                            command_buffer,
+                            staging[side].buffer,
+                            target.buffer,
+                            std::slice::from_ref(&region),
+                        );
+                    }
                     device
                         .end_command_buffer(command_buffer)
                         .map_err(|e| format!("end_command_buffer {e:?}"))?;

@@ -92,17 +92,22 @@ impl Net {
             lo,
         )?;
 
-        let weights_buffer = Buffer::device_local(&context, weights_bytes)?;
+        let weights_buffers = segments
+            .blocks()
+            .iter()
+            .map(|block| Buffer::device_local(&context, block.len))
+            .collect::<Result<Vec<_>, _>>()?;
         let arena = Buffer::device_local(&context, arena_bytes)?;
         let staging = Buffer::staging(&context, staging_bytes)?;
         let params = Buffer::step_params(&context, StepParams::BYTES)?;
 
         let staged = std::time::Instant::now();
+        let weight_handles: Vec<vk::Buffer> = weights_buffers.iter().map(|b| b.buffer).collect();
         let pipelines = Pipelines::new(
             &context,
             arena.buffer,
             arena_bytes,
-            weights_buffer.buffer,
+            &weight_handles,
             params.buffer,
             segments.all(),
         )?;
@@ -122,7 +127,7 @@ impl Net {
             context,
             plan,
             normalise,
-            weights: weights_buffer,
+            weights: weights_buffers,
             arena,
             staging,
             params,
@@ -151,10 +156,11 @@ impl Net {
         net.upload_weights(weights)?;
         net.upload_widened(weights)?;
         timing!(
-            "upload {} MB of {} MB (bytes {lo}..{hi}, {} MB widened) in {:.0} ms",
+            "upload {} MB of {} MB (bytes {lo}..{hi}, {} MB widened, {} blocks) in {:.0} ms",
             weights_bytes / (1024 * 1024),
             weights.data_len() / (1024 * 1024),
             net.widened_bytes() / (1024 * 1024),
+            net.weights.len(),
             staged.elapsed().as_secs_f64() * 1000.0
         );
         net.command_buffer = net.allocate_command_buffer()?;

@@ -261,7 +261,8 @@ pub struct Net {
     context: Arc<Context>,
     plan: Plan,
     normalise: Normalise,
-    weights: Buffer,
+    /// One buffer per [`Segments::blocks`] entry; almost always exactly one.
+    weights: Vec<Buffer>,
     arena: Buffer,
     staging: Buffer,
     /// Values the shaders read that change per step without a re-record.
