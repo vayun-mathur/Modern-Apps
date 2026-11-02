@@ -34,9 +34,9 @@ internal fun BoxScope.CameraStatusIndicators(
     focusLocked: Boolean,
     focusTopPadding: Dp,
 ) {
-    // FIDO deep links render in CameraSettingsColumn directly above the zoom
-    // bar — never in the generic QR popup here.
-    qrResult?.takeUnless { isFidoDeepLink(it) }?.let { qr ->
+    // FIDO deep links and eSIM codes render in CameraSettingsColumn directly
+    // above the zoom bar — never in the generic QR popup here.
+    qrResult?.takeUnless { isFidoDeepLink(it) || isEsimActivationCode(it) }?.let { qr ->
         QrResultOverlay(
             text = qr,
             onDismiss = onDismissQr,

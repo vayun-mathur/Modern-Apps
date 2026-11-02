@@ -107,7 +107,6 @@
     <!-- FidoQrCard: button when the FIDO QR carries no request-type hint. Verb. -->
     <string name="use_passkey">Use a passkey</string>
     <!-- QrResultOverlay: header title when an eSIM activation code QR is detected -->
-    <string name="esim_qr_result">eSIM QR Code</string>
     <!-- QrResultOverlay: button to hand an eSIM activation code to the system LPA. Verb. -->
     <string name="add_esim">Add eSIM</string>
     <!-- Toast error when no LPA can handle the eSIM activation intent -->

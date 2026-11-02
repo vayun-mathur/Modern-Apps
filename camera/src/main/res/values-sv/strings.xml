@@ -63,7 +63,6 @@
     <string name="settings_motion_duration">Längd på rörligt foto</string>
     <string name="motion_duration_1s">%1$d sekund</string>
     <string name="motion_duration_ns">%1$d sekunder</string>
-    <string name="esim_qr_result">QR-kod för eSIM</string>
     <string name="add_esim">Lägg till eSIM</string>
     <string name="no_app_to_add_esim">Ingen app kan lägga till detta eSIM</string>
     <string name="settings_save_location">Sparplats</string>

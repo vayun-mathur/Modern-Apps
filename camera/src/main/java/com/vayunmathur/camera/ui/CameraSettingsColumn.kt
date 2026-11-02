@@ -54,15 +54,22 @@ internal fun CameraSettingsColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // FIDO hybrid/caBLE QR codes sit directly above the zoom bar: a single
-        // "Create a passkey" button with the dismiss X inside it.
-        val fidoQr = qrResult?.takeIf { isFidoDeepLink(it) }
-        if (fidoQr != null && onDismissQr != null) {
-            FidoQrCard(
-                text = fidoQr,
-                onDismiss = onDismissQr,
-                context = LocalContext.current,
-            )
+        // FIDO and eSIM QR codes sit directly above the zoom bar: a single
+        // action button with the dismiss X inside it.
+        if (qrResult != null && onDismissQr != null) {
+            if (isFidoDeepLink(qrResult)) {
+                FidoQrCard(
+                    text = qrResult,
+                    onDismiss = onDismissQr,
+                    context = LocalContext.current,
+                )
+            } else if (isEsimActivationCode(qrResult)) {
+                EsimQrCard(
+                    text = qrResult,
+                    onDismiss = onDismissQr,
+                    context = LocalContext.current,
+                )
+            }
         }
         when (activeSetting) {
             null -> {

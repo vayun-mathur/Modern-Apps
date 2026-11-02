@@ -57,7 +57,6 @@
     <string name="mode_photosphere">صورة كروية</string>
     <string name="mode_timelapse">تصوير متسارع</string>
     <string name="add_esim">إضافة eSIM</string>
-    <string name="esim_qr_result">رمز QR eSIM</string>
     <string name="no_app_to_add_esim">لا تطبيق يمكنه إضافة هذه eSIM</string>
     <string name="lens_wide">1x</string>
     <string name="settings_save_location_default">DCIM/Camera</string>

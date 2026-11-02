@@ -60,7 +60,6 @@
     <string name="mode_slo_mo">Zwolnione tempo</string>
     <string name="no_app_to_add_esim">Brak aplikacji do dodania profilu eSIM</string>
     <string name="mode_panorama">Panorama</string>
-    <string name="esim_qr_result">Kod QR eSIM</string>
     <string name="mode_photosphere">Sfera</string>
     <string name="mode_video">Wideo</string>
     <string name="mode_timelapse">Poklatkowy</string>

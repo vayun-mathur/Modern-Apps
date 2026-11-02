@@ -34,7 +34,6 @@ import androidx.core.net.toUri
 import com.vayunmathur.camera.R
 import com.vayunmathur.camera.domain.FidoRequestType
 import com.vayunmathur.camera.domain.fidoRequestType
-import com.vayunmathur.library.intents.euicc.EsimLink
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.CircularProgressIndicator
 import com.vayunmathur.library.ui.FilledTonalButton
@@ -120,11 +119,6 @@ internal fun NightModeButton(
 
 @Composable
 internal fun QrResultOverlay(text: String, onDismiss: () -> Unit, context: Context, modifier: Modifier = Modifier) {
-    // eSIM activation codes (SGP.22 `LPA:1$<smdp>$<matchingId>`) get their own action:
-    // hand the scanned code to the platform LPA via EuiccManager instead of treating
-    // it as a URL or plain text to copy.
-    val trimmed = text.trim()
-    val isEsim = isEsimActivationCode(trimmed)
     Column(
         modifier = modifier
             .padding(16.dp)
@@ -136,7 +130,7 @@ internal fun QrResultOverlay(text: String, onDismiss: () -> Unit, context: Conte
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            if (isEsim) stringResource(R.string.esim_qr_result) else stringResource(R.string.qr_result),
+            stringResource(R.string.qr_result),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -146,35 +140,8 @@ internal fun QrResultOverlay(text: String, onDismiss: () -> Unit, context: Conte
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 8.dp)
         )
-        // eSIM activation codes are neither URL nor FIDO: they go to the
-        // platform LPA, not a browser.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (isEsim) {
-                Button(onClick = {
-                    // Standard eSIM handoff: build the universal provisioning link
-                    // (https://esimsetup.android.com/esim_qrcode_provisioning?carddata=…)
-                    // from the scanned code and fire ACTION_VIEW. The intent is pinned
-                    // to our euicc app: a plain VIEW would otherwise resolve to the
-                    // browser (seen on-device), which cannot provision anything, and
-                    // we cannot claim verified App Links for a domain we don't own.
-                    // The data format stays standard — any handler could serve it.
-                    val link = EsimLink.provisioningUri(trimmed)
-                    val view = Intent(Intent.ACTION_VIEW, link)
-                        .setPackage(EsimLink.LPA_PACKAGE)
-                    try {
-                        context.startActivity(view)
-                        onDismiss()
-                    } catch (e: ActivityNotFoundException) {
-                        Log.status("CameraOverlays", "No app to handle eSIM provisioning", e)
-                        AppMessages.show(context.getString(R.string.no_app_to_add_esim))
-                    } catch (e: SecurityException) {
-                        Log.status("CameraOverlays", "No app to handle eSIM provisioning", e)
-                        AppMessages.show(context.getString(R.string.no_app_to_add_esim))
-                    }
-                }) {
-                    Text(stringResource(R.string.add_esim))
-                }
-            } else if (Patterns.WEB_URL.matcher(text).matches()) {
+            if (Patterns.WEB_URL.matcher(text).matches()) {
                 Button(onClick = {
                     val url = if (!text.startsWith("http")) "https://$text" else text
                     val uri = url.toUri()
@@ -233,6 +200,38 @@ internal fun FidoQrCard(text: String, onDismiss: () -> Unit, context: Context, m
         modifier = modifier.padding(16.dp)
     ) {
         Text(stringResource(labelRes))
+        IconClose(
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .size(18.dp)
+                .clickable(onClick = onDismiss),
+            tint = MaterialTheme.colorScheme.onPrimary
+        )
+    }
+}
+
+/**
+ * Standalone action for eSIM activation-code QRs, styled like [FidoQrCard]:
+ * one "Add eSIM" button with the dismiss X inside, rendered directly above
+ * the zoom bar.
+ */
+@Composable
+internal fun EsimQrCard(text: String, onDismiss: () -> Unit, context: Context, modifier: Modifier = Modifier) {
+    Button(
+        onClick = {
+            val code = text.trim().let { if (it.startsWith("LPA:", ignoreCase = true)) it else "LPA:$it" }
+            val url = "https://esimsetup.android.com/esim_qrcode_provisioning?carddata=$code"
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                onDismiss()
+            } catch (e: ActivityNotFoundException) {
+                Log.status("CameraOverlays", "No app to handle eSIM provisioning", e)
+                AppMessages.show(context.getString(R.string.no_app_to_add_esim))
+            }
+        },
+        modifier = modifier.padding(16.dp)
+    ) {
+        Text(stringResource(R.string.add_esim))
         IconClose(
             modifier = Modifier
                 .padding(start = 8.dp)

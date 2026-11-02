@@ -60,7 +60,6 @@
     <string name="mode_slo_mo">Aegluubis</string>
     <string name="no_app_to_add_esim">Ükski rakendus ei saa seda eSIM-i lisada</string>
     <string name="mode_panorama">Panoraamvaade</string>
-    <string name="esim_qr_result">eSIM-i QR-kood</string>
     <string name="mode_photosphere">Sfääriline vaade</string>
     <string name="mode_video">Video</string>
     <string name="mode_timelapse">Stoppkaader</string>
