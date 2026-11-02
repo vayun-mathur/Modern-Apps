@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="give_up">Loobu mängust</string>
+    <string name="congratulations">Õnnitlused!</string>
+    <string name="won">võitsid</string>
 </resources>
