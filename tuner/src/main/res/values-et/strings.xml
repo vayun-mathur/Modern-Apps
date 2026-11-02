@@ -1,3 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Häälestaja</string>
+    <string name="tab_note">Noot</string>
+    <string name="tab_chord">Akord</string>
+    <string name="listening">Kuulamas</string>
+    <string name="not_listening">Pole kuulamas</string>
+    <string name="permission_title">Vajalik on õigus kasutada mikrofoni</string>
+    <string name="permission_rationale">Häälestaja kuulab sinu pilli mikrofoni abil. Salvestatud heli analüüs toimub vaid sinu nutiseadmes ja seda mujale ei edastata.</string>
+    <string name="permission_action">Luba mikrofoni kasutamine</string>
+    <string name="permission_settings">Ava seadistused</string>
+    <string name="capture_unavailable">Mikrofoni avamine ei õnnestunud</string>
+    <string name="frequency_value">%1$s Hz</string>
+    <string name="cents_value">%1$s tsenti</string>
+    <string name="in_tune">Hääles</string>
+    <string name="instrument_title">Muusikainstrument</string>
+    <string name="instrument_guitar">Kitarr</string>
+    <string name="instrument_ukulele">Ukulele</string>
+    <string name="instrument_piano">Klaver</string>
+    <string name="chord_unimplemented_title">Akordide tuvastamine pole veel teostatud</string>
+    <string name="interval_unison">Unisoon</string>
+    <string name="interval_tritone">Tritoon</string>
 </resources>
