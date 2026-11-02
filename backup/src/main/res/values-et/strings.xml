@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Varundus</string>
+    <string name="data_management_label">Varunduse seadistused</string>
+    <string name="destination_not_configured">Seadistamata</string>
 </resources>
