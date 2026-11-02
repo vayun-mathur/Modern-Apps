@@ -1,3 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Rakendus</string>
+    <string name="daily_reminder_channel_name">Igapäevane meeldetuletus pusle kohta</string>
+    <string name="daily_reminder_channel_description">Iga päev meeldetuletus, kui sa pole veel tänast mõistatust lahendanud.</string>
+    <string name="daily_reminder_title">Tänane mõistatus on ootel</string>
+    <string name="daily_reminder_text">Sul on tänane mõistatus veel lahendamata <xliff:g id="app_name" example="Sõnameister">%1$s</xliff:g>.</string>
 </resources>
