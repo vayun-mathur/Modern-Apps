@@ -89,5 +89,13 @@ class KeyLookupPolicyTest {
         // Both methods share the same hash suffix.
         assertEquals(urls[0].substringAfter("/hu/"), urls[1].substringAfter("/hu/"))
         assertTrue(KeyLookupPolicy.wkdUrls("not-an-address").isEmpty())
+        // RFC 7929 vector: hash from the lowercased local part, ?l= keeps the
+        // original (Proton rejects lookups without it).
+        assertEquals(
+            "https://openpgpkey.example.org/.well-known/openpgpkey/example.org/hu/" +
+                "iy9q119eutrkn8s1mk4r39qejnbu3n5q?l=Joe.Doe",
+            KeyLookupPolicy.wkdUrls("Joe.Doe@Example.ORG")[0],
+        )
+        assertTrue(KeyLookupPolicy.wkdUrls("a+b@proton.me")[1].endsWith("?l=a%2Bb"))
     }
 }

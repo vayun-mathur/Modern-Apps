@@ -63,19 +63,22 @@ object KeyLookupPolicy {
     /**
      * WKD lookup URLs for [address] (RFC 7929): the advanced method
      * (`openpgpkey.<domain>`) first, then the direct method (`<domain>`).
-     * The local part is lowercased, SHA-1 hashed, and z-base-32 encoded.
-     * Proton serves WKD on `proton.me` for `@proton.me` / `@protonmail.com`.
+     * The local part is lowercased, SHA-1 hashed, and z-base-32 encoded; the
+     * original local part also rides as `?l=` (WKD draft §3.1), which Proton
+     * requires - without it openpgpkey.proton.me answers 400.
      */
     fun wkdUrls(address: String): List<String> {
         val at = address.lastIndexOf('@')
         if (at <= 0) return emptyList()
-        val local = address.substring(0, at).lowercase()
+        val rawLocal = address.substring(0, at)
+        val local = rawLocal.lowercase()
         val domain = address.substring(at + 1).lowercase()
         if (local.isEmpty() || domain.isEmpty()) return emptyList()
         val hash = wkdHash(local)
+        val l = java.net.URLEncoder.encode(rawLocal, "UTF-8")
         return listOf(
-            "https://openpgpkey.$domain/.well-known/openpgpkey/$domain/hu/$hash",
-            "https://$domain/.well-known/openpgpkey/hu/$hash",
+            "https://openpgpkey.$domain/.well-known/openpgpkey/$domain/hu/$hash?l=$l",
+            "https://$domain/.well-known/openpgpkey/hu/$hash?l=$l",
         )
     }
 
