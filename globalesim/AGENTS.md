@@ -17,7 +17,7 @@ _Install: ./install globalesim (dev by default)._
 - Pay-first: no eSIM until the first top-up ($5 min, card or crypto); the server keeps a $3 setup fee and funds the rest
 - Anonymous account (client-minted UUIDv4, no PII). The account id is the only credential and is shown as the "SIM ID": Copy SIM ID on the old phone, Claim on a phone without an eSIM
 - Rate catalog (server-scaled to the wallet's face value), Stripe card and NOWPayments crypto (+5%) top-ups, $5–$20 per payment
-- One-tap install handoff to the euicc LPA (`EsimLink.provisioningUri` pinned to LPA package)
+- One-tap install via the standard `https://esimsetup.android.com/esim_qrcode_provisioning?carddata=LPA:1$<smdp>$<code>` link (unpinned ACTION_VIEW, raw carddata)
 **Architecture / data-flow:** `ui/` screens → `platform/EsimViewModel` (single `EsimUiState`) → `data/api/EsimApi` (own `/esim/v1/*` on api.maproj.org, FIRST_PARTY) with pure `domain/QuoteMath` and `data/AnonymousIdStore` (DataStore UUID). The reseller vendor is server-only (`location_share_server/src/handlers/esim*.rs`) and never named here.
 **Entry points + reading order:** `Route.Tabs` (Purchase + Pricing tabs, no other routes) → `MainActivity.kt` → `Navigation.kt` → `platform/EsimViewModel.kt` → `data/api/EsimApi.kt`.
 **Gotchas:**

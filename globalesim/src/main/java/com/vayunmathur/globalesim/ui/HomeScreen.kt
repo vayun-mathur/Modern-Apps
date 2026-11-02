@@ -29,7 +29,6 @@ import com.vayunmathur.globalesim.data.api.ProfileDto
 import com.vayunmathur.globalesim.domain.QuoteMath
 import com.vayunmathur.globalesim.domain.buildActivationCode
 import com.vayunmathur.globalesim.platform.EsimUiState
-import com.vayunmathur.library.intents.euicc.EsimLink
 import com.vayunmathur.library.ui.AppPullToRefreshBox
 import com.vayunmathur.library.ui.AppScaffold
 import com.vayunmathur.library.ui.Card
@@ -140,8 +139,8 @@ fun HomeScreen(
                                 // blank manual-entry page. The server sometimes fuses
                                 // smdp+code with the `$` missing, so normalize first.
                                 val full = buildActivationCode(profile.activationCode, profile.smdpAddress)
-                                val intent = Intent(Intent.ACTION_VIEW, EsimLink.provisioningUri(full))
-                                    .setPackage(EsimLink.LPA_PACKAGE)
+                                val url = "https://esimsetup.android.com/esim_qrcode_provisioning?carddata=$full"
+                                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                                 try {
                                     context.startActivity(intent)
                                 } catch (_: ActivityNotFoundException) {
