@@ -170,7 +170,6 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
                 }
                 ReaderScreen(
                     state = state,
-                    messageId = route.messageId,
                     onReply = { m ->
                         backStack.add(
                             Route.Composer(
