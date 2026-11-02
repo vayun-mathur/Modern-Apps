@@ -25,13 +25,18 @@ sealed interface Route : NavKey {
         val subject: String = "",
         val body: String = "",
         val inReplyTo: String? = null,
+        /** Set when reopening a saved draft; saving again updates that draft. */
+        val draftId: String? = null,
+        val cc: String = "",
+        val bcc: String = "",
     ) : Route
 
     @Serializable
     data class Reader(val messageId: String) : Route
 
+    /** Everything outgoing: Drafts, Outbox (queued sends) and Sent. */
     @Serializable
-    data object Outbox : Route
+    data object Out : Route
 
     @Serializable
     data object Settings : Route

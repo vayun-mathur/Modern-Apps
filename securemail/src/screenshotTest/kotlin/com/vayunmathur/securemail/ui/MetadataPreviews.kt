@@ -115,25 +115,58 @@ class MetadataPreviews {
                 onAddRecipient = { _, _ -> true },
                 onRemoveRecipient = { _, _ -> },
                 onSend = { _, _, _, _, _, _ -> },
-                onBack = {},
+                onLeave = { _, _ -> },
+                onDiscard = {},
             )
         }
     }
 
     @PreviewTest
-    @Preview(name = "4-settings", device = PHONE, group = "phone", showSystemUi = true)
+    @Preview(name = "4-out", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
-    fun Preview4Settings() {
+    fun Preview4Out() {
         DynamicTheme(darkTheme = true) {
-            WithBottomBar(MailTab.SETTINGS) {
-                SettingsScreen(
-                    state = MailUiState(
-                        address = "alice@maemail.org",
-                        fingerprintHex = "A1B2C3D4E5F60718293A4B5C6D7E8F90",
-                        socketConnected = true,
+            WithBottomBar(MailTab.OUT) {
+                OutScreen(
+                    drafts = listOf(
+                        StoredMessage(
+                            id = "draft-1",
+                            from = "alice@maemail.org",
+                            toJson = "{\"to\":[\"bob@proton.me\"]}",
+                            dateMillis = 1_792_772_800_000L,
+                            messageId = "draft-1",
+                            blobBase64 = "",
+                            decryptedSubject = "Trip plans",
+                            decryptedBody = "Thinking we leave Friday morning.",
+                            folder = MailFolder.DRAFTS,
+                        ),
                     ),
-                    onExportPublicKey = {},
-                    onForget = {},
+                    outbox = emptyList(),
+                    sent = listOf(
+                        StoredMessage(
+                            id = "sent-1",
+                            from = "alice@maemail.org",
+                            toJson = "carol@maemail.org",
+                            dateMillis = 1_792_770_000_000L,
+                            messageId = "sent-1",
+                            blobBase64 = "",
+                            decryptedSubject = "Re: Lunch",
+                            decryptedBody = "Sounds good, see you at noon.",
+                            isRead = true,
+                            folder = MailFolder.SENT,
+                        ),
+                    ),
+                    actions = OutActions(
+                        onCompose = {},
+                        onOpenDraft = {},
+                        onDeleteDraft = {},
+                        onRestoreDraft = {},
+                        onRetryOutbox = {},
+                        onOpenSent = {},
+                        onTrashSent = {},
+                        onUntrashSent = {},
+                        onSetRead = { _, _ -> },
+                    ),
                 )
             }
         }

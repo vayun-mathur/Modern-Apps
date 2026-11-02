@@ -206,6 +206,7 @@ private fun SelectionBar(
 private fun emptyText(folder: MailFolder): String = when (folder) {
     MailFolder.INBOX -> "No mail yet. Share your address to receive encrypted mail."
     MailFolder.SENT -> "Nothing sent yet."
+    MailFolder.DRAFTS -> "No drafts."
     MailFolder.SPAM -> "No spam. Verification failures land here."
     MailFolder.TRASH -> "Trash is empty."
 }

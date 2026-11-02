@@ -17,13 +17,15 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Mail folders. Stored as the enum name in [StoredMessage.folder]; the Outbox
  * stays a separate queue table, not a folder value. Spam is assigned by the
- * server verdict at ingest ([InboundStore]); Trash is local-only.
+ * server verdict at ingest ([InboundStore]); Trash is local-only. Drafts are
+ * local, unsent compositions (see [com.vayunmathur.securemail.platform.DraftsController]).
  */
 enum class MailFolder {
     INBOX,
     SENT,
     SPAM,
     TRASH,
+    DRAFTS,
 }
 
 /**

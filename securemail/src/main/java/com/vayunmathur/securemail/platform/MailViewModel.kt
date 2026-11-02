@@ -76,6 +76,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     val messages = repo.messageDao().observeAll()
     val outboxCount = repo.outboxDao().observeCount()
     val outboxMessages = repo.outboxDao().observeAll()
+    val drafts = DraftsController(repo, viewModelScope) { state.address }
 
     /**
      * Selected folder driving the message list (drawer selection). Outbox is
@@ -110,11 +111,11 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     var draftBcc by mutableStateOf(listOf<String>())
         private set
 
-    /** Seeds the draft (reply/forward prefill, share-intent entry). */
-    fun seedDraft(to: List<String> = emptyList()) {
+    /** Seeds the draft recipients (reply prefill, share-intent entry, reopened draft). */
+    fun seedDraft(to: List<String> = emptyList(), cc: List<String> = emptyList(), bcc: List<String> = emptyList()) {
         draftTo = to.filter { it.isNotBlank() }.distinct()
-        draftCc = emptyList()
-        draftBcc = emptyList()
+        draftCc = cc.filter { it.isNotBlank() }.distinct()
+        draftBcc = bcc.filter { it.isNotBlank() }.distinct()
     }
 
     /** Clears the draft after a successful send. */

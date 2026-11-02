@@ -3,6 +3,7 @@ package com.vayunmathur.securemail.ui
 import android.app.Activity
 import android.content.Intent
 import android.provider.ContactsContract
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +56,8 @@ fun ComposeScreen(
     onAddRecipient: (Int, String) -> Boolean,
     onRemoveRecipient: (Int, String) -> Unit,
     onSend: (List<String>, List<String>, List<String>, String, String, String?) -> Unit,
-    onBack: () -> Unit,
+    onLeave: (subject: String, body: String) -> Unit,
+    onDiscard: () -> Unit,
     onConsumeMessage: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -89,6 +91,8 @@ fun ComposeScreen(
         }
     }
     val allRecipients = draftTo + draftCc + draftBcc
+    // Back saves the composition as a draft (handled by the caller); Discard drops it.
+    BackHandler { onLeave(subject, body) }
     // No top app bar by design; systemBarsPadding keeps the form clear of
     // the status bar / camera cutout, imePadding keeps Send above the keyboard.
     DesktopMaxWidthContainer(
@@ -161,7 +165,7 @@ fun ComposeScreen(
                     enabled = !state.busy && allRecipients.isNotEmpty() && body.isNotBlank(),
                     modifier = Modifier.weight(1f),
                 ) { Text(if (state.busy) "Sending…" else "Send") }
-                Button(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Button(onClick = onDiscard, modifier = Modifier.weight(1f)) { Text("Discard") }
             }
         }
     }
