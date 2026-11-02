@@ -165,7 +165,10 @@ private fun MessageBody(msg: StoredMessage, ownAddress: String, onReply: () -> U
 @Composable
 private fun TrustLine(msg: StoredMessage) {
     val colors = MaterialTheme.colorScheme
+    val sent = msg.folder == MailFolder.SENT
     val (label, color) = when {
+        sent && msg.unencrypted -> "Sent unencrypted \u00b7 no key for a recipient" to colors.error
+        sent -> "Sent encrypted" to colors.primary
         msg.unencrypted -> "Not encrypted" to colors.error
         msg.verifiedSigner != null -> "Encrypted \u00b7 signature verified" to colors.primary
         msg.decryptedBody != null -> "Encrypted \u00b7 signature not verified" to colors.onSurfaceVariant

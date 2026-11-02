@@ -562,7 +562,8 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                         }
                     }
                     // Sent-folder copy: plaintext (it is our own composition).
-                    storeSent(allTo, subject, body)
+                    // Any keyless recipient got plaintext, so the copy is flagged unencrypted.
+                    storeSent(allTo, subject, body, unencrypted = plainTo.isNotEmpty())
                     if (queued > 0) "Queued $queued message(s) — retry from Outbox when online." else "Sent."
                 }
             }
@@ -584,7 +585,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
      * Records our own composition in the Sent folder (plaintext — it is ours).
      * Runs inside send()'s IO context; failures are swallowed (send succeeded).
      */
-    private suspend fun storeSent(to: List<String>, subject: String, body: String) {
+    private suspend fun storeSent(to: List<String>, subject: String, body: String, unencrypted: Boolean) {
         runCatching {
             repo.messageDao().upsert(
                 StoredMessage(
@@ -596,7 +597,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     blobBase64 = "",
                     decryptedBody = body,
                     decryptedSubject = subject.ifBlank { "(no subject)" },
-                    unencrypted = false,
+                    unencrypted = unencrypted,
                     folder = MailFolder.SENT,
                 ),
             )
