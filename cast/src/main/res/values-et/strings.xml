@@ -1,3 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="cast_devices_heading">Telerid</string>
+    <string name="cast_searching">Otsin telereid.</string>
+    <string name="cast_no_devices">Ühtegi telerit ei leidunud</string>
+    <string name="cast_open_settings">Ava seadistused</string>
+    <string name="cast_disconnect">Katkesta ühendus</string>
+    <string name="cast_connecting_to">Ühendan seadmega %1$s.</string>
+    <string name="cast_connected_to">Ühendatud seadmega %1$s</string>
+    <string name="cast_connect_failed">Seade pole leitav: %1$s</string>
+    <string name="cast_retry">Proovi uuesti</string>
+    <string name="cast_pairing_with">Paardun seadmega %1$s</string>
+    <string name="cast_pair_title">Paardumine seadmega %1$s</string>
+    <string name="cast_pair_hint">Sinu teler kuvab kuuenumbrilist koodi. Paardumiseks sisesta ta siia. Seda küsime üks kord teleri kohta.</string>
+    <string name="cast_pair_code_label">Kood sinu telerist</string>
+    <string name="cast_pair_submit">Paardu</string>
+    <plurals name="cast_pair_attempts">
+        <item quantity="one">Vale kood. Jäänud on veel %1$d katse.</item>
+        <item quantity="other">Vale kood. Jäänud on veel %1$d katset.</item>
+    </plurals>
+    <string name="cast_pair_new_code">Oled koodi sisestanud kolm korda valesti ja sinu teler näitab nüüd uut koodi. Vaata see nüüd oma telerist järgi.</string>
 </resources>
