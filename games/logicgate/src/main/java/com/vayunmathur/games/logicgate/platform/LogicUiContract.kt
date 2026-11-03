@@ -61,6 +61,8 @@ data class GameUiState(
     val cost: Int = 0,
     val bestCost: Int? = null,
     val showBrief: Boolean = false,
+    /** The tray chip whose info sheet is open. */
+    val infoChip: ChipSpec? = null,
     /** Bumped when the canvas should frame the whole circuit, e.g. on opening a level. */
     val fitToken: Int = 0,
     val nextLevelId: String? = null,
@@ -79,6 +81,7 @@ interface LogicActions {
     fun setInput(index: Int, value: Int) {}
     fun probe(caseIndex: Int?) {}
     fun showBrief(show: Boolean) {}
+    fun showChipInfo(chip: ChipSpec?) {}
     fun dismissWin() {}
 
     /** Ready-made instances. */

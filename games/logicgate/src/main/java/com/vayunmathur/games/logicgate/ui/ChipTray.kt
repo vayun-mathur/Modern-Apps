@@ -43,8 +43,8 @@ import kotlin.math.abs
 data class TrayDrag(val chipId: String, val root: Offset)
 
 /**
- * The chip palette. Pull a card up onto the board to place it where you let go, or tap it to drop
- * it in the middle of the view. Sideways swipes scroll the row.
+ * The chip palette. Pull a card up onto the board to place it where you let go, or tap it to open
+ * its info sheet (which can also place it). Sideways swipes scroll the row.
  */
 @Composable
 fun ChipTray(

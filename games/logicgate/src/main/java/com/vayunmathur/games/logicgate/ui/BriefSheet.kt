@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.levels.LevelDef
 import com.vayunmathur.games.logicgate.domain.model.Chips
-import com.vayunmathur.games.logicgate.domain.model.Pin
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.IconLightbulb
 import com.vayunmathur.library.ui.MaterialTheme
@@ -68,18 +67,5 @@ fun BriefSheet(level: LevelDef, number: Int, onDismiss: () -> Unit) {
             }
             Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.lg_start_building)) }
         }
-    }
-}
-
-@Composable
-private fun PinLine(title: String, pins: List<Pin>) {
-    val text = if (pins.isEmpty()) {
-        stringResource(R.string.lg_brief_none)
-    } else {
-        pins.map { if (it.width == 1) it.name else stringResource(R.string.lg_pin_width, it.name, it.width) }.joinToString()
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }

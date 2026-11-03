@@ -7,6 +7,7 @@ import com.vayunmathur.games.logicgate.data.CircuitStore
 import com.vayunmathur.games.logicgate.data.ProgressStore
 import com.vayunmathur.games.logicgate.domain.levels.LevelDef
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
+import com.vayunmathur.games.logicgate.domain.model.ChipSpec
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.NodeId
@@ -159,6 +160,10 @@ class LogicViewModel @JvmOverloads constructor(
 
     override fun showBrief(show: Boolean) {
         _game.update { it?.copy(showBrief = show) }
+    }
+
+    override fun showChipInfo(chip: ChipSpec?) {
+        _game.update { it?.copy(infoChip = chip) }
     }
 
     override fun dismissWin() {

@@ -41,9 +41,11 @@
     <string name="lg_cost"><xliff:g id="cost" example="12">%1$d</xliff:g> NAND</string>
 
     <!-- Chip tray: accessibility label for a chip card. %1$s = chip name e.g. NAND, %2$d = cost e.g. 1 -->
-    <string name="lg_cd_chip"><xliff:g id="chip" example="NAND">%1$s</xliff:g>, costs <xliff:g id="cost" example="1">%2$d</xliff:g> NAND. Tap to add it, or drag it up onto the board.</string>
+    <string name="lg_cd_chip"><xliff:g id="chip" example="NAND">%1$s</xliff:g>, costs <xliff:g id="cost" example="1">%2$d</xliff:g> NAND. Tap for details, or drag it up onto the board.</string>
     <!-- Chip tray: badge for a chip with multi-bit pins. %1$d = widest bus width e.g. 8 -->
     <string name="lg_bus_badge"><xliff:g id="width" example="8">%1$d</xliff:g>-bit</string>
+    <!-- Chip info sheet: primary action placing the chip in the middle of the board. Verb phrase -->
+    <string name="lg_add_to_board">Add to board</string>
 
     <!-- Trash zone: shown over the chip tray while a gate is being dragged. Instruction -->
     <string name="lg_drag_to_delete">Drag here to delete</string>

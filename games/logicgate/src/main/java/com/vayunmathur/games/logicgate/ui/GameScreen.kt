@@ -109,7 +109,7 @@ fun GameScreen(
                         TestPanel(state, actions)
                         ChipTray(
                             chips = state.chips,
-                            onTap = { placeNear(it, cameraState.centerWorld()) },
+                            onTap = { id -> Chips[id]?.let(actions::showChipInfo) },
                             onDragUpdate = { drag ->
                                 trayDrag = drag
                                 if (trash.carry(drag?.root)) haptics.tick()
@@ -135,6 +135,16 @@ fun GameScreen(
         }
     }
     if (state.showBrief) BriefSheet(state.level, number, onDismiss = { actions.showBrief(false) })
+    state.infoChip?.let { chip ->
+        ChipInfoSheet(
+            chip = chip,
+            onAdd = {
+                placeNear(chip.id, cameraState.centerWorld())
+                actions.showChipInfo(null)
+            },
+            onDismiss = { actions.showChipInfo(null) },
+        )
+    }
 }
 
 /** Covers the tray while a gate is carried, so it reads as the place to throw it away. */
