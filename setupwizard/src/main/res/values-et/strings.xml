@@ -11,4 +11,6 @@
     <string name="time">Kellaaeg</string>
     <string name="time_zone">Ajavöönd</string>
     <string name="select_time_zone">Vali ajavöönd</string>
+    <string name="restore">Taasta</string>
+    <string name="try_it">Proovi seda</string>
 </resources>
