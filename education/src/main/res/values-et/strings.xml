@@ -2,4 +2,5 @@
 <resources>
     <string name="retry">Proovi uuesti</string>
     <string name="next">Järgmine</string>
+    <string name="saved">Salvestatud</string>
 </resources>
