@@ -5,4 +5,5 @@
     <string name="player">Mängija</string>
     <string name="play_1">Alusta mängu: <xliff:g id="game_name" example="Solitaire">%1$s</xliff:g></string>
     <string name="session_in_progress">Pooleli</string>
+    <string name="edit_profile">Muuda profiili</string>
 </resources>
