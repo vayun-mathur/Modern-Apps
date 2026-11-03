@@ -22,4 +22,25 @@
     <string name="subtitles_cc">Subtiitrid</string>
     <string name="subtitles_off">Pole kasutusel</string>
     <string name="quality">Kvaliteet</string>
+    <string name="stream_addons">Voogedastuse lisavõimalused</string>
+    <string name="continue_watching">Jätka vaatamist</string>
+    <string name="trending_movies">Populaarsust koguvad filmid</string>
+    <string name="trending_series">Populaarsust koguvad sarjad</string>
+    <string name="top_rated_movies">Parimate hinnangutega filmid</string>
+    <string name="top_rated_series">Parimate hinnangutega sarjad</string>
+    <string name="trending">Populaarsust koguv</string>
+    <string name="top_rated">Parima hinnanguga</string>
+    <string name="watchlist">Vaatamiste loend</string>
+    <string name="my_lists">Minu loendid</string>
+    <string name="episodes">Osad</string>
+    <string name="seasons">Hooajad</string>
+    <string name="more_like_this">Tahan veel sellist sisu</string>
+    <string name="type_movie">Film</string>
+    <string name="type_series">Sarjad</string>
+    <string name="rating_value">★ %1$.1f</string>
+    <string name="runtime_minutes">%1$d min</string>
+    <string name="season_name">%1$d. hooaeg</string>
+    <string name="episode_badge">E%1$d</string>
+    <string name="episode_title">E%1$d · %2$s</string>
+    <string name="resume_badge">S%1$d E%2$d</string>
 </resources>
