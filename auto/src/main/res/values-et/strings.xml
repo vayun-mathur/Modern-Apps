@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="messaging_open_settings">Ava seadistused</string>
+    <string name="session_messaging_threads">Sõnumilõimed</string>
+    <string name="session_messaging_messages">Saadetud sõnumid</string>
 </resources>
