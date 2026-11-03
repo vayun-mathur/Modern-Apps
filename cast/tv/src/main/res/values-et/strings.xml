@@ -15,4 +15,9 @@
     <string name="tv_now_playing_paused">Peatatud</string>
     <string name="tv_now_playing_buffering">Puhverdan…</string>
     <string name="tv_notification_channel_name">Võtan vastu</string>
+    <string name="tv_local_network_open_settings">Ava seadistused</string>
+    <string name="tv_paired">Ühendatud seadmega %1$s</string>
+    <string name="tv_mirroring">Võtan vastu andmeid seadmest %1$s</string>
+    <string name="tv_no_decoder">Selles teleris pole kasutatavat H.265 või AV1 videodekooderit</string>
+    <string name="tv_no_audio_decoder">Selles teleris pole Opuse helidekooderit ja ta ei saa sinu telefonist või tahvlist muusikat esitada</string>
 </resources>
