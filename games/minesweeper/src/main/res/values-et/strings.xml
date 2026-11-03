@@ -2,4 +2,6 @@
 <resources>
     <string name="difficulty_expert">Ekspert</string>
     <string name="give_up">Loobu mängust</string>
+    <string name="confirm_give_up_title">Kas loobud sellest väljast?</string>
+    <string name="confirm_give_up_message">Kui loobud, siis see loetakse kaotuseks ja mäng sellel väljal lõppeb.</string>
 </resources>
