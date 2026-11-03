@@ -52,9 +52,15 @@ internal val cpuLevels: List<LevelDef> = listOf(
         Chapter.CPU, "decoder", Chips.DECODER,
         LevelText(
             "Instruction decoder",
-            "Opcodes: 0 LDA · 1 STA · 2 ADD · 3 SUB · 4 LDI · 5 JMP · 6 JZ · 7 HLT. Drive the ALU op " +
-                "(LDA and LDI pass b), load acc for LDA/ADD/SUB/LDI, write memory for STA, use the immediate " +
-                "for LDI, jump for JMP (and JZ when z is 1), halt for HLT. op's top bit is unused.",
+            "op is a 4-bit opcode (top bit unused): 0 LDA · 1 STA · 2 ADD · 3 SUB · 4 LDI · 5 JMP · 6 JZ · 7 HLT.\n" +
+                "What each output does:\n" +
+                "• aluOp1 aluOp0 — ALU operation: 00 add · 01 subtract · 11 pass b. ADD adds, SUB subtracts, " +
+                "LDA and LDI pass b. Only checked when accLoad is 1.\n" +
+                "• accLoad — 1 for LDA, ADD, SUB, LDI: the ALU result is stored into acc.\n" +
+                "• memWrite — 1 for STA: acc is written to memory.\n" +
+                "• useImm — 1 for LDI: the ALU takes the operand itself, not memory.\n" +
+                "• jump — 1 for JMP; for JZ only when z is 1.\n" +
+                "• halt — 1 for HLT.",
             "Split op, decode its low three bits into eight lines, then OR together the lines each control needs.",
         ),
         tests = decoderTests,
