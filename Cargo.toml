@@ -72,7 +72,7 @@ members = [
 # missing member fails resolution of the whole workspace. Excluded entries may
 # match nothing, so this keeps the root workspace resolvable with and without
 # personal/ present.
-exclude = ["library/tilecodec/src/main/rust", "personal/uniflix_strem/src/main/rust"]
+exclude = ["library/tilecodec/src/main/rust", "personal/uniflix_strem/src/main/rust", "infra/agents"]
 resolver = "2"
 
 [workspace.package]

@@ -1,0 +1,11 @@
+[package]
+name = "agentd"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+proto.workspace = true
+serde.workspace = true
+serde_json.workspace = true
