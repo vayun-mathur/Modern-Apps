@@ -87,4 +87,8 @@ object PgpCrypto {
 
     /** Armors raw PGP bytes as a `PGP MESSAGE` block (for SMTP federation). */
     fun armorMessage(raw: ByteArray): String = Pgp.armorMessage(raw)
+
+    /** Raw detached signature over [data] (relay SUB challenge). */
+    fun signDetached(armoredSecret: String, passphrase: String, data: ByteArray): ByteArray =
+        Pgp.signDetached(armoredSecret, passphrase, data)
 }

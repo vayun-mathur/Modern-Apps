@@ -7,6 +7,56 @@ package com.vayunmathur.securemail.domain.mail
  */
 object MimeCodec {
 
+    fun newMessageId(): String = "${java.util.UUID.randomUUID()}@${AddressValidator.OWN_DOMAIN}"
+
+    /**
+     * Minimal text/plain body with protected headers. The sending address goes
+     * in `From:` so recipients resolve the right (per-alias) key to verify.
+     */
+    fun buildPlainBody(from: String, subject: String, body: String, messageId: String): ByteArray {
+        val safeSubject = subject.replace(Regex("[\\r\\n]"), " ")
+        return (
+            "From: $from\r\n" +
+                "Subject: $safeSubject\r\n" +
+                "Message-ID: <$messageId>\r\n" +
+                "MIME-Version: 1.0\r\n" +
+                "Content-Type: text/plain; charset=utf-8; protected-headers=\"v1\"\r\n" +
+                "Content-Transfer-Encoding: 8bit\r\n" +
+                "\r\n" +
+                "$body\r\n"
+            ).toByteArray(Charsets.UTF_8)
+    }
+
+    /**
+     * Wraps an armored PGP MESSAGE in the RFC 3156 multipart/encrypted envelope:
+     * control part (`application/pgp-encrypted`, `Version: 1`) + data part.
+     * §4 requires the data part to be armored — Proton, GnuPG and Thunderbird
+     * reject bare base64 there.
+     */
+    fun buildEncryptedEnvelope(armoredMessage: String): ByteArray {
+        val boundary = "maemail-${java.util.UUID.randomUUID().toString().take(8)}"
+        val armored = armoredMessage.trimEnd().lines().joinToString("\r\n")
+        return (
+            "MIME-Version: 1.0\r\n" +
+                "Content-Type: multipart/encrypted; boundary=\"$boundary\"; " +
+                "protocol=\"application/pgp-encrypted\"\r\n" +
+                "\r\n" +
+                "--$boundary\r\n" +
+                "Content-Type: application/pgp-encrypted\r\n" +
+                "Content-Description: PGP/MIME version identification\r\n" +
+                "\r\n" +
+                "Version: 1\r\n" +
+                "\r\n" +
+                "--$boundary\r\n" +
+                "Content-Type: application/octet-stream; name=\"encrypted.asc\"\r\n" +
+                "Content-Description: OpenPGP encrypted message\r\n" +
+                "Content-Disposition: inline; filename=\"encrypted.asc\"\r\n" +
+                "\r\n" +
+                "$armored\r\n" +
+                "--$boundary--\r\n"
+            ).toByteArray(Charsets.UTF_8)
+    }
+
     /**
      * Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope
      * as base64. The data part is normally an ASCII-armored `PGP MESSAGE`

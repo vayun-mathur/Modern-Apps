@@ -13,6 +13,7 @@ class MailRepository private constructor(context: Context) :
     fun messageDao(): MessageDao = db.messageDao()
     fun keyDao(): KeyDao = db.keyDao()
     fun outboxDao(): OutboxDao = db.outboxDao()
+    fun identityDao(): IdentityDao = db.identityDao()
 
     companion object {
         @Volatile private var instance: MailRepository? = null

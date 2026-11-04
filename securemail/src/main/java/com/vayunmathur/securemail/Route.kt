@@ -29,6 +29,8 @@ sealed interface Route : NavKey {
         val draftId: String? = null,
         val cc: String = "",
         val bcc: String = "",
+        /** Own address (primary or alias) to send from; null = primary. */
+        val from: String? = null,
     ) : Route
 
     @Serializable

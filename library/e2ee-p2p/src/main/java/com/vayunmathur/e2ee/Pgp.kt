@@ -117,4 +117,9 @@ object Pgp {
     fun armorMessage(raw: ByteArray): String =
         PgpNative.nativePgpArmorMessage(raw)?.toUtf8String()
             ?: error("OpenPGP armor failed")
+
+    /** Raw binary detached signature over [data] with the Ed25519 primary. */
+    fun signDetached(armoredSecret: String, passphrase: String, data: ByteArray): ByteArray =
+        PgpNative.nativePgpSignDetached(armoredSecret.toUtf8(), passphrase.toUtf8(), data)
+            ?: error("OpenPGP detached signing failed")
 }

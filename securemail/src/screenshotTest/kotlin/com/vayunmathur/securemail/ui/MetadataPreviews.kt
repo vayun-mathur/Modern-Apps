@@ -107,6 +107,9 @@ class MetadataPreviews {
         DynamicTheme(darkTheme = true) {
             ComposeScreen(
                 state = MailUiState(address = "alice@maemail.org"),
+                identities = emptyList(),
+                draftFrom = null,
+                onSelectFrom = {},
                 draftTo = listOf("bob@proton.me"),
                 draftCc = emptyList(),
                 draftBcc = emptyList(),

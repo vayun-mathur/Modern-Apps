@@ -121,4 +121,20 @@ class MimeCodecTest {
         )
         assertEquals(Triple("Hello", "line one\nline two", "alice@maemail.org"), Triple(subject, body, from))
     }
+
+    @Test
+    fun plainBodyCarriesSendingAliasAndStripsSubjectNewlines() {
+        val raw = MimeCodec.buildPlainBody("quiet-otter-4821@maemail.org", "Hi\r\nBcc: x", "body", "id@maemail.org")
+        val (subject, body, from) = MimeCodec.parseMime(raw.toString(Charsets.UTF_8))
+        assertEquals("quiet-otter-4821@maemail.org", from)
+        assertEquals("Hi  Bcc: x", subject, "no header injection via subject")
+        assertEquals("body", body)
+    }
+
+    @Test
+    fun encryptedEnvelopeRoundTripsThroughExtract() {
+        val armored = "-----BEGIN PGP MESSAGE-----\n\nAAEC\n=abcd\n-----END PGP MESSAGE-----\n"
+        val envelope = MimeCodec.buildEncryptedEnvelope(armored)
+        assertEquals("AAEC", MimeCodec.extractPgpPayloadB64(envelope))
+    }
 }

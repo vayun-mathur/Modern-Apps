@@ -240,6 +240,7 @@ pub fn mldsa_verify_der(pub_der: &[u8], msg: &[u8], sig: &[u8]) -> bool {
 mod jni_bridge;
 mod c_bridge;
 pub mod pgp;
+mod pgp_jni;
 
 #[cfg(test)]
 mod tests;

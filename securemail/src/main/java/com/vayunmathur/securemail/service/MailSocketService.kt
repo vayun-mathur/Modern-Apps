@@ -4,17 +4,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
-import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.util.ensureNotificationChannel
+import com.vayunmathur.securemail.data.Identities
 import com.vayunmathur.securemail.data.InboundStore
-import com.vayunmathur.securemail.data.MailConfig
 import com.vayunmathur.securemail.network.MailSocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 /**
  * Persistent foreground service owning the mail relay socket — the SecureMail
@@ -36,28 +33,21 @@ class MailSocketService : Service() {
             android.app.NotificationManager.IMPORTANCE_LOW,
         )
         startForeground(NOTIFICATION_ID, buildNotification())
-        scope.launch {
-            val settings = MailConfig(this@MailSocketService).settings.first()
-            if (settings.address.isBlank()) {
-                Log.status(TAG, "no address claimed; socket idle")
-                return@launch
-            }
-            MailSocket.start(
-                scope = scope,
-                identity = {
-                    val current = MailConfig(this@MailSocketService).settings.first()
-                    if (current.address.isBlank() || current.publicArmor.isBlank()) null
-                    else MailSocket.IdentitySnapshot(current.address, current.publicArmor)
-                },
-                onMessage = { id, flags, raw ->
-                    // Single choke point (decrypt-on-arrival + vault write),
-                    // shared with the background sync worker.
-                    InboundStore.store(this@MailSocketService, id, flags, raw)
-                },
-            ) {
-                // onBump: socket liveness tick — no-op here; UI polls [MailSocket.connected].
-            }
-        }
+        val ctx = this
+        // The socket runs even before an address is claimed: onboarding claims
+        // over it, and every (re)connect SUBs all active identities.
+        MailSocket.start(
+            scope = scope,
+            identities = {
+                Identities.active(ctx).map { MailSocket.IdentitySnapshot(it.address, it.publicArmor) }
+            },
+            sign = { address, payload -> Identities.sign(ctx, address, payload) },
+            onMessage = { msg ->
+                // Single choke point (decrypt-on-arrival + vault write),
+                // shared with the background sync worker.
+                InboundStore.store(ctx, msg)
+            },
+        )
     }
 
     override fun onDestroy() {
@@ -76,7 +66,6 @@ class MailSocketService : Service() {
     }
 
     companion object {
-        private const val TAG = "MailSocketService"
         private const val CHANNEL_ID = "securemail_relay"
         private const val NOTIFICATION_ID = 4101
 

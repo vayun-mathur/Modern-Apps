@@ -11,8 +11,10 @@ import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.biometric.unlockDatabaseWithBiometrics
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.securemail.data.CachedKey
+import com.vayunmathur.securemail.data.Identities
 import com.vayunmathur.securemail.data.MailConfig
 import com.vayunmathur.securemail.data.MailFolder
+import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.data.MailRepository
 import com.vayunmathur.securemail.data.OutboxMessage
 import com.vayunmathur.securemail.data.SenderKeys
@@ -20,6 +22,7 @@ import com.vayunmathur.securemail.data.StoredMessage
 import com.vayunmathur.securemail.domain.mail.AddressValidator
 import com.vayunmathur.securemail.domain.mail.KeyLookupPolicy
 import com.vayunmathur.securemail.domain.mail.MessageEnvelope
+import com.vayunmathur.securemail.domain.mail.MimeCodec
 import com.vayunmathur.securemail.domain.pgp.PgpCrypto
 import com.vayunmathur.securemail.network.KeyLookupHttp
 import com.vayunmathur.securemail.network.MailSocket
@@ -76,7 +79,10 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     val messages = repo.messageDao().observeAll()
     val outboxCount = repo.outboxDao().observeCount()
     val outboxMessages = repo.outboxDao().observeAll()
-    val drafts = DraftsController(repo, viewModelScope) { state.address }
+    /** Own addresses: primary first, then aliases by creation time. */
+    val identities = repo.identityDao().observeAll()
+    val drafts = DraftsController(repo, viewModelScope) { draftFrom ?: state.address }
+    private val aliases = AliasController(repo)
 
     /**
      * Selected folder driving the message list (drawer selection). Outbox is
@@ -111,11 +117,20 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     var draftBcc by mutableStateOf(listOf<String>())
         private set
 
-    /** Seeds the draft recipients (reply prefill, share-intent entry, reopened draft). */
-    fun seedDraft(to: List<String> = emptyList(), cc: List<String> = emptyList(), bcc: List<String> = emptyList()) {
+    /** Own address the draft sends from; null = primary. */
+    var draftFrom by mutableStateOf<String?>(null)
+
+    /** Seeds the draft recipients and sender (reply prefill, share-intent entry, reopened draft). */
+    fun seedDraft(
+        to: List<String> = emptyList(),
+        cc: List<String> = emptyList(),
+        bcc: List<String> = emptyList(),
+        from: String? = null,
+    ) {
         draftTo = to.filter { it.isNotBlank() }.distinct()
         draftCc = cc.filter { it.isNotBlank() }.distinct()
         draftBcc = bcc.filter { it.isNotBlank() }.distinct()
+        draftFrom = from?.takeIf { it.isNotBlank() }
     }
 
     /** Clears the draft after a successful send. */
@@ -123,6 +138,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         draftTo = emptyList()
         draftCc = emptyList()
         draftBcc = emptyList()
+        draftFrom = null
     }
 
     /** Adds a recipient chip to To/Cc/Bcc (0/1/2); returns false when invalid/duplicate. */
@@ -202,6 +218,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         MailSocket.connectedFlow
             .onEach { up -> state = state.copy(socketConnected = up) }
             .launchIn(viewModelScope)
+        viewModelScope.launch(Dispatchers.IO) { Identities.ensureMigrated(getApplication()) }
     }
 
     // ------------------------------------------------------------------
@@ -209,9 +226,11 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     // ------------------------------------------------------------------
 
     /**
-     * Generates the PGP identity, claims the address over the socket, persists.
-     * On success the caller must run the biometric gate immediately ([onClaimed]
-     * → `unlockIfReady`): protection enrolls at setup, not on next launch.
+     * Generates the PGP identity and claims the address over the relay socket
+     * (signed SUB). Nothing is persisted unless the relay accepts the claim, so
+     * a taken address can never be silently overwritten. On success the caller
+     * must run the biometric gate immediately ([onClaimed] → `unlockIfReady`):
+     * protection enrolls at setup, not on next launch.
      */
     fun claimAddress(
         localPart: String,
@@ -231,20 +250,17 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
-                    val identity = PgpCrypto.generateIdentity(
-                        "$address <$address>",
-                        passphrase,
-                    )
-                    keyManager.storeSecretArmor(identity.armoredSecret)
-                    // Seal the S2K passphrase in Keystore-wrapped storage now:
-                    // S2K runs transparently after this and is never asked for
-                    // again (the passphrase is still the recovery secret).
+                    MailSocketService.start(getApplication())
+                    aliases.awaitRelay() ?: error("Relay offline — check your connection and try again.")
+                    val created = aliases.claim(address, passphrase, label = "", isPrimary = true)
+                        ?: error("That address is already taken.")
+                    // Seal the S2K passphrase only after the claim succeeds: a
+                    // Keystore key without an address is the broken state that
+                    // must land on Onboarding.
                     keyManager.storeKeyPassphrase(passphrase)
                     keyManager.storeOwnAddress(address)
-                    config.setIdentity(address, identity.armoredPublic, identity.fingerprintHex)
+                    config.setIdentity(address, created.publicArmor, created.fingerprintHex)
                     passphraseCache = passphrase
-                    // Registration rides the first SUB; the service connects now.
-                    MailSocketService.start(getApplication())
                     address
                 }
             }
@@ -265,6 +281,33 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
     }
+
+    /**
+     * Creates a random readable alias (`adjective-noun-NNNN@maemail.org`) that
+     * delivers to this inbox and can be sent from.
+     */
+    fun createAlias(label: String) {
+        state = state.copy(busy = true, error = null)
+        viewModelScope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { aliases.createRandom(requirePassphrase(), label) }
+            }
+            state = outcome.fold(
+                onSuccess = { state.copy(busy = false, message = "Alias $it created.") },
+                onFailure = {
+                    Log.status(TAG, "createAlias failed", it)
+                    state.copy(busy = false, error = it.message ?: "Couldn't create alias.")
+                },
+            )
+        }
+    }
+
+    /**
+     * Disabled aliases drop out of the From picker and are no longer SUBbed on
+     * the next reconnect; the relay holds their mail until re-enabled.
+     */
+    fun setAliasDisabled(address: String, disabled: Boolean) =
+        io { repo.identityDao().setDisabled(address, disabled) }
 
     /**
      * First unlock attempt from MainActivity: if no identity exists there is
@@ -325,30 +368,14 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
             MailSocket.stop()
             keyManager.clear()
             config.clear()
+            withContext(Dispatchers.IO) { repo.identityDao().deleteAll() }
             state = MailUiState()
         }
     }
 
     // ------------------------------------------------------------------
-    // Inbound: store + decrypt
+    // Inbound: decrypt (arrival is handled by InboundStore)
     // ------------------------------------------------------------------
-
-    /** Called by the socket layer for every MSG frame (already in Dispatchers.IO). */
-    suspend fun onInboundMessage(id: String, unencrypted: Boolean, raw: ByteArray) {
-        // Sender/from is inside the encrypted payload; store now, label on decrypt.
-        repo.messageDao().upsert(
-            StoredMessage(
-                id = id,
-                from = "",
-                toJson = "[\"${state.address}\"]",
-                dateMillis = System.currentTimeMillis(),
-                messageId = id,
-                blobBase64 = Base64.encodeToString(raw, Base64.NO_WRAP),
-                unencrypted = unencrypted,
-            ),
-        )
-        decryptStored(id)
-    }
 
     /** Decrypts one stored message in memory; never writes plaintext to the server. */
     fun decryptStored(id: String) {
@@ -360,12 +387,14 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     // S2K passphrase loads transparently from Keystore-wrapped
                     // storage (sealed at claim time) — never asked for again.
                     val passphrase = requirePassphrase()
+                    val ownSecret = Identities.forDelivery(getApplication(), stored.deliveredTo)
+                        ?.secretArmor ?: return@runCatching
                     val raw = Base64.decode(stored.blobBase64, Base64.NO_WRAP)
                     val pgpBytes = extractPgpPayload(raw) ?: raw
                     val provisional = PgpCrypto.decrypt(
-                        pgpBytes, keyManager.getSecretArmor(), passphrase,
+                        pgpBytes, ownSecret, passphrase,
                     ).toString(Charsets.UTF_8)
-                    val (_, _, from) = parseMime(provisional)
+                    val (_, _, from) = MimeCodec.parseMime(provisional)
                     // Same two-step as arrival: resolve sender key post-decrypt,
                     // re-verify for the badge.
                     val (mime, verified) = if (from.isNotBlank()) {
@@ -373,7 +402,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                         if (senderKey != null) {
                             val checked = PgpCrypto.decryptVerify(
                                 pgpBytes,
-                                keyManager.getSecretArmor(),
+                                ownSecret,
                                 passphrase,
                                 senderKey,
                             )
@@ -385,7 +414,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     } else {
                         provisional to null
                     }
-                    val (subject, body, resolvedFrom, html) = parseMime(mime)
+                    val (subject, body, resolvedFrom, html) = MimeCodec.parseMime(mime)
                     repo.messageDao().storeDecrypted(
                         id, body, subject,
                         verified = verified,
@@ -402,35 +431,14 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope.
-     * Delegates to [com.vayunmathur.securemail.domain.mail.MimeCodec].
-     */
+    /** Extracts the raw PGP bytes from an RFC 3156 multipart/encrypted envelope. */
     private fun extractPgpPayload(envelope: ByteArray): ByteArray? {
-        val b64 = com.vayunmathur.securemail.domain.mail.MimeCodec
-            .extractPgpPayloadB64(envelope) ?: return null
+        val b64 = MimeCodec.extractPgpPayloadB64(envelope) ?: return null
         return try {
-            android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
-        } catch (_: Exception) {
+            Base64.decode(b64, Base64.DEFAULT)
+        } catch (_: IllegalArgumentException) {
             null
         }
-    }
-
-    /** Plaintext fallback path: stores the body with the unencrypted flag set. */
-    suspend fun onInboundPlaintext(id: String, from: String, subject: String, body: String) {
-        repo.messageDao().upsert(
-            StoredMessage(
-                id = id,
-                from = from,
-                toJson = "[\"${state.address}\"]",
-                dateMillis = System.currentTimeMillis(),
-                messageId = id,
-                blobBase64 = "",
-                decryptedBody = body,
-                decryptedSubject = subject,
-                unencrypted = true,
-            ),
-        )
     }
 
     // ------------------------------------------------------------------
@@ -517,6 +525,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         subject: String,
         body: String,
         inReplyTo: String? = null,
+        from: String? = null,
         onDone: (sent: Boolean) -> Unit = {},
     ) {
         val allTo = (to + cc + bcc).distinct()
@@ -524,6 +533,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
+                    val sender = senderIdentity(from)
                     val trust = resolveTrust(allTo)
                     when (val decision = KeyLookupPolicy.decide(trust)) {
                         is KeyLookupPolicy.SendDecision.NeedsKeyChangeAck ->
@@ -534,10 +544,10 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     val encryptedTo = trust.filter { it.hasKey }
                     val plainTo = trust.filter { !it.hasKey }.map { it.address }
-                    val mime = buildMimeBody(subject, body)
-                    // Sign with the own identity: recipients verify against our
-                    // public key (directory/WKD) and show verified badges.
-                    val ownSecret = keyManager.getSecretArmor()
+                    val mime = buildMimeBody(sender.address, subject, body)
+                    // Sign with the sending identity: recipients verify against
+                    // that address's public key (directory/WKD).
+                    val ownSecret = sender.secretArmor
                     val ownPassphrase = requirePassphrase()
                     var queued = 0
                     // Per-recipient encryption: each key-known recipient gets a blob.
@@ -547,9 +557,9 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                             mime, cached.armoredPublic, ownSecret, ownPassphrase,
                         )
                         val blob = buildEncryptedBody(raw)
-                        val ok = MailSocket.publish(t.address, blob)
+                        val ok = MailSocket.publish(sender.address, t.address, blob)
                         if (!ok) {
-                            queueOutbox(listOf(t.address), subject, body, inReplyTo)
+                            queueOutbox(sender.address, listOf(t.address), subject, body, inReplyTo)
                             queued++
                         }
                     }
@@ -557,15 +567,15 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                     // server to federate (own-domain) or relay onward —
                     // badged `plain` wherever they land.
                     for (address in plainTo) {
-                        val ok = MailSocket.publish(address, mime, unencrypted = true)
+                        val ok = MailSocket.publish(sender.address, address, mime, unencrypted = true)
                         if (!ok) {
-                            queueOutbox(listOf(address), subject, body, inReplyTo)
+                            queueOutbox(sender.address, listOf(address), subject, body, inReplyTo)
                             queued++
                         }
                     }
                     // Sent-folder copy: plaintext (it is our own composition).
                     // Any keyless recipient got plaintext, so the copy is flagged unencrypted.
-                    storeSent(allTo, subject, body, unencrypted = plainTo.isNotEmpty())
+                    storeSent(sender.address, allTo, subject, body, unencrypted = plainTo.isNotEmpty())
                     if (queued > 0) "Queued $queued message(s) — retry from Outbox when online." else "Sent."
                 }
             }
@@ -583,19 +593,33 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** The own identity to send from ([from] or the primary); rejects disabled aliases. */
+    private suspend fun senderIdentity(from: String?): MailIdentity {
+        val identity = Identities.forDelivery(getApplication(), from)
+            ?: error("Set up your address first.")
+        if (identity.disabled) error("${identity.address} is disabled — enable it in Settings to send.")
+        return identity
+    }
+
     /**
      * Records our own composition in the Sent folder (plaintext — it is ours).
      * Runs inside send()'s IO context; failures are swallowed (send succeeded).
      */
-    private suspend fun storeSent(to: List<String>, subject: String, body: String, unencrypted: Boolean) {
+    private suspend fun storeSent(
+        from: String,
+        to: List<String>,
+        subject: String,
+        body: String,
+        unencrypted: Boolean,
+    ) {
         runCatching {
             repo.messageDao().upsert(
                 StoredMessage(
                     id = "sent-${UUID.randomUUID()}",
-                    from = state.address,
+                    from = from,
                     toJson = to.joinToString(","),
                     dateMillis = System.currentTimeMillis(),
-                    messageId = newMessageId(),
+                    messageId = MimeCodec.newMessageId(),
                     blobBase64 = "",
                     decryptedBody = body,
                     decryptedSubject = subject.ifBlank { "(no subject)" },
@@ -607,6 +631,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun queueOutbox(
+        from: String,
         to: List<String>,
         subject: String,
         body: String,
@@ -619,6 +644,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                 body = body,
                 inReplyTo = inReplyTo,
                 createdMillis = System.currentTimeMillis(),
+                fromAddress = from,
             ),
         )
     }
@@ -642,13 +668,14 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                 val pending = repo.outboxDao().all()
                 var sent = 0
                 var failed = 0
-                val ownSecret = keyManager.getSecretArmor()
                 val ownPassphrase = requirePassphrase()
                 for (entry in pending) {
                     var reason = "relay publish failed"
                     val ok = runCatching {
+                        val sender = senderIdentity(entry.fromAddress)
+                        val ownSecret = sender.secretArmor
                         val to = entry.toJson.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                        val mime = buildMimeBody(entry.subject, entry.body)
+                        val mime = buildMimeBody(sender.address, entry.subject, entry.body)
                         var entryOk = true
                         for (address in to) {
                             val cached = repo.keyDao().get(address)
@@ -665,7 +692,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                                 }
                                 if (raw == null) {
                                     false
-                                } else if (MailSocket.publish(address, buildEncryptedBody(raw))) {
+                                } else if (MailSocket.publish(sender.address, address, buildEncryptedBody(raw))) {
                                     true
                                 } else {
                                     reason = "publish failed: " +
@@ -673,7 +700,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                                     false
                                 }
                             } else {
-                                if (MailSocket.publish(address, mime, unencrypted = true)) {
+                                if (MailSocket.publish(sender.address, address, mime, unencrypted = true)) {
                                     true
                                 } else {
                                     reason = "publish failed: " +
@@ -720,8 +747,6 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun markRead(id: String) = io { repo.messageDao().markRead(id) }
 
-    fun messageFlow(id: String): StoredMessage? = null
-
     fun envelopeOf(stored: StoredMessage): MessageEnvelope = MessageEnvelope(
         id = stored.id,
         from = stored.from,
@@ -737,61 +762,9 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         state = state.copy(message = null, error = null, exportArmor = null)
     }
 
-    /**
-     * Minimal parser for the MIME skeleton [buildMimeBody] emits (headers +
-     * trailing `--boundary--`). Returns (subject, body, from). The payload is
-     * already authenticated PGP plaintext at this point; this only splits it.
-     */
-    private fun parseMime(mime: String): com.vayunmathur.securemail.domain.mail.MimeCodec.MimeContent =
-        com.vayunmathur.securemail.domain.mail.MimeCodec.parseMime(mime)
+    private fun buildMimeBody(from: String, subject: String, body: String): ByteArray =
+        MimeCodec.buildPlainBody(from, subject, body, MimeCodec.newMessageId())
 
-    private fun newMessageId(): String = "${UUID.randomUUID()}@maemail.org"
-
-    /**
-     * Minimal PGP/MIME body (RFC 3156 multipart/encrypted skeleton). The actual
-     * encryption envelopes this whole body; the server relays it opaquely.
-     */
-    private fun buildMimeBody(subject: String, body: String): ByteArray {
-        val safeSubject = subject.replace(Regex("[\\r\\n]"), " ")
-        return (
-            "From: ${state.address}\r\n" +
-                "Subject: $safeSubject\r\n" +
-                "Message-ID: <${newMessageId()}>\r\n" +
-                "MIME-Version: 1.0\r\n" +
-                "Content-Type: text/plain; charset=utf-8; protected-headers=\"v1\"\r\n" +
-                "Content-Transfer-Encoding: 8bit\r\n" +
-                "\r\n" +
-                "$body\r\n"
-            ).toByteArray(Charsets.UTF_8)
-    }
-
-    /**
-     * Wraps raw PGP bytes in the RFC 3156 multipart/encrypted envelope for
-     * federated transport: control part (`application/pgp-encrypted`,
-     * `Version: 1`) + data part (`application/octet-stream`).
-     */
-    private fun buildEncryptedBody(encrypted: ByteArray): ByteArray {
-        val boundary = "maemail-${UUID.randomUUID().toString().take(8)}"
-        // RFC 3156 §4: the second part is an ASCII-armored PGP MESSAGE. Proton,
-        // GnuPG and Thunderbird reject a bare base64 body here.
-        val armored = PgpCrypto.armorMessage(encrypted).trimEnd().lines().joinToString("\r\n")
-        return (
-            "MIME-Version: 1.0\r\n" +
-                "Content-Type: multipart/encrypted; boundary=\"$boundary\"; protocol=\"application/pgp-encrypted\"\r\n" +
-                "\r\n" +
-                "--$boundary\r\n" +
-                "Content-Type: application/pgp-encrypted\r\n" +
-                "Content-Description: PGP/MIME version identification\r\n" +
-                "\r\n" +
-                "Version: 1\r\n" +
-                "\r\n" +
-                "--$boundary\r\n" +
-                "Content-Type: application/octet-stream; name=\"encrypted.asc\"\r\n" +
-                "Content-Description: OpenPGP encrypted message\r\n" +
-                "Content-Disposition: inline; filename=\"encrypted.asc\"\r\n" +
-                "\r\n" +
-                "$armored\r\n" +
-                "--$boundary--\r\n"
-            ).toByteArray(Charsets.UTF_8)
-    }
+    private fun buildEncryptedBody(encrypted: ByteArray): ByteArray =
+        MimeCodec.buildEncryptedEnvelope(PgpCrypto.armorMessage(encrypted))
 }

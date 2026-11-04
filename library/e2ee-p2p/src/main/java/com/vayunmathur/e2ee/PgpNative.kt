@@ -33,6 +33,11 @@ internal object PgpNative {
         verifierPublic: ByteArray,
     ): Array<ByteArray>?
     external fun nativePgpArmorMessage(raw: ByteArray): ByteArray?
+    external fun nativePgpSignDetached(
+        armoredSecret: ByteArray,
+        passphrase: ByteArray,
+        data: ByteArray,
+    ): ByteArray?
 
     init {
         System.loadLibrary("e2ee_pqc")

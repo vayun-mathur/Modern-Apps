@@ -72,6 +72,20 @@ fn signed_encrypt_verify_roundtrip() {
 }
 
 #[test]
+fn detached_signature_verifies_and_rejects_tamper() {
+    use pgp::composed::{Deserializable, DetachedSignature, SignedPublicKey};
+    let (secret, public, _) =
+        pgp_generate("alias <quiet-otter-4821@maemail.org>", "pw12345678").expect("keygen");
+    let data = b"maemail-sub-v1\0nonce-bytesquiet-otter-4821@maemail.org";
+    let sig_bytes = pgp_sign_detached(&secret, "pw12345678", data).expect("sign");
+    let sig = DetachedSignature::from_bytes(&sig_bytes[..]).expect("parse sig");
+    let (key, _) = SignedPublicKey::from_string(&public).expect("parse key");
+    assert!(sig.verify(&key.primary_key, data).is_ok(), "verifies over exact bytes");
+    assert!(sig.verify(&key.primary_key, b"other bytes").is_err(), "tamper rejected");
+    assert!(pgp_sign_detached(&secret, "wrong", data).is_none(), "wrong passphrase");
+}
+
+#[test]
 fn unsigned_message_verifies_empty_but_decrypts() {
     let (alice_secret, alice_public, _) =
         pgp_generate("alice <alice@maemail.org>", "pw12345678").expect("alice keygen");

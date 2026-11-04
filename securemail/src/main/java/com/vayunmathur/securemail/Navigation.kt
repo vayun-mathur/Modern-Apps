@@ -135,6 +135,7 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
                             to = m.from,
                             subject = "Re: ${m.decryptedSubject ?: ""}",
                             inReplyTo = m.id,
+                            from = m.deliveredTo,
                         ),
                     )
                 },
@@ -144,8 +145,12 @@ fun Navigation(viewModel: MailViewModel, initialRoute: Route? = null) {
         }
         outEntry(viewModel, backStack)
         entry<Route.Settings>(metadata = SiblingPage()) {
+            val identities by viewModel.identities.collectAsState(emptyList())
             SettingsScreen(
                 state = state,
+                identities = identities,
+                onCreateAlias = viewModel::createAlias,
+                onSetAliasDisabled = viewModel::setAliasDisabled,
                 onExportPublicKey = viewModel::exportPublicKey,
                 onForget = viewModel::forgetIdentity,
                 onDismissMessages = viewModel::dismissMessages,
@@ -167,14 +172,19 @@ private fun EntryProviderScope<Route>.composerEntry(viewModel: MailViewModel, ba
                 to = AddressValidator.parseRecipients(route.to),
                 cc = AddressValidator.parseRecipients(route.cc),
                 bcc = AddressValidator.parseRecipients(route.bcc),
+                from = route.from,
             )
         }
         fun close() {
             viewModel.clearDraft()
             backStack.pop()
         }
+        val identities by viewModel.identities.collectAsState(emptyList())
         ComposeScreen(
             state = viewModel.state,
+            identities = identities.filter { !it.disabled },
+            draftFrom = viewModel.draftFrom,
+            onSelectFrom = { viewModel.draftFrom = it },
             draftTo = viewModel.draftTo,
             draftCc = viewModel.draftCc,
             draftBcc = viewModel.draftBcc,
@@ -190,6 +200,7 @@ private fun EntryProviderScope<Route>.composerEntry(viewModel: MailViewModel, ba
                     subject = subject,
                     body = body,
                     inReplyTo = inReplyTo,
+                    from = viewModel.draftFrom,
                     onDone = { sent ->
                         if (sent) {
                             viewModel.drafts.delete(draftId)
@@ -227,6 +238,7 @@ private fun saveOrDropDraft(
         subject = subject,
         body = body,
         inReplyTo = inReplyTo,
+        from = viewModel.draftFrom,
     )
     if (draft.isEmpty) {
         viewModel.drafts.delete(draftId)
@@ -255,6 +267,7 @@ private fun EntryProviderScope<Route>.outEntry(viewModel: MailViewModel, backSta
                             body = d.body,
                             inReplyTo = d.inReplyTo,
                             draftId = d.id,
+                            from = d.from,
                         ),
                     )
                 },

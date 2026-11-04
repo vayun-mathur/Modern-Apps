@@ -52,6 +52,8 @@ data class StoredMessage(
     val folder: MailFolder = MailFolder.INBOX,
     /** Sender's HTML part, when the message had one (rendered by the reader). */
     val decryptedHtml: String? = null,
+    /** Own address (primary or alias) the relay delivered this to; null = primary. */
+    val deliveredTo: String? = null,
 )
 
 /** Cached public key for a recipient (own directory, WKD, or VKS result). */
@@ -75,6 +77,25 @@ data class OutboxMessage(
     val createdMillis: Long,
     val lastError: String? = null,
     val attemptCount: Int = 0,
+    /** Own address to send from; null = primary (rows queued before aliases). */
+    val fromAddress: String? = null,
+)
+
+/**
+ * One own address: the primary or an alias. Each has its own PGP key so
+ * correspondents cannot link aliases by fingerprint. [secretArmor] is
+ * S2K-wrapped by the shared recovery passphrase (and at rest in SQLCipher).
+ */
+@Entity
+data class MailIdentity(
+    @PrimaryKey val address: String,
+    val label: String = "",
+    val publicArmor: String,
+    val fingerprintHex: String,
+    val secretArmor: String,
+    val isPrimary: Boolean = false,
+    val disabled: Boolean = false,
+    val createdMillis: Long,
 )
 
 @Dao
@@ -147,15 +168,43 @@ interface OutboxDao {
     suspend fun noteAttempt(rowId: Long, error: String)
 }
 
+@Dao
+interface IdentityDao {
+    @Query("SELECT * FROM MailIdentity ORDER BY isPrimary DESC, createdMillis ASC")
+    fun observeAll(): Flow<List<MailIdentity>>
+
+    @Query("SELECT * FROM MailIdentity WHERE disabled = 0 ORDER BY isPrimary DESC, createdMillis ASC")
+    suspend fun active(): List<MailIdentity>
+
+    @Query("SELECT * FROM MailIdentity WHERE address = :address LIMIT 1")
+    suspend fun get(address: String): MailIdentity?
+
+    @Query("SELECT * FROM MailIdentity WHERE isPrimary = 1 LIMIT 1")
+    suspend fun primary(): MailIdentity?
+
+    @Query("SELECT COUNT(*) FROM MailIdentity")
+    suspend fun count(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(identity: MailIdentity)
+
+    @Query("UPDATE MailIdentity SET disabled = :disabled WHERE address = :address AND isPrimary = 0")
+    suspend fun setDisabled(address: String, disabled: Boolean)
+
+    @Query("DELETE FROM MailIdentity")
+    suspend fun deleteAll()
+}
+
 @Database(
-    entities = [StoredMessage::class, CachedKey::class, OutboxMessage::class],
-    version = 4,
+    entities = [StoredMessage::class, CachedKey::class, OutboxMessage::class, MailIdentity::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class MailDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun keyDao(): KeyDao
     abstract fun outboxDao(): OutboxDao
+    abstract fun identityDao(): IdentityDao
 
     companion object : DatabaseMigrations {
         /**
@@ -203,6 +252,33 @@ abstract class MailDatabase : RoomDatabase() {
             it.execSQL("ALTER TABLE StoredMessage ADD COLUMN decryptedHtml TEXT")
         }
 
-        override val migrations: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        /**
+         * v4 → v5: aliases. Adds the MailIdentity table plus nullable
+         * `StoredMessage.deliveredTo` and `OutboxMessage.fromAddress` (null =
+         * primary). The primary row is backfilled at runtime by
+         * [com.vayunmathur.securemail.data.Identities.ensureMigrated] because
+         * its secret lives in Keystore-wrapped prefs, not SQL.
+         */
+        private val MIGRATION_4_5 = Migration(4, 5) {
+            it.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `MailIdentity` (
+                    `address` TEXT NOT NULL PRIMARY KEY,
+                    `label` TEXT NOT NULL,
+                    `publicArmor` TEXT NOT NULL,
+                    `fingerprintHex` TEXT NOT NULL,
+                    `secretArmor` TEXT NOT NULL,
+                    `isPrimary` INTEGER NOT NULL,
+                    `disabled` INTEGER NOT NULL,
+                    `createdMillis` INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            it.execSQL("ALTER TABLE StoredMessage ADD COLUMN deliveredTo TEXT")
+            it.execSQL("ALTER TABLE OutboxMessage ADD COLUMN fromAddress TEXT")
+        }
+
+        override val migrations: List<Migration> =
+            listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
     }
 }

@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.library.work.startRepeatedTask
+import com.vayunmathur.securemail.data.Identities
 import com.vayunmathur.securemail.data.InboundStore
 import com.vayunmathur.securemail.data.MailConfig
 import com.vayunmathur.securemail.network.MailSocket
@@ -35,12 +36,12 @@ class MailSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
             // persists for the worker's lifetime and idles.
             MailSocket.start(
                 scope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
-                identity = {
-                    MailSocket.IdentitySnapshot(settings.address, settings.publicArmor)
+                identities = {
+                    Identities.active(applicationContext)
+                        .map { MailSocket.IdentitySnapshot(it.address, it.publicArmor) }
                 },
-                onMessage = { id, flags, raw ->
-                    InboundStore.store(applicationContext, id, flags, raw)
-                },
+                sign = { address, payload -> Identities.sign(applicationContext, address, payload) },
+                onMessage = { msg -> InboundStore.store(applicationContext, msg) },
             )
             // Give the SUB + backlog drain time to complete within the worker.
             kotlinx.coroutines.delay(20_000)

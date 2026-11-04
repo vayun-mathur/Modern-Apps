@@ -6,7 +6,6 @@ import com.vayunmathur.securemail.domain.mail.MimeCodec
 import com.vayunmathur.securemail.domain.pgp.PgpCrypto
 import com.vayunmathur.securemail.network.MailSocket
 import com.vayunmathur.securemail.platform.crypto.KeyManager
-import kotlinx.coroutines.flow.first
 
 /**
  * Single choke point for inbound socket frames (relay MSG + SMTP-ingested
@@ -18,45 +17,42 @@ import kotlinx.coroutines.flow.first
 object InboundStore {
 
     /**
-     * Stores one inbound frame. Encrypted frames decrypt on arrival (S2K
-     * passphrase loads transparently from Keystore-wrapped storage);
+     * Stores one inbound frame. Encrypted frames decrypt on arrival with the
+     * key of the own address they were delivered to (primary or alias);
      * unencrypted frames parse their MIME envelope directly; undecryptable
      * frames persist as locked blobs for later retry. The server spam verdict
      * ([MailSocket.MsgFlags.spam]) routes to the Spam folder — independent of
      * PGP signing (unsigned mail is accepted, not spam).
      */
-    suspend fun store(
-        context: Context,
-        id: String,
-        flags: MailSocket.MsgFlags,
-        raw: ByteArray,
-    ) {
+    suspend fun store(context: Context, msg: MailSocket.InboundMsg) {
         val app = context.applicationContext
         val repo = MailRepository.get(app)
-        val settings = MailConfig(app).settings.first()
-        val keyManager = KeyManager(app)
-        val folder = if (flags.spam) MailFolder.SPAM else MailFolder.INBOX
-        if (flags.unencrypted) {
+        val identity = Identities.forDelivery(app, msg.deliveredTo)
+        val deliveredTo = msg.deliveredTo.ifBlank { identity?.address.orEmpty() }
+        val folder = if (msg.flags.spam) MailFolder.SPAM else MailFolder.INBOX
+        val raw = msg.raw
+        if (msg.flags.unencrypted) {
             val (subject, body, from, html) = MimeCodec.parseMime(raw.toString(Charsets.UTF_8))
             repo.messageDao().upsert(
                 StoredMessage(
-                    id = id,
+                    id = msg.id,
                     from = from,
-                    toJson = settings.address,
+                    toJson = deliveredTo,
                     dateMillis = System.currentTimeMillis(),
-                    messageId = id,
+                    messageId = msg.id,
                     blobBase64 = "",
                     decryptedBody = body,
                     decryptedSubject = subject,
                     unencrypted = true,
                     folder = folder,
                     decryptedHtml = html,
+                    deliveredTo = deliveredTo,
                 ),
             )
             return
         }
-        val passphrase = keyManager.getKeyPassphrase()
-        val stored = if (passphrase != null) {
+        val passphrase = KeyManager(app).getKeyPassphrase()
+        val stored = if (passphrase != null && identity != null) {
             runCatching {
                 val pgpB64 = MimeCodec.extractPgpPayloadB64(raw)
                 val pgpBytes = if (pgpB64 != null) {
@@ -70,7 +66,7 @@ object InboundStore {
                 // the verifier key is only known after decryption.
                 val provisional = PgpCrypto.decrypt(
                     pgpBytes,
-                    keyManager.getSecretArmor(),
+                    identity.secretArmor,
                     passphrase,
                 ).toString(Charsets.UTF_8)
                 val (_, _, claimedFrom) = MimeCodec.parseMime(provisional)
@@ -79,7 +75,7 @@ object InboundStore {
                     if (senderKey != null) {
                         val checked = PgpCrypto.decryptVerify(
                             pgpBytes,
-                            keyManager.getSecretArmor(),
+                            identity.secretArmor,
                             passphrase,
                             senderKey,
                         )
@@ -93,11 +89,11 @@ object InboundStore {
                 }
                 val (subject, body, from, html) = MimeCodec.parseMime(mime)
                 StoredMessage(
-                    id = id,
+                    id = msg.id,
                     from = from,
-                    toJson = settings.address,
+                    toJson = deliveredTo,
                     dateMillis = System.currentTimeMillis(),
-                    messageId = id,
+                    messageId = msg.id,
                     blobBase64 = Base64.encodeToString(raw, Base64.NO_WRAP),
                     decryptedBody = body,
                     decryptedSubject = subject,
@@ -105,6 +101,7 @@ object InboundStore {
                     unencrypted = false,
                     folder = folder,
                     decryptedHtml = html,
+                    deliveredTo = deliveredTo,
                 )
             }.getOrNull()
         } else {
@@ -112,14 +109,15 @@ object InboundStore {
         }
         repo.messageDao().upsert(
             stored ?: StoredMessage(
-                id = id,
+                id = msg.id,
                 from = "",
-                toJson = settings.address,
+                toJson = deliveredTo,
                 dateMillis = System.currentTimeMillis(),
-                messageId = id,
+                messageId = msg.id,
                 blobBase64 = Base64.encodeToString(raw, Base64.NO_WRAP),
                 unencrypted = false,
                 folder = folder,
+                deliveredTo = deliveredTo,
             ),
         )
     }

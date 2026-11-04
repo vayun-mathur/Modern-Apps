@@ -20,6 +20,8 @@ data class Draft(
     val subject: String = "",
     val body: String = "",
     val inReplyTo: String? = null,
+    /** Own address to send from; null = primary. */
+    val from: String? = null,
 ) {
     val isEmpty: Boolean
         get() = to.isEmpty() && cc.isEmpty() && bcc.isEmpty() && subject.isBlank() && body.isBlank()
@@ -43,7 +45,7 @@ class DraftsController(
             repo.messageDao().upsert(
                 StoredMessage(
                     id = draft.id,
-                    from = ownAddress(),
+                    from = draft.from ?: ownAddress(),
                     toJson = json.encodeToString(Envelope(draft.to, draft.cc, draft.bcc, draft.inReplyTo)),
                     dateMillis = System.currentTimeMillis(),
                     messageId = draft.id,
@@ -83,6 +85,7 @@ class DraftsController(
                 subject = row.decryptedSubject.orEmpty(),
                 body = row.decryptedBody.orEmpty(),
                 inReplyTo = env.inReplyTo,
+                from = row.from.ifBlank { null },
             )
         }
     }

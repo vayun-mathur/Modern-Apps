@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,10 +33,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.library.ui.Button
 import com.vayunmathur.library.ui.DesktopMaxWidthContainer
+import com.vayunmathur.library.ui.DropdownMenu
+import com.vayunmathur.library.ui.DropdownMenuItem
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.OutlinedTextField
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.rememberMessenger
+import com.vayunmathur.securemail.data.MailIdentity
 import com.vayunmathur.securemail.platform.MailUiState
 import kotlinx.coroutines.launch
 
@@ -48,6 +53,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun ComposeScreen(
     state: MailUiState,
+    identities: List<MailIdentity>,
+    draftFrom: String?,
+    onSelectFrom: (String) -> Unit,
     draftTo: List<String>,
     draftCc: List<String>,
     draftBcc: List<String>,
@@ -108,6 +116,9 @@ fun ComposeScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (identities.size > 1) {
+                FromPicker(identities, draftFrom, onSelectFrom)
+            }
             RecipientChipField(
                 label = "To",
                 recipients = draftTo,
@@ -166,6 +177,41 @@ fun ComposeScreen(
                     modifier = Modifier.weight(1f),
                 ) { Text(if (state.busy) "Sending…" else "Send") }
                 Button(onClick = onDiscard, modifier = Modifier.weight(1f)) { Text("Discard") }
+            }
+        }
+    }
+}
+
+/** Chooses which own address (primary or alias) the message is sent from. */
+@Composable
+private fun FromPicker(identities: List<MailIdentity>, selected: String?, onSelect: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val current = identities.firstOrNull { it.address == selected } ?: identities.first()
+    Box {
+        TextButton(onClick = { open = true }) {
+            Text("From: ${current.address}", style = MaterialTheme.typography.bodyMedium)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            identities.forEach { identity ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(identity.address)
+                            val label = if (identity.isPrimary) "Primary" else identity.label
+                            if (label.isNotBlank()) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                            }
+                        }
+                    },
+                    onClick = {
+                        onSelect(identity.address)
+                        open = false
+                    },
+                )
             }
         }
     }
