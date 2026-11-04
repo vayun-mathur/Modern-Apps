@@ -121,6 +121,171 @@ private val KNOWN_RUST_ABIS = listOf(
 )
 
 /**
+ * A `path = "..."` or workspace-inherited reference found in one manifest's
+ * dependency tables.
+ */
+private data class CargoDepRefs(val paths: List<String>, val workspaceNames: List<String>)
+
+private val cargoPathValue = Regex("""\bpath\s*=\s*("([^"]*)"|'([^']*)')""")
+private val cargoDottedWorkspace = Regex("""^([A-Za-z0-9_-]+)\.workspace\s*=\s*true\b""")
+private val cargoInlineWorkspace =
+    Regex("""^[A-Za-z0-9_-]+\s*=\s*\{[^}]*?\bworkspace\s*=\s*true\b""")
+private val cargoInlineWorkspaceName = Regex("""^([A-Za-z0-9_-]+)\s*=""")
+
+private fun stripTomlComment(line: String): String {
+    var inDouble = false
+    var inSingle = false
+    var i = 0
+    while (i < line.length) {
+        val c = line[i]
+        when {
+            c == '"' && !inSingle && (i == 0 || line[i - 1] != '\\') -> inDouble = !inDouble
+            c == '\'' && !inDouble -> inSingle = !inSingle
+            c == '#' && !inDouble && !inSingle -> return line.substring(0, i)
+        }
+        i++
+    }
+    return line
+}
+
+/**
+ * Dependency refs in a crate manifest: inline `path = "..."` entries plus
+ * `<name>.workspace = true` / `<name> = { workspace = true ... }` entries.
+ * Only dependency tables are scanned (`[dependencies]`,
+ * `[dev-dependencies]`, `[build-dependencies]`, `[target.*.dependencies]`,
+ * `[workspace.dependencies]`), so `[[bin]]`/`[lib]`/`[[example]]`
+ * `path = "src/..."` file entries never surface here — and the directory
+ * check in [findRustPathDepDirs] rejects them anyway.
+ */
+private fun parseCargoDepRefs(manifestText: String): CargoDepRefs {
+    val paths = mutableListOf<String>()
+    val workspaceNames = mutableListOf<String>()
+    var inDeps = false
+    for (rawLine in manifestText.lines()) {
+        val line = stripTomlComment(rawLine).trim()
+        if (line.startsWith("[")) {
+            inDeps = line.startsWith("[dependencies") ||
+                line.startsWith("[dev-dependencies") ||
+                line.startsWith("[build-dependencies") ||
+                line.startsWith("[target.") ||
+                line.replace(" ", "") == "[workspace.dependencies]"
+            continue
+        }
+        if (!inDeps || line.isEmpty()) continue
+        cargoPathValue.find(line)?.let {
+            paths += it.groupValues[2].ifEmpty { it.groupValues[3] }
+        }
+        cargoDottedWorkspace.find(line)?.let {
+            workspaceNames += it.groupValues[1]
+        }
+        if (cargoInlineWorkspace.containsMatchIn(line)) {
+            cargoInlineWorkspaceName.find(line)?.let {
+                workspaceNames += it.groupValues[1]
+            }
+        }
+    }
+    return CargoDepRefs(paths, workspaceNames)
+}
+
+/** `name = { path = "...", ... }` entries of root `[workspace.dependencies]`. */
+private fun parseWorkspacePathDeps(rootManifestText: String): Map<String, String> {
+    val out = LinkedHashMap<String, String>()
+    var inSection = false
+    for (rawLine in rootManifestText.lines()) {
+        val line = stripTomlComment(rawLine).trim()
+        if (line.startsWith("[")) {
+            inSection = line.replace(" ", "") == "[workspace.dependencies]"
+            continue
+        }
+        if (!inSection || line.isEmpty()) continue
+        if (cargoDottedWorkspace.containsMatchIn(line) ||
+            cargoInlineWorkspace.containsMatchIn(line)
+        ) {
+            // `name.workspace = true` re-export: no path of its own.
+            continue
+        }
+        val name = line.substringBefore("=").trim()
+        if (!name.matches(Regex("[A-Za-z0-9_-]+"))) continue
+        cargoPathValue.find(line)?.let {
+            out[name] = it.groupValues[2].ifEmpty { it.groupValues[3] }
+        }
+    }
+    return out
+}
+
+/**
+ * Reads a Cargo.toml through the file-contents provider so the configuration
+ * cache tracks it: editing any visited manifest invalidates configuration.
+ * Manifests outside the repo (defensive fallback) are read untracked.
+ */
+private fun Project.readCargoManifest(manifestFile: File): String {
+    val canonical = manifestFile.canonicalFile
+    fun relativeToBase(base: File): String? {
+        val prefix = base.canonicalPath.trimEnd(File.separatorChar) + File.separatorChar
+        return if (canonical.path.startsWith(prefix)) canonical.path.removePrefix(prefix) else null
+    }
+    relativeToBase(projectDir)?.let {
+        return providers.fileContents(layout.projectDirectory.file(it)).asText.get()
+    }
+    relativeToBase(rootProject.projectDir)?.let {
+        return providers.fileContents(rootProject.layout.projectDirectory.file(it)).asText.get()
+    }
+    return canonical.readText()
+}
+
+/** Stable per-crate input property name from the root-relative crate path. */
+private fun pathDepPropertyName(rootDir: File, depDir: File): String {
+    val rel = try {
+        depDir.relativeTo(rootDir).invariantSeparatorsPath
+    } catch (_: IllegalArgumentException) {
+        depDir.canonicalPath
+    }
+    return "pathDep_" + rel.replace(Regex("[^A-Za-z0-9]+"), "_")
+}
+
+/**
+ * Cross-crate path dependencies of the crate in [crateDir], e.g. euicc ->
+ * library/jni-http, camera/measure -> library/vision, maps/library:map ->
+ * library/tilecodec. Parsed generically from `path = "..."` entries (resolved
+ * relative to the crate dir) plus `<name>.workspace = true` entries (resolved
+ * against root `[workspace.dependencies]` paths), recursed with dedupe and a
+ * cycle guard. Only paths resolving to a directory containing Cargo.toml are
+ * accepted. Returns plain Files; callers build FileCollections from them so
+ * only those (never the Project) cross into task actions.
+ */
+private fun Project.findRustPathDepDirs(crateDir: File): List<File> {
+    val rootDir = rootProject.projectDir.canonicalFile
+    val workspacePaths =
+        parseWorkspacePathDeps(readCargoManifest(rootDir.resolve("Cargo.toml")))
+    val canonicalCrate = crateDir.canonicalFile
+    val visited = HashSet<File>()
+    visited += canonicalCrate
+    val found = mutableListOf<File>()
+    val queue = ArrayDeque<File>()
+    fun enqueue(base: File, rawPath: String) {
+        val resolved = File(base, rawPath).canonicalFile
+        if (!resolved.isDirectory || !resolved.resolve("Cargo.toml").isFile) return
+        if (visited.add(resolved)) {
+            found += resolved
+            queue += resolved
+        }
+    }
+    fun enqueueWorkspaceDep(name: String) {
+        workspacePaths[name]?.let { enqueue(rootDir, it) }
+    }
+    val seed = parseCargoDepRefs(readCargoManifest(canonicalCrate.resolve("Cargo.toml")))
+    seed.paths.forEach { enqueue(canonicalCrate, it) }
+    seed.workspaceNames.forEach(::enqueueWorkspaceDep)
+    while (queue.isNotEmpty()) {
+        val dir = queue.removeFirst()
+        val refs = parseCargoDepRefs(readCargoManifest(dir.resolve("Cargo.toml")))
+        refs.paths.forEach { enqueue(dir, it) }
+        refs.workspaceNames.forEach(::enqueueWorkspaceDep)
+    }
+    return found
+}
+
+/**
  * Registers the per-ABI cargo cross-compile of a Rust cdylib into `build/rustJniLibs`,
  * wired ahead of `preBuild`. This consolidates the ~80 lines of NDK-toolchain + cargo +
  * reproducible-build boilerplate that used to be copy-pasted across every native module
@@ -232,6 +397,12 @@ fun Project.rustNativeLib(
         ) "fast" else "release"
     }
 
+    // Cross-crate path deps (euicc -> library/jni-http, camera -> library/vision,
+    // maps/library:map -> library/tilecodec, ...), parsed generically from
+    // Cargo.toml below. Computed once per crate — identical for every ABI — as
+    // plain Files; only the FileCollections built from them cross into tasks.
+    val pathDepDirs: List<File> = findRustPathDepDirs(file(srcDir))
+
     val compileShaders = if (shaders.isEmpty()) null else {
         require(srcDir == "src/main/rust") { "rustNativeLib($crate): shaders need the default srcDir" }
         val glslcExe = if (OperatingSystem.current().isWindows) "glslc.exe" else "glslc"
@@ -264,18 +435,37 @@ fun Project.rustNativeLib(
             val perCrateSoOut = file("$srcDir/target/$triple/$profile/lib$crate.so")
             val workspaceSoOut = rootProject.file("target/$triple/$profile/lib$crate.so")
             val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/lib$crate.so").get().asFile
+            val targetRustflags = "-C link-arg=-Wl,-z,max-page-size=16384"
 
-            inputs.dir("$srcDir/src")
-            inputs.file("$srcDir/Cargo.toml")
-            file("$srcDir/build.rs").takeIf { it.isFile }?.let { inputs.file(it) }
+            // Cacheable + relocatable: every input is RELATIVE-sensitive with a
+            // distinct property name, and toolchain facts the env doesn't cover
+            // (Exec treats environment/workingDir as @Internal, so env vars are
+            // NOT in the cache key) are explicit input properties. A fresh
+            // worktree at a different absolute path then restores FROM-CACHE.
+            outputs.cacheIf("Rust cdylib build is hermetic given the declared inputs") { true }
+
+            inputs.dir("$srcDir/src").withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("crateSrc")
+            inputs.file("$srcDir/Cargo.toml").withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("crateManifest")
+            file("$srcDir/build.rs").takeIf { it.isFile }?.let {
+                inputs.file("$srcDir/build.rs").withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("buildRs")
+            }
             // The crate include_bytes!s build/spirv, so a shader edit must re-run cargo;
             // otherwise the task stays up to date and the old SPIR-V silently ships.
-            compileShaders?.let { inputs.files(it).withPropertyName("spirv") }
+            compileShaders?.let {
+                inputs.files(it).withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("spirv")
+            }
             // `:library:ml`'s build.rs also compiles `schema/maml2.fbs` to Rust via
             // flatc and `include!`s the result, so a schema edit changes the .so too.
             // Same staleness hazard as shaders above: without this the task stays up
             // to date and the old bindings ship.
-            file("$srcDir/schema").takeIf { it.isDirectory }?.let { inputs.dir(it) }
+            file("$srcDir/schema").takeIf { it.isDirectory }?.let {
+                inputs.dir("$srcDir/schema").withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("schema")
+            }
             // Whole-crate safety net: track every source under src/main/rust so ANY
             // rust change invalidates cargoBuild - crucially vendored dependency
             // crates under vendor/, which
@@ -286,19 +476,44 @@ fun Project.rustNativeLib(
             // FileTree is a FileCollection resolved at configuration time, so only the
             // file set (never the Project) crosses into the task action.
             inputs.files(fileTree(srcDir) { exclude("target/**") })
+                .withPathSensitivity(PathSensitivity.RELATIVE)
                 .withPropertyName("rustCrateTree")
+            // Cross-crate path deps (euicc -> jni-http, camera -> vision,
+            // maps -> tilecodec, ...): an edit there must rebuild this .so.
+            // Parsed generically from Cargo.toml `path =` + `workspace = true`
+            // entries (see findRustPathDepDirs), one input tree per dep crate.
+            for (depDir in pathDepDirs) {
+                val relDep = depDir.relativeTo(rootProject.projectDir)
+                inputs.files(rootProject.fileTree(relDep) { exclude("target/**") })
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName(pathDepPropertyName(rootProject.projectDir, depDir))
+            }
             // Root workspace unified (Cargo.toml + Cargo.lock + rust-toolchain.toml)
-            inputs.file(rootProject.file("Cargo.toml"))
-            inputs.file(rootProject.file("Cargo.lock"))
-            inputs.file(rootProject.file("rust-toolchain.toml"))
+            inputs.file(rootProject.file("Cargo.toml")).withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("workspaceManifest")
+            inputs.file(rootProject.file("Cargo.lock")).withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("workspaceLock")
+            inputs.file(rootProject.file("rust-toolchain.toml")).withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("rustToolchain")
             // Only rust third_party crates – avoid pulling third_party:nanojson java outputs (was implicit dep failure).
             // jni is a crates.io dependency now, so Cargo.lock above covers it.
             inputs.dir(rootProject.file("third_party/om-file-format-sys/src"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("omFfiSrc")
             inputs.file(rootProject.file("third_party/om-file-format-sys/Cargo.toml"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("omFfiManifest")
             inputs.file(rootProject.file("third_party/om-file-format-sys/build.rs"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("omFfiBuildRs")
             inputs.dir(rootProject.file("third_party/om-file-format-sys/c"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("omFfiC")
             // BetoCore vendored crates (Apache-2.0) — incremental builds track these like om-file-format-sys.
             inputs.dir(rootProject.file("third_party/betocore"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("betocore")
+            // Toolchain facts that shape the .so bytes but live in env/workingDir
+            // (both @Internal on Exec), so they need explicit input properties.
+            inputs.property("ndkVersion", NDK_VERSION)
+            inputs.property("hostTag", hostTag)
+            inputs.property("androidApiLevel", androidApiLevel)
+            inputs.property("targetRustflags", targetRustflags)
             outputs.file(destSo)
 
             val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
@@ -320,7 +535,7 @@ fun Project.rustNativeLib(
             // 4 KB .so files). Target-scoped so host build-script links on
             // MSVC are unaffected. See analysis/plan-16kb-page-size.md.
             val rustflagsVar = "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_RUSTFLAGS"
-            environment(rustflagsVar, "-C link-arg=-Wl,-z,max-page-size=16384")
+            environment(rustflagsVar, targetRustflags)
             // Force the system clang for host-side C on Unix; on Windows let cc locate MinGW gcc.
             if (!isWindows) environment("HOST_CC", "/usr/bin/clang")
             // Pre-generated bindings (armv8-only): weather's om-file-format-sys no longer uses bindgen
