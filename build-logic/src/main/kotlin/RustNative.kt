@@ -211,6 +211,27 @@ fun Project.rustNativeLib(
     val cargoFeatureArgs: List<String> =
         if (features.isNotEmpty()) listOf("--features", features.joinToString(",")) else emptyList()
 
+    // Cargo profile chosen once at configuration time (plain String, config-cache
+    // safe). Explicit `-Pmodernapps.rustProfile=fast|release` wins; otherwise fail
+    // safe: `fast` only when every requested task is a dev/cargo task, else
+    // `release` so an ambiguous build never ships a fast-profile .so.
+    val devTaskPattern = Regex("(Dev|Debug)(?=[A-Z]|$)")
+    val profile: String = providers.gradleProperty("modernapps.rustProfile").orNull?.let { requested ->
+        if (requested != "fast" && requested != "release") {
+            throw GradleException(
+                "Invalid -Pmodernapps.rustProfile=$requested: expected 'fast' or 'release'."
+            )
+        }
+        requested
+    } ?: run {
+        val taskNames = gradle.startParameter.taskNames
+        if (taskNames.isNotEmpty() && taskNames.all { name ->
+                val lastSegment = name.substringAfterLast(':')
+                lastSegment.startsWith("cargo") || devTaskPattern.containsMatchIn(lastSegment)
+            }
+        ) "fast" else "release"
+    }
+
     val compileShaders = if (shaders.isEmpty()) null else {
         require(srcDir == "src/main/rust") { "rustNativeLib($crate): shaders need the default srcDir" }
         val glslcExe = if (OperatingSystem.current().isWindows) "glslc.exe" else "glslc"
@@ -240,8 +261,8 @@ fun Project.rustNativeLib(
             val linkerVar = "CARGO_TARGET_${triple.uppercase().replace('-', '_')}_LINKER"
             // Per-crate target (may exist from older isolated builds) and workspace root target
             // (current scheme since Cargo.toml workspace unified to root).
-            val perCrateSoOut = file("$srcDir/target/$triple/release/lib$crate.so")
-            val workspaceSoOut = rootProject.file("target/$triple/release/lib$crate.so")
+            val perCrateSoOut = file("$srcDir/target/$triple/$profile/lib$crate.so")
+            val workspaceSoOut = rootProject.file("target/$triple/$profile/lib$crate.so")
             val destSo = layout.buildDirectory.file("rustJniLibs/$abiDir/lib$crate.so").get().asFile
 
             inputs.dir("$srcDir/src")
@@ -327,7 +348,8 @@ fun Project.rustNativeLib(
                 "$cargoBin/cargo$exeExt",
                 "build",
                 "--locked",
-                "--release",
+                "--profile",
+                profile,
                 "--target",
                 triple,
                 *cargoFeatureArgs.toTypedArray(),

@@ -330,3 +330,10 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+# Fast profile for dev/agent builds: skips fat LTO for quicker iteration.
+[profile.fast]
+inherits = "release"
+opt-level = 2
+lto = false
+codegen-units = 16
