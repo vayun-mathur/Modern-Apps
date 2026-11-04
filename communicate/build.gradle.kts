@@ -211,4 +211,11 @@ dependencies {
 
     // Car-view store-listing screenshots render through the shared host renderer.
     add("screenshotTestImplementation", project(":library:carhost"))
+
+    // voicemailNumber() reads TelephonyManager.voiceMailNumber, which the unit-test stub
+    // android.jar does not implement ("not mocked"). Robolectric supplies the framework
+    // shadows so the pilot lookup (and its permission/dual-SIM fallbacks) can be asserted
+    // on the JVM; same reason emergency/pdf use it.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

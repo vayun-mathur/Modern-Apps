@@ -1,5 +1,6 @@
 package com.vayunmathur.communicate.ui
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,10 +25,12 @@ import com.vayunmathur.library.ui.IconBackspace
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconPaste
 import com.vayunmathur.library.ui.IconButton
+import com.vayunmathur.library.ui.IconVoicemail
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
+import com.vayunmathur.library.ui.rememberHaptics
 
 @Composable
 fun DialPad(
@@ -37,6 +40,7 @@ fun DialPad(
     onClear: () -> Unit,
     onPaste: () -> Unit,
     onCall: () -> Unit,
+    onVoicemailLongPress: (() -> Unit)? = null,
 ) {
     // Letters are the physical keycap markings from ITU E.161, not translatable copy.
     val keys = listOf(
@@ -82,6 +86,10 @@ fun DialPad(
                         DialKey(
                             digit = digit,
                             letters = letters,
+                            // Stock-dialer behavior (issue #899): pressing and holding 1
+                            // calls voicemail. Only the 1 key gets the long-press; the
+                            // rest keep tap-to-append.
+                            onLongClick = if (digit == "1") onVoicemailLongPress else null,
                             onClick = { onAppend(digit) },
                             modifier = Modifier.weight(1f),
                         )
@@ -108,12 +116,30 @@ fun DialPad(
 }
 
 @Composable
-private fun DialKey(digit: String, letters: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun DialKey(
+    digit: String,
+    letters: String,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberHaptics()
+    val voicemailLabel = stringResource(R.string.call_voicemail)
     Surface(
-        onClick = onClick,
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier.height(52.dp),
+        modifier = modifier
+            .height(52.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick?.let { action ->
+                    {
+                        haptics.longPress()
+                        action()
+                    }
+                },
+                onLongClickLabel = voicemailLabel.takeIf { onLongClick != null },
+            ),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -121,7 +147,11 @@ private fun DialKey(digit: String, letters: String, onClick: () -> Unit, modifie
             verticalArrangement = Arrangement.Center,
         ) {
             Text(digit, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
-            if (letters.isNotEmpty()) {
+            if (digit == "1" && onLongClick != null) {
+                // The keycap marking stock dialers print under 1: the tape-reel glyph
+                // that says "hold me for voicemail" without a tutorial.
+                IconVoicemail()
+            } else if (letters.isNotEmpty()) {
                 Text(
                     letters,
                     style = MaterialTheme.typography.labelSmall,

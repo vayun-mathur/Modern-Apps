@@ -8,6 +8,7 @@ import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telecom.TelecomManager
+import android.telephony.TelephonyManager
 import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -430,6 +431,30 @@ fun CommunicateRepository.openSmsComposer(context: Context, number: String? = nu
         if (!body.isNullOrBlank()) putExtra("sms_body", body)
     }
     ExternalIntents.launch(context, intent)
+}
+
+/**
+ * The carrier voicemail pilot for [choice]'s line, or null when it cannot be
+ * read — long-press 1 target (issue #899).
+ *
+ * SIM lines resolve through their own subscription's [TelephonyManager] so a
+ * dual-SIM device dials the right mailbox; devices that can't hand out a
+ * per-subscription manager (or builds hiding the API) fall back to the
+ * default manager. Google Voice publishes no pilot here and returns null.
+ * Needs READ_PHONE_STATE.
+ */
+fun CommunicateRepository.voicemailNumber(context: Context, choice: LineChoice?): String? {
+    val subId = (choice as? LineChoice.Sim)?.subscriptionId
+    if (subId == null && choice is LineChoice.GoogleVoice) return null
+    if (!context.hasPermission(Manifest.permission.READ_PHONE_STATE)) return null
+    val base = runCatching { context.getSystemService(TelephonyManager::class.java) }.getOrNull()
+        ?: return null
+    val scoped = if (subId != null && subId >= 0) {
+        runCatching { base.createForSubscriptionId(subId) }.getOrNull() ?: base
+    } else {
+        base
+    }
+    return runCatching { scoped.voiceMailNumber }.getOrNull()?.takeIf { it.isNotBlank() }
 }
 
 fun CommunicateRepository.getOrCreateSmsThreadId(context: Context, address: String): Long? = runCatching {

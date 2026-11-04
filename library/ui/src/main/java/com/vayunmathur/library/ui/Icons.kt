@@ -255,6 +255,7 @@ import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Voicemail
 import androidx.compose.material.icons.filled.Vaccines
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.PregnantWoman
@@ -766,6 +767,10 @@ fun IconStarBorder(modifier: Modifier = Modifier, tint: Color = LocalContentColo
 @Composable
 fun IconCall(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.Call, "Call", modifier, tint)
+
+@Composable
+fun IconVoicemail(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Voicemail, "Voicemail", modifier, tint)
 
 @Composable
 fun IconCallEnd(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =

@@ -24,6 +24,10 @@
     <string name="new_message">New message</string>
     <string name="compose_message">Compose message</string>
     <string name="phone_number">Phone number</string>
+    <!-- Long-press 1 with no carrier voicemail pilot stored (issue #899). -->
+    <string name="no_voicemail_number">No voicemail number set on this SIM</string>
+    <!-- TalkBack action label for long-pressing the 1 key (issue #899). -->
+    <string name="call_voicemail">Call voicemail</string>
     <string name="message_hint">Message</string>
     <string name="send">Send</string>
     <string name="delete_digit">Delete digit</string>

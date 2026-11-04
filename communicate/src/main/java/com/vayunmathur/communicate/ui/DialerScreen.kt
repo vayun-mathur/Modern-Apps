@@ -103,6 +103,7 @@ fun DialerScreen() {
                             DialerContent(
                                 contacts = rows,
                                 onPlace = ::place,
+                                selectedLine = selectedLine,
                                 modifier = Modifier.weight(1f),
                             )
                         }

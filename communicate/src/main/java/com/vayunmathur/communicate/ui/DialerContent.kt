@@ -30,7 +30,10 @@ import androidx.compose.ui.unit.dp
 import com.vayunmathur.communicate.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.communicate.data.CommunicateContact
+import com.vayunmathur.communicate.data.CommunicateRepository
+import com.vayunmathur.communicate.data.LineChoice
 import com.vayunmathur.communicate.data.T9
+import com.vayunmathur.communicate.data.voicemailNumber
 import com.vayunmathur.library.ui.EmptyState
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconContacts
@@ -38,6 +41,7 @@ import com.vayunmathur.library.ui.ListItem
 import com.vayunmathur.library.ui.ListItemDefaults
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.util.AppMessages
 import kotlinx.coroutines.launch
 
 /**
@@ -50,12 +54,23 @@ import kotlinx.coroutines.launch
 fun DialerContent(
     contacts: List<CommunicateContact>,
     onPlace: (String) -> Unit,
+    selectedLine: LineChoice? = null,
     modifier: Modifier = Modifier,
 ) {
     var number by remember { mutableStateOf("") }
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val noVoicemailNumber = stringResource(R.string.no_voicemail_number)
+    // Stock-dialer behavior (issue #899): pressing and holding 1 calls the carrier
+    // voicemail pilot for the currently selected line, through the same place-call
+    // path as the green call button. When the carrier stored no pilot, say so on
+    // the snackbar (Toast is banned — see the ToastUsage lint check) instead of
+    // appearing to do nothing.
+    val callVoicemail = {
+        val pilot = CommunicateRepository.voicemailNumber(context, selectedLine)
+        if (pilot != null) onPlace(pilot) else AppMessages.show(noVoicemailNumber)
+    }
     // Keyed on the contact list only: the query must never re-run the provider query.
     val entries = remember(contacts) { contacts.map { T9.entryFor(it.name, it.phoneNumber) } }
     val query = T9.normalizeQuery(number)
@@ -114,6 +129,7 @@ fun DialerContent(
                 }
             },
             onCall = { onPlace(number) },
+            onVoicemailLongPress = callVoicemail,
         )
     }
 }
