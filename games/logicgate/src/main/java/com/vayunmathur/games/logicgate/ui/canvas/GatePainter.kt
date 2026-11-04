@@ -13,7 +13,6 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
 import com.vayunmathur.games.logicgate.domain.model.LevelOutput
@@ -132,7 +131,7 @@ private fun DrawScope.drawGate(ctx: PaintContext, gate: Gate, rect: Rect, stroke
         drawCircle(fill, GateShapes.BUBBLE_R, b)
         drawCircle(stroke, GateShapes.BUBBLE_R, b, style = Stroke(2f))
     }
-    val label = Chips[gate.chipId]?.label ?: gate.chipId
+    val label = ctx.layout.label(gate.chipId)
     if (look.shape == GateShape.BOX) {
         drawCentered(ctx, label, rect.center, LABEL_SIZE, ctx.colors.label)
         drawPinNames(ctx, gate)

@@ -1,5 +1,6 @@
 package com.vayunmathur.games.logicgate.domain.levels
 
+import androidx.annotation.StringRes
 import com.vayunmathur.games.logicgate.domain.sim.TestSpec
 
 /** A level whose pins, tests and par all come from the chip it rewards, so they cannot drift apart. */
@@ -28,4 +29,4 @@ internal fun chipLevel(
 }
 
 /** The words of a level. */
-internal data class LevelText(val title: String, val brief: String, val hint: String)
+internal data class LevelText(@StringRes val title: Int, @StringRes val brief: Int, @StringRes val hint: Int)

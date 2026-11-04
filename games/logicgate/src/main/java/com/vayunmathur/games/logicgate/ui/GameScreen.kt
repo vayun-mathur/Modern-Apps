@@ -63,6 +63,7 @@ fun GameScreen(
     val density = LocalDensity.current.density
     val cameraState = remember { CameraState(density) }
     val lookup = remember(state.level) { Chips.lookup(state.level.io) }
+    val labels = rememberChipLabels()
     val number = LevelRegistry.indexOf(state.level.id) + 1
     var trayDrag by remember { mutableStateOf<TrayDrag?>(null) }
     val trash = remember { TrashZone() }
@@ -71,16 +72,16 @@ fun GameScreen(
     var canvasBounds by remember { mutableStateOf(Rect.Zero) }
 
     fun placeNear(chipId: String, world: Offset) =
-        actions.placeChip(chipId, CircuitLayout(state.circuit, lookup).freeSpot(chipId, world, lookup))
+        actions.placeChip(chipId, CircuitLayout(state.circuit, lookup, labels).freeSpot(chipId, world, lookup))
 
     AppScaffold(
-        title = stringResource(R.string.lg_level_title, number, state.level.title),
+        title = stringResource(R.string.lg_level_title, number, stringResource(state.level.title)),
         modifier = modifier,
         onNavigateBack = onBack,
         actions = {
             IconButton(onClick = actions::undo, enabled = state.canUndo) { IconUndo() }
             IconButton(onClick = actions::redo, enabled = state.canRedo) { IconRedo() }
-            IconButton(onClick = { cameraState.fit(CircuitLayout(state.circuit, lookup).bounds) }) { IconFullscreen() }
+            IconButton(onClick = { cameraState.fit(CircuitLayout(state.circuit, lookup, labels).bounds) }) { IconFullscreen() }
             IconButton(onClick = { actions.showBrief(true) }) { IconInfo() }
         },
         scrollBehavior = appBarScrollBehavior(),
@@ -124,7 +125,7 @@ fun GameScreen(
                     TrashOverlay(trash, Modifier.matchParentSize())
                 }
             }
-            trayDrag?.let { DragGhost(Chips[it.chipId]?.label ?: it.chipId, it.root - rootOrigin) }
+            trayDrag?.let { DragGhost(chipLabel(it.chipId), it.root - rootOrigin) }
             if (state.won) {
                 LevelCompleteOverlay(
                     state = state,

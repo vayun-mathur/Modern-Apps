@@ -3,7 +3,6 @@ package com.vayunmathur.games.logicgate.ui.canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
@@ -34,11 +33,10 @@ object GateGeometry {
     private const val LABEL_PAD = 34f
     private const val MIN_CURVE = 40f
 
-    fun size(node: Node, pins: NodePins): Size = when (node) {
+    fun size(node: Node, pins: NodePins, label: (String) -> String): Size = when (node) {
         is Gate -> {
             val rows = max(max(pins.inputs.size, pins.outputs.size), 1)
-            val label = Chips[node.chipId]?.label ?: node.chipId
-            Size(max(GATE_WIDTH, label.length * CHAR_WIDTH + LABEL_PAD), max(MIN_HEIGHT, rows * PIN_SPACING + GRID))
+            Size(max(GATE_WIDTH, label(node.chipId).length * CHAR_WIDTH + LABEL_PAD), max(MIN_HEIGHT, rows * PIN_SPACING + GRID))
         }
         is LevelInput -> ioSize(pins.outputs.firstOrNull())
         is LevelOutput -> ioSize(pins.inputs.firstOrNull())
@@ -79,11 +77,13 @@ object GateGeometry {
     }
 }
 
-/** A circuit measured out for drawing and hit-testing. */
-class CircuitLayout(val circuit: Circuit, lookup: PinLookup) {
+/** A circuit measured out for drawing and hit-testing. [labels] maps chip ids to their displayed names. */
+class CircuitLayout(val circuit: Circuit, lookup: PinLookup, private val labels: Map<String, String>) {
+    fun label(chipId: String): String = labels[chipId] ?: chipId
+
     val pins: Map<NodeId, NodePins> = circuit.nodes.associate { it.id to (lookup.pins(it) ?: NodePins(emptyList(), emptyList())) }
     val rects: Map<NodeId, Rect> = circuit.nodes.associate { n ->
-        n.id to Rect(Offset(n.pos.x, n.pos.y), GateGeometry.size(n, pins.getValue(n.id)))
+        n.id to Rect(Offset(n.pos.x, n.pos.y), GateGeometry.size(n, pins.getValue(n.id), ::label))
     }
     val anchors: Map<PinRef, Offset> = buildMap {
         for (n in circuit.nodes) {
@@ -107,7 +107,7 @@ class CircuitLayout(val circuit: Circuit, lookup: PinLookup) {
      */
     fun freeSpot(chipId: String, center: Offset, lookup: PinLookup): Point {
         val probe = Gate(NodeId(-1), chipId, Point(0f, 0f))
-        val size = GateGeometry.size(probe, lookup.pins(probe) ?: NodePins(emptyList(), emptyList()))
+        val size = GateGeometry.size(probe, lookup.pins(probe) ?: NodePins(emptyList(), emptyList()), ::label)
         val base = center - Offset(size.width / 2, size.height / 2)
         val step = GateGeometry.PIN_SPACING * 2
         val candidates = (-SEARCH..SEARCH).flatMap { i -> (-SEARCH..SEARCH).map { j -> Offset(i * step, j * step) } }

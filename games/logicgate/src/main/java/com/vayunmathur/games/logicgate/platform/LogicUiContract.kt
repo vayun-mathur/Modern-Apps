@@ -1,5 +1,6 @@
 package com.vayunmathur.games.logicgate.platform
 
+import androidx.annotation.StringRes
 import com.vayunmathur.games.logicgate.domain.levels.Chapter
 import com.vayunmathur.games.logicgate.domain.levels.LevelDef
 import com.vayunmathur.games.logicgate.domain.model.ChipSpec
@@ -20,7 +21,7 @@ import com.vayunmathur.games.logicgate.domain.sim.VerifyResult
 data class LevelCard(
     val id: String,
     val number: Int,
-    val title: String,
+    @StringRes val title: Int,
     val chapter: Chapter,
     val unlocked: Boolean,
     val stars: Int,

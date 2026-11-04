@@ -1,5 +1,6 @@
 package com.vayunmathur.games.logicgate.domain.levels
 
+import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Pin
 
@@ -13,36 +14,36 @@ internal val routingLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.ROUTING, "mux", Chips.MUX,
         LevelText(
-            "MUX",
-            "A selector: o is a when s is 0, and b when s is 1.",
-            "AND a with NOT s and b with s, then OR the two. In NANDs it is just four gates.",
+            R.string.lg_level_mux_title,
+            R.string.lg_level_mux_brief,
+            R.string.lg_level_mux_hint,
         ),
         title = RowTitles.mux,
     ),
     chipLevel(
         Chapter.ROUTING, "dmux", Chips.DMUX,
         LevelText(
-            "DMUX",
-            "Send in to a when s is 0, or to b when s is 1. The other output stays 0.",
-            "a = in AND NOT s, b = in AND s.",
+            R.string.lg_level_dmux_title,
+            R.string.lg_level_dmux_brief,
+            R.string.lg_level_dmux_hint,
         ),
         title = RowTitles.dmux,
     ),
     chipLevel(
         Chapter.ROUTING, "dec2", Chips.DEC2,
         LevelText(
-            "Decoder",
-            "Light exactly one of y0–y3: the one numbered by s1 s0 (s1 is the high bit).",
-            "Each output is an AND of s1 or NOT s1 with s0 or NOT s0.",
+            R.string.lg_level_dec2_title,
+            R.string.lg_level_dec2_brief,
+            R.string.lg_level_dec2_hint,
         ),
         title = RowTitles.dec2,
     ),
     LevelDef(
         id = "nibble_swap",
         chapter = Chapter.ROUTING,
-        title = "Nibble swap",
-        brief = "Thick wires are buses carrying 4 or 8 bits at once. Swap the low and high halves of x.",
-        hint = "NIB SPLIT gives the two halves; cross them into a NIB JOIN.",
+        title = R.string.lg_level_nibble_swap_title,
+        brief = R.string.lg_level_nibble_swap_brief,
+        hint = R.string.lg_level_nibble_swap_hint,
         inputs = listOf(Pin("x", 8)),
         outputs = listOf(Pin("y", 8)),
         tests = TestGen.comb(listOf(Pin("x", 8)), seed = 10, RowTitles.nibbleSwap) {
@@ -54,9 +55,9 @@ internal val routingLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.ROUTING, "bus_mux", Chips.MUX8B,
         LevelText(
-            "Bus MUX",
-            "Choose between two whole bytes. The one tedious bus level: solve it and every bus-wide gate is yours.",
-            "Split both buses, use eight MUXes, and join the results.",
+            R.string.lg_level_bus_mux_title,
+            R.string.lg_level_bus_mux_brief,
+            R.string.lg_level_bus_mux_hint,
         ),
         title = RowTitles.busMux,
         unlocks = bitwisePack,

@@ -1,5 +1,6 @@
 package com.vayunmathur.games.logicgate.domain.levels
 
+import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Isa
 import com.vayunmathur.games.logicgate.domain.model.Isa.encode
@@ -51,38 +52,27 @@ internal val cpuLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.CPU, "decoder", Chips.DECODER,
         LevelText(
-            "Instruction decoder",
-            "op is a 4-bit opcode (top bit unused): 0 LDA · 1 STA · 2 ADD · 3 SUB · 4 LDI · 5 JMP · 6 JZ · 7 HLT.\n" +
-                "What each output does:\n" +
-                "• aluOp1 aluOp0 — ALU operation: 00 add · 01 subtract · 11 pass b. ADD adds, SUB subtracts, " +
-                "LDA and LDI pass b. Only checked when accLoad is 1.\n" +
-                "• accLoad — 1 for LDA, ADD, SUB, LDI: the ALU result is stored into acc.\n" +
-                "• memWrite — 1 for STA: acc is written to memory.\n" +
-                "• useImm — 1 for LDI: the ALU takes the operand itself, not memory.\n" +
-                "• jump — 1 for JMP; for JZ only when z is 1.\n" +
-                "• halt — 1 for HLT.",
-            "Split op, decode its low three bits into eight lines, then OR together the lines each control needs.",
+            R.string.lg_level_decoder_title,
+            R.string.lg_level_decoder_brief,
+            R.string.lg_level_decoder_hint,
         ),
         tests = decoderTests,
     ),
     chipLevel(
         Chapter.CPU, "cpu", Chips.CPU,
         LevelText(
-            "CPU",
-            "Each tick, instr is the byte at pc and data is the byte at addr. Run the instruction: update acc " +
-                "and pc, and to store put acc on dout and raise we. Tested by running real programs.",
-            "operand → addr and PC4 v · ALU(acc, data or operand) → REG8 acc · ZERO8(acc) → decoder z · " +
-                "NOT halt → PC4 en.",
+            R.string.lg_level_cpu_title,
+            R.string.lg_level_cpu_brief,
+            R.string.lg_level_cpu_hint,
         ),
         tests = TestSpec.Programs(cpuPrograms, harness = true),
     ),
     LevelDef(
         id = "computer",
         chapter = Chapter.CPU,
-        title = "Computer",
-        brief = "Wire your CPU to a RAM16. Three programs get loaded into the RAM: add two numbers, count down, " +
-            "and multiply 3 × 4.",
-        hint = "pc → iaddr, addr → daddr, dout → din, we → we; instr and dout go back into the CPU.",
+        title = R.string.lg_level_computer_title,
+        brief = R.string.lg_level_computer_brief,
+        hint = R.string.lg_level_computer_hint,
         inputs = emptyList(),
         outputs = listOf(Pin("acc", 8), Pin("halt")),
         tests = TestSpec.Programs(cpuPrograms, harness = false),

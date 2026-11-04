@@ -24,13 +24,14 @@ _Install: ./install games/logicgate (dev by default)._
 **Gotchas:**
 - Pars are asserted equal to the reference solution costs in `src/test/.../domain/LevelSolutionsTest.kt`. Change a chip's `nandCost` and its reference together.
 - `ui/canvas/` is world-unit geometry (≈dp at 1×). `CameraState.scale` already includes density, so canvas text uses `sizeWorld.toSp()`.
-- Nothing edits on finger-down. Chips are created by pulling them up out of the tray (`ChipTray`: an upward drag claims the gesture, a sideways one scrolls) or from `ui/ChipInfoSheet.kt`, opened by tapping a tray card (chip blurbs live in `domain/model/ChipInfo.kt`). Gates are deleted by dropping them back on the bottom area (`ui/canvas/TrashZone.kt`) or from the selection bar.
+- Nothing edits on finger-down. Chips are created by pulling them up out of the tray (`ChipTray`: an upward drag claims the gesture, a sideways one scrolls) or from `ui/ChipInfoSheet.kt`, opened by tapping a tray card (chip names and blurbs are `strings.xml` resources mapped in `domain/model/ChipInfo.kt`; UI resolves names via `ui/ChipLabels.kt`). Gates are deleted by dropping them back on the bottom area (`ui/canvas/TrashZone.kt`) or from the selection bar.
+- Level titles, briefs and hints are `@StringRes` ids (`lg_level_<id>_{title,brief,hint}`); gate-named level titles alias the chip name string.
 - Test rows carry plain-language titles (`domain/levels/RowTitles.kt`, e.g. `1 OR 1 = 1`), which are shown instead of row numbers.
 
 ## Key files
 ### domain/ — pure, unit-tested
 - domain/model/Circuit.kt — nodes, pins, wires, immutable edits, `sanitized`
-- domain/model/ChipSpec.kt, domain/model/Chips.kt, domain/model/ChipInfo.kt (tray tap blurbs), domain/model/Isa.kt
+- domain/model/ChipSpec.kt, domain/model/Chips.kt, domain/model/ChipInfo.kt (chip name + blurb string ids), domain/model/Isa.kt
 - domain/sim/Simulator.kt, domain/sim/Scheduler.kt — tick semantics, SCC ordering
 - domain/sim/Verifier.kt, domain/sim/TestSpec.kt, domain/sim/Scoring.kt
 - domain/levels/LevelRegistry.kt + {Basics,Routing,Arithmetic,Memory,Cpu}Levels.kt

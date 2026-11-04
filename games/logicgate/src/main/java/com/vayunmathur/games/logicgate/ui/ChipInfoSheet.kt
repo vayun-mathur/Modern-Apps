@@ -33,13 +33,13 @@ fun ChipInfoSheet(chip: ChipSpec, onAdd: () -> Unit, onDismiss: () -> Unit) {
                 .padding(bottom = Spacing.xl),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            Text(chip.label, style = MaterialTheme.typography.headlineSmall)
+            Text(chipLabel(chip.id), style = MaterialTheme.typography.headlineSmall)
             Text(
                 stringResource(R.string.lg_cost, chip.nandCost),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ChipInfo.of(chip.id)?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
+            ChipInfo.blurb(chip.id)?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
             PinLine(stringResource(R.string.lg_brief_inputs), chip.inputs)
             PinLine(stringResource(R.string.lg_brief_outputs), chip.outputs)
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.lg_add_to_board)) }

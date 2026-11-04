@@ -103,12 +103,13 @@ private fun ChapterHeader(chapter: Chapter) {
 @Composable
 private fun LevelRow(card: LevelCard, onOpenLevel: (String) -> Unit) {
     val locked = stringResource(R.string.lg_cd_locked)
+    val title = stringResource(card.title)
     Card(
         onClick = { onOpenLevel(card.id) },
         enabled = card.unlocked,
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { if (!card.unlocked) contentDescription = "${card.title}, $locked" },
+            .semantics { if (!card.unlocked) contentDescription = "$title, $locked" },
     ) {
         Row(
             Modifier.padding(Spacing.md),
@@ -125,7 +126,7 @@ private fun LevelRow(card: LevelCard, onOpenLevel: (String) -> Unit) {
                 }
             }
             Column(Modifier.weight(1f)) {
-                Text(card.title, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(
                     card.bestCost?.let { stringResource(R.string.lg_best_cost, it, card.par) }
                         ?: stringResource(R.string.lg_par, card.par),

@@ -4,14 +4,14 @@ import com.vayunmathur.games.logicgate.domain.model.ChipInfo
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import kotlin.test.Test
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class ChipInfoTest {
 
     @Test
     fun everyChipHasABlurb() {
         for (chip in Chips.all) {
-            assertTrue(ChipInfo.of(chip.id).orEmpty().isNotBlank(), "missing blurb for ${chip.id}")
+            assertNotNull(ChipInfo.label(chip.id), "missing label for ${chip.id}")
+            assertNotNull(ChipInfo.blurb(chip.id), "missing blurb for ${chip.id}")
         }
     }
 
@@ -27,7 +27,7 @@ class ChipInfoTest {
             Chips.DECODER, Chips.CPU,
         )) {
             assertNotNull(Chips[id], id)
-            assertNotNull(ChipInfo.of(id), id)
+            assertNotNull(ChipInfo.blurb(id), id)
         }
     }
 }

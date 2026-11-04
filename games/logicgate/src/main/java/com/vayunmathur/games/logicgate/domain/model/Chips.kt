@@ -59,18 +59,17 @@ object Chips {
         inputs: List<Pin>,
         outputs: List<Pin>,
         cost: Int,
-        label: String = id,
         f: (IntArray) -> IntArray,
-    ) = ChipSpec(id, label, inputs, outputs, cost, Behavior.Comb(f))
+    ) = ChipSpec(id, inputs, outputs, cost, Behavior.Comb(f))
 
     private fun gate2(id: String, cost: Int, f: (Int, Int) -> Int) =
         comb(id, listOf(p("a"), p("b")), listOf(p("o")), cost) { intArrayOf(f(it[0], it[1]) and 1) }
 
-    private fun split(id: String, n: Int, label: String) =
-        comb(id, listOf(p("x", n)), bits("b", n), 0, label) { v -> IntArray(n) { (v[0] shr it) and 1 } }
+    private fun split(id: String, n: Int) =
+        comb(id, listOf(p("x", n)), bits("b", n), 0) { v -> IntArray(n) { (v[0] shr it) and 1 } }
 
-    private fun join(id: String, n: Int, label: String) =
-        comb(id, bits("b", n), listOf(p("x", n)), 0, label) { v ->
+    private fun join(id: String, n: Int) =
+        comb(id, bits("b", n), listOf(p("x", n)), 0) { v ->
             intArrayOf(v.foldIndexed(0) { i, acc, b -> acc or ((b and 1) shl i) })
         }
 
@@ -100,14 +99,14 @@ object Chips {
             val sel = v[0] * 2 + v[1]
             IntArray(4) { if (it == sel) 1 else 0 }
         },
-        split(SPLIT8, 8, "SPLIT 8"),
-        join(JOIN8, 8, "JOIN 8"),
-        split(SPLIT4, 4, "SPLIT 4"),
-        join(JOIN4, 4, "JOIN 4"),
-        comb(NIB_SPLIT, listOf(p("x", 8)), listOf(p("lo", 4), p("hi", 4)), 0, "NIB SPLIT") {
+        split(SPLIT8, 8),
+        join(JOIN8, 8),
+        split(SPLIT4, 4),
+        join(JOIN4, 4),
+        comb(NIB_SPLIT, listOf(p("x", 8)), listOf(p("lo", 4), p("hi", 4)), 0) {
             intArrayOf(it[0] and 0xF, it[0] shr 4)
         },
-        comb(NIB_JOIN, listOf(p("lo", 4), p("hi", 4)), listOf(p("x", 8)), 0, "NIB JOIN") {
+        comb(NIB_JOIN, listOf(p("lo", 4), p("hi", 4)), listOf(p("x", 8)), 0) {
             intArrayOf(it[0] or (it[1] shl 4))
         },
         comb(NOT8, listOf(p("a", 8)), listOf(p("o", 8)), 8) { intArrayOf(it[0].inv() and 0xFF) },
@@ -150,7 +149,7 @@ object Chips {
     private fun register(id: String, width: Int, cost: Int, withLoad: Boolean): ChipSpec {
         val ins = if (withLoad) listOf(p("d", width), p("load")) else listOf(p("d", width))
         return ChipSpec(
-            id, id, ins, listOf(p("q", width)), cost,
+            id, ins, listOf(p("q", width)), cost,
             Behavior.Seq(
                 init = IntArray(1),
                 outputs = { s, _ -> intArrayOf(s[0]) },
@@ -166,7 +165,7 @@ object Chips {
         register(BIT, 1, 12, withLoad = true),
         register(REG8, 8, 96, withLoad = true),
         ChipSpec(
-            PC4, PC4, listOf(p("en"), p("load"), p("v", 4)), listOf(p("pc", 4)), 80,
+            PC4, listOf(p("en"), p("load"), p("v", 4)), listOf(p("pc", 4)), 80,
             Behavior.Seq(
                 init = IntArray(1),
                 outputs = { s, _ -> intArrayOf(s[0]) },
@@ -174,7 +173,7 @@ object Chips {
             ),
         ),
         ChipSpec(
-            RAM4, RAM4, listOf(p("a1"), p("a0"), p("din", 8), p("we")), listOf(p("dout", 8)), 498,
+            RAM4, listOf(p("a1"), p("a0"), p("din", 8), p("we")), listOf(p("dout", 8)), 498,
             Behavior.Seq(
                 init = IntArray(4),
                 outputs = { s, i -> intArrayOf(s[i[0] * 2 + i[1]]) },
@@ -183,7 +182,7 @@ object Chips {
             ),
         ),
         ChipSpec(
-            RAM16, RAM16, listOf(p("iaddr", 4), p("daddr", 4), p("din", 8), p("we")),
+            RAM16, listOf(p("iaddr", 4), p("daddr", 4), p("din", 8), p("we")),
             listOf(p("instr", 8), p("dout", 8)), 2560,
             Behavior.Seq(
                 init = IntArray(16),
@@ -197,7 +196,7 @@ object Chips {
     private val cpu = listOf(
         comb(DECODER, listOf(p("op", 4), p("z")), Isa.decoderOutputs, 44) { Isa.decode(it[0], it[1]) },
         ChipSpec(
-            CPU, CPU, listOf(p("instr", 8), p("data", 8)), Isa.cpuOutputs, 481,
+            CPU, listOf(p("instr", 8), p("data", 8)), Isa.cpuOutputs, 481,
             Behavior.Seq(
                 init = IntArray(2),
                 outputs = { s, i -> Isa.cpuOut(s[0], s[1], i[0]) },

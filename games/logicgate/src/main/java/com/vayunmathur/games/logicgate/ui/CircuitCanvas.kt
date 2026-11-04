@@ -77,8 +77,9 @@ fun CircuitCanvas(
     val shake = remember { Animatable(0f) }
     var shakePin by remember { mutableStateOf<PinRef?>(null) }
     var editingInput by remember { mutableStateOf<Int?>(null) }
+    val labels = rememberChipLabels()
     val shown = controller.preview(state.circuit)
-    val layout = remember(shown, lookup) { CircuitLayout(shown, lookup) }
+    val layout = remember(shown, lookup, labels) { CircuitLayout(shown, lookup, labels) }
 
     SideEffect {
         controller.bind(state, actions, layout, lookup)
@@ -87,7 +88,7 @@ fun CircuitCanvas(
         controller.onEditBus = { editingInput = it }
         controller.onReject = { pin, check ->
             haptics.reject()
-            messenger.show(rejectMessage(resources, check))
+            messenger.show(rejectMessage(resources, labels, check))
             shakePin = pin
             scope.launch {
                 for (x in SHAKE) shake.animateTo(x, Motion.over(SHAKE_STEP_MS))
@@ -160,23 +161,20 @@ fun CircuitCanvas(
     }
 }
 
-private fun rejectMessage(res: Resources, check: ConnectCheck): String = when (check) {
+private fun rejectMessage(res: Resources, labels: Map<String, String>, check: ConnectCheck): String = when (check) {
     is ConnectCheck.WidthMismatch ->
-        res.getString(R.string.lg_wire_width, check.fromWidth, check.toWidth, adapterFor(check.fromWidth, check.toWidth))
+        res.getString(R.string.lg_wire_width, check.fromWidth, check.toWidth, labels.getValue(adapterFor(check.fromWidth, check.toWidth)))
     else -> res.getString(R.string.lg_wire_same_side)
 }
 
-/** The chip that converts between two bus widths. */
-private fun adapterFor(from: Int, to: Int): String {
-    val id = when {
-        from == 8 && to == 1 -> Chips.SPLIT8
-        from == 1 && to == 8 -> Chips.JOIN8
-        from == 4 && to == 1 -> Chips.SPLIT4
-        from == 1 && to == 4 -> Chips.JOIN4
-        from == 8 -> Chips.NIB_SPLIT
-        else -> Chips.NIB_JOIN
-    }
-    return Chips[id]?.label ?: id
+/** The id of the chip that converts between two bus widths. */
+private fun adapterFor(from: Int, to: Int): String = when {
+    from == 8 && to == 1 -> Chips.SPLIT8
+    from == 1 && to == 8 -> Chips.JOIN8
+    from == 4 && to == 1 -> Chips.SPLIT4
+    from == 1 && to == 4 -> Chips.JOIN4
+    from == 8 -> Chips.NIB_SPLIT
+    else -> Chips.NIB_JOIN
 }
 
 private val SHAKE = listOf(7f, -7f, 5f, -5f, 2f, 0f)

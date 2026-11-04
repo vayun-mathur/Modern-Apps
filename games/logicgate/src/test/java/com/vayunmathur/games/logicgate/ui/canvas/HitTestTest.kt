@@ -21,7 +21,7 @@ class HitTestTest {
         val (c0, nand) = Circuit.forLevel(level.io).addGate(Chips.NAND, Point(200f, 0f))
         val output = c0.nodes.first { it is com.vayunmathur.games.logicgate.domain.model.LevelOutput }.id
         val c = requireNotNull(c0.connect(PinRef(nand, PinSide.OUT, 0), PinRef(output, PinSide.IN, 0), lookup))
-        return CircuitLayout(c, lookup) to PinRef(nand, PinSide.OUT, 0)
+        return CircuitLayout(c, lookup, emptyMap()) to PinRef(nand, PinSide.OUT, 0)
     }
 
     private fun hit(layout: CircuitLayout, at: Offset) = HitTest.hit(layout, at, 24f, 14f, 12f)

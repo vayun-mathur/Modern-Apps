@@ -74,7 +74,7 @@ private fun ChipCard(
     onDrop: (TrayDrag) -> Unit,
 ) {
     var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val description = stringResource(R.string.lg_cd_chip, chip.label, chip.nandCost)
+    val description = stringResource(R.string.lg_cd_chip, chipLabel(chip.id), chip.nandCost)
     val widest = (chip.inputs + chip.outputs).maxOfOrNull { it.width } ?: 1
     Surface(
         onClick = { onTap(chip.id) },
@@ -110,7 +110,7 @@ private fun ChipCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(chip.label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+            Text(chipLabel(chip.id), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 Text(chip.nandCost.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (widest > 1) {

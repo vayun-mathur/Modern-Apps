@@ -1,5 +1,6 @@
 package com.vayunmathur.games.logicgate.domain.levels
 
+import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Pin
 import com.vayunmathur.games.logicgate.domain.sim.Case
@@ -12,9 +13,9 @@ internal val memoryLevels: List<LevelDef> = listOf(
     LevelDef(
         id = "sr_latch",
         chapter = Chapter.MEMORY,
-        title = "SR latch",
-        brief = "Memory from feedback. s sets q to 1, r resets it to 0, and with both low q holds. nq is always NOT q.",
-        hint = "Two NORs, each one's output wired into the other's input.",
+        title = R.string.lg_level_sr_latch_title,
+        brief = R.string.lg_level_sr_latch_brief,
+        hint = R.string.lg_level_sr_latch_hint,
         inputs = listOf(Pin("s"), Pin("r")),
         outputs = listOf(Pin("q"), Pin("nq")),
         tests = ticks(
@@ -33,9 +34,9 @@ internal val memoryLevels: List<LevelDef> = listOf(
     LevelDef(
         id = "d_latch",
         chapter = Chapter.MEMORY,
-        title = "D latch",
-        brief = "While en is 1, q follows d. When en drops to 0, q holds its last value.",
-        hint = "Build an SR latch and drive its set and reset from d and en.",
+        title = R.string.lg_level_d_latch_title,
+        brief = R.string.lg_level_d_latch_brief,
+        hint = R.string.lg_level_d_latch_hint,
         inputs = listOf(Pin("d"), Pin("en")),
         outputs = listOf(Pin("q")),
         tests = ticks(
@@ -56,9 +57,9 @@ internal val memoryLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.MEMORY, "bit", Chips.BIT,
         LevelText(
-            "1-bit register",
-            "A DFF stores its input on every tick. Build one that only stores when load is 1; q shows the stored bit.",
-            "Feed the DFF from a MUX choosing between d and the DFF's own output.",
+            R.string.lg_level_bit_title,
+            R.string.lg_level_bit_brief,
+            R.string.lg_level_bit_hint,
         ),
         tests = TestGen.seqFromChip(
             Chips.BIT,
@@ -72,9 +73,9 @@ internal val memoryLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.MEMORY, "reg8", Chips.REG8,
         LevelText(
-            "8-bit register",
-            "The same, a byte wide.",
-            "A MUX8b in front of a DFF8.",
+            R.string.lg_level_reg8_title,
+            R.string.lg_level_reg8_brief,
+            R.string.lg_level_reg8_hint,
         ),
         tests = TestGen.seqFromChip(
             Chips.REG8,
@@ -88,10 +89,9 @@ internal val memoryLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.MEMORY, "pc4", Chips.PC4,
         LevelText(
-            "Program counter",
-            "Each tick: if load is 1, jump to v; otherwise if en is 1, count up by one (15 wraps to 0); " +
-                "otherwise hold.",
-            "An INC4 and two MUX4bs in front of a DFF4.",
+            R.string.lg_level_pc4_title,
+            R.string.lg_level_pc4_brief,
+            R.string.lg_level_pc4_hint,
         ),
         tests = TestGen.seqFromChip(
             Chips.PC4,
@@ -106,9 +106,9 @@ internal val memoryLevels: List<LevelDef> = listOf(
     chipLevel(
         Chapter.MEMORY, "ram4", Chips.RAM4,
         LevelText(
-            "RAM",
-            "Four bytes. dout always shows the byte at address a1 a0; when we is 1, that byte becomes din on the tick.",
-            "A DEC2 picks which REG8 loads; MUX8bs pick which one is read.",
+            R.string.lg_level_ram4_title,
+            R.string.lg_level_ram4_brief,
+            R.string.lg_level_ram4_hint,
         ),
         unlocks = listOf(Chips.RAM4, Chips.RAM16),
         tests = TestGen.seqFromChip(

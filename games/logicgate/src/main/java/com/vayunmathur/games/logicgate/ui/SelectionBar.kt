@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.logicgate.R
-import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.games.logicgate.platform.LogicActions
@@ -34,7 +33,7 @@ import com.vayunmathur.library.ui.TextButton
 fun SelectionBar(state: GameUiState, actions: LogicActions, modifier: Modifier = Modifier) {
     val wireLabel = stringResource(R.string.lg_selected_wire)
     val label = when (val sel = state.selection) {
-        is Selection.OfNode -> (state.circuit.node(sel.id) as? Gate)?.let { Chips[it.chipId]?.label ?: it.chipId }
+        is Selection.OfNode -> (state.circuit.node(sel.id) as? Gate)?.let { chipLabel(it.chipId) }
         is Selection.OfWire -> wireLabel
         null -> null
     }

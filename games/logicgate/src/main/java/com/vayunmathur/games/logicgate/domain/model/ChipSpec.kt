@@ -25,7 +25,6 @@ sealed interface Behavior {
 /** A placeable chip: its pins, what it costs in NAND gates, and its trusted native behaviour. */
 data class ChipSpec(
     val id: String,
-    val label: String,
     val inputs: List<Pin>,
     val outputs: List<Pin>,
     val nandCost: Int,

@@ -1,5 +1,6 @@
 package com.vayunmathur.games.logicgate.domain.levels
 
+import androidx.annotation.StringRes
 import com.vayunmathur.games.logicgate.domain.model.LevelIo
 import com.vayunmathur.games.logicgate.domain.model.Pin
 import com.vayunmathur.games.logicgate.domain.sim.TestSpec
@@ -14,9 +15,9 @@ enum class Chapter { BASICS, ROUTING, ARITHMETIC, MEMORY, CPU }
 data class LevelDef(
     val id: String,
     val chapter: Chapter,
-    val title: String,
-    val brief: String,
-    val hint: String,
+    @StringRes val title: Int,
+    @StringRes val brief: Int,
+    @StringRes val hint: Int,
     val inputs: List<Pin>,
     val outputs: List<Pin>,
     val tests: TestSpec,

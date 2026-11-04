@@ -118,4 +118,344 @@
     <string name="lg_next_level">Next level</string>
     <!-- Level complete overlay: dismiss and stay in the editor. Verb phrase -->
     <string name="lg_keep_editing">Keep editing</string>
+
+    <!-- Level titles, briefs and hints. Briefs and hints are written for a teenage reader: full, plain sentences. Keep pin names (like a, b, s, q, op) as they are, and write chip names exactly as you translated them in the lg_chip_*_label strings. -->
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_not_title" translatable="false">@string/lg_chip_not_label</string>
+    <!-- Brief sheet: goal of the "NOT" level. Sentences -->
+    <string name="lg_level_not_brief">In this game, you build everything out of NAND gates. A NAND outputs 0 only when both of its inputs are 1. For this level, make the output o the opposite of the input a.</string>
+    <!-- Brief sheet: hint for the "NOT" level, shown on request. Sentences -->
+    <string name="lg_level_not_hint">Connect a to both inputs of a single NAND. Think about what it outputs when a is 0 and when a is 1.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_and_title" translatable="false">@string/lg_chip_and_label</string>
+    <!-- Brief sheet: goal of the "AND" level. Sentences -->
+    <string name="lg_level_and_brief">Make o equal to 1 only when a and b are both 1. If either input is 0, o should be 0.</string>
+    <!-- Brief sheet: hint for the "AND" level, shown on request. Sentences -->
+    <string name="lg_level_and_hint">NAND means \"NOT AND\": it gives the opposite of AND. Flip a NAND\'s output back with a NOT.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_or_title" translatable="false">@string/lg_chip_or_label</string>
+    <!-- Brief sheet: goal of the "OR" level. Sentences -->
+    <string name="lg_level_or_brief">Make o equal to 1 when a is 1, when b is 1, or when both are 1. It should be 0 only when both are 0.</string>
+    <!-- Brief sheet: hint for the "OR" level, shown on request. Sentences -->
+    <string name="lg_level_or_hint">Flip a and b with a NOT each, then feed both flipped values into a NAND. The NAND outputs 0 only when both flipped values are 1, which means a and b were both 0.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_nor_title" translatable="false">@string/lg_chip_nor_label</string>
+    <!-- Brief sheet: goal of the "NOR" level. Sentences -->
+    <string name="lg_level_nor_brief">Make o equal to 1 only when a and b are both 0. If either input is 1, o should be 0.</string>
+    <!-- Brief sheet: hint for the "NOR" level, shown on request. Sentences -->
+    <string name="lg_level_nor_hint">This is the opposite of OR, so put a NOT after an OR.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_xor_title" translatable="false">@string/lg_chip_xor_label</string>
+    <!-- Brief sheet: goal of the "XOR" level. Sentences -->
+    <string name="lg_level_xor_brief">Make o equal to 1 when a and b are different, and 0 when they are the same.</string>
+    <!-- Brief sheet: hint for the "XOR" level, shown on request. Sentences -->
+    <string name="lg_level_xor_hint">You can do this with four NANDs. Feed a and b into the first NAND. Feed the first NAND\'s output and a into a second NAND, and feed the first NAND\'s output and b into a third NAND. Finally, feed the outputs of the second and third NANDs into a fourth NAND.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_xnor_title" translatable="false">@string/lg_chip_xnor_label</string>
+    <!-- Brief sheet: goal of the "XNOR" level. Sentences -->
+    <string name="lg_level_xnor_brief">Make o equal to 1 when a and b are the same, and 0 when they are different.</string>
+    <!-- Brief sheet: hint for the "XNOR" level, shown on request. Sentences -->
+    <string name="lg_level_xnor_hint">This is the opposite of XOR, so put a NOT after an XOR.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_mux_title" translatable="false">@string/lg_chip_mux_label</string>
+    <!-- Brief sheet: goal of the "MUX" level. Sentences -->
+    <string name="lg_level_mux_brief">A MUX chooses between two inputs. When the select input s is 0, the output o should copy a. When s is 1, o should copy b.</string>
+    <!-- Brief sheet: hint for the "MUX" level, shown on request. Sentences -->
+    <string name="lg_level_mux_hint">AND a with NOT s, so it only gets through when s is 0. AND b with s, so it only gets through when s is 1. Then OR the two results together. Built straight from NANDs, it takes only four gates.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_dmux_title" translatable="false">@string/lg_chip_dmux_label</string>
+    <!-- Brief sheet: goal of the "DMUX" level. Sentences -->
+    <string name="lg_level_dmux_brief">A DMUX sends one input to one of two outputs. When s is 0, the value of in should go to a. When s is 1, it should go to b. The output that is not chosen should stay 0.</string>
+    <!-- Brief sheet: hint for the "DMUX" level, shown on request. Sentences -->
+    <string name="lg_level_dmux_hint">Output a is in AND NOT s. Output b is in AND s.</string>
+    <!-- Level map and brief sheet: title of the "Decoder" level. Short noun phrase -->
+    <string name="lg_level_dec2_title">Decoder</string>
+    <!-- Brief sheet: goal of the "Decoder" level. Sentences -->
+    <string name="lg_level_dec2_brief">Read s1 and s0 as a two-bit number from 0 to 3, with s1 as the high bit. Turn on the output with that number (y0, y1, y2 or y3) and keep the other three at 0. For example, s1 = 1 and s0 = 0 is the number 2, so only y2 should be 1.</string>
+    <!-- Brief sheet: hint for the "Decoder" level, shown on request. Sentences -->
+    <string name="lg_level_dec2_hint">Each output needs its own AND gate. For y0, AND together NOT s1 and NOT s0. For y3, AND together s1 and s0. Work out y1 and y2 the same way.</string>
+    <!-- Level map and brief sheet: title of the "Nibble swap" level. Short noun phrase -->
+    <string name="lg_level_nibble_swap_title">Nibble swap</string>
+    <!-- Brief sheet: goal of the "Nibble swap" level. Sentences -->
+    <string name="lg_level_nibble_swap_brief">Thick wires are called buses, and they carry 4 or 8 bits at once. The input x is a byte (8 bits). Split it into its low 4 bits and its high 4 bits, then swap them, so the low half of x becomes the high half of y and the high half of x becomes the low half of y.</string>
+    <!-- Brief sheet: hint for the "Nibble swap" level, shown on request. Sentences -->
+    <string name="lg_level_nibble_swap_hint">A NIB SPLIT breaks x into its two halves. Connect them to a NIB JOIN the other way round.</string>
+    <!-- Level map and brief sheet: title of the "Bus MUX" level. Short noun phrase -->
+    <string name="lg_level_bus_mux_title">Bus MUX</string>
+    <!-- Brief sheet: goal of the "Bus MUX" level. Sentences -->
+    <string name="lg_level_bus_mux_brief">Build a MUX that chooses between two whole bytes. When s is 0, o should copy all 8 bits of a, and when s is 1, o should copy all 8 bits of b. This level takes some repetitive wiring, but once you solve it, you get bus versions of NOT, AND, OR, XOR and MUX for free.</string>
+    <!-- Brief sheet: hint for the "Bus MUX" level, shown on request. Sentences -->
+    <string name="lg_level_bus_mux_hint">Split a and b into separate bits. Use eight MUXes, one for each bit position, all sharing the same s. Then join their outputs back into one bus.</string>
+    <!-- Level map and brief sheet: title of the "Half adder" level. Short noun phrase -->
+    <string name="lg_level_half_adder_title">Half adder</string>
+    <!-- Brief sheet: goal of the "Half adder" level. Sentences -->
+    <string name="lg_level_half_adder_brief">Add two bits, a and b. The sum bit s should be 1 when exactly one input is 1. The carry c should be 1 when both inputs are 1, because 1 + 1 = 2, which is written 10 in binary.</string>
+    <!-- Brief sheet: hint for the "Half adder" level, shown on request. Sentences -->
+    <string name="lg_level_half_adder_hint">The sum s is a XOR b, and the carry c is a AND b. To save gates, notice that the first NAND inside your XOR already gives NOT c, so c needs only one more NOT.</string>
+    <!-- Level map and brief sheet: title of the "Full adder" level. Short noun phrase -->
+    <string name="lg_level_full_adder_title">Full adder</string>
+    <!-- Brief sheet: goal of the "Full adder" level. Sentences -->
+    <string name="lg_level_full_adder_brief">Add three bits: a, b and a carry in, cin, which comes from the column to the right. The output s is the sum bit, and cout is the carry that passes to the next column on the left.</string>
+    <!-- Brief sheet: hint for the "Full adder" level, shown on request. Sentences -->
+    <string name="lg_level_full_adder_hint">Use two half adders. The first adds a and b, and the second adds that sum to cin. cout should be 1 if either half adder made a carry, so OR their two carries together. The best known solution uses only nine NANDs.</string>
+    <!-- Level map and brief sheet: title of the "4-bit adder" level. Short noun phrase -->
+    <string name="lg_level_add4_title">4-bit adder</string>
+    <!-- Brief sheet: goal of the "4-bit adder" level. Sentences -->
+    <string name="lg_level_add4_brief">Add the two 4-bit numbers a and b, plus the carry in cin. The output s is the 4-bit sum. If the total is bigger than 15, it does not fit in 4 bits, so cout should be 1 and s should keep only the low 4 bits.</string>
+    <!-- Brief sheet: hint for the "4-bit adder" level, shown on request. Sentences -->
+    <string name="lg_level_add4_hint">Split a and b into bits and use one full adder per bit, starting from the lowest bit. Connect each adder\'s cout to the next adder\'s cin, then join the four sum bits back together into s.</string>
+    <!-- Level map and brief sheet: title of the "8-bit adder" level. Short noun phrase -->
+    <string name="lg_level_add8_title">8-bit adder</string>
+    <!-- Brief sheet: goal of the "8-bit adder" level. Sentences -->
+    <string name="lg_level_add8_brief">Add the two bytes a and b, plus the carry in cin. The output s is the 8-bit sum. If the total is bigger than 255, it does not fit in 8 bits, so cout should be 1 and s should keep only the low 8 bits.</string>
+    <!-- Brief sheet: hint for the "8-bit adder" level, shown on request. Sentences -->
+    <string name="lg_level_add8_hint">Use two ADD4s: one for the low 4 bits and one for the high 4 bits. Split the inputs with NIB SPLITs, connect the low adder\'s cout to the high adder\'s cin, and join the two sums with a NIB JOIN.</string>
+    <!-- Level map and brief sheet: title of the "Incrementer" level. Short noun phrase -->
+    <string name="lg_level_inc4_title">Incrementer</string>
+    <!-- Brief sheet: goal of the "Incrementer" level. Sentences -->
+    <string name="lg_level_inc4_brief">Make o equal to a + 1. Because o only has 4 bits, 15 + 1 should wrap back around to 0.</string>
+    <!-- Brief sheet: hint for the "Incrementer" level, shown on request. Sentences -->
+    <string name="lg_level_inc4_hint">The lowest bit always flips, so it only needs a NOT. Each higher bit goes into a half adder together with the carry from the bit below it.</string>
+    <!-- Level map and brief sheet: title of the "Subtractor" level. Short noun phrase -->
+    <string name="lg_level_sub8_title">Subtractor</string>
+    <!-- Brief sheet: goal of the "Subtractor" level. Sentences -->
+    <string name="lg_level_sub8_brief">Make d equal to a − b. If the answer would go below zero, it should wrap around from the top, so 0 − 1 gives 255.</string>
+    <!-- Brief sheet: hint for the "Subtractor" level, shown on request. Sentences -->
+    <string name="lg_level_sub8_hint">Computers subtract by adding. Flipping every bit of b and then adding 1 gives the same result as subtracting b (this trick is called two\'s complement). So add a to NOT b, and supply the extra 1 through the adder\'s carry in.</string>
+    <!-- Level map and brief sheet: title of the "Zero test" level. Short noun phrase -->
+    <string name="lg_level_zero8_title">Zero test</string>
+    <!-- Brief sheet: goal of the "Zero test" level. Sentences -->
+    <string name="lg_level_zero8_brief">Make z equal to 1 when every bit of a is 0, which means a is the number zero. If any bit of a is 1, z should be 0.</string>
+    <!-- Brief sheet: hint for the "Zero test" level, shown on request. Sentences -->
+    <string name="lg_level_zero8_hint">OR all eight bits together, then put a NOT after the result.</string>
+    <!-- Level map and brief sheet: title of the "ALU" level. Short noun phrase -->
+    <string name="lg_level_alu8_title">ALU</string>
+    <!-- Brief sheet: goal of the "ALU" level. Sentences -->
+    <string name="lg_level_alu8_brief">An ALU (arithmetic logic unit) is the part of a CPU that does the math. The inputs op1 and op0 choose what it does with a and b:\n• 00: add a and b.\n• 01: subtract b from a.\n• 10: AND each pair of bits in a and b.\n• 11: pass b through unchanged.\nThe output o is the result, and z should be 1 when o is 0.</string>
+    <!-- Brief sheet: hint for the "ALU" level, shown on request. Sentences -->
+    <string name="lg_level_alu8_hint">Subtracting b is the same as adding NOT b with the carry in set to 1. If you XOR each bit of b with op0, b gets flipped only when op0 is 1, and op0 can also be the carry in. Then use MUXes to choose between the adder\'s result, a AND b, and b.</string>
+    <!-- Level map and brief sheet: title of the "SR latch" level. Short noun phrase -->
+    <string name="lg_level_sr_latch_title">SR latch</string>
+    <!-- Brief sheet: goal of the "SR latch" level. Sentences -->
+    <string name="lg_level_sr_latch_brief">This circuit remembers one bit by feeding its outputs back into itself. Setting s to 1 sets q to 1, and setting r to 1 resets q to 0. When s and r are both 0, q keeps whatever value it had. The second output, nq, is always the opposite of q.</string>
+    <!-- Brief sheet: hint for the "SR latch" level, shown on request. Sentences -->
+    <string name="lg_level_sr_latch_hint">Use two NORs, and wire each one\'s output into one of the other\'s inputs. Connect r to the NOR that makes q, and s to the NOR that makes nq.</string>
+    <!-- Level map and brief sheet: title of the "D latch" level. Short noun phrase -->
+    <string name="lg_level_d_latch_title">D latch</string>
+    <!-- Brief sheet: goal of the "D latch" level. Sentences -->
+    <string name="lg_level_d_latch_brief">While en (enable) is 1, q should copy d. When en goes to 0, q should keep the last value it had, no matter what d does.</string>
+    <!-- Brief sheet: hint for the "D latch" level, shown on request. Sentences -->
+    <string name="lg_level_d_latch_hint">Start with an SR latch. Set it when en is 1 and d is 1, and reset it when en is 1 and d is 0.</string>
+    <!-- Level map and brief sheet: title of the "1-bit register" level. Short noun phrase -->
+    <string name="lg_level_bit_title">1-bit register</string>
+    <!-- Brief sheet: goal of the "1-bit register" level. Sentences -->
+    <string name="lg_level_bit_brief">A DFF stores its input on every tick, whether you want it to or not. Build a 1-bit register that stores d only on ticks when load is 1, and keeps its old bit when load is 0. The output q should always show the stored bit.</string>
+    <!-- Brief sheet: hint for the "1-bit register" level, shown on request. Sentences -->
+    <string name="lg_level_bit_hint">Put a MUX in front of the DFF. When load is 1, the MUX should pass d through. When load is 0, it should pass the DFF\'s own output back in, so the DFF stores the same bit again.</string>
+    <!-- Level map and brief sheet: title of the "8-bit register" level. Short noun phrase -->
+    <string name="lg_level_reg8_title">8-bit register</string>
+    <!-- Brief sheet: goal of the "8-bit register" level. Sentences -->
+    <string name="lg_level_reg8_brief">Build the same thing as the 1-bit register, but for a whole byte. On each tick, if load is 1, store the byte on d. If load is 0, keep the byte that is already stored. The output q should always show the stored byte.</string>
+    <!-- Brief sheet: hint for the "8-bit register" level, shown on request. Sentences -->
+    <string name="lg_level_reg8_hint">Put a MUX8b in front of a DFF8, the same way you used a MUX and a DFF for the 1-bit register.</string>
+    <!-- Level map and brief sheet: title of the "Program counter" level. Short noun phrase -->
+    <string name="lg_level_pc4_title">Program counter</string>
+    <!-- Brief sheet: goal of the "Program counter" level. Sentences -->
+    <string name="lg_level_pc4_brief">A program counter keeps track of which instruction a CPU runs next. On each tick, it should do one of three things:\n• If load is 1, jump to the number on v.\n• Otherwise, if en is 1, count up by one, wrapping from 15 back to 0.\n• Otherwise, keep the same number.\nThe output pc always shows the current count.</string>
+    <!-- Brief sheet: hint for the "Program counter" level, shown on request. Sentences -->
+    <string name="lg_level_pc4_hint">Store the count in a DFF4, and use an INC4 to work out the count plus one. Then use two MUX4bs to choose what the DFF4 stores next. The first uses en to choose between the current count and the count plus one. The second uses load to choose between that result and v.</string>
+    <!-- Level map and brief sheet: title of the "RAM" level. Short noun phrase -->
+    <string name="lg_level_ram4_title">RAM</string>
+    <!-- Brief sheet: goal of the "RAM" level. Sentences -->
+    <string name="lg_level_ram4_brief">Build four bytes of memory, numbered 0 to 3. The inputs a1 and a0 form the address of one byte, with a1 as the high bit, and dout should always show the byte at that address. On each tick, if we (write enable) is 1, the byte on din should be saved at that address.</string>
+    <!-- Brief sheet: hint for the "RAM" level, shown on request. Sentences -->
+    <string name="lg_level_ram4_hint">Use one REG8 for each byte. A DEC2 turns the address into four lines, one per register, so AND each line with we to decide which register loads. To read, use MUX8bs to pick the register that matches the address.</string>
+    <!-- Level map and brief sheet: title of the "Instruction decoder" level. Short noun phrase -->
+    <string name="lg_level_decoder_title">Instruction decoder</string>
+    <!-- Brief sheet: goal of the "Instruction decoder" level. Sentences -->
+    <string name="lg_level_decoder_brief">The instruction decoder looks at an instruction and decides which parts of the CPU should act. The CPU works on one number at a time, kept in a register called the accumulator.\nThe input op is the instruction number from 0 to 7 (op has 4 bits, but the top one is unused):\n• 0 LDA: load a byte from memory into the accumulator.\n• 1 STA: store the accumulator into memory.\n• 2 ADD: add a byte from memory to the accumulator.\n• 3 SUB: subtract a byte from memory from the accumulator.\n• 4 LDI: load the number written inside the instruction into the accumulator.\n• 5 JMP: jump to a different instruction.\n• 6 JZ: jump only if the accumulator is zero, which is when z is 1.\n• 7 HLT: stop the program.\nSet the outputs like this:\n• aluOp1 and aluOp0 choose the ALU operation: 00 (add) for ADD, 01 (subtract) for SUB, and 11 (pass b through) for LDA and LDI. They are only checked when accLoad is 1.\n• accLoad is 1 for LDA, ADD, SUB and LDI, so the ALU\'s result is stored in the accumulator.\n• memWrite is 1 for STA, so the accumulator is written to memory.\n• useImm is 1 for LDI, so the ALU uses the number inside the instruction instead of a byte from memory.\n• jump is 1 for JMP, and for JZ only when z is 1.\n• halt is 1 for HLT.</string>
+    <!-- Brief sheet: hint for the "Instruction decoder" level, shown on request. Sentences -->
+    <string name="lg_level_decoder_hint">Split op into bits and ignore the top one. Turn the other three bits into eight separate lines, one for each instruction, like a bigger version of a DEC2. Then each output is an OR of the lines for the instructions that need it.</string>
+    <!-- Level map and brief sheet: title of the level that builds this chip. Same text as the chip name -->
+    <string name="lg_level_cpu_title" translatable="false">@string/lg_chip_cpu_label</string>
+    <!-- Brief sheet: goal of the "CPU" level. Sentences -->
+    <string name="lg_level_cpu_brief">Build a CPU that runs one instruction on each tick. Each instruction is a byte: the high 4 bits are the instruction number (the decoder\'s op), and the low 4 bits are the operand. The operand is a memory address, or for LDI, the number to load. On each tick, instr is the instruction stored at address pc, and data is the byte stored at address addr. Your CPU should:\n• Put the operand on addr, so memory sends back the right byte on data.\n• Run the instruction, updating the accumulator, which is shown on acc.\n• Move pc on to the next instruction, or to the operand when it jumps.\n• For STA, put acc on dout and set we to 1, so the accumulator is written to memory.\n• For HLT, set halt to 1 and stop moving pc.\nYour CPU is tested by running three real programs.</string>
+    <!-- Brief sheet: hint for the "CPU" level, shown on request. Sentences -->
+    <string name="lg_level_cpu_hint">Split instr into its two halves. Send the instruction number to a decoder, and send the operand to addr and to the v input of a PC4. Keep the accumulator in a REG8 that loads when accLoad is 1. Feed an ALU with the accumulator as a, and as b, either data or the operand, chosen by useImm. Use a ZERO8 on the accumulator to make the decoder\'s z. Finally, connect jump to the PC4\'s load, and connect NOT halt to its en.</string>
+    <!-- Level map and brief sheet: title of the "Computer" level. Short noun phrase -->
+    <string name="lg_level_computer_title">Computer</string>
+    <!-- Brief sheet: goal of the "Computer" level. Sentences -->
+    <string name="lg_level_computer_brief">Connect your CPU to a RAM16 to make a working computer. Three programs will be loaded into the RAM and run: one adds two numbers, one counts down from 5 to 0, and one multiplies 3 × 4. The outputs acc and halt should show your CPU\'s accumulator and halt signal.</string>
+    <!-- Brief sheet: hint for the "Computer" level, shown on request. Sentences -->
+    <string name="lg_level_computer_hint">Connect the CPU\'s pc to the RAM\'s iaddr, addr to daddr, dout to din, and we to we. Then connect the RAM\'s instr output to the CPU\'s instr input, and the RAM\'s dout output to the CPU\'s data input.</string>
+
+    <!-- Chip names and chip info sheet text (what each chip does, shown when a tray card is tapped). Keep pin names (like a, b, s, q, op) as they are, and write chip names exactly as you translated them in the lg_chip_*_label strings. -->
+    <!-- Chip tray and canvas: name of the NAND chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep NAND -->
+    <string name="lg_chip_nand_label">NAND</string>
+    <!-- Chip info sheet: explanation of the NAND chip. Sentences -->
+    <string name="lg_chip_nand_info">This is the gate everything else starts from. Its output o is 0 only when a and b are both 1; otherwise it is 1. Every other chip in the game can be built from NANDs alone.</string>
+    <!-- Chip tray and canvas: name of the HIGH chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep HIGH -->
+    <string name="lg_chip_high_label">HIGH</string>
+    <!-- Chip info sheet: explanation of the HIGH chip. Sentences -->
+    <string name="lg_chip_high_info">This chip has no inputs. Its output o is always 1.</string>
+    <!-- Chip tray and canvas: name of the LOW chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep LOW -->
+    <string name="lg_chip_low_label">LOW</string>
+    <!-- Chip info sheet: explanation of the LOW chip. Sentences -->
+    <string name="lg_chip_low_info">This chip has no inputs. Its output o is always 0.</string>
+    <!-- Chip tray and canvas: name of the NOT chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep NOT -->
+    <string name="lg_chip_not_label">NOT</string>
+    <!-- Chip info sheet: explanation of the NOT chip. Sentences -->
+    <string name="lg_chip_not_info">The output o is always the opposite of the input a: when a is 1, o is 0, and when a is 0, o is 1.</string>
+    <!-- Chip tray and canvas: name of the AND chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep AND -->
+    <string name="lg_chip_and_label">AND</string>
+    <!-- Chip info sheet: explanation of the AND chip. Sentences -->
+    <string name="lg_chip_and_info">The output o is 1 only when a and b are both 1. If either input is 0, o is 0.</string>
+    <!-- Chip tray and canvas: name of the OR chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep OR -->
+    <string name="lg_chip_or_label">OR</string>
+    <!-- Chip info sheet: explanation of the OR chip. Sentences -->
+    <string name="lg_chip_or_info">The output o is 1 when a is 1, when b is 1, or when both are 1. It is 0 only when both inputs are 0.</string>
+    <!-- Chip tray and canvas: name of the NOR chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep NOR -->
+    <string name="lg_chip_nor_label">NOR</string>
+    <!-- Chip info sheet: explanation of the NOR chip. Sentences -->
+    <string name="lg_chip_nor_info">This is an OR followed by a NOT, so the output o is 1 only when a and b are both 0. If you wire two NORs into each other, they can remember a bit. That circuit is called an SR latch.</string>
+    <!-- Chip tray and canvas: name of the XOR chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep XOR -->
+    <string name="lg_chip_xor_label">XOR</string>
+    <!-- Chip info sheet: explanation of the XOR chip. Sentences -->
+    <string name="lg_chip_xor_info">The output o is 1 when a and b are different, and 0 when they are the same. The name stands for \"exclusive OR\".</string>
+    <!-- Chip tray and canvas: name of the XNOR chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep XNOR -->
+    <string name="lg_chip_xnor_label">XNOR</string>
+    <!-- Chip info sheet: explanation of the XNOR chip. Sentences -->
+    <string name="lg_chip_xnor_info">The output o is 1 when a and b are the same, and 0 when they are different. It is the opposite of XOR.</string>
+    <!-- Chip tray and canvas: name of the MUX chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_mux_label" translatable="false">MUX</string>
+    <!-- Chip info sheet: explanation of the MUX chip. Sentences -->
+    <string name="lg_chip_mux_info">A MUX (short for multiplexer) chooses between two inputs. When the select input s is 0, the output o copies a. When s is 1, o copies b.</string>
+    <!-- Chip tray and canvas: name of the DMUX chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_dmux_label" translatable="false">DMUX</string>
+    <!-- Chip info sheet: explanation of the DMUX chip. Sentences -->
+    <string name="lg_chip_dmux_info">A DMUX does the reverse of a MUX: it sends one input to one of two outputs. When s is 0, the value of in goes to a, and when s is 1, it goes to b. The output that is not chosen stays 0.</string>
+    <!-- Chip tray and canvas: name of the DEC2 chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_dec2_label" translatable="false">DEC2</string>
+    <!-- Chip info sheet: explanation of the DEC2 chip. Sentences -->
+    <string name="lg_chip_dec2_info">A decoder turns a number into a single lit-up output. Read s1 and s0 as a two-bit number from 0 to 3, with s1 as the high bit. The output with that number (y0, y1, y2 or y3) is 1, and the other three are 0.</string>
+    <!-- Chip tray and canvas: name of the SPLIT 8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep SPLIT 8 -->
+    <string name="lg_chip_split8_label">SPLIT 8</string>
+    <!-- Chip info sheet: explanation of the SPLIT8 chip. Sentences -->
+    <string name="lg_chip_split8_info">A bus is a thick wire that carries several bits at once. This chip splits the 8-bit bus x into its eight separate bits, from b0 (the lowest bit) to b7 (the highest bit).</string>
+    <!-- Chip tray and canvas: name of the JOIN 8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep JOIN 8 -->
+    <string name="lg_chip_join8_label">JOIN 8</string>
+    <!-- Chip info sheet: explanation of the JOIN8 chip. Sentences -->
+    <string name="lg_chip_join8_info">This chip combines eight separate bits into one 8-bit bus x. b0 becomes the lowest bit and b7 becomes the highest bit.</string>
+    <!-- Chip tray and canvas: name of the SPLIT 4 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep SPLIT 4 -->
+    <string name="lg_chip_split4_label">SPLIT 4</string>
+    <!-- Chip info sheet: explanation of the SPLIT4 chip. Sentences -->
+    <string name="lg_chip_split4_info">This chip splits the 4-bit bus x into its four separate bits, from b0 (the lowest bit) to b3 (the highest bit).</string>
+    <!-- Chip tray and canvas: name of the JOIN 4 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep JOIN 4 -->
+    <string name="lg_chip_join4_label">JOIN 4</string>
+    <!-- Chip info sheet: explanation of the JOIN4 chip. Sentences -->
+    <string name="lg_chip_join4_info">This chip combines four separate bits into one 4-bit bus x. b0 becomes the lowest bit and b3 becomes the highest bit.</string>
+    <!-- Chip tray and canvas: name of the NIB SPLIT chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep NIB SPLIT -->
+    <string name="lg_chip_nib_split_label">NIB SPLIT</string>
+    <!-- Chip info sheet: explanation of the NIB_SPLIT chip. Sentences -->
+    <string name="lg_chip_nib_split_info">This chip splits a byte (8 bits) into two halves of 4 bits each, called nibbles. lo gets the low 4 bits and hi gets the high 4 bits.</string>
+    <!-- Chip tray and canvas: name of the NIB JOIN chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep NIB JOIN -->
+    <string name="lg_chip_nib_join_label">NIB JOIN</string>
+    <!-- Chip info sheet: explanation of the NIB_JOIN chip. Sentences -->
+    <string name="lg_chip_nib_join_info">This chip does the reverse of NIB SPLIT. It combines a low nibble lo and a high nibble hi into one byte x.</string>
+    <!-- Chip tray and canvas: name of the NOT8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep NOT8 -->
+    <string name="lg_chip_not8_label">NOT8</string>
+    <!-- Chip info sheet: explanation of the NOT8 chip. Sentences -->
+    <string name="lg_chip_not8_info">This chip flips all eight bits of a at once, so every 1 becomes 0 and every 0 becomes 1.</string>
+    <!-- Chip tray and canvas: name of the AND8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep AND8 -->
+    <string name="lg_chip_and8_label">AND8</string>
+    <!-- Chip info sheet: explanation of the AND8 chip. Sentences -->
+    <string name="lg_chip_and8_info">This chip does an AND on each matching pair of bits in a and b. Each bit of o is 1 only where a and b both have a 1 in that position.</string>
+    <!-- Chip tray and canvas: name of the OR8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep OR8 -->
+    <string name="lg_chip_or8_label">OR8</string>
+    <!-- Chip info sheet: explanation of the OR8 chip. Sentences -->
+    <string name="lg_chip_or8_info">This chip does an OR on each matching pair of bits in a and b. Each bit of o is 1 where a, b or both have a 1 in that position.</string>
+    <!-- Chip tray and canvas: name of the XOR8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep XOR8 -->
+    <string name="lg_chip_xor8_label">XOR8</string>
+    <!-- Chip info sheet: explanation of the XOR8 chip. Sentences -->
+    <string name="lg_chip_xor8_info">This chip does an XOR on each matching pair of bits in a and b. Each bit of o is 1 where a and b have different bits in that position.</string>
+    <!-- Chip tray and canvas: name of the MUX8b chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_mux8b_label" translatable="false">MUX8b</string>
+    <!-- Chip info sheet: explanation of the MUX8B chip. Sentences -->
+    <string name="lg_chip_mux8b_info">This is a MUX for whole bytes. When s is 0, o copies all 8 bits of a, and when s is 1, o copies all 8 bits of b.</string>
+    <!-- Chip tray and canvas: name of the MUX4b chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_mux4b_label" translatable="false">MUX4b</string>
+    <!-- Chip info sheet: explanation of the MUX4B chip. Sentences -->
+    <string name="lg_chip_mux4b_info">This is a MUX for 4-bit buses. When s is 0, o copies all 4 bits of a, and when s is 1, o copies all 4 bits of b.</string>
+    <!-- Chip tray and canvas: name of the HALF chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep HALF -->
+    <string name="lg_chip_half_label">HALF</string>
+    <!-- Chip info sheet: explanation of the HALF chip. Sentences -->
+    <string name="lg_chip_half_info">A half adder adds two bits. The sum bit s is 1 when exactly one input is 1. The carry c is 1 when both inputs are 1, because 1 + 1 = 2, which is written 10 in binary.</string>
+    <!-- Chip tray and canvas: name of the FULL chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep FULL -->
+    <string name="lg_chip_full_label">FULL</string>
+    <!-- Chip info sheet: explanation of the FULL chip. Sentences -->
+    <string name="lg_chip_full_info">A full adder adds three bits: a, b and a carry in, cin, which comes from the column to its right. The output s is the sum bit, and cout is the carry that passes to the next column on the left.</string>
+    <!-- Chip tray and canvas: name of the ADD4 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep ADD4 -->
+    <string name="lg_chip_add4_label">ADD4</string>
+    <!-- Chip info sheet: explanation of the ADD4 chip. Sentences -->
+    <string name="lg_chip_add4_info">This chip adds two 4-bit numbers, a and b, plus a carry in, cin. The output s is the 4-bit sum. If the total is bigger than 15, it does not fit in 4 bits, so cout becomes 1 and s keeps only the low 4 bits.</string>
+    <!-- Chip tray and canvas: name of the ADD8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep ADD8 -->
+    <string name="lg_chip_add8_label">ADD8</string>
+    <!-- Chip info sheet: explanation of the ADD8 chip. Sentences -->
+    <string name="lg_chip_add8_info">This chip adds two bytes, a and b, plus a carry in, cin. The output s is the 8-bit sum. If the total is bigger than 255, it does not fit in 8 bits, so cout becomes 1 and s keeps only the low 8 bits.</string>
+    <!-- Chip tray and canvas: name of the INC4 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep INC4 -->
+    <string name="lg_chip_inc4_label">INC4</string>
+    <!-- Chip info sheet: explanation of the INC4 chip. Sentences -->
+    <string name="lg_chip_inc4_info">This chip counts up by one: the output o is a + 1. Because there are only 4 bits, 15 + 1 wraps back around to 0.</string>
+    <!-- Chip tray and canvas: name of the SUB8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep SUB8 -->
+    <string name="lg_chip_sub8_label">SUB8</string>
+    <!-- Chip info sheet: explanation of the SUB8 chip. Sentences -->
+    <string name="lg_chip_sub8_info">This chip subtracts: the output d is a − b. If the answer would go below zero, it wraps around from the top, so 0 − 1 gives 255.</string>
+    <!-- Chip tray and canvas: name of the ZERO8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep ZERO8 -->
+    <string name="lg_chip_zero8_label">ZERO8</string>
+    <!-- Chip info sheet: explanation of the ZERO8 chip. Sentences -->
+    <string name="lg_chip_zero8_info">The output z is 1 only when every bit of a is 0, which means a is the number zero. A CPU uses this to decide whether to jump.</string>
+    <!-- Chip tray and canvas: name of the ALU8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep ALU8 -->
+    <string name="lg_chip_alu8_label">ALU8</string>
+    <!-- Chip info sheet: explanation of the ALU8 chip. Sentences -->
+    <string name="lg_chip_alu8_info">ALU stands for arithmetic logic unit. It does one of four things to a and b, and op1 and op0 choose which: 00 adds them, 01 subtracts b from a, 10 ANDs each pair of bits, and 11 passes b straight through. The output o is the result, and z is 1 when o is 0.</string>
+    <!-- Chip tray and canvas: name of the DFF chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_dff_label" translatable="false">DFF</string>
+    <!-- Chip info sheet: explanation of the DFF chip. Sentences -->
+    <string name="lg_chip_dff_info">The DFF (D flip-flop) is the basic memory chip. Its output q always shows the bit it has stored. On every tick of the clock, it stores whatever its input d is at that moment, so q always shows d from one tick earlier. Because q only changes on a tick, you can safely loop a DFF\'s output back into its own input.</string>
+    <!-- Chip tray and canvas: name of the DFF4 chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_dff4_label" translatable="false">DFF4</string>
+    <!-- Chip info sheet: explanation of the DFF4 chip. Sentences -->
+    <string name="lg_chip_dff4_info">This is four DFFs in one chip. On every tick it stores the 4-bit number on d, and q shows the number stored on the tick before.</string>
+    <!-- Chip tray and canvas: name of the DFF8 chip. Standard abbreviation, kept as is in every language -->
+    <string name="lg_chip_dff8_label" translatable="false">DFF8</string>
+    <!-- Chip info sheet: explanation of the DFF8 chip. Sentences -->
+    <string name="lg_chip_dff8_info">This is eight DFFs in one chip. On every tick it stores the byte on d, and q shows the byte stored on the tick before.</string>
+    <!-- Chip tray and canvas: name of the BIT chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep BIT -->
+    <string name="lg_chip_bit_label">BIT</string>
+    <!-- Chip info sheet: explanation of the BIT chip. Sentences -->
+    <string name="lg_chip_bit_info">This is a 1-bit register: a DFF that you can tell when to remember. On each tick, if load is 1, it stores the bit on d. If load is 0, it keeps the bit it already has. q always shows the stored bit.</string>
+    <!-- Chip tray and canvas: name of the REG8 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep REG8 -->
+    <string name="lg_chip_reg8_label">REG8</string>
+    <!-- Chip info sheet: explanation of the REG8 chip. Sentences -->
+    <string name="lg_chip_reg8_info">This is an 8-bit register. On each tick, if load is 1, it stores the byte on d. If load is 0, it keeps the byte it already has. q always shows the stored byte.</string>
+    <!-- Chip tray and canvas: name of the PC4 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep PC4 -->
+    <string name="lg_chip_pc4_label">PC4</string>
+    <!-- Chip info sheet: explanation of the PC4 chip. Sentences -->
+    <string name="lg_chip_pc4_info">The program counter keeps track of which instruction a CPU runs next, and pc shows the current count. On each tick, if load is 1, it jumps to the number on v. Otherwise, if en is 1, it counts up by one, wrapping from 15 back to 0. Otherwise, it stays the same.</string>
+    <!-- Chip tray and canvas: name of the RAM4 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep RAM4 -->
+    <string name="lg_chip_ram4_label">RAM4</string>
+    <!-- Chip info sheet: explanation of the RAM4 chip. Sentences -->
+    <string name="lg_chip_ram4_info">This chip is four bytes of memory, numbered 0 to 3. The inputs a1 and a0 form the address of one byte, with a1 as the high bit, and dout always shows the byte stored there. On each tick, if we (write enable) is 1, the byte on din is saved at that address.</string>
+    <!-- Chip tray and canvas: name of the RAM16 chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep RAM16 -->
+    <string name="lg_chip_ram16_label">RAM16</string>
+    <!-- Chip info sheet: explanation of the RAM16 chip. Sentences -->
+    <string name="lg_chip_ram16_info">This chip is sixteen bytes of memory that can be read in two places at once. instr always shows the byte at address iaddr, and dout always shows the byte at address daddr. On each tick, if we (write enable) is 1, the byte on din is saved at address daddr. A CPU uses one address to fetch instructions and the other to read and write data.</string>
+    <!-- Chip tray and canvas: name of the DECODER chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep DECODER -->
+    <string name="lg_chip_decoder_label">DECODER</string>
+    <!-- Chip info sheet: explanation of the DECODER chip. Sentences -->
+    <string name="lg_chip_decoder_info">The instruction decoder reads the instruction number op and the zero flag z, and works out which parts of the CPU should act on this tick. Its outputs are:\n• aluOp1 and aluOp0: which operation the ALU does (00 adds, 01 subtracts, 11 passes b through).\n• accLoad: 1 when the ALU\'s result should be stored in the accumulator.\n• memWrite: 1 when the accumulator should be written to memory.\n• useImm: 1 when the ALU should use the number inside the instruction instead of a byte from memory.\n• jump: 1 when the program counter should jump to a new address.\n• halt: 1 when the program has finished.</string>
+    <!-- Chip tray and canvas: name of the CPU chip, printed on a small box. Keep it very short; use the abbreviation people in your language use for this logic chip, or keep CPU -->
+    <string name="lg_chip_cpu_label">CPU</string>
+    <!-- Chip info sheet: explanation of the CPU chip. Sentences -->
+    <string name="lg_chip_cpu_info">This is a complete processor. On each tick it runs the instruction on instr, using data, the byte that memory sends back. Its outputs are:\n• pc: the address of the instruction being run.\n• addr: the memory address this instruction reads from or writes to.\n• dout and we: when we is 1, the byte on dout should be written to memory.\n• acc: the accumulator, which holds the number the CPU is working on.\n• halt: 1 when the program has finished.</string>
 </resources>

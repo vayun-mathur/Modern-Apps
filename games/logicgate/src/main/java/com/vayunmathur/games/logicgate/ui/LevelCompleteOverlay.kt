@@ -5,7 +5,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.logicgate.R
-import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -32,7 +31,7 @@ fun LevelCompleteOverlay(
         StarRating(state.stars, size = 36.dp)
         Text(stringResource(R.string.lg_cost_vs_par, state.cost, state.level.par), style = MaterialTheme.typography.titleMedium)
         if (state.level.unlocks.isNotEmpty()) {
-            val chips = state.level.unlocks.joinToString { Chips[it]?.label ?: it }
+            val chips = state.level.unlocks.map { chipLabel(it) }.joinToString()
             Text(stringResource(R.string.lg_new_chips, chips), color = MaterialTheme.colorScheme.primary)
         }
     }

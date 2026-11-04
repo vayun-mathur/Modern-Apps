@@ -37,7 +37,7 @@ class CanvasControllerTest {
         val controller = CanvasController(CameraState(1f), 1f, trash)
         val actions = Recorder()
         val state = GameUiState(level, circuit, emptyList(), listOf(0, 0))
-        controller.bind(state, actions, CircuitLayout(circuit, lookup), lookup)
+        controller.bind(state, actions, CircuitLayout(circuit, lookup, emptyMap()), lookup)
         return Triple(controller, actions, circuit)
     }
 
