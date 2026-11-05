@@ -60,6 +60,11 @@ RUN groupadd -g 10001 agent \
 
 COPY --from=runner-build /src/target/release/agent-runner /usr/local/bin/agent-runner
 
+# The mirror is owned by agentd's uid; git 2.43 only honours safe.directory
+# from system/global config (not `-c`), so trust it here or every clone fails
+# with "dubious ownership".
+RUN git config --system --add safe.directory /mirror/Modern-Apps.git
+
 # Stand-in for no-new-privileges (unusable under snap Docker, see compose.yml):
 # with no setuid/setgid binaries, the uid-10001 sandbox has no path to root.
 RUN find / -xdev -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true
