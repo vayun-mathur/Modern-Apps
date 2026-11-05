@@ -1,0 +1,27 @@
+# agentd: trusted orchestrator (web UI, task queue, OpenRouter loop, git push).
+# Build context is infra/agents (Cargo workspace: proto, agentd, runner).
+
+FROM rust:1-bookworm AS build
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY proto ./proto
+COPY agentd ./agentd
+# cargo resolves every workspace member even with -p; stub the runner.
+COPY runner/Cargo.toml ./runner/Cargo.toml
+RUN mkdir -p runner/src && echo 'fn main() {}' > runner/src/main.rs \
+    && echo '' > runner/src/lib.rs
+RUN cargo build -p agentd --release --locked
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -g 10002 agentd \
+    && useradd -u 10002 -g 10002 -d /state -M -s /usr/sbin/nologin agentd \
+    && mkdir -p /state /mirror /signal \
+    && chown 10002:10002 /state /mirror
+COPY --from=build /src/target/release/agentd /usr/local/bin/agentd
+USER 10002:10002
+# Mirror is shared read-only with the builder (another uid): keep it world-readable.
+ENV HOME=/state
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/agentd"]

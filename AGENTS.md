@@ -78,6 +78,7 @@ The backend (relay server for findfamily/everysync/office/voxels) lives outside 
 ./gradlew :<module>:checkMetadata
 ```
 Gradle defaults to small heap (`-Xmx8g`, 2 workers). Don't raise it. New build logic must be configuration-cache compatible. New/changed UI previews: `./gradlew :<module>:metadata`.
+Rust builds use the fast cargo profile for dev tasks and the release profile for release/ambiguous tasks, overridable with `-Pmodernapps.rustProfile=release|fast`.
 
 ## 4. Tools — use these, not raw gradle/adb
 Work in repo dir. Experiments/logs go in `analysis/` (gitignored).
