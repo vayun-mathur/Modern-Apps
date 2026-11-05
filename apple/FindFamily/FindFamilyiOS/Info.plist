@@ -18,8 +18,6 @@
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -33,20 +31,22 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Used by the Precision Finding feature to coordinate Ultra-Wideband ranging with a nearby family member's device.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Used to pick a contact's name and photo to label the people you share location with.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Background location is used to share your location with people you've connected with in the app.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Location is used to share your location with people you've connected with in the app.</string>
-	<key>NSUserNotificationsUsageDescription</key>
-	<string>Notifications are used to alert you about sharing requests, low battery, and waypoint entries.</string>
 	<key>NSNearbyInteractionUsageDescription</key>
 	<string>Used for Precision Finding to show the exact distance and direction to a family member nearby.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Used by the Precision Finding feature to coordinate Ultra-Wideband ranging with a nearby family member's device.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Notifications are used to alert you about sharing requests, low battery, and waypoint entries.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
