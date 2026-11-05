@@ -167,6 +167,7 @@ private suspend fun ContactViewModel.copyProviderToSim(
     val email = contact.details.emails.firstOrNull()?.address?.trim()?.takeIf { it.isNotEmpty() }
     if (name.isBlank() && number.isBlank()) return InsertOutcome(false, false)
     val ok = SimContactsDataSource.insertSimContact(app, name, number, email, subId)
+    if (ok) scheduleSimConvergenceSync()
     return InsertOutcome(ok, contact.details.groups.isNotEmpty() && ok)
 }
 

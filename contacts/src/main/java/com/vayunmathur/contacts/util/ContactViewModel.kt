@@ -261,6 +261,22 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         override fun onChange(selfChange: Boolean) { syncTrigger.tryEmit(Unit) }
     }
 
+    // Fires on SIM ADN (content://icc/adn) changes: our own SIM writes notify
+    // these URIs (see SimContactsDataSource), and some OEM IccProviders notify
+    // them on external/modem-side updates too. The ContactsContract observer
+    // above never fires for ADN writes, so without this the refreshed SIM list
+    // after a write depends solely on the immediate re-read converging. Feeds
+    // the same debounced syncTrigger; kept as a field so onCleared() can
+    // unregister it.
+    private val simObserver = object : android.database.ContentObserver(
+        android.os.Handler(android.os.Looper.getMainLooper())
+    ) {
+        override fun onChange(selfChange: Boolean) { syncTrigger.tryEmit(Unit) }
+    }
+
+    private fun simAdnBaseUri(): android.net.Uri =
+        android.net.Uri.parse(SimContactsDataSource.SIM_ADN_BASE_URI)
+
     // Fires on SIM insert/remove/swap. The provider observer above never fires for
     // those (no provider write happens), so without this the SIM list only refreshes
     // when the app is reopened. Feeds the same debounced syncTrigger; kept as a field
@@ -280,6 +296,9 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
         // account change fires it; debounced so a sync burst causes a single reload.
         getApplication<Application>().contentResolver
             .registerContentObserver(ContactsContract.AUTHORITY_URI, true, contactsObserver)
+        // notifyForDescendants=true so subId-scoped ADN URIs fire it too.
+        getApplication<Application>().contentResolver
+            .registerContentObserver(simAdnBaseUri(), true, simObserver)
         // Broad catch is deliberate: OEM SubscriptionManager implementations throw
         // undocumented RuntimeExceptions, and a failed listener must not block init.
         @Suppress("TooGenericExceptionCaught")
@@ -303,6 +322,7 @@ class ContactViewModel(application: Application) : AndroidViewModel(application)
 
     override fun onCleared() {
         getApplication<Application>().contentResolver.unregisterContentObserver(contactsObserver)
+        getApplication<Application>().contentResolver.unregisterContentObserver(simObserver)
         // Broad catch is deliberate: must not throw out of onCleared.
         @Suppress("TooGenericExceptionCaught")
         try {

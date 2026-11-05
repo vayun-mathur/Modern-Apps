@@ -63,6 +63,9 @@ object SimContactsDataSource {
     private const val TAG = "SimContacts"
     private const val BASE_URI = "content://icc/adn"
 
+    /** Base ADN URI observers register on; the base for per-subId URIs. */
+    internal const val SIM_ADN_BASE_URI: String = BASE_URI
+
     // Broad catch is deliberate: OEM ICC providers throw undocumented
     // RuntimeExceptions (not just SecurityException) on emulators and
     // devices without a physical SIM.
@@ -248,6 +251,7 @@ object SimContactsDataSource {
                 }
             }
             val inserted = context.contentResolver.insert(uri, values)
+            if (inserted != null) notifySimChanged(context, uri)
             inserted != null
         } catch (e: SecurityException) {
             Log.error(TAG, "SecurityException inserting SIM contact", e)
@@ -294,7 +298,9 @@ object SimContactsDataSource {
                 // email would report success without changing anything.
                 put("newEmails", email.orEmpty())
             }
-            context.contentResolver.update(uri, values, null, null) > 0
+            val updated = context.contentResolver.update(uri, values, null, null) > 0
+            if (updated) notifySimChanged(context, uri)
+            updated
         } catch (e: SecurityException) {
             Log.error(TAG, "SecurityException updating SIM contact", e)
             false
@@ -353,7 +359,10 @@ object SimContactsDataSource {
         for (where in variants) {
             try {
                 val count = context.contentResolver.delete(uri, where, null)
-                if (count > 0) return true
+                if (count > 0) {
+                    notifySimChanged(context, uri)
+                    return true
+                }
             } catch (_: Exception) { }
         }
         // Last resort: query then delete by encoding? Some providers expect content://icc/adn/#
@@ -367,6 +376,22 @@ object SimContactsDataSource {
      * must not be escaped.
      */
     private fun String.asIccLiteral(): String = "'$this'"
+
+    /**
+     * Broadcasts our own ADN write to any observer of the SIM provider. The
+     * platform IccProvider does not reliably notify these URIs itself, and the
+     * app's contacts observer watches ContactsContract only, so without this a
+     * successful write can sit invisible until the next unrelated re-sync.
+     * Notifying both the written URI and the base URI covers subId-scoped and
+     * base-URI observers. Best effort: notification must never fail a write.
+     */
+    private fun notifySimChanged(context: Context, uri: Uri) {
+        try {
+            context.contentResolver.notifyChange(uri, null)
+            val base = Uri.parse(BASE_URI)
+            if (uri != base) context.contentResolver.notifyChange(base, null)
+        } catch (_: Exception) { }
+    }
 
     fun hasSim(context: Context): Boolean {
         return try {

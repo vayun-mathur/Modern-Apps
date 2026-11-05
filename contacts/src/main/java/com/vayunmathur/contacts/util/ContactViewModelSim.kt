@@ -1,11 +1,14 @@
 package com.vayunmathur.contacts.util
 
 import android.app.Application
+import androidx.lifecycle.viewModelScope
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.contacts.R
 import com.vayunmathur.contacts.data.SIM_ACCOUNT_TYPE
 import com.vayunmathur.contacts.data.SimContactsDataSource
 import com.vayunmathur.contacts.data.isSimAccountType
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * SIM-backed save path and SIM account labels, kept out of ContactViewModel
@@ -29,6 +32,7 @@ internal suspend fun ContactViewModel.persistSimContact(
     val ok = SimContactsDataSource.insertSimContact(getApplication(), name, number, email, subId)
     if (!ok) Log.error("ContactViewModel", "Failed to insert SIM contact")
     syncFromSystem()
+    if (ok) scheduleSimConvergenceSync()
     return ok
 }
 
@@ -92,12 +96,32 @@ internal suspend fun ContactViewModel.updateExistingSimContact(
         val updated = SimContactsDataSource.updateSimContact(app, oldSc, name, number, email, subId)
         if (updated) {
             syncFromSystem()
+            scheduleSimConvergenceSync()
             return true
         }
     }
     SimContactsDataSource.deleteSimContact(app, oldSc)
     return null
 }
+
+/**
+ * Re-reads the SIM list once the ADN provider's read cache has had time to
+ * converge on our write. Intermittently the immediate post-write
+ * [syncFromSystem] reads stale provider data (the contact then appears only
+ * after a SIM reinsert, see #841): the provider serves writes from a cache
+ * that converges asynchronously, and nothing re-reads afterwards. The delayed
+ * re-sync is coalesced through the debounced sync path, so bursts of SIM
+ * writes cause at most one extra read.
+ */
+internal fun ContactViewModel.scheduleSimConvergenceSync() {
+    viewModelScope.launch {
+        delay(SIM_CONVERGENCE_DELAY_MILLIS)
+        syncFromSystem()
+    }
+}
+
+/** Delay before the SIM convergence re-sync; hoisted so tests can reference it. */
+internal const val SIM_CONVERGENCE_DELAY_MILLIS = 2_000L
 
 internal suspend fun ContactViewModel.persistProviderContact(
     contact: com.vayunmathur.contacts.data.Contact
