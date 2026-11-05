@@ -60,6 +60,10 @@ RUN groupadd -g 10001 agent \
 
 COPY --from=runner-build /src/target/release/agent-runner /usr/local/bin/agent-runner
 
+# Stand-in for no-new-privileges (unusable under snap Docker, see compose.yml):
+# with no setuid/setgid binaries, the uid-10001 sandbox has no path to root.
+RUN find / -xdev -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true
+
 # Gradle memory/concurrency profile for the 6-CPU / 14 GB sandbox (smaller
 # than release builds: 4 workers / 12 GB). builder-init copies this into
 # /gradle-cache/gradle.properties on first boot; a repo-level

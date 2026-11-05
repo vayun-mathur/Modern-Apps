@@ -77,10 +77,11 @@ services:
     memswap_limit: 16g
     pids_limit: 4096
     cpu_shares: 256
+    # No `no-new-privileges`: under snap Docker's AppArmor confinement it makes
+    # every exec fail with EPERM. Equivalent protection comes from cap_drop ALL
+    # + non-root uid + an image with all setuid/setgid bits stripped.
     cap_drop:
       - ALL
-    security_opt:
-      - no-new-privileges:true
     restart: unless-stopped
     environment:
       RUNNER_LISTEN: "0.0.0.0:7070"
@@ -120,10 +121,9 @@ services:
       - agents-mirror:/mirror
       - agents-signal:/signal:ro
     mem_limit: 1g
+    # See builder: no-new-privileges breaks exec under snap Docker.
     cap_drop:
       - ALL
-    security_opt:
-      - no-new-privileges:true
     restart: unless-stopped
     networks:
       agents-internal:
