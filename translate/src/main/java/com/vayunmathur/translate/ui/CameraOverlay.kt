@@ -52,6 +52,8 @@ internal fun CameraOverlay(
     overlays: List<OverlayBox>,
     translations: Map<String, String>,
     translationAvailable: Boolean,
+    translationLoadFailed: Boolean = false,
+    onRetryTranslator: () -> Unit = {},
     frameW: Int,
     frameH: Int,
     viewW: Int,
@@ -81,15 +83,31 @@ internal fun CameraOverlay(
     }
 
     if (!translationAvailable) {
-        Text(
-            text = stringResource(R.string.translation_model_not_installed_showing),
-            color = Color.White,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(top = 12.dp)
-                .background(Color(0xB3000000), RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-        )
+        // A terminal engine failure says so (rather than blaming the install
+        // the download screen just finished); tap retries the load.
+        if (translationLoadFailed) {
+            TextButton(onClick = onRetryTranslator) {
+                Text(
+                    text = stringResource(R.string.translation_failed_to_load),
+                    color = Color.White,
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(top = 12.dp)
+                        .background(Color(0xB3000000), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.translation_model_not_installed_showing),
+                color = Color.White,
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(top = 12.dp)
+                    .background(Color(0xB3000000), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
     }
 
     // The analysed frame *is* the visible region now, so placing a box is a

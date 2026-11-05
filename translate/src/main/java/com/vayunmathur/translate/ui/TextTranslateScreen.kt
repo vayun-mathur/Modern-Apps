@@ -40,6 +40,7 @@ import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.library.ui.appBarScrollBehavior
 import com.vayunmathur.library.ui.isExpandedWidth
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.translate.domain.Languages
 import com.vayunmathur.translate.platform.MicState
 import com.vayunmathur.translate.platform.TextTranslateActions
@@ -130,6 +131,7 @@ fun TextTranslateScreen(state: TextTranslateUiState, actions: TextTranslateActio
                     ) {
                         OutputCard(
                             translationAvailable = state.translationAvailable,
+                            translationLoadFailed = state.translationLoadFailed,
                             isTranslating = state.isTranslating,
                             outputText = state.outputText,
                             isFavorite = state.isFavorite,
@@ -137,6 +139,7 @@ fun TextTranslateScreen(state: TextTranslateUiState, actions: TextTranslateActio
                             onCopy = actions::copyOutput,
                             onSpeak = actions::speakOutput,
                             onToggleFavorite = actions::toggleFavorite,
+                            onRetryTranslator = actions::retryTranslator,
                         )
                     }
                 }
@@ -150,6 +153,7 @@ fun TextTranslateScreen(state: TextTranslateUiState, actions: TextTranslateActio
 
                 OutputCard(
                     translationAvailable = state.translationAvailable,
+                    translationLoadFailed = state.translationLoadFailed,
                     isTranslating = state.isTranslating,
                     outputText = state.outputText,
                     isFavorite = state.isFavorite,
@@ -157,6 +161,7 @@ fun TextTranslateScreen(state: TextTranslateUiState, actions: TextTranslateActio
                     onCopy = actions::copyOutput,
                     onSpeak = actions::speakOutput,
                     onToggleFavorite = actions::toggleFavorite,
+                    onRetryTranslator = actions::retryTranslator,
                 )
             }
         }
@@ -237,6 +242,7 @@ private fun LanguageBar(
 @Composable
 private fun OutputCard(
     translationAvailable: Boolean,
+    translationLoadFailed: Boolean,
     isTranslating: Boolean,
     outputText: String,
     isFavorite: Boolean,
@@ -244,6 +250,7 @@ private fun OutputCard(
     onCopy: () -> Unit,
     onSpeak: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onRetryTranslator: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -253,14 +260,33 @@ private fun OutputCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (!translationAvailable) {
-                // Should never happen — the outer InitialModelDownloadChecker
-                // downloads the model before any Navigation is composed, and
-                // TranslateViewModel loads the engine on init. Show a loading
-                // spinner if the engine is still initializing.
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.loading_translator), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (translationLoadFailed) {
+                    // The engine failed to load (missing native library, no fp16
+                    // Vulkan device, corrupt weights) even though the download
+                    // screen finished. Say so with a retry instead of spinning
+                    // forever — the old failure mode of issue #842.
+                    Text(
+                        stringResource(R.string.translation_failed_to_load),
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Text(
+                        stringResource(R.string.translation_failed_to_load_hint),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = onRetryTranslator) {
+                        Text(stringResource(UiR.string.retry))
+                    }
+                } else {
+                    // The outer InitialModelDownloadChecker downloads the model
+                    // before any Navigation is composed, and TranslateViewModel
+                    // loads the engine on init. Show a spinner while the engine
+                    // is still initializing.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.loading_translator), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 return@Column
             }

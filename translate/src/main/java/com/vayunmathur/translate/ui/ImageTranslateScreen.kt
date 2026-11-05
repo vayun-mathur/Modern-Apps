@@ -80,6 +80,7 @@ fun ImageTranslateScreen(
     val sourceLang by viewModel.sourceLang.collectAsState()
     val targetLang by viewModel.targetLang.collectAsState()
     val translationAvailable by viewModel.translationAvailable.collectAsState()
+    val translationLoadFailed by viewModel.translationLoadFailed.collectAsState()
 
     DisposableEffect(imageUri) {
         onDispose {
@@ -170,6 +171,8 @@ fun ImageTranslateScreen(
                                 overlays = overlays.value,
                                 translations = translations.value,
                                 translationAvailable = translationAvailable,
+                                translationLoadFailed = translationLoadFailed,
+                                onRetryTranslator = viewModel::retryTranslator,
                                 frameW = bmp.width,
                                 frameH = bmp.height,
                                 viewW = dispWpx,

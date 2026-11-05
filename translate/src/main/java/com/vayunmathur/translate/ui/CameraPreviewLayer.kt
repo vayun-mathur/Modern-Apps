@@ -45,6 +45,7 @@ internal fun CameraPreviewLayer(
     val sourceLang by viewModel.sourceLang.collectAsState()
     val targetLang by viewModel.targetLang.collectAsState()
     val translationAvailable by viewModel.translationAvailable.collectAsState()
+    val translationLoadFailed by viewModel.translationLoadFailed.collectAsState()
 
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
     var provider by remember { mutableStateOf<androidx.camera.lifecycle.ProcessCameraProvider?>(null) }
@@ -146,6 +147,8 @@ internal fun CameraPreviewLayer(
             overlays = overlays.value,
             translations = translations.value,
             translationAvailable = translationAvailable,
+            translationLoadFailed = translationLoadFailed,
+            onRetryTranslator = viewModel::retryTranslator,
             frameW = frameW.value,
             frameH = frameH.value,
             viewW = viewSize.width,

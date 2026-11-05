@@ -62,6 +62,7 @@ fun TextTranslatePage(
     val sourceLang by viewModel.sourceLang.collectAsState()
     val targetLang by viewModel.targetLang.collectAsState()
     val translationAvailable by viewModel.translationAvailable.collectAsState()
+    val translationLoadFailed by viewModel.translationLoadFailed.collectAsState()
     val history by viewModel.history.collectAsState()
 
     var inputText by remember { mutableStateOf(initialText) }
@@ -154,6 +155,7 @@ fun TextTranslatePage(
             sourceLang = sourceLang,
             targetLang = targetLang,
             translationAvailable = translationAvailable,
+            translationLoadFailed = translationLoadFailed,
             inputText = inputText,
             outputText = outputText,
             isTranslating = isTranslating,
@@ -187,6 +189,8 @@ fun TextTranslatePage(
                     MicState.IDLE -> micPermission()
                 }
             }
+
+            override fun retryTranslator() = viewModel.retryTranslator()
 
             override fun copyOutput() = copyToClipboard(context, outputText)
 

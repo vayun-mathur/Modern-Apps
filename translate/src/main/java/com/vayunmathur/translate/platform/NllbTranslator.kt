@@ -37,10 +37,19 @@ class NllbTranslator(private val context: Context) : TranslationEngine {
     private var model: NllbHandle? = null
     private var attempts = 0
     private var closed = false
+    private var failed = false
 
     override suspend fun isAvailable(): Boolean = withContext(Dispatchers.Default) {
         lock.withLock { ensure() != null }
     }
+
+    /**
+     * True once [ensure] has failed terminally (missing native library, no fp16
+     * Vulkan device, corrupt weights). Distinct from "still loading": when the
+     * engine is only warming up this is false, so the UI can show a spinner in
+     * one case and a retryable error in the other instead of spinning forever.
+     */
+    suspend fun loadFailed(): Boolean = lock.withLock { failed && model == null }
 
     override suspend fun detectLanguage(text: String): String? = null
 
@@ -66,7 +75,10 @@ class NllbTranslator(private val context: Context) : TranslationEngine {
         }
 
     /** Call after a successful model download so the next use loads it. */
-    suspend fun reset() = lock.withLock { attempts = 0 }
+    suspend fun reset() = lock.withLock {
+        attempts = 0
+        failed = false
+    }
 
     /**
      * Free the model. Terminal: nothing loads again afterwards, and it is idempotent.
@@ -93,7 +105,13 @@ class NllbTranslator(private val context: Context) : TranslationEngine {
      */
     private fun ensure(): NllbHandle? {
         model?.let { return it }
-        if (closed || attempts >= MAX_ATTEMPTS) return null
+        if (closed || attempts >= MAX_ATTEMPTS) {
+            // Both attempts failed, or the translator was already attempted and
+            // closed: this is a terminal load failure, not a download still in
+            // flight. Latch it so the UI can say so instead of spinning forever.
+            failed = attempts >= MAX_ATTEMPTS
+            return null
+        }
         if (!NllbModel.isDownloaded(context)) return null
         attempts++
         val reclaimed = NllbModel.deleteRetired(context)
@@ -103,6 +121,7 @@ class NllbTranslator(private val context: Context) : TranslationEngine {
         val handle = NllbHandle.inDirectory(NllbModel.modelDir(context))
         if (!handle.isAvailable) {
             handle.close()
+            if (attempts >= MAX_ATTEMPTS) failed = true
             return null
         }
         model = handle
