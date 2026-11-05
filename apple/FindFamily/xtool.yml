@@ -1,0 +1,10 @@
+version: 1
+bundleID: cc.findfamily.app.1
+product: FindFamily
+infoPath: FindFamilyiOS/Info.plist
+# Requires the vayun-mathur/xtool fork. actool does not exist on Linux, so the
+# catalog is compiled on a Mac by scripts/assets.sh and committed. The fork copies
+# every file in compiledDir into the .app (except *.sha256 and the partial plist)
+# and merges assets-partial-Info.plist into Info.plist.
+assetCatalog:
+  compiledDir: Resources
