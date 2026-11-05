@@ -145,10 +145,10 @@ pub struct CommitResponse {
     pub sha: String,
 }
 
-/// `GET /v1/slots/{slot}/bundle` — `application/octet-stream` git bundle of
-/// `<base_sha>..<branch>` for the slot's current branch. agentd imports it
-/// into the mirror (bundles are data; nothing in the sandbox's repo config is
-/// ever executed by agentd).
+// `GET /v1/slots/{slot}/bundle` — `application/octet-stream` git bundle of
+// `<base_sha>..<branch>` for the slot's current branch. agentd imports it
+// into the mirror (bundles are data; nothing in the sandbox's repo config is
+// ever executed by agentd).
 
 /// `POST /v1/slots/{slot}/cancel` (empty body) — kill whatever the slot runs.
 /// `POST /v1/builds/kill` (empty body) — kill the in-flight Build, if any.
