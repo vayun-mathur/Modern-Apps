@@ -1,0 +1,204 @@
+# Compose project `agents`: on-server coding-agent sandbox + orchestrator.
+#
+# Coexists with the prod `location-share` project (server, caddy, watcher):
+# nothing here touches that project, its containers, or its volumes. The only
+# shared state is read-only: the `location-share_srv-data` volume (release
+# lock file) and the external `location-share_default` network (agentd gets
+# the `agents-ui` alias on it so Caddy can route agents.maproj.org).
+#
+# Disk bounding: the toolchain/cache/slot volumes live inside
+# /root/agent-world/builds (a size-bounded loop-mounted ext4 image created by
+# host-setup.sh). Named volumes with local-driver bind options are used
+# instead of plain bind mounts so that on first use Docker seeds /cargo-home
+# and /opt/android-sdk from the builder image (plain binds would hide the
+# image content behind empty host dirs).
+#
+# Run from the deploy checkout (/root/agent-world/Modern-Apps):
+#   docker compose -p agents -f infra/agents/compose.yml up -d --build
+
+name: agents
+
+services:
+  # One-shot (runs once per `up`, as root): verifies the image-seeded
+  # toolchain volumes arrived, installs gradle.properties, fixes ownership.
+  builder-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.builder
+    image: agents-builder:local
+    pull_policy: build
+    user: root
+    # The image ENTRYPOINT runs the runner; override it: init runs a shell
+    # script instead (compose `command` alone would only replace CMD args).
+    entrypoint: ["/bin/bash"]
+    volumes:
+      - gradle-cache:/gradle-cache
+      - cargo-home:/cargo-home
+      - android-sdk:/opt/android-sdk
+      - slots:/builds/slots
+    command:
+      - -c
+      - |
+        set -euo pipefail
+        MARKER=/gradle-cache/.agents-init-done
+        if [ -e "$$MARKER" ]; then echo "builder-init: already done, skipping"; exit 0; fi
+        test -x /cargo-home/bin/cargo || { echo "builder-init: FATAL: /cargo-home/bin/cargo missing (image seeding of the cargo-home volume did not happen)" >&2; exit 1; }
+        test -d /opt/android-sdk/ndk/29.0.14206865 || { echo "builder-init: FATAL: /opt/android-sdk/ndk/29.0.14206865 missing (image seeding of the android-sdk volume did not happen)" >&2; exit 1; }
+        cp /opt/agent/gradle.properties /gradle-cache/gradle.properties
+        chown -R 10001:10001 /gradle-cache /cargo-home /opt/android-sdk /builds/slots
+        touch "$$MARKER"
+        echo "builder-init: done"
+    networks:
+      - agents-internal
+    restart: "no"
+
+  # The sandbox: agent-runner as uid/gid 10001, capped well below the box so
+  # the live server keeps headroom (box: 8 vCPU / 31 GiB; releases cap at
+  # 5 CPU / 20 GB — never run an agent build during a release build).
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.builder
+    image: agents-builder:local
+    pull_policy: build
+    user: "10001:10001"
+    depends_on:
+      builder-init:
+        condition: service_completed_successfully
+    cpus: 6
+    mem_limit: 14g
+    memswap_limit: 16g
+    pids_limit: 4096
+    cpu_shares: 256
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    environment:
+      RUNNER_LISTEN: "0.0.0.0:7070"
+      RUNNER_SLOTS: "4"
+      RUNNER_SLOTS_DIR: /builds/slots
+      RUNNER_MIRROR: /mirror/Modern-Apps.git
+    volumes:
+      - gradle-cache:/gradle-cache
+      - cargo-home:/cargo-home
+      - android-sdk:/opt/android-sdk
+      - slots:/builds/slots
+      - agents-mirror:/mirror:ro
+    networks:
+      - agents-internal
+      - agents-egress
+
+  # The trusted orchestrator (another agent owns Dockerfile.agentd): talks to
+  # the sandbox over agents-internal, serves the UI on location-share_default
+  # as `agents-ui`, pushes via the mirror volume.
+  agentd:
+    build:
+      context: .
+      dockerfile: Dockerfile.agentd
+    image: agents-agentd:local
+    pull_policy: build
+    env_file:
+      - /root/agent-world/.env
+    environment:
+      AGENTD_RUNNER_URL: http://builder:7070
+      AGENTD_STATE_DIR: /state
+      AGENTD_MIRROR_DIR: /mirror/Modern-Apps.git
+      AGENTD_RELEASE_SIGNAL: /signal/release
+      AGENTD_LISTEN: "0.0.0.0:8080"
+      AGENTD_SLOTS: "4"
+    volumes:
+      - agents-state:/state
+      - agents-mirror:/mirror
+      - agents-signal:/signal:ro
+    mem_limit: 1g
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      agents-internal:
+      location-share_default:
+        aliases:
+          - agents-ui
+
+  # Mirrors the prod release lock into the agents world every 5s so agentd
+  # can defer builds while a release runs. Watched path overridable for
+  # testing via RELEASE_LOCK_FILE.
+  release-signal:
+    image: alpine:3.21
+    environment:
+      RELEASE_LOCK_FILE: /srv/release_in_progress
+    volumes:
+      - location-share_srv-data:/srv:ro
+      - agents-signal:/signal
+    command:
+      - /bin/sh
+      - -c
+      - |
+        LOCK="$${RELEASE_LOCK_FILE:-/srv/release_in_progress}";
+        while true; do
+          if [ -e "$$LOCK" ]; then touch /signal/release; else rm -f /signal/release; fi;
+          sleep 5;
+        done
+    network_mode: none
+    mem_limit: 32m
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  # Toolchain/cache/slot data, bounded by the /root/agent-world/builds ext4
+  # image. Bind-backed named volumes: Docker seeds image content
+  # (/cargo-home toolchain, /opt/android-sdk) into them on first use.
+  gradle-cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /root/agent-world/builds/gradle-cache
+  cargo-home:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /root/agent-world/builds/cargo-home
+  android-sdk:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /root/agent-world/builds/android-sdk
+  slots:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /root/agent-world/builds/slots
+  # agentd-owned: mirror checkout, persistent state, release signal flag.
+  agents-mirror:
+  agents-state:
+  agents-signal:
+  # Prod server state (external): release-signal reads only the
+  # release_in_progress lock file from it. Must be declared external —
+  # otherwise compose would create an empty project-scoped volume of the
+  # same name instead of attaching the prod one.
+  location-share_srv-data:
+    external: true
+
+networks:
+  # Sandbox <-> agentd only. No route out (egress goes via agents-egress,
+  # which the host firewall constrains).
+  agents-internal:
+    internal: true
+  # Sandbox egress with a pinned subnet the host firewall rules reference.
+  agents-egress:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24
+  # Prod stack network (external): agentd serves the UI here as `agents-ui`.
+  location-share_default:
+    external: true
