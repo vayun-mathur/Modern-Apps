@@ -37,6 +37,8 @@ dependencies {
     implementRoom(libs)
     // Address token + onboarded flag.
     implementation(libs.androidx.datastore.preferences)
-    // OpenPGP via the native Rust core (rPGP in libe2ee_pqc.so). No BouncyCastle.
-    implementation(project(":library:e2ee-p2p"))
+    // OpenPGP via the native Rust core (rPGP in libe2ee_pgp.so). No BouncyCastle.
+    // Split out of :library:e2ee-p2p so non-mail apps don't link rPGP (#873);
+    // securemail is the only consumer of the PGP surface.
+    implementation(project(":library:e2ee-openpgp"))
 }

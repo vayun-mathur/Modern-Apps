@@ -1,0 +1,23 @@
+[package]
+name = "e2ee_pgp"
+version = "0.1.0"
+edition = "2021"
+description = "OpenPGP (RFC 9580) for SecureMail via :library:e2ee-openpgp (rPGP, Ed25519 + X25519), exposed to Kotlin via JNI. Split out of the e2ee_pqc crate so non-mail apps don't pay for the rPGP cipher suite (#873)."
+license = "GPL-2.0-only"
+
+[lib]
+name = "e2ee_pgp"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni.workspace = true
+# OpenPGP packet engine for SecureMail (generate/armor/encrypt/decrypt).
+# Same crate as the relay server would use; the JNI surface below exposes only
+# what the app needs (no WKD/SMTP — those stay in Kotlin via library:network).
+pgp.workspace = true
+# rand 0.8 for rPGP keygen/encrypt RNG (workspace default is 0.10; see root).
+rand08.workspace = true
+# Base64 framing for PGP/MIME armor output (workspace pin, betocore line).
+base64.workspace = true
+# smallvec! for rPGP key-preference lists (workspace pin, betocore line).
+smallvec.workspace = true

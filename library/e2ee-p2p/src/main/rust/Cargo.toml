@@ -18,13 +18,3 @@ shake.workspace = true
 jni.workspace = true
 rand.workspace = true
 rand_core.workspace = true
-# rand 0.8 for rPGP keygen/encrypt RNG (workspace default is 0.10; see root).
-rand08.workspace = true
-# OpenPGP packet engine for SecureMail (generate/armor/encrypt/decrypt).
-# Same crate as the relay server would use; the JNI surface below exposes only
-# what the app needs (no WKD/SMTP — those stay in Kotlin via library:network).
-pgp.workspace = true
-# Base64 framing for PGP/MIME armor output (workspace pin, betocore line).
-base64.workspace = true
-# smallvec! for rPGP key-preference lists (workspace pin, betocore line).
-smallvec.workspace = true

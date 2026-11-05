@@ -13,6 +13,7 @@ members = [
   "appstore/src/main/rust",
   "vpn/src/main/rust",
   "library/e2ee-p2p/src/main/rust",
+  "library/e2ee-openpgp/src/main/rust",
   "library/jni-http/src/main/rust",
   "library/map/src/main/rust",
   "library/ml/src/main/rust",
