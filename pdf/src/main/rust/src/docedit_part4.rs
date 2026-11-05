@@ -9,7 +9,8 @@ mod redaction_tests_cont {
     /// the operation must refuse and leave the document exactly as it was.
     #[test]
     fn a_stream_only_the_lenient_tokenizer_can_read_is_not_redacted() {
-        // No /BPC, so lopdf's inline-image parser errors inside `cut(...)`.
+        // No /BPC, so the strict content parse fails on the inline image and only
+        // the lenient tokenizer can read this stream.
         let mut content = b"BT /F1 12 Tf 100 700 Td (secret) Tj ET\n".to_vec();
         content.extend_from_slice(b"BI /W 2 /H 2 /CS /G ID ");
         content.extend_from_slice(&[0x00, 0x40, 0x80, 0xFF]);
@@ -19,8 +20,11 @@ mod redaction_tests_cont {
             let reg = registry().lock().unwrap_or_else(|e| e.into_inner());
             let doc = reg.get(&handle).expect("handle is registered");
             assert!(
-                doc.get_and_decode_page_content(page_id).is_err(),
-                "precondition: lopdf is expected to reject this content stream"
+                crate::content::strict_operations(&crate::content::page_content_bytes(
+                    doc, page_id
+                ))
+                .is_none(),
+                "precondition: the strict content parse is expected to reject this stream"
             );
         }
 

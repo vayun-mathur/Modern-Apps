@@ -21,32 +21,51 @@ pub(crate) fn deref<'a>(doc: &'a Document, obj: &'a Object) -> Option<&'a Object
 /// `/Filter` (lopdf's `decompressed_content` errors instead of returning raw).
 /// This version is legacy without Document context (used for ToUnicode cmap and font files).
 pub(crate) fn stream_data(s: &lopdf::Stream) -> Vec<u8> {
-    match s.decompressed_content() {
-        Ok(d) => d,
-        // With no /Filter the content is already plaintext and lopdf errors rather than
-        // returning it, so the raw fallback is correct. With a /Filter present a failure
-        // means we could not decode, and handing back the still-ENCODED bytes fed binary
-        // garbage to the cmap/font parser.
-        Err(_) if s.dict.get(b"Filter").is_err() => s.content.clone(),
-        Err(_) => {
-            // lopdf implements only Flate, LZW and ASCII85 (object.rs:690-693) and
-            // returns Unimplemented for anything else, so an ASCIIHex- or
-            // RunLength-encoded ToUnicode CMap or embedded font file decoded to
-            // nothing at all — silently no text, or no glyphs. `filters` implements
-            // both, so retry through our own chain.
-            //
-            // With no Document only DIRECT filter entries resolve. An indirect
-            // /Filter leaves `specs` empty, and `decode_stream_content` treats an
-            // empty chain as "already plaintext" and would hand back the still-
-            // ENCODED bytes, so that case must yield nothing instead.
-            let doc = Document::new();
-            let specs = filters::filter_specs_from_dict(&doc, &s.dict);
-            if specs.is_empty() {
-                return Vec::new();
-            }
-            decode_stream_content(&doc, &s.dict, &s.content)
+    // With no /Filter the content is already plaintext and lopdf errors rather
+    // than returning it, so the raw fallback is correct here and only here.
+    if s.dict.get(b"Filter").is_err() {
+        return s.content.clone();
+    }
+    // A /Filter is present. lopdf's `decompressed_content` can no longer be
+    // trusted as the first resort: when the filter list itself cannot be
+    // resolved (an indirect reference, a wrong-typed entry) it returns
+    // Ok(content) — the still-ENCODED bytes — and for implemented filters it
+    // has the predictor-blindness and ASCII85 hazards documented on
+    // `decode_stream_content`. Resolve through our own chain instead, which
+    // handles every direct filter we implement (including /DecodeParms
+    // predictors) and yields nothing for unresolvable or unknown ones.
+    //
+    // With no Document only DIRECT filter entries resolve. An indirect /Filter
+    // leaves `specs` empty, and must yield nothing: returning the raw bytes
+    // would feed binary garbage to the cmap/font parser.
+    let doc = Document::new();
+    let specs = filters::filter_specs_from_dict(&doc, &s.dict);
+    if specs.is_empty() {
+        return Vec::new();
+    }
+    if let Some(d) = filters::decode_stream_chain(s.content.clone(), &specs, &doc) {
+        return d;
+    }
+    // Our chain failed. lopdf as a last resort, and only for a filter we do
+    // not implement (Unknown): on a filter we DO implement it already judged
+    // the bytes corrupt, and it cannot do better than garbage. (Its Ok here is
+    // genuine: `specs` is non-empty, so the filter list resolved to direct
+    // names lopdf can see; an Unknown name makes it Err, which falls through
+    // to nothing below.) Skipped whenever a predictor is involved, exactly as
+    // in `decode_stream_content`: lopdf cannot see an indirect or array-form
+    // /DecodeParms and would return predictor-garbled bytes as success.
+    let has_unknown = specs
+        .iter()
+        .any(|(k, _)| matches!(k, filters::FilterKind::Unknown(_)));
+    if has_unknown && !wants_predictor(&doc, &s.dict) {
+        if let Ok(d) = s.decompressed_content() {
+            return d;
         }
     }
+    // Every decoder failed. Returning the raw bytes here handed the
+    // still-ENCODED bytes to the cmap/font parser as if they were plaintext —
+    // visible as missing text or missing glyphs. Render nothing instead.
+    Vec::new()
 }
 
 /// Extended decoder that uses Document context to handle filter chains case-insensitively,
@@ -149,17 +168,17 @@ pub(crate) fn stream_data_with_doc(doc: &Document, s: &Stream) -> Vec<u8> {
 mod tests {
     use super::*;
 
-    /// lopdf's `decompressed_content` handles only Flate/LZW/ASCII85, so these two
-    /// filters used to yield an empty ToUnicode CMap or font file — silently no text.
+    /// lopdf 0.45 implements ASCIIHexDecode and RunLengthDecode itself, so these
+    /// filters no longer reach the fallback through lopdf's failure — but
+    /// `stream_data` decodes direct filters through our own chain first, which
+    /// is what this exercises. (An ASCIIHex- or RunLength-encoded ToUnicode
+    /// CMap or embedded font file that decoded to nothing was silently no
+    /// text, or no glyphs.)
     #[test]
     fn stream_data_decodes_filters_lopdf_does_not_implement() {
         let s = Stream::new(
             dictionary! { "Filter" => "ASCIIHexDecode" },
             b"48656C6C6F>".to_vec(),
-        );
-        assert!(
-            s.decompressed_content().is_err(),
-            "precondition: lopdf is expected not to implement ASCIIHexDecode"
         );
         assert_eq!(stream_data(&s), b"Hello".to_vec());
 
@@ -168,7 +187,6 @@ mod tests {
             dictionary! { "Filter" => "RunLengthDecode" },
             vec![0x00, 0xAB, 128],
         );
-        assert!(s.decompressed_content().is_err(), "precondition");
         assert_eq!(stream_data(&s), vec![0xAB]);
     }
 

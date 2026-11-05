@@ -396,7 +396,7 @@ mod refdiff_followup_tests {
         let mut d0_glyph = glyph.clone();
         d0_glyph[0] = op("d0", vec![0.into(), 0.into()]);
         let mut prims = Vec::new();
-        interpret_content(&doc, &d0_glyph, None, self.gs, &mut prims, 0, false);
+        interpret_content(&doc, &d0_glyph, None, gs.clone(), &mut prims, 0, false);
         assert!(
             prims.iter().any(|p| matches!(p, Prim::Fill { argb, .. } if *argb == rgb_to_argb(1.0, 1.0, 1.0))),
             "d0 imposes no colour rule, so `1 1 1 rg` must take effect"

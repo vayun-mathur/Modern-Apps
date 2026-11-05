@@ -381,10 +381,13 @@ mod tests {
         let (doc, page_id) = one_page_doc(&content);
 
         // Establish that this really is the P0 rather than a test that would pass
-        // anyway: lopdf must genuinely fail on this page.
+        // anyway: the strict content parse must genuinely fail on this page (and,
+        // since the BI fix, fail on the dropped image rather than succeed
+        // without it). `get_and_decode_page_content` cannot establish this: it
+        // only decodes the stream's own filters and never parses operators.
         assert!(
-            doc.get_and_decode_page_content(page_id).is_err(),
-            "precondition: lopdf is expected to reject this content stream"
+            crate::content::strict_operations(&content).is_none(),
+            "precondition: the strict content parse is expected to reject this page"
         );
 
         let (ops, recovered) = page_operations(&doc, page_id);

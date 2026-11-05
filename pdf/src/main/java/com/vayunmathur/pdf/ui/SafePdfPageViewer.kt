@@ -144,7 +144,14 @@ internal fun SafePdfPageViewer(
                     scaleX = zoom.zoom
                     scaleY = zoom.zoom
                     translationX = zoom.pan.x
-                    translationY = -scroll.scrollPx * zoom.zoom
+                    // Issue #321: a document shorter than the viewport (e.g. a
+                    // single page) used to pin to the top with dead space below.
+                    // Center it vertically instead. This is purely visual: when
+                    // there is slack, range() is 0 so scroll stays 0 and every
+                    // scrollTo clamps to it; when content overflows, the slack
+                    // is <= 0 and the offset vanishes.
+                    val slack = size.height - scroll.contentHeightPx() * zoom.zoom
+                    translationY = -scroll.scrollPx * zoom.zoom + (slack / 2f).coerceAtLeast(0f)
                     // Pivot on the top edge: keeps the first visible content anchored
                     // to the top of the screen across zoom changes.
                     transformOrigin = TransformOrigin(0.5f, 0f)

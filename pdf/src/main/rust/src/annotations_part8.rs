@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod synthesis_tests2 {
     use super::stamp_label;
-    use super::synthesis_tests::{annot, synth};
+    use super::synthesis_tests::{annot, kinds, synth};
     use crate::*;
 
     /// §12.5.4 Table 166: "/W ... If this value is 0, no border shall be drawn."

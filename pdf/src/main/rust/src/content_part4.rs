@@ -60,9 +60,13 @@ mod tests_cont {
         content.extend_from_slice(b" EI\nQ 5 5 20 20 re f\n");
         let stream = Stream::new(dictionary! { "Type" => "XObject", "Subtype" => "Form" }, content);
 
+        // lopdf's raw decoder succeeds here (it skips the undecodable image
+        // and keeps the operators), so it cannot establish the P0. The strict
+        // content parse — the path the app actually takes — must fail on the
+        // dropped image instead of succeeding without it.
         assert!(
-            Content::decode(&stream.content).is_err(),
-            "precondition: lopdf is expected to reject this nested stream"
+            crate::content::strict_operations(&stream.content).is_none(),
+            "precondition: the strict content parse is expected to reject this nested stream"
         );
 
         let ops = stream_operations(&doc, &stream);

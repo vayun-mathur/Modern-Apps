@@ -177,12 +177,36 @@ fn nesting_is_too_deep(data: &[u8], max: u32) -> bool {
 
 /// Strict parse first, lenient tokenizer only if that fails, yields nothing, or is
 /// unsafe to attempt at all.
+///
+/// A strict parse that kept a `BI` without its image stream also counts as a
+/// failure: lopdf 0.45's `inline_image_impl` skips any inline image it cannot
+/// fully decode — an abbreviated `/CS /G`, any `/F` filter, a missing `/BPC` —
+/// and still reports success with a bare operand-less `BI`. The interpreter
+/// renders a `BI` only from an attached stream operand, so that "success" is a
+/// silently dropped image, while the lenient tokenizer decodes all of those
+/// shapes. Falling back keeps the image; both callers (`page_operations` and
+/// `operations_from_bytes`) already treat `None` as "run lenient".
 pub(crate) fn strict_operations(bytes: &[u8]) -> Option<Vec<Operation>> {
     if nesting_is_too_deep(bytes, MAX_DEPTH) {
         return None;
     }
     match Content::decode(bytes) {
-        Ok(content) if !content.operations.is_empty() => Some(repair_d0_d1(content.operations)),
+        Ok(content) if !content.operations.is_empty() => {
+            let ops = repair_d0_d1(content.operations);
+            // lopdf attaches the decoded image as a Stream operand; without one
+            // the image was skipped and the lenient path must run instead.
+            let dropped_image = ops.iter().any(|o| {
+                o.operator == "BI"
+                    && !o
+                        .operands
+                        .iter()
+                        .any(|x| matches!(x, Object::Stream(_)))
+            });
+            if dropped_image {
+                return None;
+            }
+            Some(ops)
+        }
         _ => None,
     }
 }
@@ -293,7 +317,7 @@ fn operations_from_bytes(bytes: &[u8]) -> Vec<Operation> {
 /// hand compressed data to the tokenizer to be parsed as operators. Our
 /// [`stream_data_with_doc`] handles the filter chain case-insensitively and yields
 /// nothing rather than ciphertext when every decoder fails.
-fn page_content_bytes(doc: &Document, page_id: ObjectId) -> Vec<u8> {
+pub(crate) fn page_content_bytes(doc: &Document, page_id: ObjectId) -> Vec<u8> {
     let mut out = Vec::new();
     for id in doc.get_page_contents(page_id) {
         if let Ok(Object::Stream(s)) = doc.get_object(id) {

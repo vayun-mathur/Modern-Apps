@@ -220,6 +220,18 @@ mod tests {
             .unwrap_or_else(|e| panic!("cannot read the wire format's only consumer {path}: {e}"))
     }
 
+    /// The image budgets moved out of the parser into `SafePdfImages` in the
+    /// file split, so the budget assertion below reads them there rather than
+    /// from the parser.
+    fn kotlin_images_src() -> String {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../java/com/vayunmathur/pdf/util/SafePdfImages.kt"
+        );
+        std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("cannot read the image-budget owner {path}: {e}"))
+    }
+
     /// The text following `prefix` on the first line that starts with it.
     fn kotlin_decl(src: &str, prefix: &str) -> String {
         src.lines()
@@ -247,7 +259,7 @@ mod tests {
     /// would train the next person to widen the assertion rather than think about it.
     #[test]
     fn the_kotlin_image_budgets_are_not_below_the_rust_ones() {
-        let src = kotlin_parser_src();
+        let src = kotlin_images_src();
         let int_after = |prefix: &str| -> u64 {
             kotlin_decl(&src, prefix)
                 .split_whitespace()
@@ -259,7 +271,7 @@ mod tests {
         let kotlin_dim = int_after("private const val MAX_IMAGE_DIM: Int = ");
         assert!(
             kotlin_pixels >= crate::MAX_IMAGE_PIXELS as u64,
-            "SafePdfParser.kt caps images at {kotlin_pixels} pixels but images.rs decimates \
+            "SafePdfImages.kt caps images at {kotlin_pixels} pixels but images.rs decimates \
              only to {}, so every image between the two is produced, passes every Rust \
              guard, and is then dropped by the parser with no diagnostic on either side. \
              Raise the Kotlin constant, or lower MAX_IMAGE_PIXELS in graphics_state.rs.",
@@ -267,7 +279,7 @@ mod tests {
         );
         assert!(
             kotlin_dim >= crate::MAX_IMAGE_DIM as u64,
-            "SafePdfParser.kt refuses images wider or taller than {kotlin_dim} but images.rs \
+            "SafePdfImages.kt refuses images wider or taller than {kotlin_dim} but images.rs \
              admits up to {}, so an image between the two is emitted and silently dropped.",
             crate::MAX_IMAGE_DIM
         );

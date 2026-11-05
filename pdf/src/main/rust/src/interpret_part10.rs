@@ -230,7 +230,7 @@ mod refdiff_followup_tests_2 {
         let mut gs = GraphicsState::default();
         gs.fill = red;
         let mut prims = Vec::new();
-        interpret_content(&doc, &ops, None, self.gs, &mut prims, 0, false);
+        interpret_content(&doc, &ops, None, gs.clone(), &mut prims, 0, false);
         let fills: Vec<u32> = prims
             .iter()
             .filter_map(|p| match p {

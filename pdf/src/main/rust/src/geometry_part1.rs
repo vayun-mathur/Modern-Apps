@@ -97,21 +97,41 @@ mod geometry_tests {
         );
         let src = std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("cannot read the page box's only consumer {path}: {e}"));
-        // `rawWidth.coerceAtMost(20000f)` and the same on height.
-        let bounds: Vec<f64> = src
+        // `rawWidth.coerceAtMost(MAX_PAGE_DIM)` and the same on height: the
+        // consumer hoisted the literal into a named constant, so resolve the
+        // constant's value from the same file rather than matching a literal.
+        // `private const val MAX_PAGE_DIM = 20000f`, with an optional comment.
+        let max_page_dim: f64 = src
             .lines()
-            .filter(|l| l.contains("rawWidth") || l.contains("rawHeight"))
-            .filter_map(|l| l.split_once("coerceAtMost("))
-            .filter_map(|(_, rest)| rest.split(')').next())
-            .filter_map(|v| v.trim().trim_end_matches('f').parse::<f64>().ok())
+            .find_map(|l| {
+                let v = l.trim().strip_prefix("private const val MAX_PAGE_DIM = ")?;
+                v.split_whitespace()
+                    .next()?
+                    .trim_end_matches('f')
+                    .parse()
+                    .ok()
+            })
+            .unwrap_or_else(|| panic!("{path} must declare `private const val MAX_PAGE_DIM = <n>f`"));
+        // Both dimension clamps must go through the constant: a clamp arm that
+        // stops mentioning it has drifted off the contract silently.
+        let pinned: Vec<&str> = src
+            .lines()
+            .filter(|l| (l.contains("rawWidth") || l.contains("rawHeight")) && l.contains("coerceAtMost("))
             .collect();
         assert_eq!(
-            bounds.len(),
+            pinned.len(),
             2,
-            "expected a `coerceAtMost(<n>f)` on each of rawWidth and rawHeight in {path}; \
-             found {bounds:?}. If the consumer's clamp moved or was renamed, this contract \
+            "expected a `coerceAtMost(...)` on each of rawWidth and rawHeight in {path}; \
+             found {pinned:?}. If the consumer's clamp moved or was renamed, this contract \
              needs re-pinning rather than deleting."
         );
+        for l in &pinned {
+            assert!(
+                l.contains("coerceAtMost(MAX_PAGE_DIM)"),
+                "{path} clamps a page dimension without MAX_PAGE_DIM: {l:?}."
+            );
+        }
+        let bounds = [max_page_dim, max_page_dim];
         for b in bounds {
             assert_eq!(
                 b, super::MAX_PAGE_DIMENSION,

@@ -78,7 +78,7 @@ fn clip_contours(r: &Rast, pts: &[(f32, f32)], path_ops: &Option<Vec<PathOp>>) -
 // ---------------------------------------------------------------------------
 
 fn hayro_rgb8(bytes: &[u8], scale: f32) -> (usize, usize, Vec<[u8; 3]>) {
-    use hayro::{render, RenderCache, RenderSettings};
+    use hayro::{render, PixmapSettings, RenderCache, RenderSettings};
     use hayro::hayro_interpret::InterpreterSettings;
     use hayro::hayro_syntax::Pdf;
     use hayro::vello_cpu::color::palette::css::WHITE;
@@ -92,7 +92,8 @@ fn hayro_rgb8(bytes: &[u8], scale: f32) -> (usize, usize, Vec<[u8; 3]>) {
         &pages[0],
         &cache,
         &settings,
-        &RenderSettings { x_scale: scale, y_scale: scale, bg_color: WHITE, ..Default::default() },
+        &RenderSettings::default(),
+        &PixmapSettings { x_scale: scale, y_scale: scale, bg_color: WHITE, ..Default::default() },
     );
     let (w, h) = (pixmap.width() as usize, pixmap.height() as usize);
     let rgb = pixmap
