@@ -40,6 +40,13 @@ services:
       - -c
       - |
         set -euo pipefail
+        for d in /gradle-cache /builds/slots; do
+          test -e "$$d/.on-loop-fs" || { echo "builder-init: FATAL: $$d is not on the bounded loop fs (run host-setup.sh / mount /root/agent-world/builds)" >&2; exit 1; }
+        done
+        DEV=$$(stat -c %d /gradle-cache)
+        for d in /cargo-home /opt/android-sdk /builds/slots; do
+          [ "$$(stat -c %d "$$d")" = "$$DEV" ] || { echo "builder-init: FATAL: $$d is not on the same bounded fs as /gradle-cache" >&2; exit 1; }
+        done
         MARKER=/gradle-cache/.agents-init-done
         if [ -e "$$MARKER" ]; then echo "builder-init: already done, skipping"; exit 0; fi
         test -x /cargo-home/bin/cargo || { echo "builder-init: FATAL: /cargo-home/bin/cargo missing (image seeding of the cargo-home volume did not happen)" >&2; exit 1; }

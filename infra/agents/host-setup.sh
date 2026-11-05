@@ -8,8 +8,8 @@
 #
 # Steps:
 #   (a) create /root/agent-world (0700),
-#   (b) add an 8 GiB swapfile /swapfile-agents (only if no swap is active;
-#       never touches existing swap),
+#   (b) add an 8 GiB swapfile /swapfile-agents alongside any existing swap
+#       (never touches existing swap),
 #   (c) create a sparse 60 GiB ext4 image /root/agent-world/builds.img,
 #       loop-mount it at /root/agent-world/builds via fstab, and create the
 #       gradle-cache / cargo-home / android-sdk / slots subdirs,
@@ -63,18 +63,20 @@ else
     chmod 0700 "$AGENT_WORLD"
 fi
 
-# -- (b) swap (only if the host has none active) -----------------------------
-if swapon --show=NAME --noheadings 2>/dev/null | grep -q .; then
-    log "swap already active; leaving existing swap untouched"
+# -- (b) extra swap (added alongside the host's existing swap) ----------------
+if swapon --show=NAME --noheadings 2>/dev/null | grep -qx "$SWAPFILE"; then
+    log "$SWAPFILE already active"
 else
-    log "no active swap: creating 8 GiB $SWAPFILE"
+    log "adding 8 GiB $SWAPFILE (existing swap left untouched)"
     if [[ $DRY_RUN -eq 1 ]]; then
         echo "[dry-run] would run: fallocate -l 8G $SWAPFILE && chmod 600 $SWAPFILE && mkswap $SWAPFILE && swapon $SWAPFILE"
         echo "[dry-run] would append to /etc/fstab: $SWAPFILE none swap sw 0 0"
     else
-        fallocate -l 8G "$SWAPFILE"
-        chmod 600 "$SWAPFILE"
-        mkswap "$SWAPFILE"
+        if [[ ! -f "$SWAPFILE" ]]; then
+            fallocate -l 8G "$SWAPFILE"
+            chmod 600 "$SWAPFILE"
+            mkswap "$SWAPFILE"
+        fi
         swapon "$SWAPFILE"
         grep -qs "^$SWAPFILE " /etc/fstab || echo "$SWAPFILE none swap sw 0 0" >> /etc/fstab
     fi
@@ -84,19 +86,30 @@ fi
 log "ensuring 60 GiB ext4 image $BUILDS_IMG mounted at $BUILDS_DIR"
 if [[ $DRY_RUN -eq 1 ]]; then
     echo "[dry-run] would run: truncate -s 60G $BUILDS_IMG && mkfs.ext4 -F $BUILDS_IMG"
-    echo "[dry-run] would append to /etc/fstab: $BUILDS_IMG $BUILDS_DIR ext4 loop,nofail 0 0"
+    echo "[dry-run] would append to /etc/fstab: $BUILDS_IMG $BUILDS_DIR ext4 loop,nofail,x-systemd.before=snap.docker.dockerd.service 0 0"
     echo "[dry-run] would run: mkdir -p $BUILDS_DIR && mount $BUILDS_DIR"
-    echo "[dry-run] would run: mkdir -p $BUILDS_DIR/{gradle-cache,cargo-home,android-sdk,slots}"
+    echo "[dry-run] would run: mkdir -p $BUILDS_DIR/{gradle-cache,cargo-home,android-sdk,slots} + .on-loop-fs sentinels"
 else
     if [[ ! -f "$BUILDS_IMG" ]]; then
         truncate -s 60G "$BUILDS_IMG"
         mkfs.ext4 -F "$BUILDS_IMG"
     fi
-    FSTAB_LINE="$BUILDS_IMG $BUILDS_DIR ext4 loop,nofail 0 0"
+    # Ordered before Docker (so restarted containers bind the loop fs, not the
+    # bare dir on /) without making prod Docker depend on it (nofail).
+    FSTAB_LINE="$BUILDS_IMG $BUILDS_DIR ext4 loop,nofail,x-systemd.before=snap.docker.dockerd.service 0 0"
     grep -qsF "$BUILDS_IMG $BUILDS_DIR" /etc/fstab || echo "$FSTAB_LINE" >> /etc/fstab
+    systemctl daemon-reload
     mkdir -p "$BUILDS_DIR"
     mountpoint -q "$BUILDS_DIR" || mount "$BUILDS_DIR"
-    mkdir -p "$BUILDS_DIR"/{gradle-cache,cargo-home,android-sdk,slots}
+    mountpoint -q "$BUILDS_DIR" || { echo "host-setup: $BUILDS_DIR is not mounted" >&2; exit 1; }
+    # Sentinels mark the loop fs: if it is ever unmounted, builder-init sees
+    # them missing and refuses to start instead of writing to /. Only in dirs
+    # Docker never seeds (a non-empty volume skips image seeding, so
+    # cargo-home/android-sdk stay empty; builder-init checks those by device).
+    for sub in gradle-cache cargo-home android-sdk slots; do
+        mkdir -p "$BUILDS_DIR/$sub"
+    done
+    touch "$BUILDS_DIR/gradle-cache/.on-loop-fs" "$BUILDS_DIR/slots/.on-loop-fs"
 fi
 
 # -- (d) egress firewall ------------------------------------------------------
@@ -139,7 +152,7 @@ RemainAfterExit=yes
 ExecStart=$FIREWALL_SCRIPT
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target snap.docker.dockerd.service
 EOF
     systemctl daemon-reload
     systemctl enable --now agents-firewall.service
