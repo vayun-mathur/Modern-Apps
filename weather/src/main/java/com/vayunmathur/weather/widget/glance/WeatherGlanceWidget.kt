@@ -34,7 +34,9 @@ import com.vayunmathur.library.util.localizedMonthNames
 import com.vayunmathur.library.widgets.MaWidget
 import com.vayunmathur.weather.MainActivity
 import com.vayunmathur.weather.R
+import com.vayunmathur.weather.domain.celsiusTo
 import com.vayunmathur.weather.domain.weatherConditionForCode
+import com.vayunmathur.weather.platform.systemTempUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
@@ -212,7 +214,10 @@ private fun WeatherBlock(weather: WidgetWeather?) {
             modifier = GlanceModifier.size(44.dp),
         )
         Text(
-            text = context.getString(R.string.weather_temp_format, weather.temperatureCelsius.roundToInt()),
+            text = context.getString(
+                R.string.weather_temp_format,
+                weather.temperatureCelsius.celsiusTo(systemTempUnit()).roundToInt(),
+            ),
             modifier = GlanceModifier.padding(start = 8.dp),
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,

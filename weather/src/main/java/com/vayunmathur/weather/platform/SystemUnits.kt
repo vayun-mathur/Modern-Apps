@@ -29,12 +29,12 @@ import java.util.Locale
 @Composable
 fun rememberTempUnit(): TemperatureUnit {
     LocalConfiguration.current
-    return remember(LocalConfiguration.current) {
-        when (LocalePreferences.getTemperatureUnit()) {
-            LocalePreferences.TemperatureUnit.FAHRENHEIT -> TemperatureUnit.Fahrenheit
-            else -> TemperatureUnit.Celsius
-        }
-    }
+    return remember(LocalConfiguration.current) { systemTempUnit() }
+}
+
+fun systemTempUnit(): TemperatureUnit = when (LocalePreferences.getTemperatureUnit()) {
+    LocalePreferences.TemperatureUnit.FAHRENHEIT -> TemperatureUnit.Fahrenheit
+    else -> TemperatureUnit.Celsius
 }
 
 @Composable

@@ -32,7 +32,9 @@ import com.vayunmathur.library.widgets.MaWidget
 import com.vayunmathur.library.widgets.toWidgetBitmap
 import com.vayunmathur.weather.MainActivity
 import com.vayunmathur.weather.R
+import com.vayunmathur.weather.domain.celsiusTo
 import com.vayunmathur.weather.domain.weatherConditionForCode
+import com.vayunmathur.weather.platform.systemTempUnit
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -157,7 +159,10 @@ private fun BlobWeatherBlock(weather: WidgetWeather?, tempColor: Color) {
 
     // Large temp — screenshot shows 34° very prominent, light mint color
     Text(
-        text = context.getString(R.string.weather_temp_format, weather.temperatureCelsius.roundToInt()),
+        text = context.getString(
+            R.string.weather_temp_format,
+            weather.temperatureCelsius.celsiusTo(systemTempUnit()).roundToInt(),
+        ),
         style = TextStyle(
             color = ColorProvider(tempColor),
             fontSize = 54.sp,
