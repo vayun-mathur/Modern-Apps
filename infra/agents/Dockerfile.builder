@@ -34,8 +34,10 @@ WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY proto ./proto
 COPY runner ./runner
-# agentd has its own Dockerfile (another agent owns it); exclude it from this
-# build so this image never depends on that crate.
+# agentd has its own Dockerfile; only its manifest is needed here (plus an
+# empty main) so the workspace resolves without compiling it.
+COPY agentd/Cargo.toml ./agentd/Cargo.toml
+RUN mkdir -p agentd/src && echo 'fn main() {}' > agentd/src/main.rs
 RUN cargo build -p agent-runner --release --locked
 
 # ---- stage 2: sandbox -------------------------------------------------------
