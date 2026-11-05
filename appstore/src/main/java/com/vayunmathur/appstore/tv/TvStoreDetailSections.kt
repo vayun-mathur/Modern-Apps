@@ -28,6 +28,7 @@ import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.security.TrustProfile
 import com.vayunmathur.appstore.ui.formatCount
+import com.vayunmathur.appstore.ui.rememberDescriptionText
 import com.vayunmathur.library.image.compose.AsyncImage
 import com.vayunmathur.library.image.compose.AsyncImageState
 import com.vayunmathur.library.tv.TvAspect
@@ -66,7 +67,7 @@ internal fun TvStoreDetailBody(
         if (app.description.isNotBlank() && app.description != app.summary) {
             var expanded by remember(app.packageName) { mutableStateOf(false) }
             Text(
-                text = app.description,
+                text = rememberDescriptionText(app.description, MaterialTheme.colorScheme.primary),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
                 maxLines = if (expanded) Int.MAX_VALUE else 5,

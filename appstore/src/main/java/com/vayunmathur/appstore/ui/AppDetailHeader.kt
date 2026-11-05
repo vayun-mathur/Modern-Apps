@@ -171,7 +171,7 @@ internal fun AppDetailDescription(app: UnifiedApp) {
         }
         if (app.description.isNotBlank() && app.description != app.summary) {
             Text(
-                app.description,
+                rememberDescriptionText(app.description, MaterialTheme.colorScheme.primary),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = if (expanded) Int.MAX_VALUE else 5,
                 overflow = TextOverflow.Ellipsis,
