@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CoreLocation
 import UIKit
 import UserNotifications
@@ -19,6 +20,7 @@ final class LocationsHandler: ObservableObject {
     private var background: CLBackgroundActivitySession?
     private var session: CLServiceSession?
     private var task: Task<Void, Never>?
+    private var sharingWatchers = Set<AnyCancellable>()
 
     private init() {
         manager.allowsBackgroundLocationUpdates = true
@@ -37,6 +39,7 @@ final class LocationsHandler: ObservableObject {
 
     func startLocationUpdates() {
         authorize()
+        manager.allowsBackgroundLocationUpdates = true
         guard task == nil else { return }
         logger.info("Starting location updates")
         task = Task { [weak self] in
@@ -66,8 +69,77 @@ final class LocationsHandler: ObservableObject {
     func stopLocationUpdates() {
         task?.cancel()
         task = nil
+        background?.invalidate()
         background = nil
+        session?.invalidate()
         session = nil
+        manager.stopUpdatingLocation()
+        manager.stopMonitoringSignificantLocationChanges()
+        for region in manager.monitoredRegions {
+            manager.stopMonitoring(for: region)
+        }
+        manager.stopMonitoringVisits()
+        manager.allowsBackgroundLocationUpdates = false
+        BackgroundTask.shared.stopHeartbeat()
+        logger.info("Stopped location updates (not sharing with anyone)")
+    }
+
+    /// Whether we currently publish our location to anyone: any peer with
+    /// `sendingEnabled`, any pending share auto-toggle timer (which may flip
+    /// sharing back on by itself), or any live temporary link. Expired links
+    /// are pruned here so they can't keep location alive forever.
+    func isSharingWithAnyone() -> Bool {
+        pruneExpiredTemporaryLinks()
+        let now = Date()
+        let users = Database.shared.usersSubject.value
+        let me = Networking.shared.userid
+        if users.contains(where: { $0.id != me && ($0.sendingEnabled || $0.sharingAutoToggleAt != nil) }) {
+            return true
+        }
+        return Database.shared.temporaryLinksSubject.value.contains(where: { $0.deleteAt > now })
+    }
+
+    /// Start location work only when we're actually sharing with someone.
+    /// Safe to call on every launch (including background relaunch): re-entrant,
+    /// no-ops when updates are already running.
+    func startLocationUpdatesIfSharing() {
+        if isSharingWithAnyone() {
+            BackgroundTask.shared.startHeartbeat()
+            startLocationUpdates()
+        } else {
+            stopLocationUpdates()
+        }
+    }
+
+    /// Re-evaluate the sharing gate whenever the sharing state changes: the
+    /// per-user toggle, auto-toggle timers, and temporary links. Every write
+    /// path funnels through these subjects, so this covers manual toggles,
+    /// timer flips, link add/delete, and user add/delete.
+    func beginMonitoringSharing() {
+        guard sharingWatchers.isEmpty else { return }
+        // Hop to the main thread like MainViewModel does: Database sends from
+        // its serial queue, and a synchronous MainActor hop from there risks
+        // deadlock against its queue.sync writes.
+        Database.shared.usersSubject
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in Task { @MainActor in self?.startLocationUpdatesIfSharing() } }
+            .store(in: &sharingWatchers)
+        Database.shared.temporaryLinksSubject
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in Task { @MainActor in self?.startLocationUpdatesIfSharing() } }
+            .store(in: &sharingWatchers)
+    }
+
+    /// Delete temporary links past their expiry so an unopened/undeleted link
+    /// can't pin background location on indefinitely. (The per-tick cleanup in
+    /// `runTick` only runs while sharing is active.)
+    private func pruneExpiredTemporaryLinks() {
+        let now = Date()
+        for link in Database.shared.temporaryLinksSubject.value where link.deleteAt <= now {
+            Database.shared.deleteTemporaryLink(link)
+        }
     }
 }
 
@@ -102,12 +174,11 @@ final class BackgroundTask {
 
     private let geocoder = CLGeocoder()
 
-    private init() {
-        startHeartbeat()
-    }
+    private init() {}
 
-    private func startHeartbeat() {
-        heartbeatTask?.cancel()
+    /// Idempotent: safe to call on every launch and every sharing-state change.
+    func startHeartbeat() {
+        guard heartbeatTask == nil else { return }
         heartbeatTask = Task { [weak self] in
             while !Task.isCancelled {
                 if let loc = self?.lastKnownLocation {
@@ -116,6 +187,12 @@ final class BackgroundTask {
                 try? await Task.sleep(nanoseconds: UInt64(Self.shareIntervalSeconds * 1_000_000_000))
             }
         }
+    }
+
+    func stopHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        lastKnownLocation = nil
     }
 
     func onLocationUpdate(_ loc: CLLocation, sleep: Bool) {
