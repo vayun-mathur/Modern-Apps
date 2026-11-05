@@ -15,6 +15,7 @@ import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.ui.IconCall
 import com.vayunmathur.library.ui.IconHistory
 import com.vayunmathur.library.ui.IconSms
+import com.vayunmathur.library.ui.IconVoicemail
 import com.vayunmathur.library.ui.PagerTab
 import com.vayunmathur.library.ui.TabStyle
 import com.vayunmathur.library.ui.TabbedPagerScaffold
@@ -26,7 +27,7 @@ private const val PHONE = "spec:width=411dp,height=891dp,dpi=420"
  * Store listing images for `:communicate` phone tabs, rendered from Compose previews.
  *
  * The car shots live in CarMetadataPreviews (head-unit UI, no phone chrome). These
- * cover the handset tabs: Messages, Dialer, Call logs. The tab screens were split
+ * cover the handset tabs: Messages, Dialer, Call logs, Voicemail. The tab screens were split
  * into stateless `*Content` slices so previews render without the SMS provider,
  * the SIM/session lines, or the contact/call-log content providers.
  */
@@ -95,6 +96,42 @@ class MetadataPreviews {
         ),
     )
 
+    private val voicemails = listOf(
+        VoicemailEntry(
+            id = 1,
+            phoneNumber = "+14155550102",
+            timestampMillis = 1_785_566_000_000,
+            durationSeconds = 42,
+            contentUri = "content://com.android.voicemail/voicemail/1",
+            mimeType = "audio/amr",
+            hasAudio = true,
+            transcript = null,
+            isRead = false,
+        ),
+        VoicemailEntry(
+            id = 2,
+            phoneNumber = "+14155550109",
+            timestampMillis = 1_785_560_000_000,
+            durationSeconds = 18,
+            contentUri = "content://com.android.voicemail/voicemail/2",
+            mimeType = "audio/amr",
+            hasAudio = true,
+            transcript = "Hey, it\'s Maya — call me back when you get this, it\'s about Thursday.",
+            isRead = true,
+        ),
+        VoicemailEntry(
+            id = 3,
+            phoneNumber = "Unknown",
+            timestampMillis = 1_785_550_000_000,
+            durationSeconds = 0,
+            contentUri = "content://com.android.voicemail/voicemail/3",
+            mimeType = null,
+            hasAudio = false,
+            transcript = null,
+            isRead = true,
+        ),
+    )
+
     @PreviewTest
     @Preview(name = "1-messages", device = PHONE, group = "phone", showSystemUi = true)
     @Composable
@@ -114,6 +151,13 @@ class MetadataPreviews {
     @Composable
     fun Preview3CallLogs() {
         ChromePreview(selectedTab = 2)
+    }
+
+    @PreviewTest
+    @Preview(name = "4-voicemail", device = PHONE, group = "phone", showSystemUi = true)
+    @Composable
+    fun Preview4Voicemail() {
+        ChromePreview(selectedTab = 3)
     }
 
     @Composable
@@ -142,10 +186,20 @@ class MetadataPreviews {
         )
     }
 
+    @Composable
+    private fun VoicemailContentTab() {
+        VoicemailContent(
+            entries = voicemails,
+            expandedId = 2L,
+            onToggleExpand = {},
+            onDelete = {},
+        )
+    }
+
     /**
      * The app's real tab chrome around preview screen content: the same
-     * [TabbedPagerScaffold] with the same Messages/Dialer/Call-logs tabs
-     * `CommunicateTabs` declares. Only the selected tab is literal.
+     * [TabbedPagerScaffold] with the same Messages/Dialer/Call-logs/Voicemail
+     * tabs `CommunicateTabs` declares. Only the selected tab is literal.
      */
     @Composable
     private fun ChromePreview(selectedTab: Int) {
@@ -154,6 +208,7 @@ class MetadataPreviews {
                 PagerTab("Messages", { IconSms() }) { MessagesContent() },
                 PagerTab("Dialer", { IconCall() }) { DialerContentTab() },
                 PagerTab("Call logs", { IconHistory() }) { CallLogsContentTab() },
+                PagerTab("Voicemail", { IconVoicemail() }) { VoicemailContentTab() },
             )
             TabbedPagerScaffold(
                 tabs = tabs,

@@ -76,6 +76,32 @@ data class CommunicateCallLogEntry(
 )
 
 /**
+ * One visual-voicemail row, either carrier ([android.provider.VoicemailContract])
+ * or Google Voice (folder-4 listing). [contentUri] addresses the audio: a
+ * provider row URI for carrier rows, the media URL for GV rows ([audioHeaders]
+ * then carries the session cookies the endpoint requires). [transcript] is the
+ * carrier transcription or the GV word-list join, when supplied.
+ */
+data class VoicemailEntry(
+    val id: Long,
+    val phoneNumber: String,
+    val timestampMillis: Long,
+    val durationSeconds: Long,
+    val contentUri: String,
+    val mimeType: String?,
+    val hasAudio: Boolean,
+    val transcript: String?,
+    val isRead: Boolean,
+    /** Physical SIM subscription id when the provider tags the row, null if unknown/GV. */
+    val subscriptionId: Int? = null,
+    val line: CommunicateLine = CommunicateLine.Sim,
+    /** GV media auth (Cookie); empty for carrier rows. */
+    val audioHeaders: Map<String, String> = emptyMap(),
+    /** GV record id (`c.<opaque>`) for mark-read/delete; null for carrier rows. */
+    val remoteId: String? = null,
+)
+
+/**
  * A media item attached to a message. SIM MMS parts arrive as local `content://`
  * URIs; Google Voice media arrive as remote https URLs. [contentUri] holds whichever
  * form applies so the UI can load it uniformly.

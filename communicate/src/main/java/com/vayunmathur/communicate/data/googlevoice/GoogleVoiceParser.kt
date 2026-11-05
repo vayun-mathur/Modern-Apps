@@ -114,6 +114,32 @@ object GoogleVoiceParser {
         }.distinctBy { it.id }
     }
 
+    /**
+     * Voicemails from a folder-4 `api2thread/list` body. Records are `c.`-keyed
+     * like calls, but the item carries the voicemail marker ([ITEM_VM_TYPE] = 2,
+     * calls use 14), the transcript word list ([ITEM_TRANSCRIPT]), and the
+     * playable media URL ([ITEM_AUDIO_URL]).
+     */
+    fun parseVoicemails(body: String): List<GvVoicemail> {
+        val root = parseOrNull(body) ?: return emptyList()
+        return findRecords(root, prefixes = listOf("c.")).mapNotNull { record ->
+            val id = recordId(record) ?: return@mapNotNull null
+            val items = record.arrAt(ITEMS)?.mapNotNull { it as? JsonArray }.orEmpty()
+            val newest = items.firstOrNull() ?: return@mapNotNull null
+            if (newest.longAt(ITEM_VM_TYPE) != VM_TYPE_VOICEMAIL) return@mapNotNull null
+            val counterparty = counterpartyOf(record, newest) ?: return@mapNotNull null
+            GvVoicemail(
+                id = id,
+                phoneNumber = counterparty,
+                timestampMillis = newest.longAt(ITEM_TS)?.let { normalizeTimestampMillis(it) } ?: 0L,
+                durationSeconds = newest.longAt(ITEM_DURATION) ?: 0L,
+                transcript = newest.transcriptText(),
+                audioUrl = newest.strAt(ITEM_AUDIO_URL)?.takeIf { it.isNotBlank() },
+                read = newest.longAt(ITEM_VM_READ) != VM_READ_UNREAD,
+            )
+        }.distinctBy { it.id }
+    }
+
     fun parseSipRegisterInfo(body: String): GvSipRegisterInfo {
         val root = parseOrNull(body) ?: return GvSipRegisterInfo(null, emptyList())
         val phone = firstPhone(root)
@@ -141,6 +167,19 @@ object GoogleVoiceParser {
     internal const val ITEM_BODY = 9
     internal const val ITEM_COUNTERPARTY = 15
     internal const val ITEM_MEDIA_FLAG = 16
+    /**
+     * Folder-4 voicemail item slots (live capture): [ITEM_VM_TYPE] = 2 marks a
+     * voicemail (regular calls carry 14); [ITEM_TRANSCRIPT] holds
+     * `[confidence, [[word, null, null, wordConfidence], ...]]` or null when
+     * untranscribed; [ITEM_AUDIO_URL] is the playable media URL;
+     * [ITEM_VM_READ] reads 1 once played, [VM_READ_UNREAD] (8) before.
+     */
+    internal const val ITEM_VM_TYPE = 4
+    internal const val ITEM_TRANSCRIPT = 6
+    internal const val ITEM_AUDIO_URL = 11
+    internal const val ITEM_VM_READ = 13
+    internal const val VM_TYPE_VOICEMAIL = 2L
+    internal const val VM_READ_UNREAD = 8L
     internal const val RECORD_FALLBACK_A = 4
     internal const val RECORD_FALLBACK_B = 7
     internal const val E164_LENGTH = 10

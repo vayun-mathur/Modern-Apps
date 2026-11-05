@@ -86,6 +86,22 @@ internal fun looksLikeMediaUrl(raw: String): Boolean {
 internal fun recordId(record: JsonArray): String? =
     (record.firstOrNull() as? JsonPrimitive)?.takeIf { it.isString }?.content
 
+/**
+ * Carrier transcription for a folder-4 voicemail item: slot 6 holds
+ * `[overallConfidence, [[word, null, null, wordConfidence], ...]]`, or null
+ * when the message hasn't been transcribed yet. Words join with single spaces.
+ */
+internal fun JsonArray.transcriptText(): String? {
+    val block = getOrNull(GoogleVoiceParser.ITEM_TRANSCRIPT) as? JsonArray ?: return null
+    val words = block.getOrNull(1) as? JsonArray ?: return null
+    return words.mapNotNull { (it as? JsonArray)?.getOrNull(0) as? JsonPrimitive }
+        .filter { it.isString }
+        .map { it.content }
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+        .takeIf { it.isNotBlank() }
+}
+
 internal fun JsonArray.strAt(i: Int): String? =
     (getOrNull(i) as? JsonPrimitive)?.takeIf { it.isString }?.content
 

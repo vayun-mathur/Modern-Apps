@@ -212,6 +212,10 @@ dependencies {
     // Car-view store-listing screenshots render through the shared host renderer.
     add("screenshotTestImplementation", project(":library:carhost"))
 
+    // Voicemail tab audio playback: plain ExoPlayer (no session/controller stack —
+    // voicemail clips are short local files, not a browsable media library).
+    implementation(libs.androidx.media3.exoplayer)
+
     // voicemailNumber() reads TelephonyManager.voiceMailNumber, which the unit-test stub
     // android.jar does not implement ("not mocked"). Robolectric supplies the framework
     // shadows so the pilot lookup (and its permission/dual-SIM fallbacks) can be asserted

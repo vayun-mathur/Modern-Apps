@@ -42,6 +42,7 @@ import com.vayunmathur.communicate.ui.CallLogsScreen
 import com.vayunmathur.communicate.ui.ConversationScreen
 import com.vayunmathur.communicate.ui.DialerScreen
 import com.vayunmathur.communicate.ui.MessagesScreen
+import com.vayunmathur.communicate.ui.VoicemailScreen
 import com.vayunmathur.communicate.data.call.InAppCallPhase
 import com.vayunmathur.communicate.data.call.InAppCallRegistry
 import com.vayunmathur.communicate.data.whatsapp.call.WhatsAppCallBridge
@@ -383,7 +384,7 @@ private fun AppTelecomEffects(
 
 @Composable
 private fun CommunicateTabs(backStack: NavBackStack<Route>) {
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
     val tabs = listOf(
         PagerTab(stringResource(R.string.messages_title), { IconSms() }) {
             MessagesScreen(

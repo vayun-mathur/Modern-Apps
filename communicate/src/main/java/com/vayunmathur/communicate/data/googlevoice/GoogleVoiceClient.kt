@@ -57,6 +57,17 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
         return GoogleVoiceParser.parseCalls(body)
     }
 
+    /** Carrier-style inbox for the Voicemail tab: folder 4 holds `c.`-records with transcripts + media. */
+    suspend fun listVoicemails(): List<GvVoicemail> {
+        val body = post("api2thread/list", GoogleVoiceParser.buildListBody(GvFolder.Voicemail))
+        return GoogleVoiceParser.parseVoicemails(body)
+    }
+
+    /** Mark a voicemail played/read — same batchupdate shape the web app sends on playback. */
+    suspend fun markVoicemailRead(remoteId: String) {
+        updateThreadAttributes(remoteId, GoogleVoiceParser.ThreadAction.MarkRead)
+    }
+
     suspend fun sendSms(recipient: String, text: String, threadRemoteId: String? = null) {
         post("api2thread/sendsms", GoogleVoiceParser.buildSendSmsBody(recipient, text, threadRemoteId))
     }

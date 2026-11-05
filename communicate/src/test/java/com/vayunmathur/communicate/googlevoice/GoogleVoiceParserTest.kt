@@ -214,4 +214,64 @@ class GoogleVoiceParserTest {
         val body = "[\"+15550001111\",null,[\"settings\"]]"
         assertEquals("+15550001111", GoogleVoiceParser.parseAccount(body).phoneNumber)
     }
+
+    // Voicemail records (folder 4): type slot 2 marks voicemail (calls use 14);
+    // transcript word list at slot 6; playable media URL at slot 11; duration at
+    // slot 8; read flag at slot 13 (1 read, 8 unread). Shape from live capture
+    // (record-level slots past the items array omitted — the parser only reads
+    // the id at 0 and the items at 2).
+    private fun voicemailBody(
+        id: String = "c.VMID1",
+        transcript: String = "[0.96,[[\"Hey\",null,null,0.96],[\"there\",null,null,0.95]]]",
+        audioUrl: String? = "\"https://www.google.com/voice/media/svm/ACCOUNT/TOKEN\"",
+        type: Int = 2,
+        readFlag: Int = 1,
+    ): String {
+        val audio = audioUrl ?: "null"
+        return "[[[\"$id\",1,[[\"VMID1\",1792622182651,\"+12133945548\"," +
+            "[\"+15550001111\",\"+15550001111\",null,null,null,null,0],$type,1,$transcript," +
+            "null,44,\"\",null,$audio,3,$readFlag,null,\"+15550001111\",0]]]]]"
+    }
+
+    @Test
+    fun parseVoicemails_mapsRecordSlots() {
+        val vms = GoogleVoiceParser.parseVoicemails(voicemailBody())
+        assertEquals(1, vms.size)
+        val vm = vms.single()
+        assertEquals("c.VMID1", vm.id)
+        assertEquals("+15550001111", vm.phoneNumber)
+        assertEquals(1792622182651L, vm.timestampMillis)
+        assertEquals(44L, vm.durationSeconds)
+        assertEquals("Hey there", vm.transcript)
+        assertEquals("https://www.google.com/voice/media/svm/ACCOUNT/TOKEN", vm.audioUrl)
+        assertTrue(vm.read)
+    }
+
+    @Test
+    fun parseVoicemails_marksUnreadFlag8() {
+        val vm = GoogleVoiceParser.parseVoicemails(voicemailBody(readFlag = 8)).single()
+        assertFalse(vm.read)
+    }
+
+    @Test
+    fun parseVoicemails_nullTranscriptAndAudio() {
+        val vm = GoogleVoiceParser.parseVoicemails(
+            voicemailBody(transcript = "null", audioUrl = null),
+        ).single()
+        assertEquals(null, vm.transcript)
+        assertEquals(null, vm.audioUrl)
+    }
+
+    @Test
+    fun parseVoicemails_skipsCallRecords() {
+        // Folder-3 call shape in a folder-4 body: type 14, no transcript/audio.
+        val vms = GoogleVoiceParser.parseVoicemails(voicemailBody(id = "c.CALL1", type = 14))
+        assertTrue(vms.isEmpty())
+    }
+
+    @Test
+    fun parseVoicemails_skipsEmptyItems() {
+        val vms = GoogleVoiceParser.parseVoicemails("[[[\"c.EMPTY\",1,[]]]]")
+        assertTrue(vms.isEmpty())
+    }
 }

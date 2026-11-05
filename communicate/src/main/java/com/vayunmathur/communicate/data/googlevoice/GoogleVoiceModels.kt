@@ -62,6 +62,23 @@ data class GvCall(
     val durationSeconds: Long,
 )
 
+/**
+ * One Google Voice voicemail from a folder-4 `api2thread/list` record.
+ * [transcript] joins the word list at item slot 6 (null when the carrier
+ * hasn't transcribed it yet); [audioUrl] is the item-slot-11 media URL;
+ * [read] is the item-slot-13 flag (1 vs 8 in captures — treated as read
+ * unless 8, verified against mark-read round-trips).
+ */
+data class GvVoicemail(
+    val id: String,
+    val phoneNumber: String,
+    val timestampMillis: Long,
+    val durationSeconds: Long,
+    val transcript: String?,
+    val audioUrl: String?,
+    val read: Boolean,
+)
+
 /** SIP registration material from `sipregisterinfo/get`, consumed by the calling layer. */
 data class GvSipRegisterInfo(
     val phoneNumber: String?,

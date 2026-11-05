@@ -1,12 +1,14 @@
 package com.vayunmathur.communicate.data
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
+import android.provider.VoicemailContract
 import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 import androidx.core.net.toUri
@@ -455,6 +457,109 @@ fun CommunicateRepository.voicemailNumber(context: Context, choice: LineChoice?)
         base
     }
     return runCatching { scoped.voiceMailNumber }.getOrNull()?.takeIf { it.isNotBlank() }
+}
+
+/**
+ * Carrier visual-voicemail inbox from [VoicemailContract], newest first.
+ *
+ * Read-only providers need only the default-dialer role (enforced by the
+ * platform) plus READ_CALL_LOG — same gate as the call log. The audio itself
+ * opens through each row's [VoicemailEntry.contentUri] data channel; the
+ * carrier transcription rides along when the VVM client supplied one.
+ */
+fun CommunicateRepository.loadCarrierVoicemails(context: Context): List<VoicemailEntry> {
+    if (!context.hasPermission(Manifest.permission.READ_CALL_LOG)) return emptyList()
+
+    val projection = arrayOf(
+        VoicemailContract.Voicemails._ID,
+        VoicemailContract.Voicemails.NUMBER,
+        VoicemailContract.Voicemails.DATE,
+        VoicemailContract.Voicemails.DURATION,
+        VoicemailContract.Voicemails.HAS_CONTENT,
+        VoicemailContract.Voicemails.MIME_TYPE,
+        VoicemailContract.Voicemails.TRANSCRIPTION,
+        VoicemailContract.Voicemails.IS_READ,
+        VoicemailContract.Voicemails.PHONE_ACCOUNT_ID,
+    )
+    return runCatching {
+        context.contentResolver.query(
+            VoicemailContract.Voicemails.CONTENT_URI,
+            projection,
+            null,
+            null,
+            "${VoicemailContract.Voicemails.DATE} DESC",
+        )?.use { cursor ->
+            buildList {
+                val id = cursor.getColumnIndexOrThrow(VoicemailContract.Voicemails._ID)
+                val number = cursor.getColumnIndexOrThrow(VoicemailContract.Voicemails.NUMBER)
+                val date = cursor.getColumnIndexOrThrow(VoicemailContract.Voicemails.DATE)
+                val duration = cursor.getColumnIndexOrThrow(VoicemailContract.Voicemails.DURATION)
+                val hasContent = cursor.getColumnIndex(VoicemailContract.Voicemails.HAS_CONTENT)
+                val mimeType = cursor.getColumnIndex(VoicemailContract.Voicemails.MIME_TYPE)
+                val transcription = cursor.getColumnIndex(VoicemailContract.Voicemails.TRANSCRIPTION)
+                val isRead = cursor.getColumnIndexOrThrow(VoicemailContract.Voicemails.IS_READ)
+                val account = cursor.getColumnIndex(VoicemailContract.Voicemails.PHONE_ACCOUNT_ID)
+                val activeSubs = SimManager.activeSims(context).map { it.subscriptionId }.toSet()
+
+                while (cursor.moveToNext()) {
+                    val rowId = cursor.getLong(id)
+                    // PHONE_ACCOUNT_ID tagging mirrors the call log: keep it only when it
+                    // maps to an active SIM so the row can be labeled by SIM.
+                    val subId = account.takeIf { it >= 0 }
+                        ?.let { cursor.getString(it) }
+                        ?.toIntOrNull()
+                        ?.takeIf { it in activeSubs }
+                    add(
+                        VoicemailEntry(
+                            id = rowId,
+                            phoneNumber = cursor.getString(number).orEmpty().ifBlank { "Unknown" },
+                            timestampMillis = cursor.getLong(date),
+                            durationSeconds = cursor.getLong(duration),
+                            contentUri = Uri.withAppendedPath(
+                                VoicemailContract.Voicemails.CONTENT_URI,
+                                rowId.toString(),
+                            ).toString(),
+                            mimeType = mimeType.takeIf { it >= 0 }?.let { cursor.getString(it) },
+                            hasAudio = hasContent.takeIf { it >= 0 }
+                                ?.let { cursor.getInt(it) != 0 } ?: false,
+                            transcript = transcription.takeIf { it >= 0 }
+                                ?.let { cursor.getString(it)?.takeIf { it.isNotBlank() } },
+                            isRead = cursor.getInt(isRead) != 0,
+                            subscriptionId = subId,
+                        )
+                    )
+                }
+            }
+        }.orEmpty()
+    }.getOrDefault(emptyList())
+}
+
+/** Mark a carrier voicemail read/unread. Needs WRITE_CALL_LOG. */
+fun CommunicateRepository.markVoicemailRead(
+    context: Context,
+    voicemail: VoicemailEntry,
+    read: Boolean,
+): Boolean {
+    if (!context.hasPermission(Manifest.permission.WRITE_CALL_LOG)) return false
+    val values = ContentValues().apply {
+        put(VoicemailContract.Voicemails.IS_READ, if (read) 1 else 0)
+    }
+    return runCatching {
+        context.contentResolver.update(
+            Uri.parse(voicemail.contentUri),
+            values,
+            null,
+            null,
+        ) > 0
+    }.getOrDefault(false)
+}
+
+/** Delete a carrier voicemail. Needs WRITE_CALL_LOG. */
+fun CommunicateRepository.deleteVoicemail(context: Context, voicemail: VoicemailEntry): Boolean {
+    if (!context.hasPermission(Manifest.permission.WRITE_CALL_LOG)) return false
+    return runCatching {
+        context.contentResolver.delete(Uri.parse(voicemail.contentUri), null, null) >= 0
+    }.getOrDefault(false)
 }
 
 fun CommunicateRepository.getOrCreateSmsThreadId(context: Context, address: String): Long? = runCatching {

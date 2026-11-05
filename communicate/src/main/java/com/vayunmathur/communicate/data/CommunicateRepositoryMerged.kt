@@ -8,6 +8,7 @@ import com.vayunmathur.communicate.data.googlevoice.GoogleVoiceClient
 import com.vayunmathur.communicate.data.googlevoice.GoogleVoiceSession
 import com.vayunmathur.communicate.data.googlevoice.GvCall
 import com.vayunmathur.communicate.data.googlevoice.GvCallType
+import com.vayunmathur.communicate.data.googlevoice.GvVoicemail
 import com.vayunmathur.communicate.data.googlevoice.GvMessage
 import com.vayunmathur.communicate.data.googlevoice.GvThread
 import com.vayunmathur.communicate.data.signal.SignalClient
@@ -54,6 +55,61 @@ internal suspend fun CommunicateRepository.loadGoogleVoiceCalls(context: Context
     return runCatching {
         GoogleVoiceClient.get(context).listCalls().map { it.toCallLogEntry(context) }
     }.getOrDefault(emptyList())
+}
+
+/** Google Voice voicemails (folder 4) for the Voicemail tab; empty when signed out. */
+internal suspend fun CommunicateRepository.loadGoogleVoiceVoicemails(context: Context): List<VoicemailEntry> {
+    val session = GoogleVoiceSession.get(context)
+    if (!session.hasUsableCredentials()) return emptyList()
+    return runCatching {
+        val cookie = session.cookieHeader().orEmpty()
+        val headers = if (cookie.isNotBlank()) mapOf("Cookie" to cookie) else emptyMap()
+        GoogleVoiceClient.get(context).listVoicemails().map { it.toVoicemailEntry(context, headers) }
+    }.getOrDefault(emptyList())
+}
+
+/** Voicemail tab contents: carrier rows plus GV rows, newest first. */
+suspend fun CommunicateRepository.loadVoicemailsMerged(context: Context): List<VoicemailEntry> =
+    withContext(Dispatchers.IO) {
+        (loadCarrierVoicemails(context) + loadGoogleVoiceVoicemails(context))
+            .sortedByDescending { it.timestampMillis }
+    }
+
+/** Mark a voicemail read, routing by line (provider write vs GV batchupdate). */
+suspend fun CommunicateRepository.markVoicemailEntryRead(
+    context: Context,
+    entry: VoicemailEntry,
+): Boolean = withContext(Dispatchers.IO) {
+    when (entry.line) {
+        CommunicateLine.GoogleVoice -> {
+            val remoteId = entry.remoteId ?: return@withContext false
+            runCatching {
+                GoogleVoiceClient.get(context).markVoicemailRead(remoteId)
+                true
+            }.getOrDefault(false)
+        }
+        else -> markVoicemailRead(context, entry, read = true)
+    }
+}
+
+/** Delete/archive a voicemail, routing by line (provider delete vs GV archive). */
+suspend fun CommunicateRepository.deleteVoicemailEntry(
+    context: Context,
+    entry: VoicemailEntry,
+): Boolean = withContext(Dispatchers.IO) {
+    when (entry.line) {
+        CommunicateLine.GoogleVoice -> {
+            val remoteId = entry.remoteId ?: return@withContext false
+            runCatching {
+                GoogleVoiceClient.get(context).updateThreadAttributes(
+                    remoteId,
+                    com.vayunmathur.communicate.data.googlevoice.GoogleVoiceParser.ThreadAction.Archive,
+                )
+                true
+            }.getOrDefault(false)
+        }
+        else -> deleteVoicemail(context, entry)
+    }
 }
 
 // ── Delete ( #542 ) ────────────────────────────────────────────────
@@ -273,6 +329,23 @@ internal fun GvCall.toCallLogEntry(context: Context): CommunicateCallLogEntry = 
     durationSeconds = durationSeconds,
     line = CommunicateLine.GoogleVoice,
 )
+
+internal fun GvVoicemail.toVoicemailEntry(context: Context, audioHeaders: Map<String, String>): VoicemailEntry =
+    VoicemailEntry(
+        id = CommunicateRepository.stableThreadId(id),
+        phoneNumber = phoneNumber,
+        timestampMillis = timestampMillis,
+        durationSeconds = durationSeconds,
+        contentUri = audioUrl.orEmpty(),
+        mimeType = "audio/mpeg",
+        hasAudio = !audioUrl.isNullOrBlank(),
+        transcript = transcript,
+        isRead = read,
+        subscriptionId = null,
+        line = CommunicateLine.GoogleVoice,
+        audioHeaders = audioHeaders,
+        remoteId = id,
+    )
 
 private fun GvCallType.toCommunicateCallType(): CommunicateCallType = when (this) {
     GvCallType.Incoming -> CommunicateCallType.Incoming

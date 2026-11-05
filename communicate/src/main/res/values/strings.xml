@@ -4,6 +4,7 @@
     <string name="messages_title">Messages</string>
     <string name="dialer_title">Dialer</string>
     <string name="call_logs_title">Call logs</string>
+    <string name="voicemail_title">Voicemail</string>
     <string name="conversation_title">Conversation</string>
     <string name="permission_title">Permission needed</string>
     <string name="default_app_title">Default app needed</string>
@@ -21,6 +22,18 @@
     <string name="empty_contacts">No contacts found</string>
     <string name="empty_contacts_for_digits">No contacts match those keys</string>
     <string name="empty_call_logs">No recent calls found</string>
+    <string name="empty_voicemails">No voicemails yet</string>
+    <string name="empty_voicemails_setup">Your carrier hasn\'t delivered any visual voicemails here yet. If your carrier supports it, they\'ll appear here automatically.</string>
+    <!-- %1$d = seconds; voicemail row duration, e.g. "42 sec". -->
+    <string name="voicemail_duration">%1$d sec</string>
+    <string name="voicemail_transcript_title">Transcript</string>
+    <string name="voicemail_no_audio">No audio attached to this voicemail</string>
+    <string name="voicemail_play_failed">Couldn\'t play this voicemail</string>
+    <string name="voicemail_mark_read_failed">Couldn\'t update this voicemail</string>
+    <string name="delete_voicemail_title">Delete voicemail?</string>
+    <string name="delete_voicemail_message">This will remove this voicemail from your inbox.</string>
+    <string name="permission_voicemail_message">Allow Call log access to show your visual voicemails.</string>
+    <string name="permission_write_call_log_message">Allow call-log write access to mark voicemails read and delete them.</string>
     <string name="new_message">New message</string>
     <string name="compose_message">Compose message</string>
     <string name="phone_number">Phone number</string>
