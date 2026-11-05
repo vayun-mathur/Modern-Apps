@@ -594,16 +594,32 @@ object FDroidRepository {
      * has no build for this architecture falls back to an older one that does rather than
      * disappearing.
      *
-     * A split-set base wins ties against its own siblings: GMS's mirror entry carries the
-     * base plus config splits plus runtime Dynamite modules (`*_installtime.apk`) under one
-     * versionCode, all ABI-matching. The non-empty `requiredSplitTypes` marks the base — the
-     * only file installable standalone — so a module can never win on hash order again.
+     * A non-base entry of a split-set release is never advertised: the proprietary mirror
+     * lists each release as a base plus its config splits under one versionCode, and the
+     * splits carry no `requiredSplitTypes` of their own, so a device-ABI config split
+     * (e.g. `*-config.arm64_v8a.apk`) used to outrank its own universal base on ABI fit
+     * and get advertised as the installable APK. The hash and signer checks then passed —
+     * they come from that same entry — and Android refused the session at commit time
+     * with STATUS_FAILURE_INCOMPATIBLE ("couldn't install X: it isn't built for this
+     * device", issue #844). Any entry sharing a versionCode with a base is a sibling,
+     * installed alongside the base, never instead of it.
+     *
+     * A split-set base still wins ties against its own siblings: GMS's mirror entry carries
+     * the base plus config splits plus runtime Dynamite modules (`*_installtime.apk`) under
+     * one versionCode, all ABI-matching. The non-empty `requiredSplitTypes` marks the base —
+     * the only file installable standalone — so a module can never win on hash order again.
      */
     internal fun selectVersion(
         candidates: List<VersionCandidate>,
         deviceAbis: List<String>,
-    ): VersionCandidate? =
-        candidates
+    ): VersionCandidate? {
+        // VersionCodes that name a split-set release: anything sharing one without
+        // carrying split types of its own is a config split, not an installable APK.
+        val splitSetCodes = candidates
+            .filter { it.requiredSplitTypes.isNotEmpty() }
+            .mapTo(mutableSetOf()) { it.versionCode }
+        return candidates
+            .filter { it.requiredSplitTypes.isNotEmpty() || it.versionCode !in splitSetCodes }
             .mapNotNull { candidate -> abiRank(candidate.nativeCode, deviceAbis)?.let { candidate to it } }
             .minWithOrNull(
                 compareByDescending<Pair<VersionCandidate, Int>> { it.first.added }
@@ -613,6 +629,7 @@ object FDroidRepository {
                     .thenByDescending { it.first.size }
             )
             ?.first
+    }
 
     /**
      * How well an APK's `nativecode` fits this device — lower is better, null means it cannot

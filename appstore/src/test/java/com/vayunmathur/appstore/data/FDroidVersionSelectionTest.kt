@@ -144,6 +144,32 @@ class FDroidVersionSelectionTest {
     }
 
     @Test
+    fun `never advertises a config split of a split-set release`() {
+        // Proprietary mirror (issue #844): each release is a universal base plus its
+        // config splits under one versionCode, and the splits carry no
+        // requiredSplitTypes of their own. The ABI config split outranked its own
+        // base on ABI fit and was advertised as the installable APK; the OS then
+        // refused the session ("couldn't install X: it isn't built for this device").
+        val release = listOf(
+            version(200, "/app-12-config.arm64_v8a.apk", versionCode = 12, nativeCode = listOf("arm64-v8a")),
+            version(200, "/app-12.apk", versionCode = 12, requiredSplitTypes = listOf("base__abi", "base__density"), size = 100_000_000L),
+            version(200, "/app-12-config.xxhdpi.apk", versionCode = 12),
+        )
+
+        assertEquals("/app-12.apk", FDroidRepository.selectVersion(release, arm64Device)?.fileName)
+    }
+
+    @Test
+    fun `monolithic releases are unaffected by the split-set filter`() {
+        val release = listOf(
+            version(200, "/app-12.apk", versionCode = 12, nativeCode = listOf("arm64-v8a")),
+            version(100, "/app-11.apk", versionCode = 11, nativeCode = listOf("arm64-v8a")),
+        )
+
+        assertEquals("/app-12.apk", FDroidRepository.selectVersion(release, arm64Device)?.fileName)
+    }
+
+    @Test
     fun `identifies Dynamite runtime modules by the installtime infix`() {
         assertEquals(true, FDroidRepository.isDynamiteModule("/gms/264230035/gms-264230035-CronetDynamite_installtime.apk"))
         assertEquals(true, FDroidRepository.isDynamiteModule("/gms/CronetDynamite_INSTALLTIME.apk"))
