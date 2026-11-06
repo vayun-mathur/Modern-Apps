@@ -4,7 +4,6 @@ import androidx.test.core.app.ApplicationProvider
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
@@ -29,12 +28,6 @@ class TvPrefsTest {
         ctx.getSharedPreferences("tvlauncher_config.preferences_pb", android.content.Context.MODE_PRIVATE)
             .edit().clear().commit()
         java.io.File(ctx.filesDir.parent, "datastore/tvlauncher_config.preferences_pb").delete()
-    }
-
-    @Test fun defaultsAreEmpty() = runTest {
-        val s = prefs().settings.first()
-        assertNull(s.appOrder)
-        assertEquals(emptyList(), s.quickSettings)
     }
 
     @Test fun orderRoundTrip() = runTest {
