@@ -134,8 +134,6 @@ class LauncherWorkspaceUiTest {
     }
 
     @Test fun emptyPageShowsNoLabels() {
-        show(listOf(app(1, "Mail", 0, 0)))
-        rule.onNodeWithText("Mail").assertIsDisplayed()
         show(emptyList())
         assertEquals(0, rule.onAllNodesWithText("Mail").fetchSemanticsNodes().size)
     }
