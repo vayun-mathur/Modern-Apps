@@ -32,7 +32,7 @@ class SavedPlacesPageSlice3Test {
 
     private val app get() = ApplicationProvider.getApplicationContext<android.app.Application>()
 
-    private fun backStack() = NavBackStack(arrayOf(Route.SavedPlacesPage))
+    private fun backStack() = NavBackStack<Route>(arrayOf(Route.SavedPlacesPage))
 
     private fun place(name: String = "Ferry Building") = SpecificFeature.GenericPlace(
         name = name,
