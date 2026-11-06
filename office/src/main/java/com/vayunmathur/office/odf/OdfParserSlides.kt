@@ -668,7 +668,6 @@ private fun OdfParser.applySvgCommand(
     rel: Boolean,
     path: SvgPathAcc,
 ): Int {
-    var idx = i
     when (cmd.uppercaseChar()) {
         'M' -> applySvgMove(path, rel)
         'L' -> applySvgLine(path, rel)
@@ -677,9 +676,11 @@ private fun OdfParser.applySvgCommand(
         'Q', 'T' -> applySvgQuad(path, cmd, rel)
         'A' -> applySvgArc(path, rel)
         'Z' -> applySvgClose(path)
-        else -> idx++
+        // Unknown command: skip one token so the loop always makes progress.
+        // (Callers pass path.i here, so returning i + 1 advances past the junk token.)
+        else -> return i + 1
     }
-    return idx
+    return path.i
 }
 
 private fun applySvgMove(path: SvgPathAcc, rel: Boolean) {
