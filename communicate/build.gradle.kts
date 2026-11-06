@@ -224,4 +224,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     // Route slice-6 contract tests use KClass reflection (sealedSubclasses, constructors).
     testImplementation(libs.kotlin.reflect)
+    // RCS slice tests: real in-memory Room database via the bundled sqlite driver
+    // (same pattern as :todo's TodoMigrationTest).
+    testImplementation(libs.androidx.sqlite.bundled.jvm)
 }
