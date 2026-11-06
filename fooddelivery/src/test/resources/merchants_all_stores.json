@@ -1,0 +1,80 @@
+{
+  "message": "success",
+  "data": {
+    "merchants": [
+      {
+        "id": 2615,
+        "name": "Slice House",
+        "addressStreet": "123 Main St",
+        "addressCity": "San Mateo",
+        "addressState": "CA",
+        "addressZip": "94401",
+        "latitude": 37.5630,
+        "longitude": -122.3255,
+        "logoUrl": "",
+        "imageUrl": "",
+        "isOpen": true,
+        "isDeliveryEnabled": true,
+        "isPickupEnabled": false,
+        "closingTime": "Closes at 9:00PM",
+        "nextOpenWindow": "ASAP",
+        "averageRating": 4.7,
+        "totalRatings": 312,
+        "rewardsPercentage": 5.0,
+        "brandColor": "#d32f2f",
+        "brand": {
+          "logoUrl": "https://cdn.example.com/brand/slice-logo.png",
+          "imageUrl": "https://cdn.example.com/brand/slice-hero.jpg",
+          "showOnApp": true,
+          "unknownBrandField": 1
+        },
+        "merchantTags": ["Pizza", "Italian"],
+        "items": [
+          {"id": 1, "name": "Margherita", "price": 1499, "imageUrl": null, "thumbnailUrl": "https://cdn.example.com/i/1.jpg"},
+          {"id": 2, "name": "Garlic Knots", "price": 699}
+        ],
+        "sortOrder": 1,
+        "distance": 0.8,
+        "freeDeliveryThreshold": 2500,
+        "doordashMarkup": 15,
+        "doordashMarkupComparison": 20,
+        "storefrontAlias": "slice-house",
+        "operatingHours": [{"day": "MON", "open": "11:00", "close": "21:00"}]
+      },
+      {
+        "id": 3001,
+        "name": "Taqueria Sol",
+        "addressStreet": "",
+        "addressCity": "Burlingame",
+        "addressState": "CA",
+        "addressZip": "94010",
+        "latitude": 37.5779,
+        "longitude": -122.3481,
+        "logoUrl": "https://cdn.example.com/m/3001-logo.png",
+        "imageUrl": "https://cdn.example.com/m/3001.jpg",
+        "isOpen": false,
+        "closingTime": "",
+        "nextOpenWindow": "Opens at 10:00AM",
+        "averageRating": null,
+        "totalRatings": null,
+        "rewardsPercentage": null,
+        "brandColor": null,
+        "brand": null,
+        "merchantTags": [],
+        "items": [],
+        "sortOrder": null,
+        "distance": null,
+        "freeDeliveryThreshold": 0,
+        "doordashMarkup": null,
+        "doordashMarkupComparison": null,
+        "storefrontAlias": "taqueria-sol"
+      },
+      {
+        "id": 4100,
+        "name": "Noodle Bar"
+      }
+    ],
+    "total": 3,
+    "tags": ["Pizza", "Italian", "Mexican", "Noodles"]
+  }
+}

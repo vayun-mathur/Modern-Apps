@@ -1,43 +1,31 @@
 package com.vayunmathur.fooddelivery
 
 import com.vayunmathur.fooddelivery.data.ApiResponse
-import com.vayunmathur.fooddelivery.data.Brand
 import com.vayunmathur.fooddelivery.data.Merchant
-import com.vayunmathur.fooddelivery.data.MerchantItem
 import com.vayunmathur.fooddelivery.data.MerchantsWrapper
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.logging.Logger
 
 class BitesApiTest {
-
-    private val logger = Logger.getLogger(BitesApiTest::class.java.name)
 
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
     }
 
-    private fun httpGet(urlStr: String): String {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.requestMethod = "GET"
-        conn.setRequestProperty("Accept", "application/json")
-        conn.connectTimeout = 30000
-        conn.readTimeout = 60000
-        return conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
-    }
+    private fun fixture(name: String): String =
+        checkNotNull(javaClass.classLoader?.getResource(name)) { "missing fixture $name" }.readText()
 
     @Test
     fun testRawResponse() {
-        val raw = httpGet("https://api.deliverycollective.com/api/v1/merchants/all/stores")
-        println("RAW response length: ${raw.length}")
-        println("RAW first 500 chars: ${raw.take(500)}")
+        val raw = fixture(STORES_FIXTURE)
         assertTrue(raw.isNotEmpty(), "Response was empty")
+        assertTrue(json.parseToJsonElement(raw).jsonObject["data"]!!.jsonObject["merchants"]!!.jsonArray.size == 3)
     }
 
     @Test
@@ -127,40 +115,35 @@ class BitesApiTest {
 
     @Test
     fun testParseRealApiResponse() {
-        val raw = httpGet("https://api.deliverycollective.com/api/v1/merchants/all/stores")
-        println("Got ${raw.length} bytes from API")
+        val resp = json.decodeFromString<ApiResponse<MerchantsWrapper>>(fixture(STORES_FIXTURE))
+        assertEquals("success", resp.message)
+        val merchants = resp.data?.merchants.orEmpty()
+        assertEquals(listOf(2615, 3001, 4100), merchants.map { it.id })
 
-        try {
-            val resp = json.decodeFromString<ApiResponse<MerchantsWrapper>>(raw)
-            val merchants = resp.data?.merchants ?: emptyList()
-            println("SUCCESS: Parsed ${merchants.size} merchants")
-            merchants.take(3).forEach { m ->
-                println("  - ${m.name} (id=${m.id}, rating=${m.averageRating}, tags=${m.merchantTags})")
-            }
-            assertTrue(merchants.isNotEmpty(), "No merchants parsed!")
-        } catch (e: Exception) {
-            logger.warning("PARSE FAILED: ${e::class.simpleName}: ${e.message}\n${e.stackTraceToString()}")
-            // Try to parse just the first merchant to isolate the issue
-            try {
-                val jsonElement = json.parseToJsonElement(raw)
-                val dataObj = jsonElement.jsonObject["data"]!!.jsonObject
-                val merchantsArr = dataObj["merchants"]!!.jsonArray
-                println("JSON has ${merchantsArr.size} merchants in array")
+        val slice = merchants[0]
+        assertEquals(4.7, slice.displayRating)
+        assertEquals(312, slice.displayTotalRatings)
+        assertEquals(25.0, slice.freeDeliveryThresholdDollars)
+        assertEquals("https://cdn.example.com/brand/slice-hero.jpg", slice.displayImage)
+        assertEquals("https://cdn.example.com/brand/slice-logo.png", slice.displayLogo)
+        assertEquals("123 Main St, San Mateo, CA", slice.address)
+        assertEquals(listOf("Margherita", "Garlic Knots"), slice.items.map { it.name })
+        assertNull(slice.items[0].imageUrl)
 
-                // Try parsing one by one to find the bad one
-                for (i in 0 until merchantsArr.size) {
-                    try {
-                        json.decodeFromString<Merchant>(merchantsArr[i].toString())
-                    } catch (e2: Exception) {
-                        println("MERCHANT[$i] FAILED: ${e2.message?.take(200)}")
-                        println("  JSON: ${merchantsArr[i].toString().take(300)}")
-                        break
-                    }
-                }
-            } catch (e3: Exception) {
-                println("Even basic JSON parse failed: ${e3.message}")
-            }
-            throw e
-        }
+        val taqueria = merchants[1]
+        assertEquals(0.0, taqueria.displayRating)
+        assertEquals(0, taqueria.displayTotalRatings)
+        assertNull(taqueria.brand)
+        assertEquals("https://cdn.example.com/m/3001.jpg", taqueria.displayImage)
+        assertEquals(", Burlingame, CA", taqueria.address)
+
+        val sparse = merchants[2]
+        assertEquals("Noodle Bar", sparse.name)
+        assertTrue(sparse.isOpen)
+        assertEquals("", sparse.displayImage)
+    }
+
+    private companion object {
+        const val STORES_FIXTURE = "merchants_all_stores.json"
     }
 }
