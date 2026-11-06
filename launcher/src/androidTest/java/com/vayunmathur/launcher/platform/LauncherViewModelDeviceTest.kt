@@ -12,6 +12,7 @@ import com.vayunmathur.launcher.domain.toRaw
 import com.vayunmathur.launcher.platform.ComponentKey
 import com.vayunmathur.launcher.platform.WidgetEntry
 import com.vayunmathur.launcher.platform.WidgetGroup
+import com.vayunmathur.launcher.platform.ShortcutEntry
 import com.vayunmathur.launcher.platform.WorkspaceItem
 import com.vayunmathur.launcher.platform.applyDrawerQuery
 import com.vayunmathur.launcher.platform.countLaunch
@@ -382,6 +383,48 @@ class LauncherViewModelDeviceTest {
         // No MODIFY_QUIET_MODE on the emulator: refused safely.
         assertEquals(false, vm.privilege.setQuietMode(user, true))
         assertEquals(false, vm.privilege.isQuietModeEnabled(user))
+    }
+
+    @Test fun resizeAndReorderFolder() = runTest {
+        val vm = LauncherViewModel(app())
+        val r = repo()
+        r.getAll().forEach { r.remove(it.id) }
+        val id = r.upsert(entity("com.example.w"))
+        vm.resizeItem(id, CellRect(0, 0, 2, 2))
+        vm.reorderInFolder(999L, id, 0)
+        val deadline = android.os.SystemClock.uptimeMillis() + 5000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (r.get(id)?.spanX == 2) break
+            kotlinx.coroutines.delay(50)
+        }
+        assertEquals(2, r.get(id)?.spanX)
+        r.remove(id)
+    }
+
+    @Test fun uninstallAndInfoWithEntity() = runTest {
+        val vm = LauncherViewModel(app())
+        val r = repo()
+        r.getAll().forEach { r.remove(it.id) }
+        val id = r.upsert(entity("com.example.ghost"))
+        vm.savedItems = r.getAll()
+        // Ghost package: entry lookups miss, bridge is null; all no-ops.
+        vm.uninstallItem(id)
+        vm.openItemInfo(id)
+        val key = ComponentKey(
+            android.content.ComponentName("com.example.ghost", "com.example.ghost.Main"),
+            0L,
+        )
+        vm.openAppInfo(WorkspaceItem(1L, LauncherItemType.APPLICATION, "G", key = key))
+        vm.uninstall(WorkspaceItem(1L, LauncherItemType.APPLICATION, "G", key = key))
+        vm.launchShortcut(ShortcutEntry("s", "S", "com.example.ghost", 0L))
+        r.remove(id)
+    }
+
+    @Test fun widgetHostUpdateSize() = runTest {
+        val vm = LauncherViewModel(app())
+        val ctx = app()
+        val view = android.appwidget.AppWidgetHostView(ctx)
+        vm.widgets.updateSize(view, 200, 100)
     }
 
     @Test fun settingsTogglesPropagate() = runTest {

@@ -102,6 +102,42 @@ class TvHomeViewModelDeviceTest {
         }
     }
 
+    @Test fun settingsIntentsFire() = runTest {
+        val v = vm()
+        // Each tries real intents in turn; whatever resolves opens transiently.
+        v.openNetworkSettings()
+        v.openSettings()
+    }
+
+    @Test fun removeTileThenRestore() = runTest {
+        val v = vm()
+        waitIdle(v)
+        val row = v.home.value.rowApps.map { it.packageName }
+        assertEquals(true, row.size >= 2)
+        val victim = row.last()
+        v.removeTile(victim)
+        val deadline = android.os.SystemClock.uptimeMillis() + 8000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (v.home.value.rowApps.none { it.packageName == victim }) break
+            kotlinx.coroutines.delay(200)
+        }
+        assertEquals(true, v.home.value.rowApps.none { it.packageName == victim })
+        // Restore via the add menu so later runs start whole.
+        v.openAddMenu()
+        val deadline2 = android.os.SystemClock.uptimeMillis() + 8000
+        while (android.os.SystemClock.uptimeMillis() < deadline2) {
+            if (v.home.value.showAddMenu) break
+            kotlinx.coroutines.delay(200)
+        }
+        v.pickAddCandidate(victim)
+        val deadline3 = android.os.SystemClock.uptimeMillis() + 10000
+        while (android.os.SystemClock.uptimeMillis() < deadline3) {
+            if (v.home.value.rowApps.any { it.packageName == victim }) break
+            kotlinx.coroutines.delay(200)
+        }
+        assertEquals(true, v.home.value.rowApps.any { it.packageName == victim })
+    }
+
     @Test fun tvAppsInstalledListsRealPackages() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val entries = TvApps.installed(ctx, ctx.packageName)
