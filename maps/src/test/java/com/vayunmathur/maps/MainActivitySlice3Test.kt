@@ -88,6 +88,47 @@ class MainActivitySlice3Test {
     private fun selectedOf(activity: MainActivity): SelectedFeatureViewModel =
         ViewModelProvider(activity)[SelectedFeatureViewModel::class.java]
 
+    @Test
+    fun `cold start schedules the overlay check when auto-update is on`() {
+        // syncOverlaySchedule() runs on every launch: with the default toggle
+        // on, the daily overlay worker is enqueued (KEEP keeps it singular).
+        // The periodic tag is stable, so listing by tag proves the enqueue.
+        val controller = launch(null)
+        controller.get()
+        val wm = androidx.work.WorkManager.getInstance(context)
+        // Unique-work name from MapOverlayWorker (private const): stable.
+        val infos = wm.getWorkInfosForUniqueWork("map_overlay_periodic").get()
+        kotlin.test.assertTrue(infos.isNotEmpty(), "overlay schedule missing after launch")
+        controller.destroy()
+    }
+
+    @Test
+    fun `cold start skips the overlay schedule when auto-update is off`() {
+        // The toggle gates inside syncOverlaySchedule: off means no enqueue.
+        // Cancel first so a schedule left by a sibling test cannot leak in.
+        androidx.work.WorkManager.getInstance(context).cancelAllWork().result.get()
+        val ds = com.vayunmathur.library.util.DataStoreUtils.getInstance(context)
+        kotlinx.coroutines.runBlocking {
+            ds.setBoolean(com.vayunmathur.maps.data.MapPreferences.KEY_MAP_AUTO_UPDATE, false)
+        }
+        try {
+            val controller = launch(null)
+            controller.get()
+            val wm = androidx.work.WorkManager.getInstance(context)
+            // Unique-work name from MapOverlayWorker (private const): stable.
+            val infos = wm.getWorkInfosForUniqueWork("map_overlay_periodic").get()
+            kotlin.test.assertTrue(infos.isEmpty(), "overlay scheduled despite opt-out: $infos")
+            controller.destroy()
+        } finally {
+            kotlinx.coroutines.runBlocking {
+                ds.setBoolean(
+                    com.vayunmathur.maps.data.MapPreferences.KEY_MAP_AUTO_UPDATE,
+                    com.vayunmathur.maps.data.MapPreferences.DEFAULT_MAP_AUTO_UPDATE,
+                )
+            }
+        }
+    }
+
     // --- MapLinkParser contract (the activity's only routing input) ---
 
     @Test
