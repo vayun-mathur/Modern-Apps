@@ -275,7 +275,7 @@ class EmailDatabaseTest {
     @Test
     fun searchAndUnified_matchSubjectSenderAndBody() = runTest {
         val dao = db.queryDao()
-        dao.insertMessagesRaw(
+        db.messageDao().insertMessagesRaw(
             listOf(
                 message(1L, subject = "Quarterly report", from = "boss@work.com", body = "numbers"),
                 message(2L, subject = "Hello", from = "friend@x.com", body = "dinner plans"),
@@ -302,7 +302,7 @@ class EmailDatabaseTest {
     @Test
     fun recentInbox_capsAtThirtyNewestFirst() = runTest {
         val dao = db.queryDao()
-        dao.insertMessagesRaw((1L..35L).map { message(it, dateMillis = it) })
+        db.messageDao().insertMessagesRaw((1L..35L).map { message(it, dateMillis = it) })
         val recent = dao.getRecentInboxMessages()
         assertEquals(30, recent.size)
         assertEquals(35L, recent.first().id)
@@ -337,7 +337,7 @@ class EmailDatabaseTest {
     @Test
     fun dateMillisBackfill_findsZeroRowsAndUpdates() = runTest {
         val dao = db.queryDao()
-        dao.insertMessagesRaw(listOf(message(1L).copy(dateMillis = 0L), message(2L).copy(dateMillis = 5L)))
+        db.messageDao().insertMessagesRaw(listOf(message(1L).copy(dateMillis = 0L), message(2L).copy(dateMillis = 5L)))
         assertEquals(listOf(1L), dao.getRowsWithZeroDateMillis().map { it.id })
         dao.updateDateMillis("me@x.com", "INBOX", 1L, 12345L)
         assertEquals(emptyList(), dao.getRowsWithZeroDateMillis())
@@ -348,7 +348,7 @@ class EmailDatabaseTest {
     fun peekBackfill_findsEmptyPeekRowsAndUpdates() = runTest {
         val dao = db.queryDao()
         // Raw insert skips snippet computation, so the row is backfill-eligible.
-        dao.insertMessagesRaw(listOf(message(1L, body = "needs peek").copy(peekContent = "")))
+        db.messageDao().insertMessagesRaw(listOf(message(1L, body = "needs peek").copy(peekContent = "")))
         assertEquals(listOf(1L), dao.getRowsWithEmptyPeek().map { it.id })
         dao.updatePeekContent("me@x.com", "INBOX", 1L, "needs peek")
         assertEquals(emptyList(), dao.getRowsWithEmptyPeek())
