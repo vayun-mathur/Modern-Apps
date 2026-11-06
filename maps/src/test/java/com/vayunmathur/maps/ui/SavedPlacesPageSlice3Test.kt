@@ -11,6 +11,7 @@ import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.maps.Route
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.util.SavedPlacesViewModel
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -34,6 +35,19 @@ class SavedPlacesPageSlice3Test {
 
     private fun backStack() = NavBackStack<Route>(arrayOf(Route.SavedPlacesPage))
 
+    // Test order within the class is not guaranteed and the DataStore
+    // singleton persists across tests: reset the saved store every time so
+    // the empty-state test always sees an empty store.
+    @BeforeTest
+    fun clearSaved() {
+        val ds = com.vayunmathur.library.util.DataStoreUtils.getInstance(app)
+        val store = com.vayunmathur.maps.data.SavedPlaceStore(ds)
+        kotlinx.coroutines.runBlocking {
+            store.setSaved(emptyList())
+            store.setLists(emptyMap())
+        }
+    }
+
     private fun place(name: String = "Ferry Building") = SpecificFeature.GenericPlace(
         name = name,
         phone = null,
@@ -56,10 +70,20 @@ class SavedPlacesPageSlice3Test {
     fun `saved places list with a working remove`() {
         val vm = SavedPlacesViewModel(app)
         vm.addSaved(place())
+        // addSaved lands on viewModelScope (Main): drain one looper task per
+        // step until the row appears.
+        val deadline = System.currentTimeMillis() + 10_000
         rule.setContent {
             SavedPlacesPage(backStack(), vm)
         }
-        rule.waitForIdle()
+        while (rule.onAllNodesWithText("Ferry Building").fetchSemanticsNodes().isEmpty() &&
+            System.currentTimeMillis() < deadline
+        ) {
+            runCatching {
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).runOneTask()
+            }
+            Thread.sleep(25)
+        }
         rule.onNodeWithText("Ferry Building").assertIsDisplayed()
     }
 
