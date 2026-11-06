@@ -271,4 +271,6 @@
     <string name="tv_search_results">Wyniki: %1$d</string>
     <string name="tv_detail_open">Szczegóły</string>
     <string name="tv_detail_screenshots">Zrzuty ekranu</string>
+    <string name="updates_foreign_title">Zainstalowane z innych źródeł</string>
+    <string name="updates_foreign_subtitle">Funkcja „Aktualizuj wszystkie” pomija te aplikacje – aby zaktualizować wybraną pozycję tutaj, dotknij przy niej „Aktualizuj”.</string>
 </resources>
