@@ -7,6 +7,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.health.data.SleepData
 import com.vayunmathur.health.domain.SocialHistoryQuestions
+import com.vayunmathur.health.ui.SleepStageBreakdown
+import com.vayunmathur.health.ui.StageRow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -29,16 +31,20 @@ class SmallComponentsTest {
     val rule = createComposeRule()
 
     @Test
-    fun `picker field shows value or placeholder`() {
+    fun `picker field shows its value`() {
         rule.setContent {
             PickerField(label = "Medication", value = "Amoxicillin", placeholder = "Search", onClick = {})
         }
         rule.onNodeWithText("Medication").assertIsDisplayed()
         rule.onNodeWithText("Amoxicillin").assertIsDisplayed()
+    }
 
+    @Test
+    fun `picker field falls back to its placeholder`() {
         rule.setContent {
             PickerField(label = "Medication", value = "", placeholder = "Search", onClick = {})
         }
+        rule.onNodeWithText("Medication").assertIsDisplayed()
         rule.onNodeWithText("Search").assertIsDisplayed()
     }
 
@@ -82,27 +88,32 @@ class SmallComponentsTest {
 
     @Test
     fun `hypnogram colours are distinct per stage`() {
-        val colors = hypnogramColors()
-        val distinct = setOf(colors.awake, colors.rem, colors.core, colors.deep)
-        assertEquals(4, distinct.size, "every stage needs its own colour")
+        var distinct = 0
+        rule.setContent {
+            val colors = hypnogramColors()
+            distinct = setOf(colors.awake, colors.rem, colors.core, colors.deep).size
+        }
+        rule.runOnIdle {
+            assertEquals(4, distinct, "every stage needs its own colour")
+        }
     }
 
     @Test
     fun `answer dialog lists every option plus unanswered`() {
-        var picked: SocialHistoryQuestions.Answer? = SocialHistoryQuestions.ALCOHOL.answers.first()
-        var dismissed = 0
         rule.setContent {
             AnswerPickerDialog(
                 question = SocialHistoryQuestions.ALCOHOL,
-                selected = picked,
-                onPick = { picked = it },
-                onDismiss = { dismissed++ },
+                selected = null,
+                onPick = {},
+                onDismiss = {},
             )
         }
         // One row per answer plus the explicit "not answered" escape hatch.
-        for (answer in SocialHistoryQuestions.ALCOHOL.answers) {
-            rule.onNodeWithText(answer.display, substring = true).assertExists()
-        }
+        // The dialog shows the translatable labels, not the canonical LOINC display.
+        rule.onNodeWithText("Not answered").assertIsDisplayed()
+        rule.onNodeWithText("Never").assertExists()
+        rule.onNodeWithText("Monthly or less").assertExists()
+        rule.onNodeWithText("2 to 4 times a month").assertExists()
     }
 
     @Test
