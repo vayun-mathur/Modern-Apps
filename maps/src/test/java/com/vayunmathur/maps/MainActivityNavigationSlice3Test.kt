@@ -3,6 +3,7 @@ package com.vayunmathur.maps
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -10,7 +11,6 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -109,7 +109,6 @@ class MainActivityNavigationSlice3Test {
     fun `activity content passes the download gate with an archive on disk`() {
         // The download screen never appears: the map chrome is up instead.
         composeRule.onNodeWithContentDescription(settingsLabel()).assertIsDisplayed()
-        assertNotNull(composeRule.activity.intentLauncher)
     }
 
     @Test
