@@ -1,3 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">تحديث النظام</string>
+    <string name="checking">جارٍ البحث عن تحديثات…</string>
+    <string name="up_to_date">نظامك محدّث</string>
+    <string name="not_checked_yet">لم يتم التحقق حتى الآن</string>
+    <string name="check_failed">تعذّر التحقق من وجود تحديثات</string>
+    <string name="update_available">يتوفر تحديث: <xliff:g id="build" example="2026090700">%1$s</xliff:g></string>
+    <string name="current_build">الإصدار الحالي <xliff:g id="build" example="2026090500">%1$s</xliff:g></string>
+    <string name="build_unknown">الإصدار الحالي غير معروف</string>
+    <string name="check_now">تحقق الآن</string>
+    <string name="auto_install">تثبيت التحديثات تلقائيًا</string>
+    <string name="auto_install_desc">تنزيل التحديثات وتطبيقها في الخلفية، ثم إعادة التشغيل عندما يكون الجهاز غير مستخدم.</string>
+    <string name="metered_allowed">استخدام بيانات الجوّال</string>
 </resources>
