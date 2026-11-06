@@ -347,7 +347,7 @@ class LauncherViewModelDeviceTest {
             isWorkProfile = true,
         )
         vm.allApps = listOf(a, b, w)
-        assertEquals(emptyList(), vm.predictedApps())
+        assertEquals(emptyList<DrawerApp>(), vm.predictedApps())
         vm.countLaunch(b.key)
         vm.countLaunch(a.key)
         vm.countLaunch(a.key)
