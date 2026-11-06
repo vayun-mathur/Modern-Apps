@@ -116,7 +116,9 @@ class MainActivitySlice3Test {
             controller.get()
             val wm = androidx.work.WorkManager.getInstance(context)
             // Unique-work name from MapOverlayWorker (private const): stable.
+            // Cancelled entries linger in the listing: only live ones count.
             val infos = wm.getWorkInfosForUniqueWork("map_overlay_periodic").get()
+                .filter { !it.state.isFinished }
             kotlin.test.assertTrue(infos.isEmpty(), "overlay scheduled despite opt-out: $infos")
             controller.destroy()
         } finally {
