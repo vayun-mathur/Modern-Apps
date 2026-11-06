@@ -19,11 +19,11 @@ import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Text
 
 /**
- * What a tray chip is and how it behaves, opened by tapping its card. [onAdd] places it on the
- * board — the same thing tapping the card used to do directly.
+ * What a tray chip is and how it behaves, opened by tapping its card. [group] is set for a
+ * component the player built. [onAdd] places it on the board.
  */
 @Composable
-fun ChipInfoSheet(chip: ChipSpec, onAdd: () -> Unit, onDismiss: () -> Unit) {
+fun ChipInfoSheet(chip: ChipSpec, group: String?, onAdd: () -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
@@ -39,7 +39,9 @@ fun ChipInfoSheet(chip: ChipSpec, onAdd: () -> Unit, onDismiss: () -> Unit) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            ChipInfo.blurb(chip.id)?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
+            val blurb = ChipInfo.blurb(chip.id)?.let { stringResource(it) }
+                ?: group?.let { stringResource(R.string.lg_chip_custom_info, it) }
+            blurb?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
             PinLine(stringResource(R.string.lg_brief_inputs), chip.inputs)
             PinLine(stringResource(R.string.lg_brief_outputs), chip.outputs)
             Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.lg_add_to_board)) }

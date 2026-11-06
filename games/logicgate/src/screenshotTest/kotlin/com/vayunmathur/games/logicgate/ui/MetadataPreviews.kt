@@ -3,7 +3,11 @@ package com.vayunmathur.games.logicgate.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
+import com.vayunmathur.games.logicgate.domain.levels.ChipGroups
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
+import com.vayunmathur.games.logicgate.domain.levels.TrayGroup
+import com.vayunmathur.games.logicgate.domain.model.Board
+import com.vayunmathur.games.logicgate.domain.model.ChipCatalog
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
@@ -14,6 +18,7 @@ import com.vayunmathur.games.logicgate.domain.model.PinSide
 import com.vayunmathur.games.logicgate.domain.model.Point
 import com.vayunmathur.games.logicgate.domain.sim.Scoring
 import com.vayunmathur.games.logicgate.domain.sim.Verifier
+import com.vayunmathur.games.logicgate.platform.EditorMode
 import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.games.logicgate.platform.LevelCard
 import com.vayunmathur.games.logicgate.platform.LogicActions
@@ -61,11 +66,15 @@ class MetadataPreviews {
         val result = Verifier.verify(xor.io, xor.tests, circuit)
         val cost = Scoring.cost(circuit) { Chips[it]?.nandCost }
         val live = probe?.let { Verifier.probe(xor.io, xor.tests, circuit, it) } ?: Verifier.manual(xor.io, circuit, listOf(1, 0))
+        val chips = LevelRegistry.allowedChips(xor.id).mapNotNull { Chips[it] }
         return GameUiState(
-            level = xor,
-            circuit = circuit,
-            chips = LevelRegistry.allowedChips(xor.id).mapNotNull { Chips[it] },
+            mode = EditorMode.Level(xor),
+            board = Board(circuit, xor.io),
+            catalog = ChipCatalog.Builtin,
+            chips = chips,
             manualInputs = listOf(1, 0),
+            tray = ChipGroups.sections(chips, ChipCatalog.Builtin),
+            defaultGroup = TrayGroup.Builtin(xor.chapter),
             verify = result,
             probeCase = probe,
             live = live,

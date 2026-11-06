@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.SignalCellular4Bar
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Brightness7
@@ -1662,6 +1663,10 @@ fun IconVaccine(modifier: Modifier = Modifier, tint: Color = LocalContentColor.c
 @Composable
 fun IconScience(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
     AppIcon(Icons.Filled.Science, "Lab result", modifier, tint)
+
+@Composable
+fun IconMemory(modifier: Modifier = Modifier, tint: Color = LocalContentColor.current) =
+    AppIcon(Icons.Filled.Memory, "Chip", modifier, tint)
 
 /** Pregnancy status. */
 @Composable

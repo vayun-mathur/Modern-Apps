@@ -458,4 +458,57 @@
     <string name="lg_chip_cpu_label">CPU</string>
     <!-- Chip info sheet: explanation of the CPU chip. Sentences -->
     <string name="lg_chip_cpu_info">This is a complete processor. On each tick it runs the instruction on instr, using data, the byte that memory sends back. Its outputs are:\n• pc: the address of the instruction being run.\n• addr: the memory address this instruction reads from or writes to.\n• dout and we: when we is 1, the byte on dout should be written to memory.\n• acc: the accumulator, which holds the number the CPU is working on.\n• halt: 1 when the program has finished.</string>
+
+    <!-- Bottom bar: tab holding the level map. Short noun -->
+    <string name="lg_tab_computer">Computer</string>
+    <!-- Bottom bar: tab holding the player's own components. Short noun -->
+    <string name="lg_tab_sandbox">Sandbox</string>
+    <!-- Sandbox list: title. Short noun -->
+    <string name="lg_sandbox_title">Sandbox</string>
+    <!-- Sandbox list: line under the title. Sentence -->
+    <string name="lg_sandbox_tagline">Build your own chips from anything you have unlocked, then use them anywhere.</string>
+    <!-- Sandbox list: shown when there are no components yet. Sentence -->
+    <string name="lg_sandbox_empty">No components yet. Tap New component to build your first one.</string>
+    <!-- Sandbox list: floating button that creates a component. Short verb phrase -->
+    <string name="lg_new_component">New component</string>
+    <!-- Sandbox list: default name for a newly created component -->
+    <string name="lg_component_default_name">Component <xliff:g id="number" example="3">%1$d</xliff:g></string>
+    <!-- Sandbox list: default group a new component is filed under. Short noun phrase -->
+    <string name="lg_component_default_group">My components</string>
+    <!-- Sandbox list card: pin and cost summary -->
+    <string name="lg_component_summary"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · <xliff:g id="cost" example="4">%3$d</xliff:g> NAND</string>
+    <!-- Sandbox list card: summary when the component cannot be built because it contains itself -->
+    <string name="lg_component_broken"><xliff:g id="inputs" example="2">%1$d</xliff:g> in · <xliff:g id="outputs" example="1">%2$d</xliff:g> out · contains itself</string>
+    <!-- Component sheet: name field label -->
+    <string name="lg_component_name">Name</string>
+    <!-- Component sheet: group field label -->
+    <string name="lg_component_group">Group</string>
+    <!-- Component sheet: explains how pins work. Sentences -->
+    <string name="lg_component_pins_hint">Drag inputs and outputs onto the board from the Pins tab. Their order from top to bottom is their order on the chip.</string>
+    <!-- Component sheet: heading over the list of pins -->
+    <string name="lg_component_pins">Pins</string>
+    <!-- Component sheet: shown when the component has no pins yet. Sentence -->
+    <string name="lg_component_no_pins">No pins yet.</string>
+    <!-- Component sheet: delete button -->
+    <string name="lg_component_delete">Delete component</string>
+    <!-- Delete component dialog: title -->
+    <string name="lg_component_delete_title">Delete <xliff:g id="name" example="Adder">%1$s</xliff:g>?</string>
+    <!-- Delete component dialog: message. Sentence -->
+    <string name="lg_component_delete_message">Any copies of it in your other components and levels will be removed too.</string>
+    <!-- Component sheet: content description of the button deleting one pin -->
+    <string name="lg_cd_delete_pin">Delete pin <xliff:g id="name" example="a">%1$s</xliff:g></string>
+    <!-- Sandbox editor: status line under the board -->
+    <string name="lg_sandbox_status">Sandbox · tap an input on the board to flip it.</string>
+    <!-- Chip tray: tab for board inputs and outputs. Short noun -->
+    <string name="lg_group_pins">Pins</string>
+    <!-- Chip tray and canvas: name of a board input placed from the tray. Short noun -->
+    <string name="lg_chip_input_label">IN</string>
+    <!-- Chip info sheet: explanation of a board input. Sentences -->
+    <string name="lg_chip_input_info">An input of your component. On the finished chip it becomes an input pin. Tap it on the board to set its value while testing.</string>
+    <!-- Chip tray and canvas: name of a board output placed from the tray. Short noun -->
+    <string name="lg_chip_output_label">OUT</string>
+    <!-- Chip info sheet: explanation of a board output. Sentences -->
+    <string name="lg_chip_output_info">An output of your component. On the finished chip it becomes an output pin.</string>
+    <!-- Chip info sheet: shown for a component the player built. Sentence -->
+    <string name="lg_chip_custom_info">A component you built in the sandbox, filed under <xliff:g id="group" example="Adders">%1$s</xliff:g>.</string>
 </resources>

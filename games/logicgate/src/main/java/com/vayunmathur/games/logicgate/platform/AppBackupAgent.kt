@@ -4,8 +4,9 @@ import com.vayunmathur.games.logicgate.data.ProgressStore
 import com.vayunmathur.library.util.BaseBackupAgent
 
 /**
- * Backs up the stats prefs and the shared DataStore file, which holds the circuit drafts
- * (`logicgate2_circuits` is a key inside it, not a file of its own).
+ * Backs up the stats prefs and the shared DataStore file, which holds the circuit drafts and the
+ * sandbox components (`logicgate2_circuits` and `logicgate2_components` are keys inside it, not
+ * files of their own).
  */
 class AppBackupAgent : BaseBackupAgent() {
     override val prefNames: List<String>

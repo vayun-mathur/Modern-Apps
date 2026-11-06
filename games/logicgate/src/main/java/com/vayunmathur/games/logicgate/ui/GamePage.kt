@@ -21,7 +21,7 @@ fun GamePage(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelId:
     LaunchedEffect(levelId) { viewModel.openLevel(levelId) }
     val game by viewModel.game.collectAsState()
     val state = game
-    if (state == null || state.level.id != levelId) {
+    if (state == null || state.level?.id != levelId) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
@@ -29,7 +29,7 @@ fun GamePage(backStack: NavBackStack<Route>, viewModel: LogicViewModel, levelId:
     }
     GameScreen(
         state = state,
-        actions = viewModel,
+        actions = viewModel.editor,
         onBack = { backStack.pop() },
         onNext = { backStack.setLast(Route.Game(it)) },
     )

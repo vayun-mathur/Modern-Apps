@@ -3,11 +3,14 @@ package com.vayunmathur.games.logicgate.ui.canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
+import com.vayunmathur.games.logicgate.domain.model.Board
+import com.vayunmathur.games.logicgate.domain.model.ChipCatalog
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Circuit
 import com.vayunmathur.games.logicgate.domain.model.LevelInput
 import com.vayunmathur.games.logicgate.domain.model.NodeId
 import com.vayunmathur.games.logicgate.domain.model.Point
+import com.vayunmathur.games.logicgate.platform.EditorMode
 import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.games.logicgate.platform.LogicActions
 import kotlin.test.Test
@@ -36,7 +39,7 @@ class CanvasControllerTest {
         val trash = TrashZone().apply { bounds = Rect(0f, trayTop, 2000f, 1400f) }
         val controller = CanvasController(CameraState(1f), 1f, trash)
         val actions = Recorder()
-        val state = GameUiState(level, circuit, emptyList(), listOf(0, 0))
+        val state = GameUiState(EditorMode.Level(level), Board(circuit, level.io), ChipCatalog.Builtin, emptyList(), listOf(0, 0))
         controller.bind(state, actions, CircuitLayout(circuit, lookup, emptyMap()), lookup)
         return Triple(controller, actions, circuit)
     }

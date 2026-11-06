@@ -58,7 +58,13 @@ object ChipInfo {
 
         Chips.DECODER to ChipText(R.string.lg_chip_decoder_label, R.string.lg_chip_decoder_info),
         Chips.CPU to ChipText(R.string.lg_chip_cpu_label, R.string.lg_chip_cpu_info),
-    )
+    ) + PinChips.all.associate { pin ->
+        pin.id to if (PinChips.isInput(pin.id)) {
+            ChipText(R.string.lg_chip_input_label, R.string.lg_chip_input_info)
+        } else {
+            ChipText(R.string.lg_chip_output_label, R.string.lg_chip_output_info)
+        }
+    }
 
     /** The name of [chipId] as a string resource, or null for a chip with no entry. */
     @StringRes

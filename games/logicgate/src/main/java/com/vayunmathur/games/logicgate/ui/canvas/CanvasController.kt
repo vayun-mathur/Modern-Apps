@@ -90,8 +90,9 @@ class CanvasController(
         val s = state ?: return
         when (val node = s.circuit.node(id)) {
             is LevelInput -> {
-                val width = s.level.inputs.getOrNull(node.index)?.width ?: return
-                if (width == 1) actions.setInput(node.index, 1 - s.manualInputs[node.index]) else onEditBus(node.index)
+                val width = s.io.inputs.getOrNull(node.index)?.width ?: return
+                val current = s.manualInputs.getOrElse(node.index) { 0 }
+                if (width == 1) actions.setInput(node.index, 1 - current) else onEditBus(node.index)
             }
             is Gate -> actions.select(Selection.OfNode(id))
             else -> actions.select(null)
@@ -131,7 +132,7 @@ class CanvasController(
     override fun startMove(id: NodeId) {
         val node = state?.circuit?.node(id) ?: return
         drag = Drag.Moving(id, node.pos, Offset.Zero)
-        trash.armed = node is Gate
+        trash.armed = node is Gate || state?.sandbox != null
         onPickup()
     }
 

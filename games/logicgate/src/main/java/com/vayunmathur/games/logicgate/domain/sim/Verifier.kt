@@ -3,7 +3,6 @@ package com.vayunmathur.games.logicgate.domain.sim
 import com.vayunmathur.games.logicgate.domain.model.ChipSpec
 import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.domain.model.Circuit
-import com.vayunmathur.games.logicgate.domain.model.Gate
 import com.vayunmathur.games.logicgate.domain.model.LevelIo
 import com.vayunmathur.games.logicgate.domain.model.NodeId
 import com.vayunmathur.games.logicgate.domain.model.PinRef
@@ -49,21 +48,32 @@ object Verifier {
         return when (tests) {
             is TestSpec.Comb -> verifyComb(sim, tests)
             is TestSpec.Seq -> verifySeq(sim, tests)
-            is TestSpec.Programs -> verifyPrograms(sim, io, tests, circuit)
+            is TestSpec.Programs -> verifyPrograms(sim, io, tests)
         }
     }
 
     /** Wire values with the level inputs held at [inputs], from reset. */
-    fun manual(io: LevelIo, circuit: Circuit, inputs: List<Int>): Probe {
-        val sim = Simulator(circuit, io)
+    fun manual(
+        io: LevelIo,
+        circuit: Circuit,
+        inputs: List<Int>,
+        catalog: (String) -> ChipSpec? = Chips::get,
+    ): Probe {
+        val sim = Simulator(circuit, io, catalog)
         sim.setInputs(inputs.toIntArray())
         val osc = sim.settle()
         return Probe(sim.pinValues(), osc)
     }
 
     /** Wire values at test row [caseIndex], replaying earlier ticks for sequential levels. */
-    fun probe(io: LevelIo, tests: TestSpec, circuit: Circuit, caseIndex: Int): Probe {
-        val sim = Simulator(circuit, io)
+    fun probe(
+        io: LevelIo,
+        tests: TestSpec,
+        circuit: Circuit,
+        caseIndex: Int,
+        catalog: (String) -> ChipSpec? = Chips::get,
+    ): Probe {
+        val sim = Simulator(circuit, io, catalog)
         val osc: Set<NodeId> = when (tests) {
             is TestSpec.Comb -> {
                 sim.setInputs(tests.cases[caseIndex].inputs.toIntArray())
@@ -106,10 +116,10 @@ object Verifier {
         return VerifyResult(results, osc)
     }
 
-    private fun verifyPrograms(sim: Simulator, io: LevelIo, tests: TestSpec.Programs, circuit: Circuit): VerifyResult {
+    private fun verifyPrograms(sim: Simulator, io: LevelIo, tests: TestSpec.Programs): VerifyResult {
         val accIdx = io.outputs.indexOfFirst { it.name == "acc" }
         val haltIdx = io.outputs.indexOfFirst { it.name == "halt" }
-        val noRam = !tests.harness && circuit.nodes.none { it is Gate && it.chipId == Chips.RAM16 }
+        val noRam = !tests.harness && !sim.contains(Chips.RAM16)
         val osc = LinkedHashSet<NodeId>()
         val results = tests.programs.map { p ->
             val expected = io.outputs.indices.map { k ->

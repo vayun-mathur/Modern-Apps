@@ -212,10 +212,10 @@ object Chips {
 
     operator fun get(id: String): ChipSpec? = byId[id]
 
-    /** Pin lookup for a board with the level pins [io]. */
-    fun lookup(io: LevelIo): PinLookup = PinLookup { node ->
+    /** Pin lookup for a board with the level pins [io], resolving chips through [spec]. */
+    fun lookup(io: LevelIo, spec: (String) -> ChipSpec? = { byId[it] }): PinLookup = PinLookup { node ->
         when (node) {
-            is Gate -> byId[node.chipId]?.let { NodePins(it.inputs, it.outputs) }
+            is Gate -> spec(node.chipId)?.let { NodePins(it.inputs, it.outputs) }
             is LevelInput -> io.inputs.getOrNull(node.index)?.let { NodePins(emptyList(), listOf(it)) }
             is LevelOutput -> io.outputs.getOrNull(node.index)?.let { NodePins(listOf(it), emptyList()) }
         }

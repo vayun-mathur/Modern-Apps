@@ -55,6 +55,10 @@ import com.vayunmathur.library.ui.TextButton
 fun TestPanel(state: GameUiState, actions: LogicActions, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val verify = state.verify
+    if (state.level == null) {
+        SandboxStatus(state, modifier)
+        return
+    }
     Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
         Column {
             Row(
@@ -96,6 +100,26 @@ fun TestPanel(state: GameUiState, actions: LogicActions, modifier: Modifier = Mo
 }
 
 @Composable
+private fun SandboxStatus(state: GameUiState, modifier: Modifier) {
+    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+        Row(
+            Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.lg_sandbox_status),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(stringResource(R.string.lg_cost, state.cost), style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+@Composable
 private fun Notes(state: GameUiState) {
     val verify = state.verify ?: return
     if (verify.oscillating.isNotEmpty()) {
@@ -113,7 +137,7 @@ private fun ProbeControls(state: GameUiState, actions: LogicActions) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         if (probe == null) {
             val hint = stringResource(R.string.lg_probe_hint)
-            val live = if (state.level.inputs.isEmpty()) "" else " " + stringResource(R.string.lg_live_hint)
+            val live = if (state.io.inputs.isEmpty()) "" else " " + stringResource(R.string.lg_live_hint)
             Text(
                 hint + live,
                 style = MaterialTheme.typography.bodySmall,
@@ -125,7 +149,7 @@ private fun ProbeControls(state: GameUiState, actions: LogicActions) {
         IconButton(onClick = { actions.probe(probe - 1) }, enabled = probe > 0) { IconKeyboardArrowLeft() }
         val title = state.verify?.cases?.getOrNull(probe)?.title.orEmpty()
         Text(
-            if (state.level.isSequential) stringResource(R.string.lg_tick, probe + 1, title) else title,
+            if (state.level?.isSequential == true) stringResource(R.string.lg_tick, probe + 1, title) else title,
             style = MaterialTheme.typography.labelLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -156,7 +180,7 @@ private fun CaseList(state: GameUiState, cases: List<CaseResult>, actions: Logic
             }
             CaseRow(
                 title = c.title,
-                actual = c.actual?.let { format(it, state.level.outputs) } ?: "–",
+                actual = c.actual?.let { format(it, state.io.outputs) } ?: "–",
                 background = background,
                 actualColor = if (c.ok) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
                 modifier = Modifier.clickable { actions.probe(if (state.probeCase == i) null else i) },

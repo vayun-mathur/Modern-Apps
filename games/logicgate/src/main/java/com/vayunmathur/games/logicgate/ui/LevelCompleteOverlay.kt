@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.logicgate.R
+import com.vayunmathur.games.logicgate.domain.levels.LevelDef
 import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Text
@@ -14,6 +15,7 @@ import com.vayunmathur.library.ui.game.GameResultOverlay
 @Composable
 fun LevelCompleteOverlay(
     state: GameUiState,
+    level: LevelDef,
     onNext: (() -> Unit)?,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -29,9 +31,9 @@ fun LevelCompleteOverlay(
         backLabel = stringResource(R.string.lg_keep_editing),
     ) {
         StarRating(state.stars, size = 36.dp)
-        Text(stringResource(R.string.lg_cost_vs_par, state.cost, state.level.par), style = MaterialTheme.typography.titleMedium)
-        if (state.level.unlocks.isNotEmpty()) {
-            val chips = state.level.unlocks.map { chipLabel(it) }.joinToString()
+        Text(stringResource(R.string.lg_cost_vs_par, state.cost, level.par), style = MaterialTheme.typography.titleMedium)
+        if (level.unlocks.isNotEmpty()) {
+            val chips = level.unlocks.map { chipLabel(it) }.joinToString()
             Text(stringResource(R.string.lg_new_chips, chips), color = MaterialTheme.colorScheme.primary)
         }
     }

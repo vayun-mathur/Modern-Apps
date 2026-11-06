@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.toSize
 import com.vayunmathur.games.logicgate.R
 import com.vayunmathur.games.logicgate.domain.levels.LevelRegistry
-import com.vayunmathur.games.logicgate.domain.model.Chips
 import com.vayunmathur.games.logicgate.platform.GameUiState
 import com.vayunmathur.games.logicgate.platform.LogicActions
 import com.vayunmathur.games.logicgate.ui.canvas.CameraState
@@ -49,8 +48,9 @@ import com.vayunmathur.library.ui.rememberHaptics
 import kotlin.math.roundToInt
 
 /**
- * The editor: the board fills the screen, with tests and the chip tray beneath it. [onNext]
- * opens the following level from the completion overlay.
+ * The editor, for a level or a sandbox component: the board fills the screen, with tests and the
+ * chip tray beneath it. [onNext] opens the following level from the completion overlay;
+ * [onDelete] deletes the open component.
  */
 @Composable
 fun GameScreen(
@@ -59,12 +59,14 @@ fun GameScreen(
     onBack: () -> Unit,
     onNext: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onDelete: () -> Unit = {},
 ) {
     val density = LocalDensity.current.density
     val cameraState = remember { CameraState(density) }
-    val lookup = remember(state.level) { Chips.lookup(state.level.io) }
+    val lookup = remember(state.catalog, state.io) { state.catalog.lookup(state.io) }
     val labels = rememberChipLabels()
-    val number = LevelRegistry.indexOf(state.level.id) + 1
+    val level = state.level
+    val number = level?.let { LevelRegistry.indexOf(it.id) + 1 } ?: 0
     var trayDrag by remember { mutableStateOf<TrayDrag?>(null) }
     val trash = remember { TrashZone() }
     val haptics = rememberHaptics()
@@ -75,7 +77,7 @@ fun GameScreen(
         actions.placeChip(chipId, CircuitLayout(state.circuit, lookup, labels).freeSpot(chipId, world, lookup))
 
     AppScaffold(
-        title = stringResource(R.string.lg_level_title, number, stringResource(state.level.title)),
+        title = level?.let { stringResource(R.string.lg_level_title, number, stringResource(it.title)) } ?: state.sandbox?.name.orEmpty(),
         modifier = modifier,
         onNavigateBack = onBack,
         actions = {
@@ -109,8 +111,9 @@ fun GameScreen(
                     Column {
                         TestPanel(state, actions)
                         ChipTray(
-                            chips = state.chips,
-                            onTap = { id -> Chips[id]?.let(actions::showChipInfo) },
+                            sections = state.tray,
+                            defaultGroup = state.defaultGroup,
+                            onTap = { id -> state.chips.firstOrNull { it.id == id }?.let(actions::showChipInfo) },
                             onDragUpdate = { drag ->
                                 trayDrag = drag
                                 if (trash.carry(drag?.root)) haptics.tick()
@@ -126,19 +129,27 @@ fun GameScreen(
                 }
             }
             trayDrag?.let { DragGhost(chipLabel(it.chipId), it.root - rootOrigin) }
-            if (state.won) {
+            if (state.won && level != null) {
                 LevelCompleteOverlay(
                     state = state,
+                    level = level,
                     onNext = state.nextLevelId?.let { id -> { onNext(id) } },
                     onDismiss = actions::dismissWin,
                 )
             }
         }
     }
-    if (state.showBrief) BriefSheet(state.level, number, onDismiss = { actions.showBrief(false) })
+    if (state.showBrief) {
+        if (level != null) {
+            BriefSheet(level, number, onDismiss = { actions.showBrief(false) })
+        } else {
+            ComponentSheet(state, actions, onDelete = onDelete, onDismiss = { actions.showBrief(false) })
+        }
+    }
     state.infoChip?.let { chip ->
         ChipInfoSheet(
             chip = chip,
+            group = state.catalog.custom(chip.id)?.group,
             onAdd = {
                 placeNear(chip.id, cameraState.centerWorld())
                 actions.showChipInfo(null)

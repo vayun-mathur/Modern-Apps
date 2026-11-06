@@ -20,6 +20,12 @@ sealed interface Behavior {
         val next: (state: IntArray, inputs: IntArray) -> IntArray,
         val readsInputs: Boolean = false,
     ) : Behavior
+
+    /**
+     * A player-built chip. The simulator inlines [circuit] rather than running it as a black box;
+     * chip input `k` feeds inner node [inputNodes]`[k]` and chip output `k` reads [outputNodes]`[k]`.
+     */
+    class Composite(val circuit: Circuit, val inputNodes: List<NodeId>, val outputNodes: List<NodeId>) : Behavior
 }
 
 /** A placeable chip: its pins, what it costs in NAND gates, and its trusted native behaviour. */

@@ -31,7 +31,8 @@ class Simulator(
     io: LevelIo,
     catalog: (String) -> ChipSpec? = Chips::get,
 ) {
-    private val nodes = circuit.nodes
+    private val board = Flattener.flatten(circuit, catalog)
+    private val nodes = board.circuit.nodes
     private val specs: Array<ChipSpec?> = Array(nodes.size) { (nodes[it] as? Gate)?.let { g -> catalog(g.chipId) } }
     private val inPins: Array<List<Pin>>
     private val outPins: Array<List<Pin>>
@@ -65,7 +66,7 @@ class Simulator(
         val index = HashMap<NodeId, Int>()
         nodes.forEachIndexed { i, n -> index[n.id] = i }
         inSrc = Array(nodes.size) { IntArray(inPins[it].size) { -1 } }
-        for (w in circuit.wires) {
+        for (w in board.circuit.wires) {
             val src = index[w.from.node] ?: continue
             val dst = index[w.to.node] ?: continue
             if (w.from.index !in outPins[src].indices || w.to.index !in inPins[dst].indices) continue
@@ -76,7 +77,7 @@ class Simulator(
             if (n is LevelOutput && n.index in outputNodes.indices) outputNodes[n.index] = i
         }
         stateOnly = nodes.indices.filter { specs[it]?.isStateOnly == true }.toIntArray()
-        val order = Scheduler.groups(nodes.size, edges(index, circuit), stateOnly.toSet())
+        val order = Scheduler.groups(nodes.size, edges(index, board.circuit), stateOnly.toSet())
         groups = order.map { it.first }
         cyclic = BooleanArray(order.size) { order[it].second }
         reset()
@@ -118,7 +119,7 @@ class Simulator(
                 pass++
             }
             if (changed) {
-                for (i in group) if (evaluate(i)) oscillating += nodes[i].id
+                for (i in group) if (evaluate(i)) oscillating += board.owner[nodes[i].id] ?: nodes[i].id
             }
         }
         return oscillating
@@ -154,6 +155,9 @@ class Simulator(
         }
     }
 
+    /** True when [chipId] is on the board, including inside player-built chips. */
+    fun contains(chipId: String): Boolean = specs.any { it?.id == chipId }
+
     fun stateOf(id: NodeId): IntArray? = nodes.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { states[it] }
 
     /** Current value on every output pin, which is also the value of every wire leaving it. */
@@ -162,6 +166,7 @@ class Simulator(
         for (i in nodes.indices) {
             for (k in outPins[i].indices) map[PinRef(nodes[i].id, PinSide.OUT, k)] = values[outBase[i] + k]
         }
+        for ((alias, src) in board.aliases) map[alias] = map[src] ?: 0
         return map
     }
 
@@ -184,6 +189,7 @@ class Simulator(
             is Gate -> when (val b = specs[i]?.behavior ?: return false) {
                 is Behavior.Comb -> b.eval(gather(i))
                 is Behavior.Seq -> b.outputs(states[i] ?: b.init, gather(i))
+                is Behavior.Composite -> return false
             }
         }
         var changed = false

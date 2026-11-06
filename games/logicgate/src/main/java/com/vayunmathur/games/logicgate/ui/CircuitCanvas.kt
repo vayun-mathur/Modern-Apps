@@ -72,7 +72,7 @@ fun CircuitCanvas(
     val haptics = rememberHaptics()
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
-    val lookup = remember(state.level) { Chips.lookup(state.level.io) }
+    val lookup = remember(state.catalog, state.io) { state.catalog.lookup(state.io) }
     val controller = remember(cameraState, trash) { CanvasController(cameraState, density, trash) }
     val shake = remember { Animatable(0f) }
     var shakePin by remember { mutableStateOf<PinRef?>(null) }
@@ -152,9 +152,10 @@ fun CircuitCanvas(
     }
 
     editingInput?.let { i ->
+        val pin = state.io.inputs.getOrNull(i) ?: return@let
         BusValueDialog(
-            pin = state.level.inputs[i],
-            value = state.manualInputs[i],
+            pin = pin,
+            value = state.manualInputs.getOrElse(i) { 0 },
             onValue = { actions.setInput(i, it) },
             onDismiss = { editingInput = null },
         )

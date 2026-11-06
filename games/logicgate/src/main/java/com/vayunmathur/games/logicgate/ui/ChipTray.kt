@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +33,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vayunmathur.games.logicgate.R
+import com.vayunmathur.games.logicgate.domain.levels.Chapter
+import com.vayunmathur.games.logicgate.domain.levels.TrayGroup
+import com.vayunmathur.games.logicgate.domain.levels.TraySection
 import com.vayunmathur.games.logicgate.domain.model.ChipSpec
+import com.vayunmathur.library.ui.FilterChip
 import com.vayunmathur.library.ui.MaterialTheme
 import com.vayunmathur.library.ui.Spacing
 import com.vayunmathur.library.ui.Surface
@@ -43,27 +48,70 @@ import kotlin.math.abs
 data class TrayDrag(val chipId: String, val root: Offset)
 
 /**
- * The chip palette. Pull a card up onto the board to place it where you let go, or tap it to open
- * its info sheet (which can also place it). Sideways swipes scroll the row.
+ * The chip palette, one tab per [TraySection] (opening on [defaultGroup]). Pull a card up onto the
+ * board to place it where you let go, or tap it to open its info sheet (which can also place it).
+ * Sideways swipes scroll the row.
  */
 @Composable
 fun ChipTray(
-    chips: List<ChipSpec>,
+    sections: List<TraySection>,
+    defaultGroup: TrayGroup?,
     onTap: (String) -> Unit,
     onDragUpdate: (TrayDrag?) -> Unit,
     onDrop: (TrayDrag) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var selectedKey by rememberSaveable { mutableStateOf(defaultGroup?.let(::groupKey)) }
+    val current = sections.firstOrNull { groupKey(it.group) == selectedKey }
+        ?: sections.firstOrNull { it.group == defaultGroup }
+        ?: sections.firstOrNull()
     Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainer) {
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.sm),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            items(chips, key = { it.id }) { chip ->
-                ChipCard(chip, onTap, onDragUpdate, onDrop)
+        Column {
+            if (sections.size > 1) {
+                LazyRow(
+                    contentPadding = PaddingValues(start = Spacing.md, end = Spacing.md, top = Spacing.xs),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    items(sections, key = { groupKey(it.group) }) { section ->
+                        FilterChip(
+                            selected = section == current,
+                            onClick = { selectedKey = groupKey(section.group) },
+                            label = { Text(groupLabel(section.group)) },
+                        )
+                    }
+                }
+            }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                items(current?.chips.orEmpty(), key = { it.id }) { chip ->
+                    ChipCard(chip, onTap, onDragUpdate, onDrop)
+                }
             }
         }
     }
+}
+
+private fun groupKey(group: TrayGroup): String = when (group) {
+    TrayGroup.Pins -> "pins"
+    is TrayGroup.Builtin -> "builtin:" + group.chapter.name
+    is TrayGroup.Custom -> "custom:" + group.name
+}
+
+@Composable
+private fun groupLabel(group: TrayGroup): String = when (group) {
+    TrayGroup.Pins -> stringResource(R.string.lg_group_pins)
+    is TrayGroup.Custom -> group.name
+    is TrayGroup.Builtin -> stringResource(
+        when (group.chapter) {
+            Chapter.BASICS -> R.string.lg_chapter_basics
+            Chapter.ROUTING -> R.string.lg_chapter_routing
+            Chapter.ARITHMETIC -> R.string.lg_chapter_arithmetic
+            Chapter.MEMORY -> R.string.lg_chapter_memory
+            Chapter.CPU -> R.string.lg_chapter_cpu
+        },
+    )
 }
 
 @Composable

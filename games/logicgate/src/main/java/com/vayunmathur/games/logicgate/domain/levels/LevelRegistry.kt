@@ -40,4 +40,18 @@ object LevelRegistry {
         chips += Chips.base
         return chips.toList()
     }
+
+    /**
+     * The sandbox palette, newest first: the gifts of every open level, everything earned by a
+     * solved level, then NAND and the constants.
+     */
+    fun unlockedChips(completed: Set<String>): List<String> {
+        val chips = LinkedHashSet<String>()
+        for (level in levels.asReversed()) {
+            if (level.id in completed) chips += level.unlocks
+            if (isUnlocked(level.id, completed)) chips += level.gifts
+        }
+        chips += Chips.base
+        return chips.toList()
+    }
 }

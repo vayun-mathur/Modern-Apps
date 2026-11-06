@@ -67,6 +67,13 @@ class CircuitStore(context: Context, dispatcher: CoroutineDispatcher) {
         }
     }
 
+    /** Applies [transform] to every saved draft, e.g. to follow a component whose pins moved. */
+    suspend fun rewriteAll(transform: (Circuit) -> Circuit) {
+        ds.updateString(KEY) { old ->
+            json.encodeToString(decode(old).mapValues { (_, dto) -> transform(dto.toDomain()).toDto() })
+        }
+    }
+
     private fun decode(raw: String?): Map<String, CircuitDto> {
         if (raw.isNullOrEmpty()) return emptyMap()
         return try {
