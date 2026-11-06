@@ -61,6 +61,23 @@ class LauncherTvUiTest {
         assertEquals(true, pressed)
     }
 
+    @Test fun tileWithBannerArtRenders() {
+        rule.setContent {
+            TvBannerTile(
+                tile = tiles[0].copy(banner = android.graphics.drawable.ColorDrawable(0xFF112233.toInt())),
+                tileWidth = 200.dp,
+                artHeight = 100.dp,
+                moving = false,
+                dimmed = false,
+                focusRequester = null,
+                onPress = {},
+                onEdit = {},
+                onMove = {},
+            )
+        }
+        rule.waitForIdle()
+    }
+
     @Test fun movingTileShowsMovingBadge() {
         rule.setContent {
             TvBannerTile(
