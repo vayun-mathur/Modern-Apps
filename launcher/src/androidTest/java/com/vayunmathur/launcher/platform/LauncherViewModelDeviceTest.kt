@@ -217,7 +217,7 @@ class LauncherViewModelDeviceTest {
 
     @Test fun itemMenuOpenUnknownClears() = runTest {
         val vm = LauncherViewModel(app())
-        vm.openItemMenu(424242L)
+        vm.openItemMenuImpl(424242L)
         assertNull(vm.itemMenu.value.item)
     }
 
