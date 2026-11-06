@@ -169,7 +169,8 @@ class LauncherViewModelDeviceTest {
         val groups = vm.widgetPicker.value.groups
         assertEquals(1, groups.size)
         assertEquals("Clock", groups[0].appLabel)
-        assertEquals(1, groups[0].widgets.size)
+        // App-label match keeps the whole group, not just matching widgets.
+        assertEquals(2, groups[0].widgets.size)
         vm.applyWidgetQuery("", source = null)
         // Null source keeps the previously set groups (no-op source update).
         assertEquals(1, vm.widgetPicker.value.groups.size)
