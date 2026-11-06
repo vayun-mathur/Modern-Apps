@@ -6,7 +6,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -165,12 +167,16 @@ class PhotosSlice3WallpaperTest {
 
     @Test
     fun controlsScrollableShowsDescriptionOnlyWhenOn() {
-        setControls(isScrollable = true)
-        composeRule.onNodeWithText(str(R.string.wallpaper_scrollable_desc)).assertIsDisplayed()
-        // Off: the description row is gone but the toggle row stays.
+        // Off first: the description row is gone but the toggle row stays.
         setControls(isScrollable = false)
         composeRule.onAllNodesWithText(str(R.string.wallpaper_scrollable_desc)).assertCountEquals(0)
         composeRule.onNodeWithText(str(R.string.wallpaper_scrollable)).assertIsDisplayed()
+    }
+
+    @Test
+    fun controlsScrollableOnShowsDescription() {
+        setControls(isScrollable = true)
+        composeRule.onNodeWithText(str(R.string.wallpaper_scrollable_desc)).assertIsDisplayed()
     }
 
     @Test
