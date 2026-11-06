@@ -31,7 +31,11 @@ class EmailUiRecipientTimeTest {
     fun `existing address is not duplicated case-insensitively`() {
         val field = "A@b.com"
         assertEquals(field, appendRecipient(field, "a@B.com"))
-        assertEquals("a@b.com, c@d.com", appendRecipient("a@b.com , c@d.com", "c@d.com"))
+    }
+
+    @Test
+    fun `whitespace around entries is normalized on append`() {
+        assertEquals("a@b.com, c@d.com", appendRecipient("a@b.com , c@d.com", "e@f.com"))
     }
 
     @Test

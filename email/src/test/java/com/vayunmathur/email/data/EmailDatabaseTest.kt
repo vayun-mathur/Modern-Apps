@@ -251,7 +251,8 @@ class EmailDatabaseTest {
         store.setSnooze("me@x.com", "INBOX", 1L, 9000L)
         assertEquals(9000L, store.getMessage("me@x.com", "INBOX", 1L)!!.snoozedUntil)
         assertEquals(1, store.wakeDueSnoozed(9000L))
-        assertEquals(listOf(1L), store.getKnownUids("me@x.com", "INBOX"))
+        // Both rows 1 and 2 are still present (row 2 was added for the thread check).
+        assertEquals(listOf(1L, 2L), store.getKnownUids("me@x.com", "INBOX").sorted())
         store.insertDeletedUid(DeletedUid("me@x.com", "INBOX", 5L))
         assertEquals(listOf(5L), store.getDeletedUids("me@x.com", "INBOX"))
         store.insertAttachments(

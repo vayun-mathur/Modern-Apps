@@ -11,6 +11,8 @@ import com.vayunmathur.email.ui.composer.colorToHex
 import com.vayunmathur.email.ui.composer.escapeAttr
 import com.vayunmathur.email.ui.composer.findNextSpanBoundary
 import com.vayunmathur.email.ui.composer.serializeEmailHtml
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -21,7 +23,10 @@ import kotlin.test.assertTrue
  * What the composer emits here is what recipients open, so each test
  * asserts the exact output shape: escaped text, nested inline tags, block
  * wrappers, and the empty-input placeholder.
+ *
+ * SpannableString needs the Android framework, so these run under Robolectric.
  */
+@RunWith(RobolectricTestRunner::class)
 class EmailHtmlSerializerTest {
 
     @Test
