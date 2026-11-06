@@ -358,8 +358,10 @@ private fun OdfParser.applyTocTag(
 /** Parses text:tracked-changes into change metadata + a map of deletion text by change-id. (Priority 6) */
 internal fun OdfParser.parseTrackedChanges(parser: XmlPullParser): Pair<List<OdfChange>, Map<String, String>> {
     val acc = TrackedChangesAcc()
-    var ev = parser.next()
+    // Capture the depth BEFORE advancing: the loop exits at the END_TAG matching
+    // the element we were positioned on entry (text:tracked-changes).
     val depth = parser.depth
+    var ev = parser.next()
     while (!(ev == XmlPullParser.END_TAG && parser.depth == depth)) {
         when (ev) {
             XmlPullParser.START_TAG -> applyTrackedStart(parser, acc)
