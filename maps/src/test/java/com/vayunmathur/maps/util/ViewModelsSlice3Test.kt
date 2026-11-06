@@ -10,6 +10,7 @@ import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import android.os.Looper
