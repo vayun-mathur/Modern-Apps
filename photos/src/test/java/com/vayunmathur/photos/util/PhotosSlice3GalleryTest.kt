@@ -59,12 +59,15 @@ class PhotosSlice3GalleryTest {
     private fun namespaced(name: String, date: Long, album: String? = null) =
         photo("slice3-$name", date, album)
 
-    private fun viewModel(): GalleryViewModel {
-        // No WorkManager in unit tests: publish an empty work list.
+    private fun openDb() {
         workInfosOverride = { _, _ -> flowOf(emptyList<androidx.work.WorkInfo>()) }
         db = Room.inMemoryDatabaseBuilder(context, PhotoDatabase::class.java)
             .allowMainThreadQueries()
             .build()
+    }
+
+    private fun viewModel(): GalleryViewModel {
+        openDb()
         return GalleryViewModel(
             app,
             FakePhotosRepository(db),
@@ -106,7 +109,9 @@ class PhotosSlice3GalleryTest {
     fun pendingMoveRequestAndConsume() {
         val vm = viewModel()
         assertFalse(vm.consumePendingMove())
-        vm.requestAlbumMove(listOf(namespaced("m", 1L)), "Camera")
+        // Empty list: moveToAlbum returns before touching AlbumMediaStore or
+        // WorkManager, so the pending bookkeeping is pinned without side effects.
+        vm.requestAlbumMove(emptyList(), "Camera")
         assertTrue(vm.consumePendingMove())
         // Consumed: second call finds nothing pending.
         assertFalse(vm.consumePendingMove())
@@ -193,6 +198,145 @@ class PhotosSlice3GalleryTest {
         )
         val albums = vm.albums.first { it.any { a -> a.name == "Solo" } }
         assertEquals(3, albums.first { it.name == "Solo" }.count)
+    }
+
+    @Test
+    fun peopleFlowProjectsClustersWithLargestFaceCover() = runTest {
+        val vm = viewModel()
+        db.photoDao().upsertAll(
+            listOf(
+                namespaced("p-big", 100L),
+                namespaced("p-small", 200L),
+            ),
+        )
+        val byName = db.photoDao().getAll().associateBy { it.name }
+        val big = byName.getValue("slice3-p-big")
+        val small = byName.getValue("slice3-p-small")
+        val personId = db.faceDao().insertPerson(
+            Person(centroid = ByteArray(8), faceCount = 2, name = "Ada"),
+        )
+        db.faceDao().insertPhotoFaces(
+            listOf(
+                // Big face on the older photo: cover selection is by source-pixel
+                // area, not recency.
+                PhotoFace(
+                    photoId = big.id, clusterId = personId, embedding = ByteArray(8),
+                    left = 0f, top = 0f, right = 0.9f, bottom = 0.9f,
+                    srcWidth = 1000, srcHeight = 1000,
+                ),
+                PhotoFace(
+                    photoId = small.id, clusterId = personId, embedding = ByteArray(8),
+                    left = 0f, top = 0f, right = 0.1f, bottom = 0.1f,
+                    srcWidth = 100, srcHeight = 100,
+                ),
+            ),
+        )
+        val people = vm.people.first { it.any { p -> p.id == personId } }
+        val cluster = people.first { it.id == personId }
+        assertEquals("Ada", cluster.name)
+        assertEquals(big.id, cluster.coverPhoto.id)
+        assertEquals(2, cluster.photos.size)
+        // Member photos sort newest-first.
+        assertEquals(listOf(small.id, big.id), cluster.photos.map { it.id })
+    }
+
+    @Test
+    fun peopleFlowDropsTrashedAndEmptyClusters() = runTest {
+        val vm = viewModel()
+        db.photoDao().upsertAll(listOf(namespaced("gone", 100L).copy(isTrashed = true)))
+        val trashedId = db.photoDao().getAll().single().id
+        val personId = db.faceDao().insertPerson(
+            Person(centroid = ByteArray(8), faceCount = 1, name = null),
+        )
+        val otherId = db.faceDao().insertPerson(
+            Person(centroid = ByteArray(8), faceCount = 0, name = null),
+        )
+        db.faceDao().insertPhotoFaces(
+            listOf(
+                PhotoFace(
+                    photoId = trashedId, clusterId = personId, embedding = ByteArray(8),
+                    left = 0f, top = 0f, right = 0.5f, bottom = 0.5f,
+                    srcWidth = 100, srcHeight = 100,
+                ),
+            ),
+        )
+        // A cluster whose only photo is trashed projects to nothing; a cluster
+        // with no faces at all never appears.
+        val people = vm.people.first { true }
+        assertTrue(people.none { it.id == personId })
+        assertTrue(people.none { it.id == otherId })
+    }
+
+    @Test
+    fun faceBoxesAndCountsDeriveFromGeometry() = runTest {
+        val vm = viewModel()
+        db.photoDao().upsertAll(listOf(namespaced("faces", 100L)))
+        val photoId = db.photoDao().getAll().single().id
+        val personId = db.faceDao().insertPerson(
+            Person(centroid = ByteArray(8), faceCount = 2, name = "Bo"),
+        )
+        db.faceDao().insertPhotoFaces(
+            listOf(
+                PhotoFace(
+                    photoId = photoId, clusterId = personId, embedding = ByteArray(8),
+                    left = 0.1f, top = 0.2f, right = 0.3f, bottom = 0.4f,
+                    srcWidth = 640, srcHeight = 480,
+                ),
+                PhotoFace(
+                    photoId = photoId, clusterId = personId, embedding = ByteArray(8),
+                    left = 0.5f, top = 0.5f, right = 0.9f, bottom = 0.9f,
+                    srcWidth = 640, srcHeight = 480,
+                ),
+            ),
+        )
+        val counts = vm.faceCountByPhoto.first { it[photoId] == 2 }
+        assertEquals(2, counts.getValue(photoId))
+        val boxes = vm.faceBoxesByPhoto.first { it.containsKey(photoId) }
+        val overlay = boxes.getValue(photoId)
+        assertEquals(640, overlay.srcWidth)
+        assertEquals(480, overlay.srcHeight)
+        assertEquals(2, overlay.faces.size)
+        assertTrue(overlay.faces.all { it.clusterId == personId && it.name == "Bo" })
+        assertEquals(0.1f, overlay.faces.minBy { it.left }.left)
+    }
+
+    @Test
+    fun setPersonNamePersistsThroughDao() = runTest {
+        val vm = viewModel()
+        val personId = db.faceDao().insertPerson(
+            Person(centroid = ByteArray(8), faceCount = 0, name = null),
+        )
+        vm.setPersonName(personId, "Grace")
+        // setPersonName launches without an IO dispatcher so Room executes the
+        // write itself: the DAO row shows the name; with no faces the cluster
+        // still projects to nothing.
+        val people = vm.people.first { true }
+        assertTrue(people.none { it.id == personId })
+        val name = db.faceDao().personsFlow().first().first { it.id == personId }.name
+        assertEquals("Grace", name)
+        // Clearing the name persists too.
+        vm.setPersonName(personId, null)
+        val cleared = db.faceDao().personsFlow().first().first { it.id == personId }.name
+        assertEquals(null, cleared)
+    }
+
+    @Test
+    fun searchPhotosMatchesNamesNewestFirst() = runTest {
+        openDb()
+        val dao = db.photoDao()
+        dao.upsertAll(
+            listOf(
+                namespaced("beach-day", 100L),
+                namespaced("beach-sunset", 300L),
+                namespaced("mountain", 200L),
+            ),
+        )
+        // OCR/name LIKE search backing combinedSearch: newest first.
+        assertEquals(
+            listOf("slice3-beach-sunset", "slice3-beach-day"),
+            dao.searchPhotos("beach").map { it.name },
+        )
+        assertEquals(emptyList(), dao.searchPhotos("desert"))
     }
 
     // ---- Test doubles: implement the production store interfaces ----
