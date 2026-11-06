@@ -121,7 +121,7 @@ class MimeHeaderUtilsTest {
     @Test
     fun `null content type defaults sensibly`() {
         val info = MimeParser.parseContentType(null)
-        assertTrue(info.mimeType.isNotEmpty(), "$info")
+        assertTrue(info.fullType.isNotEmpty(), "$info")
     }
 
     @Test
