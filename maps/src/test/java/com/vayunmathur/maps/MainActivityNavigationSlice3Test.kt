@@ -40,39 +40,40 @@ class MainActivityNavigationSlice3Test {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
+    companion object {
+        /**
+         * The activity rule launches MainActivity before instance `@Before`
+         * methods run, so everything its `onCreateBeforeContent()` needs must
+         * be planted here: WorkManager (the manifest disables its
+         * auto-initializer), the basemap archive for the download gate, and
+         * the runtime grants for the permission gate.
+         */
+        @org.junit.BeforeClass
+        @JvmStatic
+        fun setUpClass() {
+            val app = ApplicationProvider.getApplicationContext<android.content.Context>()
+            runCatching {
+                androidx.work.WorkManager.initialize(
+                    app,
+                    androidx.work.Configuration.Builder()
+                        .setMinimumLoggingLevel(android.util.Log.DEBUG)
+                        .setExecutor(java.util.concurrent.Executors.newSingleThreadExecutor())
+                        .build(),
+                )
+            }
+            app.getExternalFilesDir(null)!!.resolve("basemap.mamaps").writeBytes(ByteArray(64))
+            org.robolectric.Shadows.shadowOf(app as android.app.Application).grantPermissions(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                "android.permission.POST_NOTIFICATIONS",
+            )
+        }
+    }
+
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
 
     private fun settingsLabel(): String = context.getString(com.vayunmathur.library.ui.R.string.settings)
 
     private fun savedPlacesTitle(): String = context.getString(R.string.saved_places_title)
-
-    @org.junit.Before
-    fun setUp() {
-        // The manifest disables WorkManager's auto-initializer, so nothing
-        // initializes it under Robolectric and syncOverlaySchedule() would
-        // throw on every activity launch. Manual init keeps the enqueue
-        // synchronous and hermetic.
-        runCatching {
-            androidx.work.WorkManager.initialize(
-                context,
-                androidx.work.Configuration.Builder()
-                    .setMinimumLoggingLevel(android.util.Log.DEBUG)
-                    .setExecutor(java.util.concurrent.Executors.newSingleThreadExecutor())
-                    .build(),
-            )
-        }
-        // Satisfy the download gate: the single-archive `.mamaps` carries the
-        // basemap, and the gate only checks presence on disk (plus verified
-        // markers, which plain Triple specs don't require).
-        context.getExternalFilesDir(null)!!.resolve("basemap.mamaps").writeBytes(ByteArray(64))
-        // Satisfy the permission gate: both runtime permissions granted, so
-        // the wall never appears and Navigation() hosts the map.
-        val shadowApp = org.robolectric.Shadows.shadowOf(context as android.app.Application)
-        shadowApp.grantPermissions(
-            android.Manifest.permission.ACCESS_FINE_LOCATION,
-            "android.permission.POST_NOTIFICATIONS",
-        )
-    }
 
     @Test
     fun `activity content starts on the map with a settings overflow`() {
