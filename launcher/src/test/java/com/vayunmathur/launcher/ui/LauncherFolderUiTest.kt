@@ -71,10 +71,10 @@ class LauncherFolderUiTest {
     @Test fun typingInNameFieldRenames() {
         val renames = mutableListOf<Pair<Long, String>>()
         show(onRename = { id, title -> renames += id to title })
-        // The rename callback fires per keystroke on the existing "Games" value.
+        // The rename callback fires per keystroke (cursor starts at 0, so "A" prefixes).
         rule.onNode(hasSetTextAction()).performTextInput("A")
         assertEquals(10L, renames.last().first)
-        assertEquals("GamesA", renames.last().second)
+        assertEquals("AGames", renames.last().second)
     }
 
     @Test fun singleChildRendersAlone() {
