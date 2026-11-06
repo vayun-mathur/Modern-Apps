@@ -35,7 +35,8 @@ class EmailUiRecipientTimeTest {
 
     @Test
     fun `whitespace around entries is normalized on append`() {
-        assertEquals("a@b.com, c@d.com", appendRecipient("a@b.com , c@d.com", "e@f.com"))
+        // Existing entries are re-joined with ", " and the new address appended.
+        assertEquals("a@b.com, c@d.com, e@f.com", appendRecipient("a@b.com , c@d.com", "e@f.com"))
     }
 
     @Test

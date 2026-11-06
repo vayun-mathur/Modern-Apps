@@ -35,8 +35,11 @@ class EmailHtmlSerializerTest {
     }
 
     @Test
-    fun `blank paragraphs fall back to the line-break placeholder`() {
-        assertEquals("<div><br></div>", serializeEmailHtml(SpannableString("\n")))
+    fun `single empty paragraph renders a line break`() {
+        // One empty para hits the empty-para branch ("<br>"); the
+        // "<div><br></div>" fallback only applies when the whole render is blank.
+        assertEquals("<br>", serializeEmailHtml(SpannableString("\n")))
+        assertEquals("<div><br></div>", serializeEmailHtml(SpannableString("   ")))
     }
 
     @Test
