@@ -414,6 +414,8 @@ class MainActivitySlice3Test {
         assertEquals(-122.4094, selected.position.longitude, 1e-6)
         controller.destroy()
     }
+    @Test
+    fun `navigate link with unresolvable query selects nothing`() {
         // A free-text destination with no offline index entry resolves to null,
         // and navigateTo must log and return without selecting or crashing.
         seedGpsFix()
