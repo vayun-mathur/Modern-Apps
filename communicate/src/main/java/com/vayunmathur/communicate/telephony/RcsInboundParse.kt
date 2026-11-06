@@ -356,16 +356,20 @@ internal fun bufferLargeChunk(
 
 /** Base64-decode a CPIM-wrapped binary payload body. */
 internal fun decodePayloadBody(body: String): ByteArray? {
-    val b64 = if (body.contains("\r\n\r\n")) {
-        body.substringAfter("\r\n\r\n", "").trim()
+    // NOTE: kept as a separate val (not `...}.takeIf { ... }` on the if-chain):
+    // a trailing call binds to the last else-branch only, silently skipping the
+    // blank guard for the CRLF branch.
+    val afterGap = if (body.contains("\r\n\r\n")) {
+        body.substringAfter("\r\n\r\n", "")
     } else if (body.contains("\n\n")) {
-        body.substringAfter("\n\n", "").trim()
+        body.substringAfter("\n\n", "")
     } else {
-        body.trim()
-    }.takeIf { it.isNotEmpty() } ?: return null
+        body
+    }
+    val b64 = afterGap.trim().takeIf { it.isNotEmpty() } ?: return null
     return runCatching {
         android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
-    }.getOrNull()
+    }.getOrNull()?.takeIf { it.isNotEmpty() }
 }
 
 /**
