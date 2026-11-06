@@ -60,9 +60,14 @@ class ProjectionTest {
     fun stereographic_horizon_culling() {
         val vs = ViewState(0.0, (30.0).toRad(), 60f, 1080f, 1920f)
         val proj = StereographicProjection(vs)
-        val below = AltAz(0.0, (-5.0).toRad())
-        assertTrue(!proj.isVisible(below))
-        assertTrue(proj.project(below) == null)
+        // Below-horizon objects stay visible while they are on screen.
+        val belowInView = AltAz(0.0, (-5.0).toRad())
+        assertTrue(proj.isVisible(belowInView))
+        assertTrue(proj.project(belowInView) != null)
+        // Only points outside the screen-corner disk are culled.
+        val behind = AltAz((180.0).toRad(), (-5.0).toRad())
+        assertTrue(!proj.isVisible(behind))
+        assertTrue(proj.project(behind) == null)
     }
 
     @Test
