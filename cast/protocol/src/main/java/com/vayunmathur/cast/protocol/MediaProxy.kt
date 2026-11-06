@@ -553,7 +553,7 @@ class MediaProxyExchange(
             while (i < text.length) {
                 val c = text[i]
                 if (c == '%' && i + 2 < text.length) {
-                    val hex = text.substring(i + 1, i + PERCENT_HEX_DIGITS - 1).toIntOrNull(HEX_RADIX)
+                    val hex = text.substring(i + 1, i + PERCENT_HEX_DIGITS).toIntOrNull(HEX_RADIX)
                     if (hex != null) {
                         out.write(hex)
                         i += PERCENT_HEX_DIGITS
