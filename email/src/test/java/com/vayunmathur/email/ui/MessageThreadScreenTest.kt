@@ -125,9 +125,11 @@ class MessageThreadScreenTest {
             )
         }
         composeRule.onNodeWithText("New text").assertIsDisplayed()
-        composeRule.onNodeWithText("quoted text", substring = true, ignoreCase = true).performScrollTo()
-        composeRule.onNodeWithText("quoted text", substring = true, ignoreCase = true).performClick()
+        composeRule.onNodeWithText("Show quoted text").performScrollTo()
+        composeRule.onNodeWithText("Show quoted text").performClick()
         composeRule.waitForIdle()
+        // Toggle flipped, proving the click landed on the expander.
+        composeRule.onNodeWithText("Hide quoted text").assertIsDisplayed()
         composeRule.onNodeWithText("old quoted").performScrollTo()
         composeRule.onNodeWithText("old quoted").assertIsDisplayed()
     }
