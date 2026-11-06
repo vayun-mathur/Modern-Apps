@@ -171,6 +171,15 @@ class LauncherViewModelDeviceTest {
         assertEquals("Clock", groups[0].appLabel)
         assertEquals(1, groups[0].widgets.size)
         vm.applyWidgetQuery("", source = null)
+        // Null source keeps the previously set groups (no-op source update).
+        assertEquals(1, vm.widgetPicker.value.groups.size)
+        vm.applyWidgetQuery(
+            "",
+            source = listOf(
+                WidgetGroup("Clock", listOf(WidgetEntry("com.example/.A", "A"))),
+                WidgetGroup("Mail", listOf(WidgetEntry("com.example/.M", "M"))),
+            ),
+        )
         assertEquals(2, vm.widgetPicker.value.groups.size)
     }
 
@@ -196,6 +205,12 @@ class LauncherViewModelDeviceTest {
     @Test fun monitorRefreshListsPackages() = runTest {
         val vm = LauncherViewModel(app())
         vm.appsMonitor.refresh()
+        // refresh() loads off-main: poll until the emulator's app list lands.
+        val deadline = android.os.SystemClock.uptimeMillis() + 10000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (vm.appsMonitor.apps.value.isNotEmpty()) break
+            kotlinx.coroutines.delay(100)
+        }
         assertEquals(true, vm.appsMonitor.apps.value.isNotEmpty())
     }
 
