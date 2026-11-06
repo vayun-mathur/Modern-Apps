@@ -415,6 +415,59 @@ class MainActivitySlice3Test {
         controller.destroy()
     }
     @Test
+    fun `warm start navigate link with a fix attempts routing then opens the place`() {
+        // The VM is created on the plain launch and picks up the seeded fix
+        // synchronously, so the later navigate intent finds a live origin and
+        // attempts real routing. With no graph archive routing resolves null
+        // and navigateTo degrades to opening the destination place.
+        seedGpsFix()
+        val controller = launch(null)
+        val activity = controller.get()
+        val vm = selectedOf(activity)
+        assertEquals(
+            GeoPoint(-122.4194, 37.7749),
+            vm.userPosition.value,
+            "seeded fix must be visible before the navigate intent arrives",
+        )
+        controller.newIntent(viewIntent("google.navigation:q=37.7849,-122.4094&mode=d"))
+        awaitSelection(vm)
+        val selected = vm.selectedFeature.value
+        assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
+        assertEquals(37.7849, selected.position.latitude, 1e-6)
+        assertEquals(-122.4094, selected.position.longitude, 1e-6)
+        controller.destroy()
+    }
+
+    @Test
+    fun `warm start navigate link without a mode defaults to driving`() {
+        // No mode param: link.mode is null and navigateTo drives by default,
+        // still degrading to the destination place without a graph archive.
+        seedGpsFix()
+        val controller = launch(null)
+        val vm = selectedOf(controller.get())
+        assertEquals(
+            GeoPoint(-122.4194, 37.7749),
+            vm.userPosition.value,
+            "seeded fix must be visible before the navigate intent arrives",
+        )
+        controller.newIntent(viewIntent("google.navigation:q=37.7849,-122.4094"))
+        awaitSelection(vm)
+        val selected = vm.selectedFeature.value
+        assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
+        assertEquals(37.7849, selected.position.latitude, 1e-6)
+        controller.destroy()
+    }
+
+    @Test
+    fun `activity exposes its cross-app intent launcher`() {
+        // Other apps' ride/order clients launch maps intents through this.
+        val controller = launch(null)
+        controller.get()
+        assertNotNull(MainActivity.intentLauncher)
+        controller.destroy()
+    }
+
+    @Test
     fun `navigate link with unresolvable query selects nothing`() {
         // A free-text destination with no offline index entry resolves to null,
         // and navigateTo must log and return without selecting or crashing.
