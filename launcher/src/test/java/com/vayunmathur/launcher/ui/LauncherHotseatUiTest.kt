@@ -6,7 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodes
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +20,7 @@ import com.vayunmathur.launcher.platform.ComponentKey
 import com.vayunmathur.launcher.platform.HomeActions
 import com.vayunmathur.launcher.platform.HomeUiState
 import com.vayunmathur.launcher.platform.WorkspaceItem
+import com.vayunmathur.launcher.ui.components.DragPayload
 import com.vayunmathur.launcher.ui.components.LauncherDragController
 import com.vayunmathur.launcher.ui.components.LocalLauncherDrag
 import org.junit.Rule
