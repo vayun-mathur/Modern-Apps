@@ -3,8 +3,15 @@ package com.vayunmathur.launcher.ui
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.launcher.domain.CellRect
 import com.vayunmathur.launcher.domain.ContainerRef
@@ -114,6 +121,42 @@ class LauncherHomeContentUiTest {
         )
         show(state = folderState, initialOpenFolderId = 9L)
         rule.onNodeWithText("Folder Chess").assertIsDisplayed()
+    }
+
+    @Test fun tappingFolderIconOpensIt() {
+        val folderState = home.copy(
+            pages = mapOf(
+                0 to listOf(
+                    WorkspaceItem(
+                        id = 9L,
+                        type = LauncherItemType.FOLDER,
+                        label = "Games",
+                        container = ContainerRef.Desktop,
+                        screen = 0,
+                        rect = CellRect(0, 0),
+                        children = listOf(
+                            WorkspaceItem(
+                                id = 11L,
+                                type = LauncherItemType.APPLICATION,
+                                label = "Folder Chess",
+                                container = ContainerRef.Folder(9L),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        show(state = folderState)
+        rule.onNodeWithText("Games").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Folder Chess").assertIsDisplayed()
+    }
+
+    @Test fun longPressEmptyOpensOptions() {
+        show(state = home.copy(pages = emptyMap()))
+        rule.onRoot().performTouchInput { longClick(durationMillis = 1000) }
+        rule.waitForIdle()
+        rule.onNodeWithText("Wallpaper & style").assertIsDisplayed()
     }
 
     @Test fun emptyWorkspaceRendersNoIcons() {
