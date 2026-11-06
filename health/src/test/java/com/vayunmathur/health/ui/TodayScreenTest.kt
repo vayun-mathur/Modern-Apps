@@ -2,6 +2,7 @@ package com.vayunmathur.health.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.health.util.MainPageMetrics
@@ -10,6 +11,7 @@ import com.vayunmathur.health.util.TodayUiState
 import com.vayunmathur.health.util.formatDuration
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -62,20 +64,22 @@ class TodayScreenTest {
         rule.onNodeWithText("Last night").assertIsDisplayed()
         rule.onNodeWithText("Latest vitals").assertIsDisplayed()
         rule.onNodeWithText("58-120").assertIsDisplayed()
-        rule.onNodeWithText("118/76").assertIsDisplayed()
-        rule.onNodeWithText("98.4").assertIsDisplayed()
+        // Merged row text; the section may sit below the fold, so existence
+        // rather than visibility is what is pinned.
+        rule.onNodeWithText("118/76", substring = true).assertExists()
+        rule.onNodeWithText("98.4", substring = true).assertExists()
 
         rule.onNodeWithText("Sleep").performClick()
         assertEquals(1, sleepOpened)
-        rule.onNodeWithText("Heart rate", substring = true).performClick()
+        rule.onNodeWithText("Heart Rate").performClick()
         assertEquals(HealthMetricConfig.HEART_RATE, opened)
     }
 
     @Test
     fun `empty today shows placeholders`() {
         rule.setContent { TodayScreen(state = TodayUiState(), actions = TodayActions.Noop) }
-        // Every unknown metric renders a double dash, not a zero.
-        rule.onNodeWithText("--").assertExists()
+        // Every unknown metric renders a double dash, not a zero: five rows.
+        assertEquals(5, rule.onAllNodesWithText("--", substring = true).fetchSemanticsNodes().size)
         rule.onNodeWithText("Last night").assertIsDisplayed()
     }
 

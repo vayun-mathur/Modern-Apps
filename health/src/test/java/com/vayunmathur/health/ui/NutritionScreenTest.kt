@@ -2,12 +2,14 @@ package com.vayunmathur.health.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.health.data.NutritionData
 import com.vayunmathur.health.util.NutritionActions
 import com.vayunmathur.health.util.NutritionUiState
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -69,7 +71,8 @@ class NutritionScreenTest {
     @Test
     fun `empty nutrition shows zero rings`() {
         rule.setContent { NutritionScreen(state = NutritionUiState(), actions = NutritionActions.Noop) }
-        rule.onNodeWithText("0").assertIsDisplayed()
+        // Calorie ring plus three macro rings all read zero.
+        assertEquals(4, rule.onAllNodesWithText("0", substring = false).fetchSemanticsNodes().size)
         rule.onNodeWithText("Protein").assertIsDisplayed()
     }
 }
