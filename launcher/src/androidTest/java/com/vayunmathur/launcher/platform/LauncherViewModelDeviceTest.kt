@@ -9,6 +9,9 @@ import com.vayunmathur.launcher.domain.ContainerRef
 import com.vayunmathur.launcher.domain.GridSpec
 import com.vayunmathur.launcher.domain.LauncherItemType
 import com.vayunmathur.launcher.domain.toRaw
+import com.vayunmathur.launcher.platform.ComponentKey
+import com.vayunmathur.launcher.platform.WidgetEntry
+import com.vayunmathur.launcher.platform.WidgetGroup
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
