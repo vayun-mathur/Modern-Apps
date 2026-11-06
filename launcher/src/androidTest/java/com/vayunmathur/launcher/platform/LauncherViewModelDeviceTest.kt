@@ -12,6 +12,7 @@ import com.vayunmathur.launcher.domain.toRaw
 import com.vayunmathur.launcher.platform.ComponentKey
 import com.vayunmathur.launcher.platform.WidgetEntry
 import com.vayunmathur.launcher.platform.WidgetGroup
+import com.vayunmathur.launcher.platform.WorkspaceItem
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -235,6 +236,65 @@ class LauncherViewModelDeviceTest {
         val vm = LauncherViewModel(app())
         vm.openItemMenuImpl(424242L)
         assertNull(vm.itemMenu.value.item)
+    }
+
+    @Test fun opsNullGuardsAreSafe() = runTest {
+        val vm = LauncherViewModel(app())
+        val key = ComponentKey(
+            android.content.ComponentName("com.example.ghost", "com.example.ghost.Main"),
+            0L,
+        )
+        // Nothing installed under these keys: every lookup misses and returns early.
+        vm.launchApp(key, 0, 0, 10, 10)
+        vm.setWorkPaused(true)
+        vm.uninstallItem(424243L)
+        vm.openItemInfo(424243L)
+        vm.launchShortcut(
+            com.vayunmathur.launcher.platform.ShortcutEntry("s", "S", "com.example.ghost", 0L),
+        )
+        vm.pinShortcutToHome(
+            com.vayunmathur.launcher.platform.ShortcutEntry("s", "S", "com.example.ghost", 0L),
+        )
+        vm.addPendingShortcutToHome(
+            com.vayunmathur.launcher.platform.ShortcutEntry("s", "S", "com.example.ghost", 0L),
+            0,
+            CellRect(0, 0),
+        )
+        vm.openAppInfo(WorkspaceItem(1L, LauncherItemType.APPLICATION, "G"))
+        vm.uninstall(WorkspaceItem(1L, LauncherItemType.APPLICATION, "G"))
+        vm.pickWallpaper()
+        vm.requestDefaultHome()
+        vm.refreshDefaultHomeImpl()
+        vm.onLocaleChangedImpl()
+        vm.appIcon(key)
+        vm.shortcutIcon("com.example.ghost", "s", 0L)
+        vm.widgetPreview("com.example/.W", 0L)
+        vm.expandNotificationShade()
+        vm.setWallpaperBlurred(false)
+        assertNull(vm.itemMenu.value.item)
+    }
+
+    @Test fun openItemMenuFindsWorkspaceItem() = runTest {
+        val vm = LauncherViewModel(app())
+        val r = repo()
+        r.getAll().forEach { r.remove(it.id) }
+        val id = r.upsert(entity("com.example.menu"))
+        // Seed caches the menu lookup reads.
+        vm.savedItems = r.getAll()
+        vm.homeState.value = vm.home.value.copy(
+            pages = mapOf(
+                0 to listOf(
+                    WorkspaceItem(
+                        id = id,
+                        type = LauncherItemType.APPLICATION,
+                        label = "Menu",
+                    ),
+                ),
+            ),
+        )
+        vm.openItemMenuImpl(id)
+        assertEquals(id, vm.itemMenu.value.item?.id)
+        r.remove(id)
     }
 
     @Test fun settingsTogglesPropagate() = runTest {
