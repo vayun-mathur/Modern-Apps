@@ -17,9 +17,13 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class LauncherWidgetHostTest {
 
-    private fun host(): LauncherWidgetHost {
+    private fun flow(): WidgetBindFlow {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
-        return LauncherWidgetHost(ctx)
+        return WidgetBindFlow(
+            ctx,
+            LauncherWidgetHost(ctx),
+            android.appwidget.AppWidgetManager.getInstance(ctx),
+        )
     }
 
     private fun info(minWidth: Int, minHeight: Int) = AppWidgetProviderInfo().apply {
@@ -30,13 +34,13 @@ class LauncherWidgetHostTest {
 
     @Test fun spanForCoversMinimum() {
         // minWidth in px; density 1 under Robolectric defaults... cover the math.
-        val (x, y) = host().spanFor(info(200, 100), cellWidthDp = 80, cellHeightDp = 80)
+        val (x, y) = flow().spanFor(info(200, 100), cellWidthDp = 80, cellHeightDp = 80)
         assertTrue(x >= 1)
         assertTrue(y >= 1)
     }
 
     @Test fun spanForTinyWidgetIsOneCell() {
-        assertEquals(1 to 1, host().spanFor(info(1, 1), cellWidthDp = 80, cellHeightDp = 80))
+        assertEquals(1 to 1, flow().spanFor(info(1, 1), cellWidthDp = 80, cellHeightDp = 80))
     }
 
     @Test fun flattenRoundTrip() {
