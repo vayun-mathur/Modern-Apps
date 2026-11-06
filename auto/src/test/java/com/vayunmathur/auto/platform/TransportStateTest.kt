@@ -25,13 +25,14 @@ class TransportStateTest {
     }
 
     @Test
-    fun `fresh state is detached idle and unselected`() {
+    fun `fresh state is detached idle with the dev loopback fallback`() {
         reset()
         assertEquals(UsbSessionState.DETACHED, TransportState.usbState.value)
         assertNull(TransportState.usbLabel.value)
         assertEquals(WirelessSessionState.IDLE, TransportState.wirelessState.value)
         assertEquals(false, TransportState.roleHeld.value)
-        assertNull(TransportState.selected.value)
+        // Dev variant: TCP_LOOPBACK is allowed, so it wins with nothing ready.
+        assertEquals(TransportKind.TCP_LOOPBACK, TransportState.selected.value)
     }
 
     @Test
@@ -49,7 +50,8 @@ class TransportStateTest {
         val usb = UsbSession().also { it.onAttached("ACME", "Car") }
         TransportState.publishUsb(usb)
         assertEquals(UsbSessionState.AWAITING_PERMISSION, TransportState.usbState.value)
-        assertNull(TransportState.selected.value)
+        // Falls back to the dev loopback, not USB.
+        assertEquals(TransportKind.TCP_LOOPBACK, TransportState.selected.value)
     }
 
     @Test
