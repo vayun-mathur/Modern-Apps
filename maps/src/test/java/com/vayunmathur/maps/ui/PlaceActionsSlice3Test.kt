@@ -37,6 +37,7 @@ class PlaceActionsSlice3Test {
     val rule = createComposeRule()
 
     private val app get() = ApplicationProvider.getApplicationContext<android.content.Context>()
+    private val application get() = ApplicationProvider.getApplicationContext<android.app.Application>()
 
     private fun feature() = SpecificFeature.GenericPlace(
         name = "Blue Bottle",
@@ -108,7 +109,7 @@ class PlaceActionsSlice3Test {
     fun `call button dials the listed number`() {
         row()
         rule.onNodeWithText("Call", substring = true).performClick()
-        val started = shadowOf(app).nextStartedActivity
+        val started = shadowOf(application).nextStartedActivity
         assertTrue(started != null)
         assertEquals("tel:555-1234", started.data.toString())
     }
@@ -117,7 +118,7 @@ class PlaceActionsSlice3Test {
     fun `share sends the place link as text`() {
         row(phone = null, website = null, orderDeepLink = null)
         rule.onNodeWithText("Share", substring = true).performClick()
-        val started = shadowOf(app).nextStartedActivity
+        val started = shadowOf(application).nextStartedActivity
         assertTrue(started != null)
         assertEquals(Intent.ACTION_CHOOSER, started.action)
     }
