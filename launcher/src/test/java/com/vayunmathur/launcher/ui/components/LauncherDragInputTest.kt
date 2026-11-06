@@ -83,6 +83,43 @@ class LauncherDragInputTest {
         assertNull(options)
     }
 
+    @Test fun longPressOnItemOpensPopup() {
+        var menued: DragPayload? = null
+        var anchor: Rect? = null
+        show(
+            LauncherDragController(),
+            onLongPressItem = { p, a ->
+                menued = p
+                anchor = a
+            },
+        )
+        rule.onRoot().performTouchInput { longClick(durationMillis = 1000) }
+        rule.waitForIdle()
+        assertEquals(1L, menued?.itemId)
+    }
+
+    @Test fun longPressOnEmptyOpensOptions() {
+        var options: Offset? = null
+        val controller = LauncherDragController()
+        rule.setContent {
+            CompositionLocalProvider(LocalLauncherDrag provides controller) {
+                // No sources registered: the press lands on empty wallpaper.
+                Box(
+                    Modifier
+                        .size(300.dp)
+                        .background(Color.White)
+                        .launcherDragInput(
+                            controller = controller,
+                            onLongPressEmpty = { options = it },
+                        ),
+                )
+            }
+        }
+        rule.onRoot().performTouchInput { longClick(durationMillis = 1000) }
+        rule.waitForIdle()
+        assertNotNull(options)
+    }
+
     @Test fun downWhilePopupOpenDismisses() {
         var dismissed = false
         var menued: DragPayload? = null
