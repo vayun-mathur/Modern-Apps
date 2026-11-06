@@ -755,6 +755,18 @@ internal object MlNative {
     external fun destroyGemma4(handle: Long)
 
     /**
+     * The last [createGemma4] failure message, or null when the last attempt
+     * succeeded (or none ran yet). Consumes the stored message.
+     *
+     * Public so the hosting app can tell a missing or truncated file apart
+     * from a device or Vulkan failure instead of surfacing one
+     * undifferentiated "failed to load" (#901). The message is already in
+     * logcat under `ModelRunner`; this only makes it reachable from the
+     * load-error path.
+     */
+    external fun lastGemma4Error(): String?
+
+    /**
      * Feed soft tokens - an encoder's output - into the KV cache. Returns how many, or -1.
      *
      * [embeddings] is `n * 1536` floats, one row per soft token, and the position advances by

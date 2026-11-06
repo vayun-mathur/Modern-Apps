@@ -113,7 +113,9 @@ pub extern "system" fn Java_com_vayunmathur_library_ml_MlNative_createGemma4<'l>
         // that returns without wrapping one leaks it for the life of the process - and there are
         // three here (the head is optional), so the usual single-`fd` shape is not enough.
         if text_fd < 0 || embed_fd < 0 {
-            log(&format!("gemma4 is unavailable: descriptors {text_fd} and {embed_fd}"));
+            let message = format!("gemma4 is unavailable: descriptors {text_fd} and {embed_fd}");
+            set_gemma4_error(Some(message.clone()));
+            log(&message);
             return Ok(0);
         }
         // SAFETY: the caller detached both, so nothing else owns them, and `File` closes them on drop
@@ -143,11 +145,59 @@ pub extern "system" fn Java_com_vayunmathur_library_ml_MlNative_createGemma4<'l>
             _ => Err("a graph span that is not a positive offset and length".to_string()),
         };
         Ok(match built {
-            Ok(handle) => Box::into_raw(Box::new(handle)) as jlong,
+            Ok(handle) => {
+                set_gemma4_error(None);
+                Box::into_raw(Box::new(handle)) as jlong
+            }
             Err(e) => {
+                set_gemma4_error(Some(e.clone()));
                 log(&format!("gemma4 is unavailable: {e}"));
                 0
             }
+        })
+    })
+    .resolve::<jni::errors::LogErrorAndDefault>()
+}
+
+/// The last `createGemma4` failure, for Kotlin to tell a missing or truncated file apart from a
+/// device or Vulkan failure (#901's undifferentiated "failed to load").
+///
+/// A process-wide slot rather than a return value because the JNI boundary returns only the
+/// handle: 0 already means failure, and the string rides beside it. Written on every create —
+/// cleared on success — and read-then-cleared by `lastGemma4Error`, so a stale message can never
+/// leak into a later load. `Mutex`, not `OnceLock`, because it is rewritten per attempt.
+fn gemma4_error_slot() -> &'static std::sync::Mutex<Option<String>> {
+    static SLOT: std::sync::OnceLock<std::sync::Mutex<Option<String>>> = std::sync::OnceLock::new();
+    SLOT.get_or_init(|| std::sync::Mutex::new(None))
+}
+
+fn set_gemma4_error(message: Option<String>) {
+    if let Ok(mut slot) = gemma4_error_slot().lock() {
+        *slot = message;
+    }
+}
+
+/// The last `createGemma4` failure message, or null on success. Consumes the stored message.
+///
+/// # Safety
+///
+/// Called only by the JVM.
+#[no_mangle]
+pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_lastGemma4Error<'l>(
+    mut env: EnvUnowned<'l>,
+    _class: JClass<'l>,
+) -> jstring {
+    env.with_env(|env| -> jni::errors::Result<jstring> {
+        let message = gemma4_error_slot()
+            .lock()
+            .map(|mut slot| slot.take())
+            .unwrap_or(None);
+        Ok(match message {
+            Some(text) => match env.new_string(text) {
+                Ok(string) => string.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            },
+            None => std::ptr::null_mut(),
         })
     })
     .resolve::<jni::errors::LogErrorAndDefault>()

@@ -163,6 +163,14 @@ internal fun createGemma4Handle(directory: File): Long {
             return 0L
         }
     }
+    val short = shortFiles(directory)
+    if (short.isNotEmpty()) {
+        // Fail before native opens anything: a truncated file maps fine and dies
+        // pages-deep in the upload, which used to surface as the same bare
+        // "failed to load" as a missing GPU feature (#901).
+        Log.status(Gemma4Handle.TAG, "short files in $directory: ${short.joinToString()}")
+        return 0L
+    }
     // Optional GPU head (third file). Absent on old downloads — native falls
     // back to the host head, so this stays warning-free by design.
     val head = File(directory, Gemma4Handle.HEAD)
@@ -204,6 +212,36 @@ private class HeadLease(val fd: Int, val length: Long) : AutoCloseable {
         if (fd >= 0) closeGemma4Fd(fd)
     }
 }
+
+/**
+ * `name to "actual/expected bytes"` for every gemma4 file on disk that is
+ * shorter than the mirror serves.
+ *
+ * Sizes come from the download manifest ([ModelUrls.GemmaMaml.FILES]) rather
+ * than native's header because the check runs before any descriptor is
+ * opened — and because a maml header describes the data section, not the file,
+ * so it cannot catch a tail truncation on its own. [ModelUrls] lives in
+ * `:library:downloadservice`, which `:library:ml` must not depend on (consumer
+ * direction only), hence the literal table: keep it in sync with the manifest.
+ *
+ * Public so the hosting app can name the broken file in its load error (#901)
+ * instead of surfacing one undifferentiated "failed to load".
+ */
+fun shortFiles(directory: File): List<String> =
+    GEMMA4_EXPECTED_BYTES.mapNotNull { (name, expected) ->
+        val file = File(directory, name)
+        if (file.isFile && file.length() < expected) "$name ${file.length()}/$expected" else null
+    }
+
+/** Expected on-disk bytes per gemma4 file; see [shortFiles] for why it is literal. */
+val GEMMA4_EXPECTED_BYTES: Map<String, Long> = mapOf(
+    Gemma4Handle.TEXT to 1_101_593_392L,
+    Gemma4Handle.EMBED to 1_566_576_256L,
+    Gemma4Handle.HEAD to 403_703_360L,
+    Gemma4VisionHandle.VISION to 97_815_200L,
+    Gemma4AudioHandle.AUDIO to 173_999_072L,
+    Gemma4Handle.TOKENIZER to 3_889_167L,
+)
 
 private fun openHeadLease(head: File): HeadLease? {
     if (!head.isFile) return HeadLease(NO_FD, 0L)

@@ -42,6 +42,23 @@ class Gemma4Handle private constructor(internal val directory: File) : AutoClose
     internal var handle: Long = if (MlNative.isAvailable) create(directory) else 0L
 
     /**
+     * Why the last construction failed, for the error the user sees.
+     *
+     * The short-file report when a file is truncated, else native's own
+     * message (already in logcat under `ModelRunner`), else null when the
+     * handle came up. Read by the hosting app's load-error path (#901).
+     */
+    val loadError: String? = if (handle != 0L) {
+        null
+    } else if (MlNative.isAvailable) {
+        // Native ran and refused: prefer its message, which names the header,
+        // graph id, or span that failed rather than just the file.
+        MlNative.lastGemma4Error()
+    } else {
+        "libmodelrunner.so did not load on this device"
+    }
+
+    /**
      * The token ids the KV cache currently holds, or null when it holds something unmatchable.
      *
      * Null after a reset, after a multimodal turn, and after any failure - all the cases where
