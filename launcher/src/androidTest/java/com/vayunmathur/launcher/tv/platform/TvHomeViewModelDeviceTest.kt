@@ -104,7 +104,7 @@ class TvHomeViewModelDeviceTest {
         assertEquals(null, v.home.value.editingKey)
     }
 
-    private fun waitIdle(v: TvHomeViewModel) {
+    private suspend fun waitIdle(v: TvHomeViewModel) {
         val deadline = android.os.SystemClock.uptimeMillis() + 15000
         while (android.os.SystemClock.uptimeMillis() < deadline) {
             if (!v.home.value.loading) break
