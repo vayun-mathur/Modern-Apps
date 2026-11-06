@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
  *
  * These pin the worker-facing contracts: the unscanned-photo projections that drive
  * OCR/CLIP/face indexing, the column-targeted scan writes (which must not clobber
- * sibling columns), and the cluster merge/name-preservation semantics.
+ * sibling columns), and the face assignment and name-preservation semantics.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -272,31 +272,31 @@ class PhotosSlice1DbTest {
         assertContentEquals(centroid(0.9f, 0.1f), row.centroid)
     }
 
-    @Test
-    fun mergeClusterKeepsSurvivorNameAndFallsBack() = runTest {
-        val survivor = faceDao.insertPerson(Person(centroid = centroid(1f, 0f), faceCount = 2, name = "Ada"))
-        val merged = Person(centroid = centroid(0.9f, 0.1f), faceCount = 3, name = null)
-        faceDao.mergeClusterInto(survivor, merged.centroid, merged.faceCount, fallbackName = "Bo")
-        // Survivor already named: COALESCE keeps "Ada", not the fallback.
-        assertEquals("Ada", faceDao.getPersons().single().name)
+    private fun face(cluster: Long?, pid: Long, clusterable: Boolean = true) = PhotoFace(
+        photoId = pid, clusterId = cluster, embedding = ByteArray(8), clusterable = clusterable,
+        left = 0f, top = 0f, right = 0.5f, bottom = 0.5f, srcWidth = 100, srcHeight = 100,
+    )
 
-        val unnamed = faceDao.insertPerson(Person(centroid = centroid(0f, 1f), faceCount = 1, name = null))
-        faceDao.mergeClusterInto(unnamed, centroid(0f, 1f), 2, fallbackName = "Bo")
-        assertEquals("Bo", faceDao.getPersons().first { it.id == unnamed }.name)
+    @Test
+    fun facesStartUnassignedAndCanBeAssignedAndCleared() = runTest {
+        val a = faceDao.insertPerson(Person(centroid = centroid(1f, 0f), faceCount = 1, name = null))
+        faceDao.insertPhotoFaces(listOf(face(null, 10L), face(null, 11L, clusterable = false)))
+        val rows = faceDao.getClusterRows().sortedBy { it.id }
+        assertEquals(listOf(null, null), rows.map { it.clusterId })
+        assertEquals(listOf(true, false), rows.map { it.clusterable })
+
+        faceDao.assignFaces(rows.map { it.id }, a)
+        assertEquals(setOf(10L, 11L), faceDao.photoIdsForCluster(a).toSet())
+
+        faceDao.clearClusterAssignments()
+        assertTrue(faceDao.photoIdsForCluster(a).isEmpty())
+        assertEquals(2, faceDao.getClusterRows().size)
     }
 
     @Test
-    fun photoFacesReassignAndClear() = runTest {
+    fun photoFacesDeleteByPhotoAndClear() = runTest {
         val a = faceDao.insertPerson(Person(centroid = centroid(1f, 0f), faceCount = 1, name = null))
-        val b = faceDao.insertPerson(Person(centroid = centroid(0f, 1f), faceCount = 1, name = null))
-        fun face(cluster: Long, pid: Long) = PhotoFace(
-            photoId = pid, clusterId = cluster, embedding = ByteArray(8),
-            left = 0f, top = 0f, right = 0.5f, bottom = 0.5f, srcWidth = 100, srcHeight = 100,
-        )
-        faceDao.insertPhotoFaces(listOf(face(a, 10L), face(b, 11L)))
-        faceDao.reassignCluster(b, a)
-        assertEquals(setOf(10L, 11L), faceDao.photoIdsForCluster(a).toSet())
-        assertTrue(faceDao.photoIdsForCluster(b).isEmpty())
+        faceDao.insertPhotoFaces(listOf(face(a, 10L), face(a, 11L)))
         faceDao.deletePhotoFacesByPhotoIds(listOf(10L))
         assertEquals(listOf(11L), faceDao.photoIdsForCluster(a))
         faceDao.clearPhotoFaces()

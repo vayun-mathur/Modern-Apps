@@ -43,6 +43,18 @@ data class DetectedFaceBox(
     val rightEyeY: Float,
     /** Detector confidence, post-sigmoid. */
     val score: Float,
+    /** Nose tip. */
+    val noseX: Float,
+    /** Nose tip. */
+    val noseY: Float,
+    /** Left mouth corner, in the detector's keypoint order. */
+    val mouthLeftX: Float,
+    /** Left mouth corner. */
+    val mouthLeftY: Float,
+    /** Right mouth corner. */
+    val mouthRightX: Float,
+    /** Right mouth corner. */
+    val mouthRightY: Float,
 )
 
 /**
@@ -106,7 +118,7 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
         }
     }
 
-    /** Nine floats per face; see `MlNative.detectFaces` for the order. */
+    /** Fifteen floats per face; see `MlNative.detectFaces` for the order. */
     private fun unpack(flat: FloatArray): List<DetectedFaceBox> {
         if (flat.size % FLOATS_PER_FACE != 0) {
             Log.error(TAG, "${flat.size} floats is not a whole number of faces")
@@ -125,6 +137,12 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
                 rightEyeX = flat[at + 6],
                 rightEyeY = flat[at + 7],
                 score = flat[at + 8],
+                noseX = flat[at + 9],
+                noseY = flat[at + 10],
+                mouthLeftX = flat[at + 11],
+                mouthLeftY = flat[at + 12],
+                mouthRightX = flat[at + 13],
+                mouthRightY = flat[at + 14],
             )
             at += FLOATS_PER_FACE
         }
@@ -142,7 +160,7 @@ class FaceDetector(context: Context, assetName: String = DEFAULT_ASSET) : AutoCl
         /** What `:photos` ships. */
         const val DEFAULT_ASSET: String = "scrfd_500m.maml"
         private const val TAG = "FaceDetector"
-        private const val FLOATS_PER_FACE = 9
+        private const val FLOATS_PER_FACE = 15
     }
 }
 

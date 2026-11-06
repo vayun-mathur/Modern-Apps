@@ -58,16 +58,6 @@ class PhotosSlice1MathTest {
         )
     }
 
-    @Test
-    fun faceSimilarityUsesThresholdScale() {
-        // Just above the cluster threshold: same person. Well below: different.
-        val centroid = floatArrayOf(1f, 0f, 0f)
-        val close = floatArrayOf(0.9f, 0.1f, 0f)
-        val far = floatArrayOf(0f, 1f, 0f)
-        assertTrue(FaceRecognizer.similarity(centroid, close) >= FaceRecognizer.CLUSTER_THRESHOLD)
-        assertTrue(FaceRecognizer.similarity(centroid, far) < FaceRecognizer.CLUSTER_THRESHOLD)
-    }
-
     // ---- FaceRecognizer.l2Normalize ----
 
     @Test
@@ -145,9 +135,6 @@ class PhotosSlice1MathTest {
         assertTrue(FaceRecognizer.EMBEDDER_VERSION > 0)
         assertTrue(ClipEmbedder.EMBEDDER_VERSION > 0)
         assertTrue(FaceRecognizer.INPUT_SIZE > 0)
-        assertTrue(FaceRecognizer.CLUSTER_THRESHOLD in 0f..1f)
-        assertTrue(FaceRecognizer.MERGE_THRESHOLD in 0f..1f)
-        assertTrue(FaceRecognizer.MERGE_THRESHOLD >= FaceRecognizer.CLUSTER_THRESHOLD)
     }
 
     @Test

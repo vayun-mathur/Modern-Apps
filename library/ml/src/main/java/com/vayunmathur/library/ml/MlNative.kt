@@ -545,10 +545,11 @@ internal object MlNative {
     external fun destroyWhisper(handle: Long)
 
     /**
-     * Detect faces in [pixels] and return them flattened, nine floats per face.
+     * Detect faces in [pixels] and return them flattened, fifteen floats per face.
      *
      * The layout per face is `left, top, right, bottom, leftEyeX, leftEyeY, rightEyeX,
-     * rightEyeY, score`, every coordinate a fraction of the bitmap. Letterboxing, the
+     * rightEyeY, score, noseX, noseY, mouthLeftX, mouthLeftY, mouthRightX, mouthRightY`,
+     * every coordinate a fraction of the bitmap. Letterboxing, the
      * forward pass, the anchor decode and non-maximum suppression all happen natively, so
      * this crosses the boundary once per bitmap rather than once per proposal.
      *

@@ -114,15 +114,18 @@ fun FaceBoxLayer(
             // One transparent tap target per face. Compose hit-tests through the
             // zoom graphicsLayer, so positioning these in un-zoomed container
             // space is correct while the photo is magnified.
-            Box(
-                Modifier
-                    .offset { IntOffset(p.topLeft.x.roundToInt(), p.topLeft.y.roundToInt()) }
-                    .requiredSize(
-                        width = with(density) { p.size.width.toDp() },
-                        height = with(density) { p.size.height.toDp() },
-                    )
-                    .invisibleClickable { onFaceClick(p.clusterId) }
-            )
+            // Faces that belong to no person are outlined but not tappable.
+            p.clusterId?.let { clusterId ->
+                Box(
+                    Modifier
+                        .offset { IntOffset(p.topLeft.x.roundToInt(), p.topLeft.y.roundToInt()) }
+                        .requiredSize(
+                            width = with(density) { p.size.width.toDp() },
+                            height = with(density) { p.size.height.toDp() },
+                        )
+                        .invisibleClickable { onFaceClick(clusterId) }
+                )
+            }
 
             // Unnamed clusters are left as bare outlines rather than labelled
             // with a placeholder.
@@ -166,7 +169,7 @@ fun FaceBoxLayer(
 
 /** One face resolved to on-screen pixels of the un-zoomed container. */
 private data class FacePlacement(
-    val clusterId: Long,
+    val clusterId: Long?,
     val name: String?,
     val topLeft: Offset,
     val size: Size,

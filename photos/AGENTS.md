@@ -67,9 +67,13 @@ _Install: ./install photos (dev by default)._
 - com/vayunmathur/photos/data/RedEyeData.kt
 - com/vayunmathur/photos/data/VideoEditState.kt
 - com/vayunmathur/photos/data/BitmapExtensions.kt
-### domain/ — OCR + motion-photo helpers (pure logic)
+### domain/ — OCR, motion-photo and face-grouping logic (pure)
 - com/vayunmathur/photos/domain/PhotoOcr.kt
 - com/vayunmathur/photos/domain/MotionPhotoXmp.kt
+- com/vayunmathur/photos/domain/FaceAlignment.kt — five-point ArcFace alignment
+- com/vayunmathur/photos/domain/FaceQuality.kt — which faces may form people
+- com/vayunmathur/photos/domain/FaceClustering.kt — batch average-linkage grouping
+- com/vayunmathur/photos/domain/FaceClusterIdentity.kt — keeps person ids/names across regroups
 ### glance/ — home widget
 - com/vayunmathur/photos/glance/PhotoGlanceWidget.kt
 - com/vayunmathur/photos/glance/PhotoGlanceWidgetReceiver.kt

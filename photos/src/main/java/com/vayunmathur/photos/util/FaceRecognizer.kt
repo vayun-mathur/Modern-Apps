@@ -5,13 +5,16 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Rect
 import com.vayunmathur.library.log.Log
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 import com.vayunmathur.library.ml.DetectedFaceBox
 import com.vayunmathur.library.ml.FaceDetector
 import com.vayunmathur.library.ml.FaceEmbedder
+import com.vayunmathur.photos.domain.ALIGNED_FACE_SIZE
+import com.vayunmathur.photos.domain.ARCFACE_TEMPLATE
+import com.vayunmathur.photos.domain.FaceQuality
+import com.vayunmathur.photos.domain.clusterFaces
+import com.vayunmathur.photos.domain.similarityTransform
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -23,15 +26,16 @@ import kotlin.math.sqrt
  *
  * Pipeline:
  *  1. Detection — **SCRFD 500M** ([FaceDetector]) finds faces and returns a bounding box
- *     + 5 landmarks (the two eyes are used for alignment). Letterboxing, anchor decode
- *     and NMS all run natively.
- *  2. Alignment — the two eye landmarks drive a similarity transform (rotate +
- *     uniform scale + translate) onto a canonical [INPUT_SIZE]² crop.
+ *     + 5 landmarks (eyes, nose, mouth corners). Letterboxing, anchor decode and NMS all
+ *     run natively.
+ *  2. Alignment — a least-squares similarity transform maps all five landmarks onto
+ *     ArcFace's template ([similarityTransform]) in an [INPUT_SIZE]² crop. Faces whose
+ *     landmarks give no transform are skipped rather than embedded unaligned.
  *  3. Embedding — **MobileFaceNet** ([FaceEmbedder], insightface `w600k_mbf`,
  *     ArcFace-trained) produces a 512-d embedding from the aligned crop. Pixels
  *     are normalised (px - 127.5)/127.5 natively. The result is L2-normalised here.
- *  4. Matching — cosine similarity clusters faces of the same person
- *     (see [CLUSTER_THRESHOLD]).
+ *  4. Quality — [FaceQuality] decides whether the face may form person clusters.
+ *     Grouping itself happens later, over all stored faces, in [clusterFaces].
  *
  * The models ship as `.maml` assets in this app. They are **GPU-only**: on a device
  * without Vulkan fp16 compute [modelsAvailable] is false and people clustering turns off,
@@ -40,7 +44,7 @@ import kotlin.math.sqrt
 object FaceRecognizer {
 
     /** Square input side (px) the embedder expects. ArcFace/MobileFaceNet is 112. */
-    const val INPUT_SIZE = 112
+    const val INPUT_SIZE = ALIGNED_FACE_SIZE
 
     /**
      * Bump this whenever the embedder model (or preprocessing) changes. The face
@@ -50,34 +54,19 @@ object FaceRecognizer {
      * MobileFaceNet embedder on ncnn; v7 = the same two models on `:library:ml`'s
      * Vulkan runtime — fp16 weights, fp32 accumulation and our own letterbox, so the
      * embeddings are close to v6's but not identical, and mixing the two spaces in one
-     * index would cluster badly.)
+     * index would cluster badly; v8 = five-point alignment instead of two eyes.)
      */
-    const val EMBEDDER_VERSION = 7
-
-    /**
-     * Minimum cosine similarity for a face to join an existing cluster. ArcFace
-     * (MobileFaceNet) has a spread-out cosine distribution; 0.5 is a reasonable
-     * starting floor — validate on sample faces and adjust (higher = stricter/
-     * more clusters, lower = looser/fewer).
-     */
-    const val CLUSTER_THRESHOLD = 0.5f
-
-    /** Cosine above which two whole clusters merge in the second-pass cleanup. */
-    const val MERGE_THRESHOLD = 0.6f
+    const val EMBEDDER_VERSION = 8
 
     private const val TAG = "FaceRecognizer"
 
-    private const val FACE_MARGIN_FRACTION = 0.15f
+    /** Below this a face is not even embedded; [FaceQuality] applies the real size floor. */
     private const val MIN_FACE_SIZE_PX = 8
 
-    // Canonical eye positions inside the aligned crop (ArcFace 5-point template).
-    private const val LEFT_EYE_X = 38.2946f / 112f
-    private const val RIGHT_EYE_X = 73.5318f / 112f
-    private const val EYE_Y = 51.6963f / 112f
-
     /**
-     * One detected face: its L2-normalised embedding plus the detector's bounding
-     * box, normalised to 0..1 of the source image so it survives resizing.
+     * One detected face: its L2-normalised embedding, the detector's bounding box
+     * normalised to 0..1 of the source image so it survives resizing, and whether it
+     * passed [FaceQuality].
      */
     data class DetectedFace(
         val embedding: FloatArray,
@@ -85,6 +74,7 @@ object FaceRecognizer {
         val top: Float,
         val right: Float,
         val bottom: Float,
+        val clusterable: Boolean,
     )
 
     @Volatile private var detector: FaceDetector? = null
@@ -167,8 +157,11 @@ object FaceRecognizer {
 
     /** Embed a single detected face, or null when it should be skipped. */
     private fun embedOneFace(emb: FaceEmbedder, argb: Bitmap, f: DetectedFaceBox): DetectedFace? {
-        val rect = faceRect(f, argb.width, argb.height) ?: return null
-        val aligned = alignFace(argb, f, rect) ?: return null
+        val boxWidth = (f.right - f.left) * argb.width
+        val boxHeight = (f.bottom - f.top) * argb.height
+        if (boxWidth < MIN_FACE_SIZE_PX || boxHeight < MIN_FACE_SIZE_PX) return null
+        val landmarks = landmarksPx(f, argb.width, argb.height)
+        val aligned = alignFace(argb, landmarks) ?: return null
         try {
             // Null means the inference failed on this crop; the others may still be
             // fine, so skip this face rather than abandoning the photo.
@@ -176,65 +169,40 @@ object FaceRecognizer {
                 Log.error(TAG, "Face embedding failed")
                 return null
             }
+            val pixels = IntArray(INPUT_SIZE * INPUT_SIZE)
+            aligned.getPixels(pixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
+            val sharpness = FaceQuality.laplacianVariance(pixels, INPUT_SIZE, INPUT_SIZE)
             return DetectedFace(
                 embedding = l2Normalize(raw),
                 left = f.left,
                 top = f.top,
                 right = f.right,
                 bottom = f.bottom,
+                clusterable = FaceQuality.isClusterable(boxWidth, boxHeight, f.score, landmarks, sharpness),
             )
         } finally {
             aligned.recycle()
         }
     }
 
-    /**
-     * Warp the source so the two eye landmarks land on fixed canonical positions
-     * in an [INPUT_SIZE] crop (similarity transform). Falls back to a plain box
-     * crop when landmarks are unusable.
-     */
-    private fun alignFace(src: Bitmap, f: DetectedFaceBox, box: Rect): Bitmap? {
-        val hasEyes = f.leftEyeX != 0f || f.leftEyeY != 0f || f.rightEyeX != 0f || f.rightEyeY != 0f
-        if (hasEyes) {
-            // Sort eyes by x so the left-most maps to the left canonical eye.
-            val eyes = listOf(
-                floatArrayOf(f.leftEyeX * src.width, f.leftEyeY * src.height),
-                floatArrayOf(f.rightEyeX * src.width, f.rightEyeY * src.height),
-            ).sortedBy { it[0] }
-            val srcPts = floatArrayOf(eyes[0][0], eyes[0][1], eyes[1][0], eyes[1][1])
-            val dstPts = floatArrayOf(
-                LEFT_EYE_X * INPUT_SIZE, EYE_Y * INPUT_SIZE,
-                RIGHT_EYE_X * INPUT_SIZE, EYE_Y * INPUT_SIZE,
-            )
-            val matrix = Matrix()
-            if (matrix.setPolyToPoly(srcPts, 0, dstPts, 0, 2)) {
-                return try {
-                    val outBmp = createBitmap(INPUT_SIZE, INPUT_SIZE)
-                    Canvas(outBmp).drawBitmap(src, matrix, Paint(Paint.FILTER_BITMAP_FLAG))
-                    outBmp
-                } catch (_: Exception) { null }
-            }
-        }
-        return try {
-            val crop = Bitmap.createBitmap(src, box.left, box.top, box.width(), box.height())
-            val scaled = crop.scale(INPUT_SIZE, INPUT_SIZE)
-            if (scaled != crop) crop.recycle()
-            scaled
-        } catch (_: Exception) { null }
-    }
+    /** The five landmarks in pixels, interleaved, in [ARCFACE_TEMPLATE] order. */
+    private fun landmarksPx(f: DetectedFaceBox, w: Int, h: Int) = floatArrayOf(
+        f.leftEyeX * w, f.leftEyeY * h,
+        f.rightEyeX * w, f.rightEyeY * h,
+        f.noseX * w, f.noseY * h,
+        f.mouthLeftX * w, f.mouthLeftY * h,
+        f.mouthRightX * w, f.mouthRightY * h,
+    )
 
-    /** Expand the normalised detector box by a small margin and clamp to pixels. */
-    private fun faceRect(f: DetectedFaceBox, w: Int, h: Int): Rect? {
-        val bw = (f.right - f.left) * w
-        val bh = (f.bottom - f.top) * h
-        val marginX = bw * FACE_MARGIN_FRACTION
-        val marginY = bh * FACE_MARGIN_FRACTION
-        val left = (f.left * w - marginX).toInt().coerceIn(0, w - 1)
-        val top = (f.top * h - marginY).toInt().coerceIn(0, h - 1)
-        val right = (f.right * w + marginX).toInt().coerceIn(left + 1, w)
-        val bottom = (f.bottom * h + marginY).toInt().coerceIn(top + 1, h)
-        if (right - left < MIN_FACE_SIZE_PX || bottom - top < MIN_FACE_SIZE_PX) return null
-        return Rect(left, top, right, bottom)
+    /** Warp [src] so [landmarks] land on [ARCFACE_TEMPLATE]; null if they give no transform. */
+    private fun alignFace(src: Bitmap, landmarks: FloatArray): Bitmap? {
+        val t = similarityTransform(landmarks, ARCFACE_TEMPLATE) ?: return null
+        val matrix = Matrix().apply { setValues(floatArrayOf(t[0], t[1], t[2], t[3], t[4], t[5], 0f, 0f, 1f)) }
+        return try {
+            val out = createBitmap(INPUT_SIZE, INPUT_SIZE)
+            Canvas(out).drawBitmap(src, matrix, Paint(Paint.FILTER_BITMAP_FLAG))
+            out
+        } catch (_: Exception) { null }
     }
 
     /** Cosine similarity of two embeddings (range roughly -1..1). */

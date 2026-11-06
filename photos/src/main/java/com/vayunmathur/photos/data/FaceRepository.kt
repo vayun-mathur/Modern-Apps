@@ -19,18 +19,33 @@ class FaceRepository private constructor(context: Context) :
 
     fun personsFlow(): Flow<List<Person>> = faceDao.personsFlow()
     fun faceGeometryFlow(): Flow<List<FaceGeometry>> = faceDao.faceGeometryFlow()
-    suspend fun insertPerson(person: Person): Long = faceDao.insertPerson(person)
-    suspend fun updateClusterCentroid(id: Long, centroid: ByteArray, faceCount: Int) =
-        faceDao.updateClusterCentroid(id, centroid, faceCount)
-    suspend fun mergeClusterInto(id: Long, centroid: ByteArray, faceCount: Int, fallbackName: String?) =
-        faceDao.mergeClusterInto(id, centroid, faceCount, fallbackName)
     suspend fun getPersons(): List<Person> = faceDao.getPersons()
     suspend fun clearPersons() = faceDao.clearPersons()
-    suspend fun deletePerson(id: Long) = faceDao.deletePerson(id)
     suspend fun setPersonName(id: Long, name: String?) = faceDao.setPersonName(id, name)
     suspend fun clearPhotoFaces() = faceDao.clearPhotoFaces()
-    suspend fun reassignCluster(oldId: Long, newId: Long) = faceDao.reassignCluster(oldId, newId)
+    suspend fun getClusterRows(): List<FaceClusterRow> = faceDao.getClusterRows()
     suspend fun photoIdsForCluster(clusterId: Long): List<Long> = faceDao.photoIdsForCluster(clusterId)
+
+    /**
+     * Replace every face's person assignment with one clustering pass's result, in one
+     * transaction so the People view never sees a half-applied regrouping.
+     *
+     * Kept persons only get their centroid and count rewritten, so a name entered during
+     * the pass survives; new persons start unnamed.
+     */
+    suspend fun applyClustering(persons: List<ResolvedPersonRow>, deletedPersonIds: List<Long>) =
+        db.withWriteTransaction {
+            faceDao.clearClusterAssignments()
+            deletedPersonIds.forEach { faceDao.deletePerson(it) }
+            for (person in persons) {
+                val id = person.personId?.also {
+                    faceDao.updateClusterCentroid(it, person.centroid, person.faceIds.size)
+                } ?: faceDao.insertPerson(
+                    Person(centroid = person.centroid, faceCount = person.faceIds.size, name = null),
+                )
+                person.faceIds.chunked(ASSIGN_CHUNK).forEach { faceDao.assignFaces(it, id) }
+            }
+        }
 
     /**
      * Commit one batch of face scanning atomically: replace the face rows for
@@ -49,6 +64,9 @@ class FaceRepository private constructor(context: Context) :
         }
 
     companion object {
+        /** Below SQLite's 999 bound-parameter limit, leaving room for the cluster id. */
+        private const val ASSIGN_CHUNK = 900
+
         @Volatile
         private var instance: FaceRepository? = null
 
@@ -58,3 +76,6 @@ class FaceRepository private constructor(context: Context) :
             }
     }
 }
+
+/** One person to write: [personId] null means insert a new row. */
+class ResolvedPersonRow(val personId: Long?, val centroid: ByteArray, val faceIds: List<Long>)

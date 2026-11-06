@@ -1,5 +1,6 @@
 package com.vayunmathur.photos.util
 
+import com.vayunmathur.photos.domain.FaceClusterConfig
 import android.app.Application
 import android.database.sqlite.SQLiteException
 import android.net.Uri
@@ -159,6 +160,11 @@ class GalleryViewModel(
                     val clusterFaces = facesByCluster[person.id].orEmpty()
                         .mapNotNull { face -> byId[face.photoId]?.let { face to it } }
                     if (clusterFaces.isEmpty()) return@mapNotNull null
+                    // Tiny groups are mostly strangers in the background; a named one
+                    // is the user's choice and always shows.
+                    if (clusterFaces.size < FaceClusterConfig.MIN_CLUSTER_FACES && person.name == null) {
+                        return@mapNotNull null
+                    }
                     val (bestFace, bestPhoto) = clusterFaces.maxBy { (face, photo) ->
                         (face.right - face.left).toDouble() * (face.bottom - face.top) *
                             photo.width * photo.height
@@ -254,7 +260,7 @@ class GalleryViewModel(
                         faces = rows.map { row ->
                             FaceBox(
                                 clusterId = row.clusterId,
-                                name = nameByCluster[row.clusterId],
+                                name = row.clusterId?.let { nameByCluster[it] },
                                 left = row.left,
                                 top = row.top,
                                 right = row.right,
@@ -566,9 +572,9 @@ data class PhotoFaceBoxes(
     val faces: List<FaceBox>,
 )
 
-/** One face box (normalised 0..1) and the cluster it was grouped into. */
+/** One face box (normalised 0..1) and the person it was grouped into, if any. */
 data class FaceBox(
-    val clusterId: Long,
+    val clusterId: Long?,
     val name: String?,
     val left: Float,
     val top: Float,

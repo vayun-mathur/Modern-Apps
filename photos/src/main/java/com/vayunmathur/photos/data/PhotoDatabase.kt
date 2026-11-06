@@ -284,7 +284,7 @@ data class ExifResult(
     val pano: PanoData?,
 )
 
-@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 18, exportSchema = false)
+@Database(entities = [Photo::class, Person::class, PhotoFace::class], version = 19, exportSchema = false)
 abstract class PhotoDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun photoScanDao(): PhotoScanDao
@@ -295,7 +295,7 @@ abstract class PhotoDatabase : RoomDatabase() {
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
             MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11,
             MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-            MIGRATION_16_17, MIGRATION_17_18,
+            MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19,
         )
     }
 }
@@ -376,6 +376,31 @@ val MIGRATION_17_18 = Migration(17, 18) {
     // them; the UI shows those as Unknown meanwhile. SQL mirrors Room's
     // generated schema exactly so schema validation passes.
     it.execSQL("ALTER TABLE Photo ADD COLUMN album TEXT")
+}
+
+val MIGRATION_18_19 = Migration(18, 19) {
+    // Face grouping was rebuilt: faces are aligned on five landmarks (new embeddings),
+    // carry a quality flag, and are clustered in one batch pass where a face may belong
+    // to no person (clusterId NULL). SQLite cannot relax NOT NULL in place, and every
+    // embedding is stale anyway, so both tables are dropped, recreated and re-derived
+    // by the background indexer, as in MIGRATION_15_16. Person names are cleared;
+    // accepted. SQL mirrors Room's generated schema exactly so schema validation passes.
+    it.execSQL("DROP TABLE IF EXISTS Person")
+    it.execSQL("DROP TABLE IF EXISTS PhotoFace")
+    it.execSQL(
+        "CREATE TABLE IF NOT EXISTS `Person` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`centroid` BLOB NOT NULL, `faceCount` INTEGER NOT NULL, `name` TEXT)"
+    )
+    it.execSQL(
+        "CREATE TABLE IF NOT EXISTS `PhotoFace` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`photoId` INTEGER NOT NULL, `clusterId` INTEGER, `embedding` BLOB NOT NULL, " +
+            "`clusterable` INTEGER NOT NULL, " +
+            "`left` REAL NOT NULL, `top` REAL NOT NULL, `right` REAL NOT NULL, `bottom` REAL NOT NULL, " +
+            "`srcWidth` INTEGER NOT NULL, `srcHeight` INTEGER NOT NULL)"
+    )
+    it.execSQL("CREATE INDEX IF NOT EXISTS `index_PhotoFace_photoId` ON `PhotoFace` (`photoId`)")
+    it.execSQL("CREATE INDEX IF NOT EXISTS `index_PhotoFace_clusterId` ON `PhotoFace` (`clusterId`)")
+    it.execSQL("UPDATE Photo SET faceScanned = 0")
 }
 
 val MIGRATION_8_9 = Migration(8, 9) {

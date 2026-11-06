@@ -167,7 +167,7 @@ pub fn decode(
     Ok(())
 }
 
-pub use super::nms_extra::suppress;
+pub use super::nms_extra::{flatten, suppress, FACE_FLOATS};
 
 /// Map coordinates out of the letterboxed space and back onto the source image.
 ///

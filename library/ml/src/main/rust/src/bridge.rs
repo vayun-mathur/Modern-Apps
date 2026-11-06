@@ -264,11 +264,11 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_segment<'
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
 
-/// Detect faces in `pixels` and return them flattened, nine floats each.
+/// Detect faces in `pixels` and return them flattened, fifteen floats each.
 ///
 /// The layout per face is `left, top, right, bottom, leftEyeX, leftEyeY, rightEyeX,
-/// rightEyeY, score` — deliberately the argument order of the old ncnn JNI's `Face`
-/// constructor, so the Kotlin mapping is a straight read and a reviewer can diff the two.
+/// rightEyeY, score, noseX, noseY, mouthLeftX, mouthLeftY, mouthRightX, mouthRightY`.
+/// Every coordinate
 /// Every coordinate is a fraction of the source bitmap, so it survives the caller
 /// resizing.
 ///
@@ -322,9 +322,6 @@ pub unsafe extern "system" fn Java_com_vayunmathur_library_ml_MlNative_detectFac
     .resolve::<jni::errors::LogErrorAndDefault>()
 }
 
-/// Nine floats per detected face. See the entry point above for the order.
-const FACE_FLOATS: usize = 9;
-
 /// Letterbox, run, decode, suppress, and flatten.
 fn detect(state: &mut Handle, width: u32, height: u32) -> Result<Vec<f32>, String> {
     let fit = Letterbox::square(width, height, scrfd::LONG_SIDE)?;
@@ -353,24 +350,10 @@ fn detect(state: &mut Handle, width: u32, height: u32) -> Result<Vec<f32>, Strin
     nms::suppress(&mut faces, nms::IOU_THRESHOLD);
     nms::to_source(&mut faces, &fit, width, height);
 
-    let mut flat = Vec::with_capacity(faces.len() * FACE_FLOATS);
-    for face in &faces {
-        flat.extend_from_slice(&face.bounds);
-        // Landmarks 0 and 1 are the eyes, which is all the alignment in
-        // `FaceRecognizer.alignFace` uses. The nose and mouth corners are decoded and
-        // dropped here rather than carried across a boundary nothing reads them through.
-        let (left_eye, right_eye) = match (face.keypoints.first(), face.keypoints.get(1)) {
-            (Some(a), Some(b)) => (*a, *b),
-            _ => ((0.0, 0.0), (0.0, 0.0)),
-        };
-        flat.push(left_eye.0);
-        flat.push(left_eye.1);
-        flat.push(right_eye.0);
-        flat.push(right_eye.1);
-        flat.push(face.score);
-    }
-    Ok(flat)
+    Ok(nms::flatten(&faces))
 }
+
+/// Both PP-OCRv5 networks
 
 /// Both PP-OCRv5 networks and the dictionary between them. A separate handle type from
 /// [`Handle`] because it owns two `Net`s, and separately destroyed for the same reason:

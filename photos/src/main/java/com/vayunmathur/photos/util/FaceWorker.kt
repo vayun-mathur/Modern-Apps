@@ -30,16 +30,19 @@ import com.vayunmathur.photos.data.ClipResult
 import com.vayunmathur.photos.data.ExifResult
 import com.vayunmathur.photos.data.FaceRepository
 import com.vayunmathur.photos.data.OcrResult
-import com.vayunmathur.photos.data.Person
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotoFace
 import com.vayunmathur.photos.data.PhotoScanRepository
 import com.vayunmathur.photos.data.PhotoScanTarget
 import com.vayunmathur.photos.data.PhotosRepository
+import com.vayunmathur.photos.data.ResolvedPersonRow
 import com.vayunmathur.photos.data.VideoData
 import com.vayunmathur.photos.data.toJson
+import com.vayunmathur.photos.domain.ClusterInput
 import com.vayunmathur.photos.domain.MIN_OCR_DIM
+import com.vayunmathur.photos.domain.clusterFaces
 import com.vayunmathur.photos.domain.decodeForOcr
+import com.vayunmathur.photos.domain.resolveIdentities
 import com.vayunmathur.photos.domain.toLayout
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -95,14 +98,12 @@ class FaceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 }
 
 /**
- * Scan any not-yet-scanned library photos for faces, then group each detected
- * face into a [Person] cluster by cosine similarity of its embedding — all
- * on-device and unsupervised.
+ * Scan not-yet-scanned library photos for faces, then regroup every stored face into
+ * persons — all on-device and unsupervised.
  *
- * Clustering is greedy and incremental: each face joins the nearest existing
- * cluster if similarity >= [FaceRecognizer.CLUSTER_THRESHOLD], otherwise it
- * starts a new cluster. Each cluster keeps a running-mean [Person.centroid] that
- * is updated as faces are added, so we never have to re-scan old photos.
+ * Scanning only stores faces, unassigned. Grouping is a separate batch pass over all
+ * stored embeddings ([com.vayunmathur.photos.domain.clusterFaces]) run whenever new
+ * faces landed, so the result never depends on the order photos were scanned in.
  */
 suspend fun runFaceIndexing(
     faceRepository: FaceRepository,
@@ -130,14 +131,8 @@ suspend fun runFaceIndexing(
         dataStore.setLong("face_embedder_version", FaceRecognizer.EMBEDDER_VERSION.toLong())
     }
 
-    // Load existing clusters into memory once; centroids are cached as floats and
-    // updated in place so we avoid re-reading them for every face.
-    val clusters = faceRepository.getPersons()
-        .map { Cluster(it, FaceRecognizer.bytesToFloats(it.centroid)) }
-        .toMutableList()
-
     val photos = scanRepository.getUnscannedForFaces()
-    Log.status("FaceWorker", "Face indexing start: ${photos.size} photos to scan, ${clusters.size} existing clusters")
+    Log.status("FaceWorker", "Face indexing start: ${photos.size} photos to scan")
     var facesTotal = 0
     var photosWithFaces = 0
     var decoded = 0
@@ -145,10 +140,13 @@ suspend fun runFaceIndexing(
     // See INDEX_FLUSH_EVERY. Face rows are accumulated alongside the scanned ids and
     // committed with them in one transaction, so a batch is all-or-nothing: a worker
     // killed mid-batch cannot leave rows behind that a re-scan would duplicate.
+    // CLUSTER_DIRTY is raised before rows land, so a worker killed between a commit
+    // and the grouping pass still regroups on its next run.
     val pendingScanned = mutableListOf<Long>()
     val pendingFaces = mutableListOf<PhotoFace>()
     suspend fun flush() {
         if (pendingScanned.isEmpty()) return
+        if (pendingFaces.isNotEmpty()) dataStore.setLong(CLUSTER_DIRTY, 1L)
         faceRepository.commitFaceScan(pendingScanned.toList(), pendingFaces.toList())
         pendingScanned.clear()
         pendingFaces.clear()
@@ -160,13 +158,16 @@ suspend fun runFaceIndexing(
             // Face indexing runs two models per photo (detector + embedder), so
             // pace it like OCR/CLIP: a short pause after each photo we actually ran
             // inference on, plus a longer cooling break every batch.
-            val outcome = scanPhotoFaces(context, faceRepository, photo, clusters)
+            val outcome = scanPhotoFaces(context, photo)
             if (outcome.didInference) {
                 decoded++
                 if (outcome.faces.isNotEmpty()) {
                     photosWithFaces++
                     facesTotal += outcome.faces.size
-                    Log.status("FaceWorker", "photo ${photo.id}: ${outcome.faces.size} face(s) (running total: $facesTotal)")
+                    Log.status(
+                        "FaceWorker",
+                        "photo ${photo.id}: ${outcome.faces.size} face(s) (running total: $facesTotal)",
+                    )
                 }
                 pendingFaces += outcome.faces
                 delay(FACE_INTER_ITEM_DELAY_MS)
@@ -180,34 +181,65 @@ suspend fun runFaceIndexing(
     } finally {
         withContext(NonCancellable) { runCatching { flush() } }
     }
-    val clusterCount = faceRepository.getPersons().size
     Log.status(
         "FaceWorker",
-        "Face indexing done: decoded=$decoded/${photos.size}, " +
-            "$facesTotal faces in $photosWithFaces photos, $clusterCount clusters",
+        "Face scan done: decoded=$decoded/${photos.size}, $facesTotal faces in $photosWithFaces photos",
     )
 
-    // Second pass: fold together clusters whose centroids ended up very close,
-    // which trims duplicate person-groups created early in the scan.
-    mergeSimilarClusters(faceRepository)
+    if ((dataStore.getLong(CLUSTER_DIRTY) ?: 0L) != 0L) {
+        regroupFaces(faceRepository)
+        dataStore.setLong(CLUSTER_DIRTY, 0L)
+    }
 }
 
-/** A cluster held in memory during a scan: its [Person] row plus cached centroid. */
-private class Cluster(var person: Person, var centroid: FloatArray)
+/** DataStore flag: stored faces changed since the last grouping pass. */
+private const val CLUSTER_DIRTY = "face_cluster_dirty"
+
+/**
+ * Regroup every stored face from scratch and write the result atomically, keeping
+ * person ids (and so names) where the new groups mostly match the old ones.
+ */
+private suspend fun regroupFaces(faceRepository: FaceRepository) {
+    val started = System.nanoTime()
+    val rows = faceRepository.getClusterRows()
+    val nameOfPerson = faceRepository.getPersons().associate { it.id to it.name }
+    val inputs = rows.map { row ->
+        ClusterInput(
+            faceId = row.id,
+            embedding = FaceRecognizer.bytesToFloats(row.embedding),
+            clusterable = row.clusterable,
+            label = row.clusterId?.let { nameOfPerson[it] },
+        )
+    }
+    val result = withContext(Dispatchers.Default) { clusterFaces(inputs) }
+    val previous = rows.mapNotNull { row -> row.clusterId?.let { row.id to it } }.toMap()
+    val identities = resolveIdentities(result.clusters, previous, nameOfPerson.keys)
+    faceRepository.applyClustering(
+        persons = identities.persons.map {
+            ResolvedPersonRow(
+                personId = it.personId,
+                centroid = FaceRecognizer.floatsToBytes(it.cluster.centroid),
+                faceIds = it.cluster.faceIds.toList(),
+            )
+        },
+        deletedPersonIds = identities.deletedPersonIds,
+    )
+    Log.status(
+        "FaceWorker",
+        "Face grouping: ${rows.size} faces (${rows.count { it.clusterable }} clusterable) -> " +
+            "${result.clusters.size} people, ${result.unassigned.size} unassigned, " +
+            "${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)} ms",
+    )
+}
 
 /** Outcome of scanning one photo for faces: whether inference ran plus any face rows. */
 private class FaceScanOutcome(val didInference: Boolean, val faces: List<PhotoFace>)
 
 /**
- * Decode one photo and run face detection + clustering on it. Inference
- * failures yield no faces (the photo is still marked scanned by the caller).
+ * Decode one photo and detect + embed its faces. Inference failures yield no faces
+ * (the photo is still marked scanned by the caller). Faces are stored unassigned.
  */
-private suspend fun scanPhotoFaces(
-    context: Context,
-    faceRepository: FaceRepository,
-    photo: PhotoScanTarget,
-    clusters: MutableList<Cluster>,
-): FaceScanOutcome {
+private fun scanPhotoFaces(context: Context, photo: PhotoScanTarget): FaceScanOutcome {
     val bitmap = try {
         loadBitmapForFaces(context, photo.uri.toUri())
     } catch (e: IOException) {
@@ -233,11 +265,11 @@ private suspend fun scanPhotoFaces(
         bitmap.recycle()
     }
     val rows = faces.map { face ->
-        val clusterId = assignToCluster(face, clusters, faceRepository)
         PhotoFace(
             photoId = photo.id,
-            clusterId = clusterId,
+            clusterId = null,
             embedding = FaceRecognizer.floatsToBytes(face.embedding),
+            clusterable = face.clusterable,
             left = face.left,
             top = face.top,
             right = face.right,
@@ -252,107 +284,11 @@ private suspend fun scanPhotoFaces(
 private const val FACE_INTER_ITEM_DELAY_MS = 250L
 
 /**
- * Put [face] in the nearest cluster above [FaceRecognizer.CLUSTER_THRESHOLD],
- * updating that cluster's running-mean centroid, or start a new cluster. Returns
- * the cluster (person) id the face was assigned to.
+ * Faces are cropped from this decode, so it is larger than the detector's 640 input:
+ * faces in group shots then clear [com.vayunmathur.photos.domain.FaceQuality.MIN_FACE_SIDE_PX]
+ * and their aligned crops are sharper.
  */
-private suspend fun assignToCluster(
-    face: FaceRecognizer.DetectedFace,
-    clusters: MutableList<Cluster>,
-    faceRepository: FaceRepository,
-): Long {
-    var best: Cluster? = null
-    var bestSim = FaceRecognizer.CLUSTER_THRESHOLD
-    for (cluster in clusters) {
-        val sim = FaceRecognizer.similarity(face.embedding, cluster.centroid)
-        if (sim >= bestSim) {
-            bestSim = sim
-            best = cluster
-        }
-    }
-
-    if (best != null) {
-        val n = best.person.faceCount
-        val mean = FloatArray(best.centroid.size) { i ->
-            (best.centroid[i] * n + face.embedding[i]) / (n + 1)
-        }
-        // Centroid is a running mean kept L2-normalised so cosine stays well-behaved.
-        best.centroid = FaceRecognizer.l2Normalize(mean)
-        best.person = best.person.copy(
-            centroid = FaceRecognizer.floatsToBytes(best.centroid),
-            faceCount = n + 1,
-        )
-        // Column-targeted, so a name the user enters mid-scan is not overwritten
-        // by the null carried in this snapshot (loaded once at scan start).
-        faceRepository.updateClusterCentroid(
-            id = best.person.id,
-            centroid = best.person.centroid,
-            faceCount = best.person.faceCount,
-        )
-        return best.person.id
-    }
-
-    val person = Person(
-        centroid = FaceRecognizer.floatsToBytes(face.embedding),
-        faceCount = 1,
-        name = null,
-    )
-    val id = faceRepository.insertPerson(person)
-    clusters += Cluster(person.copy(id = id), face.embedding.copyOf())
-    return id
-}
-
-/**
- * Greedily merge clusters whose centroids are within [FaceRecognizer.MERGE_THRESHOLD]
- * cosine of each other. Faces from the merged cluster are moved over and the
- * centroid becomes the face-count-weighted, L2-normalised mean. O(n^2) over the
- * (small) number of person-clusters.
- */
-private suspend fun mergeSimilarClusters(faceRepository: FaceRepository) {
-    val persons = faceRepository.getPersons().toMutableList()
-    var i = 0
-    while (i < persons.size) {
-        var j = i + 1
-        while (j < persons.size) {
-            val a = persons[i]
-            val b = persons[j]
-            val sim = FaceRecognizer.similarity(
-                FaceRecognizer.bytesToFloats(a.centroid),
-                FaceRecognizer.bytesToFloats(b.centroid),
-            )
-            if (sim >= FaceRecognizer.MERGE_THRESHOLD) {
-                val na = a.faceCount
-                val nb = b.faceCount
-                val ca = FaceRecognizer.bytesToFloats(a.centroid)
-                val cb = FaceRecognizer.bytesToFloats(b.centroid)
-                val mean = FloatArray(ca.size) { (ca[it] * na + cb[it] * nb) / (na + nb) }
-                val merged = a.copy(
-                    centroid = FaceRecognizer.floatsToBytes(FaceRecognizer.l2Normalize(mean)),
-                    faceCount = na + nb,
-                    // A name is the one thing here the user typed, so the survivor
-                    // inherits it from whichever side has one rather than losing it
-                    // with the discarded row.
-                    name = a.name ?: b.name,
-                )
-                faceRepository.reassignCluster(b.id, a.id)
-                // The name is resolved in SQL against the row's current value, so a
-                // name entered since `persons` was read still wins over this snapshot.
-                faceRepository.mergeClusterInto(
-                    id = a.id,
-                    centroid = merged.centroid,
-                    faceCount = merged.faceCount,
-                    fallbackName = b.name,
-                )
-                faceRepository.deletePerson(b.id)
-                persons[i] = merged
-                persons.removeAt(j)
-            } else {
-                j++
-            }
-        }
-        i++
-    }
-}
+private const val FACE_DECODE_LONG_SIDE = 1280
 
 private fun loadBitmapForFaces(context: Context, uri: Uri): Bitmap? {
     return try {
@@ -361,7 +297,7 @@ private fun loadBitmapForFaces(context: Context, uri: Uri): Bitmap? {
             decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
             decoder.isMutableRequired = false
             val maxDim = maxOf(info.size.width, info.size.height)
-            val target = 720
+            val target = FACE_DECODE_LONG_SIDE
             if (maxDim > target) {
                 val scale = target.toFloat() / maxDim
                 decoder.setTargetSize(
