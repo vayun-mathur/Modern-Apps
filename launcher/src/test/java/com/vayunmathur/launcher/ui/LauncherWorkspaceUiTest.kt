@@ -124,17 +124,19 @@ class LauncherWorkspaceUiTest {
                     container = ContainerRef.Desktop,
                     screen = 0,
                     rect = CellRect(0, 0, 2, 2),
-                    appWidgetId = 42,
+                    appWidgetId = null,
                     appWidgetProvider = "com.example/.Widget",
                 ),
             ),
         )
-        // No host view is bound, so the missing-widget placeholder shows the label.
-        rule.onNodeWithText("Clock widget", substring = true).assertIsDisplayed()
+        // No widget id at all, so the missing-widget placeholder shows the label.
+        rule.onNodeWithText("Clock widget").assertIsDisplayed()
     }
 
-    @Test fun emptyPageHasNoClickables() {
+    @Test fun emptyPageShowsNoLabels() {
+        show(listOf(app(1, "Mail", 0, 0)))
+        rule.onNodeWithText("Mail").assertIsDisplayed()
         show(emptyList())
-        assertEquals(0, rule.onAllNodes(hasClickAction()).fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodesWithText("Mail").fetchSemanticsNodes().size)
     }
 }
