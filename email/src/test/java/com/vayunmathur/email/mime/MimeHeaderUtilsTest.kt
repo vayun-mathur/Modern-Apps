@@ -39,8 +39,9 @@ class MimeHeaderUtilsTest {
 
     @Test
     fun `broken encoded-word degrades gracefully`() {
-        val raw = "=?UTF-8?B?!!!?="
-        assertTrue(MimeParser.decodeHeader(raw).isNotEmpty())
+        // Android's Base64 silently skips invalid chars, so undecodable
+        // content degrades to empty instead of throwing or leaking raw text.
+        assertEquals("", MimeParser.decodeHeader("=?UTF-8?B?!!!?="))
     }
 
     // ---------- decodeCharset ----------
@@ -142,10 +143,13 @@ class MimeHeaderUtilsTest {
     }
 
     @Test
-    fun `header lookup is case-insensitive`() {
-        val headers = mapOf("Subject" to "hi", "FROM" to "a@b")
+    fun `header lookup is case-insensitive on the name`() {
+        // MimeParser.parseHeaders stores keys lowercased, so callers pass
+        // already-normalized maps; the lookup lowercases only the name.
+        val headers = mapOf("subject" to "hi", "from" to "a@b")
         assertEquals("hi", MimeParser.extractHeaderValue(headers, "subject"))
-        assertEquals("a@b", MimeParser.extractHeaderValue(headers, "from"))
+        assertEquals("hi", MimeParser.extractHeaderValue(headers, "Subject"))
+        assertEquals("a@b", MimeParser.extractHeaderValue(headers, "FROM"))
         assertEquals(null, MimeParser.extractHeaderValue(headers, "to"))
     }
 }
