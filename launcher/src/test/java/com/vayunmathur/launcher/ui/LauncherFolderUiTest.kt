@@ -124,7 +124,9 @@ class LauncherFolderUiTest {
             }
         }
         rule.waitForIdle()
-        // Drop child 101 onto child 102's slot: reorder fires, landing returned.
+        // Drop child 101 at child 102's own centre: the slot target under
+        // the finger fires reorder, landing returned.
+        val at = rule.onNodeWithText("App 2").fetchSemanticsNode().boundsInRoot.center
         controller.start(
             com.vayunmathur.launcher.ui.components.DragPayload(
                 itemId = 101L,
@@ -134,7 +136,7 @@ class LauncherFolderUiTest {
                 origin = ContainerRef.Folder(10L),
                 sourceBounds = androidx.compose.ui.geometry.Rect.Zero,
             ),
-            androidx.compose.ui.geometry.Offset(400f, 300f),
+            at,
         )
         rule.waitForIdle()
         assertEquals(true, controller.drop())
