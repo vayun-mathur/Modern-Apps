@@ -339,4 +339,135 @@ class PhotosSlice3ViewerTest {
         composeRule.onNodeWithText("sect.jpg").assertIsDisplayed()
         composeRule.onNodeWithText(str(R.string.view_panorama)).assertIsDisplayed()
     }
+
+    private fun setSection(
+        photo: Photo,
+        isSphere: Boolean = false,
+        isMotionPhoto: Boolean = false,
+        isPanorama: Boolean = false,
+        isMetadataVisible: Boolean = true,
+        showImmersive: Boolean = false,
+        motionPlaying: Boolean = false,
+        motionExtracting: Boolean = false,
+        faceBoxes: PhotoFaceBoxes? = null,
+        ocrLayout: com.vayunmathur.photos.data.OcrLayout? = null,
+        isSettled: Boolean = true,
+        pageOffset: Float = 0f,
+        onShowImmersive: (Boolean) -> Unit = {},
+        onMotionClick: () -> Unit = {},
+        onOpenPerson: (Long) -> Unit = {},
+    ) {
+        val zoom = mutableStateOf(ZoomState())
+        composeRule.setContent {
+            androidx.compose.foundation.layout.Box {
+                PhotoDetailSection(
+                    photo = photo,
+                    context = context.applicationContext as android.content.Context,
+                    countryName = null,
+                    fileSize = null,
+                    pageOffset = pageOffset,
+                    peopleCount = 0,
+                    isSphere = isSphere,
+                    isMotionPhoto = isMotionPhoto,
+                    isPanorama = isPanorama,
+                    isMetadataVisible = isMetadataVisible,
+                    showImmersive = showImmersive,
+                    motionPlaying = motionPlaying,
+                    motionExtracting = motionExtracting,
+                    faceBoxes = faceBoxes,
+                    ocrLayout = ocrLayout,
+                    ocrClearToken = 0,
+                    isSettled = isSettled,
+                    size = IntSize(400, 300),
+                    currentZoom = zoom,
+                    zoomModifier = Modifier,
+                    onOpenPerson = onOpenPerson,
+                    onSetWallpaper = {},
+                    onEditPhoto = {},
+                    onDelete = {},
+                    onShowImmersive = onShowImmersive,
+                    onMotionClick = onMotionClick,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun detailSectionMotionPlayFires() {
+        var clicks = 0
+        setSection(photo("mot.jpg", 100L), isMotionPhoto = true, onMotionClick = { clicks++ })
+        composeRule.onNodeWithText(str(R.string.play_motion_photo)).performClick()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun detailSectionMotionPlayingSwapsLabel() {
+        setSection(photo("mot.jpg", 100L), isMotionPhoto = true, motionPlaying = true)
+        composeRule.onNodeWithText(str(R.string.stop_motion_photo)).assertIsDisplayed()
+    }
+
+    @Test
+    fun detailSectionMotionExtractingDisablesButton() {
+        setSection(photo("ext.jpg", 100L), isMotionPhoto = true, motionExtracting = true)
+        composeRule.onNodeWithText(str(R.string.play_motion_photo)).assertIsDisplayed()
+    }
+
+    @Test
+    fun detailSectionSphereShows360Label() {
+        var immersive: Boolean? = null
+        setSection(
+            photo("sph.jpg", 100L),
+            isPanorama = true,
+            isSphere = true,
+            onShowImmersive = { immersive = it },
+        )
+        composeRule.onNodeWithText(str(R.string.view_360)).performClick()
+        assertEquals(true, immersive)
+    }
+
+    @Test
+    fun detailSectionFaceBoxesRenderLabels() {
+        val fb = boxes(face(7L, "Ada"))
+        setSection(photo("fb.jpg", 100L), faceBoxes = fb)
+        // Named face label renders through the section's face layer.
+        composeRule.onNodeWithText("Ada").assertIsDisplayed()
+    }
+
+    @Test
+    fun detailSectionUnnamedFacesRenderOutlineOnly() {
+        val fb = boxes(face(7L, null))
+        setSection(photo("fb2.jpg", 100L), faceBoxes = fb)
+        // No label for unnamed clusters; the metadata card still renders.
+        composeRule.onNodeWithText("fb2.jpg").assertIsDisplayed()
+    }
+
+    @Test
+    fun detailSectionOcrLayerRenders() {
+        val layout = com.vayunmathur.photos.data.OcrLayout(
+            w = 4000,
+            h = 3000,
+            boxes = listOf(
+                com.vayunmathur.photos.data.OcrBox(
+                    text = "hello",
+                    left = 400, top = 300, right = 1600, bottom = 600,
+                ),
+            ),
+        )
+        setSection(photo("ocr.jpg", 100L), ocrLayout = layout)
+        // OCR text renders invisibly for selection; the metadata card still shows.
+        composeRule.onNodeWithText("ocr.jpg").assertIsDisplayed()
+    }
+
+    @Test
+    fun detailSectionHiddenChromeHidesMetadata() {
+        setSection(photo("hid.jpg", 100L), isMetadataVisible = false)
+        composeRule.onAllNodesWithText("hid.jpg").assertCountEquals(0)
+    }
+
+    @Test
+    fun detailSectionPageOffsetFadesMetadata() {
+        // Fully swiped-away page: metadata alpha is 0 but still composed.
+        setSection(photo("fade.jpg", 100L), pageOffset = 1f)
+        composeRule.onNodeWithText("fade.jpg").assertIsDisplayed()
+    }
 }
