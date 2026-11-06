@@ -268,7 +268,7 @@ class PhotosSlice3ViewerTest {
     }
 
     @Test
-    fun faceLayerLabelsNamedFacesAndForwardsTaps() {
+    fun faceLayerLabelsNamedFacesAndTapsOpenPerson() {
         var opened: Long? = null
         setFaceBoxes(boxes(face(7L, "Ada"), face(9L, null)), onFaceClick = { opened = it })
         // Named face gets a label; unnamed one renders outline only.
