@@ -4,6 +4,8 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -13,7 +15,10 @@ import kotlin.test.assertTrue
  * client/server socket pair over loopback proves the accept path hands the
  * connection over with Nagle disabled; closing an unbound server is a
  * silent no-op.
+ *
+ * Robolectric (not plain JVM): the server logs through `android.util.Log`.
  */
+@RunWith(RobolectricTestRunner::class)
 class HeadUnitServerTest {
 
     private fun freePort(): Int = ServerSocket(0).use { it.localPort }
