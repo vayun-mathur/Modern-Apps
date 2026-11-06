@@ -89,6 +89,45 @@ class LauncherDrawerUiTest {
         rule.onNodeWithText("Loading apps").assertIsDisplayed()
     }
 
+    @Test fun listLayoutRendersRows() {
+        show(state = DrawerUiState(apps = apps, listLayout = true))
+        rule.onNodeWithText("Mail").assertIsDisplayed()
+        rule.onNodeWithText("Maps").assertIsDisplayed()
+    }
+
+    @Test fun predictionsRenderAboveList() {
+        show(
+            state = DrawerUiState(
+                apps = apps,
+                predictions = listOf(
+                    DrawerApp(
+                        key = ComponentKey(
+                            ComponentName("com.example.top", "com.example.top.Main"),
+                            0L,
+                        ),
+                        label = "TopApp",
+                    ),
+                ),
+            ),
+        )
+        rule.onNodeWithText("TopApp").assertIsDisplayed()
+    }
+
+    @Test fun pauseWorkSwitchShowsWhenSet() {
+        show(
+            state = DrawerUiState(
+                apps = apps + DrawerApp(
+                    key = ComponentKey(ComponentName("com.work.a", "com.work.a.Main"), 10L),
+                    label = "WorkApp",
+                    isWorkProfile = true,
+                ),
+                workPaused = true,
+            ),
+        )
+        rule.onNodeWithText("Work").performClick()
+        rule.onNodeWithText("Pause work apps").assertIsDisplayed()
+    }
+
     @Test fun filteredEmptyReadsNoMatchWithQuery() {
         show(state = DrawerUiState(query = "zzz", apps = emptyList()))
         rule.onNodeWithText("No apps match \"zzz\"").assertIsDisplayed()
