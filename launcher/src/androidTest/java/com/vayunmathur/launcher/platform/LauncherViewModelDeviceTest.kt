@@ -339,18 +339,12 @@ class LauncherViewModelDeviceTest {
 
     @Test fun predictionsRankByLaunchCount() = runTest {
         val vm = LauncherViewModel(app())
-        val a = com.vayunmathur.launcher.platform.DrawerApp(
-            keyComponent("com.example.a"),
-            "Alpha",
-        )
-        val b = com.vayunmathur.launcher.platform.DrawerApp(
-            keyComponent("com.example.b"),
-            "Beta",
-        )
+        val a = com.vayunmathur.launcher.platform.DrawerApp(keyComponent("com.example.a"), "Alpha")
+        val b = com.vayunmathur.launcher.platform.DrawerApp(keyComponent("com.example.b"), "Beta")
         val w = com.vayunmathur.launcher.platform.DrawerApp(
-            keyComponent("com.example.w"),
+            keyComponent("com.example.w", work = true),
             "Work",
-            work = true,
+            isWorkProfile = true,
         )
         vm.allApps = listOf(a, b, w)
         assertEquals(emptyList(), vm.predictedApps())
