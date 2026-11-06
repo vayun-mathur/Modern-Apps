@@ -1,6 +1,7 @@
 package com.vayunmathur.launcher.tv.data
 
 import androidx.test.core.app.ApplicationProvider
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -19,6 +20,15 @@ class TvPrefsTest {
     private fun prefs(): TvPrefs {
         val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
         return TvPrefs(ctx)
+    }
+
+    @BeforeTest
+    fun clearStore() {
+        // DataStore persists per context file: wipe it so tests are independent.
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        ctx.getSharedPreferences("tvlauncher_config.preferences_pb", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        java.io.File(ctx.filesDir.parent, "datastore/tvlauncher_config.preferences_pb").delete()
     }
 
     @Test fun defaultsAreEmpty() = runTest {
