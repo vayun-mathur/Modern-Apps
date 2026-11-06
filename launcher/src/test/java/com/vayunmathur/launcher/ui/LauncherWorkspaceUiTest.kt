@@ -16,6 +16,7 @@ import com.vayunmathur.launcher.domain.LauncherItemType
 import com.vayunmathur.launcher.platform.HomeActions
 import com.vayunmathur.launcher.platform.HomeUiState
 import com.vayunmathur.launcher.platform.WorkspaceItem
+import com.vayunmathur.launcher.ui.components.DragPayload
 import com.vayunmathur.launcher.ui.components.LauncherDragController
 import com.vayunmathur.launcher.ui.components.LocalLauncherDrag
 import org.junit.Rule
@@ -160,6 +161,45 @@ class LauncherWorkspaceUiTest {
         )
         // Resize frame around the widget; the missing-widget label still shows.
         rule.onNodeWithText("Clock").assertIsDisplayed()
+    }
+
+    @Test fun dragPreviewDisplacesNeighbours() {
+        val controller = LauncherDragController()
+        rule.setContent {
+            CompositionLocalProvider(LocalLauncherDrag provides controller) {
+                WorkspacePage(
+                    state = state,
+                    actions = HomeActions.Noop,
+                    page = 0,
+                    items = listOf(app(1, "Mail", 0, 0), app(2, "Maps", 1, 0)),
+                    resizingId = null,
+                    draggable = false,
+                    onOpenFolder = { _, _ -> },
+                    onEndResize = {},
+                    onWidgetDropped = {},
+                    widgetView = { _: Int -> null },
+                    updateWidgetSize = { _, _, _ -> },
+                )
+            }
+        }
+        rule.waitForIdle()
+        // Start a drag over the second cell: the preview computes a plan and,
+        // after the dwell, commits it to the previewed rearrangement.
+        controller.start(
+            DragPayload(
+                itemId = 1L,
+                type = LauncherItemType.APPLICATION,
+                label = "Mail",
+                rect = CellRect(0, 0),
+                origin = ContainerRef.Desktop,
+                originScreen = 0,
+                sourceBounds = androidx.compose.ui.geometry.Rect.Zero,
+            ),
+            androidx.compose.ui.geometry.Offset(150f, 50f),
+        )
+        rule.mainClock.advanceTimeBy(1000L)
+        rule.waitForIdle()
+        controller.cancel()
     }
 
     @Test fun emptyPageShowsNoLabels() {
