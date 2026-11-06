@@ -8,7 +8,7 @@ import com.vayunmathur.launcher.domain.GridSpec
 import com.vayunmathur.launcher.domain.LauncherItemType
 import com.vayunmathur.launcher.domain.PackageKey
 import com.vayunmathur.launcher.domain.toRaw
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -42,11 +42,11 @@ class LauncherRepositoryDeviceTest {
             className = "$pkg.Main",
         )
 
-    private fun clean() = runBlocking {
+    private fun clean() = runTest {
         repo().getAll().forEach { repo().remove(it.id) }
     }
 
-    @Test fun addMoveRemoveRoundTrip() = runBlocking {
+    @Test fun addMoveRemoveRoundTrip() = runTest {
         clean()
         val r = repo()
         assertTrue(r.isEmpty())
@@ -59,7 +59,7 @@ class LauncherRepositoryDeviceTest {
         assertNull(r.get(id))
     }
 
-    @Test fun seedHotseatAndRegrid() = runBlocking {
+    @Test fun seedHotseatAndRegrid() = runTest {
         clean()
         val r = repo()
         r.seed(
@@ -81,7 +81,7 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
-    @Test fun hotseatEvictsTailToDesktop() = runBlocking {
+    @Test fun hotseatEvictsTailToDesktop() = runTest {
         clean()
         val r = repo()
         val ids = (0..4).map { r.upsert(app(pkg = "com.example.$it")) }
@@ -92,7 +92,7 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
-    @Test fun folderMergeAddCollapse() = runBlocking {
+    @Test fun folderMergeAddCollapse() = runTest {
         clean()
         val r = repo()
         val target = r.upsert(app(pkg = "com.example.t"))
@@ -112,7 +112,7 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
-    @Test fun widgetRemoveReturnsId() = runBlocking {
+    @Test fun widgetRemoveReturnsId() = runTest {
         clean()
         val r = repo()
         val widget = r.upsert(
@@ -136,7 +136,7 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
-    @Test fun reconcileHidesAndDeletes() = runBlocking {
+    @Test fun reconcileHidesAndDeletes() = runTest {
         clean()
         val r = repo()
         val gone = r.upsert(app(pkg = "com.example.gone"))
@@ -151,7 +151,7 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
-    @Test fun resizeAndTitlePersist() = runBlocking {
+    @Test fun resizeAndTitlePersist() = runTest {
         clean()
         val r = repo()
         val id = r.upsert(app())
