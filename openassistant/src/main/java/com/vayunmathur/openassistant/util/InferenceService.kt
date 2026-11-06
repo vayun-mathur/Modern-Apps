@@ -378,8 +378,14 @@ class InferenceService : Service() {
         val dir = ModelUrls.GemmaMaml.modelDir(applicationContext)
         val created = MamlChatEngine(dir)
         if (!created.load()) {
+            val detail = created.loadError()
             created.close()
-            throw IllegalStateException("Model missing or failed to load at ${dir.absolutePath}")
+            throw IllegalStateException(
+                buildString {
+                    append("Model missing or failed to load at ${dir.absolutePath}")
+                    if (!detail.isNullOrBlank()) append(": $detail")
+                },
+            )
         }
         engine = created
     }

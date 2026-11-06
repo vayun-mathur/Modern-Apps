@@ -7,6 +7,7 @@ import com.vayunmathur.library.ml.Gemma4AudioHandle
 import com.vayunmathur.library.ml.Gemma4Handle
 import com.vayunmathur.library.ml.Gemma4VisionHandle
 import com.vayunmathur.library.ml.Sampling
+import com.vayunmathur.library.ml.shortFiles
 import com.vayunmathur.openassistant.domain.ChatGenerator
 import com.vayunmathur.openassistant.domain.ParsedToolCall
 import com.vayunmathur.openassistant.domain.ToolLoopOutcome
@@ -66,6 +67,9 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
     /** Loads the model if needed; false when it cannot come up. */
     suspend fun load(): Boolean = mutex.withLock { withContext(engineThread) { model() != null } }
 
+    /** Why the last load failed, for the error the user sees. Null when loaded. */
+    suspend fun loadError(): String? = mutex.withLock { lastLoadError }
+
     suspend fun chat(request: ChatRequest, tools: AssistantTools, onText: (String) -> Boolean): ChatResult =
         mutex.withLock {
             val model = withContext(engineThread) { model() } ?: return@withLock ChatResult.Unavailable
@@ -123,14 +127,32 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         handle?.close()
         val opened = Gemma4Handle.inDirectory(modelDir)
         if (!opened.isAvailable) {
-            Log.status(TAG, "gemma4 did not load from $modelDir")
+            // Carry the cause here so the failure the user sees says *which*
+            // file broke, not just that the directory did not load (#901's
+            // undifferentiated error): short-file sizes first, then whatever
+            // native logged (already in logcat) via the handle's report.
             opened.close()
             handle = null
+            lastLoadError = listOfNotNull(shortFilesReport(), opened.loadError).joinToString("; ")
             return null
         }
         handle = opened
+        lastLoadError = null
         prefixKey = null
         return opened
+    }
+
+    /**
+     * Why the last [model] attempt failed, for the error the user sees.
+     * Null when the model is up or no load has been attempted yet.
+     */
+    var lastLoadError: String? = null
+        private set
+
+    /** `name actual/expected` for short gemma4 files, or null when none are short. */
+    private fun shortFilesReport(): String? {
+        val short = shortFiles(modelDir)
+        return short.takeIf { it.isNotEmpty() }?.let { "short files: ${it.joinToString()}" }
     }
 
     private fun seedPrefix(model: Gemma4Handle, system: String, tools: List<Gemma4Handle.ToolDeclaration>) {
