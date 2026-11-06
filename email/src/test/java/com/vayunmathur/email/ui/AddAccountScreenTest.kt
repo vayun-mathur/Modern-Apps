@@ -67,8 +67,8 @@ class AddAccountScreenTest {
         composeRule.setContent { AddAccountScreen(onBack = { backs++ }, onAccountAdded = {}) }
         composeRule.onNodeWithText("Gmail").performClick()
         composeRule.waitForIdle()
-        // System back collapses the provider, not the screen.
-        composeRule.onNodeWithText("Gmail", substring = true).assertExists()
+        // Provider form is showing (help link); the picker back wasn't consumed.
+        composeRule.onNodeWithText("Open Gmail app-password help", substring = true).assertExists()
         assertEquals(0, backs)
     }
 
@@ -78,7 +78,8 @@ class AddAccountScreenTest {
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performScrollTo()
         composeRule.onNodeWithText("Other (IMAP / SMTP)", substring = true).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("IMAP", substring = true).performScrollTo()
-        composeRule.onNodeWithText("IMAP", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("IMAP (incoming)").performScrollTo()
+        composeRule.onNodeWithText("IMAP (incoming)").assertIsDisplayed()
+        composeRule.onNodeWithText("SMTP (outgoing)", substring = true).assertExists()
     }
 }
