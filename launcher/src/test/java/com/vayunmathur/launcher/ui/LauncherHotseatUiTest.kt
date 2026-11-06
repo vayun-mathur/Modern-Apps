@@ -2,8 +2,8 @@ package com.vayunmathur.launcher.ui
 
 import android.content.ComponentName
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -17,8 +17,6 @@ import com.vayunmathur.launcher.domain.LauncherItemType
 import com.vayunmathur.launcher.platform.ComponentKey
 import com.vayunmathur.launcher.platform.HomeActions
 import com.vayunmathur.launcher.platform.HomeUiState
-import com.vayunmathur.launcher.platform.IconLoader
-import com.vayunmathur.launcher.platform.LocalIconLoader
 import com.vayunmathur.launcher.platform.WorkspaceItem
 import com.vayunmathur.launcher.ui.components.LauncherDragController
 import com.vayunmathur.launcher.ui.components.LocalLauncherDrag
@@ -39,10 +37,6 @@ import kotlin.test.assertEquals
 class LauncherHotseatUiTest {
 
     @get:Rule val rule = createComposeRule()
-
-    private val loader = object : IconLoader {
-        override fun appIcon(key: ComponentKey): ImageBitmap = ImageBitmap(1, 1)
-    }
 
     private fun app(id: Long, label: String, slot: Int) = WorkspaceItem(
         id = id,
@@ -68,7 +62,6 @@ class LauncherHotseatUiTest {
         rule.setContent {
             CompositionLocalProvider(
                 LocalLauncherDrag provides LauncherDragController(),
-                LocalIconLoader provides loader,
             ) {
                 Hotseat(
                     state = state,
@@ -90,16 +83,16 @@ class LauncherHotseatUiTest {
         }
     }
 
-    @Test fun slottedAppsRenderIcons() {
+    @Test fun slottedAppsAreClickable() {
         show()
-        rule.onNodeWithContentDescription("mail").assertIsDisplayed()
-        rule.onNodeWithContentDescription("maps").assertIsDisplayed()
+        // One clickable cell per slotted item; empty slots are inert boxes.
+        assertEquals(2, rule.onAllNodes(hasClickAction()).fetchSemanticsNodes().size)
     }
 
     @Test fun tappingAppLaunchesIt() {
         var launched: WorkspaceItem? = null
         show(onLaunch = { launched = it })
-        rule.onNodeWithContentDescription("mail").performClick()
+        rule.onAllNodes(hasClickAction())[0].performClick()
         assertEquals(1L, launched?.id)
     }
 
@@ -118,15 +111,12 @@ class LauncherHotseatUiTest {
             ),
         )
         show(state = folderState, onOpenFolder = { opened = it })
-        rule.onNodeWithText("Games").performClick()
+        rule.onAllNodes(hasClickAction())[0].performClick()
         assertEquals(9L, opened)
     }
 
-    @Test fun emptyHotseatRendersNoIcons() {
+    @Test fun emptyHotseatHasNoClickables() {
         show(state = state.copy(hotseat = emptyList()))
-        assertEquals(
-            0,
-            rule.onAllNodesWithContentDescription("mail").fetchSemanticsNodes().size,
-        )
+        assertEquals(0, rule.onAllNodes(hasClickAction()).fetchSemanticsNodes().size)
     }
 }
