@@ -168,5 +168,4 @@ class MainActivityNavigationSlice3Test {
             "map search missing from activity content: $texts",
         )
     }
-    }
 }
