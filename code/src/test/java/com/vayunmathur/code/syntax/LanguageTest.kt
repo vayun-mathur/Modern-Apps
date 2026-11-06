@@ -58,4 +58,13 @@ class LanguageTest {
         }
         assertNull(Language.PLAINTEXT.spec)
     }
+
+    @Test
+    fun tokenizerClassifiesKeywordsStringsAndComments() {
+        val spec = Language.KOTLIN.spec!!
+        val kinds = spec.regex.findAll("fun f() = \"s\" // c").map { spec.kindFor(it) }.toList()
+        assertTrue(kinds.contains(TokenKind.KEYWORD))
+        assertTrue(kinds.contains(TokenKind.STRING))
+        assertTrue(kinds.contains(TokenKind.COMMENT))
+    }
 }

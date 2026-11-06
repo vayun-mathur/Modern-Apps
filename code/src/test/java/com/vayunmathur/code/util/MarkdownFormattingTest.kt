@@ -99,4 +99,10 @@ class MarkdownFormattingTest {
     fun xmlBlankIsNull() {
         assertNull(formatXml("   "))
     }
+
+    @Test
+    fun xmlHandlesSelfClosingAndProlog() {
+        assertEquals("<?xml?>\n<br />", formatXml("<?xml?><br />"))
+        assertEquals("<a>\n  x\n</a>", formatXml("<a>x</a>"))
+    }
 }

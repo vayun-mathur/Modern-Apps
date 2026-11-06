@@ -290,6 +290,24 @@ class EditorInputTest {
     }
 
     @Test
+    fun pasteKeepsBlankLinesBlank() {
+        val result = reindentPaste("  ", 2, "a\n\n  b")
+        // Blank middle line keeps its own whitespace (only non-blank lines
+        // re-base); later lines pick up the caret indent.
+        assertEquals("  a\n  \n    b", result.text)
+    }
+
+    @Test
+    fun newlineWithNoIndentKeepsOldText() {
+        val old = TextFieldValue("foo", TextRange(3))
+        val new = TextFieldValue("foo\n", TextRange(4))
+        val result = apply(old, new)
+        // No indent and no bracket pair: the handler echoes the pre-newline
+        // text (the newline itself is already in the buffer from the edit).
+        assertEquals("foo", result.text)
+    }
+
+    @Test
     fun pasteBlankLinesBecomeEmpty() {
         val result = reindentPaste("", 0, "a\n\nb")
         assertEquals("a\n\nb", result.text)

@@ -60,4 +60,16 @@ class DiffModelTest {
     fun emptyDiffYieldsNoRows() {
         assertTrue(parseUnifiedDiff("").isEmpty())
     }
+
+    @Test
+    fun multiFileDiffResetsHunkState() {
+        val diff = "@@ -1,1 +1,1 @@\n-old\n+new\ndiff --git a/b b/b\n@@ -5,1 +5,1 @@\n-away\n+back"
+        val rows = parseUnifiedDiff(diff)
+        assertEquals(DiffRowType.HUNK, rows[0].type)
+        assertEquals(DiffRowType.REMOVE, rows[1].type)
+        assertEquals(DiffRowType.ADD, rows[2].type)
+        assertEquals(DiffRowType.HUNK, rows[3].type)
+        assertEquals(5, rows[4].leftNumber)
+        assertEquals(5, rows[5].rightNumber)
+    }
 }

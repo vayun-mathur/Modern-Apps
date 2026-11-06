@@ -138,4 +138,13 @@ class DiagnosticsTest {
         assertTrue(computeDiagnostics("", Language.JSON).isEmpty())
         assertTrue(computeDiagnostics("   ", Language.JSON).isEmpty())
     }
+
+    @Test
+    fun diagnosticHoldsItsRange() {
+        val d = Diagnostic(line = 3, startCol = 1, endCol = 5, severity = DiagnosticSeverity.WARNING, message = "m")
+        assertEquals(3, d.line)
+        assertEquals(1, d.startCol)
+        assertEquals(5, d.endCol)
+        assertEquals(d, d.copy())
+    }
 }
