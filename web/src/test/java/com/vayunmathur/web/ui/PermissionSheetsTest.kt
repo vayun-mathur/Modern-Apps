@@ -2,9 +2,8 @@ package com.vayunmathur.web.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNode
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.web.platform.SitePermissionType
@@ -44,24 +43,25 @@ class PermissionSheetsTest {
     }
 
     @Test
-    fun `unchecking everything disables allow`() {
+    fun `unchecking narrows the grant`() {
+        var granted: List<SitePermissionType>? = null
         rule.setContent {
             PermissionPromptSheet(
                 origin = "https://example.com/call",
-                types = listOf(SitePermissionType.CAMERA),
-                onGrant = {},
+                types = listOf(SitePermissionType.CAMERA, SitePermissionType.MICROPHONE),
+                onGrant = { granted = it },
                 onDeny = {},
             )
         }
         rule.waitForIdle()
-        // Uncheck the single permission via its checkbox; Allow must disable.
-        rule.onNode(
+        // Uncheck the camera permission, then allow: only mic is granted.
+        rule.onAllNodes(
             androidx.compose.ui.test.hasRole(androidx.compose.ui.semantics.Role.Checkbox)
-        ).performClick()
+        )[0].performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Allow").assertIsNotEnabled()
-        // Blocking still works.
-        rule.onNodeWithText("Block").assertIsEnabled()
+        rule.onNodeWithText("Allow").performClick()
+        rule.waitForIdle()
+        assertEquals(listOf(SitePermissionType.MICROPHONE), granted)
     }
 
     @Test
