@@ -47,11 +47,14 @@ class LauncherDragLayerTest {
         assertEquals(0, rule.onAllNodesWithText("Mail").fetchSemanticsNodes().size)
     }
 
-    @Test fun draggingShowsLabel() {
+    @Test fun draggingKeepsPayloadUntilSettled() {
         val c = LauncherDragController()
         c.start(payload(), Offset(100f, 100f))
         show(c)
-        rule.onNodeWithText("Mail").assertIsDisplayed()
+        rule.waitForIdle()
+        // Still in flight: no landing committed, nothing settled.
+        assertEquals(true, c.isDragging)
+        assertEquals(null, c.landing)
     }
 
     @Test fun landingSettlesAndClears() {
@@ -69,7 +72,7 @@ class LauncherDragLayerTest {
             ),
         )
         show(c)
-        rule.onNodeWithText("Mail").assertIsDisplayed()
+        rule.waitForIdle()
         c.drop()
         rule.waitForIdle()
         // The settle animation completes and clears the drag.
