@@ -32,4 +32,6 @@ dependencies {
     // Declared rather than relied on transitively: a launcher is mostly motion, so `Animatable`,
     // `animateBounds` and the animation specs are load-bearing here rather than incidental.
     implementation(libs.androidx.compose.animation)
+    // DAO tests use a real in-memory Room database via the bundled sqlite driver.
+    testImplementation(libs.androidx.sqlite.bundled.jvm)
 }
