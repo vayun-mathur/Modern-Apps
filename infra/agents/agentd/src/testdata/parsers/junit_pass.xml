@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vayunmathur.calculator.util.UnitsTest" tests="22" skipped="0" failures="0" errors="0" timestamp="2026-11-05T17:51:04.229Z" hostname="vayun-mac" time="0.004">
+  <properties/>
+  <testcase name="derivedDimensionsComposeFromBaseDimensions" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="standaloneTemperatureIsAbsolute" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="addingIncompatibleUnitsFails" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="addingLengthsInDifferentUnitsSharesADimension" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="areaVolumeSpeedDataEnergyPressureForceSamples" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.001"/>
+  <testcase name="transcendentalFunctionsRejectDimensionalArguments" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="formatQuantityAppendsSymbolAndTokenForms" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="massConversion" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="lowercaseEIsStillEulersConstant" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="multiplyingUnitsProducesADerivedDimension" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="firstTemperatureIsAbsoluteAndTheRestAreDeltas" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="lightUnitsConvertBySpeedOfLight" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.001"/>
+  <testcase name="timeConversion" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="xIsStillTheFreeVariable" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="caseDistinguishesUnits" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="nonIntegerPowerOfADimensionalBaseFails" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="converterAffineTemperatureRoundTrips" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="addingTwoCelsiusValuesAddsDegreeSizes" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="astronomicalUnitsAndParsecs" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="dimensionEqualityIgnoresConstructionOrder" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="absKeepsItsDimension" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <testcase name="functionCallsAndUnitsWithTheSameNameCoexist" classname="com.vayunmathur.calculator.util.UnitsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

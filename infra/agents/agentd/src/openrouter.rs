@@ -140,9 +140,9 @@ fn schema(props: &[(&str, &str, &str)], required: &[&str]) -> serde_json::Value 
     })
 }
 
-/// The eight tools the model may call (mirrors the runner proto routes).
+/// The tools the model may call: the base set plus the structured layer.
 pub fn tool_defs() -> Vec<ToolDef> {
-    vec![
+    let mut defs = vec![
         ToolDef {
             kind: "function",
             function: FunctionDef {
@@ -237,18 +237,82 @@ pub fn tool_defs() -> Vec<ToolDef> {
             kind: "function",
             function: FunctionDef {
                 name: "build",
-                description: "Run an allowlisted build: ./gradlew :<path>:<task> or ./check <module>. Blocks while a production release runs.",
-                parameters: schema(
-                    &[("command", "string", "Build command, e.g. ./gradlew :notes:compileDevKotlin")],
-                    &["command"],
-                ),
+                description: "Run an allowlisted build: structured {module, tasks} (preferred; e.g. {\"module\": \"notes\", \"tasks\": [\"lint\"]}), or legacy ./gradlew :<path>:<task> / ./check <module> string. Blocks while a production release runs.",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string", "description": "Legacy build command, e.g. ./gradlew :notes:compileDevKotlin"},
+                        "module": {"type": "string", "description": "Structured form: module dir, e.g. notes, games/logicgate"},
+                        "tasks": {"type": "array", "items": {"type": "string"}, "description": "Structured form: Gradle tasks, e.g. [\"lint\", \"detekt\"]"},
+                    },
+                    "additionalProperties": false,
+                }),
+            },
+        },
+        ToolDef {
+            kind: "function",
+            function: FunctionDef {
+                name: "ask_user",
+                description: "Ask the operator a question and wait for the answer. This must be the ONLY tool call in its turn: do not combine it with any other call. The answer arrives as this call's tool result when the task resumes.",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "question": {"type": "string", "description": "The question for the operator"},
+                        "options": {"type": "array", "items": {"type": "string"}, "description": "Suggested answers shown as buttons (optional)"},
+                        "multi_select": {"type": "boolean", "description": "Allow picking more than one option (optional)"}
+                    },
+                    "required": ["question"],
+                    "additionalProperties": false,
+                }),
+            },
+        },
+        ToolDef {
+            kind: "function",
+            function: FunctionDef {
+                name: "propose_plan",
+                description: "Propose your step-by-step plan and wait for operator approval before editing or building. This must be the ONLY tool call in its turn. Required when the task says Plan first. The operator's decision (approval or requested changes) arrives as this call's tool result when the task resumes.",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_markdown": {"type": "string", "description": "The plan in markdown: steps, files to touch, how you will verify"}
+                    },
+                    "required": ["plan_markdown"],
+                    "additionalProperties": false,
+                }),
+            },
+        },
+        ToolDef {
+            kind: "function",
+            function: FunctionDef {
+                name: "update_todos",
+                description: "Update your todo list (does not wait). Call it as work progresses: pending -> in_progress -> done. The list appears in your system prompt.",
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "description": "Todo items (max 30, each text max 200 chars)",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "text": {"type": "string"},
+                                    "status": {"type": "string", "description": "pending|in_progress|done"}
+                                },
+                                "required": ["text", "status"],
+                                "additionalProperties": false,
+                            }
+                        }
+                    },
+                    "required": ["items"],
+                    "additionalProperties": false,
+                }),
             },
         },
         ToolDef {
             kind: "function",
             function: FunctionDef {
                 name: "finish",
-                description: "Finish the task: requires a non-empty diff and a `<module>: <desc>` commit message with a prose body.",
+                description: "Submit the finished change for human review (does NOT push). This must be the ONLY tool call in its turn. Requires a non-empty diff and a `<module>: <desc>` commit message with a prose body. The operator Approves (push) or requests changes, which arrive as this call's tool result.",
                 parameters: schema(
                     &[
                         ("summary", "string", "One-paragraph summary of what changed"),
@@ -258,7 +322,11 @@ pub fn tool_defs() -> Vec<ToolDef> {
                 ),
             },
         },
-    ]
+    ];
+    // One line: append the structured tool layer (run_tests, check, git_*,
+    // find_files, github_*). Kept in structured.rs so merges stay small.
+    defs.extend(crate::structured::tool_defs());
+    defs
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -22,5 +22,6 @@ sha2 = "0.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 maud = "0.27"
+pulldown-cmark = "0.12"
 tempfile = "3"
 tokio-stream = { version = "0.1", features = ["sync"] }

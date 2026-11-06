@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use super::*;
-use proto::{EditRequest, ExecKind, ExecRequest, ReadRequest, WriteRequest};
+use proto::{EditRequest, ExecKind, ExecRequest, ReadRequest, ResumeSpec, WriteRequest};
 
 fn test_state(slots_dir: &Path, mirror: &Path, num_slots: u32) -> Arc<AppState> {
     Arc::new(AppState::new(
@@ -431,20 +431,20 @@ async fn gitflow_prepare_write_diff_commit_bundle() {
     let state = &flow.state;
 
     // prepare
-    let base = prepare_slot(state, 0, "agent/test-flow").await.unwrap();
+    let base = prepare_slot(state, 0, "agent/test-flow", None).await.unwrap();
     assert_eq!(base.len(), 40);
     // prepare is idempotent
-    let base2 = prepare_slot(state, 0, "agent/test-flow").await.unwrap();
+    let base2 = prepare_slot(state, 0, "agent/test-flow", None).await.unwrap();
     assert_eq!(base, base2);
     // bad branch rejected
-    assert!(prepare_slot(state, 0, "main").await.is_err());
+    assert!(prepare_slot(state, 0, "main", None).await.is_err());
 
     // clean -fd keeps ignored build outputs: an ignored build/ file created
     // after prepare survives the *next* prepare (warm caches persist).
     let slot = slot_root(state, 0);
     std::fs::create_dir_all(slot.join("build")).unwrap();
     std::fs::write(slot.join("build/warm.txt"), "warm").unwrap();
-    prepare_slot(state, 0, "agent/test-flow").await.unwrap();
+    prepare_slot(state, 0, "agent/test-flow", None).await.unwrap();
     assert!(
         slot.join("build/warm.txt").exists(),
         "ignored build/ output must survive prepare"
@@ -607,7 +607,7 @@ async fn gitflow_prepare_write_diff_commit_bundle() {
     assert_eq!(fetched, sha);
 
     // bundle with no commits is 409.
-    prepare_slot(state, 1, "agent/empty-branch").await.unwrap();
+    prepare_slot(state, 1, "agent/empty-branch", None).await.unwrap();
     let b2 = bundle_slot(state, 1).await;
     assert_eq!(b2.unwrap_err().status, StatusCode::CONFLICT);
 }
@@ -676,4 +676,263 @@ async fn search_respects_excludes_and_globs() {
     .await
     .unwrap();
     assert!(resp3.matches.contains("re.txt"), "got: {}", resp3.matches);
+}
+
+// ---------------------------------------------------------------------------
+// Resume: park on one slot, resume on another via refs/agent-wip/N.
+// ---------------------------------------------------------------------------
+
+/// Park the slot's current branch: commit everything as a WIP commit, bundle
+/// `base..branch`, and import the bundle into the mirror under
+/// `refs/agent-wip/<n>` — the same way agentd stores parked work. Returns
+/// `(base_sha, wip_sha)`.
+fn park_slot_to_wip_ref(state: &Arc<AppState>, slot: u32, wip_n: u32) -> (String, String) {
+    let slot_path = slot_root(state, slot);
+    let base_sha = std::fs::read_to_string(slot_path.join(".git").join(AGENT_BASE_FILE))
+        .expect("agent-base recorded")
+        .trim()
+        .to_string();
+    let branch = git_out(&slot_path, &["branch", "--show-current"]);
+    git(&slot_path, &["add", "-A"]);
+    git(&slot_path, &["commit", "-m", "WIP"]);
+    let wip_sha = git_out(&slot_path, &["rev-parse", "HEAD"]);
+    // Bundle base..branch the way the runner's bundle route does, then import
+    // into the mirror under refs/agent-wip/<n> the way agentd does.
+    let range = format!("{base_sha}..{branch}");
+    let bundle_bytes = std::process::Command::new("git")
+        .args(["bundle", "create", "-", &range])
+        .current_dir(&slot_path)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .expect("git bundle create");
+    assert!(bundle_bytes.status.success(), "git bundle create failed: {bundle_bytes:?}");
+    assert!(!bundle_bytes.stdout.is_empty());
+    let bundle_path = state.slots_dir.join(format!("park-{wip_n}.bundle"));
+    std::fs::write(&bundle_path, &bundle_bytes.stdout).unwrap();
+    let wip_ref = format!("refs/agent-wip/{wip_n}");
+    let fetch_refspec = format!("+refs/heads/{branch}:{wip_ref}");
+    git(&state.mirror, &["fetch", bundle_path.to_str().unwrap(), fetch_refspec.as_str()]);
+    (base_sha, wip_sha)
+}
+
+fn resume_spec(base_sha: &str, wip_n: u32, wip_sha: &str) -> ResumeSpec {
+    ResumeSpec {
+        base_sha: base_sha.to_string(),
+        wip_ref: Some(format!("refs/agent-wip/{wip_n}")),
+        wip_sha: Some(wip_sha.to_string()),
+    }
+}
+
+#[tokio::test]
+async fn resume_park_round_trip_on_different_slot() {
+    let flow = setup_git_flow();
+    let state = &flow.state;
+
+    // Prepare slot 0 fresh, then make changes incl. a new untracked file.
+    let base = prepare_slot(state, 0, "agent/parked", None).await.unwrap();
+    let slot0 = slot_root(state, 0);
+    std::fs::write(slot0.join("README.md"), "hello modified\n").unwrap();
+    std::fs::write(slot0.join("brand-new.txt"), "brand new\n").unwrap();
+    std::fs::create_dir_all(slot0.join("notes")).unwrap();
+    std::fs::write(slot0.join("notes/todo.txt"), "todo one\n").unwrap();
+
+    // Commit as WIP, bundle, import into the mirror as refs/agent-wip/7.
+    let (park_base, wip_sha) = park_slot_to_wip_ref(state, 0, 7);
+    assert_eq!(park_base, base);
+
+    // Resume onto slot 1 under a new branch name.
+    let spec = resume_spec(&base, 7, &wip_sha);
+    let resumed = prepare_slot(state, 1, "agent/resumed", Some(&spec)).await.unwrap();
+    assert_eq!(resumed, base);
+    let slot1 = slot_root(state, 1);
+
+    // /diff shows exactly the original changes vs base, including the new file.
+    let diff = diff_slot(state, 1).await.unwrap();
+    assert!(diff.diff.contains("README.md"), "diff: {}", diff.diff);
+    assert!(
+        diff.diff.contains("brand-new.txt"),
+        "untracked file must survive resume: {}",
+        diff.diff
+    );
+    assert!(diff.diff.contains("notes/todo.txt"), "diff: {}", diff.diff);
+    assert!(std::fs::read_to_string(slot1.join("brand-new.txt")).unwrap() == "brand new\n");
+
+    // agent-base records the original base, HEAD is soft-reset onto base.
+    let recorded = std::fs::read_to_string(slot1.join(".git").join(AGENT_BASE_FILE))
+        .unwrap()
+        .trim()
+        .to_string();
+    assert_eq!(recorded, base);
+    assert_eq!(git_out(&slot1, &["rev-parse", "HEAD"]), base);
+
+    // Commit + bundle on slot 1 produce a single commit base..branch.
+    let sha = commit_slot(state, 1, &proto::CommitRequest { message: "resumed work".to_string() })
+        .await
+        .unwrap();
+    let count = git_out(&slot1, &["rev-list", "--count", format!("{base}..HEAD").as_str()]);
+    assert_eq!(count, "1", "expected a single commit on top of base");
+    let (_branch, bytes) = bundle_slot(state, 1).await.unwrap();
+    assert!(!bytes.is_empty());
+    // The re-committed tree matches the parked WIP tree.
+    let wip_tree = git_out(&slot0, &["rev-parse", format!("{wip_sha}^{{tree}}").as_str()]);
+    let new_tree = git_out(&slot1, &["rev-parse", format!("{sha}^{{tree}}").as_str()]);
+    assert_eq!(new_tree, wip_tree);
+}
+
+#[tokio::test]
+async fn resume_into_same_slot_clears_leftovers() {
+    let flow = setup_git_flow();
+    let state = &flow.state;
+
+    let base = prepare_slot(state, 0, "agent/parked", None).await.unwrap();
+    let slot0 = slot_root(state, 0);
+    std::fs::write(slot0.join("work.txt"), "parked work\n").unwrap();
+    let (park_base, wip_sha) = park_slot_to_wip_ref(state, 0, 3);
+    assert_eq!(park_base, base);
+
+    // Slot 0 now has leftovers from "another task": an unrelated branch,
+    // stray untracked files, and uncommitted modifications.
+    git(&slot0, &["checkout", "-B", "agent/other-task"]);
+    std::fs::write(slot0.join("leftover.txt"), "stale\n").unwrap();
+    std::fs::write(slot0.join("README.md"), "stale modification\n").unwrap();
+
+    let spec = resume_spec(&base, 3, &wip_sha);
+    let resumed = prepare_slot(state, 0, "agent/resumed-here", Some(&spec)).await.unwrap();
+    assert_eq!(resumed, base);
+
+    // Leftovers are gone, parked work is restored.
+    assert!(!slot0.join("leftover.txt").exists());
+    assert_eq!(std::fs::read_to_string(slot0.join("work.txt")).unwrap(), "parked work\n");
+    assert_eq!(std::fs::read_to_string(slot0.join("README.md")).unwrap(), "hello\n");
+    assert_eq!(git_out(&slot0, &["rev-parse", "HEAD"]), base);
+    let diff = diff_slot(state, 0).await.unwrap();
+    assert!(diff.diff.contains("work.txt"), "diff: {}", diff.diff);
+}
+
+#[tokio::test]
+async fn resume_wip_sha_mismatch_is_409() {
+    let flow = setup_git_flow();
+    let state = &flow.state;
+
+    let base = prepare_slot(state, 0, "agent/parked", None).await.unwrap();
+    let slot0 = slot_root(state, 0);
+    std::fs::write(slot0.join("work.txt"), "parked work\n").unwrap();
+    let (_park_base, _wip_sha) = park_slot_to_wip_ref(state, 0, 11);
+
+    // Claim a sha the ref does not resolve to.
+    let bogus = "dddddddddddddddddddddddddddddddddddddddd";
+    let spec = resume_spec(&base, 11, bogus);
+    let err = prepare_slot(state, 1, "agent/resume-bad", Some(&spec)).await.unwrap_err();
+    assert_eq!(err.status, StatusCode::CONFLICT, "mismatch must be 409");
+    assert!(err.message.contains("expected wip_sha"), "clear error message, got: {}", err.message);
+    // Slot must not be left claiming the wrong commit: HEAD is the base, not
+    // the bogus sha, and no branch tracks the bogus content.
+    let slot1 = slot_root(state, 1);
+    assert_ne!(git_out(&slot1, &["rev-parse", "HEAD"]), bogus);
+}
+
+#[tokio::test]
+async fn resume_without_wip_checks_out_base_even_after_main_moves() {
+    let flow = setup_git_flow();
+    let state = &flow.state;
+
+    // Record today's base, then move mirror main on.
+    let base = prepare_slot(state, 0, "agent/first", None).await.unwrap();
+    {
+        let work = tempfile::tempdir().unwrap();
+        git(work.path(), &["clone", state.mirror.to_str().unwrap(), "w"]);
+        let w = work.path().join("w");
+        git(&w, &["config", "user.email", "test@example.com"]);
+        git(&w, &["config", "user.name", "test"]);
+        git(&w, &["checkout", "main"]);
+        std::fs::write(w.join("moved-on.txt"), "new main\n").unwrap();
+        git(&w, &["add", "-A"]);
+        git(&w, &["commit", "-m", "main moves on"]);
+        git(&w, &["push", "origin", "main"]);
+    }
+
+    let spec = ResumeSpec { base_sha: base.clone(), wip_ref: None, wip_sha: None };
+    let resumed = prepare_slot(state, 1, "agent/clean-resume", Some(&spec)).await.unwrap();
+    assert_eq!(resumed, base);
+    let slot1 = slot_root(state, 1);
+    assert_eq!(git_out(&slot1, &["rev-parse", "HEAD"]), base);
+    assert!(!slot1.join("moved-on.txt").exists());
+    assert_eq!(
+        std::fs::read_to_string(slot1.join(".git").join(AGENT_BASE_FILE)).unwrap().trim(),
+        base
+    );
+    // Nothing to commit: clean checkout at base.
+    let empty =
+        commit_slot(state, 1, &proto::CommitRequest { message: "nothing".to_string() }).await;
+    assert_eq!(empty.unwrap_err().status, StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn resume_rejects_invalid_ref_and_sha_formats() {
+    let flow = setup_git_flow();
+    let state = &flow.state;
+    let base = prepare_slot(state, 0, "agent/first", None).await.unwrap();
+
+    // Bad base_sha.
+    for bad_base in ["", "xyz", "abc123", "g".repeat(40).as_str()] {
+        let spec = ResumeSpec { base_sha: bad_base.to_string(), wip_ref: None, wip_sha: None };
+        let err = prepare_slot(state, 1, "agent/bad", Some(&spec)).await.unwrap_err();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST, "base {bad_base:?}");
+    }
+    // Bad wip_ref shapes.
+    for bad_ref in [
+        "refs/agent-wip/",
+        "refs/agent-wip/abc",
+        "refs/agent-wip/1/../2",
+        "refs/heads/main",
+        "refs/agent-wip//7",
+        "agent-wip/7",
+    ] {
+        let spec = ResumeSpec {
+            base_sha: base.clone(),
+            wip_ref: Some(bad_ref.to_string()),
+            wip_sha: Some("a".repeat(40)),
+        };
+        let err = prepare_slot(state, 1, "agent/bad", Some(&spec)).await.unwrap_err();
+        assert_eq!(err.status, StatusCode::BAD_REQUEST, "ref {bad_ref:?}");
+    }
+    // Bad wip_sha.
+    let spec = ResumeSpec {
+        base_sha: base.clone(),
+        wip_ref: Some("refs/agent-wip/7".to_string()),
+        wip_sha: Some("not-a-sha".to_string()),
+    };
+    let err = prepare_slot(state, 1, "agent/bad", Some(&spec)).await.unwrap_err();
+    assert_eq!(err.status, StatusCode::BAD_REQUEST);
+    // wip_ref without wip_sha and vice versa.
+    let spec = ResumeSpec {
+        base_sha: base.clone(),
+        wip_ref: Some("refs/agent-wip/7".to_string()),
+        wip_sha: None,
+    };
+    assert_eq!(
+        prepare_slot(state, 1, "agent/bad", Some(&spec)).await.unwrap_err().status,
+        StatusCode::BAD_REQUEST
+    );
+    let spec = ResumeSpec { base_sha: base.clone(), wip_ref: None, wip_sha: Some("a".repeat(40)) };
+    assert_eq!(
+        prepare_slot(state, 1, "agent/bad", Some(&spec)).await.unwrap_err().status,
+        StatusCode::BAD_REQUEST
+    );
+}
+
+#[test]
+fn legacy_prepare_request_without_resume_still_deserializes() {
+    let req: proto::PrepareRequest =
+        serde_json::from_str(r#"{"branch": "agent/x"}"#).expect("legacy JSON");
+    assert_eq!(req.branch, "agent/x");
+    assert!(req.resume.is_none());
+    // And a request with resume parses too.
+    let req: proto::PrepareRequest = serde_json::from_str(
+        r#"{"branch": "agent/x", "resume": {"base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "wip_ref": "refs/agent-wip/7", "wip_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}"#,
+    )
+    .expect("resume JSON");
+    let spec = req.resume.expect("resume present");
+    assert_eq!(spec.wip_ref.as_deref(), Some("refs/agent-wip/7"));
 }

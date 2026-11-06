@@ -1,0 +1,13 @@
+
+115 tests completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':calculator:testDevUnitTest'.
+> There were failing tests. See the report at: file:///Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/build/reports/tests/testDevUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 10s

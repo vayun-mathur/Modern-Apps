@@ -146,82 +146,17 @@ pub async fn main_sha(mirror: &Path) -> Result<String, GitError> {
     Ok(sha.trim().to_string())
 }
 
-/// Verify a downloaded bundle file inside the mirror (so prerequisite
-/// checks run against a repo that shares history), then import it as
-/// `refs/agent-out/<suffix>` in the mirror.
-///
-/// The bundle holds `<base>..<branch>`, where `<base>` is the mirror's
-/// `main` fetched at task start. `git bundle verify` requires the
-/// prerequisite commits to exist locally: a plain `clone --bare` has them,
-/// but a mirror whose `main` has since moved (or that was cloned empty)
-/// may not. `git fetch <bundle>` only needs the *endpoints*; the import
-/// fetch below succeeds regardless. So a verify failure that is purely a
-/// missing prerequisite must not fail the import — but a corrupt bundle
-/// must. Distinguish them: if verify fails, check whether the bundle's
-/// required ref is an ancestor-known object; if the fetch itself succeeds,
-/// accept the bundle.
-pub async fn import_task_bundle(
-    mirror: &Path,
-    bundle_file: &Path,
-    branch: &str,
-) -> Result<(), GitError> {
-    let suffix = branch
-        .strip_prefix("agent/")
-        .ok_or_else(|| GitError(format!("bad branch {branch:?}")))?;
-    let dst = format!("refs/agent-out/{suffix}");
-    // Verify inside the mirror so prerequisite checks resolve against it
-    // (`git bundle verify` prints e.g. "<file> is okay"). A verify failure
-    // caused purely by a missing prerequisite (mirror's `main` moved after
-    // the slot branched) must not fail the import — but a corrupt bundle
-    // must. `git fetch <bundle>` only needs the branch tip and its new
-    // objects, so: run verify for diagnostics, then run the fetch, and fail
-    // only if the fetch fails.
-    let verify_err = run_git(
-        Some(mirror),
-        &["bundle", "verify", &bundle_file.to_string_lossy()],
-        &[],
-        GIT_TIMEOUT,
-    )
-    .await
-    .err()
-    .map(|e| e.0);
-    // The bundle holds `<base>..<branch>`; fetch the branch head by name.
-    if let Err(e) = run_git(
-        Some(mirror),
-        &[
-            "fetch",
-            &bundle_file.to_string_lossy(),
-            &format!("+refs/heads/{branch}:{dst}"),
-        ],
-        &[],
-        FETCH_TIMEOUT,
-    )
-    .await
-    {
-        // The import itself failed: include the verify output when the
-        // bundle is also unverifiable (corrupt bundle).
-        if let Some(v) = verify_err {
-            return Err(GitError(format!("bundle import failed ({e}); verify: {v}")));
-        }
-        return Err(GitError(format!("bundle import: {e}")));
-    }
-    Ok(())
-}
-
-/// Push `refs/agent-out/<suffix>` to `refs/heads/agent/<suffix>` on the
-/// upstream. The token is passed via git config env (`http.extraHeader`),
-/// never in the URL/argv/logs.
-pub async fn push_branch(
+/// Push one local ref to the upstream branch with the scoped token via
+/// `http.extraHeader` (token in process env, never URL/argv/logs).
+/// Replaces the old `push_branch` (`refs/agent-out/*`): the review gate
+/// pushes `refs/agent-wip/<id>` directly.
+pub async fn push_ref(
     mirror: &Path,
     repo_url: &str,
-    branch: &str,
+    src: &str,
+    dst: &str,
     token: &str,
 ) -> Result<(), GitError> {
-    let suffix = branch
-        .strip_prefix("agent/")
-        .ok_or_else(|| GitError(format!("bad branch {branch:?}")))?;
-    let src = format!("refs/agent-out/{suffix}");
-    let dst = format!("refs/heads/{branch}");
     let header_value = format!("Authorization: Bearer {token}");
     // Env values are not argv; redact defensively anyway on error paths.
     let r = run_git(
@@ -237,6 +172,84 @@ pub async fn push_branch(
     .await;
     match r {
         Ok(_) => Ok(()),
-        Err(GitError(msg)) => Err(GitError(format!("push {branch}: {msg}"))),
+        Err(GitError(msg)) => Err(GitError(crate::agent::scrub_secrets(&format!(
+            "push {dst}: {msg}"
+        )))),
+    }
+}
+
+/// Import a downloaded slot bundle as the task's WIP ref
+/// (`refs/agent-wip/<id>`), returning the WIP commit sha. Same verify-then-
+/// fetch discipline as the old task-bundle import: a corrupt bundle fails, a
+/// missing prerequisite does not.
+///
+/// `branch` is the task's slot branch (the ref the bundle carries).
+pub async fn import_wip_bundle(
+    mirror: &Path,
+    bundle_file: &Path,
+    branch: &str,
+    task_id: i64,
+) -> Result<String, GitError> {
+    let dst = format!("refs/agent-wip/{task_id}");
+    let verify_err = run_git(
+        Some(mirror),
+        &["bundle", "verify", &bundle_file.to_string_lossy()],
+        &[],
+        GIT_TIMEOUT,
+    )
+    .await
+    .err()
+    .map(|e| e.0);
+    if let Err(e) = run_git(
+        Some(mirror),
+        &[
+            "fetch",
+            &bundle_file.to_string_lossy(),
+            &format!("+refs/heads/{branch}:{dst}"),
+        ],
+        &[],
+        FETCH_TIMEOUT,
+    )
+    .await
+    {
+        if let Some(v) = verify_err {
+            return Err(GitError(format!("wip bundle import failed ({e}); verify: {v}")));
+        }
+        return Err(GitError(format!("wip bundle import: {e}")));
+    }
+    let sha = run_git(Some(mirror), &["rev-parse", &dst], &[], GIT_TIMEOUT).await?;
+    Ok(sha.trim().to_string())
+}
+
+/// Does the WIP ref exist in the mirror, and what sha does it resolve to?
+pub async fn wip_ref_sha(mirror: &Path, task_id: i64) -> Result<Option<String>, GitError> {
+    let dst = format!("refs/agent-wip/{task_id}");
+    match run_git(Some(mirror), &["rev-parse", "--verify", &dst], &[], GIT_TIMEOUT).await {
+        Ok(sha) => Ok(Some(sha.trim().to_string())),
+        Err(_) => Ok(None),
+    }
+}
+
+/// Delete the local WIP ref (parked with no changes, discard, or after the
+/// work moved elsewhere). Missing ref is fine.
+pub async fn delete_wip_ref(mirror: &Path, task_id: i64) -> Result<(), GitError> {
+    let dst = format!("refs/agent-wip/{task_id}");
+    match run_git(
+        Some(mirror),
+        &["update-ref", "-d", &dst],
+        &[],
+        GIT_TIMEOUT,
+    )
+    .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            // Tolerate "not found" (already deleted / never created).
+            if wip_ref_sha(mirror, task_id).await?.is_none() {
+                Ok(())
+            } else {
+                Err(e)
+            }
+        }
     }
 }

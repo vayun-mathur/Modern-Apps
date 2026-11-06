@@ -1,0 +1,97 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/code/src/main/rust/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/maps/dem_ingest/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/maps/gtfs_ingest/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/maps/mamaps_build/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/maps/osm_ingest/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/maps/tile_build/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/maps/wikidesc/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/networklocation/geodb_build/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/scripts/networklocation/wps_harvest/Cargo.toml
+workspace: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/Cargo.toml
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling semver v1.0.28
+   Compiling typenum v1.20.1
+   Compiling same-file v1.0.6
+   Compiling thiserror v2.0.21
+   Compiling memchr v2.8.3
+   Compiling libc v0.2.191
+   Compiling simdutf8 v0.1.5
+   Compiling serde_core v1.0.229
+   Compiling cfg-if v1.0.5
+   Compiling walkdir v2.5.0
+   Compiling simd_cesu8 v1.2.0
+   Compiling rustc_version v0.4.1
+   Compiling bytes v1.12.1
+   Compiling zmij v1.0.23
+   Compiling jni v0.22.4
+   Compiling jni-macros v0.22.4
+   Compiling hybrid-array v0.4.15
+   Compiling serde_json v1.0.154
+   Compiling log v0.4.34
+   Compiling const-oid v0.10.2
+   Compiling combine v4.6.9
+   Compiling block-buffer v0.12.1
+   Compiling crypto-common v0.2.2
+   Compiling itoa v1.0.18
+   Compiling cpufeatures v0.3.1
+   Compiling digest v0.11.3
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling sha2 v0.11.1
+   Compiling thiserror-impl v2.0.21
+   Compiling jni-sys-macros v0.4.1
+   Compiling jni-sys v0.4.1
+   Compiling jni_http v0.1.0 (/Users/vayun/Documents/Modern-Apps-wt/isess-parsers/library/jni-http/src/main/rust)
+   Compiling euicc v0.1.0 (/Users/vayun/Documents/Modern-Apps-wt/isess-parsers/euicc/src/main/rust)
+warning: unused imports: `EnvUnowned`, `jni_sig`, and `jni_str`
+  --> euicc/src/main/rust/src/download.rs:14:16
+   |
+14 | use jni::{Env, EnvUnowned, jni_sig, jni_str};
+   |                ^^^^^^^^^^  ^^^^^^^  ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0308]: mismatched types
+  --> euicc/src/main/rust/src/base64.rs:96:37
+   |
+96 | fn parser_fixture_broken() -> u32 { "not a u32" }
+   |                               ---   ^^^^^^^^^^^ expected `u32`, found `&str`
+   |                               |
+   |                               expected `u32` because of return type
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `euicc` (lib) generated 1 warning
+error: could not compile `euicc` (lib) due to 1 previous error; 1 warning emitted
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':euicc:cargoBuild_euicc_arm64_v8a' (registered in build file 'euicc/build.gradle.kts').
+> Process 'command '/Users/vayun/.cargo/bin/cargo'' finished with non-zero exit value 101
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 10s

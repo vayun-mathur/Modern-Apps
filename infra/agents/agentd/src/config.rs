@@ -47,11 +47,23 @@ pub struct Config {
     pub listen: String,
     /// Number of concurrent agent tasks (scheduler workers).
     pub slots: usize,
+    /// `owner/name` repo the GitHub tools talk to (issues read + after-push
+    /// comment/label). Mirrors `GitHub::new_from_env("vayun-mathur/Modern-Apps")`.
+    pub github_repo: String,
+    /// GitHub API base URL override (tests point at a mock server).
+    pub github_api_base: String,
+    /// GitHub token for issue read/comment/label (from `AGENTD_GITHUB_TOKEN`,
+    /// empty when unset). Held in memory only; never sent to the sandbox.
+    pub github_token: Option<String>,
     /// Test tuning (timeouts only). `None` in production.
     pub test: TestTuning,
     // -- test-only network flags (never read in prod paths) --
     /// Test fixture: skip the real release-signal wait.
     pub test_skip_release_wait: bool,
+    /// Automatic issue triage poller (`AGENTD_TRIAGE`; default on, `0` off).
+    pub triage_enabled: bool,
+    /// Triage poll period in seconds (`AGENTD_TRIAGE_INTERVAL_SECS`; 120).
+    pub triage_interval_secs: u64,
 }
 
 impl Config {
@@ -120,8 +132,17 @@ impl Config {
             )),
             listen: Self::optional("AGENTD_LISTEN", "0.0.0.0:8080"),
             slots,
+            github_repo: Self::optional("AGENTD_GITHUB_REPO", "vayun-mathur/Modern-Apps"),
+            github_api_base: Self::optional("AGENTD_GITHUB_API", crate::github::DEFAULT_BASE_URL),
+            github_token: std::env::var("AGENTD_GITHUB_TOKEN")
+                .ok()
+                .filter(|t| !t.trim().is_empty()),
             test,
             test_skip_release_wait: false,
+            triage_enabled: Self::optional("AGENTD_TRIAGE", "1") != "0",
+            triage_interval_secs: Self::optional("AGENTD_TRIAGE_INTERVAL_SECS", "120")
+                .parse()
+                .unwrap_or(120),
         })
     }
 

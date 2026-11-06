@@ -48,7 +48,22 @@ fn task_allowed(task: &str) -> bool {
     ALLOWED_TASKS.contains(&task) || is_test_unit_task(task) || is_cargo_build_task(task)
 }
 
-fn module_path_ok(path: &str) -> bool {
+/// Whether a bare Gradle task name passes the allowlist.
+/// `pub(crate)` so `structured.rs` validates structured `build{module, tasks}`
+/// parts against this same allowlist.
+pub(crate) fn build_task_ok(task: &str) -> bool {
+    task_allowed(task)
+}
+
+/// Whether a `test<Variant>UnitTest` task name is allowed.
+/// `pub(crate)` for `structured::run_tests_command`.
+pub(crate) fn test_unit_task_ok(task: &str) -> bool {
+    is_test_unit_task(task)
+}
+
+/// Module dirs the structured `build`/`run_tests`/`check` tools accept.
+/// `pub(crate)` so `structured.rs` validates against the same allowlist.
+pub(crate) fn module_path_ok(path: &str) -> bool {
     // `[a-z0-9-]+(:[a-z0-9-]+)*`, e.g. `notes`, `games:logicgate`.
     !path.is_empty()
         && path
@@ -174,4 +189,93 @@ pub fn validate_shell_command(cmd: &str) -> Result<(), String> {
     }
     let _ = HashSet::<u8>::new();
     Ok(())
+}
+
+/// Best-effort detector for file-mutating `run_shell` commands, used ONLY by
+/// the plan gate (`require_plan && !plan_approved`): when it returns `true`
+/// the command is rejected with the "propose a plan first" message.
+///
+/// This is deliberately conservative and documented as incomplete: a
+/// determined model can mutate the tree through allowed commands (e.g.
+/// `python3 -c "open(...).write(...)"`, `git apply`, `perl -i`). The gate
+/// keeps honest agents on the plan-first path; it is not a sandbox.
+///
+/// Rejected patterns (case-insensitive substring / token match):
+/// * output redirection: `>`, `>>` (also `>|`, `&>`, `2>`);
+/// * `sed -i` / `sed --in-place`;
+/// * `tee` as a command word;
+/// * `mv`, `cp`, `rm`, `touch`, `mkdir`, `ln` as command words;
+/// * `git` write subcommands: `add`, `commit`, `checkout`, `apply`, `mv`,
+///   `rm`, `clean`, `reset`, `restore`, `revert`, `merge`, `rebase`,
+///   `cherry-pick`, `stash`.
+pub fn shell_looks_mutating(cmd: &str) -> bool {
+    // Redirection operators (cheap substring scan; `>` also covers `>>`,
+    // `>|`, `&>`, `2>`).
+    if cmd.contains('>') {
+        return true;
+    }
+    let lower = cmd.to_lowercase();
+    if lower.contains("sed -i") || lower.contains("sed --in-place") {
+        return true;
+    }
+    // Command-word scan: split on shell separators so `echo hi | tee x`
+    // catches `tee` but `guarantee` does not match `tee`.
+    let words: Vec<&str> = lower
+        .split(|c: char| {
+            c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')' | '<')
+        })
+        .filter(|t| !t.is_empty())
+        .collect();
+    let mut words = words.into_iter().peekable();
+    while let Some(tok) = words.next() {
+        let tok = tok.trim_matches(|c: char| c == '"' || c == '\'' || c == '`');
+        if matches!(
+            tok,
+            "tee" | "mv" | "cp" | "rm" | "touch" | "mkdir" | "ln" | "rmdir" | "unlink"
+        ) {
+            return true;
+        }
+        if tok == "git" {
+            // Skip flags (`-C dir`) to find the subcommand. Note `lower` is
+            // already lowercased, so `-C` arrives as `-c`.
+            let mut sub: Option<String> = None;
+            while let Some(n) = words.peek().map(|s| s.to_string()) {
+                if n.starts_with('-') {
+                    words.next();
+                    // `-C`/`--git-dir`/`--work-tree` take a value.
+                    if n == "-c" || n == "--git-dir" || n == "--work-tree" {
+                        words.next();
+                    }
+                    continue;
+                }
+                sub = Some(n);
+                break;
+            }
+            if let Some(s) = sub.as_deref() {
+                if matches!(
+                    s,
+                    "add"
+                        | "commit"
+                        | "checkout"
+                        | "switch"
+                        | "apply"
+                        | "mv"
+                        | "rm"
+                        | "clean"
+                        | "reset"
+                        | "restore"
+                        | "revert"
+                        | "merge"
+                        | "rebase"
+                        | "cherry-pick"
+                        | "cherry"
+                        | "stash"
+                        | "am"
+                ) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }

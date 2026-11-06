@@ -21,8 +21,8 @@ use axum::Router;
 use proto::{
     CommitRequest, CommitResponse, DiffResponse, EditRequest, ErrorBody, ExecKind, ExecRequest,
     ExecResponse, HealthResponse, KillResponse, ListRequest, ListResponse, PrepareRequest,
-    PrepareResponse, ReadRequest, ReadResponse, SearchRequest, SearchResponse, WriteRequest,
-    AGENT_BRANCH_PREFIX, RUNNER_PORT,
+    PrepareResponse, ReadRequest, ReadResponse, ResumeSpec, SearchRequest, SearchResponse,
+    WriteRequest, AGENT_BRANCH_PREFIX, RUNNER_PORT,
 };
 use tokio::sync::{Mutex, Semaphore};
 
@@ -363,13 +363,192 @@ fn check_git_output(out: &std::process::Output, what: &str) -> Result<String, Ap
     }
 }
 
+/// True when `s` is a 40-char hex object id.
+fn is_hex_sha(s: &str) -> bool {
+    s.len() == 40 && s.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// Validate a parked-WIP ref: exactly `refs/agent-wip/<digits>`.
+fn validate_wip_ref(wip_ref: &str) -> Result<(), String> {
+    const PREFIX: &str = "refs/agent-wip/";
+    match wip_ref.strip_prefix(PREFIX) {
+        Some(rest) if !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()) => Ok(()),
+        _ => Err(format!("wip_ref must match ^refs/agent-wip/[0-9]+$, got {wip_ref:?}")),
+    }
+}
+
+/// Resume a parked task: restore the slot checkout from a `refs/agent-wip/N`
+/// ref previously imported into the mirror by agentd.
+///
+/// Sequence (mirrors the `ResumeSpec` contract): ensure the slot repo exists
+/// (`clone --shared` as in fresh prepare if not), tear down leftover state
+/// (`reset --hard HEAD`, `clean -fd`), then with a `wip_ref` fetch it via an
+/// explicit refspec (`fetch origin +<wip_ref>:<wip_ref>` — a plain
+/// `fetch origin` never fetches this namespace) and `checkout -B <branch>
+/// <wip_sha>` after verifying the fetched ref resolves to `wip_sha`, else
+/// `fetch origin` and `checkout -B <branch> <base_sha>`; then
+/// `reset --soft <base_sha>` so the parked work reappears as uncommitted
+/// changes, record `base_sha` in `.git/agent-base`, and set user.name/email
+/// as in fresh prepare. Deliberately no `clean` afterwards: it would delete
+/// the just-restored untracked files.
+async fn prepare_slot_resume(
+    state: &Arc<AppState>,
+    slot: u32,
+    branch: &str,
+    spec: &ResumeSpec,
+) -> Result<String, ApiError> {
+    // Validate everything before touching the slot.
+    if !is_hex_sha(&spec.base_sha) {
+        return Err(ApiError::bad_request(format!(
+            "base_sha must be a 40-char hex sha, got {:?}",
+            spec.base_sha
+        )));
+    }
+    let (wip_ref, wip_sha): (Option<&str>, Option<&str>) = match (&spec.wip_ref, &spec.wip_sha) {
+        (Some(r), Some(s)) => {
+            validate_wip_ref(r).map_err(ApiError::bad_request)?;
+            if !is_hex_sha(s) {
+                return Err(ApiError::bad_request(format!(
+                    "wip_sha must be a 40-char hex sha, got {s:?}"
+                )));
+            }
+            (Some(r.as_str()), Some(s.as_str()))
+        }
+        (Some(_), None) => {
+            return Err(ApiError::bad_request("wip_ref is set but wip_sha is missing".to_string()));
+        }
+        (None, Some(_)) => {
+            return Err(ApiError::bad_request("wip_sha is set but wip_ref is missing".to_string()));
+        }
+        (None, None) => (None, None),
+    };
+    let base_sha = spec.base_sha.as_str();
+
+    let slot_path = slot_root(state, slot);
+    let is_repo = slot_path.join(".git").is_dir();
+    if !is_repo {
+        if slot_path.exists() {
+            if slot_path.is_dir() {
+                std::fs::remove_dir_all(&slot_path).map_err(|e| {
+                    ApiError::internal(format!("failed to clear {slot_path:?}: {e}"))
+                })?;
+            } else {
+                std::fs::remove_file(&slot_path).map_err(|e| {
+                    ApiError::internal(format!("failed to clear {slot_path:?}: {e}"))
+                })?;
+            }
+        }
+        if let Some(parent) = slot_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| ApiError::internal(format!("failed to create slots dir: {e}")))?;
+        }
+        let out = run_git(
+            &state.mirror,
+            None,
+            &[
+                "clone",
+                "--shared",
+                &state.mirror.display().to_string(),
+                &slot_path.display().to_string(),
+            ],
+        )
+        .await?;
+        check_git_output(&out, "git clone")?;
+    } else {
+        // Tear down leftover state first so the checkout below cannot fail on
+        // untracked files shadowing the restored work.
+        let out = run_git(&state.mirror, Some(&slot_path), &["reset", "--hard", "HEAD"]).await?;
+        check_git_output(&out, "git reset")?;
+        let out = run_git(&state.mirror, Some(&slot_path), &["clean", "-fd"]).await?;
+        check_git_output(&out, "git clean")?;
+    }
+
+    if let (Some(wip_ref), Some(wip_sha)) = (wip_ref, wip_sha) {
+        // Explicit refspec: plain `fetch origin` does not fetch the
+        // `refs/agent-wip/` namespace.
+        let refspec = format!("+{wip_ref}:{wip_ref}");
+        let out = run_git(&state.mirror, Some(&slot_path), &["fetch", "origin", refspec.as_str()])
+            .await?;
+        if !out.status.success() {
+            return Err(ApiError::conflict(format!(
+                "failed to fetch {wip_ref} from the mirror: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            )));
+        }
+        let out = run_git(&state.mirror, Some(&slot_path), &["rev-parse", wip_ref]).await?;
+        if !out.status.success() {
+            return Err(ApiError::conflict(format!(
+                "fetched {wip_ref} but cannot resolve it: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            )));
+        }
+        let resolved = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if resolved != wip_sha {
+            return Err(ApiError::conflict(format!(
+                "wip ref {wip_ref} resolved to {resolved}, expected wip_sha {wip_sha}; \
+                 refusing to resume"
+            )));
+        }
+        let out =
+            run_git(&state.mirror, Some(&slot_path), &["checkout", "-B", branch, wip_sha]).await?;
+        check_git_output(&out, "git checkout")?;
+    } else {
+        let out = run_git(&state.mirror, Some(&slot_path), &["fetch", "origin"]).await?;
+        check_git_output(&out, "git fetch")?;
+        let verify_arg = format!("{base_sha}^{{commit}}");
+        let out = run_git(
+            &state.mirror,
+            Some(&slot_path),
+            &["rev-parse", "--verify", verify_arg.as_str()],
+        )
+        .await?;
+        if !out.status.success() {
+            return Err(ApiError::conflict(format!(
+                "base_sha {base_sha} not found in the mirror; cannot resume"
+            )));
+        }
+        let out =
+            run_git(&state.mirror, Some(&slot_path), &["checkout", "-B", branch, base_sha]).await?;
+        check_git_output(&out, "git checkout")?;
+    }
+
+    // Soft reset onto the base: the branch pointer moves back to base_sha
+    // while index and worktree keep the parked work, so it reappears as
+    // uncommitted changes. No `clean` afterwards — it would delete the
+    // restored untracked files.
+    let out = run_git(&state.mirror, Some(&slot_path), &["reset", "--soft", base_sha]).await?;
+    if !out.status.success() {
+        return Err(ApiError::conflict(format!(
+            "cannot reset onto base_sha {base_sha}: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        )));
+    }
+    let out =
+        run_git(&state.mirror, Some(&slot_path), &["config", "user.name", "maproj agent"]).await?;
+    check_git_output(&out, "git config user.name")?;
+    let out =
+        run_git(&state.mirror, Some(&slot_path), &["config", "user.email", "agents@maproj.org"])
+            .await?;
+    check_git_output(&out, "git config user.email")?;
+    std::fs::write(slot_path.join(".git").join(AGENT_BASE_FILE), format!("{base_sha}\n"))
+        .map_err(|e| ApiError::internal(format!("failed to record base sha: {e}")))?;
+    Ok(base_sha.to_string())
+}
+
 /// (Re)create the slot checkout on a fresh branch from the mirror's main.
+///
+/// When `resume` is set, restore a parked task instead (see
+/// [`prepare_slot_resume`]).
 pub async fn prepare_slot(
     state: &Arc<AppState>,
     slot: u32,
     branch: &str,
+    resume: Option<&ResumeSpec>,
 ) -> Result<String, ApiError> {
     validate_branch(branch).map_err(ApiError::bad_request)?;
+    if let Some(spec) = resume {
+        return prepare_slot_resume(state, slot, branch, spec).await;
+    }
     let slot_path = slot_root(state, slot);
     let is_repo = slot_path.join(".git").is_dir();
     if !is_repo {
@@ -1030,7 +1209,7 @@ async fn h_prepare(
 ) -> Result<Json<PrepareResponse>, ErrTuple> {
     let slot = parse_slot(&state, &slot_raw).map_err(to_err_tuple)?;
     let req: PrepareRequest = parse_json(&body).map_err(to_err_tuple)?;
-    let base_sha = prepare_slot(&state, slot, &req.branch)
+    let base_sha = prepare_slot(&state, slot, &req.branch, req.resume.as_ref())
         .await
         .map_err(to_err_tuple)?;
     Ok(Json(PrepareResponse { base_sha }))
