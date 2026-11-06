@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.vayunmathur.email.data.EmailAccount
 import com.vayunmathur.email.data.EmailFolder
 import kotlin.test.Test
@@ -72,7 +73,9 @@ class EmailDrawerContentTest {
         render(Calls())
         composeRule.onNodeWithText("me@x.com").assertIsDisplayed()
         composeRule.onNodeWithText("you@y.com").assertIsDisplayed()
+composeRule.onNodeWithText("INBOX").performScrollTo()
         composeRule.onNodeWithText("INBOX").assertIsDisplayed()
+        composeRule.onNodeWithText("Work").performScrollTo()
         composeRule.onNodeWithText("Work").assertIsDisplayed()
     }
 
@@ -88,6 +91,7 @@ class EmailDrawerContentTest {
     fun `folder click reports the folder name`() {
         val calls = Calls()
         render(calls)
+        composeRule.onNodeWithText("Work").performScrollTo()
         composeRule.onNodeWithText("Work").performClick()
         assertEquals("INBOX/Work", calls.folder)
     }
@@ -96,10 +100,13 @@ class EmailDrawerContentTest {
     fun `system rows and logout route to their callbacks`() {
         val calls = Calls()
         render(calls, outboxCount = 3)
+        composeRule.onNodeWithText("Outbox", substring = true).performScrollTo()
         composeRule.onNodeWithText("Outbox", substring = true).performClick()
         assertEquals(1, calls.outbox)
+        composeRule.onNodeWithText("Drafts", substring = true).performScrollTo()
         composeRule.onNodeWithText("Drafts", substring = true).performClick()
         assertEquals("drafts", calls.system)
+        composeRule.onNodeWithText("Settings", substring = true).performScrollTo()
         composeRule.onNodeWithText("Settings", substring = true).performClick()
         assertEquals("settings", calls.system)
     }
@@ -116,6 +123,7 @@ class EmailDrawerContentTest {
     fun `add account routes to its callback`() {
         val calls = Calls()
         render(calls)
+        composeRule.onNodeWithText("Add Account").performScrollTo()
         composeRule.onNodeWithText("Add Account").performClick()
         assertEquals(1, calls.addAccount)
     }

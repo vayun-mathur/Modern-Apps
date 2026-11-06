@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
@@ -245,6 +246,7 @@ class EmailViewModelScreensTest {
         composeRule.waitUntil(10_000) {
             composeRule.onAllNodesWithText("Blocked senders", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
+        composeRule.onNodeWithText("Blocked senders", substring = true).performScrollTo()
         composeRule.onNodeWithText("Blocked senders", substring = true).assertIsDisplayed()
     }
 
@@ -257,6 +259,7 @@ class EmailViewModelScreensTest {
         composeRule.waitUntil(10_000) {
             composeRule.onAllNodesWithText("spam@evil.com").fetchSemanticsNodes().isNotEmpty()
         }
+        composeRule.onNodeWithText("spam@evil.com").performScrollTo()
         composeRule.onNodeWithText("spam@evil.com").assertIsDisplayed()
     }
 }
