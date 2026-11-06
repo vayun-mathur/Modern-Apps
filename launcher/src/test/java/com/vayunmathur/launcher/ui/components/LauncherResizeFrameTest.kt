@@ -62,7 +62,7 @@ class LauncherResizeFrameTest {
         )
         // The right handle sits on the frame's east edge centre: start the
         // swipe just inside the root's right edge and drag further right.
-        val bounds = rule.onRoot().getBoundsInRoot()
+        val bounds = rule.onRoot().fetchSemanticsNode().boundsInRoot
         rule.onRoot().performTouchInput {
             swipe(
                 start = Offset(bounds.width - 40f, bounds.height / 2f),
