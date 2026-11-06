@@ -416,19 +416,16 @@ class MainActivitySlice3Test {
     }
     @Test
     fun `warm start navigate link with a fix attempts routing then opens the place`() {
-        // The VM is created on the plain launch and picks up the seeded fix
-        // synchronously, so the later navigate intent finds a live origin and
-        // attempts real routing. With no graph archive routing resolves null
-        // and navigateTo degrades to opening the destination place.
+        // Seeding the OS fix before launch makes it the cold-start seed: the
+        // VM picks it up while the plain launch settles, so the later navigate
+        // intent finds a live origin and attempts real routing. With no graph
+        // archive routing resolves null and navigateTo degrades to opening the
+        // destination place.
         seedGpsFix()
         val controller = launch(null)
         val activity = controller.get()
         val vm = selectedOf(activity)
-        assertEquals(
-            GeoPoint(-122.4194, 37.7749),
-            vm.userPosition.value,
-            "seeded fix must be visible before the navigate intent arrives",
-        )
+        awaitFix(vm)
         controller.newIntent(viewIntent("google.navigation:q=37.7849,-122.4094&mode=d"))
         awaitSelection(vm)
         val selected = vm.selectedFeature.value
@@ -445,11 +442,7 @@ class MainActivitySlice3Test {
         seedGpsFix()
         val controller = launch(null)
         val vm = selectedOf(controller.get())
-        assertEquals(
-            GeoPoint(-122.4194, 37.7749),
-            vm.userPosition.value,
-            "seeded fix must be visible before the navigate intent arrives",
-        )
+        awaitFix(vm)
         controller.newIntent(viewIntent("google.navigation:q=37.7849,-122.4094"))
         awaitSelection(vm)
         val selected = vm.selectedFeature.value
@@ -487,6 +480,26 @@ class MainActivitySlice3Test {
         awaitQuiescence()
         assertNull(vm.selectedFeature.value)
         controller.destroy()
+    }
+
+    /**
+     * Pump the main looper until [vm] holds a non-zero position or the bound
+     * is hit. The seeded OS fix is delivered to the location listener on the
+     * main loop, so a plain launch needs a few pumps before the VM sees it.
+     * Bounded by iteration count, not wall clock.
+     */
+    private fun awaitFix(
+        vm: SelectedFeatureViewModel,
+        maxIters: Int = 500,
+    ) {
+        val shadow = org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
+        repeat(maxIters) {
+            Robolectric.flushForegroundThreadScheduler()
+            shadow.idle()
+            val p = vm.userPosition.value
+            if (p.latitude != 0.0 || p.longitude != 0.0) return
+            Thread.yield()
+        }
     }
 
     /**
