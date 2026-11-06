@@ -4,8 +4,8 @@ import com.vayunmathur.auto.protocol.AudioGain
 import com.vayunmathur.auto.protocol.AudioSinkRole
 import com.vayunmathur.auto.protocol.FocusArbitration
 import com.vayunmathur.auto.protocol.VideoFocus
-import com.vayunmathur.auto.protocol.VideoFocusMode
 import com.vayunmathur.auto.protocol.gal.AudioFocusState
+import com.vayunmathur.auto.protocol.gal.VideoFocusMode
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.BeforeTest
