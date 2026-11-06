@@ -132,4 +132,49 @@ class OfficeViewModelSaveSlice3Test : OfficeViewModelSlice3Harness() {
         val text = paragraphsOf(reopened as OdfDocument.TextDocument)
         assertTrue(text.contains("v2 text"), "rewritten text was: $text")
     }
+
+    @Test
+    fun `loadDocument imports a saved package`() = runTest {
+        // Seed a real .odt via the writer, then loadDocument should import it
+        // (exercises the IO coroutine: persistToAppStorage + DocumentImporter.open).
+        val seed = roboLoaded("loaded line")
+        val target = java.io.File(tmpDir, "seed.odt")
+        val targetUri = android.net.Uri.fromFile(target)
+        seed.documentUri = null
+        seed.originalUri = targetUri
+        seed.save()
+        var spins = 0
+        while (!target.exists() && spins < 200) {
+            Thread.sleep(25)
+            spins++
+        }
+        assertTrue(target.exists())
+        val vm = roboVm()
+        vm.loadDocument(targetUri, "seed.odt")
+        spins = 0
+        while (vm.state.value !is OfficeViewModel.ViewState.Loaded && spins < 200) {
+            Thread.sleep(25)
+            spins++
+        }
+        val state = vm.state.value
+        assertTrue(state is OfficeViewModel.ViewState.Loaded, "state was $state")
+        val text = paragraphsOf(state.document as OdfDocument.TextDocument)
+        assertTrue(text.contains("loaded line"), "loaded text was: $text")
+        assertTrue(vm.isEditMode.value)
+    }
+
+    @Test
+    fun `loadDocument surfaces errors for missing files`() = runTest {
+        val vm = roboVm()
+        val missing = java.io.File(tmpDir, "does-not-exist.odt")
+        vm.loadDocument(android.net.Uri.fromFile(missing), "does-not-exist.odt")
+        var spins = 0
+        while (vm.state.value is OfficeViewModel.ViewState.Loading && spins < 200) {
+            Thread.sleep(25)
+            spins++
+        }
+        assertTrue(
+            vm.state.value is OfficeViewModel.ViewState.Error,
+            "state was ${vm.state.value}")
+    }
 }
