@@ -376,6 +376,14 @@ class LauncherViewModelDeviceTest {
         if (work) 10L else 0L,
     )
 
+    @Test fun privilegeQuietModeRefused() = runTest {
+        val vm = LauncherViewModel(app())
+        val user = android.os.Process.myUserHandle()
+        // No MODIFY_QUIET_MODE on the emulator: refused safely.
+        assertEquals(false, vm.privilege.setQuietMode(user, true))
+        assertEquals(false, vm.privilege.isQuietModeEnabled(user))
+    }
+
     @Test fun settingsTogglesPropagate() = runTest {
         val vm = LauncherViewModel(app())
         vm.setShowLabels(false)

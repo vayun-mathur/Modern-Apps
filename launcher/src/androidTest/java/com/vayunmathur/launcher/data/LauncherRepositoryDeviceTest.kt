@@ -181,6 +181,28 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
+    @Test fun moveWithDisplacedCommitsTogether() = runTest {
+        clean()
+        val r = repo()
+        val a = r.upsert(app(cellX = 0, cellY = 0, pkg = "com.example.a"))
+        val b = r.upsert(app(cellX = 1, cellY = 0, pkg = "com.example.b"))
+        // Drop A onto B's cell, shoving B aside in the same commit.
+        r.moveTo(a, ContainerRef.Desktop, 0, CellRect(1, 0), displaced = mapOf(b to CellRect(2, 0)))
+        assertEquals(1, r.get(a)?.cellX)
+        assertEquals(2, r.get(b)?.cellX)
+        clean()
+    }
+
+    @Test fun resizeWithDisplacedCommitsTogether() = runTest {
+        clean()
+        val r = repo()
+        val id = r.upsert(app(pkg = "com.example.w"))
+        val other = r.upsert(app(cellX = 3, cellY = 0, pkg = "com.example.o"))
+        r.resizeTo(id, CellRect(0, 0, 2, 1), displaced = mapOf(other to CellRect(2, 0)))
+        assertEquals(2, r.get(id)?.spanX)
+        clean()
+    }
+
     @Test fun resizeAndTitlePersist() = runTest {
         clean()
         val r = repo()
