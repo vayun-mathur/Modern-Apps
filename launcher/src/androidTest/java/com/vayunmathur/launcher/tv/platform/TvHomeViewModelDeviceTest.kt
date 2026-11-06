@@ -47,6 +47,71 @@ class TvHomeViewModelDeviceTest {
         assertEquals(null, v.home.value.editingKey)
     }
 
+    @Test fun moveCyclePersists() = runTest {
+        val v = vm()
+        waitIdle(v)
+        val order = v.home.value.rowApps.map { it.packageName }
+        assertEquals(true, order.size >= 2)
+        val held = order[0]
+        v.startMove(held)
+        v.moveKey(held, +1)
+        assertEquals(held, v.home.value.rowApps[1].packageName)
+        v.pressTile(held)
+        val deadline = android.os.SystemClock.uptimeMillis() + 8000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (v.home.value.movingKey == null) break
+            kotlinx.coroutines.delay(200)
+        }
+        assertEquals(null, v.home.value.movingKey)
+    }
+
+    @Test fun addMenuPickCycle() = runTest {
+        val v = vm()
+        waitIdle(v)
+        v.openAddMenu()
+        val deadline = android.os.SystemClock.uptimeMillis() + 8000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (v.home.value.showAddMenu) break
+            kotlinx.coroutines.delay(200)
+        }
+        assertEquals(true, v.home.value.showAddMenu)
+        val candidate = v.home.value.addCandidates.firstOrNull()?.packageName
+        assertEquals(true, candidate != null)
+        v.pickAddCandidate(candidate!!)
+        val deadline2 = android.os.SystemClock.uptimeMillis() + 10000
+        while (android.os.SystemClock.uptimeMillis() < deadline2) {
+            if (!v.home.value.loading && v.home.value.rowApps.any { it.packageName == candidate }) break
+            kotlinx.coroutines.delay(200)
+        }
+        assertEquals(true, v.home.value.rowApps.any { it.packageName == candidate })
+        // Clean up: remove the added tile again.
+        v.removeTile(candidate)
+        val deadline3 = android.os.SystemClock.uptimeMillis() + 8000
+        while (android.os.SystemClock.uptimeMillis() < deadline3) {
+            if (v.home.value.rowApps.none { it.packageName == candidate }) break
+            kotlinx.coroutines.delay(200)
+        }
+        assertEquals(true, v.home.value.rowApps.none { it.packageName == candidate })
+    }
+
+    @Test fun uninstallOrInfoClosesMenu() = runTest {
+        val v = vm()
+        waitIdle(v)
+        val first = v.home.value.rowApps.firstOrNull()?.packageName ?: return@runTest
+        v.openEditMenu(first)
+        // System-or-user: either intent fires or a message shows; the menu closes.
+        v.uninstallOrInfo(first)
+        assertEquals(null, v.home.value.editingKey)
+    }
+
+    private fun waitIdle(v: TvHomeViewModel) {
+        val deadline = android.os.SystemClock.uptimeMillis() + 15000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (!v.home.value.loading) break
+            kotlinx.coroutines.delay(200)
+        }
+    }
+
     @Test fun tvAppsInstalledListsRealPackages() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val entries = TvApps.installed(ctx, ctx.packageName)
