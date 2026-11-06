@@ -266,4 +266,26 @@ class PhotosSlice3JvmTest {
         assertNull(parseOcrLayout("not json"))
         assertNull(parseOcrLayout("""{"w":0,"h":0,"boxes":[]}"""))
     }
+
+    // ---- AlbumMediaStore pure helpers ----
+
+    @Test
+    fun sanitizeAlbumNameTrimsAndFlattensSeparators() {
+        assertEquals("Trip", AlbumMediaStore.sanitizeAlbumName("  Trip  "))
+        assertEquals("a_b", AlbumMediaStore.sanitizeAlbumName("a/b"))
+        assertEquals("a_b", AlbumMediaStore.sanitizeAlbumName("a\\\\b"))
+        assertEquals("a_b", AlbumMediaStore.sanitizeAlbumName("a//b"))
+        assertEquals("", AlbumMediaStore.sanitizeAlbumName("   "))
+    }
+
+    @Test
+    fun urisOfMapsPhotoUris() {
+        val a = com.vayunmathur.photos.data.Photo(
+            id = 1, name = "a", uri = "content://media/a", date = 1,
+            width = 1, height = 1, dateModified = 1, exifSet = true,
+            lat = null, long = null, videoData = null, panoData = null,
+        )
+        assertEquals(listOf(android.net.Uri.parse("content://media/a")), AlbumMediaStore.urisOf(listOf(a)))
+        assertEquals(emptyList(), AlbumMediaStore.urisOf(emptyList()))
+    }
 }

@@ -339,6 +339,66 @@ class PhotosSlice3GalleryTest {
         assertEquals(emptyList(), dao.searchPhotos("desert"))
     }
 
+    @Test
+    fun deletePhotoRemovesRow() = runTest {
+        val vm = viewModel()
+        db.photoDao().upsertAll(listOf(namespaced("gone", 100L)))
+        val row = db.photoDao().getAll().single()
+        vm.deletePhoto(row)
+        // deletePhoto launches on IO; advance until the async write lands.
+        var tries = 0
+        while (db.photoDao().getAll().isNotEmpty() && tries < 50) {
+            kotlinx.coroutines.delay(20)
+            tries++
+        }
+        assertTrue(db.photoDao().getAll().isEmpty())
+    }
+
+    @Test
+    fun trashPhotoLocallyMarksTrashed() = runTest {
+        val vm = viewModel()
+        db.photoDao().upsertAll(listOf(namespaced("trashme", 100L)))
+        val row = db.photoDao().getAll().single()
+        vm.trashPhotoLocally(row)
+        var tries = 0
+        while (!db.photoDao().getAll().single().isTrashed && tries < 50) {
+            kotlinx.coroutines.delay(20)
+            tries++
+        }
+        assertTrue(db.photoDao().getAll().single().isTrashed)
+    }
+
+    @Test
+    fun albumMoveRequestRoundTrip() {
+        val vm = viewModel()
+        val a = namespaced("m", 100L)
+        vm.requestAlbumMove(listOf(a), "Trip")
+        assertTrue(vm.consumePendingMove())
+        assertFalse(vm.consumePendingMove())
+    }
+
+    @Test
+    fun searchAiStartsReadyAndQueryPublishes() = runTest {
+        val vm = viewModel()
+        assertEquals(SearchAiState.READY, vm.searchAiState.value)
+        vm.setSearchQuery("beach")
+        assertEquals("beach", vm.searchQuery.value)
+        // OCR/name matching itself is pinned at the DAO level
+        // (searchPhotosMatchesNamesNewestFirst); the semantic tower needs the
+        // bundled native model, which is absent in unit tests.
+    }
+
+    @Test
+    fun blankQueryYieldsNoResults() = runTest {
+        val vm = viewModel()
+        db.photoDao().upsertAll(listOf(namespaced("beach-day", 100L)))
+        vm.setSearchQuery("   ")
+        // Blank queries short-circuit to empty without hitting the DB; wait out
+        // the debounce and assert nothing was published.
+        kotlinx.coroutines.delay(400)
+        assertTrue(vm.searchResults.value.isEmpty())
+    }
+
     // ---- Test doubles: implement the production store interfaces ----
 
     private class FakePhotosRepository(db: PhotoDatabase) : PhotoStore {
