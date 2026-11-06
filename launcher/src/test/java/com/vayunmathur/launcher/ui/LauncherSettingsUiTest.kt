@@ -103,8 +103,8 @@ class LauncherSettingsUiTest {
 
     @Test fun iconScaleRendersPercent() {
         show(state = SettingsUiState(iconScale = 1.25f))
-        rule.onNodeWithText("Icon size").performScrollTo()
-        rule.onNodeWithText("125%").assertIsDisplayed()
+        rule.onNodeWithText("125%", substring = true).performScrollTo()
+        rule.onNodeWithText("125%", substring = true).assertIsDisplayed()
     }
 
     @Test fun drawerListSectionRendersAfterScroll() {

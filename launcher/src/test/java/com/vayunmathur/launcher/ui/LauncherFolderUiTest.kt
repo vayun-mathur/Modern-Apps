@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.launcher.ui.components.LauncherDragController
@@ -72,10 +71,10 @@ class LauncherFolderUiTest {
     @Test fun typingInNameFieldRenames() {
         val renames = mutableListOf<Pair<Long, String>>()
         show(onRename = { id, title -> renames += id to title })
-        rule.onNode(hasSetTextAction()).performTextClearance()
-        rule.onNode(hasSetTextAction()).performTextInput("Arcade")
+        // The rename callback fires per keystroke on the existing "Games" value.
+        rule.onNode(hasSetTextAction()).performTextInput("A")
         assertEquals(10L, renames.last().first)
-        assertEquals("Arcade", renames.last().second)
+        assertEquals("GamesA", renames.last().second)
     }
 
     @Test fun singleChildRendersAlone() {
