@@ -43,14 +43,18 @@ object RcsConferenceEvents {
         val version = Regex("<conference-info[^>]*\\bversion=\"(\\d+)\"", RegexOption.IGNORE_CASE)
             .find(body)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
         val users = mutableListOf<Participant>()
+        // Group 1 = the full <user ...> opening tag (may carry state="deleted"
+        // per RFC 4575 §5.4.1), group 2 = entity, group 3 = element body.
         val userRe = Regex(
-            "<user[^>]*\\bentity=\"([^\"]+)\"[^>]*>(.*?)</user>",
+            "(<user[^>]*\\bentity=\"([^\"]+)\"[^>]*>)(.*?)</user>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
         )
         for (m in userRe.findAll(body)) {
-            val uri = m.groupValues.getOrNull(1)?.trim()
-            val inner = m.groupValues.getOrNull(2).orEmpty()
-            val deleted = inner.contains("state=\"deleted\"", ignoreCase = true) ||
+            val tag = m.groupValues.getOrNull(1).orEmpty()
+            val uri = m.groupValues.getOrNull(2)?.trim()
+            val inner = m.groupValues.getOrNull(3).orEmpty()
+            val deleted = tag.contains("state=\"deleted\"", ignoreCase = true) ||
+                inner.contains("state=\"deleted\"", ignoreCase = true) ||
                 inner.contains("<state>deleted</state>", ignoreCase = true)
             if (uri != null && !deleted) {
                 val state = Regex("<state>([^<]+)</state>", RegexOption.IGNORE_CASE)
@@ -68,15 +72,17 @@ object RcsConferenceEvents {
         if (!body.contains("conference-info", ignoreCase = true)) return emptyList()
         val out = mutableListOf<String>()
         val userRe = Regex(
-            "<user[^>]*\\bentity=\"([^\"]+)\"[^>]*>(.*?)</user>",
+            "(<user[^>]*\\bentity=\"([^\"]+)\"[^>]*>)(.*?)</user>",
             setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
         )
         for (m in userRe.findAll(body)) {
-            val inner = m.groupValues.getOrNull(2).orEmpty()
-            if (inner.contains("state=\"deleted\"", ignoreCase = true) ||
+            val tag = m.groupValues.getOrNull(1).orEmpty()
+            val inner = m.groupValues.getOrNull(3).orEmpty()
+            if (tag.contains("state=\"deleted\"", ignoreCase = true) ||
+                inner.contains("state=\"deleted\"", ignoreCase = true) ||
                 inner.contains("<state>deleted</state>", ignoreCase = true)
             ) {
-                m.groupValues.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }?.let { out += it }
+                m.groupValues.getOrNull(2)?.trim()?.takeIf { it.isNotEmpty() }?.let { out += it }
             }
         }
         return out

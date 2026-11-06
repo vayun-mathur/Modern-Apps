@@ -124,53 +124,70 @@ object RcsSipTransport {
 
     private val pendingSends = ConcurrentHashMap<String, PendingSend>()
 
-    private val stateCallback = object : DelegateConnectionStateCallback {
-        override fun onCreated(c: SipDelegateConnection) {
-            connection = c
-            _state.value = RcsRegistrationState.Available
-            Log.status(TAG, "SipDelegate created")
-        }
+    /**
+     * Hidden-API callbacks, loaded on first use only. They are created by
+     * [transportCallbacks], whose signature is hidden-API-free: the callback
+     * types appear only as `Any` here, so neither the property types nor the
+     * `<clinit>` reference the missing classes. Call sites cast back to the
+     * framework types (safe on-device, where the framework provides them).
+     */
+    private val stateCallback: Any by lazy { transportCallbacks().first }
+    private val messageCallback: Any by lazy { transportCallbacks().second }
 
-        override fun onFeatureTagStatusChanged(
-            registrationState: DelegateRegistrationState,
-            deniedFeatureTags: Set<FeatureTagState>,
-        ) {
-            if (deniedFeatureTags.isNotEmpty()) {
-                Log.status(TAG, "Feature tags denied: ${deniedFeatureTags.map { it.getFeatureTag() }}")
-                _state.value = RcsRegistrationState.Unavailable(RcsUnavailableReason.TransportDenied)
+    /**
+     * Build the two delegate callbacks. The anonymous classes — and hence the
+     * hidden-API callback types — load only when this function runs
+     * on-device, never during the outer object's `<clinit>`.
+     */
+    private fun transportCallbacks(): Pair<Any, Any> {
+        val state = object : DelegateConnectionStateCallback {
+            override fun onCreated(c: SipDelegateConnection) {
+                connection = c
+                _state.value = RcsRegistrationState.Available
+                Log.status(TAG, "SipDelegate created")
+            }
+
+            override fun onFeatureTagStatusChanged(
+                registrationState: DelegateRegistrationState,
+                deniedFeatureTags: Set<FeatureTagState>,
+            ) {
+                if (deniedFeatureTags.isNotEmpty()) {
+                    Log.status(TAG, "Feature tags denied: ${deniedFeatureTags.map { it.getFeatureTag() }}")
+                    _state.value = RcsRegistrationState.Unavailable(RcsUnavailableReason.TransportDenied)
+                }
+            }
+
+            override fun onConfigurationChanged(registeredSipConfig: SipDelegateConfiguration) {
+                configVersion = registeredSipConfig.getVersion()
+                lastConfig = registeredSipConfig
+            }
+
+            override fun onDestroyed(reason: Int) {
+                Log.status(TAG, "SipDelegate destroyed reason=$reason")
+                connection = null
+                configVersion = -1L
+                lastConfig = null
+                if (_state.value is RcsRegistrationState.Available) {
+                    _state.value = RcsRegistrationState.Unavailable(RcsUnavailableReason.ServiceUnavailable)
+                }
             }
         }
+        val message = object : DelegateConnectionMessageCallback {
+            override fun onMessageReceived(message: SipMessage) {
+                runCatching { connection?.notifyMessageReceived(message.getViaBranchParameter()) }
+                onInboundMessage?.invoke(message)
+            }
 
-        override fun onConfigurationChanged(registeredSipConfig: SipDelegateConfiguration) {
-            configVersion = registeredSipConfig.getVersion()
-            lastConfig = registeredSipConfig
-        }
+            override fun onMessageSent(viaTransactionId: String) {
+                pendingSends.remove(viaTransactionId)?.callback?.invoke(true)
+            }
 
-        override fun onDestroyed(reason: Int) {
-            Log.status(TAG, "SipDelegate destroyed reason=$reason")
-            connection = null
-            configVersion = -1L
-            lastConfig = null
-            if (_state.value is RcsRegistrationState.Available) {
-                _state.value = RcsRegistrationState.Unavailable(RcsUnavailableReason.ServiceUnavailable)
+            override fun onMessageSendFailure(viaTransactionId: String, reason: Int) {
+                Log.status(TAG, "Message send failed tx=$viaTransactionId reason=$reason")
+                pendingSends.remove(viaTransactionId)?.callback?.invoke(false)
             }
         }
-    }
-
-    private val messageCallback = object : DelegateConnectionMessageCallback {
-        override fun onMessageReceived(message: SipMessage) {
-            runCatching { connection?.notifyMessageReceived(message.getViaBranchParameter()) }
-            onInboundMessage?.invoke(message)
-        }
-
-        override fun onMessageSent(viaTransactionId: String) {
-            pendingSends.remove(viaTransactionId)?.callback?.invoke(true)
-        }
-
-        override fun onMessageSendFailure(viaTransactionId: String, reason: Int) {
-            Log.status(TAG, "Message send failed tx=$viaTransactionId reason=$reason")
-            pendingSends.remove(viaTransactionId)?.callback?.invoke(false)
-        }
+        return state to message
     }
 
     /**
@@ -572,7 +589,12 @@ object RcsSipTransport {
                 _state.value = RcsRegistrationState.Unavailable(RcsUnavailableReason.NotSupported)
                 return
             }
-            manager.createSipDelegate(DelegateRequest(CPM_FEATURE_TAGS), executor, stateCallback, messageCallback)
+            manager.createSipDelegate(
+                DelegateRequest(CPM_FEATURE_TAGS),
+                executor,
+                stateCallback as DelegateConnectionStateCallback,
+                messageCallback as DelegateConnectionMessageCallback,
+            )
         } catch (e: SecurityException) {
             Log.status(TAG, "No carrier privilege for single registration", e)
             _state.value = RcsRegistrationState.Unavailable(RcsUnavailableReason.NoCarrierPrivilege)

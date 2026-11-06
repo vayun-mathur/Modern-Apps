@@ -65,7 +65,7 @@ object RcsMsrpTls {
     private const val ASN1_NULL = 0x05
     private const val ASN1_UTF8STRING = 0x0C
     private const val ASN1_UTCTIME = 0x17
-    private const val ASN1_OCTETSTRING = 0x03
+    private const val ASN1_OCTETSTRING = 0x04
     private const val ASN1_BITSTRING = 0x03
     private const val ASN1_ZERO = 0x00
     private const val ASN1_SHORT_LEN_LIMIT = 128
@@ -317,8 +317,11 @@ object RcsMsrpTls {
             it[0] = (it[0].toInt() and VARINT_MASK).toByte()
         }
         val tbs = Der.sequence(
-            Der.explicit(0, Der.integer(serial)),
-            Der.integer(byteArrayOf(2)), // v3
+            // TBSCertificate order (RFC 5280 §4.1.2): version [0] EXPLICIT,
+            // then serialNumber. (These two were swapped — the serial sat in
+            // the version slot, which no X.509 parser accepts.)
+            Der.explicit(0, Der.integer(byteArrayOf(2))), // v3
+            Der.integer(serial),
             sigAlgId,
             name, // issuer
             Der.sequence(Der.utcTime(notBeforeMs), Der.utcTime(notAfterMs)),

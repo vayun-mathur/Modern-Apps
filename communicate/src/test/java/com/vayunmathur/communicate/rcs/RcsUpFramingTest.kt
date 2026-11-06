@@ -90,7 +90,7 @@ class RcsUpFramingTest {
     @Test
     fun keyPackageParse() {
         val bytes = byteArrayOf(1, 2, 3, 4)
-        val b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        val b64 = java.util.Base64.getEncoder().encodeToString(bytes)
         val body = "Content-Type: application/x-rcs-keypackage\r\n\r\n$b64"
         val parsed = RcsKeyDirectory.parsePublished(body)
         assertTrue(parsed != null && parsed.contentEquals(bytes))

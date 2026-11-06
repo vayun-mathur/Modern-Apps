@@ -38,7 +38,8 @@ object RcsKeyDirectory {
             val kp = RcsE2E.freshKeyPackage(context, localE164) ?: return@withContext false
             lastPublished[localE164] = kp
             // Key package bytes are binary — base64 the payload into the CPIM text.
-            val b64 = android.util.Base64.encodeToString(kp, android.util.Base64.NO_WRAP)
+            // java.util (not android.util): identical bytes, and usable on the JVM unit-test classpath.
+            val b64 = java.util.Base64.getEncoder().encodeToString(kp)
             val body = "Content-Type: ${RcsE2E.CT_KEY_PACKAGE}\r\n\r\n$b64"
             val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
                 fromUri = "sip:me@rcs",
@@ -61,7 +62,8 @@ object RcsKeyDirectory {
             body.substringAfter("\n\n", "")
         }.trim().takeIf { it.isNotEmpty() } ?: return null
         return runCatching {
-            android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+            // MIME decoder, like android.util Base64.DEFAULT: tolerates CR/LF whitespace.
+            java.util.Base64.getMimeDecoder().decode(b64)
         }.getOrNull()?.takeIf { it.isNotEmpty() }
     }
 }

@@ -624,20 +624,38 @@ object RcsMsrp {
      * Parse an `msrp(s)://host[:port]/...` path into (host, port). Default
      * MSRP port 2855 when absent. Scheme-agnostic (covers `msrps://`); use
      * [isSecurePath] for the TLS decision.
+     *
+     * Manual parse — no `android.net.Uri`, whose unit-test android.jar stub
+     * throws ("not mocked") on the JVM.
      */
     fun parseMsrpPath(path: String): Pair<String, Int>? {
-        return runCatching {
-            val uri = android.net.Uri.parse(path)
-            val host = uri.host ?: return null
-            val port = if (uri.port > 0) uri.port else 2855
-            host to port
-        }.getOrNull()
+        val afterScheme = path.substringAfter("://", "").ifEmpty { return null }
+        // Authority ends at the first '/' or ';' (';'-params belong to the session part).
+        val authority = afterScheme.substringBefore("/").substringBefore(";").substringAfterLast("@")
+        if (authority.isBlank()) return null
+        val (host, rawPort) = if (authority.startsWith("[")) {
+            // Bracketed IPv6 literal: [::1]:2855.
+            val end = authority.indexOf(']')
+            if (end < 0) return null
+            val h = authority.substring(1, end)
+            if (h.isBlank()) return null
+            h to authority.substring(end + 1).removePrefix(":")
+        } else {
+            val h = authority.substringBefore(":")
+            if (h.isBlank()) return null
+            h to authority.substringAfter(":", "")
+        }
+        val port = rawPort.toIntOrNull()?.takeIf { it > 0 } ?: 2855
+        return host to port
     }
 
-    /** True when [path] uses the `msrps://` scheme (TLS media, RFC 4976). */
+    /**
+     * True when [path] uses the `msrps://` scheme (TLS media, RFC 4976).
+     * Manual scheme check — see [parseMsrpPath] for why `android.net.Uri`
+     * is not used here.
+     */
     fun isSecurePath(path: String?): Boolean {
         if (path.isNullOrBlank()) return false
-        return runCatching { android.net.Uri.parse(path).scheme }.getOrNull()
-            .equals("msrps", ignoreCase = true)
+        return path.trim().substringBefore(":").trim().equals("msrps", ignoreCase = true)
     }
 }
