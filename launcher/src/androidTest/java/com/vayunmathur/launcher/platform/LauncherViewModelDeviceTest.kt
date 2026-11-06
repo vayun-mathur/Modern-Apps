@@ -172,8 +172,8 @@ class LauncherViewModelDeviceTest {
         // App-label match keeps the whole group, not just matching widgets.
         assertEquals(2, groups[0].widgets.size)
         vm.applyWidgetQuery("", source = null)
-        // Null source keeps the previously set groups (no-op source update).
-        assertEquals(1, vm.widgetPicker.value.groups.size)
+        // Null source keeps allWidgetGroups ([Clock, Mail]); empty query shows all.
+        assertEquals(2, vm.widgetPicker.value.groups.size)
         vm.applyWidgetQuery(
             "",
             source = listOf(
