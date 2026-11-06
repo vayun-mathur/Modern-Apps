@@ -11,6 +11,7 @@ import com.vayunmathur.launcher.platform.WorkspaceItem
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.test.assertEquals
 
 /**
  * Compose tests (Robolectric + createComposeRule) for the small icon
@@ -103,5 +104,21 @@ class LauncherIconsTest {
 
     @Test fun mergeRingComposes() {
         show { MergeRing(scale = 1f, progress = { 0.5f }) }
+    }
+
+    @Test fun hostedWidgetWithRealViewRenders() {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        var sized = false
+        show {
+            HostedWidget(
+                appWidgetId = 7,
+                widthDp = 200,
+                heightDp = 100,
+                createView = { android.appwidget.AppWidgetHostView(ctx) },
+                updateSize = { _, _, _ -> sized = true },
+            )
+        }
+        rule.waitForIdle()
+        assertEquals(true, sized)
     }
 }
