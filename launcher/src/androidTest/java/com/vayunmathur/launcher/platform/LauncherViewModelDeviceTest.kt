@@ -151,6 +151,76 @@ class LauncherViewModelDeviceTest {
         assertNull(vm.itemMenu.value.item)
     }
 
+    @Test fun widgetQueryFiltersGroups() = runTest {
+        val vm = LauncherViewModel(app())
+        vm.applyWidgetQuery(
+            "clo",
+            source = listOf(
+                WidgetGroup(
+                    "Clock",
+                    listOf(
+                        WidgetEntry("com.example/.Analog", "Analog clock", spanX = 2, spanY = 2),
+                        WidgetEntry("com.example/.Weather", "Weather", spanX = 4, spanY = 1),
+                    ),
+                ),
+                WidgetGroup("Mail", listOf(WidgetEntry("com.example/.M", "Mail widget"))),
+            ),
+        )
+        val groups = vm.widgetPicker.value.groups
+        assertEquals(1, groups.size)
+        assertEquals("Clock", groups[0].appLabel)
+        assertEquals(1, groups[0].widgets.size)
+        vm.applyWidgetQuery("", source = null)
+        assertEquals(2, vm.widgetPicker.value.groups.size)
+    }
+
+    @Test fun pendingHomeAndHotseatInserts() = runTest {
+        val vm = LauncherViewModel(app())
+        val r = repo()
+        r.getAll().forEach { r.remove(it.id) }
+        val key = ComponentKey(
+            android.content.ComponentName("com.example.p", "com.example.p.Main"),
+            0L,
+        )
+        vm.addPendingToHome(key, 0, CellRect(0, 0))
+        vm.addPendingToHotseat(key, 0)
+        val deadline = android.os.SystemClock.uptimeMillis() + 5000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            if (r.getAll().size >= 2) break
+            kotlinx.coroutines.delay(50)
+        }
+        assertEquals(2, r.getAll().size)
+        r.getAll().forEach { r.remove(it.id) }
+    }
+
+    @Test fun monitorRefreshListsPackages() = runTest {
+        val vm = LauncherViewModel(app())
+        vm.appsMonitor.refresh()
+        assertEquals(true, vm.appsMonitor.apps.value.isNotEmpty())
+    }
+
+    @Test fun gridSettersRenumber() = runTest {
+        val vm = LauncherViewModel(app())
+        vm.setRows(5)
+        vm.setHotseatSlots(3)
+        val deadline = android.os.SystemClock.uptimeMillis() + 5000
+        while (android.os.SystemClock.uptimeMillis() < deadline) {
+            val g = vm.home.value.grid
+            if (g.rows == 5 && g.hotseatSlots == 3) break
+            kotlinx.coroutines.delay(50)
+        }
+        assertEquals(5, vm.home.value.grid.rows)
+        assertEquals(3, vm.home.value.grid.hotseatSlots)
+        vm.setRows(4)
+        vm.setHotseatSlots(4)
+    }
+
+    @Test fun itemMenuOpenUnknownClears() = runTest {
+        val vm = LauncherViewModel(app())
+        vm.openItemMenu(424242L)
+        assertNull(vm.itemMenu.value.item)
+    }
+
     @Test fun settingsTogglesPropagate() = runTest {
         val vm = LauncherViewModel(app())
         vm.setShowLabels(false)
