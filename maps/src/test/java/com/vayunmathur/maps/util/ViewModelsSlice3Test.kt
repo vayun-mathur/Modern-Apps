@@ -10,6 +10,8 @@ import com.vayunmathur.maps.data.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
+import android.os.Looper
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -39,15 +41,25 @@ class ViewModelsSlice3Test {
         position = GeoPoint(-122.4, 37.8),
     )
 
+    /**
+     * Pumps the main looper so `viewModelScope` (Main) work runs: plain
+     * Robolectric never idles it on its own. Called inside every wait loop.
+     */
+    private fun idleMain() {
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+
     private fun <T> awaitState(flow: StateFlow<T>, timeoutMs: Long = 10_000, want: (T) -> Boolean): T {
         val deadline = System.currentTimeMillis() + timeoutMs
         var last: T = flow.value
         while (System.currentTimeMillis() < deadline) {
+            idleMain()
             last = flow.value
             if (want(last)) return last
             Thread.sleep(25)
         }
-        return last
+        idleMain()
+        return flow.value
     }
 
     private fun <T> awaitEquals(flow: StateFlow<T>, expected: T, timeoutMs: Long = 10_000) {
@@ -270,7 +282,11 @@ class ViewModelsSlice3Test {
             assertNull(first)
         }
         val deadline = System.currentTimeMillis() + 10_000
-        while (!called && System.currentTimeMillis() < deadline) Thread.sleep(25)
+        while (!called && System.currentTimeMillis() < deadline) {
+            idleMain()
+            Thread.sleep(25)
+        }
+        idleMain()
         assertTrue(called)
         assertTrue(vm.results.value.isEmpty())
     }

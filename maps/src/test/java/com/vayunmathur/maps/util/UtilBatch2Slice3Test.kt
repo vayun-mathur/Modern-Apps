@@ -9,6 +9,8 @@ import com.vayunmathur.maps.data.SpecificFeature
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
+import android.os.Looper
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.BeforeTest
@@ -56,11 +58,13 @@ class UtilBatch2Slice3Test {
         val deadline = System.currentTimeMillis() + timeoutMs
         var last: T = flow.value
         while (System.currentTimeMillis() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
             last = flow.value
             if (want(last)) return last
             Thread.sleep(25)
         }
-        return last
+        shadowOf(Looper.getMainLooper()).idle()
+        return flow.value
     }
 
     // --- MoonAssetLoader ---
