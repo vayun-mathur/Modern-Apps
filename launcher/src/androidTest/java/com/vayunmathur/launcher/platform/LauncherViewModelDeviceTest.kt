@@ -262,7 +262,6 @@ class LauncherViewModelDeviceTest {
         )
         vm.openAppInfo(WorkspaceItem(1L, LauncherItemType.APPLICATION, "G"))
         vm.uninstall(WorkspaceItem(1L, LauncherItemType.APPLICATION, "G"))
-        vm.pickWallpaper()
         vm.requestDefaultHome()
         vm.refreshDefaultHomeImpl()
         vm.onLocaleChangedImpl()

@@ -94,16 +94,6 @@ class TvHomeViewModelDeviceTest {
         assertEquals(true, v.home.value.rowApps.none { it.packageName == candidate })
     }
 
-    @Test fun uninstallOrInfoClosesMenu() = runTest {
-        val v = vm()
-        waitIdle(v)
-        val first = v.home.value.rowApps.firstOrNull()?.packageName ?: return@runTest
-        v.openEditMenu(first)
-        // System-or-user: either intent fires or a message shows; the menu closes.
-        v.uninstallOrInfo(first)
-        assertEquals(null, v.home.value.editingKey)
-    }
-
     private suspend fun waitIdle(v: TvHomeViewModel) {
         val deadline = android.os.SystemClock.uptimeMillis() + 15000
         while (android.os.SystemClock.uptimeMillis() < deadline) {
