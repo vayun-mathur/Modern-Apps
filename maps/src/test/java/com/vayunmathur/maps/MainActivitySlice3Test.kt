@@ -186,6 +186,19 @@ class MainActivitySlice3Test {
     }
 
     @Test
+    fun `cold start with view action but null data selects nothing`() {
+        // ACTION_VIEW with no Uri: dataString is null, handled without crashing.
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+        }
+        val controller = Robolectric.buildActivity(MainActivity::class.java, intent).setup()
+        val vm = selectedOf(controller.get())
+        assertNull(vm.selectedFeature.value)
+        assertNull(vm.pendingFocus.value)
+        controller.destroy()
+    }
+
+    @Test
     fun `warm start routes a new geo intent to the selection`() {
         val controller = launch(null)
         val activity = controller.get()
@@ -359,7 +372,48 @@ class MainActivitySlice3Test {
     }
 
     @Test
-    fun `navigate link with unresolvable query selects nothing`() {
+    fun `bare geo point with no index hit drops a plain pin`() {
+        // No POI fixture mapped: reverseGeocode resolves null and openPlace
+        // falls back to a "Dropped pin" rather than selecting nothing.
+        clearPoiIndex()
+        seedGpsFix()
+        val controller = launch("geo:37.7849,-122.4094")
+        val vm = selectedOf(controller.get())
+        awaitSelection(vm)
+        val selected = vm.selectedFeature.value
+        assertIs<SpecificFeature.GenericPlace>(selected)
+        assertEquals(context.getString(R.string.dropped_pin), selected.name)
+        assertEquals(37.7849, selected.position.latitude, 1e-6)
+        controller.destroy()
+    }
+
+    @Test
+    fun `navigate link with no destination selects nothing`() {
+        // navigate=true but no coord or query: resolveDestination has nothing
+        // to resolve and navigateTo returns without selecting or crashing.
+        seedGpsFix()
+        val controller = launch("google.navigation:mode=d")
+        val vm = selectedOf(controller.get())
+        awaitQuiescence()
+        assertNull(vm.selectedFeature.value)
+        controller.destroy()
+    }
+
+    @Test
+    fun `navigate link with no live fix opens the destination place`() {
+        // No providers enabled and no persisted fix: awaitUserPosition times
+        // out and navigateTo degrades to opening the destination place so the
+        // user can start navigation manually once located.
+        clearLiveFix()
+        val controller = launch("google.navigation:q=37.7849,-122.4094&mode=d")
+        val vm = selectedOf(controller.get())
+        awaitSelection(vm, maxIters = 2_000)
+        val selected = vm.selectedFeature.value
+        assertIs<SpecificFeature.GenericPlace>(selected, "destination place should be selected")
+        assertEquals(37.7849, selected.position.latitude, 1e-6)
+        assertEquals(-122.4094, selected.position.longitude, 1e-6)
+        controller.destroy()
+    }
         // A free-text destination with no offline index entry resolves to null,
         // and navigateTo must log and return without selecting or crashing.
         seedGpsFix()
