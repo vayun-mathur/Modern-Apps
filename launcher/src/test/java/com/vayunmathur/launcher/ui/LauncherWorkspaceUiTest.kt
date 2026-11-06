@@ -51,6 +51,8 @@ class LauncherWorkspaceUiTest {
         items: List<WorkspaceItem>,
         onLaunch: (WorkspaceItem) -> Unit = {},
         onOpenFolder: (Long) -> Unit = {},
+        resizingId: Long? = null,
+        onResize: (Long, CellRect, Map<Long, CellRect>) -> Unit = { _, _, _ -> },
     ) {
         rule.setContent {
             CompositionLocalProvider(LocalLauncherDrag provides LauncherDragController()) {
@@ -66,14 +68,24 @@ class LauncherWorkspaceUiTest {
                         ) {
                             onLaunch(item)
                         }
+
+                        override fun resizeItem(
+                            id: Long,
+                            rect: CellRect,
+                            displaced: Map<Long, CellRect>,
+                        ) {
+                            onResize(id, rect, displaced)
+                        }
                     },
                     page = 0,
                     items = items,
-                    resizingId = null,
+                    resizingId = resizingId,
                     draggable = false,
                     onOpenFolder = { id, _ -> onOpenFolder(id) },
                     onEndResize = {},
                     onWidgetDropped = {},
+                    widgetView = { _: Int -> null },
+                    updateWidgetSize = { _, _, _ -> },
                     widgetView = { _: Int -> null },
                     updateWidgetSize = { _, _, _ -> },
                 )
@@ -131,6 +143,25 @@ class LauncherWorkspaceUiTest {
         )
         // No widget id at all, so the missing-widget placeholder shows the label.
         rule.onNodeWithText("Clock widget").assertIsDisplayed()
+    }
+
+    @Test fun resizingWidgetShowsFrame() {
+        show(
+            listOf(
+                WorkspaceItem(
+                    id = 5L,
+                    type = LauncherItemType.APPWIDGET,
+                    label = "Clock",
+                    container = ContainerRef.Desktop,
+                    screen = 0,
+                    rect = CellRect(0, 0, 2, 2),
+                    appWidgetId = null,
+                ),
+            ),
+            resizingId = 5L,
+        )
+        // Resize frame around the widget; the missing-widget label still shows.
+        rule.onNodeWithText("Clock").assertIsDisplayed()
     }
 
     @Test fun emptyPageShowsNoLabels() {
