@@ -135,19 +135,35 @@ object OfficeSync {
      */
     suspend fun pullInbox(since: Int): InboxResult {
         val p = pull("inbox:$deviceId", since) ?: return InboxResult(emptyList(), emptyList(), since)
+        val plain = p.actions.mapNotNull { b ->
+            runCatching { identity.decrypt(Base64.decode(b)) }.getOrNull()?.decodeToString()
+        }
+        val (invites, requests) = sortInboxText(plain)
+        return InboxResult(invites, requests, p.seq)
+    }
+
+    /**
+     * Sorts decrypted inbox blobs into invites vs join requests. The `kind:"req"`
+     * marker distinguishes them, but the shared [json] omits defaulted fields on
+     * encode — so a JoinRequest arrives WITHOUT its kind marker. Blobs that fail
+     * Invite decoding therefore fall back to JoinRequest decoding instead of
+     * being silently dropped (previously every join request was lost here).
+     */
+    internal fun sortInboxText(items: List<String>): Pair<List<Invite>, List<JoinRequest>> {
         val invites = mutableListOf<Invite>()
         val requests = mutableListOf<JoinRequest>()
-        for (b in p.actions) {
-            val plain = runCatching { identity.decrypt(Base64.decode(b)) }.getOrNull() ?: continue
-            val text = plain.decodeToString()
+        for (text in items) {
             val kind = runCatching { json.decodeFromString<InboxEnvelope>(text).kind }.getOrNull().orEmpty()
             if (kind == "req") {
                 runCatching { json.decodeFromString<JoinRequest>(text) }.getOrNull()?.let { requests.add(it) }
             } else {
                 runCatching { json.decodeFromString<Invite>(text) }.getOrNull()?.let { invites.add(it) }
+                    ?: runCatching { json.decodeFromString<JoinRequest>(text) }.getOrNull()?.let {
+                        requests.add(it)
+                    }
             }
         }
-        return InboxResult(invites, requests, p.seq)
+        return invites to requests
     }
 
     val publicBundle: ByteArray get() = identity.publicBundle
