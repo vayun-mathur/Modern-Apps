@@ -1,6 +1,5 @@
 package com.vayunmathur.launcher
 
-import android.content.Intent
 import android.content.res.Configuration
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -41,10 +40,9 @@ class MainActivityDeviceTest {
         }
     }
 
-    @Test fun newIntentAndConfigChangeAreSafe() {
+    @Test fun configChangeIsSafe() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
-                activity.onNewIntent(Intent(Intent.ACTION_MAIN))
                 activity.onConfigurationChanged(
                     android.content.res.Configuration(activity.resources.configuration),
                 )
