@@ -60,15 +60,18 @@ class LauncherResizeFrameTest {
             },
             onRelease = { released = true },
         )
-        // Swipe right across the right handle (east edge centre of the 2x2 rect
-        // in a 400dp box: rect spans 0..200px.. roughly; swipe the right area).
+        // The right handle sits on the frame's east edge centre: start the
+        // swipe just inside the root's right edge and drag further right.
+        val bounds = rule.onRoot().getBoundsInRoot()
         rule.onRoot().performTouchInput {
             swipe(
-                start = Offset(600f, 300f),
-                end = Offset(900f, 300f),
+                start = Offset(bounds.width - 40f, bounds.height / 2f),
+                end = Offset(bounds.width + 200f, bounds.height / 2f),
             )
         }
         rule.waitForIdle()
+        assertTrue(steps.isNotEmpty())
+        assertEquals(WidgetResize.Edge.Right, steps.first().second)
         assertTrue(released)
     }
 
