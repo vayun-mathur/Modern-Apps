@@ -119,9 +119,11 @@ internal class OoxmlPackage(
                         if (!e.isDirectory) {
                             val ext = n.substringAfterLast('.', "").lowercase()
                             when {
-                                n.endsWith(".xml") || n.endsWith(".rels") ->
+                                n.endsWith(".xml") || n.endsWith(".rels") || n == "EncryptionInfo" ->
                                     // Strip a leading UTF-8 BOM (Word writes one on several parts);
                                     // a retained U+FEFF makes the pull parser reject the XML prolog.
+                                    // "EncryptionInfo" (no extension) is retained so OoxmlImporter
+                                    // can report password-protected files instead of "unrecognized".
                                     entries[n] = zip.readBytes().toString(Charsets.UTF_8).removePrefix("\uFEFF")
                                 ext in MEDIA_EXTS -> media[n] = zip.readBytes()
                             }
