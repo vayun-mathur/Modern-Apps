@@ -51,11 +51,15 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
         private const val KEY_FILE_NAMES = "fileNames"
         private const val KEY_DESCRIPTIONS = "descriptions"
         private const val KEY_HASHES = "hashes"
+        private const val KEY_SIZES = "sizes"
         private const val KEY_TARGET_DIR = "targetDir"
         private const val KEY_UNMETERED = "unmetered"
 
         /** Absent SHA-256, encoded as an empty string because [Data] holds no nulls. */
         private const val NO_HASH = ""
+
+        /** Absent expected size, encoded as -1 because [Data] holds no nulls. */
+        private const val NO_SIZE = -1L
 
         private const val MAX_RUN_ATTEMPTS = 6
         private const val BACKOFF_SECONDS = 30L
@@ -103,6 +107,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
                     description = it.description,
                     url = it.url,
                     sha256 = it.sha256,
+                    expectedBytes = it.expectedBytes,
                 )
             },
             policy = if (replaceExisting) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
@@ -122,6 +127,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
                 .putStringArray(KEY_FILE_NAMES, specs.map { it.fileName }.toTypedArray())
                 .putStringArray(KEY_DESCRIPTIONS, specs.map { it.description }.toTypedArray())
                 .putStringArray(KEY_HASHES, specs.map { it.sha256 ?: NO_HASH }.toTypedArray())
+                .putLongArray(KEY_SIZES, specs.map { it.expectedBytes ?: NO_SIZE }.toLongArray())
                 .apply { targetDir?.let { putString(KEY_TARGET_DIR, it.absolutePath) } }
                 .putBoolean(KEY_UNMETERED, requireUnmetered)
                 .build()
@@ -147,9 +153,12 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
             val fileNames = data.getStringArray(KEY_FILE_NAMES) ?: return emptyList()
             val descriptions = data.getStringArray(KEY_DESCRIPTIONS) ?: return emptyList()
             val hashes = data.getStringArray(KEY_HASHES) ?: return emptyList()
+            // Old enqueues predate sizes: default every entry to unknown.
+            val sizes = data.getLongArray(KEY_SIZES)
             if (fileNames.size != urls.size ||
                 descriptions.size != urls.size ||
-                hashes.size != urls.size
+                hashes.size != urls.size ||
+                (sizes != null && sizes.size != urls.size)
             ) {
                 return emptyList()
             }
@@ -159,6 +168,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) :
                     description = descriptions[i],
                     url = urls[i],
                     sha256 = hashes[i].takeIf { it != NO_HASH },
+                    expectedBytes = sizes?.get(i)?.takeIf { it != NO_SIZE },
                 )
             }
         }

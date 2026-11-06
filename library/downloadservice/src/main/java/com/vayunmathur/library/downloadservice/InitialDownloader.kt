@@ -67,13 +67,20 @@ internal data class DownloadSpec(
     val description: String,
     val url: String,
     val sha256: String? = null,
+    val expectedBytes: Long? = null,
 )
 
 private fun Triple<String, String, String>.toSpec() =
     DownloadSpec(fileName = second, description = third, url = first)
 
 private fun ModelDownloadItem.toSpec() =
-    DownloadSpec(fileName = fileName, description = description, url = url, sha256 = sha256)
+    DownloadSpec(
+        fileName = fileName,
+        description = description,
+        url = url,
+        sha256 = sha256,
+        expectedBytes = expectedBytes,
+    )
 
 @Composable
 fun InitialDownloadChecker(
@@ -121,7 +128,68 @@ private fun allFilesPresent(
     specs: List<DownloadSpec>,
 ): Boolean {
     val dir = context.getExternalFilesDir(null)
-    return specs.all { File(dir, it.fileName).exists() }
+    val ds = DataStoreUtils.getInstance(context)
+    return manifestSatisfied(dir, ds, specsToManifest(specs))
+}
+
+/**
+ * The on-disk gate state for one download set: the expected SHA-256 and size
+ * per file, read from the current [DownloadSpec]s.
+ *
+ * Compared against the real files plus the `verified_*` markers the download
+ * loop writes, so the gate never treats an unverified file as complete. Pure
+ * and host-testable: [dir] stands in for the app's external files dir.
+ */
+internal data class VerifiedManifest(val entries: List<VerifiedEntry>)
+
+internal data class VerifiedEntry(
+    val fileName: String,
+    val sha256: String?,
+    val expectedBytes: Long?,
+)
+
+internal fun specsToManifest(specs: List<DownloadSpec>): VerifiedManifest =
+    VerifiedManifest(
+        specs.map { VerifiedEntry(it.fileName, it.sha256, it.expectedBytes) },
+    )
+
+/**
+ * Cheap per-launch gate: every file exists at its expected size (when pinned),
+ * and every hash-pinned file carries a `verified_<fileName>` marker equal to the
+ * currently-expected SHA-256.
+ *
+ * The marker is what makes a model update re-download: bump the pinned hash and
+ * the stored marker no longer matches, so the set reads as incomplete. The size
+ * check catches a truncated file without rehashing gigabytes on every start.
+ * Files with no pinned hash and no pinned size pass on existence, exactly as
+ * before, so unpinned consumers (maps basemap, beacon stores without a hash)
+ * see no behaviour change.
+ */
+internal fun manifestSatisfied(
+    dir: File?,
+    verifiedMarker: (String) -> String?,
+    manifest: VerifiedManifest,
+): Boolean {
+    if (dir == null) return false
+    return manifest.entries.all { entry ->
+        val file = File(dir, entry.fileName)
+        if (!file.isFile) return@all false
+        if (entry.expectedBytes != null && file.length() != entry.expectedBytes) return@all false
+        val want = entry.sha256 ?: return@all true
+        verifiedMarker("verified_${entry.fileName}") == want
+    }
+}
+
+internal fun manifestSatisfied(
+    dir: File?,
+    ds: DataStoreUtils,
+    manifest: VerifiedManifest,
+): Boolean = manifestSatisfied(dir, ds::getString, manifest)
+
+/** Records that [spec]'s file on disk matches its currently-pinned SHA-256. */
+internal suspend fun markVerified(ds: DataStoreUtils, spec: DownloadSpec) {
+    val sha = spec.sha256 ?: return
+    ds.setString("verified_${spec.fileName}", sha)
 }
 
 @Composable
@@ -145,6 +213,9 @@ private fun InitialDownloadScreen(
     val state = workInfo.firstOrNull()?.state
 
     LaunchedEffect(state) {
+        // SUCCEEDED means runDownloadsCore verified every file, so the gate below
+        // passes; still re-check disk rather than trusting the worker result, so a
+        // file deleted between the last byte and this frame re-shows the screen.
         if (state == WorkInfo.State.SUCCEEDED && allFilesPresent(context, specs)) {
             onAllDownloaded()
         }
@@ -190,11 +261,15 @@ private fun InitialDownloadScreen(
             ) {
                 items(specs, key = { it.fileName }) { spec ->
                     // Each item observes its own progress and speed from DataStore.
-                    // "Done" is derived from progress (1.0) — no separate persisted
-                    // flag that could disagree with disk state.
+                    // "Done" needs both progress (1.0) and this run's verified
+                    // marker — a stale 1.0 left by an older app version must not
+                    // read as complete. Unpinned files keep the old threshold.
                     val progress by ds.doubleFlow("progress_${spec.fileName}").collectAsState(0.0)
                     val speedMbps by ds.doubleFlow("speed_${spec.fileName}").collectAsState(0.0)
-                    val isDone = progress >= 0.999
+                    val marker by ds.stringFlow("verified_${spec.fileName}")
+                        .collectAsState(initial = null as String?)
+                    val verified = spec.sha256?.let { marker == it } ?: true
+                    val isDone = progress >= 0.999 && verified
 
                     FileProgressItem(
                         label = spec.description,
@@ -272,11 +347,12 @@ internal suspend fun runDownloadsCore(
         migrateLegacyDownload(context, ds, dir, spec)
 
         val file = File(dir, spec.fileName)
-        // If the file already exists, verify SHA when pinned; a stale or tiny old
-        // bundle (e.g. 593 KB dict vs 2.2 MB, or sherpa .onnx leftover) must be
-        // re-downloaded.
+        // A file already on disk still has to prove itself: size first (cheap),
+        // then the pinned SHA when the verified marker does not match. A stale
+        // bundle from an older app version (different pinned hash) or a
+        // truncated one (wrong size) is deleted and re-downloaded below.
         if (file.exists()) {
-            if (checksumOk(file, spec.sha256)) {
+            if (sizeOk(file, spec.expectedBytes) && checksumMatches(file, ds, spec)) {
                 ds.setDouble("progress_${spec.fileName}", 1.0)
                 continue
             } else {
@@ -290,12 +366,31 @@ internal suspend fun runDownloadsCore(
 }
 
 /**
- * Downloads a single [spec] into `<fileName>.part`, verifies its SHA-256, then
- * atomically renames it to the final name. Retries transient failures up to
- * [MAX_ATTEMPTS]; on a checksum mismatch the partial is discarded and the file
- * is re-fetched from scratch. On final failure any `.part` is left for the next
- * run to resume, and false is returned so the caller can surface it.
+ * True when [file] may be skipped without re-downloading: size matches when
+ * pinned, and the SHA matches when pinned. The SHA is only recomputed when the
+ * file's stored `verified_*` marker differs from the currently-pinned hash —
+ * which covers a first install (no marker yet) and a model update (pinned hash
+ * bumped, marker stale). A match writes the marker so the launch gate and
+ * later runs skip the rehash.
  */
+internal suspend fun checksumMatches(
+    file: File,
+    ds: DataStoreUtils,
+    spec: DownloadSpec,
+): Boolean {
+    val want = spec.sha256 ?: return true
+    if (ds.getString("verified_${spec.fileName}") == want) return true
+    if (!checksumOk(file, want)) return false
+    markVerified(ds, spec)
+    return true
+}
+
+/** True when [file]'s size matches [expectedBytes], or when no size is pinned. */
+internal fun sizeOk(file: File, expectedBytes: Long?): Boolean {
+    if (expectedBytes == null) return true
+    return file.isFile && file.length() == expectedBytes
+}
+
 private suspend fun downloadSpec(
     ds: DataStoreUtils,
     dir: File?,
@@ -307,11 +402,11 @@ private suspend fun downloadSpec(
     repeat(MAX_ATTEMPTS) { attempt ->
         try {
             streamToPart(ds, spec, partFile)
-            if (checksumOk(partFile, spec.sha256)) {
+            if (sizeOk(partFile, spec.expectedBytes) && checksumOk(partFile, spec.sha256)) {
                 finalizeDownload(ds, spec, partFile, finalFile)
                 return true
             }
-            // Corrupt/tampered copy — drop the partial and re-fetch from scratch.
+            // Corrupt/tampered/short copy — drop the partial and re-fetch from scratch.
             Log.status(TAG, "checksum mismatch for ${spec.fileName}; refetching")
             partFile.delete()
         } catch (e: CancellationException) {
@@ -473,6 +568,9 @@ private suspend fun finalizeDownload(
         partFile.copyTo(finalFile, overwrite = true)
         partFile.delete()
     }
+    // The file was hash- (and size-) verified before this rename, so record it:
+    // the launch gate trusts this marker instead of rehashing gigabytes.
+    markVerified(ds, spec)
     ds.setDouble("progress_${spec.fileName}", 1.0)
     ds.setDouble("speed_${spec.fileName}", 0.0)
 }

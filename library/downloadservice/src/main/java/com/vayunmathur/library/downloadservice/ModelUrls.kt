@@ -25,46 +25,52 @@ object ModelUrls {
         const val BASE = "${MIRROR_BASE}gemma4/"
 
         val FILES: List<ModelDownloadItem> = listOf(
-            // 1,101,593,392 bytes.
             item(
                 "gemma4_text.maml",
                 "Text Model",
                 "f990e8f99d61a127dd329cd4329b081f214067afefb1b3f4778922cc12d210d8",
+                1_101_593_392L,
             ),
-            // 1,566,576,256 bytes.
             item(
                 "gemma4_embed.maml",
                 "Embeddings",
                 "11b9e8b316dd8a2c628d58b98908e9a509764c6f63531731b6d94ccf6419a9bd",
+                1_566_576_256L,
             ),
-            // 403,703,360 bytes.
             item(
                 "gemma4_head.maml",
                 "Output Head",
                 "338021b6aa4d78eda55e47f5197d186087a73a8dade02001812aa95f0f550937",
+                403_703_360L,
             ),
-            // 97,815,200 bytes.
             item(
                 "gemma4_vision.maml",
                 "Vision Tower",
                 "4c53c0a8383f2ea99f8beed50bd5eac203565436313d0c2dd77b389ea1cf38e3",
+                97_815_200L,
             ),
-            // 173,999,072 bytes.
             item(
                 "gemma4_audio.maml",
                 "Audio Tower",
                 "be3ac4f968835fa257291f0845be642750f71e63e197a6e199ad5210316cb4f2",
+                173_999_072L,
             ),
-            // 3,889,167 bytes.
             item(
                 "gemma4_tokenizer.spm1",
                 "Tokenizer",
                 "e3e03941be666b885f6644cb3d7a0264949f842f8a7b97302589d9deff2334d7",
+                3_889_167L,
             ),
         )
 
-        private fun item(name: String, description: String, sha256: String) =
-            ModelDownloadItem("$BASE$name", "$DIR/$name", "Gemma 4 $description", sha256)
+        private fun item(name: String, description: String, sha256: String, expectedBytes: Long) =
+            ModelDownloadItem(
+                "$BASE$name",
+                "$DIR/$name",
+                "Gemma 4 $description",
+                sha256,
+                expectedBytes,
+            )
 
         /** Directory `Gemma4Handle.inDirectory` loads from. */
         fun modelDir(context: Context): File = File(context.getExternalFilesDir(null), DIR)
@@ -85,4 +91,12 @@ data class ModelDownloadItem(
     val fileName: String,
     val description: String,
     val sha256: String? = null,
+    /**
+     * Exact on-disk size in bytes, or null when unknown.
+     *
+     * Checked cheaply at the launch gate beside the "verified" marker, so a
+     * truncated file left by an interrupted install is re-downloaded without
+     * rehashing gigabytes on every start.
+     */
+    val expectedBytes: Long? = null,
 )

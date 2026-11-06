@@ -49,6 +49,22 @@ class ModelUrlsTest {
     }
 
     @Test
+    fun every_gemma_file_pins_an_exact_expected_size() {
+        val expected = mapOf(
+            "gemma4_text.maml" to 1_101_593_392L,
+            "gemma4_embed.maml" to 1_566_576_256L,
+            "gemma4_head.maml" to 403_703_360L,
+            "gemma4_vision.maml" to 97_815_200L,
+            "gemma4_audio.maml" to 173_999_072L,
+            "gemma4_tokenizer.spm1" to 3_889_167L,
+        )
+        for (item in ModelUrls.GemmaMaml.FILES) {
+            val name = item.fileName.removePrefix("${ModelUrls.GemmaMaml.DIR}/")
+            assertEquals(expected[name], item.expectedBytes, "$name size drifted from the mirror")
+        }
+    }
+
+    @Test
     fun initial_bundle_is_the_gemma_set_with_distinct_files() {
         assertEquals(ModelUrls.GemmaMaml.FILES, ModelUrls.INITIAL)
         val files = ModelUrls.INITIAL.map { it.fileName }
@@ -74,6 +90,7 @@ class ModelUrlsTest {
     fun item_sha_defaults_to_null_for_unpinned_files() {
         val tokenizer = ModelUrls.GemmaMaml.FILES.last()
         assertNull(ModelDownloadItem(tokenizer.url, tokenizer.fileName, "Model").sha256)
+        assertNull(ModelDownloadItem(tokenizer.url, tokenizer.fileName, "Model").expectedBytes)
     }
 
     @Test
