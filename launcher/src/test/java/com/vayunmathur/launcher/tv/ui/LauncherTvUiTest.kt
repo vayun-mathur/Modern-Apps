@@ -78,6 +78,44 @@ class LauncherTvUiTest {
         rule.waitForIdle()
     }
 
+    @Test fun focusedTileShowsRing() {
+        val requester = androidx.compose.ui.focus.FocusRequester()
+        rule.setContent {
+            TvBannerTile(
+                tile = tiles[0],
+                tileWidth = 200.dp,
+                artHeight = 100.dp,
+                moving = false,
+                dimmed = false,
+                focusRequester = requester,
+                onPress = {},
+                onEdit = {},
+                onMove = {},
+            )
+        }
+        rule.runOnIdle { requester.requestFocus() }
+        rule.waitForIdle()
+        // Focused: caption still shows under the ring.
+        assertEquals(2, rule.onAllNodesWithText("Alpha").fetchSemanticsNodes().size)
+    }
+
+    @Test fun dimmedTileRenders() {
+        rule.setContent {
+            TvBannerTile(
+                tile = tiles[1],
+                tileWidth = 200.dp,
+                artHeight = 100.dp,
+                moving = false,
+                dimmed = true,
+                focusRequester = null,
+                onPress = {},
+                onEdit = {},
+                onMove = {},
+            )
+        }
+        assertEquals(2, rule.onAllNodesWithText("Beta").fetchSemanticsNodes().size)
+    }
+
     @Test fun movingTileShowsMovingBadge() {
         rule.setContent {
             TvBannerTile(
