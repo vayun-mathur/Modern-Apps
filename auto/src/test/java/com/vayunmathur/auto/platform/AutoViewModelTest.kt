@@ -40,12 +40,17 @@ class AutoViewModelTest {
         AutoSessionState.onDisconnected()
     }
 
-    private fun viewModel(): AutoViewModel =
-        ViewModelProvider(ViewModelStore(), object : ViewModelProvider.Factory {
+    private var store = ViewModelStore()
+
+    private fun viewModel(): AutoViewModel {
+        store.clear()
+        store = ViewModelStore()
+        return ViewModelProvider(store, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
                 AutoViewModel() as T
         })[AutoViewModel::class.java]
+    }
 
     @Test
     fun `defaults mirror the disconnected session`() {
@@ -82,7 +87,7 @@ class AutoViewModelTest {
         assertEquals(0L, vm.ttsSpoken.value)
         assertNull(vm.credentialDaysLeft.value)
         assertNull(vm.sessionStartedAt.value)
-        vm.close()
+        store.clear()
     }
 
     @Test
@@ -92,6 +97,6 @@ class AutoViewModelTest {
         val vm = viewModel()
         // stateIn replays the latest session values to new collectors.
         assertEquals(AutoConnectionState.Projecting("Test Car"), vm.connection.value)
-        vm.close()
+        store.clear()
     }
 }
