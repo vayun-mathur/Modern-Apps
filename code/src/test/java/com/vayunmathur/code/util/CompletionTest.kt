@@ -92,20 +92,19 @@ class CompletionTest {
             val r = computeCompletions("fo", lang, emptyList())
             assertTrue(r.any { it.kind == CompletionKind.SNIPPET && it.label.startsWith("for") }, "$lang")
         }
-        // Rust and Go keywords.
+        // Rust and Go keywords (prefix must be shorter than the keyword).
         assertTrue(
-            computeCompletions("fn", Language.RUST, emptyList())
+            computeCompletions("f", Language.RUST, emptyList())
                 .any { it.kind == CompletionKind.KEYWORD && it.insertText == "fn" },
         )
         assertTrue(
-            computeCompletions("func", Language.GO, emptyList())
+            computeCompletions("fun", Language.GO, emptyList())
                 .any { it.kind == CompletionKind.KEYWORD && it.insertText == "func" },
         )
-        // Java class snippet.
-        assertTrue(
-            computeCompletions("class", Language.JAVA, emptyList())
-                .any { it.kind == CompletionKind.SNIPPET },
-        )
+        // Java constructor-adjacent snippet: "class" is both snippet and keyword.
+        val javaClass = computeCompletions("clas", Language.JAVA, emptyList())
+        assertTrue(javaClass.any { it.kind == CompletionKind.SNIPPET && it.label.startsWith("class") })
+        assertTrue(javaClass.any { it.kind == CompletionKind.KEYWORD && it.insertText == "class" })
         // Plaintext offers no keywords.
         assertTrue(
             computeCompletions("wh", Language.PLAINTEXT, emptyList())

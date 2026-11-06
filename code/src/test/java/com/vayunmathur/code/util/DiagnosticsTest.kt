@@ -67,6 +67,21 @@ class DiagnosticsTest {
     }
 
     @Test
+    fun multilineTripleQuotedStringsTrackLines() {
+        // Triple-quoted string spanning lines: the bracket inside is ignored
+        // and the line tracking advances past the string.
+        val text = "val s = \"\"\"\na ( b\n\"\"\"\nval y = 2"
+        val diags = computeDiagnostics(text, Language.KOTLIN)
+        assertTrue(diags.none { it.severity == DiagnosticSeverity.ERROR }, "got $diags")
+    }
+
+    @Test
+    fun charAndBacktickStringsAreSkipped() {
+        val diags = computeDiagnostics("val c = '(' \nval t = `( [ `", Language.KOTLIN)
+        assertTrue(diags.none { it.severity == DiagnosticSeverity.ERROR }, "got $diags")
+    }
+
+    @Test
     fun bracketsInsideLineCommentsAreIgnored() {
         val diags = computeDiagnostics("val x = 1 // )]}\n", Language.KOTLIN)
         assertTrue(diags.isEmpty(), "got $diags")

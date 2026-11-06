@@ -75,6 +75,16 @@ class MarkdownFormattingTest {
     fun jsonRejectsUnbalanced() {
         assertNull(formatJson("""{"a":1"""))
         assertNull(formatJson(""))
+        assertNull(formatJson("""{"a":1}}"""))
+        assertNull(formatJson("\"unterminated"))
+    }
+
+    @Test
+    fun jsonHandlesEscapesAndNesting() {
+        // Escaped quote inside a string does not end it; braces inside
+        // strings do not affect depth.
+        assertEquals("{\n  \"a\": \"x\\\"y{z\"\n}", formatJson("""{"a":"x\"y{z"}"""))
+        assertEquals("[\n  1,\n  [\n    2\n  ]\n]", formatJson("[1,[2]]"))
     }
 
     // ---- XML ----

@@ -95,4 +95,30 @@ class OutlineTest {
     fun plaintextHasNoSymbols() {
         assertTrue(extractSymbols("just some text\nmore text", Language.PLAINTEXT).isEmpty())
     }
+
+    @Test
+    fun indentedMembersCarryNestingDepth() {
+        val src = "class Foo {\n  fun bar() {}\n\t\tfun deep() {}\n}"
+        val symbols = extractSymbols(src, Language.KOTLIN)
+        val bar = symbols.single { it.name == "bar" }
+        val deep = symbols.single { it.name == "deep" }
+        assertEquals(1, bar.indentDepth) // two spaces
+        assertEquals(2, deep.indentDepth) // two tabs
+    }
+
+    @Test
+    fun goRustAndSwiftRulesFire() {
+        assertTrue(
+            extractSymbols("func main() {}", Language.GO)
+                .any { it.name == "main" && it.kind == SymbolKind.FUNCTION },
+        )
+        assertTrue(
+            extractSymbols("fn main() {}", Language.RUST)
+                .any { it.name == "main" && it.kind == SymbolKind.FUNCTION },
+        )
+        assertTrue(
+            extractSymbols("func greet() {}", Language.SWIFT)
+                .any { it.name == "greet" && it.kind == SymbolKind.FUNCTION },
+        )
+    }
 }

@@ -79,4 +79,25 @@ class GitIgnoreTest {
     fun emptyMatcherIgnoresNothing() {
         assertFalse(GitIgnore.EMPTY.isIgnored("anything", isDir = false))
     }
+
+    @Test
+    fun escapedLeadingHashAndBangAreLiteral() {
+        val gi = parseGitIgnore("\\#literal\n\\!bang")
+        assertTrue(gi.isIgnored("#literal", isDir = false))
+        assertTrue(gi.isIgnored("!bang", isDir = false))
+        assertFalse(gi.isIgnored("other", isDir = false))
+    }
+
+    @Test
+    fun bareDoubleStarMatchesEverything() {
+        val gi = parseGitIgnore("**")
+        assertTrue(gi.isIgnored("a/b/c", isDir = false))
+    }
+
+    @Test
+    fun specialRegexCharsAreLiteral() {
+        val gi = parseGitIgnore("a+b (v1).log")
+        assertTrue(gi.isIgnored("a+b (v1).log", isDir = false))
+        assertFalse(gi.isIgnored("axb (v1).log", isDir = false))
+    }
 }
