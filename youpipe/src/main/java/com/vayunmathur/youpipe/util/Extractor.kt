@@ -184,9 +184,12 @@ data class DeArrowBranding(
  * in `location_share_server/src/handlers/dearrow.rs`, inspired by
  * ajayyy/DeArrowThumbnailCache but written from scratch), with fallback proxy
  * to dearrow-thumb.ajay.app.
+ *
+ * `internal var` (not const) so tests can point it at a closed port to
+ * exercise the best-effort fallbacks; production keeps the default below.
  */
-private const val SPONSORBLOCK_MIRROR = "https://api.maproj.org"
-private const val DEARROW_THUMB_MIRROR = "https://api.maproj.org/api/dearrow/thumbnail"
+internal var SPONSORBLOCK_MIRROR = "https://api.maproj.org"
+internal var DEARROW_THUMB_MIRROR = "https://api.maproj.org/api/dearrow/thumbnail"
 
 suspend fun getDeArrowBranding(videoId: Long): DeArrowBranding? {
     val idString = decodeVideoID(videoId)
