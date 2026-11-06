@@ -81,7 +81,7 @@ all_module_dirs() {
 
 is_app_module() {
   local fs="$1"
-  grep -qF 'common-conventions-app' "$ROOT/$fs/build.gradle.kts" 2>/dev/null
+  grep -qF 'id("common-conventions-app")' "$ROOT/$fs/build.gradle.kts" 2>/dev/null
 }
 
 module_application_id() {
@@ -692,7 +692,8 @@ if [[ $RUN_UNIT -eq 1 ]]; then
         echo "  $mod: no coverage data (no tests?)"
         continue
       fi
-      line="$(grep -oE '<counter type="INSTRUCTION"[^>]*>' "$xml" 2>/dev/null | head -1 || true)"
+      # report-level totals are the last counters in JaCoCo XML
+      line="$(grep -oE '<counter type="INSTRUCTION"[^>]*>' "$xml" 2>/dev/null | tail -1 || true)"
       missed="$(echo "$line" | sed -nE 's/.*missed="([0-9]+)".*/\1/p')"
       covered="$(echo "$line" | sed -nE 's/.*covered="([0-9]+)".*/\1/p')"
       if [[ -z "$missed" || -z "$covered" ]]; then
