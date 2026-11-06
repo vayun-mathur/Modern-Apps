@@ -17,7 +17,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.photos.R
 import com.vayunmathur.photos.data.Photo
@@ -262,7 +265,10 @@ class PhotosSlice3ViewerTest {
                 containerSize = IntSize(400, 300),
                 zoom = { 1f },
                 onFaceClick = onFaceClick,
-                modifier = Modifier.testTag("facelayer"),
+                // Fixed size: placement math assumes a 400x300 container, and a
+                // fixed size keeps the tap target's coordinates exact.
+                modifier = Modifier.testTag("facelayer")
+                    .requiredWidth(400.dp).requiredHeight(300.dp),
             )
         }
     }
@@ -277,7 +283,7 @@ class PhotosSlice3ViewerTest {
         // 4000x3000 source fits exactly into the 400x300 container (scale 0.1),
         // so the 0.25-0.5 box maps to pixels x 100..200, y 75..150.
         composeRule.onNodeWithTag("facelayer", useUnmergedTree = true)
-            .performTouchInput { click(Offset(150f, 100f)) }
+            .performTouchInput { down(0, Offset(150f, 100f)); up(0) }
         composeRule.waitForIdle()
         assertEquals(7L, opened)
     }
