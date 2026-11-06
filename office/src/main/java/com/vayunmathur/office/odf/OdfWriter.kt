@@ -30,12 +30,13 @@ object OdfWriter {
         val extraManifest = LinkedHashMap<String, String>(result.manifest)
 
         val buffer = ByteArrayOutputStream()
-        val bytes = ZipOutputStream(buffer).use { zipOut ->
+        ZipOutputStream(buffer).use { zipOut ->
             val save = SaveAcc(contentXml, metaXml, settingsXml, docImages, written, extraManifest)
             copySourceEntries(context, sourceUri, document, zipOut, save)
             writeMissingEntries(document, zipOut, save, result)
-            buffer.toByteArray()
         }
+        // AFTER the ZipOutputStream is closed (close writes the END header).
+        val bytes = buffer.toByteArray()
         context.contentResolver.openOutputStream(targetUri)?.use { it.write(bytes) }
     }
 
