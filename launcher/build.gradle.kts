@@ -32,6 +32,11 @@ dependencies {
     // Declared rather than relied on transitively: a launcher is mostly motion, so `Animatable`,
     // `animateBounds` and the animation specs are load-bearing here rather than incidental.
     implementation(libs.androidx.compose.animation)
+    // Direct (not transitive): pins coroutines at the catalog version (1.11.0) for the
+    // app graph. A transitive bom holds core at 1.9.0 while coroutines-test resolves
+    // 1.11.0, and 1.11.0's test artifact calls a core method added after 1.9.0, so every
+    // coroutine-based androidTest dies in NoSuchMethodError. Email already ships 1.11.0.
+    implementation(libs.kotlinx.coroutines.android)
     // DAO tests use a real in-memory Room database via the bundled sqlite driver.
     testImplementation(libs.androidx.sqlite.bundled.jvm)
 }
