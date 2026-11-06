@@ -13,6 +13,9 @@ import com.vayunmathur.launcher.platform.ComponentKey
 import com.vayunmathur.launcher.platform.WidgetEntry
 import com.vayunmathur.launcher.platform.WidgetGroup
 import com.vayunmathur.launcher.platform.WorkspaceItem
+import com.vayunmathur.launcher.platform.applyDrawerQuery
+import com.vayunmathur.launcher.platform.countLaunch
+import com.vayunmathur.launcher.platform.predictedApps
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -333,6 +336,51 @@ class LauncherViewModelDeviceTest {
         assertEquals(true, (shortcuts.size >= 0))
         assertEquals(true, icon == null || icon != null)
     }
+
+    @Test fun predictionsRankByLaunchCount() = runTest {
+        val vm = LauncherViewModel(app())
+        val a = com.vayunmathur.launcher.platform.DrawerApp(
+            keyComponent("com.example.a"),
+            "Alpha",
+        )
+        val b = com.vayunmathur.launcher.platform.DrawerApp(
+            keyComponent("com.example.b"),
+            "Beta",
+        )
+        val w = com.vayunmathur.launcher.platform.DrawerApp(
+            keyComponent("com.example.w"),
+            "Work",
+            work = true,
+        )
+        vm.allApps = listOf(a, b, w)
+        assertEquals(emptyList(), vm.predictedApps())
+        vm.countLaunch(b.key)
+        vm.countLaunch(a.key)
+        vm.countLaunch(a.key)
+        val predicted = vm.predictedApps()
+        // Alpha launched twice, Beta once; work apps never predicted.
+        assertEquals(listOf("Alpha", "Beta"), predicted.map { it.label })
+    }
+
+    @Test fun drawerQueryOrdersPrefixFirst() = runTest {
+        val vm = LauncherViewModel(app())
+        vm.allApps = listOf(
+            com.vayunmathur.launcher.platform.DrawerApp(keyComponent("com.example.v"), "Vacation Planner"),
+            com.vayunmathur.launcher.platform.DrawerApp(keyComponent("com.example.c"), "Calendar"),
+        )
+        vm.applyDrawerQuery("ca")
+        assertEquals(
+            listOf("Calendar", "Vacation Planner"),
+            vm.drawer.value.apps.map { it.label },
+        )
+        vm.applyDrawerQuery("")
+        assertEquals(2, vm.drawer.value.apps.size)
+    }
+
+    private fun keyComponent(pkg: String, work: Boolean = false) = ComponentKey(
+        android.content.ComponentName(pkg, "$pkg.Main"),
+        if (work) 10L else 0L,
+    )
 
     @Test fun settingsTogglesPropagate() = runTest {
         val vm = LauncherViewModel(app())
