@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.launcher.ui.components.LauncherDragController
 import com.vayunmathur.launcher.ui.components.LocalLauncherDrag
+import com.vayunmathur.launcher.domain.CellRect
 import com.vayunmathur.launcher.domain.ContainerRef
 import com.vayunmathur.launcher.domain.LauncherItemType
 import com.vayunmathur.launcher.platform.FolderActions
@@ -75,6 +76,66 @@ class LauncherFolderUiTest {
         rule.onNode(hasSetTextAction()).performTextInput("A")
         assertEquals(10L, renames.last().first)
         assertEquals("AGames", renames.last().second)
+    }
+
+    @Test fun tappingChildLaunchesAndDismisses() {
+        var launched: WorkspaceItem? = null
+        var dismissed = false
+        rule.setContent {
+            CompositionLocalProvider(LocalLauncherDrag provides LauncherDragController()) {
+                FolderContent(
+                    folder = folder(),
+                    actions = object : FolderActions {
+                        override fun launchChild(
+                            item: WorkspaceItem,
+                            left: Int,
+                            top: Int,
+                            right: Int,
+                            bottom: Int,
+                        ) {
+                            launched = item
+                        }
+                    },
+                    onDismiss = { dismissed = true },
+                )
+            }
+        }
+        rule.onNodeWithText("App 1").performClick()
+        assertEquals(101L, launched?.id)
+        assertEquals(true, dismissed)
+    }
+
+    @Test fun droppingSiblingReorders() {
+        val controller = LauncherDragController()
+        val reorders = mutableListOf<Triple<Long, Long, Int>>()
+        rule.setContent {
+            CompositionLocalProvider(LocalLauncherDrag provides controller) {
+                FolderContent(
+                    folder = folder(),
+                    actions = object : FolderActions {
+                        override fun reorderInFolder(folderId: Long, itemId: Long, rank: Int) {
+                            reorders += Triple(folderId, itemId, rank)
+                        }
+                    },
+                )
+            }
+        }
+        rule.waitForIdle()
+        // Drop child 101 onto child 102's slot: reorder fires, landing returned.
+        controller.start(
+            com.vayunmathur.launcher.ui.components.DragPayload(
+                itemId = 101L,
+                type = LauncherItemType.APPLICATION,
+                label = "App 1",
+                rect = CellRect(0, 0),
+                origin = ContainerRef.Folder(10L),
+                sourceBounds = androidx.compose.ui.geometry.Rect.Zero,
+            ),
+            androidx.compose.ui.geometry.Offset(50f, 300f),
+        )
+        rule.waitForIdle()
+        assertEquals(true, controller.drop())
+        assertEquals(listOf(Triple(10L, 101L, 1)), reorders)
     }
 
     @Test fun singleChildRendersAlone() {
