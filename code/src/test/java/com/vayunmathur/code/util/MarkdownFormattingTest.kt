@@ -38,6 +38,21 @@ class MarkdownFormattingTest {
     }
 
     @Test
+    fun quoteConverts() {
+        assertEquals("<blockquote>wise</blockquote>", markdownToHtml("> wise"))
+    }
+
+    @Test
+    fun numberedListConverts() {
+        assertEquals("<ol>\n<li>one</li>\n<li>two</li>\n</ol>", markdownToHtml("1. one\n2. two"))
+    }
+
+    @Test
+    fun adjacentParagraphLinesJoinWithSpaces() {
+        assertEquals("<p>first second</p>", markdownToHtml("first\nsecond"))
+    }
+
+    @Test
     fun fencedCodeEscapesHtml() {
         val html = markdownToHtml("```\n<a>\n```")
         assertEquals("<pre><code>&lt;a&gt;\n</code></pre>", html)

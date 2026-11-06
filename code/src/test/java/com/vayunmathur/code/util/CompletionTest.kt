@@ -80,4 +80,36 @@ class CompletionTest {
         val py = computeCompletions("py", Language.PYTHON, emptyList(), userSnippets = snippets)
         assertTrue(py.any { it.label.startsWith("pyonly") })
     }
+
+    @Test
+    fun languageTablesOfferTheirSnippetsAndKeywords() {
+        // Python snippet + keyword.
+        val py = computeCompletions("de", Language.PYTHON, emptyList())
+        assertTrue(py.any { it.kind == CompletionKind.SNIPPET && it.label.startsWith("def") })
+        assertTrue(py.any { it.kind == CompletionKind.KEYWORD && it.insertText == "def" })
+        // C-like snippet for C/Rust/Go/Swift.
+        for (lang in listOf(Language.C, Language.RUST, Language.GO, Language.SWIFT)) {
+            val r = computeCompletions("fo", lang, emptyList())
+            assertTrue(r.any { it.kind == CompletionKind.SNIPPET && it.label.startsWith("for") }, "$lang")
+        }
+        // Rust and Go keywords.
+        assertTrue(
+            computeCompletions("fn", Language.RUST, emptyList())
+                .any { it.kind == CompletionKind.KEYWORD && it.insertText == "fn" },
+        )
+        assertTrue(
+            computeCompletions("func", Language.GO, emptyList())
+                .any { it.kind == CompletionKind.KEYWORD && it.insertText == "func" },
+        )
+        // Java class snippet.
+        assertTrue(
+            computeCompletions("class", Language.JAVA, emptyList())
+                .any { it.kind == CompletionKind.SNIPPET },
+        )
+        // Plaintext offers no keywords.
+        assertTrue(
+            computeCompletions("wh", Language.PLAINTEXT, emptyList())
+                .none { it.kind == CompletionKind.KEYWORD },
+        )
+    }
 }

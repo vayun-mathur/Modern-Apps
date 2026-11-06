@@ -4,11 +4,15 @@ import com.vayunmathur.code.syntax.Language
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 /**
- * Unit tests for the pure diagnostics validators. JSON is validated via `org.json`, which is only
- * available on-device (stubbed in JVM unit tests), so it is exercised manually rather than here.
+ * Unit tests for the pure diagnostics validators. JSON is validated via `org.json`, which runs
+ * for real under Robolectric (android-all) and is stubbed in plain JVM unit tests — hence the
+ * runner: JSON assertions below execute against the real implementation.
  */
+@RunWith(RobolectricTestRunner::class)
 class DiagnosticsTest {
 
     @Test
@@ -90,5 +94,33 @@ class DiagnosticsTest {
     fun htmlIsNotFlaggedAsMalformedXml() {
         val diags = computeDiagnostics("<!DOCTYPE html>\n<html><br></html>", Language.XML)
         assertTrue(diags.none { it.severity == DiagnosticSeverity.ERROR })
+    }
+
+    @Test
+    fun malformedJsonPinpointsLineAndColumn() {
+        // org.json runs for real under Robolectric (android-all), so the
+        // offset in its message resolves through offsetToLineCol.
+        val diags = computeDiagnostics("{\n  \"a\": 1,\n  \"b\": }", Language.JSON)
+        val err = diags.single { it.severity == DiagnosticSeverity.ERROR }
+        assertEquals(2, err.line)
+        assertTrue(err.startCol >= 0)
+        assertTrue(err.message.isNotBlank())
+    }
+
+    @Test
+    fun malformedJsonPinpointsFirstLine() {
+        // org.json is lenient about trailing commas, but truncation and
+        // unterminated values fail with a character offset for offsetToLineCol.
+        val truncated = computeDiagnostics("[", Language.JSON).single { it.severity == DiagnosticSeverity.ERROR }
+        assertEquals(0, truncated.line)
+        val unterminated = computeDiagnostics("\"", Language.JSON).single { it.severity == DiagnosticSeverity.ERROR }
+        assertTrue(unterminated.message.isNotBlank())
+    }
+
+    @Test
+    fun wellFormedJsonHasNoDiagnostics() {
+        assertTrue(computeDiagnostics("{\"a\": [1, 2]}", Language.JSON).isEmpty())
+        assertTrue(computeDiagnostics("", Language.JSON).isEmpty())
+        assertTrue(computeDiagnostics("   ", Language.JSON).isEmpty())
     }
 }
