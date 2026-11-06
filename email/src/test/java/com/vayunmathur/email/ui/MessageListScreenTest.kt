@@ -38,7 +38,7 @@ class MessageListScreenTest {
         var toggled = mutableListOf<Long>()
         var clears = 0
         var bulk: Triple<String, List<Long>, Boolean>? = null
-        var reads = mutableListOf<Triple<String, Long, Boolean>>()
+        var reads = mutableListOf<Triple<String, String, Boolean>>()
         var deletes = mutableListOf<Triple<String, Long, Long>>()
         val refreshes = mutableListOf<android.content.Context>()
 
@@ -49,7 +49,7 @@ class MessageListScreenTest {
             bulk = Triple(accountEmail, uids, isRead)
         }
         override fun markAsRead(accountEmail: String, folderName: String, uid: Long, isRead: Boolean) {
-            reads.add(Triple(accountEmail, uid, isRead))
+            reads.add(Triple(accountEmail, folderName, isRead))
         }
         override fun deleteMessage(accountEmail: String, folderName: String, uid: Long) {
             deletes.add(Triple(accountEmail, folderName, uid))
