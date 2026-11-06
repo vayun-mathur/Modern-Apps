@@ -856,49 +856,60 @@ if [[ $RUN_INST -eq 1 && ${#INST_MODS[@]} -gt 0 ]]; then
     mod="${INST_MODS[$idx]}"
     colon_mod="$(echo "$mod" | tr '/' ':')"
     cur=$((idx + 1))
-    pkg="$(module_application_id "$colon_mod")"
-    if [[ -z "$pkg" ]]; then
-      echo "[$cur/$TOTAL] Error: no applicationId found for :${colon_mod}."
-      INST_RC=1
-      idx=$((idx + 1))
-      continue
-    fi
-    if apk="$(built_app_apk "$colon_mod")"; then
-      install_apk_via_session "$apk" "$pkg" "$cur" "$TOTAL" || INST_RC=1
+    idx=$((idx + 1))
+    if is_app_module "$mod"; then
+      variant="dev"
+      pkg="$(module_application_id "$colon_mod")"
+      if [[ -z "$pkg" ]]; then
+        echo "[$cur/$TOTAL] Error: no applicationId found for :${colon_mod}."
+        INST_RC=1; continue
+      fi
+      test_pkg="$pkg.test"
+      if apk="$(built_app_apk "$colon_mod" "$variant")"; then
+        install_apk_via_session "$apk" "$pkg" "$cur" "$TOTAL" || { INST_RC=1; continue; }
+      else
+        echo "[$cur/$TOTAL] Error: no app APK found for :${colon_mod} (assemble failed?)."
+        INST_RC=1; continue
+      fi
     else
-      echo "[$cur/$TOTAL] Error: no app APK found for :${colon_mod} (assemble failed?)."
-      INST_RC=1
-      idx=$((idx + 1))
-      continue
+      # Library: the androidTest APK carries the library code and instruments itself.
+      variant="debug"
+      test_pkg="$(library_test_package "$mod")"
+      pkg="$test_pkg"
     fi
-    if test_apk="$(built_test_apk "$colon_mod")"; then
-      echo "[$cur/$TOTAL] Installing test APK for $pkg..."
-      "$ADB_BIN" -s "$TARGET_SERIAL" install -r "$test_apk" >/dev/null 2>&1 || {
-        echo "[$cur/$TOTAL] Error: test APK install failed for $pkg."
-        INST_RC=1
-        idx=$((idx + 1))
-        continue
+    if test_apk="$(built_test_apk "$colon_mod" "$variant")"; then
+      echo "[$cur/$TOTAL] Installing test APK $test_pkg..."
+      "$ADB_BIN" -s "$TARGET_SERIAL" install -r -t "$test_apk" >/dev/null 2>&1 || {
+        echo "[$cur/$TOTAL] Error: test APK install failed for $test_pkg."
+        INST_RC=1; continue
       }
     else
       echo "[$cur/$TOTAL] Error: no test APK found for :${colon_mod} (assemble failed?)."
-      INST_RC=1
-      idx=$((idx + 1))
-      continue
+      INST_RC=1; continue
     fi
-    echo "[$cur/$TOTAL] Running instrumented tests for $pkg..."
-    if [[ $NO_COV -eq 1 ]]; then
-      "$ADB_BIN" -s "$TARGET_SERIAL" shell am instrument -w -r "$pkg.test/androidx.test.runner.AndroidJUnitRunner" || INST_RC=1
-    else
-      "$ADB_BIN" -s "$TARGET_SERIAL" shell am instrument -w -r -e coverage true -e coverageFilePath "/data/data/$pkg/files/coverage.ec" "$pkg.test/androidx.test.runner.AndroidJUnitRunner" || INST_RC=1
+    echo "[$cur/$TOTAL] Running instrumented tests ($test_pkg)..."
+    inst_args=(-w -r)
+    if [[ $NO_COV -eq 0 ]]; then
+      inst_args+=(-e coverage true -e coverageFilePath "/data/data/$pkg/files/coverage.ec")
+    fi
+    inst_out="$("$ADB_BIN" -s "$TARGET_SERIAL" shell am instrument "${inst_args[@]}" "$test_pkg/androidx.test.runner.AndroidJUnitRunner" 2>&1)" || INST_RC=1
+    echo "$inst_out" | grep -E "^(OK \(|FAILURES!!!|Tests run:|INSTRUMENTATION_FAILED|INSTRUMENTATION_RESULT: shortMsg|Process crashed)" | sed "s/^/[$cur\/$TOTAL]   /"
+    # am instrument exits 0 even when tests fail or the process crashes.
+    if ! echo "$inst_out" | grep -qE "^OK \(" || echo "$inst_out" | grep -qE "FAILURES!!!|INSTRUMENTATION_FAILED|Process crashed"; then
+      echo "[$cur/$TOTAL] Error: instrumented tests failed for $test_pkg. Failure details:"
+      echo "$inst_out" | grep -E -A15 "^INSTRUMENTATION_STATUS: stack=|^INSTRUMENTATION_RESULT|Process crashed" | head -60
+      INST_RC=1
+    fi
+    if [[ $NO_COV -eq 0 ]]; then
       ec_dir="$ROOT/$mod/build/outputs/coverage-manual"
       mkdir -p "$ec_dir"
-      if "$ADB_BIN" -s "$TARGET_SERIAL" exec-out run-as "$pkg" cat files/coverage.ec > "$ec_dir/$pkg.ec" 2>/dev/null; then
-        echo "[$cur/$TOTAL] Coverage pulled: $ec_dir/$pkg.ec"
+      if "$ADB_BIN" -s "$TARGET_SERIAL" exec-out run-as "$pkg" cat files/coverage.ec > "$ec_dir/$pkg.ec" 2>/dev/null && [[ -s "$ec_dir/$pkg.ec" ]]; then
+        echo "[$cur/$TOTAL] Coverage pulled: $ec_dir/$pkg.ec (fold in with :${colon_mod}:createMergedCoverageReport)"
       else
+        rm -f "$ec_dir/$pkg.ec"
         echo "[$cur/$TOTAL] Warning: could not pull coverage.ec for $pkg."
       fi
     fi
-    idx=$((idx + 1))
   done
 fi
 
