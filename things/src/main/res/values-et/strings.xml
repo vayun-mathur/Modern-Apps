@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Asjad</string>
+    <string name="devices">Seadmed</string>
+    <string name="no_devices">Ühtegi seadet pole lisatud</string>
+    <string name="open_devices">Ava seadmete vaade</string>
+    <string name="add_device">Lisa seade</string>
+    <string name="connect_new_bottle">Ühenda uus veepudel</string>
+    <string name="connect_new_scale">Ühenda uus kaal</string>
+    <string name="select_device">Vali seade</string>
+    <string name="searching">Otsin…</string>
+    <string name="no_devices_found">Ühtegi seadet ei leidu</string>
+    <string name="forget_device">Unusta see seade</string>
+    <string name="permission_open_settings">Ava seadistused</string>
+    <string name="device_channel_name">Seadme ühendus</string>
+    <string name="disconnect">Katkesta ühendus</string>
+    <string name="bottle_status">Pudeli olek</string>
+    <string name="label_battery">Aku</string>
+    <string name="label_water_level">Veetase</string>
+    <string name="label_temperature">Temperatuur</string>
+    <string name="label_purity">Puhtus</string>
+    <string name="percent"><xliff:g id="pct" example="60">%1$d</xliff:g>%%</string>
+    <string name="waiting_for_data">Ootan andmeid…</string>
+    <string name="last_updated">Viimati uuendatud <xliff:g id="time" example="14:05:30">%1$s</xliff:g></string>
+    <string name="temperature_c"><xliff:g id="temp" example="22">%1$d</xliff:g>°C</string>
+    <string name="purity_ppm"><xliff:g id="tds" example="85">%1$d</xliff:g> ppm</string>
+    <string name="battery_charging"><xliff:g id="pct" example="75">%1$d</xliff:g>%% (laadimas)</string>
+</resources>

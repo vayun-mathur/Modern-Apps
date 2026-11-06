@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="give_up">Loobu mängust</string>
+    <string name="congratulations">Õnnitlused!</string>
+    <string name="won">võitsid</string>
+    <string name="app_name">Pasjanss</string>
+    <string name="klondike">Klondike</string>
+    <string name="spider">Ämblik</string>
+    <string name="pyramid">Püramiid</string>
+    <string name="freecell">Vaba lahter</string>
+    <string name="confirm_give_up_title">Kas loobud sellest mängust?</string>
+    <string name="confirm_give_up_message">Kui loobud, siis see loetakse kaotuseks ja see mäng lõppeb.</string>
+    <string name="moves">Käigud</string>
+    <string name="select_mode">Vali mängutüüp</string>
+    <string name="mode_original">Algne</string>
+    <string name="mode_relaxed">Leevendatud</string>
+    <string name="difficulty_regular">Tavaline</string>
+    <string name="auto_complete">Automaatne lõpetus</string>
+    <string name="completed_8">Tehtud: <xliff:g id="completed" example="2">%1$s</xliff:g>/8</string>
+    <string name="card_colors">Kaardivärvid</string>
+    <string name="card_colors_two">Kaks värvi (klassikaline)</string>
+    <string name="card_colors_four">Neli värvi (värvipimeduse puhul)</string>
+    <string name="draw_one">1 kaart korraga</string>
+    <string name="draw_three">3 kaarti korraga</string>
+</resources>

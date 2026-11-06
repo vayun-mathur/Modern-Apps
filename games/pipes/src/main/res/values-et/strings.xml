@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pack_selector">Paketi valik</string>
+    <string name="level_selector">Taseme valik</string>
+    <string name="colorblind_mode">Värvipimeduse režiim</string>
+    <string name="restart_confirm_title">Kas käivitad taseme uuesti?</string>
+    <string name="restart_confirm_message">Järgnevaga selle taseme edenemisjärje.</string>
+    <string name="colorblind_mode_desc">Märgi iga voog tähega (A-Z)</string>
+</resources>

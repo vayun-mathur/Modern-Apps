@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Kaardid</string>
+    <string name="your_location">Sinu asukoht</string>
+    <string name="dropped_pin">Märgitud asukoht</string>
+    <string name="no_route_found">Teekonda ei leidu</string>
+    <string name="generating_route">Koostan teekonda…</string>
+    <string name="map_loading">Laadin kaarti…</string>
+    <string name="search_nearby">Otsi kohti ja aadresse…</string>
+    <string name="no_results_found">Selles piirkonnas ei leidu tulemusi</string>
+    <string name="type_to_search">Otsimiseks sisesta vähemalt 2 tähemärki</string>
+    <string name="recent_searches">Hiljutine</string>
+    <string name="search_category_restaurants">Restoranid</string>
+    <string name="search_category_coffee">Kohvikud</string>
+    <string name="search_category_gas">Tanklad</string>
+    <string name="search_category_groceries">Toidupoed</string>
+    <string name="search_category_hotels">Hotellid</string>
+    <string name="search_category_atms">Pangaautomaadid</string>
+    <string name="coordinates">Koordinaadid: <xliff:g id="latitude" example="59.43718">%1$s</xliff:g>, <xliff:g id="longitude" example="24.74542">%2$s</xliff:g></string>
+    <string name="reviews_summary"><xliff:g id="rating" example="4.5">%1$s</xliff:g> tärni | <xliff:g id="review_count" example="128">%2$s</xliff:g> arvustust</string>
+    <string name="review_summary_label">Arvustuste kokkuvõte</string>
+    <string name="poi_fuel_price_header">Kütusehind</string>
+    <string name="poi_tab_details">Üksikasjad</string>
+    <string name="poi_photos_header">Fotod</string>
+    <string name="poi_reviews_header">Arvustused</string>
+    <string name="poi_popular_times_header">Populaarsed kasutusajad</string>
+    <string name="poi_about_header">Teave</string>
+    <string name="menu_label">Menüü</string>
+    <string name="street_view_loading">Tänavatasandi vaade on laadimisel…</string>
+    <string name="street_view_unavailable">Tänavatasandi vaade pole siin saadaval</string>
+    <string name="saved_lists_header">Loendid</string>
+    <string name="saved_lists_new">Uus loend</string>
+    <plurals name="saved_list_count">
+        <item quantity="one"><xliff:g id="count" example="1">%1$d</xliff:g> asukoht</item>
+        <item quantity="other"><xliff:g id="count" example="1">%1$d</xliff:g> asukohta</item>
+    </plurals>
+    <string name="saved_rename_title">Muuda asukoha nime</string>
+    <string name="saved_action_add_to_list">Lisa loendisse…</string>
+    <string name="parking_title">Parkimine</string>
+    <string name="parking_saved_at">Pargitud <xliff:g id="time" example="Aug 17, 9:41 AM">%1$s</xliff:g></string>
+    <string name="car_recenter">Joonda uuesti keskele</string>
+    <string name="car_voice_hint">Klõpsa otsingut ja ütle asukoha nimi või aadress.</string>
+    <string name="car_no_results">Tulemusi pole. Uuesti otsimiseks klõpsa.</string>
+    <string name="car_searching">Otsin…</string>
+    <string name="car_route_failed">Seal ei leidunud teekonda.</string>
+    <string name="poi_photo_description">Asutuse foto</string>
+    <string name="poi_reviewer_photo_description">Arvustaja foto</string>
+    <string name="place_action_website">Veebisait</string>
+    <string name="add_stop_to_route">Lisa teekonnapunkt</string>
+    <string name="wikipedia">Vikipeedia</string>
+    <string name="place_action_order">Telli</string>
+    <string name="closed_status">Suletud</string>
+    <string name="place_share_text"><xliff:g id="name" example="Sinine kohvik">%1$s</xliff:g>\n<xliff:g id="url" example="https://maps.google.com/?q=59.437, 24.745">%2$s</xliff:g></string>
+    <string name="closes_at">Suletakse <xliff:g id="time" example="21:00">%1$s</xliff:g></string>
+    <string name="opens_at">Avatakse <xliff:g id="time" example="09:00">%1$s</xliff:g></string>
+    <string name="search_placeholder">Otsi…</string>
+    <string name="no_contact_picker">Ühtegi kontaktirakendust pole saadaval</string>
+    <string name="choose_address">Vali aadress</string>
+    <string name="downloading_road_data">Laadin alla teede andmeid…</string>
+    <string name="downloading_navigation_metadata">Laadin tee juhatamise metateavet…</string>
+    <string name="downloading_poi_data">Laadin huvipunkte…</string>
+    <string name="downloading_transit_data">Laadin ühistranspordi sõiduplaane…</string>
+    <string name="downloading_basemap">Laadin kaardiandmeid…</string>
+    <string name="grant_location_permission">Anna õigused asukoha tuvastamiseks</string>
+    <string name="maneuver_depart">Võta suunaks <xliff:g id="road_name" example="Metsa tänav">%1$s</xliff:g></string>
+    <string name="maneuver_depart_unnamed">Suundu sihtkoha poole</string>
+</resources>

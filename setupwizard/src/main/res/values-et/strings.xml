@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cancel">Katkesta</string>
+    <string name="app_name">Seadistus</string>
+    <string name="next">Järgmine</string>
+    <string name="skip">Jäta vahele</string>
+    <string name="welcome_to_modern_apps_os">Tere tulemast, see on Modern Apps OS</string>
+    <string name="modern_apps_os_desc">Privaatsus ja turvalisus, mis on loodud just sinu mobiilseadme jaoks ning mida saab kasutada igaüks.</string>
+    <string name="lets_setup_your_device">Seadistame sinu nutiseadme paari sammuga.</string>
+    <string name="date">Kuupäev</string>
+    <string name="time">Kellaaeg</string>
+    <string name="time_zone">Ajavöönd</string>
+    <string name="select_time_zone">Vali ajavöönd</string>
+    <string name="restore">Taasta</string>
+    <string name="try_it">Proovi seda</string>
+</resources>

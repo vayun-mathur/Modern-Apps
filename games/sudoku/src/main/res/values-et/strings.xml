@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="new_puzzle">Uus mäng</string>
+    <string name="board_size">Mängulaua suurus</string>
+    <string name="difficulty">Raskusaste</string>
+    <string name="difficulty_expert">Ekspert</string>
+    <string name="notes">Märkmed</string>
+    <string name="hint">Vihje</string>
+    <string name="erase">Kustuta</string>
+    <string name="give_up">Loobu mängust</string>
+    <string name="confirm_give_up_title">Kas loobud sellest mängust?</string>
+    <string name="confirm_give_up_message">Kui loobud, siis see loetakse kaotuseks ja mäng lõppeb.</string>
+    <string name="hints_used">Vihjed</string>
+    <string name="congratulations">Õnnitlused!</string>
+    <string name="won">võitsid</string>
+    <string name="cd_cell">Rida <xliff:g id="row" example="3">%1$d</xliff:g>, veerg <xliff:g id="column" example="7">%2$d</xliff:g>, <xliff:g id="value" example="5">%3$s</xliff:g></string>
+    <string name="cd_digit_key">Sisesta <xliff:g id="digit" example="7">%1$s</xliff:g></string>
+    <string name="cd_note_key">Märge <xliff:g id="digit" example="7">%1$s</xliff:g></string>
+    <string name="cd_empty">tühi</string>
+</resources>

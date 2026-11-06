@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reisimine</string>
+    <string name="my_trips">Minu reisid</string>
+    <string name="recent_searches">Hiljutised otsingud</string>
+    <string name="one_way">Üks suund</string>
+    <string name="round_trip">Edasi-tagasi</string>
+    <string name="economy">Turistiklass</string>
+    <string name="business">Äriklass</string>
+    <string name="first">Esimene klass</string>
+    <string name="flights">Lennud</string>
+    <string name="stays">Ööbimised</string>
+    <string name="cars">Autod</string>
+    <string name="depart">Väljumine</string>
+    <string name="return_label">Tagasitulek</string>
+    <string name="new_date">Uus kuupäev</string>
+    <string name="explore_live_fares">Lennud reaalajas</string>
+    <string name="total">Kokku</string>
+    <string name="continue_action">Jätka</string>
+    <string name="step_1_of_3">Samm 1 / 3</string>
+    <string name="step_2_of_3">Samm 2 / 3</string>
+    <string name="step_3_of_3">Samm 3 / 3</string>
+    <string name="no_flights_for_leg">Lende pole saadaval.</string>
+    <string name="add_extras">Lisa täiendavaid teenuseid</string>
+    <string name="extra_baggage">Lisapagas</string>
+    <string name="delete">Kustuta</string>
+</resources>

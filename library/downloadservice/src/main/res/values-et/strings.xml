@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Rakendus</string>
+    <string name="initializing_system">Valmendan süsteemi</string>
+    <string name="mbps"><xliff:g id="speed" example="15.5">%1$s</xliff:g> Mbps</string>
+    <string name="downloading_required_components_for_this">Laadin selle rakenduse jaoks vajalikke komponente alla.</string>
+    <string name="completed">Valmis</string>
+    <string name="downloading">Laadin alla.</string>
+    <string name="download_failed">Allalaadimine ei õnnestunud. Kontrolli, kas nutiseadme võrguühendus toimib ja proovi uuesti.</string>
+    <string name="retry">Proovi uuesti</string>
+</resources>
