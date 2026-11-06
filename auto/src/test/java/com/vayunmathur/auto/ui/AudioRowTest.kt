@@ -2,7 +2,6 @@ package com.vayunmathur.auto.ui
 
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.auto.R as AutoR
 import com.vayunmathur.auto.platform.AudioSinkState

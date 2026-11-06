@@ -3,7 +3,6 @@ package com.vayunmathur.auto.ui
 import android.content.ComponentName
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.auto.platform.CarLauncherState
