@@ -22,5 +22,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     // Health Connect client for the consolidated permission gate's async grant probe.
     implementation(libs.androidx.connect.client)
+    // XmlPull impl for JVM unit tests (LatexExporter's MathML parser; same as :office).
+    testImplementation(libs.kxml2)
 
 }
