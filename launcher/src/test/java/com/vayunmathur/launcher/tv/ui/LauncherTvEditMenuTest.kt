@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.vayunmathur.launcher.tv.platform.TvAppEntry
 import com.vayunmathur.launcher.tv.platform.TvHomeState
 import com.vayunmathur.launcher.tv.platform.TvTile
 import org.junit.Rule
@@ -90,6 +91,68 @@ class LauncherTvEditMenuTest {
         )
         rule.onNodeWithText("Remove from home").performClick()
         assertEquals(true, removed)
+    }
+
+    @Test fun addMenuListsCandidates() {
+        var picked: String? = null
+        rule.setContent {
+            TvEditMenu(
+                state = TvHomeState(
+                    showAddMenu = true,
+                    addCandidates = listOf(
+                        TvAppEntry("com.example.a", "Alpha", true),
+                        TvAppEntry("com.example.b", "Beta", true),
+                    ),
+                ),
+                onDismiss = {},
+                onStartMove = {},
+                onReplace = {},
+                onRemove = {},
+                onUninstallOrInfo = {},
+                onPickAddCandidate = { picked = it },
+                onCloseAddMenu = {},
+            )
+        }
+        rule.onNodeWithText("Add an app").assertIsDisplayed()
+        rule.onNodeWithText("Beta").performClick()
+        assertEquals("com.example.b", picked)
+    }
+
+    @Test fun addMenuEmptyReadsEveryAppHere() {
+        rule.setContent {
+            TvEditMenu(
+                state = TvHomeState(showAddMenu = true),
+                onDismiss = {},
+                onStartMove = {},
+                onReplace = {},
+                onRemove = {},
+                onUninstallOrInfo = {},
+                onPickAddCandidate = {},
+                onCloseAddMenu = {},
+            )
+        }
+        rule.onNodeWithText("Every app is already here").assertIsDisplayed()
+    }
+
+    @Test fun replaceMenuNamesCurrent() {
+        rule.setContent {
+            TvEditMenu(
+                state = TvHomeState(
+                    rowApps = listOf(tile("com.example.a", "Alpha")),
+                    showAddMenu = true,
+                    addReplacesIndex = 0,
+                    addCandidates = listOf(TvAppEntry("com.example.b", "Beta", true)),
+                ),
+                onDismiss = {},
+                onStartMove = {},
+                onReplace = {},
+                onRemove = {},
+                onUninstallOrInfo = {},
+                onPickAddCandidate = {},
+                onCloseAddMenu = {},
+            )
+        }
+        rule.onNodeWithText("Replace Alpha").assertIsDisplayed()
     }
 
     @Test fun noEditingKeyRendersNothing() {
