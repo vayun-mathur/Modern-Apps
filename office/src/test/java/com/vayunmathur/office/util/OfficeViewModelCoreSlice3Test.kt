@@ -110,7 +110,7 @@ class OfficeViewModelCoreSlice3Test : OfficeViewModelSlice3Harness() {
         assertTrue(vm.autoSaveEnabled.value)
         vm.setAutoSave(false)
         assertFalse(vm.autoSaveEnabled.value)
-        dispatcher.scheduler.advanceUntilIdle()
+        dispatcher.scheduler.runCurrent()
     }
 
     @Test
@@ -127,6 +127,10 @@ class OfficeViewModelCoreSlice3Test : OfficeViewModelSlice3Harness() {
         vm2.loadSettings(app)
         assertTrue(vm2.autoSaveEnabled.value)
         assertEquals(45_000L, vm2.autoSaveIntervalMs)
+        // Cancel both auto-save loops: runTest's teardown advanceUntilIdle would chase
+        // their infinite while(true){delay()} forever.
+        vm.setAutoSave(false)
+        vm2.setAutoSave(false)
     }
 
     @Test
@@ -214,12 +218,16 @@ class OfficeViewModelCoreSlice3Test : OfficeViewModelSlice3Harness() {
         val after = textDoc("hello brave world")
         vm.stateMutable.value = OfficeViewModel.ViewState.Loaded(before)
         vm.remotePresenceMutable.value = listOf(
+            // Caret at the insertion point stays left (change is at/after it).
             OfficePresence(id = "p1", name = "N", typing = false, ts = 0L, caret = 6),
+            // Caret after the insertion shifts by the delta (+6).
+            OfficePresence(id = "p3", name = "O", typing = false, ts = 0L, caret = 8),
             OfficePresence(id = "p2", name = "M", typing = false, ts = 0L, caret = null),
         )
         vm.updateDocument(after)
         val updated = vm.remotePresenceMutable.value
-        assertEquals(12, updated.first { it.id == "p1" }.caret)
+        assertEquals(6, updated.first { it.id == "p1" }.caret)
+        assertEquals(14, updated.first { it.id == "p3" }.caret)
         assertNull(updated.first { it.id == "p2" }.caret)
     }
 

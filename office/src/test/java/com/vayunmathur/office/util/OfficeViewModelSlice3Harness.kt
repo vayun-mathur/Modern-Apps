@@ -100,7 +100,10 @@ abstract class OfficeViewModelSlice3Harness {
 
     suspend fun idleVm(): OfficeViewModel {
         val vm = newVm()
-        dispatcher.scheduler.advanceUntilIdle()
+        // NOTE: runCurrent(), never advanceUntilIdle(): enabling auto-save starts an
+        // infinite while(true){delay()} loop on viewModelScope, which advanceUntilIdle
+        // would chase forever. runCurrent only runs tasks due at the current virtual time.
+        dispatcher.scheduler.runCurrent()
         return vm
     }
 
