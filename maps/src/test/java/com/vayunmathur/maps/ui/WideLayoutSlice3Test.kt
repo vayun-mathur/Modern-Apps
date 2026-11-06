@@ -11,7 +11,9 @@ import com.vayunmathur.library.map.CameraState
 import com.vayunmathur.maps.util.MapsSearchViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
 
@@ -69,7 +71,7 @@ class WideLayoutSlice3Test {
         val host = MapSearchHost(vm, CameraState())
         host.openSearch(waypointIndex = 1)
         val request = host.searchRequest
-        assertTrue(request != null)
+        assertNotNull(request)
         assertEquals(1, request.waypointIndex)
         assertEquals("", vm.query.value)
     }
