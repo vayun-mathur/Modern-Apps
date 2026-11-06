@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.ENFORCE_UPDATE_OWNERSHIP" />
+    <!-- Silent background updates: SessionInstaller commits with USER_ACTION_NOT_REQUIRED,
+      which the system only honours for holders of this (normal, auto-granted) permission
+      on API 33+ targets. Without it every background commit degrades to a confirmation
+      prompt the background job cannot answer, so nothing ever installs (#898). -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

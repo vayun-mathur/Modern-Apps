@@ -36,6 +36,7 @@ import com.vayunmathur.library.network.TrustBundle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
 /**
@@ -207,13 +208,27 @@ class UpdateCheckWorker(
             )
             return
         }
-        val eligible = updates.filter { canSilentlyUpdate(it.packageName) }
+        val (eligible, foreign) = updates.partition { canSilentlyUpdate(it.packageName) }
         if (eligible.isNotEmpty()) {
             autoInstall(eligible, env)
+            // PackageInstaller commits asynchronously, so a just-committed install may
+            // not have landed yet. Give it a moment before re-reading, or still-pending
+            // updates read as stuck and get nagged about immediately (#898). Same wait
+            // the foreground "update all" applies before its own re-read.
+            delay(INSTALL_SETTLE_MS)
             env.installedRepo.refresh()
         }
-        // Only nag about the updates we could not apply on our own.
-        val remaining = updates.filterNot { canSilentlyUpdate(it.packageName) }
+        // Only nag about the updates we could not apply on our own: the ones we never
+        // attempted plus the ones we attempted but that are still outstanding. The OS
+        // may answer a "silent" commit with a confirmation prompt the background job
+        // cannot usefully answer (see InstallStatusReceiver), so an attempted update
+        // whose installed copy is still behind needs its tap after all (#898).
+        val installedVersions = env.installedRepo.updatable.value
+            .associate { it.packageName to it.versionCode }
+        val stillOutstanding = eligible.filter { update ->
+            (installedVersions[update.packageName] ?: 0L) < update.versionCode
+        }
+        val remaining = (foreign + stillOutstanding).distinctBy { it.packageName }
         notifyIfChanged(
             remaining.map { it.packageName }.toSortedSet(),
             remaining.size,
@@ -424,6 +439,15 @@ class UpdateCheckWorker(
         private const val INSTALLED_NOTIFICATION_ID = 4203
         private const val PREFS = "appstore-update-check"
         private const val KEY_LAST_NOTIFIED = "last_notified_packages"
+
+        /**
+         * How long to wait after committing installs before re-reading the device.
+         *
+         * PackageInstaller commits asynchronously — a just-committed install may not
+         * have landed yet, and without the wait the re-read reports every update as
+         * still outstanding. Same value as the foreground "update all" settle delay.
+         */
+        private const val INSTALL_SETTLE_MS = 1_500L
 
         /**
          * Twelve hours, and no immediate run.

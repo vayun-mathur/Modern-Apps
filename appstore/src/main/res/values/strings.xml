@@ -145,6 +145,13 @@
     <string name="install_failure_storage">not enough storage</string>
     <string name="install_failure_conflict">it conflicts with a version already installed</string>
     <string name="install_failure_unknown">the system rejected it</string>
+    <!-- Install-confirmation notification: posted when a background install needs the
+        user, because the system prompt cannot be shown while the app is in the
+        background. %1$s is the package name. -->
+    <string name="install_confirm_title">Update ready for %1$s</string>
+    <string name="install_confirm_body">Tap to confirm the update.</string>
+    <string name="install_confirm_channel_name">Install confirmations</string>
+    <string name="install_confirm_channel_description">Asks you to confirm an update that arrived while the store was in the background.</string>
     <string name="uninstaller_unavailable">Couldn\'t open the uninstaller</string>
     <string name="share_app_text">%1$s — %2$s</string>
 

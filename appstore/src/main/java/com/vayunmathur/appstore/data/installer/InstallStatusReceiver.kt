@@ -1,9 +1,20 @@
 package com.vayunmathur.appstore.data.installer
 
+import android.Manifest
+import android.app.ActivityManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Process
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.appstore.R
 import com.vayunmathur.appstore.data.RestrictedPackages
@@ -30,6 +41,7 @@ class InstallStatusReceiver : BroadcastReceiver() {
         const val ACTION_INSTALL_STATUS = "com.vayunmathur.appstore.INSTALL_STATUS"
         private const val TAG = "InstallStatusReceiver"
         private const val UNKNOWN_STATUS = -1
+        private const val CHANNEL_ID = "appstore-installs"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -38,7 +50,7 @@ class InstallStatusReceiver : BroadcastReceiver() {
         val pkg = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME)
 
         when (status) {
-            PackageInstaller.STATUS_PENDING_USER_ACTION -> forwardUserAction(context, intent)
+            PackageInstaller.STATUS_PENDING_USER_ACTION -> forwardUserAction(context, intent, pkg)
             PackageInstaller.STATUS_SUCCESS -> reportSuccess(context, pkg)
             // The user backing out of the system prompt is not a failure worth reporting back.
             PackageInstaller.STATUS_FAILURE_ABORTED -> reportAborted(pkg)
@@ -46,25 +58,96 @@ class InstallStatusReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun forwardUserAction(context: Context, intent: Intent) {
+    /**
+     * Surface the system's install-confirmation prompt.
+     *
+     * With the app in the foreground the prompt is started directly, the same as
+     * before. In the background `startActivity` from a manifest receiver is blocked
+     * by background-activity-launch restrictions — silently, with no exception — so
+     * a background commit's prompt used to vanish without a trace and the update
+     * never installed (#898). Now, when no process of this app is in the foreground,
+     * a notification carrying the prompt is posted instead so the user can tap it.
+     */
+    private fun forwardUserAction(context: Context, intent: Intent, packageName: String?) {
         // Forward user action intent
-        val userAction = if (android.os.Build.VERSION.SDK_INT >= 33) {
+        val userAction = if (Build.VERSION.SDK_INT >= 33) {
             intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
         } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(Intent.EXTRA_INTENT)
-        }
-        try {
-            userAction?.let {
-                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(it)
+        } ?: return
+        userAction.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (isForeground(context)) {
+            try {
+                context.startActivity(userAction)
+            } catch (expected: android.content.ActivityNotFoundException) {
+                Log.status(TAG, "Failed to start user action: ${expected.message}")
+            } catch (expected: SecurityException) {
+                Log.status(TAG, "Failed to start user action: ${expected.message}")
             }
-        } catch (expected: android.content.ActivityNotFoundException) {
-            Log.status(TAG, "Failed to start user action: ${expected.message}")
-        } catch (expected: SecurityException) {
-            Log.status(TAG, "Failed to start user action: ${expected.message}")
+            return
+        }
+        notifyConfirm(context, userAction, packageName)
+    }
+
+    private fun isForeground(context: Context): Boolean {
+        val manager =
+            context.getSystemService(ActivityManager::class.java) ?: return false
+        return manager.runningAppProcesses.orEmpty().any {
+            it.uid == Process.myUid() &&
+                it.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
         }
     }
+
+    /**
+     * Post the system prompt behind a tap: the confirmation intent the store cannot
+     * launch itself in the background becomes the notification's content intent.
+     */
+    private fun notifyConfirm(context: Context, userAction: Intent, packageName: String?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        createChannel(context)
+        val confirm = PendingIntent.getActivity(
+            context,
+            packageName.hashCode(),
+            userAction,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(
+                context.getString(R.string.install_confirm_title, packageName.orEmpty())
+            )
+            .setContentText(context.getString(R.string.install_confirm_body))
+            .setContentIntent(confirm)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+        runCatching {
+            // Per-package ID: several background prompts can pend at once (an "update
+            // all" run), and a single shared ID would let each new one overwrite the last.
+            NotificationManagerCompat.from(context)
+                .notify(confirmNotificationId(packageName), notification)
+        }
+    }
+
+    private fun createChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.install_confirm_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply { description = context.getString(R.string.install_confirm_channel_description) }
+        )
+    }
+
+    private fun confirmNotificationId(packageName: String?): Int =
+        "install-confirm:${packageName.orEmpty()}".hashCode()
 
     private fun reportSuccess(context: Context, pkg: String?) {
         Log.status(TAG, "Install success for $pkg")
