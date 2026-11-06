@@ -175,4 +175,16 @@ class MainActivityNavigationSlice3Test {
             "settings overflow missing from activity content: $texts",
         )
     }
+
+    @Test
+    fun `activity content shows the offline banner while offline`() {
+        // Under Robolectric there is no connectivity, so OfflineAware's banner
+        // renders inside Content() — pinning the OfflineAware leg, not just
+        // the Navigation host.
+        val texts = activitySemanticsTexts()
+        kotlin.test.assertTrue(
+            texts.any { it.contains("No internet connection") },
+            "offline banner missing from activity content: $texts",
+        )
+    }
 }
