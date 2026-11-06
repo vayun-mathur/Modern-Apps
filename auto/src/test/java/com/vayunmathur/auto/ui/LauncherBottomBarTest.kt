@@ -60,7 +60,11 @@ class LauncherBottomBarTest {
         }
         // Dock cells render artwork only (the label rides the content
         // description, merged onto the clickable cell), so taps target the
-        // clickable node carrying each description.
+        // clickable node carrying each description. Rasterisation leaves the
+        // main thread, so wait for the artwork to land first.
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasContentDescription("Music")).fetchSemanticsNodes().size == 1
+        }
         rule.onNode(hasClickAction().and(hasContentDescription("Music"))).performClick()
         assertEquals(listOf("com.example.music/com.example.music.MusicService"), pins)
         // Tapping the already-open app still routes (it resets to its home).
