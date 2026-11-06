@@ -76,8 +76,9 @@ class ReminderAndGateTest {
         rule.onNodeWithText("Health Connect is required").assertIsDisplayed()
         rule.onNodeWithText("Install Health Connect").performClick()
         assertTrue(installs >= 1, "onInstall fires")
-        // Success leaves no failure text behind.
-        rule.onNodeWithText("Play Store", substring = true).assertDoesNotExist()
+        // Success leaves no failure text behind. The explainer body also
+        // mentions the store, so match the failure-only tail of the message.
+        rule.onNodeWithText("manually, then return here", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -89,7 +90,8 @@ class ReminderAndGateTest {
             )
         }
         rule.onNodeWithText("Install Health Connect").performClick()
-        rule.onNodeWithText("Play Store", substring = true).assertIsDisplayed()
+        // Curly apostrophe in the resource; match the failure-only tail.
+        rule.onNodeWithText("manually, then return here", substring = true).assertIsDisplayed()
     }
 
     @Test
