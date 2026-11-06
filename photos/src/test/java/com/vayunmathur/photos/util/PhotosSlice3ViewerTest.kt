@@ -276,7 +276,7 @@ class PhotosSlice3ViewerTest {
     @Test
     fun faceLayerLabelsNamedFacesAndTapsOpenPerson() {
         var opened: Long? = null
-        setFaceBoxes(boxes(face(7L, "Ada"), face(9L, null)), onFaceClick = { opened = it })
+        setFaceBoxes(boxes(face(9L, null), face(7L, "Ada")), onFaceClick = { opened = it })
         // Named face gets a label; unnamed one renders outline only.
         composeRule.onNodeWithText("Ada").assertIsDisplayed()
         // Tap targets carry no text: click inside the face box's screen rect.
