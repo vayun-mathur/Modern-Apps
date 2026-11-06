@@ -1,8 +1,8 @@
 package com.vayunmathur.auto.ui
 
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodes
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.auto.R as AutoR
 import com.vayunmathur.auto.platform.AudioSinkState
@@ -112,28 +112,31 @@ class AutoSessionCardTest {
     @Test
     fun `a bare session shows dashes and no video`() {
         rule.setContent { SessionCard(session = bareSnapshot()) }
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_headline)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_video_none)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_focus_none)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_now_playing_none)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_credential_unknown)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_value_none)).assertIsDisplayed()
+        assertSingleText(appContext.getString(AutoR.string.session_headline))
+        assertSingleText(appContext.getString(AutoR.string.session_video_none))
+        // focus_none ("Unknown") shows twice: the wire-mode row and the
+        // arbitrated NONE row.
+        rule.onAllNodes(hasText(appContext.getString(AutoR.string.session_focus_none))).assertCountEquals(2)
+        assertSingleText(appContext.getString(AutoR.string.session_now_playing_none))
+        assertSingleText(appContext.getString(AutoR.string.session_credential_unknown))
+        // value_none ("—") shows three times: ack seq, latency, elapsed.
+        rule.onAllNodes(hasText(appContext.getString(AutoR.string.session_value_none))).assertCountEquals(3)
     }
 
     @Test
     fun `a live session shows video focus and counts`() {
         rule.setContent { SessionCard(session = liveSnapshot()) }
         val video = appContext.getString(AutoR.string.session_video, 720, 480, 30, 1)
-        rule.onNodeWithText(video).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_focus_projected)).assertIsDisplayed()
-        rule.onNodeWithText("VIDEO_FOCUS_PROJECTED").assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_input_allowed_yes)).assertIsDisplayed()
+        assertSingleText(video)
+        assertSingleText(appContext.getString(AutoR.string.session_focus_projected))
+        assertSingleText("VIDEO_FOCUS_PROJECTED")
+        assertSingleText(appContext.getString(AutoR.string.session_input_allowed_yes))
         val frames = appContext.getString(AutoR.string.session_frames_value, 100L, 99L)
-        rule.onNodeWithText(frames).assertIsDisplayed()
+        assertSingleText(frames)
         // Mismatch + dropped-input rows only render when their counts are positive.
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_ack_mismatch)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_input_dropped)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_surface_valid)).assertIsDisplayed()
+        assertSingleText(appContext.getString(AutoR.string.session_ack_mismatch))
+        assertSingleText(appContext.getString(AutoR.string.session_input_dropped))
+        assertSingleText(appContext.getString(AutoR.string.session_surface_valid))
     }
 
     @Test
@@ -145,7 +148,7 @@ class AutoSessionCardTest {
             "Test Band",
             appContext.getString(AutoR.string.session_now_playing_playing),
         )
-        rule.onNodeWithText(line).assertIsDisplayed()
+        assertSingleText(line)
     }
 
     @Test
@@ -160,7 +163,7 @@ class AutoSessionCardTest {
             appContext.getString(AutoR.string.session_now_playing_unknown_artist),
             appContext.getString(AutoR.string.session_now_playing_paused),
         )
-        rule.onNodeWithText(line).assertIsDisplayed()
+        assertSingleText(line)
     }
 
     @Test
@@ -174,7 +177,7 @@ class AutoSessionCardTest {
         )
         for ((days, expected) in expectations) {
             rule.setContent { SessionCard(session = bareSnapshot().copy(credentialDaysLeft = days)) }
-            rule.onNodeWithText(expected).assertIsDisplayed()
+            assertSingleText(expected)
         }
     }
 
@@ -182,11 +185,12 @@ class AutoSessionCardTest {
     fun `audio sinks describe streaming idle and missing states`() {
         rule.setContent { SessionCard(session = liveSnapshot()) }
         val streaming = appContext.getString(AutoR.string.session_audio_sink_streaming, "Full")
-        rule.onNodeWithText(streaming).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_audio_sink_idle)).assertIsDisplayed()
+        assertSingleText(streaming)
+        assertSingleText(appContext.getString(AutoR.string.session_audio_sink_idle))
         val mic = appContext.getString(AutoR.string.session_audio_mic_value, 3L, 2L)
-        rule.onNodeWithText(mic).assertIsDisplayed()
+        assertSingleText(mic)
     }
+
 
     @Test
     fun `native focus and unsupported sinks render their rows`() {
@@ -198,10 +202,19 @@ class AutoSessionCardTest {
             ),
         )
         rule.setContent { SessionCard(session = snapshot) }
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_focus_native)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_audio_sink_unsupported)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_audio_sink_none)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_surface_invalid)).assertIsDisplayed()
-        rule.onNodeWithText(appContext.getString(AutoR.string.session_input_allowed_no)).assertIsDisplayed()
+        assertSingleText(appContext.getString(AutoR.string.session_focus_native))
+        assertSingleText(appContext.getString(AutoR.string.session_audio_sink_unsupported))
+        assertSingleText(appContext.getString(AutoR.string.session_audio_sink_none))
+        assertSingleText(appContext.getString(AutoR.string.session_surface_invalid))
+        assertSingleText(appContext.getString(AutoR.string.session_input_allowed_no))
+    }
+
+    /**
+     * Exactly one node carries [text]. The card overflows the test viewport,
+     * so below-fold rows exist but are not "displayed" — exact-text counting
+     * verifies what each row computed without depending on layout height.
+     */
+    private fun assertSingleText(text: String) {
+        rule.onAllNodes(hasText(text)).assertCountEquals(1)
     }
 }
