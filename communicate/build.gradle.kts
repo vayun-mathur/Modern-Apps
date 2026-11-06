@@ -222,4 +222,6 @@ dependencies {
     // on the JVM; same reason emergency/pdf use it.
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    // Route slice-6 contract tests use KClass reflection (sealedSubclasses, constructors).
+    testImplementation(libs.kotlin.reflect)
 }
