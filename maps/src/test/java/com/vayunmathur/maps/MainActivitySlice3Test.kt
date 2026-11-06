@@ -346,6 +346,7 @@ class MainActivitySlice3Test {
             as android.location.LocationManager
         val shadow = org.robolectric.Shadows.shadowOf(lm)
         shadow.setProviderEnabled(android.location.LocationManager.GPS_PROVIDER, true)
+        shadow.setProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER, true)
         val fix = android.location.Location(android.location.LocationManager.GPS_PROVIDER).apply {
             latitude = lat
             longitude = lon
@@ -353,6 +354,7 @@ class MainActivitySlice3Test {
             elapsedRealtimeNanos = 1_000_000_000L
         }
         shadow.setLastKnownLocation(android.location.LocationManager.GPS_PROVIDER, fix)
+        shadow.setLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER, null)
     }
 
     @Test
