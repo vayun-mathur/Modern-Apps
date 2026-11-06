@@ -73,8 +73,9 @@ class EmailViewModelScreensTest {
         }
         db = Room.inMemoryDatabaseBuilder(context, EmailDatabase::class.java)
             .allowMainThreadQueries().build()
+        resetRepositorySingleton()
         com.vayunmathur.library.util.databases[EmailDatabase::class] = db
-        // Reset the repository singleton's cached db by creating the VM after seeding.
+        // Create the VM after seeding so the repository binds this test's db.
         vm = EmailViewModel(context)
         runBlocking {
             db.accountDao().insertAccount(EmailAccount(email = "me@x.com"))
@@ -89,14 +90,12 @@ class EmailViewModelScreensTest {
     }
 
     private fun resetRepositorySingleton() {
-        // EmailRepository caches its instance in the companion; clear it so the
-        // next test re-reads the (freshly seeded) databases registry.
-        val companion = EmailRepository::class.java.getDeclaredField("Companion")
-        companion.isAccessible = true
-        val companionObj = companion.get(null)
-        val field = companionObj.javaClass.getDeclaredField("instance")
+        // EmailRepository holds `private static volatile instance` on itself;
+        // clear it so the next EmailRepository.get() re-reads the databases
+        // registry instead of a closed db from an earlier test.
+        val field = EmailRepository::class.java.getDeclaredField("instance")
         field.isAccessible = true
-        field.set(companionObj, null)
+        field.set(null, null)
     }
 
     // ---------- pure selection / search state ----------
