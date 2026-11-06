@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.vayunmathur.web.platform.SitePermissionType
@@ -53,8 +54,10 @@ class PermissionSheetsTest {
             )
         }
         rule.waitForIdle()
-        // Uncheck the single permission; Allow must disable.
-        rule.onNodeWithText("Camera").performClick()
+        // Uncheck the single permission via its checkbox; Allow must disable.
+        rule.onNode(
+            androidx.compose.ui.test.hasRole(androidx.compose.ui.semantics.Role.Checkbox)
+        ).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Allow").assertIsNotEnabled()
         // Blocking still works.
