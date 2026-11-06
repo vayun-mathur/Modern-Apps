@@ -142,4 +142,11 @@
     <string name="move_failed">Ümbertõstmine ei õnnestunud</string>
     <string name="move_partial_failure"><xliff:g id="moved" example="2">%1$d</xliff:g> on tõstetud ümber, <xliff:g id="failed" example="1">%2$d</xliff:g> puhul ümbertõstmine ei õnnestunud</string>
     <string name="move_to_sim_warning_body">Vaid nimi, telefon ja e-posti aadress jäävad SIM-kaardile <xliff:g id="sim_label" example="SIM 1">%1$s</xliff:g>. Järgnev läheb kaotsi: <xliff:g id="dropped" example="foto, aadressid">%2$s</xliff:g>.</string>
+    <string name="name">Nimi</string>
+    <string name="gender">Sugu</string>
+    <string name="gender_custom_hint">Kirjelda (kui tahad)</string>
+    <string name="preferred_contact_method">Eelistatud kontaktimeetod</string>
+    <string name="preferred_method">Eelistatud meetod</string>
+    <string name="move_dropped_gender">sugu</string>
+    <string name="move_dropped_comm_pref">eelistatud kontaktimeetod</string>
 </resources>

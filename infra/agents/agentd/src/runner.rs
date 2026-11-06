@@ -83,6 +83,26 @@ impl Runner {
             &format!("/v1/slots/{slot}/prepare"),
             &PrepareRequest {
                 branch: branch.to_string(),
+                resume: None,
+            },
+        )
+        .await
+    }
+
+    /// Resume a parked task (possibly on a different slot): restore the WIP
+    /// ref's work over `base_sha`, or start clean from `base_sha` when there
+    /// is no parked work.
+    pub async fn prepare_resume(
+        &self,
+        slot: u32,
+        branch: &str,
+        resume: proto::ResumeSpec,
+    ) -> Result<PrepareResponse, String> {
+        self.post(
+            &format!("/v1/slots/{slot}/prepare"),
+            &PrepareRequest {
+                branch: branch.to_string(),
+                resume: Some(resume),
             },
         )
         .await

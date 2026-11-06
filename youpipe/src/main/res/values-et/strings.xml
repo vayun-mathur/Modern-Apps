@@ -131,4 +131,25 @@
     <string name="restore_unsupported_format">See varukoopiafaili vorming pole toetatud.</string>
     <string name="label_notification_style_progress">Teavituselaadne edenemisriba</string>
     <string name="label_notification_style_progress_description">Otsinguriba asemel on õhuke teavitusteala moodi juhtnuppudega riba. Esituse ja peatamise vaated on ka erinevad.</string>
+    <string name="label_quality">Kvaliteet</string>
+    <string name="label_captions">Subtiitrid</string>
+    <string name="label_captions_off">Väljas</string>
+    <string name="label_speed">Kiirus</string>
+    <string name="action_close">Sulge</string>
+    <string name="tv_playback_unavailable">Taasesitus poel saadaval: süsteemi WebView on kas puudu või aegunud. Videote vaatamiseks uuenda Androidi süsteemne WebView (Android System WebView) tarkvara.</string>
+    <string name="tv_action_resume">Jätka</string>
+    <string name="tv_action_video_options">Lisavalikud</string>
+    <string name="tv_shelf_continue">Jätka vaatamist</string>
+    <string name="tv_shelf_for_you">Sulle soovitatud</string>
+    <string name="tv_added_to_watch_later">Lisatud hiljem vaatamiseks</string>
+    <plurals name="tv_comment_likes">
+        <item quantity="one">%1$s meeldimine</item>
+        <item quantity="other">%1$s meeldimist</item>
+    </plurals>
+    <string name="tv_section_channels">Kanalid</string>
+    <string name="tv_section_videos">Videod</string>
+    <string name="tv_section_chapters">Peatükid</string>
+    <string name="tv_action_go_to_channel">Vaata kanalit</string>
+    <string name="tv_action_details">Üksikasjad</string>
+    <string name="tv_search_hint">Otsi videoid või kanaleid, aga võid ka asetada YouTube\'i lingi</string>
 </resources>

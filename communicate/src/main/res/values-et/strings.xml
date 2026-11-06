@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rcs_retry">Proovi uuesti</string>
+    <string name="rcs_probe">Käivita saadavuse kontroll</string>
+    <string name="rcs_start_encrypted">Alusta krüptitud vestlust</string>
+    <string name="call_screen_share">Jaga ekraani</string>
+    <string name="contact_create_new">Lisa uus kontakt</string>
+    <string name="contact_add_to_existing">Lisa olemasolevale kontaktile</string>
+    <string name="deep_link_group_unsupported">Grupikutsed pole veel toetatud</string>
+    <string name="attach_media">Foto või video</string>
+    <string name="attach_file">Fail</string>
+    <string name="attach_poll">Küsitlus</string>
+    <string name="attach_contact">Kontakt</string>
+    <string name="contact_share_failed">Selle kontakti jagamine ei õnnestunud</string>
+    <string name="poll_new">Uus küsitlus</string>
+    <string name="poll_question">Küsimus</string>
+    <string name="poll_option">%1$d. valik</string>
+    <string name="poll_add_option">Lisa valik</string>
+    <string name="poll_create">Loo</string>
+    <string name="poll_send_failed">Küsitluse loomine ei õnnestunud</string>
+</resources>

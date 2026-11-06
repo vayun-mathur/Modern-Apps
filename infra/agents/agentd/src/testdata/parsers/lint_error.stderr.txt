@@ -1,0 +1,54 @@
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':calculator:lintDev' (registered by plugin 'com.android.internal.application').
+> Lint found errors in the project; aborting build.
+  
+  Fix the issues identified by lint, or create a baseline to see only new errors.
+  To create a baseline, run `gradlew updateLintBaseline` after adding the following to the module's build.gradle file:
+  ```
+  android {
+      lint {
+          baseline = file("lint-baseline.xml")
+      }
+  }
+  ```
+  For more details, see https://developer.android.com/studio/write/lint#snapshot
+  
+  Lint found 1 error, 98 warnings, 12 hints. First failure:
+  
+  /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/src/main/java/com/vayunmathur/calculator/util/UnitsModel.kt:26: Error: Toast is not allowed. Use AppMessages.show(...), or rememberMessenger().show(...) in a composable. If nothing can collect either here, add the // TOAST EXCEPTION: <reason> marker comment to the file. [ToastUsage from com.vayunmathur.lint]
+      fun parserFixtureToast(ctx: android.content.Context) { android.widget.Toast.makeText(ctx, "x", 0).show() }
+                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  
+     Explanation for issues of type "ToastUsage":
+     Toasts render outside the app's Material surface and ignore the app theme, 
+                    cannot carry an action, and are silently suppressed by the
+     system when the                 app is backgrounded on Android 12 and above
+     - so the case people reach for                 a Toast in, reporting from
+     background work, is the case where it may never                 appear.
+  
+     Use AppMessages.show(...) from anywhere without a Context,                
+     rememberMessenger().show(...) inside a composable, or a notification when  
+                   the message has to outlive the current screen.
+  
+     If none of those can work - a UI-less component with no scaffold collecting
+     AppMessages, such as a notification trampoline that finishes immediately -
+     add the marker comment // TOAST EXCEPTION: <reason> to the file to opt it
+     out.
+  
+     Vendor: Modern Apps
+     Identifier: com.vayunmathur.lint
+  
+  
+  The full lint text report is located at:
+    /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/build/intermediates/lint_intermediate_text_report/dev/lintReportDev/lint-results-dev.txt
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 11s

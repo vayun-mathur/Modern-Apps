@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Logide kuvaja</string>
+    <string name="error_report_title">Viga rakenduses <xliff:g id="app_name" example="Kaamera">%1$s</xliff:g></string>
+    <string name="system_log_title">Süsteemi logid</string>
+    <string name="app_log_title">Logi: <xliff:g id="app_name" example="Kaamera">%1$s</xliff:g></string>
+    <string name="copied_to_clipboard">Kopeeritud lõikelauale</string>
+    <string name="copied_to_clipboard_truncated">Kärbitud tekst on kopeeritud lõikelauale</string>
+    <string name="toast_saved">„<xliff:g id="file_name" example="System log a1b2c3d4e5f6.txt">%1$s</xliff:g>“ logifail on salvestatud</string>
+    <string name="toast_unable_to_open_file">Faili nime avamine ei õnnestu</string>
+    <string name="unable_to_save_file">Faili salvestamine ei õnnestu</string>
+    <string name="action_report">Teata veast</string>
+    <string name="action_more_info">Lisateave</string>
+    <string name="toast_unable_to_show_more_info">Lisateabe kuvamine ei õnnestu</string>
+    <string name="action_show_log">Näita logi</string>
+    <string name="set_filter">Seadista filtrit</string>
+    <string name="set_filter_editor_hint">Regulaaravaldis</string>
+    <string name="error_system_log_secondary_user">Selle seadme logi on saadaval vaid põhikasutajale</string>
+    <string name="log_level_verbose">Inforikas</string>
+    <string name="log_level_debug">Veaotsing</string>
+    <string name="log_level_info">Infoteade</string>
+    <string name="log_level_warn">Hoiatused</string>
+    <string name="log_level_error">Veateated</string>
+    <string name="log_level_assert">Rikkumised</string>
+    <string name="permission_show_logcat_label">kuva nutiseadme logi</string>
+    <string name="permission_show_logcat_desc">Võimaldab süsteemirakendusel avada nutiseadme logi Logide kuvajas.</string>
+    <string name="permission_show_error_report_label">näita veaaruannet</string>
+    <string name="permission_show_error_report_desc">Võimaldab eelpaigaldatud rakendusel kuvada veaaruannet Logide kuvajas.</string>
+</resources>

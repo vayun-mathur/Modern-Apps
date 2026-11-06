@@ -22,4 +22,6 @@
     <string name="history_language_pair">%1$s → %2$s</string>
     <string name="save">Salvesta</string>
     <string name="saved">Salvestatud</string>
+    <string name="could_not_read_image">Selle pildi lugemine ei õnnestunud</string>
+    <string name="pick_another_image">Vali mõni muu pilt</string>
 </resources>

@@ -6,7 +6,7 @@
     <string name="logout_current_account">Wyloguj się z bieżącego konta</string>
     <string name="selected_count">Zaznaczono: <xliff:g id="count" example="3">%1$d</xliff:g></string>
     <string name="reply">Odpowiedz</string>
-    <string name="forward">Naprzód</string>
+    <string name="forward">Przekaż</string>
     <string name="from_label">Od</string>
     <string name="select_account">Wybierz konto</string>
     <string name="select_sender">Wybierz nadawcę</string>

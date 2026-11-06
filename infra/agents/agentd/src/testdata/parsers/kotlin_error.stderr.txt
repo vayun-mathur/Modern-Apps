@@ -1,0 +1,19 @@
+e: file:///Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/src/main/java/com/vayunmathur/calculator/util/Units.kt:801:30 Initializer type mismatch: expected 'Int', actual 'String'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':calculator:compileDevKotlin' (registered by plugin 'com.android.internal.application').
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+   > Kotlin compiler: INITIALIZER_TYPE_MISMATCH
+       Kotlin compiler error
+         Initializer type mismatch: expected 'Int', actual 'String'.
+         Location: /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/src/main/java/com/vayunmathur/calculator/util/Units.kt:801
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s

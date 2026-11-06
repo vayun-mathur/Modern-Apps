@@ -322,4 +322,6 @@
     <string name="medical_empty">Brak</string>
     <string name="about_you_pregnancy_question">Czy jesteś w ciąży?</string>
     <string name="about_you_smoking_question">Czy palisz?</string>
+    <string name="health_connect_required_title">Wymagana jest aplikacja Health Connect</string>
+    <string name="health_connect_required_subtitle">Ta aplikacja zapisuje i odczytuje Twoje dane dotyczące zdrowia za pomocą usługi Health Connect, która nie jest jeszcze zainstalowana na tym urządzeniu.</string>
 </resources>

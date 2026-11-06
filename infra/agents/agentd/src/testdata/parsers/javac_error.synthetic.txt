@@ -1,0 +1,29 @@
+# SYNTHETIC fixture (marked per task spec): this repo is all-Kotlin, so no
+# module emits real javac errors; `compile*JavaWithJavac` tasks report
+# NO-SOURCE. Shape mirrors real javac output
+# (`/path/File.java:line: error: message`, `w:`-style warnings, notes).
+> Task :library:compileReleaseJavaWithJavac FAILED
+/Users/vayun/Documents/Modern-Apps-wt/isess-parsers/library/src/main/java/com/vayunmathur/library/util/LegacyBridge.java:42: error: incompatible types: String cannot be converted to int
+            int code = getCode();
+                              ^
+/Users/vayun/Documents/Modern-Apps-wt/isess-parsers/library/src/main/java/com/vayunmathur/library/util/LegacyBridge.java:57: warning: [deprecation] oldApi() in LegacyBridge has been deprecated
+            oldApi();
+                  ^
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 errors
+1 warning
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':library:compileReleaseJavaWithJavac'.
+> Compilation failed; see the compiler error output for details.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 4s
+5 actionable tasks: 1 executed, 4 up-to-date

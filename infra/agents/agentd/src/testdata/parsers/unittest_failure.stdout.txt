@@ -1,0 +1,193 @@
+Calculating task graph as no cached configuration is available for tasks: :calculator:testDevUnitTest
+
+> Configure project :
+The com.github.ben-manes.versions plugin id is deprecated; apply io.github.ben-manes.versions instead.
+
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+
+> Configure project :appstore
+WARNING: The option setting 'android.experimental.enableScreenshotTest=true' is experimental.
+The current default is 'false'.
+Add android.sync.suppressAgpWarnings=UNSUPPORTED_PROJECT_OPTION_USE to the gradle.properties file to suppress this warning.
+
+> Configure project :library:everysync-core
+WARNING: The 'commonTest' source directory exists, but android host tests are not enabled. To enable android host tests, add `withHostTest {}` to your android target configuration in the Gradle build file.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Task :calculator:preBuild UP-TO-DATE
+> Task :calculator:preDevBuild UP-TO-DATE
+> Task :calculator:generateDevBuildConfig UP-TO-DATE
+> Task :calculator:generateDevLauncherIcon UP-TO-DATE
+> Task :calculator:mapDevSourceSetPaths UP-TO-DATE
+> Task :library:preBuild UP-TO-DATE
+> Task :library:preReleaseBuild UP-TO-DATE
+> Task :calculator:extractDevSupportedLocales UP-TO-DATE
+> Task :library:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:network:preBuild UP-TO-DATE
+> Task :library:network:preReleaseBuild UP-TO-DATE
+> Task :library:network:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:log:preBuild UP-TO-DATE
+> Task :library:log:preReleaseBuild UP-TO-DATE
+> Task :library:ui:preBuild UP-TO-DATE
+> Task :library:log:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:ui:preReleaseBuild UP-TO-DATE
+> Task :library:widgets:preBuild UP-TO-DATE
+> Task :library:widgets:preReleaseBuild UP-TO-DATE
+> Task :library:ui:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:widgets:extractReleaseSupportedLocales UP-TO-DATE
+> Task :calculator:generateDevResources UP-TO-DATE
+> Task :sdk:games:preBuild UP-TO-DATE
+> Task :library:processReleaseNavigationResources UP-TO-DATE
+> Task :sdk:games:preReleaseBuild UP-TO-DATE
+> Task :library:log:processReleaseNavigationResources UP-TO-DATE
+> Task :sdk:games:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:network:processReleaseNavigationResources UP-TO-DATE
+> Task :library:ui:processReleaseNavigationResources UP-TO-DATE
+> Task :library:widgets:processReleaseNavigationResources UP-TO-DATE
+> Task :sdk:games:processReleaseNavigationResources UP-TO-DATE
+> Task :calculator:generateDevLocaleConfig UP-TO-DATE
+> Task :calculator:processDevNavigationResources UP-TO-DATE
+> Task :library:generateReleaseResources UP-TO-DATE
+> Task :calculator:packageDevResources UP-TO-DATE
+> Task :library:packageReleaseResources UP-TO-DATE
+> Task :library:parseReleaseLocalResources UP-TO-DATE
+> Task :calculator:parseDevLocalResources UP-TO-DATE
+> Task :library:generateReleaseRFile UP-TO-DATE
+> Task :library:log:generateReleaseResources UP-TO-DATE
+> Task :calculator:generateDevRFile UP-TO-DATE
+> Task :library:log:javaPreCompileRelease UP-TO-DATE
+> Task :library:log:packageReleaseResources UP-TO-DATE
+> Task :library:log:parseReleaseLocalResources UP-TO-DATE
+> Task :sdk:games:generateReleaseResources UP-TO-DATE
+> Task :library:log:generateReleaseRFile UP-TO-DATE
+> Task :sdk:games:packageReleaseResources UP-TO-DATE
+> Task :sdk:games:parseReleaseLocalResources UP-TO-DATE
+> Task :sdk:games:generateReleaseRFile UP-TO-DATE
+> Task :sdk:games:javaPreCompileRelease UP-TO-DATE
+> Task :library:javaPreCompileRelease UP-TO-DATE
+> Task :library:network:generateReleaseResources UP-TO-DATE
+> Task :library:network:packageReleaseResources UP-TO-DATE
+> Task :library:network:parseReleaseLocalResources UP-TO-DATE
+> Task :library:network:generateReleaseRFile UP-TO-DATE
+> Task :library:network:javaPreCompileRelease UP-TO-DATE
+> Task :library:ui:generateReleaseResources UP-TO-DATE
+> Task :library:ui:packageReleaseResources UP-TO-DATE
+> Task :library:ui:parseReleaseLocalResources UP-TO-DATE
+> Task :library:ui:generateReleaseRFile UP-TO-DATE
+> Task :library:ui:javaPreCompileRelease UP-TO-DATE
+> Task :library:widgets:generateReleaseResources UP-TO-DATE
+> Task :library:widgets:packageReleaseResources UP-TO-DATE
+> Task :library:widgets:parseReleaseLocalResources UP-TO-DATE
+> Task :library:widgets:generateReleaseRFile UP-TO-DATE
+> Task :library:widgets:javaPreCompileRelease UP-TO-DATE
+> Task :calculator:javaPreCompileDev FROM-CACHE
+> Task :library:writeReleaseAarMetadata
+> Task :library:log:writeReleaseAarMetadata
+> Task :library:log:compileReleaseKotlin UP-TO-DATE
+> Task :library:log:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:log:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:network:writeReleaseAarMetadata
+> Task :sdk:games:compileReleaseKotlin UP-TO-DATE
+> Task :sdk:games:compileReleaseJavaWithJavac NO-SOURCE
+> Task :sdk:games:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:kspReleaseKotlin UP-TO-DATE
+> Task :library:network:compileReleaseKotlin UP-TO-DATE
+> Task :library:network:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:network:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:ui:writeReleaseAarMetadata
+> Task :library:widgets:writeReleaseAarMetadata
+> Task :sdk:games:writeReleaseAarMetadata
+> Task :library:compileReleaseKotlin UP-TO-DATE
+> Task :library:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:ui:compileReleaseKotlin UP-TO-DATE
+> Task :library:ui:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:ui:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:widgets:compileReleaseKotlin UP-TO-DATE
+> Task :library:widgets:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:widgets:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :calculator:kspDevKotlin
+> Task :calculator:checkDevAarMetadata
+> Task :calculator:compileDevKotlin UP-TO-DATE
+> Task :calculator:compileDevNavigationResources FROM-CACHE
+> Task :calculator:compileDevJavaWithJavac
+> Task :calculator:createDevCompatibleScreenManifests
+> Task :calculator:extractDeepLinksDev
+> Task :library:extractDeepLinksRelease FROM-CACHE
+> Task :library:processReleaseManifest FROM-CACHE
+> Task :library:log:extractDeepLinksRelease FROM-CACHE
+> Task :library:log:processReleaseManifest FROM-CACHE
+> Task :library:network:extractDeepLinksRelease FROM-CACHE
+> Task :library:network:processReleaseManifest FROM-CACHE
+> Task :library:ui:extractDeepLinksRelease FROM-CACHE
+> Task :library:ui:processReleaseManifest FROM-CACHE
+> Task :library:widgets:extractDeepLinksRelease FROM-CACHE
+> Task :library:widgets:processReleaseManifest FROM-CACHE
+> Task :sdk:games:extractDeepLinksRelease FROM-CACHE
+> Task :sdk:games:processReleaseManifest FROM-CACHE
+> Task :calculator:processDevMainManifest
+> Task :calculator:processDevManifest
+> Task :calculator:processDevManifestForPackage
+> Task :library:mapReleaseSourceSetPaths
+> Task :library:compileReleaseLibraryResources FROM-CACHE
+> Task :library:log:mapReleaseSourceSetPaths
+> Task :library:log:compileReleaseLibraryResources FROM-CACHE
+> Task :library:network:mapReleaseSourceSetPaths
+> Task :library:network:compileReleaseLibraryResources FROM-CACHE
+> Task :library:ui:mapReleaseSourceSetPaths
+> Task :library:ui:compileReleaseLibraryResources FROM-CACHE
+> Task :library:widgets:mapReleaseSourceSetPaths
+> Task :library:widgets:compileReleaseLibraryResources FROM-CACHE
+> Task :sdk:games:mapReleaseSourceSetPaths
+> Task :sdk:games:compileReleaseLibraryResources FROM-CACHE
+> Task :calculator:preDevUnitTestBuild UP-TO-DATE
+> Task :calculator:javaPreCompileDevUnitTest FROM-CACHE
+> Task :calculator:generateDevJacocoPropertiesFile
+> Task :calculator:compressDevJavaRes
+> Task :library:bundleLibRuntimeToJarRelease
+> Task :library:compressReleaseJavaRes FROM-CACHE
+> Task :library:log:bundleLibRuntimeToJarRelease
+> Task :library:log:compressReleaseJavaRes FROM-CACHE
+> Task :library:network:bundleLibRuntimeToJarRelease
+> Task :library:network:compressReleaseJavaRes FROM-CACHE
+> Task :library:ui:bundleLibRuntimeToJarRelease
+> Task :library:ui:compressReleaseJavaRes FROM-CACHE
+> Task :library:widgets:bundleLibRuntimeToJarRelease
+> Task :library:widgets:compressReleaseJavaRes FROM-CACHE
+> Task :sdk:games:bundleLibRuntimeToJarRelease
+> Task :sdk:games:compressReleaseJavaRes FROM-CACHE
+> Task :calculator:mergeDevResources
+> Task :calculator:processDevResources
+> Task :calculator:bundleDevClassesToRuntimeJar
+> Task :calculator:bundleDevClassesToCompileJar
+> Task :calculator:kspDevUnitTestKotlin
+> Task :calculator:compileDevUnitTestKotlin
+> Task :calculator:compileDevUnitTestJavaWithJavac NO-SOURCE
+> Task :calculator:compressDevUnitTestJavaRes
+> Task :calculator:extractDevUnitTestJavaRes
+
+> Task :calculator:testDevUnitTest FAILED
+
+ExpressionTest > multiplicationBindsTighterThanAddition FAILED
+    java.lang.AssertionError at ExpressionTest.kt:30
+
+[Incubating] Problems report is available at: file:///Users/vayun/Documents/Modern-Apps-wt/isess-parsers/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+139 actionable tasks: 37 executed, 27 from cache, 75 up-to-date
+Configuration cache entry stored.

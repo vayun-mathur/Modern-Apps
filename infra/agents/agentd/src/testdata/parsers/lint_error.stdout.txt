@@ -1,0 +1,300 @@
+Reusing configuration cache.
+> Task :library:preBuild UP-TO-DATE
+> Task :library:log:preBuild UP-TO-DATE
+> Task :library:preReleaseBuild UP-TO-DATE
+> Task :library:log:preReleaseBuild UP-TO-DATE
+> Task :sdk:games:preBuild UP-TO-DATE
+> Task :sdk:games:preReleaseBuild UP-TO-DATE
+> Task :sdk:games:writeReleaseAarMetadata UP-TO-DATE
+> Task :library:log:writeReleaseAarMetadata UP-TO-DATE
+> Task :library:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :library:generateReleaseResources UP-TO-DATE
+> Task :library:packageReleaseResources UP-TO-DATE
+> Task :library:processReleaseNavigationResources UP-TO-DATE
+> Task :library:parseReleaseLocalResources UP-TO-DATE
+> Task :library:generateReleaseRFile UP-TO-DATE
+> Task :library:log:generateReleaseResources UP-TO-DATE
+> Task :library:log:packageReleaseResources UP-TO-DATE
+> Task :library:log:processReleaseNavigationResources UP-TO-DATE
+> Task :library:log:parseReleaseLocalResources UP-TO-DATE
+> Task :library:log:generateReleaseRFile UP-TO-DATE
+> Task :library:checkReleaseAarMetadata UP-TO-DATE
+> Task :library:log:javaPreCompileRelease UP-TO-DATE
+> Task :sdk:games:generateReleaseResources UP-TO-DATE
+> Task :sdk:games:packageReleaseResources UP-TO-DATE
+> Task :sdk:games:processReleaseNavigationResources UP-TO-DATE
+> Task :sdk:games:parseReleaseLocalResources UP-TO-DATE
+> Task :sdk:games:generateReleaseRFile UP-TO-DATE
+> Task :sdk:games:javaPreCompileRelease UP-TO-DATE
+> Task :library:generateReleaseAssets UP-TO-DATE
+> Task :library:mergeReleaseAssets UP-TO-DATE
+> Task :library:javaPreCompileRelease UP-TO-DATE
+> Task :library:prepareLintJarForPublish UP-TO-DATE
+> Task :library:prepareReleaseArtProfile UP-TO-DATE
+> Task :library:processReleaseManifest UP-TO-DATE
+> Task :library:writeReleaseAarMetadata UP-TO-DATE
+> Task :library:ui:preBuild UP-TO-DATE
+> Task :library:ui:preReleaseBuild UP-TO-DATE
+> Task :library:ui:checkReleaseAarMetadata UP-TO-DATE
+> Task :library:ui:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :library:ui:generateReleaseResources UP-TO-DATE
+> Task :library:ui:packageReleaseResources UP-TO-DATE
+> Task :library:ui:processReleaseNavigationResources UP-TO-DATE
+> Task :library:ui:parseReleaseLocalResources UP-TO-DATE
+> Task :library:ui:generateReleaseRFile UP-TO-DATE
+> Task :library:ui:generateReleaseAssets UP-TO-DATE
+> Task :library:ui:mergeReleaseAssets UP-TO-DATE
+> Task :library:ui:javaPreCompileRelease UP-TO-DATE
+> Task :library:ui:prepareLintJarForPublish UP-TO-DATE
+> Task :library:ui:prepareReleaseArtProfile UP-TO-DATE
+> Task :library:ui:processReleaseManifest UP-TO-DATE
+> Task :library:ui:writeReleaseAarMetadata UP-TO-DATE
+> Task :library:log:compileReleaseKotlin UP-TO-DATE
+> Task :library:log:checkReleaseAarMetadata UP-TO-DATE
+> Task :library:log:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :library:log:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:log:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:log:extractReleaseAnnotations UP-TO-DATE
+> Task :library:log:generateReleaseAssets UP-TO-DATE
+> Task :library:log:mergeReleaseAssets UP-TO-DATE
+> Task :library:log:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :library:log:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :library:log:prepareLintJarForPublish UP-TO-DATE
+> Task :library:log:prepareReleaseArtProfile UP-TO-DATE
+> Task :library:log:processReleaseManifest UP-TO-DATE
+> Task :library:log:compressReleaseJavaRes UP-TO-DATE
+> Task :library:log:mergeReleaseJavaResource UP-TO-DATE
+> Task :library:log:syncReleaseLibJars UP-TO-DATE
+> Task :library:log:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :library:network:preBuild UP-TO-DATE
+> Task :library:network:preReleaseBuild UP-TO-DATE
+> Task :library:network:checkReleaseAarMetadata UP-TO-DATE
+> Task :library:network:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :library:network:generateReleaseResources UP-TO-DATE
+> Task :library:network:packageReleaseResources UP-TO-DATE
+> Task :library:network:processReleaseNavigationResources UP-TO-DATE
+> Task :library:network:parseReleaseLocalResources UP-TO-DATE
+> Task :library:network:generateReleaseRFile UP-TO-DATE
+> Task :library:network:extractReleaseAnnotations UP-TO-DATE
+> Task :library:network:generateReleaseAssets UP-TO-DATE
+> Task :library:network:mergeReleaseAssets UP-TO-DATE
+> Task :sdk:games:compileReleaseKotlin UP-TO-DATE
+> Task :sdk:games:compileReleaseJavaWithJavac NO-SOURCE
+> Task :sdk:games:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :library:kspReleaseKotlin UP-TO-DATE
+> Task :library:extractReleaseAnnotations UP-TO-DATE
+> Task :library:network:compileReleaseKotlin UP-TO-DATE
+> Task :library:network:javaPreCompileRelease UP-TO-DATE
+> Task :library:network:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:network:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :library:network:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :library:network:prepareLintJarForPublish UP-TO-DATE
+> Task :library:network:prepareReleaseArtProfile UP-TO-DATE
+> Task :library:network:processReleaseManifest UP-TO-DATE
+> Task :library:network:compressReleaseJavaRes UP-TO-DATE
+> Task :library:network:mergeReleaseJavaResource UP-TO-DATE
+> Task :library:network:syncReleaseLibJars UP-TO-DATE
+> Task :library:network:writeReleaseAarMetadata UP-TO-DATE
+> Task :library:network:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :library:widgets:preBuild UP-TO-DATE
+> Task :library:widgets:preReleaseBuild UP-TO-DATE
+> Task :library:widgets:checkReleaseAarMetadata UP-TO-DATE
+> Task :library:widgets:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :library:widgets:generateReleaseResources UP-TO-DATE
+> Task :library:widgets:packageReleaseResources UP-TO-DATE
+> Task :library:widgets:processReleaseNavigationResources UP-TO-DATE
+> Task :library:widgets:parseReleaseLocalResources UP-TO-DATE
+> Task :library:widgets:generateReleaseRFile UP-TO-DATE
+> Task :library:widgets:generateReleaseAssets UP-TO-DATE
+> Task :library:widgets:mergeReleaseAssets UP-TO-DATE
+> Task :library:widgets:javaPreCompileRelease UP-TO-DATE
+> Task :library:widgets:prepareLintJarForPublish UP-TO-DATE
+> Task :library:widgets:prepareReleaseArtProfile UP-TO-DATE
+> Task :library:widgets:processReleaseManifest UP-TO-DATE
+> Task :library:widgets:writeReleaseAarMetadata UP-TO-DATE
+> Task :calculator:preBuild UP-TO-DATE
+> Task :calculator:preDevBuild UP-TO-DATE
+> Task :calculator:generateDevBuildConfig UP-TO-DATE
+> Task :calculator:generateDevLauncherIcon UP-TO-DATE
+> Task :calculator:extractDevSupportedLocales UP-TO-DATE
+> Task :calculator:mapDevSourceSetPaths UP-TO-DATE
+> Task :library:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:log:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:network:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:ui:extractReleaseSupportedLocales UP-TO-DATE
+> Task :library:widgets:extractReleaseSupportedLocales UP-TO-DATE
+> Task :sdk:games:extractReleaseSupportedLocales UP-TO-DATE
+> Task :calculator:generateDevLocaleConfig UP-TO-DATE
+> Task :calculator:generateDevResources UP-TO-DATE
+> Task :calculator:packageDevResources UP-TO-DATE
+> Task :calculator:processDevNavigationResources UP-TO-DATE
+> Task :calculator:parseDevLocalResources UP-TO-DATE
+> Task :calculator:generateDevRFile UP-TO-DATE
+> Task :library:network:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :calculator:javaPreCompileDev UP-TO-DATE
+> Task :library:compileReleaseKotlin UP-TO-DATE
+> Task :library:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :library:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :library:compressReleaseJavaRes UP-TO-DATE
+> Task :library:mergeReleaseJavaResource UP-TO-DATE
+> Task :library:syncReleaseLibJars UP-TO-DATE
+> Task :library:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :library:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :calculator:checkDevAarMetadata UP-TO-DATE
+> Task :library:ui:extractReleaseAnnotations UP-TO-DATE
+> Task :library:widgets:extractReleaseAnnotations UP-TO-DATE
+> Task :library:widgets:compileReleaseKotlin UP-TO-DATE
+> Task :library:widgets:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:widgets:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :library:widgets:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :library:widgets:compressReleaseJavaRes UP-TO-DATE
+> Task :library:widgets:mergeReleaseJavaResource UP-TO-DATE
+> Task :library:widgets:syncReleaseLibJars UP-TO-DATE
+> Task :library:widgets:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :library:widgets:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :calculator:compileDevNavigationResources UP-TO-DATE
+> Task :library:ui:compileReleaseKotlin UP-TO-DATE
+> Task :library:ui:compileReleaseJavaWithJavac NO-SOURCE
+> Task :library:ui:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :library:ui:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :library:ui:compressReleaseJavaRes UP-TO-DATE
+> Task :library:ui:mergeReleaseJavaResource UP-TO-DATE
+> Task :library:ui:syncReleaseLibJars UP-TO-DATE
+> Task :calculator:mergeDevResources UP-TO-DATE
+> Task :library:ui:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :calculator:createDevCompatibleScreenManifests UP-TO-DATE
+> Task :library:ui:bundleLibCompileToJarRelease UP-TO-DATE
+> Task :calculator:extractDeepLinksDev UP-TO-DATE
+> Task :library:extractDeepLinksRelease UP-TO-DATE
+> Task :library:log:extractDeepLinksRelease UP-TO-DATE
+> Task :library:network:extractDeepLinksRelease UP-TO-DATE
+> Task :library:ui:extractDeepLinksRelease UP-TO-DATE
+> Task :library:widgets:extractDeepLinksRelease UP-TO-DATE
+> Task :sdk:games:extractDeepLinksRelease UP-TO-DATE
+> Task :sdk:games:processReleaseManifest UP-TO-DATE
+> Task :calculator:processDevMainManifest UP-TO-DATE
+> Task :calculator:processDevManifest UP-TO-DATE
+> Task :calculator:processDevManifestForPackage UP-TO-DATE
+> Task :library:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :library:compileReleaseLibraryResources UP-TO-DATE
+> Task :library:log:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :library:log:compileReleaseLibraryResources UP-TO-DATE
+> Task :library:network:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :library:network:compileReleaseLibraryResources UP-TO-DATE
+> Task :library:ui:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :library:ui:compileReleaseLibraryResources UP-TO-DATE
+> Task :library:widgets:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :library:widgets:compileReleaseLibraryResources UP-TO-DATE
+> Task :sdk:games:mapReleaseSourceSetPaths UP-TO-DATE
+> Task :sdk:games:compileReleaseLibraryResources UP-TO-DATE
+> Task :calculator:kspDevKotlin
+> Task :calculator:processDevResources UP-TO-DATE
+> Task :calculator:preDevAndroidTestBuild SKIPPED
+> Task :library:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :library:createFullJarRelease UP-TO-DATE
+> Task :library:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :library:log:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :library:log:createFullJarRelease UP-TO-DATE
+> Task :library:log:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :library:network:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :library:network:createFullJarRelease UP-TO-DATE
+> Task :library:network:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :library:ui:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :library:ui:createFullJarRelease UP-TO-DATE
+> Task :library:ui:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :library:widgets:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :library:widgets:createFullJarRelease UP-TO-DATE
+> Task :library:widgets:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :calculator:extractProguardFiles UP-TO-DATE
+> Task :library:extractProguardFiles UP-TO-DATE
+> Task :library:log:extractProguardFiles UP-TO-DATE
+> Task :library:log:generateReleaseLintModel UP-TO-DATE
+> Task :sdk:games:bundleLibRuntimeToJarRelease UP-TO-DATE
+> Task :sdk:games:compressReleaseJavaRes UP-TO-DATE
+> Task :sdk:games:createFullJarRelease UP-TO-DATE
+> Task :sdk:games:extractProguardFiles UP-TO-DATE
+> Task :sdk:games:generateReleaseLintModel UP-TO-DATE
+> Task :sdk:games:prepareLintJarForPublish UP-TO-DATE
+> Task :library:generateReleaseLintModel UP-TO-DATE
+> Task :library:network:extractProguardFiles UP-TO-DATE
+> Task :library:network:generateReleaseLintModel UP-TO-DATE
+> Task :library:ui:extractProguardFiles UP-TO-DATE
+> Task :library:ui:generateReleaseLintModel UP-TO-DATE
+> Task :library:widgets:extractProguardFiles UP-TO-DATE
+> Task :library:widgets:generateReleaseLintModel UP-TO-DATE
+> Task :sdk:games:checkReleaseAarMetadata UP-TO-DATE
+> Task :sdk:games:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :sdk:games:extractReleaseAnnotations UP-TO-DATE
+> Task :sdk:games:generateReleaseAssets UP-TO-DATE
+> Task :sdk:games:mergeReleaseAssets UP-TO-DATE
+> Task :sdk:games:mergeReleaseGeneratedProguardFiles UP-TO-DATE
+> Task :sdk:games:mergeReleaseConsumerProguardFiles UP-TO-DATE
+> Task :sdk:games:prepareReleaseArtProfile UP-TO-DATE
+> Task :sdk:games:mergeReleaseJavaResource UP-TO-DATE
+> Task :sdk:games:syncReleaseLibJars UP-TO-DATE
+> Task :sdk:games:bundleReleaseLocalLintAar UP-TO-DATE
+> Task :calculator:preDevUnitTestBuild UP-TO-DATE
+> Task :sdk:games:writeReleaseLintModelMetadata UP-TO-DATE
+> Task :lint-rules:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :lint-rules:compileKotlin UP-TO-DATE
+> Task :lint-rules:compileJava NO-SOURCE
+> Task :lint-rules:processResources NO-SOURCE
+> Task :lint-rules:classes UP-TO-DATE
+> Task :lint-rules:jar UP-TO-DATE
+> Task :library:log:lintAnalyzeRelease UP-TO-DATE
+> Task :sdk:games:lintAnalyzeRelease UP-TO-DATE
+> Task :library:lintAnalyzeRelease UP-TO-DATE
+> Task :library:network:lintAnalyzeRelease UP-TO-DATE
+> Task :library:ui:lintAnalyzeRelease UP-TO-DATE
+> Task :library:widgets:lintAnalyzeRelease UP-TO-DATE
+> Task :calculator:compileDevKotlin
+> Task :calculator:compileDevJavaWithJavac UP-TO-DATE
+> Task :calculator:generateDevLintReportModel
+> Task :calculator:bundleDevClassesToCompileJar
+> Task :calculator:generateDevAndroidTestLintModel
+> Task :calculator:generateDevUnitTestLintModel
+> Task :calculator:lintAnalyzeDevAndroidTest
+> Task :calculator:lintAnalyzeDevUnitTest
+> Task :calculator:lintAnalyzeDev
+
+> Task :calculator:lintReportDev
+Wrote HTML report to file:///Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/build/reports/lint-results-dev.html
+Wrote SARIF report to file:///Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/build/reports/lint-results-dev.sarif
+Lint found 1 error, 98 warnings and 12 hints. First failure:
+/Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/src/main/java/com/vayunmathur/calculator/util/UnitsModel.kt:26: Error: Toast is not allowed. Use AppMessages.show(...), or rememberMessenger().show(...) in a composable. If nothing can collect either here, add the // TOAST EXCEPTION: <reason> marker comment to the file. [ToastUsage from com.vayunmathur.lint]
+    fun parserFixtureToast(ctx: android.content.Context) { android.widget.Toast.makeText(ctx, "x", 0).show() }
+                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+> Task :calculator:lintDev FAILED
+Lint found 1 error, 98 warnings, 12 hints. First failure:
+
+/Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/src/main/java/com/vayunmathur/calculator/util/UnitsModel.kt:26: Error: Toast is not allowed. Use AppMessages.show(...), or rememberMessenger().show(...) in a composable. If nothing can collect either here, add the // TOAST EXCEPTION: <reason> marker comment to the file. [ToastUsage from com.vayunmathur.lint]
+    fun parserFixtureToast(ctx: android.content.Context) { android.widget.Toast.makeText(ctx, "x", 0).show() }
+                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "ToastUsage":
+   Toasts render outside the app's Material surface and ignore the app theme, 
+                  cannot carry an action, and are silently suppressed by the
+   system when the                 app is backgrounded on Android 12 and above
+   - so the case people reach for                 a Toast in, reporting from
+   background work, is the case where it may never                 appear.
+
+   Use AppMessages.show(...) from anywhere without a Context,                
+   rememberMessenger().show(...) inside a composable, or a notification when  
+                 the message has to outlive the current screen.
+
+   If none of those can work - a UI-less component with no scaffold collecting
+   AppMessages, such as a notification trampoline that finishes immediately -
+   add the marker comment // TOAST EXCEPTION: <reason> to the file to opt it
+   out.
+
+   Vendor: Modern Apps
+   Identifier: com.vayunmathur.lint
+
+
+The full lint text report is located at:
+  /Users/vayun/Documents/Modern-Apps-wt/isess-parsers/calculator/build/intermediates/lint_intermediate_text_report/dev/lintReportDev/lint-results-dev.txt
+228 actionable tasks: 11 executed, 217 up-to-date
+Configuration cache entry reused.

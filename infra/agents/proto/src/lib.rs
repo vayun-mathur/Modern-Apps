@@ -20,6 +20,32 @@ pub const AGENT_BRANCH_PREFIX: &str = "agent/";
 pub struct PrepareRequest {
     /// Full branch name, must start with [`AGENT_BRANCH_PREFIX`].
     pub branch: String,
+    /// Resume a parked task instead of branching fresh from `origin/main`.
+    /// Absent = legacy fresh prepare (old agentd builds never send it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume: Option<ResumeSpec>,
+}
+
+/// How to restore a parked task's checkout (possibly on a different slot).
+///
+/// Runner sequence: tear down the slot (`reset --hard HEAD; clean -fd`),
+/// then if `wip_ref` is set `fetch origin +<wip_ref>:<wip_ref>` from the
+/// mirror and `checkout -B <branch> <wip_sha>`, else `checkout -B <branch>
+/// <base_sha>`; then `reset --soft <base_sha>` so the work reappears as
+/// uncommitted changes against the original base; write `base_sha` to
+/// `.git/agent-base`; no `clean` afterwards. `PrepareResponse.base_sha`
+/// echoes `base_sha`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResumeSpec {
+    /// Commit the task's diff is measured against (original base, or the
+    /// last pushed sha for follow-ups after an approved push).
+    pub base_sha: String,
+    /// Mirror ref holding the parked WIP commit, e.g. `refs/agent-wip/42`.
+    /// `None` = no uncommitted work was parked.
+    pub wip_ref: Option<String>,
+    /// Expected sha of `wip_ref`; the runner refuses to resume if the fetched
+    /// ref resolves to anything else.
+    pub wip_sha: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

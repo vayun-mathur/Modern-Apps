@@ -55,4 +55,7 @@
     <string name="alarm_label_hint">Äratuse nimi (kui tahad lisada)</string>
     <string name="channel_alarm_playing_name">Äratus on käivitunud</string>
     <string name="channel_alarm_playing_description">Seda näidatakse äratuse ajal</string>
+    <string name="alarm_missing_fullscreen_text">Avamiseks klõpsa - äratuse kuvamine täisekraanivaates on lülitatud välja</string>
+    <string name="alarm_fullscreen_revoked">Äratuse kuvamine täisekraanivaates on lülitatud välja - helisev äratus ei saa olema kuvatud lukustusvaates</string>
+    <string name="action_open_settings">Ava seadistused</string>
 </resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pood</string>
+    <string name="search">Otsi</string>
+    <string name="search_products">Otsi tooteid</string>
+    <string name="no_products_found">Ühtegi toodet ei leidu</string>
+    <string name="check_connection_retry">Sisesta otsing või proovi muud märingt</string>
+    <string name="cart">Ostukorv</string>
+    <string name="cart_empty">Sinu ostukorv on tühi</string>
+    <string name="checkout">Suundu maksma</string>
+    <string name="orders">Tellimused</string>
+    <string name="no_orders_yet">Tellimuste ajalugu veel pole</string>
+    <string name="continue_in_browser">Jätka veebibrauseris</string>
+    <string name="place_order">Valmistu maksma</string>
+    <string name="store_domain">Kaupmehe domeen (kui tahad lisada)</string>
+    <string name="store_domain_hint">Shopify otsingu jaoks jäta tühjaks, muul juhul sisesta UCP registris oleva kaupmehe domeen.</string>
+    <string name="estimated_subtotal">Hinnanguline vahesumma</string>
+    <string name="checkout_pending">Makse pole kinnitatud</string>
+    <string name="checkout_handoff_notice">Vaata lõplikke hindu, saatmiskulusid ja makseviise müüja veebilehel. Ostukorvi tooted jäävad sinna, kuni sa need sealt eemaldad.</string>
+    <string name="buy_now">Osta kohe</string>
+    <string name="add_to_cart">Lisa ostukorvi</string>
+</resources>
