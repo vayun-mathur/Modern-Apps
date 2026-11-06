@@ -143,8 +143,8 @@ class LauncherHotseatUiTest {
             }
         }
         rule.waitForIdle()
-        // Drop app 2 onto the fourth slot's centre: commitMove to Hotseat rank 3.
-        val at = rule.onAllNodes(hasClickAction())[3].fetchSemanticsNode().boundsInRoot.center
+        // Drop app 2 back onto its own slot centre: commitMove to Hotseat rank 1.
+        val at = rule.onAllNodes(hasClickAction())[1].fetchSemanticsNode().boundsInRoot.center
         controller.start(
             DragPayload(
                 itemId = 2L,
@@ -162,7 +162,7 @@ class LauncherHotseatUiTest {
         )
         rule.waitForIdle()
         assertEquals(true, controller.drop())
-        assertEquals(Quad(2L, ContainerRef.Hotseat, 0, CellRect(3, 0), 3), move)
+        assertEquals(Quad(2L, ContainerRef.Hotseat, 0, CellRect(1, 0), 1), move)
     }
 
     private data class Quad(
