@@ -3,6 +3,7 @@ package com.vayunmathur.email.screens
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -235,8 +236,15 @@ class EmailViewModelScreensTest {
     fun `settings screen shows sections and edits signature`() {
         var backPresses = 0
         composeRule.setContent { SettingsScreen(viewModel = vm, onBack = { backPresses++ }) }
-        composeRule.waitForIdle()
+        // The blocked-senders flow is cold (no stateIn), so its first emission
+        // races composition on Room's query executor: wait until it lands.
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodes(onNodeWithText("me@x.com")).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("me@x.com").assertIsDisplayed()
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodes(onNodeWithText("Blocked senders", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Blocked senders", substring = true).assertIsDisplayed()
     }
 
@@ -246,7 +254,9 @@ class EmailViewModelScreensTest {
             db.accountDao().insertBlockedSender(BlockedSender("spam@evil.com"))
         }
         composeRule.setContent { SettingsScreen(viewModel = vm, onBack = {}) }
-        composeRule.waitForIdle()
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodes(onNodeWithText("spam@evil.com")).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("spam@evil.com").assertIsDisplayed()
     }
 }
