@@ -48,41 +48,24 @@ internal object OoxmlDocxStyles {
         var styleId: String? = null           // w:rStyle reference (character style)
     ) {
         /** Returns a new RPr with [o]'s non-null values overriding this one's. */
-        fun overlay(o: RPr) = overlayText(o).overlayDecor(o)
-
-        /** Text properties (bold/italic/size/font/align/case). */
-        private fun overlayText(o: RPr) = RPr(
+        fun overlay(o: RPr) = RPr(
             bold = o.bold ?: bold,
             italic = o.italic ?: italic,
+            underline = o.underline ?: underline,
+            underlineColor = o.underlineColor ?: underlineColor,
+            strike = o.strike ?: strike,
+            color = o.color ?: color,
             sizeHalfPt = o.sizeHalfPt ?: sizeHalfPt,
             font = o.font ?: font,
             vertAlign = o.vertAlign ?: vertAlign,
             caps = o.caps ?: caps,
             smallCaps = o.smallCaps ?: smallCaps,
             spacingTwips = o.spacingTwips ?: spacingTwips,
-            lang = o.lang ?: lang,
-            styleId = o.styleId ?: styleId,
-        )
-
-        /** Decoration properties (underline/strike/color/highlight/shade/vanish). */
-        private fun overlayDecor(o: RPr) = RPr(
-            bold = bold,
-            italic = italic,
-            underline = o.underline ?: underline,
-            underlineColor = o.underlineColor ?: underlineColor,
-            strike = o.strike ?: strike,
-            color = o.color ?: color,
-            sizeHalfPt = sizeHalfPt,
-            font = font,
-            vertAlign = vertAlign,
-            caps = caps,
-            smallCaps = smallCaps,
-            spacingTwips = spacingTwips,
             highlight = o.highlight ?: highlight,
             shdFill = o.shdFill ?: shdFill,
             vanish = o.vanish ?: vanish,
-            lang = lang,
-            styleId = styleId,
+            lang = o.lang ?: lang,
+            styleId = o.styleId ?: styleId,
         )
     }
 
@@ -111,10 +94,8 @@ internal object OoxmlDocxStyles {
         var dropCapLines: Int? = null,
         var rPr: RPr? = null
     ) {
-        fun overlay(o: PPr) = overlayLayout(o).overlayStyle(o)
-
-        /** Layout properties (alignment/indents/spacing/bidi/breaks). */
-        private fun overlayLayout(o: PPr) = PPr(
+        /** Returns a new PPr with [o]'s non-null values overriding this one's. */
+        fun overlay(o: PPr) = PPr(
             styleId = o.styleId ?: styleId,
             jc = o.jc ?: jc,
             indLeft = o.indLeft ?: indLeft,
@@ -126,28 +107,12 @@ internal object OoxmlDocxStyles {
             lineRule = o.lineRule ?: lineRule,
             line = o.line ?: line,
             bidi = o.bidi ?: bidi,
-            pageBreakBefore = o.pageBreakBefore ?: pageBreakBefore,
-        )
-
-        /** Style properties (shade/borders/keep/tabs/numbering/run). */
-        private fun overlayStyle(o: PPr) = PPr(
-            styleId = styleId,
-            jc = jc,
-            indLeft = indLeft,
-            indRight = indRight,
-            indFirstLine = indFirstLine,
-            indHanging = indHanging,
-            spacingBefore = spacingBefore,
-            spacingAfter = spacingAfter,
-            lineRule = lineRule,
-            line = line,
-            bidi = bidi,
             shdFill = o.shdFill ?: shdFill,
             borders = o.borders ?: borders,
             keepNext = o.keepNext ?: keepNext,
             keepLines = o.keepLines ?: keepLines,
             widowControl = o.widowControl ?: widowControl,
-            pageBreakBefore = pageBreakBefore,
+            pageBreakBefore = o.pageBreakBefore ?: pageBreakBefore,
             tabs = o.tabs ?: tabs,
             numId = o.numId ?: numId,
             ilvl = o.ilvl ?: ilvl,
