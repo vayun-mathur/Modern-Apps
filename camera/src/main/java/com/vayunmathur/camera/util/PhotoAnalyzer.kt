@@ -1,6 +1,7 @@
 package com.vayunmathur.camera.util
 
 import android.graphics.Bitmap
+import android.os.SystemClock
 import com.vayunmathur.library.log.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
@@ -30,6 +31,21 @@ import com.google.zxing.common.HybridBinarizer
 private const val LUMA_STRIDE_PX = 16
 private const val CHANNEL_MASK = 0xFF
 
+/**
+ * Minimum gap between full ZXing decode attempts (ms). A held QR code still
+ * resolves within a fraction of a second, while the analysis thread stops
+ * re-binarizing megapixel frames dozens of times per second.
+ */
+internal const val QR_DECODE_INTERVAL_MS = 400L
+
+/**
+ * Minimum gap between Motion-Photo RGB frame copies (ms). The ring buffer is
+ * sized for [CameraViewModel.MOTION_FRAMES_PER_SECOND] (8 fps) and recycles
+ * anything above it, so converting faster only churns bitmaps that are
+ * immediately thrown away.
+ */
+internal const val MOTION_FRAME_INTERVAL_MS = 125L
+
 class PhotoAnalyzer(
     private val onLuminance: (Float) -> Unit,
     private val onQrDetected: (String) -> Unit,
@@ -47,14 +63,39 @@ class PhotoAnalyzer(
         )
     }
 
+    // Last-run timestamps for the cadence-capped ops below. analyze() runs on
+    // the single analysis executor, so plain fields are sufficient.
+    private var lastDecodeAtMs = 0L
+    private var lastMotionAtMs = 0L
+
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         val startMs = System.currentTimeMillis()
         try {
             val frame = readYPlane(imageProxy) ?: return
+            // Luminance stays per-frame: it is a cheap strided sum and the
+            // night-mode debounce counts frames, so skipping here would
+            // silently retune its engage/disengage timing.
             sampleLuminance(frame, imageProxy, startMs)
-            emitMotionFrame(imageProxy)
-            decodeQr(frame, imageProxy, startMs)
+            // The two expensive ops — the YUV->RGB conversion for the
+            // Motion-Photo ring buffer and the full-frame ZXing decode — run
+            // at a capped cadence instead of on every frame. Unthrottled they
+            // saturate this single analysis thread (photo-only; video binds no
+            // analyzer) and the allocation churn stalls the UI thread during
+            // pinch zoom (#881). Luminance above keeps night detection live.
+            val nowMs = SystemClock.elapsedRealtime()
+            if (nowMs - lastMotionAtMs >= MOTION_FRAME_INTERVAL_MS) {
+                lastMotionAtMs = nowMs
+                emitMotionFrame(imageProxy)
+            }
+            if (nowMs - lastDecodeAtMs >= QR_DECODE_INTERVAL_MS) {
+                lastDecodeAtMs = nowMs
+                decodeQr(frame, imageProxy, startMs)
+            } else {
+                // decodeQr() closes the frame in its finally; on a skipped
+                // tick close here so the pipeline never stalls.
+                closeQuietly(imageProxy, "decode skipped by cadence cap")
+            }
         } catch (e: IllegalStateException) {
             Log.error(
                 "NightPreview",
