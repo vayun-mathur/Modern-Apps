@@ -38,19 +38,20 @@ import org.robolectric.annotation.Config
 class MainActivityNavigationSlice3Test {
 
     @get:Rule
+    val gateRule = GatePlantingRule()
+
+    @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
-    companion object {
-        /**
-         * The activity rule launches MainActivity before instance `@Before`
-         * methods run, so everything its `onCreateBeforeContent()` needs must
-         * be planted here: WorkManager (the manifest disables its
-         * auto-initializer), the basemap archive for the download gate, and
-         * the runtime grants for the permission gate.
-         */
-        @org.junit.BeforeClass
-        @JvmStatic
-        fun setUpClass() {
+    /**
+     * Plants everything MainActivity's `onCreateBeforeContent()` needs BEFORE
+     * the activity rule launches it (rules wrap `@Before`, so instance setup
+     * runs too late): WorkManager (the manifest disables its
+     * auto-initializer), the basemap archive for the download gate, and the
+     * runtime grants for the permission gate.
+     */
+    class GatePlantingRule : org.junit.rules.ExternalResource() {
+        override fun before() {
             val app = ApplicationProvider.getApplicationContext<android.content.Context>()
             runCatching {
                 androidx.work.WorkManager.initialize(
