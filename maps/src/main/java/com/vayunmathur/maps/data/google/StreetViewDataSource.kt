@@ -105,6 +105,14 @@ object StreetViewDataSource {
     private const val FULL_CIRCLE_DEG = 360.0
     private const val HALF_CIRCLE_DEG = 180.0
 
+    /**
+     * Test seams: metadata GET (body text or null) and tile GET (bytes or null).
+     * Defaults hit the live network; tests replace them with canned payloads so
+     * the parse/selection logic is verifiable without network.
+     */
+    internal var httpGet: (suspend (String) -> String?) = { getText(it) }
+    internal var httpGetBytes: (suspend (String) -> ByteArray?) = { tileBytes(it) }
+
     // Bounded LRU (access-ordered) of resolved metadata, keyed by pano id and by a
     // rounded lat/lng probe. Stores null too (negative cache) so a spot with no
     // imagery isn't refetched on every reselect. Guarded by `synchronized`.
@@ -143,13 +151,13 @@ object StreetViewDataSource {
     private suspend fun fetchNearest(lat: Double, lng: Double): StreetViewPano? =
         withContext(Dispatchers.IO) {
             val url = META_URL.replace("{LAT}", lat.toString()).replace("{LNG}", lng.toString())
-            val body = getText(url) ?: return@withContext null
+            val body = httpGet(url) ?: return@withContext null
             parsePano(body, lat, lng)
         }
 
     private suspend fun fetchPano(panoId: String): StreetViewPano? =
         withContext(Dispatchers.IO) {
-            val body = getText(PANO_URL.replace("{PANOID}", panoId)) ?: return@withContext null
+            val body = httpGet(PANO_URL.replace("{PANOID}", panoId)) ?: return@withContext null
             // A by-id fetch has no query point; the parser reads the real position
             // from the response and only uses the fallback when it's missing.
             parsePano(body, 0.0, 0.0).takeIf { it != null && (it.lat != 0.0 || it.lng != 0.0) }
@@ -216,6 +224,10 @@ object StreetViewDataSource {
             .replace("{X}", x.toString())
             .replace("{Y}", y.toString())
             .replace("{Z}", zoom.toString())
+        return httpGetBytes(url)
+    }
+
+    private suspend fun tileBytes(url: String): ByteArray? {
         val (status, bytes) = runCatching {
             NetworkClient.performRequestBytes(url = url, headers = REQUEST_HEADERS, useSystemTrust = true)
         }.getOrNull() ?: return null

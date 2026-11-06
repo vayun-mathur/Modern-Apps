@@ -125,7 +125,7 @@ object GooglePoiDataSource {
             val pb = buildSearchPb(name, lat, lon)
             val url = "$SEARCH_ENDPOINT&q=${name.enc()}&pb=${pb.enc()}"
             // A transport error or a non-2xx never became an answer.
-            val body = get(url) ?: return@withContext Outcome.Failed
+            val body = httpGet(url) ?: return@withContext Outcome.Failed
             // Nor did a body we cannot parse: a 200 that does not decode is far more
             // likely an interstitial (consent, captcha, rate limit) than a genuine
             // "no such place".
@@ -149,13 +149,28 @@ object GooglePoiDataSource {
     private suspend fun warmSession() {
         if (sessionWarmed) return
         runCatching {
-            NetworkClient.performRequest(
-                url = SESSION_WARM_URL,
-                headers = REQUEST_HEADERS + ("Accept" to "text/html,application/xhtml+xml"),
-                useSystemTrust = true,
-            )
+            httpWarm(SESSION_WARM_URL)
         }
         sessionWarmed = true
+    }
+
+    /**
+     * Test seam for the search GET: returns the body text, or null on any non-2xx /
+     * transport error. Defaults to the live network ([get]); tests replace it with
+     * canned payloads so the parse/selection logic is verifiable without network.
+     */
+    internal var httpGet: (suspend (String) -> String?) = { get(it) }
+
+    /**
+     * Test seam for the session-warm GET. Routed through [httpGet] (rather than
+     * straight at [NetworkClient]) so tests never touch the network at all.
+     */
+    internal var httpWarm: (suspend (String) -> String?) = {
+        NetworkClient.performRequest(
+            url = it,
+            headers = REQUEST_HEADERS + ("Accept" to "text/html,application/xhtml+xml"),
+            useSystemTrust = true,
+        ).body
     }
 
     /** GET returning the body text, or null on any non-2xx / transport error.

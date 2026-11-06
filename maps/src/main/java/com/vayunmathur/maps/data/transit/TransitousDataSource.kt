@@ -71,6 +71,19 @@ object TransitousDataSource {
     }
 
     /**
+     * Test seam: fetch the raw board DTO for [stopId] (null on any failure).
+     * Defaults to the live network; tests replace it with canned wire payloads
+     * so the MOTIS→app mapping is verifiable without network.
+     */
+    internal var fetchStoptimes: (suspend (String) -> MotisStoptimes?) = { stopId ->
+        runCatching {
+            val url = "$BASE_URL/stoptimes" +
+                "?stopId=${enc(stopId)}&n=$DEPARTURE_COUNT"
+            NetworkClient.getJson<MotisStoptimes>(url, REQUEST_HEADERS)
+        }.getOrNull()
+    }
+
+    /**
      * Live departures for [stopId]. Never throws — empty on failure. Cached for
      * [DEPARTURES_TTL_MS] on success and only [FAILURE_TTL_MS] on failure; pass
      * [force] (a manual refresh) to bypass the cache.
@@ -81,7 +94,9 @@ object TransitousDataSource {
                 departuresCache[stopId]?.let { if (it.isFresh(DEPARTURES_TTL_MS)) return it.value }
             }
         }
-        val fetched = runCatching { fetchDepartures(stopId) }
+        val fetched = runCatching {
+            fetchStoptimes(stopId)?.stopTimes?.mapNotNull { it.toDeparture() }.orEmpty()
+        }
         val deps = fetched.getOrDefault(emptyList())
         synchronized(departuresCache) { departuresCache[stopId] = Cached(deps, fetched.isSuccess) }
         return deps
