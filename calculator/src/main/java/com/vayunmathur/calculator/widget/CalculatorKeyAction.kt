@@ -40,6 +40,20 @@ internal const val COMMAND_EVALUATE = "evaluate"
 internal const val COMMAND_APPEND_PREFIX = "append:"
 
 /**
+ * Longest expression the widget keeps. Every tap appends to the stored input, which is then
+ * re-read from DataStore, re-parsed for the live preview and shipped to the host as RemoteViews
+ * text — so an unbounded string made each tap slower than the last until updates stalled (#641).
+ * A few hundred chars is far beyond what the single-line display fits; anything longer only ever
+ * came from unbounded growth. `take` (not `takeLast`) keeps the start of what was typed, and also
+ * shrinks an already-oversized value left behind from before the cap on the next tap.
+ */
+internal const val MAX_WIDGET_INPUT_LENGTH = 200
+
+/** Appends [text] to the widget [input], keeping the stored expression bounded. Pure for tests. */
+internal fun appendWidgetInput(input: String, text: String): String =
+    (input + text).take(MAX_WIDGET_INPUT_LENGTH)
+
+/**
  * A result of the app's evaluator, in both the pretty form for the display and the ASCII
  * token form that re-parses so it can seed the next calculation.
  */
@@ -90,7 +104,11 @@ class CalculatorKeyAction : ActionCallback {
         // predefined effect to its Q+ API, with a legacy fallback beneath it.
         emitKeyTick(context)
         updateAppWidgetState(context, glanceId) { prefs ->
-            val input = prefs[CalculatorInputKey].orEmpty()
+            // Clamp first: shrinks an already-oversized value left behind from before the
+            // cap (#641) so every tap heals, not just appends.
+            val rawInput = prefs[CalculatorInputKey].orEmpty()
+            val input = rawInput.take(MAX_WIDGET_INPUT_LENGTH)
+            if (input.length < rawInput.length) prefs[CalculatorInputKey] = input
             when {
                 command == COMMAND_CLEAR -> prefs[CalculatorInputKey] = ""
                 command == COMMAND_BACKSPACE -> prefs[CalculatorInputKey] = input.dropLast(1)
@@ -102,7 +120,10 @@ class CalculatorKeyAction : ActionCallback {
                     }
                 }
                 command.startsWith(COMMAND_APPEND_PREFIX) ->
-                    prefs[CalculatorInputKey] = input + command.removePrefix(COMMAND_APPEND_PREFIX)
+                    prefs[CalculatorInputKey] = appendWidgetInput(
+                        input,
+                        command.removePrefix(COMMAND_APPEND_PREFIX),
+                    )
             }
         }
         // Writing state alone does not reliably recompose; the explicit update does.
