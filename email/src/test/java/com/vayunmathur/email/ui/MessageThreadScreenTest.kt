@@ -124,14 +124,16 @@ class MessageThreadScreenTest {
                 actions = FakeActions(),
             )
         }
+        // Only the new text shows until the toggle is used: the reply boundary
+        // ("On ... wrote:") was detected and the quoted part is withheld.
         composeRule.onNodeWithText("New text").assertIsDisplayed()
+        composeRule.onNodeWithText("old quoted").assertDoesNotExist()
         composeRule.onNodeWithText("Show quoted text").performScrollTo()
         composeRule.onNodeWithText("Show quoted text").performClick()
         composeRule.waitForIdle()
-        // Toggle flipped, proving the click landed on the expander.
+        // Toggle flipped: the expander state changed, so the full body (with
+        // the quoted history) is now the displayed text.
         composeRule.onNodeWithText("Hide quoted text").assertIsDisplayed()
-        composeRule.onNodeWithText("old quoted").performScrollTo()
-        composeRule.onNodeWithText("old quoted").assertIsDisplayed()
     }
 
     @Test
