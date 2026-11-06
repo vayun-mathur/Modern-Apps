@@ -44,7 +44,7 @@ class LauncherWidgetHostTest {
     }
 
     @Test fun flattenRoundTrip() {
-        val h = host()
+        val h = flow()
         val flat = h.flatten(ComponentName("com.example", "com.example.Widget"))
         assertEquals(ComponentName("com.example", "com.example.Widget"), h.unflatten(flat))
         assertEquals(null, h.unflatten(null))
@@ -52,7 +52,7 @@ class LauncherWidgetHostTest {
     }
 
     @Test fun releaseUnknownIdIsSafe() {
-        val h = host()
+        val h = flow()
         h.release(424242)
         h.releaseOrphans(emptySet())
     }
