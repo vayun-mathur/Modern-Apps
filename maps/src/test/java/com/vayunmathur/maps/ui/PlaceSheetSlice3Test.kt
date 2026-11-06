@@ -137,17 +137,21 @@ class PlaceSheetSlice3Test {
     }
 
     @Test
-    fun `enrichment details show summary and reviews tab lists reviews`() {
-        val info = GooglePoiInfo(
-            editorialSummary = "A landmark ferry terminal",
-            reviews = listOf(
-                GoogleReview("Ann", null, 5, "a week ago", "Loved it"),
-            ),
-        )
+    fun `enrichment details show the editorial summary`() {
+        val info = GooglePoiInfo(editorialSummary = "A landmark ferry terminal")
         rule.setContent {
             GooglePoiEnrichment(info, PoiSection.DETAILS)
         }
         rule.onNodeWithText("A landmark ferry terminal").assertIsDisplayed()
+    }
+
+    @Test
+    fun `enrichment reviews tab lists the reviews`() {
+        val info = GooglePoiInfo(
+            reviews = listOf(
+                GoogleReview("Ann", null, 5, "a week ago", "Loved it"),
+            ),
+        )
         rule.setContent {
             GooglePoiEnrichment(info, PoiSection.REVIEWS)
         }

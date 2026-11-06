@@ -115,8 +115,9 @@ class RouteTripSearchSlice3Test {
                 setSelectedRouteType = { selected = it },
             )
         }
-        rule.onNodeWithText("Drive", substring = true).performClick()
-        assertEquals(RouteService.TravelMode.DRIVE, selected)
+        // Exact tab labels ("Drive"/"Walk"), not the step instructions.
+        rule.onNodeWithText("Walk", substring = false).performClick()
+        assertEquals(RouteService.TravelMode.WALK, selected)
     }
 
     @Test
@@ -174,11 +175,15 @@ class RouteTripSearchSlice3Test {
     // --- TripSheet ---
 
     @Test
-    fun `trip sheet loading and missing states`() {
+    fun `trip sheet loading state`() {
         rule.setContent {
             TripSheet(state = TripItineraryState.Loading, onDismiss = {}, onStopTap = {})
         }
         rule.onNodeWithText("Loading departures…").assertIsDisplayed()
+    }
+
+    @Test
+    fun `trip sheet missing state`() {
         rule.setContent {
             TripSheet(state = TripItineraryState.Missing, onDismiss = {}, onStopTap = {})
         }
@@ -219,7 +224,7 @@ class RouteTripSearchSlice3Test {
     // --- SearchSheet ---
 
     @Test
-    fun `search sheet phases render`() {
+    fun `search sheet results phase lists results`() {
         val results = listOf(
             SearchResult("poi:1:2:3", "Blue Bottle", "Cafe", 37.8, -122.4, "Cafe"),
         )
@@ -231,6 +236,10 @@ class RouteTripSearchSlice3Test {
             )
         }
         rule.onNodeWithText("Blue Bottle").assertIsDisplayed()
+    }
+
+    @Test
+    fun `search sheet empty phase explains no results`() {
         rule.setContent {
             SearchSheet(
                 state = SearchUiState(query = "blue bottle coffee xyz"),
@@ -239,6 +248,10 @@ class RouteTripSearchSlice3Test {
             )
         }
         rule.onNodeWithText("No results found in this area").assertIsDisplayed()
+    }
+
+    @Test
+    fun `search sheet idle phase prompts for typing`() {
         rule.setContent {
             SearchSheet(
                 state = SearchUiState(query = ""),

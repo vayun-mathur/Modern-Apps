@@ -44,6 +44,14 @@ class UtilBatch2Slice3Test {
                     .build(),
             )
         }
+        // Test order within the class is not guaranteed: reset the overlay
+        // keys so the defaults test always sees a clean store.
+        val ds = DataStoreUtils.getInstance(app)
+        runBlocking {
+            ds.setLong(MapOverlayWorker.KEY_APPLIED_SEQ, 0L)
+            ds.setLong(MapOverlayWorker.KEY_PENDING_BYTES, 0L)
+            ds.setLong(MapOverlayWorker.KEY_LAST_CHECK, 0L)
+        }
     }
 
     private fun place(name: String = "Cafe") = SpecificFeature.GenericPlace(
@@ -58,12 +66,12 @@ class UtilBatch2Slice3Test {
         val deadline = System.currentTimeMillis() + timeoutMs
         var last: T = flow.value
         while (System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
+            runCatching { shadowOf(Looper.getMainLooper()).runOneTask() }
             last = flow.value
             if (want(last)) return last
             Thread.sleep(25)
         }
-        shadowOf(Looper.getMainLooper()).idle()
+        runCatching { shadowOf(Looper.getMainLooper()).runOneTask() }
         return flow.value
     }
 

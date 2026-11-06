@@ -1,6 +1,7 @@
 package com.vayunmathur.maps.util
 
 import androidx.test.core.app.ApplicationProvider
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.map.GeoPoint
 import com.vayunmathur.library.util.DataStoreUtils
@@ -31,6 +32,12 @@ import kotlin.test.assertTrue
 @RunWith(AndroidJUnit4::class)
 class ViewModelsSlice3Test {
 
+    // Pumps the main looper for viewModelScope work. Plain Robolectric leaves
+    // Dispatchers.Main tasks queued; raw `idle()` is unsafe here (a repeating
+    // task would never let it return), so each wait step runs exactly one task.
+    @get:Rule
+    val composeRule = createComposeRule()
+
     private val app get() = ApplicationProvider.getApplicationContext<android.app.Application>()
 
     private fun place(name: String = "Ferry Building") = SpecificFeature.GenericPlace(
@@ -42,23 +49,24 @@ class ViewModelsSlice3Test {
     )
 
     /**
-     * Pumps the main looper so `viewModelScope` (Main) work runs: plain
-     * Robolectric never idles it on its own. Called inside every wait loop.
+     * Runs one main-looper task per wait step so `viewModelScope` (Main)
+     * work drains: plain Robolectric never idles it on its own. Bounded by
+     * construction — unlike `idle()`, a repeating task cannot trap it.
      */
-    private fun idleMain() {
-        shadowOf(Looper.getMainLooper()).idle()
+    private fun pumpMain() {
+        runCatching { shadowOf(Looper.getMainLooper()).runOneTask() }
     }
 
     private fun <T> awaitState(flow: StateFlow<T>, timeoutMs: Long = 10_000, want: (T) -> Boolean): T {
         val deadline = System.currentTimeMillis() + timeoutMs
         var last: T = flow.value
         while (System.currentTimeMillis() < deadline) {
-            idleMain()
+            pumpMain()
             last = flow.value
             if (want(last)) return last
             Thread.sleep(25)
         }
-        idleMain()
+        pumpMain()
         return flow.value
     }
 
@@ -283,10 +291,10 @@ class ViewModelsSlice3Test {
         }
         val deadline = System.currentTimeMillis() + 10_000
         while (!called && System.currentTimeMillis() < deadline) {
-            idleMain()
+            pumpMain()
             Thread.sleep(25)
         }
-        idleMain()
+        pumpMain()
         assertTrue(called)
         assertTrue(vm.results.value.isEmpty())
     }
