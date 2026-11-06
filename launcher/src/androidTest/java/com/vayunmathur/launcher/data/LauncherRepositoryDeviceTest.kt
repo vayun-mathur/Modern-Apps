@@ -151,6 +151,36 @@ class LauncherRepositoryDeviceTest {
         clean()
     }
 
+    @Test fun regridRelocatesAcrossShapes() = runTest {
+        clean()
+        val r = repo()
+        val id = r.addToFirstVacantCell(spec, app(pkg = "com.example.g"))
+        // Narrower grid with fewer rows forces relocation and span clamping.
+        r.regrid(GridSpec(columns = 2, rows = 2, hotseatSlots = 2))
+        val got = r.get(id) ?: error("missing")
+        assertEquals(true, got.cellX < 2)
+        clean()
+    }
+
+    @Test fun reconcileCollapsesLonelyFolderChild() = runTest {
+        clean()
+        val r = repo()
+        val target = r.upsert(app(pkg = "com.example.t"))
+        val dragged = r.upsert(app(pkg = "com.example.d"))
+        val folderId = r.createFolder(target, dragged) ?: error("no folder")
+        // Both children vanish (uninstalled): reconcile deletes them, then
+        // sweeps the emptied folder.
+        r.reconcile(
+            installed = emptySet(),
+            unavailable = emptySet(),
+            boundWidgetIds = emptySet(),
+        )
+        assertNull(r.get(folderId))
+        assertNull(r.get(target))
+        assertNull(r.get(dragged))
+        clean()
+    }
+
     @Test fun resizeAndTitlePersist() = runTest {
         clean()
         val r = repo()
