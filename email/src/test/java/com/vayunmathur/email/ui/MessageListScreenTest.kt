@@ -39,7 +39,7 @@ class MessageListScreenTest {
         var clears = 0
         var bulk: Triple<String, List<Long>, Boolean>? = null
         var reads = mutableListOf<Triple<String, String, Boolean>>()
-        var deletes = mutableListOf<Triple<String, Long, Long>>()
+        var deletes = mutableListOf<Triple<String, String, Long>>()
         val refreshes = mutableListOf<android.content.Context>()
 
         override fun setSearchQuery(query: String) { queries.add(query) }
