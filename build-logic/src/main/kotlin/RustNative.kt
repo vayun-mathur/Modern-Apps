@@ -892,6 +892,11 @@ fun Project.wireRustHostLibsForUnitTests() {
                 ?.split(sep).orEmpty()
             val merged = (existing + refs.map { it.libDir }).distinct()
             systemProperty("java.library.path", merged.joinToString(sep))
+            // A JNI library can be bound to only one classloader per JVM. Plain JVM tests
+            // load it via the app classloader and Robolectric tests via its sandbox loader,
+            // so mixing both in one JVM fails with "already loaded in another classloader".
+            // One JVM per test class keeps each loader's System.loadLibrary isolated.
+            forkEvery = 1
         }
     }
 }
