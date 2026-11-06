@@ -50,15 +50,6 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
     private val _translationAvailable = MutableStateFlow(false)
     val translationAvailable: StateFlow<Boolean> = _translationAvailable.asStateFlow()
 
-    /**
-     * True once loading the engine has failed terminally (missing native
-     * library, no fp16 Vulkan device, corrupt weights) rather than merely not
-     * yet finished. The text screen shows a retryable error in that case
-     * instead of an endless "loading" spinner.
-     */
-    private val _translationLoadFailed = MutableStateFlow(false)
-    val translationLoadFailed: StateFlow<Boolean> = _translationLoadFailed.asStateFlow()
-
     /** Saved translations, favorites first then newest — for the history screen. */
     val history: StateFlow<List<TranslationRecord>> = historyRepo.history.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList(),
@@ -75,26 +66,7 @@ class TranslateViewModel(app: Application) : AndroidViewModel(app) {
             _targetLang.value = settings.target()
             _recentSourceLangs.value = settings.recentSources()
             _recentTargetLangs.value = settings.recentTargets()
-            refreshTranslatorState()
-        }
-    }
-
-    /** Re-read the engine state after init or a manual retry. */
-    private suspend fun refreshTranslatorState() {
-        _translationAvailable.value = translator.isAvailable()
-        _translationLoadFailed.value =
-            !_translationAvailable.value && (translator as? NllbTranslator)?.loadFailed() == true
-    }
-
-    /**
-     * Retry loading the translation engine after a terminal load failure.
-     * Clears the attempt latch so [refreshTranslatorState] gets a fresh answer.
-     */
-    fun retryTranslator() {
-        viewModelScope.launch {
-            (translator as? NllbTranslator)?.reset()
-            _translationLoadFailed.value = false
-            refreshTranslatorState()
+            _translationAvailable.value = translator.isAvailable()
         }
     }
 

@@ -3,8 +3,6 @@
     <string name="app_name">Translate</string>
     <string name="enter_text">Enter text</string>
     <string name="loading_translator">Loading translator…</string>
-    <string name="translation_failed_to_load">Couldn’t load the translator</string>
-    <string name="translation_failed_to_load_hint">The model downloaded, but this device couldn’t start it. Try again, or reinstall the model from storage settings.</string>
     <string name="copy">Copy</string>
     <string name="speak">Speak</string>
     <string name="translation">Translation</string>

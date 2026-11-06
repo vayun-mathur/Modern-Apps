@@ -35,8 +35,6 @@ data class TextTranslateUiState(
     val targetLang: String = "es",
     /** False only while the NLLB engine is still loading; the model itself is pre-installed. */
     val translationAvailable: Boolean = false,
-    /** True once loading the engine has failed terminally; pairs with a Retry action. */
-    val translationLoadFailed: Boolean = false,
     val inputText: String = "",
     val outputText: String = "",
     val isTranslating: Boolean = false,
@@ -60,9 +58,6 @@ interface TextTranslateActions {
 
     /** The mic FAB: start listening, stop, or — while transcribing — nothing. */
     fun toggleMic() {}
-
-    /** Retry loading the translation engine after a terminal load failure. */
-    fun retryTranslator() {}
 
     fun copyOutput() {}
     fun speakOutput() {}
