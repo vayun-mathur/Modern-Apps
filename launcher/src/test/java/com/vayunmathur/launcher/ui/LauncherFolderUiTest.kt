@@ -134,7 +134,7 @@ class LauncherFolderUiTest {
                 origin = ContainerRef.Folder(10L),
                 sourceBounds = androidx.compose.ui.geometry.Rect.Zero,
             ),
-            androidx.compose.ui.geometry.Offset(50f, 300f),
+            androidx.compose.ui.geometry.Offset(400f, 300f),
         )
         rule.waitForIdle()
         assertEquals(true, controller.drop())
