@@ -128,6 +128,8 @@ class MainActivityNavigationSlice3Test {
             fun walk(node: androidx.compose.ui.semantics.SemanticsNode) {
                 val texts = node.config.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.Text) { emptyList() }
                 texts.mapTo(out) { it.text }
+                val cds = node.config.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) { emptyList() }
+                cds.mapTo(out) { it }
                 for (child in node.children) walk(child)
             }
             walk(root.semanticsOwner.rootSemanticsNode)
@@ -162,10 +164,15 @@ class MainActivityNavigationSlice3Test {
     fun `activity content reaches the map with search and settings`() {
         val texts = activitySemanticsTexts()
         // The Navigation host renders the map chrome inside Content(): the
-        // search bar and the settings overflow land in the semantics tree.
+        // search bar and the settings overflow land in the semantics tree
+        // (overflow icon via its content description).
         kotlin.test.assertTrue(
             texts.any { it.contains("Search") },
             "map search missing from activity content: $texts",
+        )
+        kotlin.test.assertTrue(
+            texts.any { it == context.getString(com.vayunmathur.library.ui.R.string.settings) },
+            "settings overflow missing from activity content: $texts",
         )
     }
 }
