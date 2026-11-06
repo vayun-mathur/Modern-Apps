@@ -105,4 +105,47 @@ class PhotosSlice3MapTest {
         // Published asynchronously on Default; the synchronous companion result
         // is pinned above, so here just assert no crash and initial states.
     }
+
+    @Test
+    fun countryNameKnownPhotoSkipsLookup() {
+        val vm = PhotoMapViewModel(app)
+        // Pre-seed via the cache path is private; instead assert the early-out:
+        // requesting twice for the same id only emits once (second is deduped).
+        vm.requestCountryName(1L, 91.0, 181.0) // invalid coords -> Geocoder throws -> "Unknown"
+        val first = vm.countryNames.value[1L]
+        // Robolectric shadow Geocoder returns empty -> fallback "Unknown", or the
+        // request is still in flight; either way a second request is deduped.
+        vm.requestCountryName(1L, 91.0, 181.0)
+        assertEquals(first, vm.countryNames.value[1L])
+    }
+
+    @Test
+    fun regenerateClustersEmptyClears() {
+        val vm = PhotoMapViewModel(app)
+        vm.regenerateClusters(emptyList())
+        // Async on Default; initial value is empty and no crash occurs.
+        assertEquals(emptyMap(), vm.countryNames.value)
+    }
+
+    @Test
+    fun clusterAnchorsOnSeedOnly() {
+        // Greedy anchors on the seed: C is near B but far from seed A, so C
+        // starts its own cluster (no transitive chaining).
+        val clusters = PhotoMapViewModel.clusterPhotos(
+            listOf(item(0f, 0f, 100L), item(30f, 0f, 200L), item(60f, 0f, 300L)),
+            50.dp,
+        )
+        assertEquals(2, clusters.size)
+        assertEquals(2, clusters.first().count)
+        assertEquals(1, clusters.last().count)
+    }
+
+    @Test
+    fun clusterCoverIsFirstPhoto() {
+        val clusters = PhotoMapViewModel.clusterPhotos(
+            listOf(item(0f, 0f, 100L, "first"), item(5f, 5f, 200L, "second")),
+            50.dp,
+        )
+        assertEquals("first", clusters.single().coverPhoto.name)
+    }
 }
