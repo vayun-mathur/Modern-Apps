@@ -29,9 +29,10 @@ internal fun OdfParser.parseHeading(
     outlineCounters: IntArray,
 ) {
     val level = getAttr(parser, "outline-level")?.toIntOrNull() ?: 1
-    val collected = collectHeadingInline(parser, styles, images, footnotes, objectContents)
-    val resolved = resolveStyle(getAttr(parser, "style-name"), styles)
+    val styleName = getAttr(parser, "style-name")
+    val resolved = resolveStyle(styleName, styles)
     if (resolved.breakBefore == "page") content.add(OdfContentBlock.PageBreak)
+    val collected = collectHeadingInline(parser, styles, images, footnotes, objectContents)
     val para = buildHeadingPara(
         level, collected.spans, resolved, listDepth, listStyleStack,
         listItemCounter, outlineStyle, outlineCounters)

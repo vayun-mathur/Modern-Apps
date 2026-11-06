@@ -27,7 +27,8 @@ internal fun OdfParser.parseBodyParagraph(
     listTypeStack: MutableList<ListType>,
     pendingListItemChecked: Boolean,
 ) {
-    val resolved = resolveStyle(getAttr(parser, "style-name"), styles)
+    val styleName = getAttr(parser, "style-name")
+    val resolved = resolveStyle(styleName, styles)
     if (resolved.breakBefore == "page") content.add(OdfContentBlock.PageBreak)
     val collected = collectBodyInline(parser, styles, images, footnotes, objectContents)
     if (collected.spans.isNotEmpty() || listDepth > 0) {
