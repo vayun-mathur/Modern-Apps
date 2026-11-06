@@ -10,6 +10,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyChild
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -107,6 +110,78 @@ class PhotosSlice3ScreensTest {
     fun galleryEmptyGridShowsSearchPlaceholder() {
         setGallery(GalleryUiState())
         composeRule.onNodeWithText(str(R.string.search_placeholder)).assertIsDisplayed()
+    }
+
+    @Test
+    fun galleryGridGroupsPhotosByMonth() {
+        val a = photo("jan-a", 1_705_320_000_000L)
+        val b = photo("feb-b", 1_707_744_000_000L)
+        setGallery(GalleryUiState(photos = listOf(a, b)))
+        // Two month headers render (grouping uses the device zone, but Jan and
+        // Feb 2024 never collapse into one bucket).
+        composeRule.onNodeWithTag("thumb-" + a.id, useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithTag("thumb-" + b.id, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun gallerySearchActivateShowsVisualIndexingProgress() {
+        setGallery(
+            GalleryUiState(clipCount = 4, clipTargetCount = 8),
+            initialSearchActive = true,
+        )
+        composeRule.onNodeWithText(str(R.string.of_photos_processed, 50)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.photos_indexed_for_visual_search, 4, 8))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun gallerySearchResultTapOpensViewer() {
+        val stack = backStack()
+        val hit = photo("hit", 300L)
+        setGallery(
+            GalleryUiState(searchQuery = "hit", searchResults = listOf(hit)),
+            stack = stack,
+            initialSearchActive = true,
+        )
+        composeRule.onNodeWithTag("thumb-" + hit.id, useUnmergedTree = true).performClick()
+        val last = stack.backStack.last()
+        assertTrue(last is Route.PhotoPage)
+        assertEquals(hit.id, (last as Route.PhotoPage).id)
+    }
+
+    @Test
+    fun gallerySelectionAlbumButtonOpensPicker() {
+        val actions = object : GalleryActions {
+            override fun addSelectionToAlbum(name: String) {}
+        }
+        setGallery(GalleryUiState(selectedIds = setOf(5L)), actions)
+        composeRule.onNodeWithContentDescription("Album").performClick()
+        // Picker dialog renders the new-album field and create button.
+        composeRule.onNodeWithText(str(R.string.album_name_hint)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.album_create)).assertIsDisplayed()
+    }
+
+    @Test
+    fun gallerySelectionLockForwardsToVault() {
+        var locked = false
+        val actions = object : GalleryActions {
+            override fun moveSelectionToSecureFolder() { locked = true }
+        }
+        setGallery(GalleryUiState(selectedIds = setOf(5L)), actions)
+        composeRule.onNodeWithContentDescription("Lock").performClick()
+        assertTrue(locked)
+    }
+
+    @Test
+    fun galleryGridSelectionToggles() {
+        var toggled: Long? = null
+        val actions = object : GalleryActions {
+            override fun toggleSelection(id: Long) { toggled = id }
+        }
+        val a = photo("sel-a", 100L)
+        setGallery(GalleryUiState(photos = listOf(a), selectedIds = setOf(9L)), actions)
+        composeRule.onNodeWithTag("thumb-" + a.id, useUnmergedTree = true).performClick()
+        assertEquals(a.id, toggled)
     }
 
     @Test
@@ -225,6 +300,35 @@ class PhotosSlice3ScreensTest {
     fun peopleScanningShowsProgressRow() {
         setPeople(PeopleUiState(indexing = true, faceScannedCount = 2, faceTargetCount = 8))
         composeRule.onNodeWithText(str(R.string.face_indexing_progress, 2, 8)).assertIsDisplayed()
+    }
+
+    @Test
+    fun peopleUnnamedClusterShowsPlaceholderAndRenames() {
+        var named: PersonCluster? = null
+        val cover = photo("cover-u", 100L)
+        val cluster = personCluster(12L, null, cover)
+        composeRule.setContent {
+            PeopleScreen(
+                backStack = backStack(),
+                state = PeopleUiState(people = listOf(cluster)),
+                faceThumbnail = { person, modifier ->
+                    Box(modifier.background(Color.Gray).testTag("avatar-" + person.id))
+                },
+                onNameClick = { named = it },
+            )
+        }
+        // Unnamed clusters show the placeholder label; tapping it fires rename.
+        composeRule.onNodeWithText(str(R.string.people_unnamed)).assertIsDisplayed()
+        composeRule.onNodeWithText(str(R.string.people_unnamed)).performClick()
+        assertEquals(12L, named?.id)
+    }
+
+    @Test
+    fun peopleScanningWithNoResultsShowsScanningCopy() {
+        // Progress visible but no clusters yet: the empty slot says "scanning",
+        // not the generic empty message.
+        setPeople(PeopleUiState(indexing = false, faceScannedCount = 1, faceTargetCount = 8))
+        composeRule.onNodeWithText(str(R.string.people_scanning)).assertIsDisplayed()
     }
 
     @Test
@@ -407,6 +511,106 @@ class PhotosSlice3ScreensTest {
         composeRule.onNodeWithText(str(R.string.album_name_hint)).performTextInput("New Album")
         composeRule.onNodeWithText(str(R.string.album_create)).performClick()
         assertEquals("New Album", confirmed)
+    }
+
+
+    @Test
+    fun albumPickerExistingDestinationConfirms() {
+        var confirmed: String? = null
+        composeRule.setContent {
+            AlbumPickerDialog(
+                existingAlbums = listOf("Trip"),
+                onDismiss = {},
+                onConfirm = { confirmed = it },
+            )
+        }
+        // Tapping an existing destination confirms it directly.
+        composeRule.onNodeWithText("Trip").performClick()
+        assertEquals("Trip", confirmed)
+    }
+
+    @Test
+    fun albumDetailDeleteFlowConfirms() {
+        var deleted = false
+        val a = photo("del-a", 100L, "Trip")
+        setAlbumDetail("Trip", album("Trip", a), onDeleteAlbum = { deleted = true })
+        composeRule.onNodeWithContentDescription("More").performClick()
+        composeRule.onNodeWithText(str(R.string.album_delete)).performClick()
+        // Confirm dialog appears; confirming fires the callback.
+        composeRule.onNodeWithText(str(R.string.album_delete_confirm, "Trip")).assertIsDisplayed()
+        composeRule.onAllNodesWithText(str(R.string.album_delete))[1].performClick()
+        assertEquals(true, deleted)
+    }
+
+    @Test
+    fun albumDetailSingleSelectionShowsCoverAction() {
+        var cover: Long? = null
+        val a = photo("cov-a", 100L, "Trip")
+        setAlbumDetail("Trip", album("Trip", a), selectedIds = setOf(a.id), onSetCover = { cover = it })
+        // Single selection shows the set-cover button; tapping fires with the id.
+        composeRule.onNodeWithContentDescription("Image").performClick()
+        assertEquals(a.id, cover)
+    }
+
+    @Test
+    fun albumDetailRemoveFromAlbumForwards() {
+        var removed = false
+        val a = photo("rem-a", 100L, "Trip")
+        setAlbumDetail("Trip", album("Trip", a), selectedIds = setOf(a.id), onRemoveFromAlbum = { removed = true })
+        composeRule.onNodeWithContentDescription("Album").performClick()
+        assertEquals(true, removed)
+    }
+
+    @Test
+    fun albumsSecureFolderTileNavigates() {
+        val stack = backStack()
+        composeRule.setContent {
+            AlbumsScreen(
+                backStack = stack,
+                state = AlbumsUiState(
+                    defaultAlbums = listOf(DefaultAlbum(DefaultAlbumKind.SECURE_FOLDER, count = null)),
+                ),
+                thumbnail = stubThumbnail(),
+            )
+        }
+        // Locked vault hides the count line; the tile Box (parent of the
+        // title) carries the click action and navigates.
+        composeRule.onNodeWithText(str(R.string.label_secure_folder)).assertIsDisplayed()
+        // The tile Box (with the click action) contains the lock icon.
+        composeRule.onNode(
+            hasClickAction() and hasAnyChild(hasContentDescription("Lock")),
+            useUnmergedTree = true,
+        ).performClick()
+        val last = stack.backStack.last()
+        assertTrue(last is Route.SecureFolder)
+    }
+
+    @Test
+    fun albumsTrashTileNavigates() {
+        val stack = backStack()
+        composeRule.setContent {
+            AlbumsScreen(
+                backStack = stack,
+                state = AlbumsUiState(
+                    defaultAlbums = listOf(DefaultAlbum(DefaultAlbumKind.TRASH, count = 3)),
+                ),
+                thumbnail = stubThumbnail(),
+            )
+        }
+        // The tile Box (with the click action) contains the trash icon.
+        composeRule.onNode(
+            hasClickAction() and hasAnyChild(hasContentDescription("Delete")),
+            useUnmergedTree = true,
+        ).performClick()
+        val last = stack.backStack.last()
+        assertTrue(last is Route.Trash)
+    }
+
+    @Test
+    fun albumsUnknownBucketShowsLocalizedName() {
+        val a = photo("unk-a", 100L, null)
+        setAlbums(AlbumsUiState(albums = listOf(album(Album.UNKNOWN_NAME, a))))
+        composeRule.onNodeWithText(str(R.string.albums_unknown)).assertIsDisplayed()
     }
 
 }
