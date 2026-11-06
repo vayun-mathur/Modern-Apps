@@ -123,8 +123,7 @@ class MessageListScreenTest {
             actions,
         )
         composeRule.onNodeWithText("Subject 1").assertIsDisplayed()
-        composeRule.onNodeWithText("Unread", substring = true).performScrollTo()
-        composeRule.onNodeWithText("Unread", substring = true).performClick()
+        composeRule.onNodeWithText("Unread").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Subject 1").assertDoesNotExist()
         composeRule.onNodeWithText("Subject 2").assertIsDisplayed()
@@ -138,8 +137,7 @@ class MessageListScreenTest {
             ),
             FakeActions(),
         )
-        composeRule.onNodeWithText("Attachments", substring = true).performScrollTo()
-        composeRule.onNodeWithText("Attachments", substring = true).performClick()
+        composeRule.onNodeWithText("Attachments").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Subject 1").assertDoesNotExist()
         composeRule.onNodeWithText("Subject 2").assertIsDisplayed()
@@ -157,7 +155,7 @@ class MessageListScreenTest {
             actions,
         )
         // Selected count in the title bar proves the bulk mode is armed.
-        composeRule.onNodeWithText("1", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("1 selected").assertIsDisplayed()
     }
 
     @Test
