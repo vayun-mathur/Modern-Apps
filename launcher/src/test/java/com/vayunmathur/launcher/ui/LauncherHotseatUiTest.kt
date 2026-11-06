@@ -4,7 +4,9 @@ import android.content.ComponentName
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -114,6 +116,61 @@ class LauncherHotseatUiTest {
         rule.onAllNodes(hasClickAction())[0].performClick()
         assertEquals(9L, opened)
     }
+
+    @Test fun droppingAppCommitsMove() {
+        var move: Quad? = null
+        val controller = LauncherDragController()
+        rule.setContent {
+            CompositionLocalProvider(LocalLauncherDrag provides controller) {
+                Hotseat(
+                    state = state,
+                    actions = object : HomeActions {
+                        override fun commitMove(
+                            id: Long,
+                            container: ContainerRef,
+                            screen: Int,
+                            rect: CellRect,
+                            rank: Int,
+                            displaced: Map<Long, CellRect>,
+                        ) {
+                            move = Quad(id, container, screen, rect, rank)
+                        }
+                    },
+                    draggable = false,
+                    onOpenFolder = { _, _ -> },
+                )
+            }
+        }
+        rule.waitForIdle()
+        // Drop app 2 onto the fourth slot's centre: commitMove to Hotseat rank 3.
+        val at = rule.onAllNodes(hasClickAction())[3].fetchSemanticsNode().boundsInRoot.center
+        controller.start(
+            DragPayload(
+                itemId = 2L,
+                type = LauncherItemType.APPLICATION,
+                label = "maps",
+                key = ComponentKey(
+                    ComponentName("com.example.maps", "com.example.maps.Main"),
+                    0L,
+                ),
+                rect = CellRect(1, 0),
+                origin = ContainerRef.Desktop,
+                sourceBounds = androidx.compose.ui.geometry.Rect.Zero,
+            ),
+            at,
+        )
+        rule.waitForIdle()
+        assertEquals(true, controller.drop())
+        assertEquals(Quad(2L, ContainerRef.Hotseat, 0, CellRect(3, 0), 3), move)
+    }
+
+    private data class Quad(
+        val id: Long,
+        val container: ContainerRef,
+        val screen: Int,
+        val rect: CellRect,
+        val rank: Int,
+    )
 
     @Test fun emptyHotseatHasNoClickables() {
         show(state = state.copy(hotseat = emptyList()))
