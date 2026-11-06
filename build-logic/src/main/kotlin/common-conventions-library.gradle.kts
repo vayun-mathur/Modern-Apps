@@ -24,6 +24,13 @@ wireRustHostLibsForUnitTests()
 includeRobolectricClassesInCoverage()
 
 configure<com.android.build.api.dsl.LibraryExtension> {
+    // Same unit-test setup as common-conventions-app: merged manifest/resources for
+    // Robolectric, plus the shared robolectric.properties (default sdk).
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+    sourceSets.getByName("test").resources.srcDir(File(rootDir, "build-logic/shared-test-resources"))
+
     buildFeatures {
         compose = true
     }
@@ -115,7 +122,7 @@ dependencies {
     // Bare ComponentActivity for Robolectric Compose tests (createComposeRule needs the
     // manifest entry; the artifact ships only a manifest, no code). Scoped to `debug`,
     // the variant unit tests run against.
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
 
     // On-device test harness (src/androidTest; e.g. :library:map's renderer harness).
     // Same Espresso caveat as the app convention: the compose test artifact is present
