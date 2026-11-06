@@ -103,7 +103,7 @@ class LauncherRepositoryDeviceTest {
         r.addToFolder(folderId, extra)
         assertEquals(3, r.getFolderChildren(folderId).size)
         r.reorderInFolder(folderId, target, 1)
-        assertEquals(listOf(dragged, extra, target).map { r.get(it)?.id }, r.getFolderChildren(folderId).map { it.id })
+        assertEquals(listOf(dragged, target, extra), r.getFolderChildren(folderId).map { it.id })
         // Removing two children collapses the folder, promoting the survivor.
         r.remove(target)
         r.remove(dragged)
