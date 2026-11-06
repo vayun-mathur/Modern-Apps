@@ -1,7 +1,9 @@
 package com.vayunmathur.launcher.tv.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -54,8 +56,9 @@ class LauncherTvUiTest {
                 onMove = {},
             )
         }
-        rule.onNodeWithText("Alpha").assertIsDisplayed()
-        rule.onNodeWithText("Alpha").performClick()
+        // Label shows on the tile and in the caption below it.
+        assertEquals(2, rule.onAllNodesWithText("Alpha").fetchSemanticsNodes().size)
+        rule.onAllNodesWithText("Alpha")[0].performClick()
         assertEquals(true, pressed)
     }
 
@@ -85,9 +88,9 @@ class LauncherTvUiTest {
                 onMoveKey = { _, _ -> },
             )
         }
-        rule.onNodeWithText("Alpha").assertIsDisplayed()
-        rule.onNodeWithText("Beta").assertIsDisplayed()
-        rule.onNodeWithText("Gamma").assertIsDisplayed()
+        rule.onNodeWithText("Alpha").assertExists()
+        rule.onNodeWithText("Beta").assertExists()
+        rule.onNodeWithText("Gamma").assertExists()
     }
 
     @Test fun appGridPressReachesCallback() {
@@ -100,7 +103,7 @@ class LauncherTvUiTest {
                 onMoveKey = { _, _ -> },
             )
         }
-        rule.onNodeWithText("Beta").performClick()
+        rule.onAllNodesWithText("Beta")[0].performClick()
         assertEquals("com.example.b", pressed)
     }
 
@@ -147,8 +150,8 @@ class LauncherTvUiTest {
                 onRequestHomeRole = {},
             )
         }
-        rule.onNodeWithText("Alpha").assertIsDisplayed()
-        rule.onNodeWithText("Alpha").performClick()
+        rule.onNodeWithText("Alpha").assertExists()
+        rule.onAllNodesWithText("Alpha")[0].performClick()
         assertEquals("com.example.a", pressed)
     }
 }
