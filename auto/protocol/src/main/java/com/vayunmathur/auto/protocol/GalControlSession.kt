@@ -587,11 +587,13 @@ private class HandshakePump(
     ): Boolean? {
         when (engine.handshakeStatus) {
             HandshakeStatus.NEED_TASK -> {
-                // No task to run: wait for more inbound like the original
-                // `delegatedTask?.run() ?: return outgoing`. A ran task may
-                // have advanced the engine, so keep pumping.
-                engine.delegatedTask ?: return null
-                engine.delegatedTask?.run()
+                // A single getter call: run the task the engine handed us, if
+                // any. A ran task may have advanced the engine, so keep
+                // pumping. Fetching twice (check-then-run) drops handshake
+                // work when the getter hands out a fresh task per call and
+                // wedges the engine at NEED_TASK with no error.
+                val task = engine.delegatedTask ?: return null
+                task.run()
                 return true
             }
             HandshakeStatus.NEED_UNWRAP -> return pumpUnwrap()
