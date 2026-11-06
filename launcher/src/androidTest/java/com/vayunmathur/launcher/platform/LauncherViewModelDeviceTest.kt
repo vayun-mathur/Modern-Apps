@@ -59,7 +59,6 @@ class LauncherViewModelDeviceTest {
         assertEquals(1, got?.screen)
         assertEquals(2, got?.cellX)
         r.remove(id)
-        vm.onCleared()
     }
 
     @Test fun mergeIntoFolderCreatesFolder() = runTest {
@@ -80,7 +79,6 @@ class LauncherViewModelDeviceTest {
         }
         assertEquals(1, folders)
         r.getAll().forEach { r.remove(it.id) }
-        vm.onCleared()
     }
 
     @Test fun renamePersistsTitle() = runTest {
@@ -98,7 +96,6 @@ class LauncherViewModelDeviceTest {
         }
         assertEquals("Renamed", title)
         r.remove(id)
-        vm.onCleared()
     }
 
     @Test fun setColumnsRegrids() = runTest {
@@ -111,7 +108,6 @@ class LauncherViewModelDeviceTest {
         }
         assertEquals(5, vm.home.value.grid.columns)
         vm.setColumns(4)
-        vm.onCleared()
     }
 
     @Test fun removeDeletesRow() = runTest {
@@ -130,7 +126,6 @@ class LauncherViewModelDeviceTest {
             kotlinx.coroutines.delay(50)
         }
         assertEquals(true, gone)
-        vm.onCleared()
     }
 
     @Test fun hiddenLaunchShowsMessage() = runTest {
@@ -144,7 +139,6 @@ class LauncherViewModelDeviceTest {
         )
         vm.launch(item, 0, 0, 10, 10)
         assertNotNull(vm.home)
-        vm.onCleared()
     }
 
     @Test fun uninstallItemWithoutEntityIsNoOp() = runTest {
@@ -152,7 +146,6 @@ class LauncherViewModelDeviceTest {
         vm.uninstallItem(999999L)
         vm.openItemInfo(999999L)
         assertNull(vm.itemMenu.value.item)
-        vm.onCleared()
     }
 
     @Test fun settingsTogglesPropagate() = runTest {
@@ -168,6 +161,5 @@ class LauncherViewModelDeviceTest {
         vm.setDrawerListLayout(true)
         assertEquals(true, vm.settings.value.drawerListLayout)
         vm.setDrawerListLayout(false)
-        vm.onCleared()
     }
 }
