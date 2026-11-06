@@ -1,7 +1,6 @@
 package com.vayunmathur.launcher.tv.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -88,9 +87,9 @@ class LauncherTvUiTest {
                 onMoveKey = { _, _ -> },
             )
         }
-        rule.onNodeWithText("Alpha").assertExists()
-        rule.onNodeWithText("Beta").assertExists()
-        rule.onNodeWithText("Gamma").assertExists()
+        assertEquals(2, rule.onAllNodesWithText("Alpha").fetchSemanticsNodes().size)
+        assertEquals(2, rule.onAllNodesWithText("Beta").fetchSemanticsNodes().size)
+        assertEquals(2, rule.onAllNodesWithText("Gamma").fetchSemanticsNodes().size)
     }
 
     @Test fun appGridPressReachesCallback() {
@@ -150,7 +149,7 @@ class LauncherTvUiTest {
                 onRequestHomeRole = {},
             )
         }
-        rule.onNodeWithText("Alpha").assertExists()
+        assertEquals(2, rule.onAllNodesWithText("Alpha").fetchSemanticsNodes().size)
         rule.onAllNodesWithText("Alpha")[0].performClick()
         assertEquals("com.example.a", pressed)
     }
