@@ -9,6 +9,7 @@ import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
 import com.vayunmathur.maps.data.ThemeMode
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -303,13 +304,23 @@ class ViewModelsSlice3Test {
     @Test
     fun `recordRecent and clearRecents round-trip through the store`() {
         val vm = MapsSearchViewModel(app)
-        vm.recordRecent("  pizza  ")
-        awaitState(vm.recents) { it.contains("pizza") }
-        vm.recordRecent("   ")
-        Thread.sleep(200)
-        assertEquals(listOf("pizza"), vm.recents.value)
-        vm.clearRecents()
-        awaitEquals(vm.recents, emptyList())
+        // `recents` shares WhileSubscribed: without a collector the sharing
+        // never starts and the value freezes at its initial. A background
+        // collector keeps it alive; pumpMain() drains the Main-side updates.
+        val keeper = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
+            .launch { vm.recents.collect {} }
+        try {
+            vm.recordRecent("  pizza  ")
+            awaitState(vm.recents) { it.contains("pizza") }
+            assertEquals(listOf("pizza"), vm.recents.value)
+            vm.recordRecent("   ")
+            Thread.sleep(200)
+            assertEquals(listOf("pizza"), vm.recents.value)
+            vm.clearRecents()
+            awaitEquals(vm.recents, emptyList())
+        } finally {
+            keeper.cancel()
+        }
     }
 
     // --- MapSettingsViewModel ---
