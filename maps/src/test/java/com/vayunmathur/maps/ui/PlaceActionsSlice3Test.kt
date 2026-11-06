@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -160,13 +161,22 @@ class PlaceActionsSlice3Test {
     fun `every iconed maneuver renders an image`() {
         val iconed = RouteService.API.Maneuver.entries.filter { it.iconContent() != null }
         assertTrue(iconed.size >= 15)
-        for (maneuver in iconed) {
-            val content = maneuver.iconContent() ?: continue
-            rule.setContent {
-                content(androidx.compose.ui.Modifier, androidx.compose.ui.graphics.Color.Black)
+        // One composition for all icons: a second setContent per maneuver is
+        // illegal, so the whole table renders in a single Column.
+        rule.setContent {
+            androidx.compose.foundation.layout.Column {
+                for (maneuver in iconed) {
+                    maneuver.iconContent()?.invoke(
+                        androidx.compose.ui.Modifier,
+                        androidx.compose.ui.graphics.Color.Black,
+                    )
+                }
             }
-            rule.waitForIdle()
         }
+        rule.waitForIdle()
+        // Every branch above resolved (including the CLOCK/BOOK drawable
+        // loads) and composed into a live tree.
+        rule.onRoot().assertExists()
     }
 
     @Test
