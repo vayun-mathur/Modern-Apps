@@ -86,8 +86,6 @@ class LauncherWorkspaceUiTest {
                     onWidgetDropped = {},
                     widgetView = { _: Int -> null },
                     updateWidgetSize = { _, _, _ -> },
-                    widgetView = { _: Int -> null },
-                    updateWidgetSize = { _, _, _ -> },
                 )
             }
         }
