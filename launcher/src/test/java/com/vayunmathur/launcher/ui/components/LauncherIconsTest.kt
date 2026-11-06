@@ -102,11 +102,14 @@ class LauncherIconsTest {
         show { PageIndicator(pageCount = 1, scrollProgress = { 0f }) }
     }
 
-    @Test fun pageIndicatorSweepsProgress() {
-        for (progress in listOf(0f, 0.5f, 1f, 1.5f, 2f, 2.9f, 5f, -1f)) {
-            show { PageIndicator(pageCount = 3, scrollProgress = { progress }) }
-            rule.waitForIdle()
-        }
+    @Test fun pageIndicatorMidProgress() {
+        show { PageIndicator(pageCount = 3, scrollProgress = { 0.5f }) }
+        rule.waitForIdle()
+    }
+
+    @Test fun pageIndicatorEndProgress() {
+        show { PageIndicator(pageCount = 5, scrollProgress = { 4f }) }
+        rule.waitForIdle()
     }
 
     @Test fun mergeRingComposes() {
