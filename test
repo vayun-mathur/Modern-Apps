@@ -2,7 +2,7 @@
 # Unified test runner: rust tests + unit tests + instrumented tests, with coverage.
 #
 # Usage:
-#   ./test [--rust-only|--unit-only|--instrumented-only] [--no-coverage] [--device S] [--dry-run] [--help|-h] <module> [module...]
+#   ./test [--rust-only|--unit-only|--instrumented-only] [--no-coverage] [--device S] [--emulator] [--dry-run] [--help|-h] <module> [module...]
 #   ./test all [flags]                       # every app + library convention module
 #   ./test games/voxels maps                 # multi-module, minimal gradlew invocations
 #   ./test voxels                             # shorthand -> games:voxels (same as ./check)
@@ -11,7 +11,8 @@
 #   ./test --instrumented-only calculator     # only the instrumented phase
 #   ./test --no-coverage calculator           # skip coverage, plain test tasks
 #   ./test --device 9 calculator              # Pixel 9 by model (8 = Pixel 8)
-#   ./test --device SERIAL calculator         # explicit device serial
+#   ./test --device SERIAL calculator         # explicit device serial (physical or emulator)
+#   ./test --emulator calculator              # boot/use the Medium_Phone emulator (this is the default)
 #   ./test --dry-run calculator               # prints what would run without executing
 #
 # Module notation mirrors ./check: slash == colon, leading/trailing slashes and
@@ -25,24 +26,37 @@
 #     workspace crates (--workspace when 'all', else -p flags for in-scope
 #     crates) plus one cargo llvm-cov per standalone dir. --no-coverage runs
 #     plain `cargo test --locked` equivalents instead.
-#   Unit: app modules -> :mod:createDevUnitTestCoverageReport, library modules
-#     -> :mod:createDebugUnitTestCoverageReport (single gradlew invocation with
-#     --continue; app vs library decided by grepping the module build.gradle.kts
-#     for common-conventions-app, like check's all_module_dirs). --no-coverage
+#   Unit: app modules -> :mod:createMergedCoverageReport (which runs
+#     :mod:testDevUnitTest first), library modules -> the same merged task for the
+#     debug variant (runs :mod:testDebugUnitTest first); single gradlew invocation
+#     with --continue; app vs library decided by grepping the module build.gradle.kts
+#     for common-conventions-app, like check's all_module_dirs. --no-coverage
 #     -> :mod:testDevUnitTest / :mod:testDebugUnitTest. Afterwards prints
-#     per-module INSTRUCTION covered/missed from
-#     build/reports/coverage/test/*/report.xml plus a TOTAL line.
+#     per-module INSTRUCTION covered/missed/percent from the MERGED report
+#     build/reports/coverage/merged/report.xml (falling back to the unit-only
+#     build/reports/coverage/test/*/report.xml when no merged report exists) plus
+#     a TOTAL line. Percentages come from the report-level counter, which is the
+#     LAST <counter type="INSTRUCTION"> in JaCoCo XML.
 #   Instrumented: scope = in-scope modules having any *.kt under src/androidTest.
-#     Per-module assemble via one gradlew invocation
-#     (:mod:assembleDev :mod:assembleDevAndroidTest, --continue), then per module
-#     session-install the app APK (./install logic incl. versionCodeOverride and
-#     .idsig staging; never plain adb install for the app APK), plain
+#     Apps assemble :mod:assembleDev :mod:assembleDevAndroidTest, libraries
+#     :mod:assembleDebug :mod:assembleDebugAndroidTest (single gradlew invocation
+#     with --continue), then per module: apps session-install the app APK (./install
+#     logic incl. versionCodeOverride and .idsig staging; never plain adb install
+#     for the app APK), libraries skip straight to the test APK; plain
 #     `adb install -r` for the test APK, `am instrument` the runner, and with
-#     coverage pull /data/data/<pkg>/files/coverage.ec via run-as.
+#     coverage pull /data/data/<pkg>/files/coverage.ec via run-as into
+#     build/outputs/coverage-manual/ (consumed by the merged report on the next run).
 #
-# Device: --device accepts a serial or 8|9 (Pixel 8 / Pixel 9 by model, mirroring
-#   ./install); default is the first non-emulator device. No device connected is
-#   a hard error when instrumented tests are in scope (unless --dry-run).
+# Device: without --device, instrumented tests ALWAYS run on the Medium_Phone
+#   emulator (SDK $ANDROID_SDK_ROOT or /Users/vayun/devmate-android-toolchain/android-sdk),
+#   booted headless (-no-window -no-audio -no-boot-anim) when not already running;
+#   a physical device is never used unless --device names it explicitly. --device
+#   accepts a serial or 8|9 (Pixel 8 / Pixel 9 by model, mirroring ./install).
+#   --emulator is accepted for explicitness and means the same as the default.
+# Concurrency: the unit phase is lock-free, but emulator boot plus the whole
+#   install+instrument loop run under a mkdir-based lock in $TMPDIR, so concurrent
+#   `./test --instrumented-only <different modules>` runs serialize instead of
+#   colliding on the single emulator.
 # Big-heap escalation when 'all' is expanded: same flags as install-all
 #   (-Dorg.gradle.jvmargs=-Xmx46144m ... --max-workers=32).
 set -euo pipefail
@@ -89,15 +103,16 @@ module_application_id() {
     "$ROOT/$(echo "$1" | tr ':' '/')/build.gradle.kts" | head -1
 }
 
-# APK built for a module; output-metadata.json names the file authoritatively
-# (nested modules like cast:tv build tv-dev.apk, not cast-tv-dev.apk).
+# APK built for an app module; output-metadata.json names the file authoritatively
+# (nested modules like cast:tv build tv-dev.apk, not cast-tv-dev.apk). VARIANT is
+# dev (apps) or debug (libraries).
 built_app_apk() {
-  local mod="$1" fs_path out_dir meta base_name file_name
+  local mod="$1" variant="$2" fs_path out_dir meta base_name file_name
   fs_path="$(echo "$mod" | tr ':' '/')"
-  out_dir="$ROOT/$fs_path/build/outputs/apk/dev"
+  out_dir="$ROOT/$fs_path/build/outputs/apk/$variant"
   meta="$out_dir/output-metadata.json"
   base_name="${mod##*:}"
-  file_name="$base_name-dev.apk"
+  file_name="$base_name-$variant.apk"
   if [[ -f "$meta" ]]; then
     local found
     found="$(grep -oE '"outputFile"[[:space:]]*:[[:space:]]*"[^"]+"' "$meta" | head -1 | sed -E 's/.*\"([^\"]+)\"$/\1/')"
@@ -111,12 +126,12 @@ built_app_apk() {
 }
 
 built_test_apk() {
-  local mod="$1" fs_path out_dir meta base_name file_name
+  local mod="$1" variant="$2" fs_path out_dir meta base_name file_name
   fs_path="$(echo "$mod" | tr ':' '/')"
-  out_dir="$ROOT/$fs_path/build/outputs/apk/androidTest/dev"
+  out_dir="$ROOT/$fs_path/build/outputs/apk/androidTest/$variant"
   meta="$out_dir/output-metadata.json"
   base_name="${mod##*:}"
-  file_name="$base_name-dev-androidTest.apk"
+  file_name="$base_name-$variant-androidTest.apk"
   if [[ -f "$meta" ]]; then
     local found
     found="$(grep -oE '"outputFile"[[:space:]]*:[[:space:]]*"[^"]+"' "$meta" | head -1 | sed -E 's/.*\"([^\"]+)\"$/\1/')"
@@ -127,6 +142,16 @@ built_test_apk() {
     return 0
   fi
   return 1
+}
+
+# Test-package id for a library module: the namespace is computed in
+# common-conventions-library (com.vayunmathur + dotted path, dashes stripped) and the
+# androidTest APK appends .test.
+library_test_package() {
+  local dotted
+  dotted="$(echo "$1" | tr '/' '.')"
+  dotted="$(echo "$dotted" | tr -d '-')"
+  echo "com.vayunmathur.$dotted.test"
 }
 
 # on-device versionCode for a package, empty when not installed.
@@ -244,6 +269,8 @@ while [[ $idx -lt ${#ARGS[@]} ]]; do
       idx=$((idx + 1)); continue ;;
     --no-coverage)
       NO_COV=1; idx=$((idx + 1)); continue ;;
+    --emulator)
+      USE_EMULATOR=1; idx=$((idx + 1)); continue ;;
     --dry-run)
       DRY_RUN=1; idx=$((idx + 1)); continue ;;
     --device=*)
@@ -320,17 +347,18 @@ if [[ $RUN_RUST -eq 1 ]]; then
   done
 fi
 
-# --- unit tasks: app -> Dev variant, library (or other) -> Debug variant ---
+# --- unit tasks: merged coverage report per module (runs the unit tests first);
+# app -> Dev variant, library (or other) -> Debug variant (decided inside the
+# convention plugin, so both spellings are the same task name) ---
 UNIT_TASKS=()
 if [[ $RUN_UNIT -eq 1 ]]; then
   for mod in "${MODS[@]}"; do
     gmod="$(echo "$mod" | tr '/' ':')"
-    if is_app_module "$mod"; then
-      if [[ $NO_COV -eq 1 ]]; then UNIT_TASKS+=(":$gmod:testDevUnitTest");
-      else UNIT_TASKS+=(":$gmod:createDevUnitTestCoverageReport"); fi
+    if [[ $NO_COV -eq 1 ]]; then
+      if is_app_module "$mod"; then UNIT_TASKS+=(":$gmod:testDevUnitTest");
+      else UNIT_TASKS+=(":$gmod:testDebugUnitTest"); fi
     else
-      if [[ $NO_COV -eq 1 ]]; then UNIT_TASKS+=(":$gmod:testDebugUnitTest");
-      else UNIT_TASKS+=(":$gmod:createDebugUnitTestCoverageReport"); fi
+      UNIT_TASKS+=(":$gmod:createMergedCoverageReport")
     fi
   done
 fi
@@ -354,7 +382,11 @@ INST_TASKS=()
 if [[ $RUN_INST -eq 1 && ${#INST_MODS[@]} -gt 0 ]]; then
   for mod in "${INST_MODS[@]}"; do
     gmod="$(echo "$mod" | tr '/' ':')"
-    INST_TASKS+=(":$gmod:assembleDev" ":$gmod:assembleDevAndroidTest")
+    if is_app_module "$mod"; then
+      INST_TASKS+=(":$gmod:assembleDev" ":$gmod:assembleDevAndroidTest")
+    else
+      INST_TASKS+=(":$gmod:assembleDebug" ":$gmod:assembleDebugAndroidTest")
+    fi
   done
 fi
 
@@ -365,22 +397,103 @@ if [[ $NO_COV -eq 1 ]]; then echo "Coverage: off (--no-coverage)"; else echo "Co
 echo ""
 
 # --- device selection (needed for the instrumented phase) ---
+# Without --device, instrumented tests ALWAYS run on the Medium_Phone emulator:
+# never pick a physical device implicitly. --device with a serial/8/9 still selects
+# a physical device (or a specific emulator) explicitly.
 ADB_BIN=""
+EMULATOR_BIN=""
+EMULATOR_SERIAL=""
+EMULATOR_AVD="${EMULATOR_AVD:-Medium_Phone}"
+# SDK location: env first, then the checked-in toolchain path, then PATH lookup.
+ANDROID_SDK_DIR=""
+for sdk_base in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "$HOME/Library/Android/sdk" "/Users/vayun/devmate-android-toolchain/android-sdk"; do
+  if [[ -n "$sdk_base" && -d "$sdk_base/platform-tools" ]]; then
+    ANDROID_SDK_DIR="$sdk_base"
+    break
+  fi
+done
+if [[ -n "$ANDROID_SDK_DIR" && -x "$ANDROID_SDK_DIR/platform-tools/adb" ]]; then
+  ADB_BIN="$ANDROID_SDK_DIR/platform-tools/adb"
+elif command -v adb >/dev/null 2>&1; then
+  ADB_BIN="adb"
+fi
+if [[ -n "$ANDROID_SDK_DIR" && -x "$ANDROID_SDK_DIR/emulator/emulator" ]]; then
+  EMULATOR_BIN="$ANDROID_SDK_DIR/emulator/emulator"
+elif command -v emulator >/dev/null 2>&1; then
+  EMULATOR_BIN="emulator"
+fi
+
+# mkdir-based emulator lock (macOS has no flock): serializes emulator boot and the
+# install+instrument loop across concurrent ./test runs. Lock-free unit phase is
+# unaffected. Stale locks (owner pid dead) are broken and retried.
+EMULATOR_LOCK_DIR="${TMPDIR:-/tmp}/modern-apps-test-emulator.lock"
+LOCK_HELD=0
+acquire_emulator_lock() {
+  local owner
+  while true; do
+    if mkdir "$EMULATOR_LOCK_DIR" 2>/dev/null; then
+      echo $$ > "$EMULATOR_LOCK_DIR/pid"
+      LOCK_HELD=1
+      return 0
+    fi
+    owner="$(cat "$EMULATOR_LOCK_DIR/pid" 2>/dev/null || echo "")"
+    if [[ -n "$owner" ]] && ! kill -0 "$owner" 2>/dev/null; then
+      echo "Warning: breaking stale emulator lock (owner pid $owner dead)."
+      rm -rf "$EMULATOR_LOCK_DIR"
+      continue
+    fi
+    sleep 2
+  done
+}
+release_emulator_lock() {
+  if [[ $LOCK_HELD -eq 1 ]]; then
+    rm -rf "$EMULATOR_LOCK_DIR"
+    LOCK_HELD=0
+  fi
+}
+
+# Boot the emulator headless if no emulator is online yet; sets EMULATOR_SERIAL.
+# The AVD is arm64, like the host, so no -PemulatorAbi is needed.
+ensure_emulator_running() {
+  [[ -n "$ADB_BIN" ]] || { echo "Error: adb not found; cannot drive the emulator." >&2; return 1; }
+  local serial
+  serial="$("$ADB_BIN" devices 2>/dev/null | awk '$2=="device" && $1 ~ /^emulator-/ {print $1; exit}')"
+  if [[ -n "$serial" ]]; then
+    EMULATOR_SERIAL="$serial"
+    echo "Emulator already running: $EMULATOR_SERIAL"
+    return 0
+  fi
+  [[ -n "$EMULATOR_BIN" ]] || { echo "Error: emulator binary not found (SDK dir: ${ANDROID_SDK_DIR:-<none>})." >&2; return 1; }
+  echo "Booting emulator AVD $EMULATOR_AVD headless..."
+  "$EMULATOR_BIN" -avd "$EMULATOR_AVD" -no-window -no-audio -no-boot-anim -read-only >/dev/null 2>&1 &
+  local waited=0
+  while [[ $waited -lt 300 ]]; do
+    sleep 5
+    waited=$((waited + 5))
+    serial="$("$ADB_BIN" devices 2>/dev/null | awk '$2=="device" && $1 ~ /^emulator-/ {print $1; exit}')"
+    [[ -z "$serial" ]] && continue
+    if [[ "$("$ADB_BIN" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+      EMULATOR_SERIAL="$serial"
+      echo "Emulator booted: $EMULATOR_SERIAL (${waited}s)"
+      return 0
+    fi
+  done
+  echo "Error: emulator $EMULATOR_AVD did not finish booting within 300s." >&2
+  return 1
+}
+
 NEED_DEVICE=0
 if [[ $RUN_INST -eq 1 && ${#INST_MODS[@]} -gt 0 ]]; then NEED_DEVICE=1; fi
 if [[ $NEED_DEVICE -eq 1 ]]; then
-  if command -v adb >/dev/null 2>&1; then
-    ADB_BIN="adb"
-  else
-    for adb_base in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "$HOME/Library/Android/sdk"; do
-      if [[ -n "$adb_base" && -x "$adb_base/platform-tools/adb" ]]; then
-        ADB_BIN="$adb_base/platform-tools/adb"
-        break
-      fi
-    done
-  fi
   TARGET_SERIAL=""
-  if [[ -n "$ADB_BIN" ]]; then
+  if [[ -n "$DEVICE_HINT" ]]; then
+    # Explicit device: serial match, or 8|9 Pixel-by-model (physical or emulator,
+    # mirroring ./install). Physical devices are only ever used this way.
+    if [[ -z "$ADB_BIN" ]]; then
+      echo "Error: adb not found; cannot select a target device." >&2
+      echo "Install Android platform-tools and put adb on PATH (or set ANDROID_HOME)." >&2
+      exit 1
+    fi
     if [[ "$DEVICE_HINT" == "8" || "$DEVICE_HINT" == "9" ]]; then
       # hint 8 = model Pixel_8; 9 = model Pixel_9* (covers Pixel_9 and Pixel_9_Pro_XL).
       while read -r dev_line; do
@@ -410,16 +523,6 @@ if [[ $NEED_DEVICE -eq 1 ]]; then
           break
         fi
       done < <("$ADB_BIN" devices -l 2>/dev/null)
-    else
-      while read -r dev_line; do
-        dev_serial="$(echo "$dev_line" | awk '{print $1}')"
-        dev_state="$(echo "$dev_line" | awk '{print $2}')"
-        [[ "$dev_state" == "device" ]] || continue
-        case "$dev_serial" in emulator*) continue;; esac
-        case "$dev_serial" in "List"*) continue;; esac
-        TARGET_SERIAL="$dev_serial"
-        break
-      done < <("$ADB_BIN" devices -l 2>/dev/null)
     fi
   fi
   if [[ -z "$ADB_BIN" ]]; then
@@ -434,24 +537,27 @@ if [[ $NEED_DEVICE -eq 1 ]]; then
     export ANDROID_SERIAL="$TARGET_SERIAL"
     if [[ "$DEVICE_HINT" == "8" || "$DEVICE_HINT" == "9" ]]; then
       echo "Target device: $ANDROID_SERIAL (Pixel $DEVICE_HINT)"
-    elif [[ -n "$DEVICE_HINT" ]]; then
-      echo "Target device: $ANDROID_SERIAL (explicit --device)"
     else
-      echo "Target device: $ANDROID_SERIAL (first connected device not starting with 'emulator')"
+      echo "Target device: $ANDROID_SERIAL (explicit --device)"
     fi
-  elif [[ -n "$DEVICE_HINT" ]]; then
-    echo "Error: no connected device matching '$DEVICE_HINT' found (check 'adb devices')." >&2
-    exit 1
   elif [[ $DRY_RUN -eq 1 ]]; then
-    echo "[DRY-RUN] Warning: no non-emulator device connected; ANDROID_SERIAL not set."
+    echo "[DRY-RUN] Would ensure the $EMULATOR_AVD emulator is running (boot headless if needed)."
+    TARGET_SERIAL="<emulator>"
   else
-    echo "Error: No non-emulator device connected." >&2
-    echo "Connect a physical device (check 'adb devices'); refusing to test on an emulator." >&2
-    exit 1
+    # Default path: emulator (never a physical device without --device). The lock
+    # serializes boot + install/instrument against concurrent ./test runs; the trap
+    # below releases it on exit. Lock-free unit phase already ran (or was skipped), so
+    # holding the lock from here to the end of the instrumented phase is correct.
+    acquire_emulator_lock
+    trap release_emulator_lock EXIT
+    ensure_emulator_running || exit 1
+    TARGET_SERIAL="$EMULATOR_SERIAL"
+    export ANDROID_SERIAL="$TARGET_SERIAL"
+    echo "Target device: $ANDROID_SERIAL (emulator $EMULATOR_AVD)"
   fi
 else
   TARGET_SERIAL="${ANDROID_SERIAL:-}"
-  if command -v adb >/dev/null 2>&1; then ADB_BIN="adb"; fi
+  if [[ -z "$ADB_BIN" ]] && command -v adb >/dev/null 2>&1; then ADB_BIN="adb"; fi
 fi
 
 # --- extra Gradle args: --continue so one broken module doesn't block the rest ---
@@ -543,7 +649,7 @@ if [[ $DRY_RUN -eq 1 ]]; then
   if [[ $RUN_UNIT -eq 1 ]]; then
     echo "[DRY-RUN] Would execute: $SCRIPT_DIR/gradlew ${UNIT_TASKS[*]}$gradle_args_str"
     for mod in "${MODS[@]}"; do
-      echo "[DRY-RUN] Would summarize unit coverage from $mod/build/reports/coverage/test/*/report.xml"
+      echo "[DRY-RUN] Would summarize merged coverage from $mod/build/reports/coverage/merged/report.xml (fall back to $mod/build/reports/coverage/test/*/report.xml)"
     done
   else
     echo "[DRY-RUN] Unit phase skipped."
@@ -551,18 +657,29 @@ if [[ $DRY_RUN -eq 1 ]]; then
   if [[ $RUN_INST -eq 1 ]]; then
     if [[ ${#INST_MODS[@]} -gt 0 ]]; then
       echo "[DRY-RUN] Would execute: $SCRIPT_DIR/gradlew ${INST_TASKS[*]}$gradle_args_str"
+      if [[ -z "$DEVICE_HINT" ]]; then
+        echo "[DRY-RUN] Would ensure the $EMULATOR_AVD emulator is running (boot headless if needed), under the emulator lock."
+      fi
       for mod in "${INST_MODS[@]}"; do
         colon_mod="$(echo "$mod" | tr '/' ':')"
-        pkg="$(module_application_id "$colon_mod")"
-        [[ -z "$pkg" ]] && pkg="<applicationId from $mod/build.gradle.kts>"
         base="${mod##*/}"
-        echo "[DRY-RUN] Would session-install $pkg from $mod/build/outputs/apk/dev/$base-dev.apk (or output-metadata.json outputFile)"
-        echo "[DRY-RUN] Would run: adb install -r $mod/build/outputs/apk/androidTest/dev/$base-dev-androidTest.apk"
-        if [[ $NO_COV -eq 1 ]]; then
-          echo "[DRY-RUN] Would run: adb -s \${ANDROID_SERIAL:-<device>} shell am instrument -w -r $pkg.test/androidx.test.runner.AndroidJUnitRunner"
+        if is_app_module "$mod"; then
+          variant="dev"
+          pkg="$(module_application_id "$colon_mod")"
+          [[ -z "$pkg" ]] && pkg="<applicationId from $mod/build.gradle.kts>"
+          echo "[DRY-RUN] Would session-install $pkg from $mod/build/outputs/apk/$variant/$base-$variant.apk (or output-metadata.json outputFile)"
+          test_pkg="$pkg.test"
         else
-          echo "[DRY-RUN] Would run: adb -s \${ANDROID_SERIAL:-<device>} shell am instrument -w -r -e coverage true -e coverageFilePath /data/data/$pkg/files/coverage.ec $pkg.test/androidx.test.runner.AndroidJUnitRunner"
-          echo "[DRY-RUN] Would pull: adb exec-out run-as $pkg cat files/coverage.ec > $mod/build/outputs/coverage-manual/$pkg.ec"
+          variant="debug"
+          test_pkg="$(library_test_package "$mod")"
+          echo "[DRY-RUN] Would install test APK only (library has no app APK): $mod/build/outputs/apk/androidTest/$variant/$base-$variant-androidTest.apk"
+        fi
+        echo "[DRY-RUN] Would run: adb install -r $mod/build/outputs/apk/androidTest/$variant/$base-$variant-androidTest.apk"
+        if [[ $NO_COV -eq 1 ]]; then
+          echo "[DRY-RUN] Would run: adb -s \${ANDROID_SERIAL:-<device>} shell am instrument -w -r $test_pkg/androidx.test.runner.AndroidJUnitRunner"
+        else
+          echo "[DRY-RUN] Would run: adb -s \${ANDROID_SERIAL:-<device>} shell am instrument -w -r -e coverage true -e coverageFilePath /data/data/$test_pkg/files/coverage.ec $test_pkg/androidx.test.runner.AndroidJUnitRunner"
+          echo "[DRY-RUN] Would pull: adb exec-out run-as $test_pkg cat files/coverage.ec > $mod/build/outputs/coverage-manual/$test_pkg.ec"
         fi
       done
     else
@@ -680,14 +797,19 @@ if [[ $RUN_UNIT -eq 1 ]]; then
   [[ $UNIT_RC -ne 0 ]] && echo "Warning: unit test tasks reported failures (exit $UNIT_RC)."
   if [[ $NO_COV -eq 0 ]]; then
     echo ""
-    echo "Unit coverage (INSTRUCTION counters):"
+    echo "Coverage (MERGED report when present, else unit-only; INSTRUCTION counters):"
     TOTAL_COV=0; TOTAL_MISS=0
     for mod in "${MODS[@]}"; do
-      xml=""
-      while IFS= read -r f; do
-        case "$f" in "" ) continue;; esac
-        xml="$f"; break
-      done < <(find "$ROOT/$mod/build/reports/coverage/test" -maxdepth 2 -name report.xml 2>/dev/null | sort)
+      xml=""; kind=""
+      if [[ -f "$ROOT/$mod/build/reports/coverage/merged/report.xml" ]]; then
+        xml="$ROOT/$mod/build/reports/coverage/merged/report.xml"
+        kind="merged"
+      else
+        while IFS= read -r f; do
+          case "$f" in "" ) continue;; esac
+          xml="$f"; kind="unit"; break
+        done < <(find "$ROOT/$mod/build/reports/coverage/test" -maxdepth 2 -name report.xml 2>/dev/null | sort)
+      fi
       if [[ -z "$xml" || ! -f "$xml" ]]; then
         echo "  $mod: no coverage data (no tests?)"
         continue
@@ -700,15 +822,23 @@ if [[ $RUN_UNIT -eq 1 ]]; then
         echo "  $mod: no coverage data (no tests?)"
         continue
       fi
-      echo "  $mod: covered=$covered missed=$missed"
+      total=$((covered + missed))
+      if [[ $total -gt 0 ]]; then pct="$(awk "BEGIN {printf \"%.1f\", 100*$covered/$total}")"; else pct="100.0"; fi
+      echo "  $mod [$kind]: $pct% (covered=$covered missed=$missed)"
       TOTAL_COV=$((TOTAL_COV + covered))
       TOTAL_MISS=$((TOTAL_MISS + missed))
     done
-    echo "  TOTAL: covered=$TOTAL_COV missed=$TOTAL_MISS"
+    grand=$((TOTAL_COV + TOTAL_MISS))
+    if [[ $grand -gt 0 ]]; then total_pct="$(awk "BEGIN {printf \"%.1f\", 100*$TOTAL_COV/$grand}")"; else total_pct="100.0"; fi
+    echo "  TOTAL: $total_pct% (covered=$TOTAL_COV missed=$TOTAL_MISS)"
   fi
 fi
 
 # --- instrumented phase: assemble, session-install, run, pull coverage ---
+# Runs under the emulator lock acquired during device selection (default path), so
+# concurrent ./test runs serialize their install+instrument loops. UD lock is NOT held
+# when --device selected an explicit device: several agents may share one physical
+# device only if they coordinate elsewhere (the lock is emulator-scoped by design).
 if [[ $RUN_INST -eq 1 && ${#INST_MODS[@]} -gt 0 ]]; then
   echo ""
   echo "Running: $SCRIPT_DIR/gradlew ${INST_TASKS[*]}$gradle_args_str"

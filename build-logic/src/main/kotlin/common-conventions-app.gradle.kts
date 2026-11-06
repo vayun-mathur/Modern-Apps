@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     id("com.android.application")
@@ -16,6 +17,11 @@ detekt {
 }
 
 val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
+
+// JVM unit tests load Rust cdylibs from build/rustHostLibs (see RustNative.kt):
+// every Test task builds + links the host libs of this module and each project
+// dep that registers one. Lazy — assemble/install never build them.
+wireRustHostLibsForUnitTests()
 
 /**
  * version.txt is read once per build (not once per module): the first
@@ -141,6 +147,17 @@ configure<com.android.build.api.dsl.ApplicationExtension> {
     androidResources {
         generateLocaleConfig = true
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
+    // Repo-wide Robolectric default SDK: build-logic/shared-test-resources holds a
+    // robolectric.properties with `sdk=<ROBOLECTRIC_DEFAULT_SDK>` (see TestCoverage.kt),
+    // merged by Robolectric as the base config for every test class without an explicit
+    // `@Config(sdk = ...)`. Per-module `testOptions.unitTests.isReturnDefaultValues`
+    // settings are untouched — that flag is never set here (it hides bugs).
+    sourceSets.getByName("test").resources.srcDir(File(rootDir, "build-logic/shared-test-resources"))
 
     lint {
         checkDependencies = true
@@ -389,17 +406,89 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
 
+    // JVM unit-test harness shared by every app (plain JUnit, Robolectric including
+    // Compose-under-Robolectric via createComposeRule, coroutines-test). The compose
+    // test artifact version comes from the BOM, like the main-source Compose deps.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Bare ComponentActivity for Robolectric Compose tests (createComposeRule needs the
+    // manifest entry; the artifact ships only a manifest, no code). Scoped to `dev`,
+    // the variant unit tests run against (testBuildType = "dev"). `devImplementation`
+    // has no static Kotlin-DSL accessor (the `dev` build type is repo-custom, unlike the
+    // standard `debug`/`release`), so this uses add() like any custom configuration.
+    add("devImplementation", libs.androidx.compose.ui.test.manifest)
+
     // Launch-no-crash tests (src/androidTest, run on-device via assemble +
     // `am instrument`). Wired once here so no app build file needs its own
     // block; modules without an androidTest source set compile nothing extra.
-    // Deliberately no compose ui-test: its Espresso idle-sync reflects on
-    // hidden InputManager APIs that no longer exist on current releases, so
-    // every compose-rule test dies before its first line. UiDevice polling
-    // covers Compose and non-Compose screens alike with no Espresso involved.
+    // NOTE on compose ui-test below: its Espresso idle-sync reflects on hidden
+    // InputManager APIs that no longer exist on current releases, so an on-device
+    // compose-rule test still dies before its first line. The artifact is present so
+    // androidTest sources resolve (and UiDevice polling, which covers Compose and
+    // non-Compose screens alike with no Espresso involved, needs no rule at all);
+    // prefer UiDevice polling on-device and createComposeRule only under Robolectric.
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// Merged coverage: a Gradle JacocoReport combining the unit-test .exec (Robolectric
+// included) with the on-device .ec files ./test pulls to build/outputs/coverage-manual.
+// AGP's own createDevUnitTestCoverageReport cannot take excludes (AGP-internal task
+// type), so this task applies MERGED_COVERAGE_EXCLUDES (see TestCoverage.kt) and writes
+// XML+HTML to build/reports/coverage/merged/. It depends on testDevUnitTest, so invoking
+// it runs the unit tests first; whichever of .exec/.ec exist are merged (fileTrees are
+// lenient about missing inputs). Skipped only when there is no execution data at all.
+// Configuration-cache safe: all inputs are lazy file collections, no Project capture.
+//
+// NOTE: this intentionally does NOT apply the Gradle `jacoco` plugin. AGP wires its own
+// JaCoCo agent onto unit-test tasks when enableUnitTestCoverage is on, and expects the
+// Test tasks to carry no Gradle JacocoTaskExtension (`testDevUnitTest` fails to even
+// materialize when one is present). The report below reuses AGP's own `jacocoAnt`
+// configuration instead of adding another one — looked up lazily at task-registration
+// time (AGP creates it when its JacocoPlugin applies, which can be after this script
+// runs), pinned by AGP to the same version family as its own coverage agent so
+// .exec/.ec files read cleanly.
+val jacocoAntClasspath: FileCollection = objects.fileCollection().from(
+    provider { configurations.getByName("jacocoAnt") },
+)
+
+tasks.register<JacocoReport>(MERGED_COVERAGE_TASK) {
+    group = "verification"
+    description = "Merged JaCoCo report for the dev variant: unit-test .exec plus " +
+        "androidTest .ec files (whichever exist), with generated-code excludes."
+    dependsOn("testDevUnitTest")
+    setJacocoClasspath(jacocoAntClasspath)
+    classDirectories.from(mergedCoverageClassDirs(APP_UNIT_TEST_VARIANT))
+    executionData.from(
+        files(layout.buildDirectory.dir("outputs/unit_test_code_coverage/devUnitTest"))
+            .asFileTree.matching { include("*.exec") },
+        files(layout.buildDirectory.dir("outputs/coverage-manual"))
+            .asFileTree.matching { include("*.ec") },
+    )
+    sourceDirectories.from(
+        files(layout.projectDirectory.dir("src/main/java")),
+        files(layout.projectDirectory.dir("src/main/kotlin")),
+    )
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file(MERGED_COVERAGE_XML_PATH))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir(MERGED_COVERAGE_HTML_PATH))
+        csv.required.set(false)
+    }
+    onlyIf("there is unit or instrumented execution data to report on") {
+        executionData.files.isNotEmpty()
+    }
 }
 
 fun DependencyHandlerScope.justSoItShowsAsUsedSomewhere() {

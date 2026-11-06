@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     id("com.android.library")
@@ -15,6 +16,11 @@ detekt {
 }
 
 val libs = the<org.gradle.accessors.dm.LibrariesForLibs>()
+
+// JVM unit tests load Rust cdylibs from build/rustHostLibs (see RustNative.kt):
+// every Test task builds + links the host libs of this module and each project
+// dep that registers one. Lazy — assemble/install never build them.
+wireRustHostLibsForUnitTests()
 
 configure<com.android.build.api.dsl.LibraryExtension> {
     buildFeatures {
@@ -95,6 +101,71 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
+
+    // JVM unit-test harness shared by every library (plain JUnit, Robolectric including
+    // Compose-under-Robolectric via createComposeRule, coroutines-test). The compose
+    // test artifact version comes from the BOM, like the main-source Compose deps.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Bare ComponentActivity for Robolectric Compose tests (createComposeRule needs the
+    // manifest entry; the artifact ships only a manifest, no code). Scoped to `debug`,
+    // the variant unit tests run against.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // On-device test harness (src/androidTest; e.g. :library:map's renderer harness).
+    // Same Espresso caveat as the app convention: the compose test artifact is present
+    // so sources resolve, but prefer UiDevice polling on-device and createComposeRule
+    // only under Robolectric.
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// Merged coverage: same shape as the app convention's task (see TestCoverage.kt), but for
+// the `debug` variant libraries test (testDebugUnitTest). Writes XML+HTML to
+// build/reports/coverage/merged/ with the shared generated-code excludes. Like the app
+// side, this deliberately avoids the Gradle `jacoco` plugin (AGP owns the Test-task
+// agent wiring) and reuses AGP's own `jacocoAnt` configuration for the report runtime,
+// looked up lazily (AGP creates it when its JacocoPlugin applies).
+val jacocoAntClasspath: FileCollection = objects.fileCollection().from(
+    provider { configurations.getByName("jacocoAnt") },
+)
+
+tasks.register<JacocoReport>(MERGED_COVERAGE_TASK) {
+    group = "verification"
+    description = "Merged JaCoCo report for the debug variant: unit-test .exec plus " +
+        "androidTest .ec files (whichever exist), with generated-code excludes."
+    dependsOn("testDebugUnitTest")
+    setJacocoClasspath(jacocoAntClasspath)
+    classDirectories.from(mergedCoverageClassDirs(LIBRARY_UNIT_TEST_VARIANT))
+    executionData.from(
+        files(layout.buildDirectory.dir("outputs/unit_test_code_coverage/debugUnitTest"))
+            .asFileTree.matching { include("*.exec") },
+        files(layout.buildDirectory.dir("outputs/coverage-manual"))
+            .asFileTree.matching { include("*.ec") },
+    )
+    sourceDirectories.from(
+        files(layout.projectDirectory.dir("src/main/java")),
+        files(layout.projectDirectory.dir("src/main/kotlin")),
+    )
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file(MERGED_COVERAGE_XML_PATH))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir(MERGED_COVERAGE_HTML_PATH))
+        csv.required.set(false)
+    }
+    onlyIf("there is unit or instrumented execution data to report on") {
+        executionData.files.isNotEmpty()
+    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

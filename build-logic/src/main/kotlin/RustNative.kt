@@ -1,6 +1,7 @@
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.Project
+import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
@@ -15,8 +16,10 @@ import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.testing.Test
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.withType
 import org.gradle.process.ExecOperations
 import java.io.File
 import java.util.Properties
@@ -119,6 +122,33 @@ private val KNOWN_RUST_ABIS = listOf(
     // Emulator-only; see [ABI_X86_64]. Never packaged by default.
     RustAbi(ABI_X86_64, "x86_64-linux-android", "x86_64-linux-android"),
 )
+
+/**
+ * Host target triple for JVM unit tests that load Rust cdylibs via
+ * `System.loadLibrary`. Mirrors the pattern in
+ * `:library:everysync-core` (which predates this helper): GNU triple on
+ * Windows (MinGW — matches the installed toolchain; MSVC would need VS Build
+ * Tools), Apple triples on macOS, GNU triples on Linux. Resolved with plain
+ * JVM system properties at configuration time so the configuration cache is
+ * unaffected (a String, never a task or Project, crosses into task actions).
+ */
+fun hostRustTriple(): String {
+    val os = System.getProperty("os.name").lowercase()
+    val arch = System.getProperty("os.arch").lowercase()
+    val isArm = arch.contains("aarch64") || arch.startsWith("arm")
+    return when {
+        os.contains("win") -> if (isArm) "aarch64-pc-windows-gnullvm" else "x86_64-pc-windows-gnu"
+        os.contains("mac") -> if (isArm) "aarch64-apple-darwin" else "x86_64-apple-darwin"
+        else -> if (isArm) "aarch64-unknown-linux-gnu" else "x86_64-unknown-linux-gnu"
+    }
+}
+
+/** `lib<crate>.dylib` / `.so` / `<crate>.dll` for [hostRustTriple]. */
+fun hostRustLibFileName(crate: String): String = when {
+    System.getProperty("os.name").lowercase().contains("win") -> "$crate.dll"
+    System.getProperty("os.name").lowercase().contains("mac") -> "lib$crate.dylib"
+    else -> "lib$crate.so"
+}
 
 /**
  * A `path = "..."` or workspace-inherited reference found in one manifest's
@@ -313,6 +343,13 @@ private fun Project.findRustPathDepDirs(crateDir: File): List<File> {
  *                   means the crate has no Vulkan shaders. Only supported with the
  *                   default [srcDir], since crates locate `build/spirv` relative to it.
  * @param glslcArgs  Extra glslc flags, e.g. `--target-env=vulkan1.1`, `-O`.
+ * @param hostTests  Also build this crate for the host (`cargoBuildHost_<crate>`,
+ *                   see below) so JVM unit tests can `System.loadLibrary` it.
+ *                   Set to false for crates that cannot compile for host
+ *                   (Android-only deps like `ndk`/`oboe`, Vulkan/GLES paths
+ *                   with no host fallback): no host task is registered and
+ *                   [wireRustHostLibsForUnitTests] skips the crate cleanly
+ *                   instead of breaking unit tests that never load it.
  */
 fun Project.rustNativeLib(
     crate: String,
@@ -322,6 +359,7 @@ fun Project.rustNativeLib(
     srcDir: String = "src/main/rust",
     shaders: List<String> = emptyList(),
     glslcArgs: List<String> = emptyList(),
+    hostTests: Boolean = true,
 ) {
     // Serialize cargoBuild across all Rust modules to avoid concurrent rustup installs.
     val rustLock = gradle.sharedServices.registerIfAbsent(
@@ -594,6 +632,150 @@ fun Project.rustNativeLib(
             dependsOn(cargoNdkBuild)
         }
     }
+    // Host cdylib for JVM unit tests (testDevUnitTest / testDevUnitTest):
+    // `cargo build --locked --target <hostTriple>` with the same profile,
+    // features, env (RUSTC pin, PATH, RUSTFLAGS remap, CARGO_INCREMENTAL=0),
+    // toolchain lock, inputs/outputs, and caching as the per-ABI tasks above —
+    // but WITHOUT any Android linker/NDK env (no CC/CXX/AR/SYSROOT, no
+    // per-target LINKER/RUSTFLAGS, no 16 KB page-size link arg: that flag
+    // would break the host link). The output (`lib<crate>.dylib/.so/.dll`)
+    // is installed into `build/rustHostLibs`, which nothing packages — APK/AAB
+    // assembly reads only `build/rustJniLibs`, so Android outputs are
+    // unchanged. Lazy by construction: nothing depends on this task except
+    // unit Test tasks (see wireRustHostLibsForUnitTests), so assemble/install
+    // never build it. With hostTests = false nothing is registered and
+    // dependents' tests never notice the crate.
+    val hostTriple: String = hostRustTriple()
+    val hostTaskName = "cargoBuildHost_$crate"
+    if (hostTests) {
+        val cargoBuildHost = tasks.register<Exec>(hostTaskName) {
+            usesService(rustLock)
+            description = "Builds lib$crate for the host (JVM unit tests)."
+            workingDir = file(srcDir)
+
+            val isWindowsHost = OperatingSystem.current().isWindows
+            val exeExt = if (isWindowsHost) ".exe" else ""
+            val hostLibName = hostRustLibFileName(crate)
+            // Per-crate target (may exist from older isolated builds) and workspace root target
+            // (current scheme since Cargo.toml workspace unified to root).
+            val perCrateHostOut = file("$srcDir/target/$hostTriple/$profile/$hostLibName")
+            val workspaceHostOut = rootProject.file("target/$hostTriple/$profile/$hostLibName")
+            val destHostLib = layout.buildDirectory.file("rustHostLibs/$hostLibName").get().asFile
+
+            // Same cacheable + relocatable shape as the per-ABI tasks: every
+            // input is RELATIVE-sensitive with a distinct (host-prefixed)
+            // property name, and host-toolchain facts the env doesn't cover
+            // are explicit input properties.
+            outputs.cacheIf("Rust cdylib host build is hermetic given the declared inputs") { true }
+
+            inputs.dir("$srcDir/src").withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("hostCrateSrc")
+            inputs.file("$srcDir/Cargo.toml").withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("hostCrateManifest")
+            file("$srcDir/build.rs").takeIf { it.isFile }?.let {
+                inputs.file("$srcDir/build.rs").withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("hostBuildRs")
+            }
+            // Same SPIR-V staleness hazard as the ABI tasks: the crate
+            // include_bytes!s build/spirv, so a shader edit must re-run cargo.
+            compileShaders?.let {
+                inputs.files(it).withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("hostSpirv")
+            }
+            // Same flatc-bindings staleness hazard as the ABI tasks (see above).
+            file("$srcDir/schema").takeIf { it.isDirectory }?.let {
+                inputs.dir("$srcDir/schema").withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("hostSchema")
+            }
+            inputs.files(fileTree(srcDir) { exclude("target/**") })
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("hostRustCrateTree")
+            for (depDir in pathDepDirs) {
+                val relDep = depDir.relativeTo(rootProject.projectDir)
+                inputs.files(rootProject.fileTree(relDep) { exclude("target/**") })
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+                    .withPropertyName("host_" + pathDepPropertyName(rootProject.projectDir, depDir))
+            }
+            // Root workspace unified (Cargo.toml + Cargo.lock + rust-toolchain.toml)
+            inputs.file(rootProject.file("Cargo.toml")).withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("hostWorkspaceManifest")
+            inputs.file(rootProject.file("Cargo.lock")).withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("hostWorkspaceLock")
+            inputs.file(rootProject.file("rust-toolchain.toml")).withPathSensitivity(PathSensitivity.RELATIVE)
+                .withPropertyName("hostRustToolchain")
+            // Only rust third_party crates – avoid pulling third_party:nanojson java outputs (was implicit dep failure).
+            // jni is a crates.io dependency now, so Cargo.lock above covers it.
+            inputs.dir(rootProject.file("third_party/om-file-format-sys/src"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("hostOmFfiSrc")
+            inputs.file(rootProject.file("third_party/om-file-format-sys/Cargo.toml"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("hostOmFfiManifest")
+            inputs.file(rootProject.file("third_party/om-file-format-sys/build.rs"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("hostOmFfiBuildRs")
+            inputs.dir(rootProject.file("third_party/om-file-format-sys/c"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("hostOmFfiC")
+            // BetoCore vendored crates (Apache-2.0) — incremental builds track these like om-file-format-sys.
+            inputs.dir(rootProject.file("third_party/betocore"))
+                .withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("hostBetocore")
+            // Host-toolchain facts that shape the lib bytes but live in env/workingDir
+            // (both @Internal on Exec), so they need an explicit input property.
+            // Deliberately NOT the NDK props: the host link must not see them.
+            inputs.property("hostTriple", hostTriple)
+            outputs.file(destHostLib)
+
+            val cargoHome = System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo"
+            val rustSrc = file(srcDir).absolutePath
+
+            val pathSep = if (isWindowsHost) ";" else ":"
+            environment("PATH", "$cargoBin$pathSep${System.getenv("PATH")}")
+            // Same non-rustup-rustc hazard as the ABI tasks: pin the shim.
+            environment("RUSTC", "$cargoBin/rustc$exeExt")
+            // Reproducible builds: same $HOME remap as the ABI tasks.
+            environment(
+                "RUSTFLAGS",
+                "--remap-path-prefix=$cargoHome=/cargo --remap-path-prefix=$rustSrc=/$remapLabel",
+            )
+            environment("CARGO_INCREMENTAL", "0")
+
+            commandLine(
+                "$cargoBin/cargo$exeExt",
+                "build",
+                "--locked",
+                "--profile",
+                profile,
+                "--target",
+                hostTriple,
+                *cargoFeatureArgs.toTypedArray(),
+            )
+
+            doLast {
+                destHostLib.parentFile.mkdirs()
+                val src = when {
+                    perCrateHostOut.exists() -> perCrateHostOut
+                    workspaceHostOut.exists() -> workspaceHostOut
+                    else -> error("Neither per-crate ${perCrateHostOut.path} nor workspace ${workspaceHostOut.path} exists for $crate")
+                }
+                src.copyTo(destHostLib, overwrite = true)
+            }
+        }
+        // Same historic-aggregate convenience as cargoNdkBuild for the default
+        // crate dir (`./gradlew :mod:cargoBuildHost`); per-crate task names stay
+        // unique for multi-crate modules (communicate's rust-mls second crate).
+        if (srcDir == "src/main/rust") {
+            tasks.register("cargoBuildHost") {
+                description = "Builds lib$crate for the host (JVM unit tests)."
+                dependsOn(cargoBuildHost)
+            }
+        }
+        // Recorded for wireRustHostLibsForUnitTests: plain strings only, so the
+        // configuration cache never sees a Project.
+        rustHostLibRefs().getOrPut(path) { mutableListOf() } += RustHostLibRef(
+            projectPath = path,
+            taskName = hostTaskName,
+            libDir = layout.buildDirectory.dir("rustHostLibs").get().asFile.absolutePath,
+        )
+    } else {
+        logger.warn("rustNativeLib($crate): hostTests = false — JVM unit tests cannot load this crate.")
+    }
     // Rust file-length gate: fails the build on any *.rs over
     // RUST_FILE_LENGTH_LIMIT lines, like the Kotlin FileLength rule (which
     // cannot see Rust). Configuration-cache compatible: plain path strings
@@ -629,5 +811,87 @@ fun Project.rustNativeLib(
     tasks.matching { it.name == "preBuild" }.configureEach {
         dependsOn(cargoNdkBuild)
         dependsOn(rustFileLength)
+    }
+}
+
+/**
+ * One host-testable crate registered by [rustNativeLib]: the owning project's
+ * path, the host build task name, and the `build/rustHostLibs` dir. Plain
+ * strings only, so the configuration cache never sees a Project.
+ */
+data class RustHostLibRef(
+    val projectPath: String,
+    val taskName: String,
+    val libDir: String,
+)
+
+/** Shared `projectPath -> host crates` registry (see [RustHostLibRef]). */
+private fun Project.rustHostLibRefs(): MutableMap<String, MutableList<RustHostLibRef>> {
+    val extra = rootProject.extensions.extraProperties
+    @Suppress("UNCHECKED_CAST")
+    return if (extra.has("rustHostLibRefs")) {
+        extra.get("rustHostLibRefs") as MutableMap<String, MutableList<RustHostLibRef>>
+    } else {
+        mutableMapOf<String, MutableList<RustHostLibRef>>().also { extra.set("rustHostLibRefs", it) }
+    }
+}
+
+/**
+ * Wires every unit [Test] task (testDevUnitTest, testDebugUnitTest, ...) so
+ * `System.loadLibrary` finds Rust cdylibs on the host JVM: each Test task
+ * depends on the host build tasks of this module and of every project it
+ * transitively depends on that registered one via [rustNativeLib]
+ * (e.g. `:office` also picks up `:library:e2ee-p2p`'s `e2ee_pqc`), and
+ * `java.library.path` gains each of their `build/rustHostLibs` dirs.
+ *
+ * The existing value is appended to, never clobbered: AGP's own
+ * `src/test/jniLibs` dirs (which AGP merges into the same property) survive
+ * regardless of ordering, because both sides merge. Crates opted out with
+ * `hostTests = false` register no task and are skipped cleanly.
+ *
+ * Laziness: the host tasks are reachable only through these `dependsOn`
+ * edges, so assemble/install never build them. Configuration-cache safe:
+ * `evaluationDependsOn` pulls transitive deps through evaluation before any
+ * state is read, and only plain strings (task paths, dir paths) cross into
+ * task configuration — never a Project.
+ */
+fun Project.wireRustHostLibsForUnitTests() {
+    // Deferred to afterEvaluate: the module's own `dependencies {}` block runs
+    // after the convention plugin, so the project-dep graph is only complete
+    // then. Task wiring uses configureEach, which covers Test tasks whether
+    // AGP already created them or creates them later.
+    afterEvaluate {
+        val self = this@wireRustHostLibsForUnitTests
+        val ordered = mutableListOf<String>()
+        val seen = HashSet<String>()
+        seen += self.path
+        val queue = ArrayDeque<String>()
+        fun enqueueDepsOf(p: Project) {
+            p.configurations.forEach { cfg ->
+                cfg.dependencies.filterIsInstance<ProjectDependency>().forEach { dep ->
+                    val depPath = dep.path
+                    if (seen.add(depPath)) {
+                        queue += depPath
+                        ordered += depPath
+                    }
+                }
+            }
+        }
+        enqueueDepsOf(self)
+        while (queue.isNotEmpty()) {
+            val depPath = queue.removeFirst()
+            self.evaluationDependsOn(depPath)
+            enqueueDepsOf(self.project(depPath))
+        }
+        val refs = (listOf(self.path) + ordered).flatMap { rustHostLibRefs()[it].orEmpty() }
+        if (refs.isEmpty()) return@afterEvaluate
+        self.tasks.withType<Test>().configureEach {
+            refs.forEach { ref -> dependsOn("${ref.projectPath}:${ref.taskName}") }
+            val sep = File.pathSeparator
+            val existing = (systemProperties["java.library.path"] as? String)
+                ?.split(sep).orEmpty()
+            val merged = (existing + refs.map { it.libDir }).distinct()
+            systemProperty("java.library.path", merged.joinToString(sep))
+        }
     }
 }
