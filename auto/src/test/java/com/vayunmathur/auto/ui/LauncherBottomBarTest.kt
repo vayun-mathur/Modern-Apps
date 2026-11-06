@@ -1,7 +1,10 @@
 package com.vayunmathur.auto.ui
 
 import android.content.ComponentName
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -26,8 +29,8 @@ class LauncherBottomBarTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private fun app(id: String, label: String) = DiscoveredApp(
-        component = ComponentName.unflattenFromString(id)!!,
+    private fun app(packageName: String, className: String, label: String) = DiscoveredApp(
+        component = ComponentName(packageName, className),
         label = label,
         icon = null,
         categories = emptySet(),
@@ -42,19 +45,33 @@ class LauncherBottomBarTest {
     fun `home and pin taps route to their callbacks`() {
         var homes = 0
         val pins = mutableListOf<String>()
+        // Real drawables so cells render artwork with the label as the
+        // content description (null icons draw the undescribed placeholder).
+        val icon = android.graphics.drawable.ColorDrawable(android.graphics.Color.BLUE)
+        val maps = app("com.example.maps", "com.example.maps.MapsService", "Maps").copy(icon = icon)
+        val music = app("com.example.music", "com.example.music.MusicService", "Music").copy(icon = icon)
         rule.setContent {
             LauncherBottomBar(
-                pinned = listOf(app("pkg/.Maps", "Maps"), app("pkg/.Music", "Music")),
-                selectedId = "pkg/.Maps",
+                pinned = listOf(maps, music),
+                selectedId = "com.example.maps/com.example.maps.MapsService",
                 onHome = { homes++ },
                 onPin = { pins += it },
             )
         }
-        rule.onNodeWithText("Music").performClick()
-        assertEquals(listOf("pkg/.Music"), pins)
+        // Dock cells render artwork only (the label rides the content
+        // description, merged onto the clickable cell), so taps target the
+        // clickable node carrying each description.
+        rule.onNode(hasClickAction().and(hasContentDescription("Music"))).performClick()
+        assertEquals(listOf("com.example.music/com.example.music.MusicService"), pins)
         // Tapping the already-open app still routes (it resets to its home).
-        rule.onNodeWithText("Maps").performClick()
-        assertEquals(listOf("pkg/.Maps"), pins.drop(1))
+        rule.onNode(hasClickAction().and(hasContentDescription("Maps"))).performClick()
+        assertEquals(
+            listOf(
+                "com.example.music/com.example.music.MusicService",
+                "com.example.maps/com.example.maps.MapsService",
+            ),
+            pins,
+        )
         assertEquals(0, homes)
     }
 

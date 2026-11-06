@@ -1,5 +1,6 @@
 package com.vayunmathur.auto.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -74,7 +75,7 @@ class PairingScreenTest {
     }
 
     @Test
-    fun `denied usb shows the retry action and connected shows the label`() {
+    fun `denied usb shows the retry action`() {
         var retries = 0
         idleScreen(
             usbState = UsbSessionState.PERMISSION_DENIED,
@@ -85,7 +86,10 @@ class PairingScreenTest {
         rule.onNodeWithText(appContext.getString(AutoR.string.pairing_usb_denied)).assertExists()
         rule.onNodeWithText(appContext.getString(AutoR.string.pairing_usb_retry)).performClick()
         assertEquals(1, retries)
+    }
 
+    @Test
+    fun `connected usb shows the label and wins the transport row`() {
         idleScreen(
             usbState = UsbSessionState.CONNECTED,
             usbLabel = "ACME Car",
@@ -98,7 +102,7 @@ class PairingScreenTest {
     }
 
     @Test
-    fun `wireless searching shows cancel and wireless ready shows the ready row`() {
+    fun `wireless searching shows cancel`() {
         var cancels = 0
         idleScreen(
             wirelessState = WirelessSessionState.NEGOTIATING_WIFI,
@@ -110,19 +114,25 @@ class PairingScreenTest {
         rule.onNodeWithText(appContext.getString(AutoR.string.pairing_wireless_cancel))
             .performClick()
         assertEquals(1, cancels)
+    }
 
+    @Test
+    fun `wireless ready shows the ready row`() {
         idleScreen(wirelessState = WirelessSessionState.WIFI_READY)
         rule.onNodeWithText(appContext.getString(AutoR.string.pairing_wireless_ready)).assertExists()
     }
 
     @Test
-    fun `idle wireless shows the search action and connected shows connected`() {
+    fun `idle wireless shows the search action`() {
         var searches = 0
         idleScreen(onWirelessSearch = { searches++ })
         rule.onNodeWithText(appContext.getString(AutoR.string.pairing_wireless_search))
             .performClick()
         assertEquals(1, searches)
+    }
 
+    @Test
+    fun `connected wireless shows connected`() {
         idleScreen(
             wirelessState = WirelessSessionState.CONNECTED,
             selected = TransportKind.WIRELESS,

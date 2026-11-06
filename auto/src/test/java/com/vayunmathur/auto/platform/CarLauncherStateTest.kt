@@ -32,16 +32,19 @@ class CarLauncherStateTest {
     }
 
     @Test
-    fun `now playing publishes and an idle snapshot hides`() {
+    fun `now playing publishes and hide clears a showable snapshot`() {
         val live = NowPlayingInfo(title = "Song", artist = "Band", playing = true, positionMs = 0L, durationMs = null)
         CarLauncherState.setNowPlaying(live)
         assertEquals(live, CarLauncherState.nowPlaying.value)
-        CarLauncherState.hideNowPlaying()
-        // Playing still shows: hide only clears idle snapshots.
-        assertEquals(live, CarLauncherState.nowPlaying.value)
-        CarLauncherState.setNowPlaying(live.copy(playing = false, title = null))
+        // Hide clears the card including a stale resume snapshot; the
+        // launcher re-shows on the next visible snapshot. An already-idle
+        // snapshot is retained (the card itself gates on shouldShowCard).
         CarLauncherState.hideNowPlaying()
         assertNull(CarLauncherState.nowPlaying.value)
+        val idle = live.copy(playing = false, title = null)
+        CarLauncherState.setNowPlaying(idle)
+        CarLauncherState.hideNowPlaying()
+        assertEquals(idle, CarLauncherState.nowPlaying.value)
     }
 
     @Test

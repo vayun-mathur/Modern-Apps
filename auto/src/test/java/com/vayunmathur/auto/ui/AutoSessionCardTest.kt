@@ -1,5 +1,6 @@
 package com.vayunmathur.auto.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -166,18 +167,38 @@ class AutoSessionCardTest {
     }
 
     @Test
+    fun `credential expiry renders expired`() {
+        rule.setContent { SessionCard(session = bareSnapshot().copy(credentialDaysLeft = -1L)) }
+        assertSingleText(appContext.getString(AutoR.string.session_credential_expired))
+    }
+
+    @Test
     fun `credential warnings escalate through the thresholds`() {
-        val expectations = mapOf(
-            -1L to appContext.getString(AutoR.string.session_credential_expired),
-            5L to appContext.resources.getQuantityString(AutoR.plurals.session_credential_critical, 5, 5L),
-            20L to appContext.resources.getQuantityString(AutoR.plurals.session_credential_urgent, 20, 20L),
-            60L to appContext.resources.getQuantityString(AutoR.plurals.session_credential_warning, 60, 60L),
-            200L to appContext.resources.getQuantityString(AutoR.plurals.session_credential_days, 200, 200L),
-        )
-        for ((days, expected) in expectations) {
-            rule.setContent { SessionCard(session = bareSnapshot().copy(credentialDaysLeft = days)) }
-            assertSingleText(expected)
-        }
+        credentialRenders(5L, appContext.resources.getQuantityString(AutoR.plurals.session_credential_critical, 5, 5L))
+    }
+
+    @Test
+    fun `credential urgent renders under twenty days`() {
+        credentialRenders(20L, appContext.resources.getQuantityString(AutoR.plurals.session_credential_urgent, 20, 20L))
+    }
+
+    @Test
+    fun `credential warning renders under sixty days`() {
+        credentialRenders(60L, appContext.resources.getQuantityString(AutoR.plurals.session_credential_warning, 60, 60L))
+    }
+
+    @Test
+    fun `healthy credentials render the plain day count`() {
+        credentialRenders(200L, appContext.resources.getQuantityString(AutoR.plurals.session_credential_days, 200, 200L))
+    }
+
+    /**
+     * One content per test: the rule hosts a single composition, so each
+     * threshold gets its own test rather than re-setting content in a loop.
+     */
+    private fun credentialRenders(days: Long, expected: String) {
+        rule.setContent { SessionCard(session = bareSnapshot().copy(credentialDaysLeft = days)) }
+        assertSingleText(expected)
     }
 
     @Test
