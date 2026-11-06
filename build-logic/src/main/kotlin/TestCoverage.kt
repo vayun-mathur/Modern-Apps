@@ -99,3 +99,20 @@ fun org.gradle.api.Project.mergedCoverageClassDirs(variant: String): org.gradle.
         MERGED_COVERAGE_EXCLUDES.forEach { exclude(it) }
     }
 }
+
+/**
+ * Robolectric defines classes in its sandbox loader without a code-source location, and
+ * JaCoCo skips such classes by default, so Robolectric-run code reported 0% coverage. AGP
+ * attaches Gradle's JacocoTaskExtension to unit Test tasks; flip it on there.
+ * `jdk.internal.*` must stay excluded or JaCoCo instruments JDK internals and the JVM crashes.
+ */
+fun org.gradle.api.Project.includeRobolectricClassesInCoverage() {
+    afterEvaluate {
+        tasks.withType(org.gradle.api.tasks.testing.Test::class.java).configureEach {
+            extensions.findByType(org.gradle.testing.jacoco.plugins.JacocoTaskExtension::class.java)?.apply {
+                isIncludeNoLocationClasses = true
+                excludes = (excludes.orEmpty() + "jdk.internal.*").distinct()
+            }
+        }
+    }
+}
