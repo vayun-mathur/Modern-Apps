@@ -104,6 +104,12 @@ class EuiccManagerService : EuiccService() {
         forceDeactivateSim: Boolean,
     ): Int {
         val code = subscription.encodedActivationCode ?: return RESULT_FIRST_USER
+        // RESULT_MUST_DEACTIVATE_SIM is a pre-download answer: the caller
+        // deactivates the active SIM and retries. Asking after the download
+        // would consume the order and then report that it cannot proceed.
+        if (requiresDeactivationBeforeDownload(switchAfterDownload, forceDeactivateSim, hasActiveProfile())) {
+            return RESULT_MUST_DEACTIVATE_SIM
+        }
         val downloaded = runCatching {
             val raw = channelManager.withIsdrChannel { EuiccNative.nativeDownloadProfile(code) }
             json.decodeFromString<DownloadOutcome>(raw)
@@ -111,11 +117,8 @@ class EuiccManagerService : EuiccService() {
         if (!downloaded.success) return RESULT_FIRST_USER
         // Honor switch-after-download when the caller asked for it; the LUI
         // flow leaves the profile disabled for the user to enable in Settings.
-        if (switchAfterDownload && !forceDeactivateSim && hasActiveProfile()) {
-            return RESULT_MUST_DEACTIVATE_SIM
-        }
-        if (switchAfterDownload) {
-            enableNewestProfile()
+        if (switchAfterDownload && !enableDownloadedProfile(downloaded.iccid)) {
+            return RESULT_FIRST_USER
         }
         return RESULT_OK
     }
@@ -150,15 +153,17 @@ class EuiccManagerService : EuiccService() {
     private fun hasActiveProfile(): Boolean =
         runCatching { loadProfiles() }.getOrNull()?.any { it.isEnabled } == true
 
-    /** Enables the most recently added profile (best-effort, for switch-after-download). */
-    private fun enableNewestProfile() {
-        runCatching {
-            channelManager.withIsdrChannel {
-                val profiles = EuiccNative.nativeGetProfiles()
-                    ?.let { json.decodeFromString<List<Profile>>(it) } ?: emptyList()
-                profiles.lastOrNull()?.let { EuiccNative.nativeEnableProfile(it.iccid) }
-            }
-        }
+    /**
+     * Enables exactly the profile the download just installed. The native
+     * download returns that profile's raw ICCID; guessing "the last profile
+     * in the list" could enable a different (e.g. test) profile instead,
+     * since GetProfilesInfo ordering is not an install-order contract.
+     */
+    private fun enableDownloadedProfile(iccid: String): Boolean {
+        if (iccid.isBlank()) return false
+        return runCatching {
+            channelManager.withIsdrChannel { EuiccNative.nativeEnableProfile(iccid) } == 0
+        }.getOrDefault(false)
     }
 
     /** Resolves the framework ICCID to our raw ICCID and runs [op] in one channel session. */
@@ -193,5 +198,17 @@ class EuiccManagerService : EuiccService() {
             .build()
 
     @kotlinx.serialization.Serializable
-    private data class DownloadOutcome(val success: Boolean = false, val message: String = "")
+    private data class DownloadOutcome(
+        val success: Boolean = false,
+        val message: String = "",
+        /** Raw ICCID hex of the installed profile (native `installed_iccid`). */
+        val iccid: String = "",
+    )
 }
+
+/** Whether a switch-after-download must first ask the user to deactivate the active SIM. */
+internal fun requiresDeactivationBeforeDownload(
+    switchAfterDownload: Boolean,
+    forceDeactivateSim: Boolean,
+    hasActiveProfile: Boolean,
+): Boolean = switchAfterDownload && !forceDeactivateSim && hasActiveProfile
