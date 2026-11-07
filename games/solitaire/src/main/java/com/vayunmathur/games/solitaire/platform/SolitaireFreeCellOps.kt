@@ -182,7 +182,11 @@ internal fun SolitaireViewModel.handleFreeCellDropImpl(sourceId: String, targetI
     when {
         targetId.startsWith("freecell_") -> {
             val ci = targetId.removePrefix("freecell_").toInt()
-            if (sourceId.startsWith("tableau_")) {
+            // A free cell holds one card, so only a single-card drag may
+            // land here. Without this guard a multi-card drag dropped on
+            // a cell silently moved the pile's top card instead of the
+            // stack the player actually grabbed.
+            if (isSingleCardDrag(sourceId) && sourceId.startsWith("tableau_")) {
                 val col = sourceId.removePrefix("tableau_").substringBefore("_").toInt()
                 freeCellMoveToFreeCell(col, ci)
             }

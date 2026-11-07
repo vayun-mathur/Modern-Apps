@@ -201,6 +201,32 @@ class DragAndViewModelTest {
         assertEquals(1, f.foundations[0].size)
     }
 
+    @Test fun freeCellDropRejectsMultiCardDragOntoCell() {
+        val vm = vm()
+        val seven = c(Suit.SPADES, Rank.SEVEN)
+        val six = c(Suit.HEARTS, Rank.SIX)
+        vm.uiStateInternal.value = SolitaireUiState(
+            gameMode = GameMode.FREECELL,
+            freeCell = FreeCellState(
+                tableauPiles = listOf(listOf(seven, six)) + List(7) { emptyList() },
+            ),
+        )
+        vm.dropTargets["freecell_0"] = Rect(0f, 0f, 100f, 100f)
+        // Dragging the two-card stack (grabbed at the seven) onto a free
+        // cell must not move anything: a cell holds a single card.
+        vm.tryMoveByDrag("tableau_0_0", Offset(50f, 50f), IntSize(50, 50))
+        var f = vm.uiState.value.freeCell!!
+        assertEquals(listOf(seven, six), f.tableauPiles[0])
+        assertTrue(f.freeCells.all { it == null })
+        assertEquals(0, f.moveCount)
+        // Dragging just the top card onto the cell works as before.
+        vm.tryMoveByDrag("tableau_0_1", Offset(50f, 50f), IntSize(50, 50))
+        f = vm.uiState.value.freeCell!!
+        assertEquals(listOf(seven), f.tableauPiles[0])
+        assertEquals(six, f.freeCells[0])
+        assertEquals(1, f.moveCount)
+    }
+
     @Test fun klondikeDropFromTableauToFoundationAndTableau() {
         val vm = vm()
         val ace = c(Suit.DIAMONDS, Rank.ACE) // foundation index 1
