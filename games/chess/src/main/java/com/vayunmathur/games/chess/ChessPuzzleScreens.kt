@@ -99,7 +99,10 @@ fun PuzzleBoardScreen(state: PuzzleUiState, actions: PuzzleActions) {
                     isFlipped = state.isBoardFlipped,
                     turn = state.playerColor,
                     onSquareClick = actions::onSquareClick,
-                    showLastMove = true
+                    showLastMove = true,
+                    // Same shared board: drag is just press-drag-release
+                    // over the tap path, enabled only while solving.
+                    dragEnabled = state.status == PuzzleStatus.Solving,
                 )
             }
             Spacer(Modifier.height(16.dp))

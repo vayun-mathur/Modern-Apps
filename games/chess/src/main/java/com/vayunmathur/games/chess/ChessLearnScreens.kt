@@ -512,12 +512,22 @@ private const val STAR_STEP_DIVISOR = 5
 fun LearnBoard(ui: LearnUiState, onSquareClick: (com.vayunmathur.games.chess.data.Position) -> Unit) {
     // Capped like the game board so a desktop window doesn't blow the grid up.
     Box(Modifier.widthIn(max = ChessBoardMaxWidth).fillMaxWidth().aspectRatio(1f)) {
+        // Mirror LearnViewModel's legality choice so drag highlights and
+        // drops accept exactly the moves a tap would on kingless /
+        // illegal-move-offer lessons.
+        val pseudoLegal = ui.level?.offerIllegalMove == true || ui.board.kingCount() < 2
         BoardGrid(
             board = ui.board,
             selectedPiece = ui.selectedPiece,
             isFlipped = ui.isFlipped,
             turn = ui.playerColor,
-            onSquareClick = onSquareClick
+            onSquareClick = onSquareClick,
+            dragEnabled = ui.status == LearnStatus.Playing,
+            dragMoveLegal = if (pseudoLegal) {
+                { from, to -> ui.board.isPseudoLegalMove(from, to) }
+            } else {
+                { from, to -> ui.board.isValidMove(from, to) }
+            },
         )
         Canvas(
             Modifier
