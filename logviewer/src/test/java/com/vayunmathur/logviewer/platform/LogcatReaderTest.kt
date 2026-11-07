@@ -209,6 +209,16 @@ class LogcatReaderTest {
     }
 
     @Test
+    fun `filter regex validation accepts empty and compilable patterns only`() {
+        assertTrue(LogcatReader.isValidFilterRegex(""))
+        assertTrue(LogcatReader.isValidFilterRegex("Foo.*"))
+        assertTrue(LogcatReader.isValidFilterRegex("(?i)error|failure"))
+        assertEquals(false, LogcatReader.isValidFilterRegex("("))
+        assertEquals(false, LogcatReader.isValidFilterRegex("a{2,1}"))
+        assertEquals(false, LogcatReader.isValidFilterRegex("[unclosed"))
+    }
+
+    @Test
     fun `request is a data holder`() {
         val request = LogcatReader.Request("pkg", listOf("main"), LogLevel.Info, "x")
         assertEquals("pkg", request.targetPackage)
