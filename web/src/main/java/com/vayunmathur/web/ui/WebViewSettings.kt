@@ -17,7 +17,9 @@ import com.vayunmathur.web.platform.updateStorageFootprint
  */
 internal fun WebSettings.applySystemDarkMode() {
     if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-        WebSettingsCompat.setAlgorithmicDarkeningAllowed(this, true)
+        // Some WebView APKs report the feature but still throw when it is set;
+        // darkening is cosmetic, so failing to enable it must not crash page setup.
+        runCatching { WebSettingsCompat.setAlgorithmicDarkeningAllowed(this, true) }
     }
 }
 
