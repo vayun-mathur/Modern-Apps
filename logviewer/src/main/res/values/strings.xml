@@ -39,6 +39,9 @@
     <string name="set_filter">Set filter</string>
     <!-- Hint inside the empty "Set filter" text field. -->
     <string name="set_filter_editor_hint">Regex</string>
+    <!-- Message when the filter text is not a compilable regular expression; the previous
+         log and filter stay on screen. -->
+    <string name="error_invalid_filter_regex">Invalid regular expression</string>
 
     <!-- Shown instead of the device log when a secondary user or work profile asks for it. The
          device log contains other users' activity, so only the primary user may read it. -->

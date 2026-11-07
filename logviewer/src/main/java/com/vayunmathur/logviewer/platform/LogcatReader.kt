@@ -41,6 +41,17 @@ internal object LogcatReader {
     )
 
     /**
+     * Whether [regex] compiles. Checked before anything is re-read: logcat rejects a bad
+     * `--regex` outright, so without this the only feedback for a typo was an empty log
+     * (now an Unavailable load). The empty filter is valid - it means no `--regex` at all.
+     * Dialects differ at the margins (this compiles with the JVM engine, logcat with the
+     * native one); a rare pattern accepted here but rejected there still fails the load
+     * via the exit-code check in [executeCommand] rather than faking an empty result.
+     */
+    fun isValidFilterRegex(regex: String): Boolean =
+        regex.isEmpty() || runCatching { Regex(regex) }.isSuccess
+
+    /**
      * Runs [command] and streams its stdout lines. Injectable for tests; production execs
      * `logcat`. A [Sequence] rather than a [List] so [read] parses lines as they arrive:
      * materialising the whole dump first would hold every line twice (the raw list plus

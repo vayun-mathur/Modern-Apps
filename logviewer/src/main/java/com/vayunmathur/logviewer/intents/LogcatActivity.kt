@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.vayunmathur.library.ui.DynamicTheme
+import com.vayunmathur.library.util.AppMessages
+import com.vayunmathur.logviewer.R
 import com.vayunmathur.logviewer.domain.LogDocument
 import com.vayunmathur.logviewer.domain.LogLevel
 import com.vayunmathur.logviewer.platform.LogLoadResult
@@ -85,6 +87,14 @@ class LogcatActivity : ComponentActivity() {
 
         override fun setLevel(level: LogLevel) = reload { copy(level = level) }
 
-        override fun setFilter(regex: String) = reload { copy(filterRegex = regex) }
+        override fun setFilter(regex: String) {
+            // Keep the current log and filter when the new one cannot compile: reloading
+            // would replace a good log with a failed load over a typo.
+            if (!LogcatReader.isValidFilterRegex(regex)) {
+                AppMessages.show(getString(R.string.error_invalid_filter_regex))
+                return
+            }
+            reload { copy(filterRegex = regex) }
+        }
     }
 }
