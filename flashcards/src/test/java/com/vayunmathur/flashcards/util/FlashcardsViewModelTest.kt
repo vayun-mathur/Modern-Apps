@@ -352,6 +352,34 @@ class FlashcardsViewModelTest {
     }
 
     @Test
+    fun regeneratingCardsDeletesRemovedCardsReviewLogs() {
+        val deck = uniqueDeck("RegenLogsDeck")
+        vm.saveNoteImpl(0, 2L, deck.id, listOf("RegenFront", "RegenBack"), "")
+        await("reversed note saved") {
+            runBlocking { repo.getAllNotesImpl().any { it.sortField == "RegenFront" } }
+        }
+        val note = runBlocking { repo.getAllNotesImpl().first { it.sortField == "RegenFront" } }
+        val cards = runBlocking { repo.getCardsByNoteImpl(note.id) }
+        assertEquals(2, cards.size)
+        runBlocking {
+            cards.forEach {
+                repo.insertReviewLogImpl(
+                    ReviewLog(cardId = it.id, deckId = deck.id, reviewedAt = 1L, grade = 3,
+                        elapsedDays = 1.0, scheduledDays = 1.0, state = 2),
+                )
+            }
+        }
+        // Blanking the Front removes Card 1 (its front renders blank).
+        vm.saveNoteImpl(note.id, 2L, deck.id, listOf("", "RegenBack"), "")
+        await("card 1 regenerated away with its log") {
+            val remaining = runBlocking { repo.getCardsByNoteImpl(note.id) }
+            remaining.size == 1 &&
+                runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }
+                    .all { log -> remaining.any { it.id == log.cardId } }
+        }
+    }
+
+    @Test
     fun cramSessionDoesNotPersist() {
         val deck = uniqueDeck("CramDeck")
         val note = saveBasicNote(deck.id, "CramFront", "CramBack")

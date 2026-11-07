@@ -38,7 +38,17 @@ internal suspend fun FlashcardsRepository.regenerateCardsImpl(
     noteType: NoteType,
     templates: List<CardTemplate>,
     fields: List<NoteTypeField>,
-) = CardGenerator.regenerate(note, noteType, templates, fields, cardDao)
+) {
+    val beforeIds = cardDao.getByNote(note.id).map { it.id }
+    CardGenerator.regenerate(note, noteType, templates, fields, cardDao)
+    // Cards removed by regeneration must take their review history with
+    // them (the note-deletion paths already delete logs with cards);
+    // orphaned logs would keep counting in deck stats and be replayed
+    // as phantom cards by the FSRS optimizer.
+    val afterIds = cardDao.getByNote(note.id).map { it.id }.toSet()
+    val removedIds = beforeIds.filter { it !in afterIds }
+    if (removedIds.isNotEmpty()) reviewLogDao.deleteByCards(removedIds)
+}
 
 internal suspend fun FlashcardsRepository.getReviewLogsByDeckOrderedImpl(deckId: Long): List<ReviewLog> =
     reviewLogDao.getByDeckOrdered(deckId)
