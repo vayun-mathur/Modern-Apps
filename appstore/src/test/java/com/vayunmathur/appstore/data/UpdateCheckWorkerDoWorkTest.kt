@@ -120,6 +120,48 @@ class UpdateCheckWorkerDoWorkTest {
     }
 
     @Test
+    fun `play enabled asks play about unknown packages and stays quiet offline`() = runBlocking {
+        settings.setSourceEnabled(AppSource.PLAYSTORE, true)
+        assertEquals(ListenableWorker.Result.success(), worker().doWork())
+        assertTrue(postedNotifications().isEmpty())
+    }
+
+    @Test
+    fun `accrescent enabled checks the allowlist for installed packages`() = runBlocking {
+        settings.setSourceEnabled(AppSource.ACCRESCENT, true)
+        val db = AppStoreDatabaseRepository.get(ctx).database
+        db.accrescentTrustDao().upsertAll(
+            listOf(AccrescentTrustEntity(ctx.packageName, "ab".repeat(32), 1L)),
+        )
+        try {
+            assertEquals(ListenableWorker.Result.success(), worker().doWork())
+            assertTrue(postedNotifications().isEmpty())
+        } finally {
+            db.accrescentTrustDao().clearAll()
+        }
+    }
+
+    @Test
+    fun `auto-install attempts eligible updates and reports the rest`() = runBlocking {
+        seedCatalogueUpdate()
+        settings.setAutoInstallUpdates(true)
+        // This store is the installer of record for its own package, so
+        // the update is eligible for a silent attempt; the attempt itself
+        // fails (the catalogue row publishes no download), so the update
+        // is reported as still outstanding, needing confirmation.
+        Shadows.shadowOf(ctx.packageManager)
+            .setInstallSourceInfo(ctx.packageName, ctx.packageName, ctx.packageName)
+        assertEquals(
+            ctx.packageName,
+            ctx.packageManager.getInstallSourceInfo(ctx.packageName).installingPackageName,
+        )
+        Shadows.shadowOf(ctx as Application)
+            .grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        assertEquals(ListenableWorker.Result.success(), worker().doWork())
+        assertEquals(1, postedNotifications().size)
+    }
+
+    @Test
     fun `no updates after clearing the catalogue cancels quietly`() = runBlocking {
         seedCatalogueUpdate()
         Shadows.shadowOf(ctx as Application)
