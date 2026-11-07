@@ -42,7 +42,9 @@ class UpdateBootReceiver : BroadcastReceiver() {
                 // Whatever it was asking for, the restart has happened.
                 UpdateNotifications.clearResult(appContext)
             } finally {
-                pending.finish()
+                // goAsync() can return null (e.g. when not dispatched by the system); finishing
+                // is best-effort and must not throw out of the cleanup path.
+                pending?.finish()
             }
         }
     }
