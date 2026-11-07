@@ -25,6 +25,7 @@ class PlayHttpClientLocalhostTest {
     private val lastQuery = AtomicReference<String?>(null)
     private val lastBody = AtomicReference<ByteArray?>(null)
     private val lastMethod = AtomicReference<String?>(null)
+    private val rateHits = java.util.concurrent.atomic.AtomicInteger(0)
 
     @BeforeTest
     fun setUp() {
@@ -41,6 +42,11 @@ class PlayHttpClientLocalhostTest {
         server.createContext("/redir") { exchange ->
             exchange.responseHeaders.add("Location", "/ok")
             exchange.sendResponseHeaders(302, -1)
+            exchange.close()
+        }
+        server.createContext("/rate") { exchange ->
+            rateHits.incrementAndGet()
+            exchange.sendResponseHeaders(429, -1)
             exchange.close()
         }
         server.createContext("/missing") { exchange ->
@@ -104,6 +110,17 @@ class PlayHttpClientLocalhostTest {
         val response = client.get("$base/redir", emptyMap())
         assertEquals(200, response.code)
         assertEquals("hello-play", response.responseBytes.decodeToString())
+    }
+
+    @Test
+    fun `a 429 is retried three times then surfaced`() {
+        // Backoff is seconds-long by design (2s + 4s + 8s); the hit count
+        // is the deterministic part: one attempt plus three retries.
+        val client = PlayHttpClient()
+        val response = client.get("$base/rate", emptyMap())
+        assertEquals(429, response.code)
+        assertEquals(4, rateHits.get())
+        assertEquals(false, PlayHttpClient.throttled.value)
     }
 
     @Test

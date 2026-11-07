@@ -53,6 +53,11 @@ class FDroidFetchRepoIndexTest {
                 "added": 1000,
                 "lastUpdated": 2000,
                 "icon": {"en-US": {"name": "/icons/alpha.png"}},
+                "featureGraphic": {"en-US": {"name": "/feature.png"}},
+                "screenshots": {
+                  "phone": {"en-US": [{"name": "/shots/phone1.png"}]},
+                  "tv": {"en-US": [{"name": "/shots/tv1.png"}]}
+                },
                 "antiFeatures": {"Tracking": {"en-US": "tracks"}}
               },
               "versions": {
@@ -78,6 +83,35 @@ class FDroidFetchRepoIndexTest {
                   "file": {"name": "/low_1.apk", "sha256": "$apkSha", "size": 10},
                   "manifest": {"versionName": "1.0", "versionCode": 1,
                                "usesSdk": {"targetSdkVersion": 20}}
+                }
+              }
+            },
+            "com.example.splitset": {
+              "metadata": {"name": {"en-US": "Split Set"}},
+              "versions": {
+                "base": {
+                  "added": 1000,
+                  "file": {"name": "/split_base.apk", "sha256": "$apkSha", "size": 100},
+                  "manifest": {"versionName": "1.0", "versionCode": 5,
+                               "usesSdk": {"targetSdkVersion": 35},
+                               "requiredSplitTypes": ["config"]}
+                },
+                "cfg": {
+                  "added": 1000,
+                  "file": {"name": "/split_cfg.apk", "sha256": "$apkSha", "size": 50},
+                  "manifest": {"versionName": "1.0", "versionCode": 5,
+                               "usesSdk": {"targetSdkVersion": 35}}
+                }
+              }
+            },
+            "com.example.dynamite": {
+              "metadata": {"name": {"en-US": "Dynamite Only"}},
+              "versions": {
+                "v1": {
+                  "added": 1000,
+                  "file": {"name": "/gms_1_installtime.apk", "sha256": "$apkSha", "size": 10},
+                  "manifest": {"versionName": "1.0", "versionCode": 1,
+                               "usesSdk": {"targetSdkVersion": 35}}
                 }
               }
             },
@@ -174,6 +208,19 @@ class FDroidFetchRepoIndexTest {
         assertEquals("$repoUrl/icons/alpha.png", alpha.iconUrl)
         assertEquals(listOf("Tracking"), alpha.antiFeatures)
         assertTrue(alpha.reproducible)
+        assertEquals("$repoUrl/feature.png", alpha.featureGraphic)
+        assertEquals(listOf("$repoUrl/shots/phone1.png"), alpha.screenshots)
+        assertEquals(listOf("$repoUrl/shots/tv1.png"), alpha.tvScreenshots)
+
+        // A split-set release advertises its base and gathers the sibling
+        // sharing its versionCode; a Dynamite-only package is dropped.
+        val splitset = result.apps.singleOrNull { it.packageName == "com.example.splitset" }
+        assertTrue(splitset != null, "splitset missing from ${result.apps.map { it.packageName }}")
+        assertEquals("$repoUrl/split_base.apk", splitset.apkUrl)
+        assertTrue(splitset.containsSplit)
+        assertEquals(listOf("/split_cfg.apk"), splitset.splitFiles.map { it.fileName })
+        assertEquals("$repoUrl/split_cfg.apk", splitset.splitFiles.single().url)
+        assertTrue(result.apps.none { it.packageName == "com.example.dynamite" })
 
         // targetSdk below the floor is filtered; versionless and malformed
         // packages never reach the catalogue.
