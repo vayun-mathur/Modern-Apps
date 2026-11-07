@@ -21,21 +21,31 @@ import kotlinx.coroutines.flow.Flow
  * `buildDatabase<SubscriptionDatabase>()` call sites — MainActivity, DownloadWorker,
  * SubscriptionFetchTask — so the same DB file continues to be opened).
  */
-class SubscriptionRepository private constructor(context: Context) :
-    RoomRepository<SubscriptionDatabase>(context, SubscriptionDatabase::class) {
+class SubscriptionRepository internal constructor(
+    context: Context,
+    /**
+     * Test seam: a database built by the caller (e.g. in-memory) to run the
+     * repository against. Null in production, where the owned lazy [db] —
+     * the SQLCipher file every app database is — is used exactly as before.
+     */
+    private val injectedDatabase: SubscriptionDatabase? = null,
+) : RoomRepository<SubscriptionDatabase>(context, SubscriptionDatabase::class) {
 
-    private val subscriptionDao: SubscriptionDao get() = db.subscriptionDao()
-    private val subscriptionCategoryDao: SubscriptionCategoryDao get() = db.subscriptionCategoryDao()
-    private val subscriptionVideoDao: SubscriptionVideoDao get() = db.subscriptionVideoDao()
-    private val historyVideoDao: HistoryVideoDao get() = db.historyVideoDao()
-    private val downloadedVideoDao: DownloadedVideoDao get() = db.downloadedVideoDao()
-    private val cachedRelatedVideoDao: CachedRelatedVideoDao get() = db.cachedRelatedVideoDao()
-    private val recommendationImpressionDao: RecommendationImpressionDao get() = db.recommendationImpressionDao()
-    private val recommendationPreferencesDao: RecommendationPreferencesDao get() = db.recommendationPreferencesDao()
-    private val channelPreferenceDao: ChannelPreferenceDao get() = db.channelPreferenceDao()
-    private val keywordPreferenceDao: KeywordPreferenceDao get() = db.keywordPreferenceDao()
-    private val playlistDao: PlaylistDao get() = db.playlistDao()
-    private val playlistItemDao: PlaylistItemDao get() = db.playlistItemDao()
+    /** The database every DAO below comes from: injected in tests, else [db]. */
+    private val database: SubscriptionDatabase get() = injectedDatabase ?: db
+
+    private val subscriptionDao: SubscriptionDao get() = database.subscriptionDao()
+    private val subscriptionCategoryDao: SubscriptionCategoryDao get() = database.subscriptionCategoryDao()
+    private val subscriptionVideoDao: SubscriptionVideoDao get() = database.subscriptionVideoDao()
+    private val historyVideoDao: HistoryVideoDao get() = database.historyVideoDao()
+    private val downloadedVideoDao: DownloadedVideoDao get() = database.downloadedVideoDao()
+    private val cachedRelatedVideoDao: CachedRelatedVideoDao get() = database.cachedRelatedVideoDao()
+    private val recommendationImpressionDao: RecommendationImpressionDao get() = database.recommendationImpressionDao()
+    private val recommendationPreferencesDao: RecommendationPreferencesDao get() = database.recommendationPreferencesDao()
+    private val channelPreferenceDao: ChannelPreferenceDao get() = database.channelPreferenceDao()
+    private val keywordPreferenceDao: KeywordPreferenceDao get() = database.keywordPreferenceDao()
+    private val playlistDao: PlaylistDao get() = database.playlistDao()
+    private val playlistItemDao: PlaylistItemDao get() = database.playlistItemDao()
 
     /** Category writes (split out: TooManyFunctions cap). Same module; behavior identical. */
     internal val categoryStore by lazy { SubscriptionCategoryStore(subscriptionCategoryDao) }
