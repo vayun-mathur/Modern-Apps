@@ -91,6 +91,33 @@ class TravelOpsErrorTest {
         assertTrue(v.booking.value is BookingState.Idle)
     }
 
+    @Test fun bookingOps_offline_doNotCrash() {
+        val v = vm()
+        v.loadAncillaries("trip_1"); idle()
+        v.loadSeatMaps(); idle()
+        v.retrySeatMaps(); idle()
+        v.saveAncillaries {}; idle()
+        v.startCheckout(); idle()
+        v.acceptNewPrice(); idle()
+        v.confirmPaidTrip("trip_1"); idle()
+        v.pollTrip("trip_1"); idle()
+        v.stopTripPoll()
+        v.refreshStoredTrip("missing"); idle()
+        v.loadAirlines(); v.loadAircraft(); v.loadCities(); idle()
+        kotlin.test.assertEquals("9Z", v.airlineName("9Z"))
+    }
+
+    @Test fun orderOps_offline_doNotCrash() {
+        repo.trips.value = listOf(BookedTrip(orderId = "o1", bookingReference = "ABC123", route = "SFO → JFK", departDate = "2026-06-24", amount = "250", currency = "USD", lastName = "Doe", tripId = "t1"))
+        val v = vm()
+        v.confirmCancellation("o1"); idle()
+        v.requestChange("o1", "slice_1", "SFO", "JFK", "2026-07-01", "economy"); idle()
+        v.confirmChange("o1", "chg_1"); idle()
+        v.refreshBookingDetail("o1"); idle()
+        v.recheckoutForStoredTrip("o1"); idle()
+        v.resetChange()
+    }
+
     @Test fun customerOps_withFakeRepo_doNotCrash() {
         val v = vm()
         v.saveFrequentFlyer("AS", "123", "Alaska"); idle()
