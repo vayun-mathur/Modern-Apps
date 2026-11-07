@@ -76,6 +76,15 @@ class VaultsFlowTest {
         assertTrue(ui.members.any { it.role == RelayRoles.OWNER })
         assertEquals(ui.shareLink, vm.vaults.shareLinkFor(meta))
 
+        // A later roster record for the same member replaces the earlier
+        // one in the UI (last-wins), it does not add a second row.
+        vm.vaults.approveRequest(meta.vaultId, RelaySync.deviceId, "Me", RelayRoles.EDITOR)
+        assertTrue(await {
+            val members = vm.vaults.vaultUi.value[meta.vaultId]?.members.orEmpty()
+            members.count { it.id == RelaySync.deviceId } == 1 &&
+                members.single { it.id == RelaySync.deviceId }.role == RelayRoles.EDITOR
+        }, vm.vaults.vaultUi.value[meta.vaultId]?.members.toString())
+
         // Invite self (registered) works, unknown device does not
         var inviteResult: Boolean? = null
         vm.vaults.sendInvite(meta.vaultId, RelaySync.deviceId, RelayRoles.VIEWER) { inviteResult = it }
