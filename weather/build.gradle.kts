@@ -54,4 +54,16 @@ dependencies {
 
     // Car-view store-listing screenshots render through the shared host renderer.
     add("screenshotTestImplementation", project(":library:carhost"))
+
+    testImplementation(libs.androidx.car.app.testing)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.androidx.glance.appwidget.testing)
+    // work-testing carries Robolectric for JVM tests; on-device it is
+    // unavailable from the mirror and unused, so exclude it there.
+    "androidTestImplementation"(libs.androidx.work.testing) {
+        exclude(group = "org.robolectric")
+    }
+    "androidTestImplementation"(libs.androidx.car.app.testing) {
+        exclude(group = "org.robolectric")
+    }
 }

@@ -44,7 +44,7 @@ import kotlin.math.roundToInt
  * edges — carrying a large mint temperature and a white condition icon.
  * 2x2 — floats over the wallpaper, not full-bleed rect.
  */
-class WeatherBlobGlanceWidget : MaWidget<WidgetWeather?>() {
+open class WeatherBlobGlanceWidget : MaWidget<WidgetWeather?>() {
 
     override suspend fun loadData(context: Context, id: GlanceId): WidgetWeather? =
         loadWeatherSnapshot(context)

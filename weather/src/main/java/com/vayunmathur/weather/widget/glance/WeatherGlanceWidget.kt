@@ -47,7 +47,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 
-class WeatherGlanceWidget : MaWidget<WidgetWeather?>() {
+open class WeatherGlanceWidget : MaWidget<WidgetWeather?>() {
     override suspend fun loadData(context: Context, id: GlanceId): WidgetWeather? =
         loadWeatherSnapshot(context)
 
