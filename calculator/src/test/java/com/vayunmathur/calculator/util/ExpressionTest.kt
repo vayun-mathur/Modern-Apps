@@ -220,6 +220,16 @@ class ExpressionTest {
         assertFailsWith<ExpressionError> { eval("sin(1,2)") }
     }
 
+    @Test
+    fun emptyMaxAndMinAreExpressionErrorsNotCrashes() {
+        // a.max()/a.min() on an empty list throw NoSuchElementException, which
+        // callers (preview, graph sampling, widget) do not catch — they only
+        // handle ExpressionError. Empty varargs must fail the same way as
+        // every other arity error.
+        assertFailsWith<ExpressionError> { eval("max()") }
+        assertFailsWith<ExpressionError> { eval("min()") }
+    }
+
     // ---- errors ----
 
     @Test
