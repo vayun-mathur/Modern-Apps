@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
  * cap. All three share the one [PhotoDatabase] instance (the builder caches by
  * class). Consumers obtain data through here.
  */
-class PhotosRepository private constructor(context: Context) :
+open class PhotosRepository internal constructor(context: Context) :
     RoomRepository<PhotoDatabase>(context, PhotoDatabase::class) {
 
     private val photoDao: PhotoDao get() = db.photoDao()
@@ -31,11 +31,11 @@ class PhotosRepository private constructor(context: Context) :
     // ------------------------------------------------------------------
     // PhotoDao suspend wrappers
     // ------------------------------------------------------------------
-    suspend fun getAll(): List<Photo> = photoDao.getAll()
+    open suspend fun getAll(): List<Photo> = photoDao.getAll()
     suspend fun getByUri(uri: String): List<Photo> = photoDao.getByUri(uri)
-    suspend fun upsertAll(photos: List<Photo>) = photoDao.upsertAll(photos)
-    suspend fun delete(value: Photo): Int = photoDao.delete(value)
-    suspend fun deleteByIds(ids: List<Long>) = photoDao.deleteByIds(ids)
+    open suspend fun upsertAll(photos: List<Photo>) = photoDao.upsertAll(photos)
+    open suspend fun delete(value: Photo): Int = photoDao.delete(value)
+    open suspend fun deleteByIds(ids: List<Long>) = photoDao.deleteByIds(ids)
     suspend fun setTrashed(id: Long) = photoDao.setTrashed(id)
     suspend fun setAlbum(ids: List<Long>, album: String?) = photoDao.setAlbum(ids, album)
     suspend fun searchPhotos(query: String): List<Photo> = photoDao.searchPhotos(query)

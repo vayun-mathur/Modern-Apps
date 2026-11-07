@@ -9,20 +9,20 @@ import com.vayunmathur.library.room.RoomRepository
  * Owns no database of its own: shares the one [PhotoDatabase] instance via
  * [RoomRepository], touching only [PhotoScanDao].
  */
-class PhotoScanRepository private constructor(context: Context) :
+open class PhotoScanRepository internal constructor(context: Context) :
     RoomRepository<PhotoDatabase>(context, PhotoDatabase::class) {
 
     private val scanDao: PhotoScanDao get() = db.photoScanDao()
 
-    suspend fun getUnscannedForOCR(): List<PhotoScanTarget> = scanDao.getUnscannedForOCR()
-    suspend fun getUnscannedForFaces(): List<PhotoScanTarget> = scanDao.getUnscannedForFaces()
-    suspend fun getUnscannedForClip(): List<PhotoScanTarget> = scanDao.getUnscannedForClip()
-    suspend fun getUnscannedForExif(): List<PhotoExifTarget> = scanDao.getUnscannedForExif()
+    open suspend fun getUnscannedForOCR(): List<PhotoScanTarget> = scanDao.getUnscannedForOCR()
+    open suspend fun getUnscannedForFaces(): List<PhotoScanTarget> = scanDao.getUnscannedForFaces()
+    open suspend fun getUnscannedForClip(): List<PhotoScanTarget> = scanDao.getUnscannedForClip()
+    open suspend fun getUnscannedForExif(): List<PhotoExifTarget> = scanDao.getUnscannedForExif()
     suspend fun setOcrScanned(ids: List<Long>) = scanDao.setOcrScanned(ids)
     suspend fun setFaceScanned(ids: List<Long>) = scanDao.setFaceScanned(ids)
-    suspend fun setOcrResults(results: List<OcrResult>) = scanDao.setOcrResults(results)
+    open suspend fun setOcrResults(results: List<OcrResult>) = scanDao.setOcrResults(results)
     suspend fun setClipResults(results: List<ClipResult>) = scanDao.setClipResults(results)
-    suspend fun setExifResults(results: List<ExifResult>) = scanDao.setExifResults(results)
+    open suspend fun setExifResults(results: List<ExifResult>) = scanDao.setExifResults(results)
     suspend fun getClipEmbeddings(): List<PhotoEmbedding> = scanDao.getClipEmbeddings()
     suspend fun resetClipScanned() = scanDao.resetClipScanned()
     suspend fun resetFaceScanned() = scanDao.resetFaceScanned()
