@@ -80,6 +80,35 @@ class HistoryMemoryTest {
     }
 
     @Test
+    fun evaluatedScientificResultSeedsInputInReparsableForm() {
+        val tab = CalculatorTab()
+        tab.updateInput("10^12")
+        tab.evaluate()
+        // Before the fix the input became the display form "1e+12", which
+        // re-parses as 1*e+12; the preview then read 14.718...
+        assertEquals("1E+12", tab.input)
+        assertEquals("1e+12", tab.preview)
+        assertEquals(1e12, tab.lastAnswer, 0.0)
+
+        val small = CalculatorTab()
+        small.updateInput("1/10000000")
+        small.evaluate()
+        assertEquals("1E-7", small.input)
+        assertEquals("1e-7", small.preview)
+    }
+
+    @Test
+    fun memoryRecallOfScientificValueSeedsInputInReparsableForm() {
+        val tab = CalculatorTab()
+        tab.updateInput("10^12")
+        tab.memoryAdd()
+        tab.clear()
+        tab.memoryRecall()
+        assertEquals("1E+12", tab.input)
+        assertEquals("1e+12", tab.preview)
+    }
+
+    @Test
     fun memoryRecallInsertsFormattedValue() {
         val tab = CalculatorTab()
         tab.updateInput("8")
