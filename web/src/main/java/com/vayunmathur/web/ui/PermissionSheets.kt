@@ -186,7 +186,7 @@ internal fun SiteDataPage(
 
         if (storages.isNotEmpty()) {
             item { Text(stringResource(R.string.storage), style = MaterialTheme.typography.titleMedium) }
-            items(storages, key = { it.id }) { info ->
+            items(storages, key = { "storage-${it.id}" }) { info ->
                 StorageInfoCard(info, viewModel)
             }
         }
@@ -196,7 +196,7 @@ internal fun SiteDataPage(
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.permissions), style = MaterialTheme.typography.titleMedium)
             }
-            items(permissions, key = { it.id }) { perm ->
+            items(permissions, key = { "perm-${it.id}" }) { perm ->
                 PermissionInfoCard(perm, viewModel)
             }
         }
