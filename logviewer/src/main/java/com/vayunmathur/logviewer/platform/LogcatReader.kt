@@ -40,8 +40,13 @@ internal object LogcatReader {
         val filterRegex: String,
     )
 
-    /** Runs [command] and returns its stdout lines. Injectable for tests; production execs `logcat`. */
-    internal var executeCommand: (List<String>) -> List<String> = { command ->
+    /**
+     * Runs [command] and streams its stdout lines. Injectable for tests; production execs
+     * `logcat`. A [Sequence] rather than a [List] so [read] parses lines as they arrive:
+     * materialising the whole dump first would hold every line twice (the raw list plus
+     * the stripped copy) for a log that is already tens of megabytes.
+     */
+    internal var executeCommand: (List<String>) -> Sequence<String> = { command ->
         val process = ProcessBuilder(command).start()
         // Drain stderr concurrently: an undrained pipe fills at ~64 KiB and then blocks the
         // writer, which would wedge the stdout read below forever. The text itself is useless
@@ -49,15 +54,18 @@ internal object LogcatReader {
         Thread {
             runCatching { process.errorStream.use { it.readBytes() } }
         }.apply { isDaemon = true }.start()
-        val lines = process.inputStream.bufferedReader(Charsets.UTF_8).useLines { it.toList() }
-        val returnCode = process.waitFor()
-        Log.debug(TAG, "logcat return code: $returnCode")
-        // A failed logcat (bad --regex, unknown buffer, ...) writes nothing to stdout and
-        // exits non-zero. Returning those zero lines would show an empty log that looks
-        // like "no entries matched", so fail the load instead and let read() map it to
-        // Unavailable like any other exec failure.
-        if (returnCode != 0) throw IOException("logcat exited with code $returnCode")
-        lines
+        sequence {
+            process.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
+                yieldAll(lines)
+            }
+            val returnCode = process.waitFor()
+            Log.debug(TAG, "logcat return code: $returnCode")
+            // A failed logcat (bad --regex, unknown buffer, ...) writes nothing to stdout and
+            // exits non-zero. Surfacing those zero lines would show an empty log that looks
+            // like "no entries matched", so fail the load instead and let read() map it to
+            // Unavailable like any other exec failure.
+            if (returnCode != 0) throw IOException("logcat exited with code $returnCode")
+        }
     }
 
     /**
