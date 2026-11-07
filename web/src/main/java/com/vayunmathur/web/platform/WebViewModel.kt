@@ -23,7 +23,7 @@ import com.vayunmathur.web.data.HistoryEntry
 import com.vayunmathur.web.data.InstalledSite
 import com.vayunmathur.web.data.SitePermission
 import com.vayunmathur.web.data.TabThumbnailStore
-import com.vayunmathur.web.data.WebRepository
+import com.vayunmathur.web.data.WebStores
 import com.vayunmathur.web.data.ShieldSetting
 import com.vayunmathur.web.data.StorageInfo
 import com.vayunmathur.web.domain.ShieldLevel
@@ -55,7 +55,7 @@ internal const val P_LOCAL_NETWORK_DENIED = "web_local_network_denied"
 internal const val P_SEARCH_BAR_BOTTOM = "web_search_bar_bottom"
 
 class WebViewModel(
-    internal val repository: WebRepository,
+    internal val repository: WebStores,
     internal val context: Context,
     /** Identifies this window's independent tab set; the default window keeps the legacy pref keys. */
     private val windowId: String = DEFAULT_WINDOW_ID,

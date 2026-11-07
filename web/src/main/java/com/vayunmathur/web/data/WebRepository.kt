@@ -7,16 +7,32 @@ import com.vayunmathur.library.room.RoomRepository
  * Single owner of [WebDatabase]. Per-domain stores hang off here so no single
  * class exceeds the function-count budget; call sites use `repository.<domain>`.
  */
-class WebRepository private constructor(context: Context) :
-    RoomRepository<WebDatabase>(context, WebDatabase::class, DB_NAME) {
+/**
+ * The per-domain stores [com.vayunmathur.web.platform.WebViewModel] reads and writes.
+ * Split out from [WebRepository] so view-model and page tests can supply stores backed
+ * by an in-memory database instead of the SQLCipher-backed production database (whose
+ * AndroidKeyStore key does not exist under Robolectric).
+ */
+interface WebStores {
+    val history: WebHistoryStore
+    val bookmarks: WebBookmarkStore
+    val permissions: WebSitePermissionStore
+    val storage: WebStorageStore
+    val downloads: WebDownloadStore
+    val installed: WebInstalledSiteStore
+    val shields: WebShieldStore
+}
 
-    val history = WebHistoryStore(db.historyDao())
-    val bookmarks = WebBookmarkStore(db.bookmarkDao())
-    val permissions = WebSitePermissionStore(db.sitePermissionDao())
-    val storage = WebStorageStore(db.storageInfoDao())
-    val downloads = WebDownloadStore(db.downloadDao())
-    val installed = WebInstalledSiteStore(db.installedSiteDao())
-    val shields = WebShieldStore(db.shieldSettingDao())
+class WebRepository private constructor(context: Context) :
+    RoomRepository<WebDatabase>(context, WebDatabase::class, DB_NAME), WebStores {
+
+    override val history = WebHistoryStore(db.historyDao())
+    override val bookmarks = WebBookmarkStore(db.bookmarkDao())
+    override val permissions = WebSitePermissionStore(db.sitePermissionDao())
+    override val storage = WebStorageStore(db.storageInfoDao())
+    override val downloads = WebDownloadStore(db.downloadDao())
+    override val installed = WebInstalledSiteStore(db.installedSiteDao())
+    override val shields = WebShieldStore(db.shieldSettingDao())
 
     companion object {
         @Volatile private var instance: WebRepository? = null
