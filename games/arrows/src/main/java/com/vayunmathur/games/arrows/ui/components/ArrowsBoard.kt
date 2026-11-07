@@ -81,9 +81,13 @@ fun ArrowsBoard(
     LaunchedEffect(move) {
         if (move == null) return@LaunchedEffect
         if (move.clears) {
-            // Past the end of the route, so the tail clears the edge too rather than winking out on it.
-            val target = (move.advance + move.route.size).toFloat()
-            advance.animateTo(target, tween(cellMillis(move.advance + move.route.size), easing = LinearEasing))
+            // One past the end of the route, so the tail clears the edge too rather than winking
+            // out on it. The route already ends with the head's escape path, so its size alone is
+            // the distance that takes the tail out; adding `move.advance` counted that path twice
+            // and kept the (by then invisible) arrow animating - and taps locked - for up to a
+            // whole extra board crossing after it had left.
+            val target = move.route.size.toFloat()
+            advance.animateTo(target, tween(cellMillis(move.route.size), easing = LinearEasing))
         } else {
             // Wedged arrows still get a nudge, or a tap on one reads as the game ignoring the input.
             val target = if (move.advance == 0) NUDGE_CELLS else move.advance.toFloat()
