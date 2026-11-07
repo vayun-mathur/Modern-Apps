@@ -122,7 +122,13 @@ class HangulComposer : Composer {
             (SYLLABLE_BASE + (initial * MEDIALS.length + medial) * FINALS.length + final)
                 .toChar().toString()
         initial >= 0 -> INITIALS[initial].toString()
-        medial >= 0 -> MEDIALS[medial].toString()
+        // A vowel typed first has no initial to form a syllable with, so a final
+        // consonant after it stays a lone jamo beside it. Dropping it from the
+        // render would hide the keystroke (and lose the kept half of a compound
+        // final entirely when a following vowel steals the other half).
+        medial >= 0 ->
+            if (final != 0) MEDIALS[medial].toString() + FINALS[final].toString()
+            else MEDIALS[medial].toString()
         else -> ""
     }
 

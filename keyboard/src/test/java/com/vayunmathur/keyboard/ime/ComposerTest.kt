@@ -91,6 +91,15 @@ class ComposerTest {
         assertEquals("아이", hangul().type("ㅇㅏㅇㅣ").finish().text)
     }
 
+    /** A final after a lone vowel has no syllable to live in, but it is still typed text. */
+    @Test
+    fun `a final consonant after a lone vowel stays visible`() {
+        assertEquals("ㅏㄱ", hangul().type("ㅏㄱ").finish().text)
+        assertEquals("ㅏ", hangul().type("ㅏㄱ").backspace().finish().text)
+        // The kept half of a compound final survives when a vowel steals the rest.
+        assertEquals("ㅏㄱ사", hangul().type("ㅏㄱㅅㅏ").finish().text)
+    }
+
     /** Backspace takes the block apart jamo by jamo instead of deleting the whole syllable. */
     @Test
     fun `backspace decomposes`() {
