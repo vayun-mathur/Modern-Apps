@@ -249,9 +249,6 @@ class InstallCoordinator(
             }
 
             val file = File(context.cacheDir, DownloadCache.apkName(app.packageName))
-            download(apkUrl, file, app.sizeBytes) { fraction ->
-                stage(app.packageName, InstallStage.Downloading(fraction))
-            }
 
             // Split-set versions install every file in one session: the base
             // plus the sibling splits sharing its versionCode. Without the set,
