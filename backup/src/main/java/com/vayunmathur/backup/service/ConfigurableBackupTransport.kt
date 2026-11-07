@@ -206,7 +206,9 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
             out.write(buffer, 0, read)
             remaining -= read
         }
-        TRANSPORT_OK
+        // A short stream must not be reported as consumed: finishBackup would
+        // otherwise encrypt a truncated tar as a complete full backup.
+        if (remaining > 0) TRANSPORT_ERROR else TRANSPORT_OK
     }
 
     override fun cancelFullBackup() {

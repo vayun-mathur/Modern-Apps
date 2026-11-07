@@ -100,6 +100,17 @@ class TransportWithRepoTest {
         transport.finishRestore()
     }
 
+    @Test fun shortFullBackupStreamIsAnError() {
+        val pipe = ParcelFileDescriptor.createPipe()
+        assertEquals(BackupTransport.TRANSPORT_OK, transport.performFullBackup(pkg("com.example.app"), pipe[0]))
+        val out = android.os.ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])
+        out.write("abc".toByteArray()); out.flush(); out.close()
+        // Only 3 of the promised 10 bytes ever arrive.
+        assertEquals(BackupTransport.TRANSPORT_ERROR, transport.sendBackupData(10))
+        transport.cancelFullBackup()
+        pipe[0].close()
+    }
+
     @Test fun kvAndFullBackupRestoreCycle() {
         assertEquals(BackupTransport.TRANSPORT_OK, transport.initializeDevice())
         assertTrue(transport.currentDestinationString().isNotEmpty())
