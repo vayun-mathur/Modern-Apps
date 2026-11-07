@@ -23,6 +23,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.io.encoding.Base64
@@ -232,6 +234,13 @@ object VoxelsSync {
 
     // --- Live sync + presence over WebSocket ---
 
+    /**
+     * Test seam: when set, replaces the relay HTTP transport ([raw] calls this
+     * instead of [NetworkClient.performRequest]). Null in production, so the
+     * real relay is used exactly as before.
+     */
+    internal var relayTransport: (suspend (path: String, bodyJson: String) -> com.vayunmathur.library.network.SimpleResponse?)? = null
+
     @Volatile private var wsSession: WsSession? = null
     private var liveJob: Job? = null
     private var liveChannel: String? = null
@@ -322,7 +331,7 @@ object VoxelsSync {
     @Suppress("TooGenericExceptionCaught")
     private suspend inline fun <reified T> raw(path: String, body: T) =
         try {
-            NetworkClient.performRequest(
+            relayTransport?.invoke(path, json.encodeToString(body)) ?: NetworkClient.performRequest(
                 url = "$URL$path",
                 method = "POST",
                 headers = mapOf("Content-Type" to "application/json"),
@@ -357,8 +366,11 @@ object VoxelsSync {
     )
 
     /** A request to join a world, sealed to the owner. Public ids only — no key. */
+    @OptIn(ExperimentalSerializationApi::class)
     @Serializable data class JoinRequest(
-        val kind: String = "req",
+        // The discriminator must reach the wire: with the default omitted,
+        // pullInbox misclassifies requests as invites and drops them.
+        @EncodeDefault(EncodeDefault.Mode.ALWAYS) val kind: String = "req",
         val worldId: String,
         val requesterId: String,
         val name: String = "",
