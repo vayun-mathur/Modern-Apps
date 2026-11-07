@@ -5,7 +5,6 @@ import android.content.ComponentName
 import androidx.test.core.app.ApplicationProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
@@ -33,10 +32,11 @@ class LauncherWidgetHostTest {
     }
 
     @Test fun spanForCoversMinimum() {
-        // minWidth in px; density 1 under Robolectric defaults... cover the math.
+        // minWidth/minHeight are in dp: 200dp needs three 80dp cells
+        // and 100dp needs two, whatever the screen density is.
         val (x, y) = flow().spanFor(info(200, 100), cellWidthDp = 80, cellHeightDp = 80)
-        assertTrue(x >= 1)
-        assertTrue(y >= 1)
+        assertEquals(3, x)
+        assertEquals(2, y)
     }
 
     @Test fun spanForTinyWidgetIsOneCell() {
