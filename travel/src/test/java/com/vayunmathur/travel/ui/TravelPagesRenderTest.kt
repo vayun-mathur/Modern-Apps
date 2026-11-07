@@ -2,6 +2,7 @@ package com.vayunmathur.travel.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -36,6 +37,10 @@ class TravelPagesRenderTest {
         override fun observeFrequentFlyers(): Flow<List<FrequentFlyer>> = MutableStateFlow(emptyList())
         override fun observeCustomers(): Flow<List<Customer>> = MutableStateFlow(emptyList())
         override suspend fun getAllFrequentFlyers(): List<FrequentFlyer> = emptyList()
+        override suspend fun insertRecent(value: RecentSearch) {}
+        override suspend fun clearRecent() {}
+        override suspend fun trimRecent(keep: Int) {}
+        override suspend fun upsertBookedTrip(value: BookedTrip) {}
         override suspend fun getBookedTrip(orderId: String): BookedTrip? = trips.value.find { it.orderId == orderId }
     }
 
@@ -120,6 +125,26 @@ class TravelPagesRenderTest {
     @Test fun flightSearchForm_renders() {
         rule.setContent { FlightSearchForm(vm(), FlightFormState(), {}, onSearch = {}) }
         rule.onNodeWithText("Search flights").assertIsDisplayed()
+    }
+
+    @Test fun flightResults_renders() {
+        rule.setContent { FlightResultsPage(stack(), vm(), Route.FlightResults("SFO:JFK", 1, "", 0, "economy", 2)) }
+        rule.onNodeWithText("SFO → JFK").assertIsDisplayed()
+    }
+
+    @Test fun outboundSelect_showsTitle() {
+        rule.setContent { OutboundSelectPage(stack(), vm(), Route.OutboundSelect("SFO-JFK", 1, "", 0, "economy", 2)) }
+        rule.onNodeWithText("Choose flights").assertIsDisplayed()
+    }
+
+    @Test fun fareSelect_showsTitle() {
+        rule.setContent { FareSelectPage(stack(), vm(), Route.FareSelect("sig1", "sig2")) }
+        rule.onNodeWithText("Choose fare").assertIsDisplayed()
+    }
+
+    @Test fun stayResults_renders() {
+        rule.setContent { StayResultsPage(stack(), vm(), Route.StayResults("Paris", "2026-06-24", "2026-06-26", 1, 2)) }
+        rule.onAllNodesWithText("Paris", substring = true)[0].assertExists()
     }
 
     @Test fun staySearchForm_renders() {
