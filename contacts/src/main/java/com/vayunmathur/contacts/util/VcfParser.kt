@@ -163,7 +163,7 @@ private class VcfParser(
             "X-COMM-PREF" -> applyCommPref(builder, decodedValue)
             "CATEGORIES" -> applyCategories(builder, decodedValue)
             "X-STARRED" -> applyStarred(builder, decodedValue)
-            "PHOTO" -> builder.photos.add(Photo(0, decodedValue))
+            "PHOTO" -> applyPhoto(builder, decodedValue)
             "URL" -> {
                 // Do not create Note rows from URL lines.
             }
@@ -268,6 +268,34 @@ private class VcfParser(
         builder.dates.add(
             Event(0, date, ContactsContract.CommonDataKinds.Event.TYPE_BIRTHDAY)
         )
+    }
+
+    @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
+    private fun applyPhoto(builder: ContactBuilder, decodedValue: String) {
+        // Photo.photo is Base64 by contract (Contact.completePhotoOperation
+        // Base64-decodes it while building the provider batch, outside
+        // save()'s error handling). Foreign cards also carry PHOTO as a
+        // URI (PHOTO;VALUE=URI:https://...) or a data: URI; storing those
+        // verbatim made the later decode throw IllegalArgumentException
+        // and abort the whole import. Keep only decodable Base64.
+        val normalized = decodedValue.filterNot { it.isWhitespace() }
+        if (normalized.isEmpty()) return
+        val decodable = try {
+            kotlin.io.encoding.Base64.decode(normalized)
+            true
+        } catch (e: IllegalArgumentException) {
+            try {
+                kotlin.io.encoding.Base64.UrlSafe.decode(normalized)
+                true
+            } catch (e2: IllegalArgumentException) {
+                false
+            }
+        }
+        if (!decodable) {
+            Log.status("VcfParser", "Dropping non-Base64 PHOTO value")
+            return
+        }
+        builder.photos.add(Photo(0, normalized))
     }
 
     private fun applyNote(builder: ContactBuilder, decodedValue: String) {
