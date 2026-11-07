@@ -31,11 +31,11 @@ class C9TvPagesTest {
     @BeforeTest fun open() {
         FakeAndroidKeyStore.install()
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        if (com.vayunmathur.library.util.databases[UniflixDatabase::class] == null) {
-            val db = Room.inMemoryDatabaseBuilder(context, UniflixDatabase::class.java)
-                .allowMainThreadQueries().build()
-            com.vayunmathur.library.util.databases[UniflixDatabase::class] = db
-        }
+        // Force ours in: another test class may have already let
+        // buildDatabase cache the real SQLCipher instance in the registry.
+        val db = Room.inMemoryDatabaseBuilder(context, UniflixDatabase::class.java)
+            .allowMainThreadQueries().build()
+        com.vayunmathur.library.util.databases[UniflixDatabase::class] = db
     }
 
     private fun stack() = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))

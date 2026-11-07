@@ -47,17 +47,14 @@ class C9DbScreensTest {
         private var sharedDb: UniflixDatabase? = null
         private fun sharedDb(context: android.content.Context): UniflixDatabase {
             sharedDb?.let { return it }
-            com.vayunmathur.library.util.databases[UniflixDatabase::class]?.let {
-                @Suppress("UNCHECKED_CAST")
-                sharedDb = it as UniflixDatabase
-                return it as UniflixDatabase
-            }
-            return Room.inMemoryDatabaseBuilder(context, UniflixDatabase::class.java)
+            // Force ours in: another test class may have already let
+            // buildDatabase cache the real SQLCipher instance in the registry.
+            val db = Room.inMemoryDatabaseBuilder(context, UniflixDatabase::class.java)
                 .allowMainThreadQueries()
-                .build().also {
-                    com.vayunmathur.library.util.databases[UniflixDatabase::class] = it
-                    sharedDb = it
-                }
+                .build()
+            com.vayunmathur.library.util.databases[UniflixDatabase::class] = db
+            sharedDb = db
+            return db
         }
     }
 
