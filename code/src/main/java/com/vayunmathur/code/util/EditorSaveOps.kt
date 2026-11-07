@@ -83,7 +83,15 @@ internal suspend fun EditorViewModel.applyReload(tab: OpenTab) {
     val file = tab.file ?: return
     // A failed read must not wipe the buffer: keep the current text and snapshot untouched.
     val loaded = loadFile(file) ?: return
-    tab.value = TextFieldValue(loaded.decoded.text)
+    // The buffer is replaced wholesale: stale undo entries would resurrect the pre-reload
+    // text (and, with auto-save on, overwrite the newer on-disk content), so drop them.
+    val sel = tab.value.selection
+    val newText = loaded.decoded.text
+    tab.value = TextFieldValue(
+        newText,
+        TextRange(sel.start.coerceAtMost(newText.length), sel.end.coerceAtMost(newText.length)),
+    )
+    tab.clearHistory()
     tab.savedText = loaded.decoded.text
     tab.charset = loaded.decoded.charset
     tab.lineEnding = loaded.decoded.lineEnding

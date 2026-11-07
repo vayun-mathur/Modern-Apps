@@ -74,6 +74,14 @@ class OpenTab(
         canRedo = false
     }
 
+    /** Drops all undo/redo history (used when the buffer is replaced wholesale, e.g. a reload). */
+    fun clearHistory() {
+        undoStack.clear()
+        redoStack.clear()
+        canUndo = false
+        canRedo = false
+    }
+
     fun undo() {
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.addLast(value)
