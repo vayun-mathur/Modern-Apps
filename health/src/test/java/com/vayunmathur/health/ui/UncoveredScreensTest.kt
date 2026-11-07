@@ -3,6 +3,9 @@ package com.vayunmathur.health.ui
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -142,6 +145,7 @@ class UncoveredScreensTest {
         val backStack = NavBackStack<Route>(arrayOf(Route.Today, Route.RecipeManagement))
         rule.setContent { RecipeManagementPage(backStack, vm()) }
         rule.waitForIdle()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Screen Salad"))
         rule.onNodeWithText("Screen Salad").assertExists()
         rule.onNodeWithText("Ingredients").performClick()
         rule.waitForIdle()
