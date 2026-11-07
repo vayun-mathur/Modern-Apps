@@ -4,6 +4,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,13 +39,18 @@ internal fun EditorViewModel.saveTab(tab: OpenTab) {
     }
     val bytes = TextEncoding.encode(textToSave, tab.charset, tab.lineEnding, tab.hadBom)
     viewModelScope.launch {
-        val ok = withContext(Dispatchers.IO) {
+        // NonCancellable: a save the user asked for (e.g. Save-all in the exit guard, right
+        // before the Activity finishes and this scope is cancelled) must not be abandoned
+        // mid-write. The write itself is atomic (see FileFiles.writeBytes).
+        val ok = withContext(Dispatchers.IO + NonCancellable) {
             runCatching { FileFiles.writeBytes(file, bytes) }.isSuccess
         }
         if (ok) {
             tab.savedText = textToSave
             tab.changedOnDisk = false
-            val (modified, length) = withContext(Dispatchers.IO) { file.lastModified() to file.length() }
+            val (modified, length) = withContext(Dispatchers.IO + NonCancellable) {
+                file.lastModified() to file.length()
+            }
             tab.diskModified = modified
             tab.diskLength = length
             if (gitIsRepo) refreshGit()
