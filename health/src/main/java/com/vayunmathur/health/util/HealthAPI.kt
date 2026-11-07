@@ -132,8 +132,10 @@ object HealthAPI {
             val newId = response.recordIdsList.firstOrNull()
             if (newId != null) {
                 Log.status("HealthAPI", "Successfully wrote record to Health Connect with ID: $newId")
-                // Remove old local record and replace with one containing HC ID
-                repo().deleteByIds(listOf(record.primaryKey))
+                // Remove old local record and replace with one containing HC ID.
+                // deleteByIds matches the `id` column, not primaryKey ("$id-$index"),
+                // so passing primaryKey deleted nothing and left a duplicate.
+                repo().deleteByIds(listOf(record.id))
                 val updatedRecord = record.copy(id = newId, primaryKey = "$newId-${record.index}")
                 repo().upsert(listOf(updatedRecord))
             }
