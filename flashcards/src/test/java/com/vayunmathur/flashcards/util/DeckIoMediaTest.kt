@@ -65,6 +65,21 @@ class DeckIoMediaTest {
     }
 
     @Test
+    fun mediaStoreCannotEscapeMediaDir() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val store = MediaStore(ctx)
+        // A traversal name from an untrusted manifest/field must resolve
+        // inside filesDir/media, never at the traversal target.
+        val resolved = store.resolve("../../databases/flashcards-db")
+        assertEquals("media", resolved.parentFile?.name)
+        assertEquals("flashcards-db", resolved.name)
+        val written = store.writeBytes("../evil.png", byteArrayOf(7))
+        assertEquals("evil.png", written)
+        assertTrue(store.resolve("evil.png").exists())
+        assertFalse(java.io.File(ctx.filesDir, "evil.png").exists())
+    }
+
+    @Test
     fun mediaReferencedExtraction() {
         assertEquals(
             setOf("a.png", "b.jpg"),

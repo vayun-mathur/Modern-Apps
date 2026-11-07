@@ -14,7 +14,19 @@ class MediaStore(context: Context) {
     private val dir: File = File(context.filesDir, DIR).apply { mkdirs() }
 
     /** Resolves a bare media [name] to its file (may not exist). */
-    fun resolve(name: String): File = File(dir, name)
+    fun resolve(name: String): File = File(dir, safeName(name))
+
+    /**
+     * Reduces [name] to a bare filename inside [dir]. Names come from
+     * untrusted sources (an .apkg's media manifest, `![](…)` references in
+     * imported note fields), so a name like `../../databases/flashcards-db`
+     * must never escape the media directory and overwrite/read other
+     * app-private files on import or export.
+     */
+    private fun safeName(name: String): String {
+        val bare = name.substringAfterLast('/').substringAfterLast('\\').trim()
+        return bare.takeIf { it.isNotEmpty() && it != "." && it != ".." } ?: "_"
+    }
 
     /**
      * Copies the picked [uri] into media storage under a unique name and returns
@@ -40,10 +52,11 @@ class MediaStore(context: Context) {
     }
 
     private fun uniqueFile(name: String): File {
-        var candidate = File(dir, name)
+        var candidate = resolve(name)
         if (!candidate.exists()) return candidate
-        val base = name.substringBeforeLast('.', name)
-        val ext = name.substringAfterLast('.', "").let { if (it.isEmpty()) "" else ".$it" }
+        val bare = candidate.name
+        val base = bare.substringBeforeLast('.', bare)
+        val ext = bare.substringAfterLast('.', "").let { if (it.isEmpty()) "" else ".$it" }
         var i = 1
         while (candidate.exists()) {
             candidate = File(dir, "$base($i)$ext")
