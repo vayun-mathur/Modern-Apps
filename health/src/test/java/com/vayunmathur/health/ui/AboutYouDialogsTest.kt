@@ -3,6 +3,7 @@ package com.vayunmathur.health.ui
 import android.app.Application
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.room3.Room
@@ -80,7 +81,9 @@ class AboutYouDialogsTest {
         rule.waitForIdle()
         // Option labels come from SmokingStatus.labelRes; pick the last option.
         val label = context.getString(SmokingStatus.entries.last().labelRes())
-        rule.onNodeWithText(label).performClick()
+        rule.onAllNodesWithText(label, substring = false).fetchSemanticsNodes().let { nodes ->
+            rule.onAllNodesWithText(label, substring = false)[nodes.size - 1].performClick()
+        }
         settleProfile(vm) { vm.profile.value.smokingStatus == SmokingStatus.entries.last() }
         assertEquals(SmokingStatus.entries.last(), HealthRepository.get(context).getProfile()?.smokingStatus)
     }
@@ -92,7 +95,9 @@ class AboutYouDialogsTest {
         rule.onNodeWithText("Are you pregnant?").performClick()
         rule.waitForIdle()
         val label = context.getString(PregnancyStatus.Pregnant.labelRes())
-        rule.onNodeWithText(label).performClick()
+        rule.onAllNodesWithText(label, substring = false).fetchSemanticsNodes().let { nodes ->
+            rule.onAllNodesWithText(label, substring = false)[nodes.size - 1].performClick()
+        }
         settleProfile(vm) { vm.profile.value.pregnancyStatus == PregnancyStatus.Pregnant }
         assertEquals(PregnancyStatus.Pregnant, HealthRepository.get(context).getProfile()?.pregnancyStatus)
     }
@@ -106,7 +111,9 @@ class AboutYouDialogsTest {
         rule.onNodeWithText(title).performClick()
         rule.waitForIdle()
         val answer = question.answers.first()
-        rule.onNodeWithText(context.getString(answer.labelRes)).performClick()
+        rule.onAllNodesWithText(context.getString(answer.labelRes), substring = false).fetchSemanticsNodes().let { nodes ->
+            rule.onAllNodesWithText(context.getString(answer.labelRes), substring = false)[nodes.size - 1].performClick()
+        }
         var stored = false
         repeat(100) {
             if (HealthRepository.get(context).getProfileAnswer(question.loinc)?.answerCode == answer.code) { stored = true; return@repeat }

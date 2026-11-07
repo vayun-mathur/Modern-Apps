@@ -58,6 +58,7 @@ class SavePaths2Test {
         repeat(200) {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             if (cond()) return
+            Thread.sleep(5)
             kotlinx.coroutines.delay(5)
         }
     }
