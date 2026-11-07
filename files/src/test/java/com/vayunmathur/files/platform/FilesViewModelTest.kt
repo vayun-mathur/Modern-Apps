@@ -543,4 +543,23 @@ class FilesViewModelTest {
         editor.load(Uri.parse("content://testdocs/missing.txt"))
         await { editor.initialContent.value == "" }
     }
+
+    @Test
+    fun `text editor reports load and save failures instead of hiding them`() {
+        TestFileProvider.rootDir = base
+        org.robolectric.Robolectric.buildContentProvider(TestFileProvider::class.java)
+            .create("testdocs2")
+        val editor = TextEditorViewModel(app)
+        editor.load(Uri.parse("content://testdocs2/missing.txt"))
+        await { editor.loadFailed.value }
+        assertEquals("", editor.initialContent.value)
+        editor.save(Uri.parse("content://unregistered-authority/x.txt"), "boom")
+        await { editor.saveFailed.value }
+        // a good load and save clear the failure flags again
+        File(base, "ok.txt").writeText("fine")
+        editor.load(Uri.parse("content://testdocs2/ok.txt"))
+        await { editor.initialContent.value == "fine" && !editor.loadFailed.value }
+        editor.save(Uri.parse("content://testdocs2/ok.txt"), "finer")
+        await { File(base, "ok.txt").readText() == "finer" && !editor.saveFailed.value }
+    }
 }

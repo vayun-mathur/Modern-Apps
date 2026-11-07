@@ -61,8 +61,22 @@ class TextEditorActivity : ComponentActivity() {
 @Composable
 private fun TextEditorScreen(uri: Uri, viewModel: TextEditorViewModel) {
     val initialContent by viewModel.initialContent.collectAsState()
+    val loadFailed by viewModel.loadFailed.collectAsState()
     val content = initialContent
-    if (content == null) {
+    if (loadFailed) {
+        // Never present a failed read as an editable empty file: saving from
+        // here would overwrite the unread original with whatever is typed.
+        AppScaffold(
+            title = uri.lastPathSegment ?: stringResource(R.string.type_file),
+            modifier = Modifier.imePadding(),
+            scrollBehavior = appBarScrollBehavior(),
+        ) { paddingValues ->
+            Text(
+                stringResource(R.string.editor_load_failed),
+                modifier = Modifier.padding(paddingValues).padding(horizontal = 16.dp),
+            )
+        }
+    } else if (content == null) {
         // Loading: render the bar only so the screen isn't blank during async read.
         AppScaffold(
             title = uri.lastPathSegment ?: stringResource(R.string.type_file),
@@ -78,6 +92,7 @@ private fun TextEditorScreen(uri: Uri, viewModel: TextEditorViewModel) {
 @Composable
 private fun TextEditorLoaded(uri: Uri, initialContent: String, viewModel: TextEditorViewModel) {
     val state = remember { TextFieldState(initialText = initialContent) }
+    val saveFailed by viewModel.saveFailed.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
 
     AppScaffold(
@@ -100,6 +115,13 @@ private fun TextEditorLoaded(uri: Uri, initialContent: String, viewModel: TextEd
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
+            if (saveFailed) {
+                Text(
+                    stringResource(R.string.editor_save_failed),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
             BasicTextField(
                 state = state,
                 modifier = Modifier
