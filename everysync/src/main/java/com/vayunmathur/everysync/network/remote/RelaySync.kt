@@ -70,6 +70,7 @@ object RelaySync {
     private const val RECONNECT_INITIAL_MS = 1000L
     private const val RECONNECT_MAX_MS = 15_000
     private val json = Json { ignoreUnknownKeys = true }
+    private val jsonWithDefaults = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private lateinit var identity: PqcIdentity
     var deviceId: String = ""
@@ -188,7 +189,10 @@ object RelaySync {
         name: String,
     ): Boolean {
         val ownerBundle = getKey(ownerId) ?: return false
-        val req = json.encodeToString(
+        // encodeDefaults so the kind:"req" discriminator actually reaches the
+        // wire — with the default Json it equals the default value and kotlinx
+        // omits it, leaving readers unable to tell a request from an invite.
+        val req = jsonWithDefaults.encodeToString(
             JoinRequest(vaultId = vaultId, dataType = dataType, requesterId = requesterId, name = name)
         )
         val blob = Base64.encode(Pqc.encryptTo(ownerBundle, req.encodeToByteArray()))
@@ -210,8 +214,14 @@ object RelaySync {
             val kind = runCatching { json.decodeFromString<InboxEnvelope>(text).kind }.getOrNull().orEmpty()
             if (kind == "req") {
                 runCatching { json.decodeFromString<JoinRequest>(text) }.getOrNull()?.let { requests.add(it) }
-            } else {
-                runCatching { json.decodeFromString<Invite>(text) }.getOrNull()?.let { invites.add(it) }
+            } else if (runCatching { json.decodeFromString<Invite>(text) }.getOrNull()?.also { invites.add(it) } == null) {
+                // Join requests written before the discriminator was emitted on
+                // the wire (kotlinx omits default values, so kind:"req" never
+                // left the device) fail Invite decoding: they carry a
+                // requesterId instead of a key, so sort them as requests.
+                runCatching { json.decodeFromString<JoinRequest>(text) }.getOrNull()
+                    ?.takeIf { it.requesterId.isNotBlank() }
+                    ?.let { requests.add(it) }
             }
         }
         return InboxResult(invites, requests, p.seq)
