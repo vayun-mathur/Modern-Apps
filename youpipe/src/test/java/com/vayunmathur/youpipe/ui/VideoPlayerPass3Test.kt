@@ -173,7 +173,7 @@ class VideoPlayerPass3Test {
         // outside them must not survive into the state.
         kotlinx.coroutines.runBlocking {
             com.vayunmathur.library.util.DataStoreUtils.getInstance(app)
-                .setStringSet("sponsorblock_categories", setOf("sponsor"))
+                .addStringToSetIfAbsent("sponsorblock_categories", "sponsor")
         }
         vm2.videoStateMutable.value = vm2.videoState.value.copy(
             sponsorSegments = listOf(
