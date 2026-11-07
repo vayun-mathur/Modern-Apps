@@ -50,6 +50,17 @@ class ActivitiesTest {
     }
 
     @Test
+    fun `view info activity is direct-boot aware for pre-unlock responders`() {
+        // The lock-screen card must open after a reboot before the owner has
+        // unlocked: the repository reads device-protected storage for exactly
+        // this, which only works if the activity may run in direct-boot mode.
+        val info = ctx.packageManager.getActivityInfo(
+            android.content.ComponentName(ctx, ViewInfoActivity::class.java), 0,
+        )
+        assertTrue(info.directBootAware)
+    }
+
+    @Test
     fun `view info activity renders and refreshes on resume`() {
         val controller = Robolectric.buildActivity(ViewInfoActivity::class.java)
         val activity = controller.create().start().resume().visible().get()
