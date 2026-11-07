@@ -117,7 +117,12 @@ object ImapClient {
         }
     }
 
-    suspend fun fetchFolders(server: ServerConfig, user: String, auth: EmailManager.AuthType): List<EmailFolder> =
+    suspend fun fetchFolders(
+        server: ServerConfig,
+        user: String,
+        auth: EmailManager.AuthType,
+        accountEmail: String = user,
+    ): List<EmailFolder> =
         withConnection(server, user, auth) { conn ->
             val entries = conn.list("", "*")
             entries.map { entry ->
@@ -136,7 +141,7 @@ object ImapClient {
                 }
                 val holds = !entry.flags.any { it.equals("\\Noselect", ignoreCase = true) }
                 EmailFolder(
-                    accountEmail = user,
+                    accountEmail = accountEmail,
                     fullName = fullName,
                     name = name.ifBlank { fullName },
                     parentFullName = parent,
@@ -156,9 +161,10 @@ object ImapClient {
         fetchBodies: Boolean = false,
         skipUids: Set<Long> = emptySet(),
         context: Context? = null,
+        accountEmail: String = user,
     ): Pair<List<EmailMessage>, List<Attachment>> =
         withConnection(server, user, auth) { conn ->
-            fetchMessagesInConnection(conn, user, folderName, limit, offset, fetchBodies, skipUids, context)
+            fetchMessagesInConnection(conn, accountEmail, folderName, limit, offset, fetchBodies, skipUids, context)
         }
 
     suspend fun fetchMessagesInConnection(
@@ -279,13 +285,14 @@ object ImapClient {
         folderName: String,
         uid: Long,
         context: Context? = null,
+        accountEmail: String = user,
     ): Triple<String?, Boolean, List<Attachment>> = withConnection(server, user, auth) { conn ->
         conn.select(folderName)
         val res = conn.fetch.uidFetchFullSet(uid.toString()).firstOrNull()
             ?: return@withConnection Triple<String?, Boolean, List<Attachment>>(null, false, emptyList())
         val bytes = res.bodyBytes ?: return@withConnection Triple(null, false, emptyList())
         try {
-            MimeParser.parseMessage(bytes, uid, user, canonicalizeMailbox(folderName), context)
+            MimeParser.parseMessage(bytes, uid, accountEmail, canonicalizeMailbox(folderName), context)
         } catch (_: Exception) {
             Log.status(TAG, "parse failed UID $uid")
             Triple(null, false, emptyList())
@@ -299,6 +306,7 @@ object ImapClient {
         auth: EmailManager.AuthType,
         folderName: String,
         uid: Long,
+        accountEmail: String = user,
     ): EmailManager.FullFetchResult = withConnection(server, user, auth) { conn ->
         conn.select(folderName)
         val res = conn.fetch.uidFetchFullSet(uid.toString()).firstOrNull()
@@ -309,7 +317,7 @@ object ImapClient {
             MimeParser.parseMessage(
                 bytes,
                 uid,
-                user,
+                accountEmail,
                 canonicalizeMailbox(folderName),
                 context.applicationContext,
             )

@@ -284,6 +284,7 @@ class EmailViewModel(application: Application) :
                     auth = account.resolveAuth(appContext),
                     folderName = message.folderName,
                     uid = message.id,
+                    accountEmail = message.accountEmail,
                 )
                 val (body, isHtml, attachments) = full.contentTriple
                 if (body != null || attachments.isNotEmpty()) {
