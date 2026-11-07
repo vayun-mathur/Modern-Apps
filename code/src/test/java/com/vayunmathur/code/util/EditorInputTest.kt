@@ -298,13 +298,23 @@ class EditorInputTest {
     }
 
     @Test
-    fun newlineWithNoIndentKeepsOldText() {
+    fun newlineWithNoIndentInsertsNewline() {
         val old = TextFieldValue("foo", TextRange(3))
         val new = TextFieldValue("foo\n", TextRange(4))
         val result = apply(old, new)
-        // No indent and no bracket pair: the handler echoes the pre-newline
-        // text (the newline itself is already in the buffer from the edit).
-        assertEquals("foo", result.text)
+        // No indent to carry and no bracket pair: the newline the user typed
+        // must survive (previously it was dropped, so Enter did nothing).
+        assertEquals("foo\n", result.text)
+        assertEquals(4, result.selection.start)
+    }
+
+    @Test
+    fun newlineWithNoIndentSplitsLineAtCaret() {
+        val old = TextFieldValue("foobar", TextRange(3))
+        val new = TextFieldValue("foo\nbar", TextRange(4))
+        val result = apply(old, new)
+        assertEquals("foo\nbar", result.text)
+        assertEquals(4, result.selection.start)
     }
 
     @Test
