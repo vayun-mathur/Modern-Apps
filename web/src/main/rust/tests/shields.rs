@@ -80,7 +80,10 @@ fn removeparam_rewrites_tracking_urls_without_blocking() {
     let engine = engine_with("||example.com^$removeparam=utm_source");
     let url = "https://example.com/p?utm_source=google&id=7".to_string();
     let source = "https://news.example/".to_string();
-    let kind = "script".to_string();
+    // A typeless $removeparam rule applies to document/subdocument/XHR
+    // requests only (adblock's NetworkFilterMask default for IS_REMOVEPARAM);
+    // a script request is legitimately not rewritten by it.
+    let kind = "document".to_string();
     let request = Request::new(&url, &source, &kind, "get").expect("test urls must parse");
     let result = engine.check_network_request(&request);
     assert!(!result.should_block());
@@ -129,3 +132,4 @@ fn invalid_resources_json_leaves_the_engine_working() {
         check("https://ads.example.com/x.js", "https://news.example/", "script", &engine);
     assert!(blocked);
 }
+
