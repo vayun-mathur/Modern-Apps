@@ -67,8 +67,9 @@ class ReviewReminderWorker(
         val now = System.currentTimeMillis()
         val repository = FlashcardsRepository.get(applicationContext)
         val cards = repository.getAllCardsImpl()
-        val due = cards.count { it.state != CardState.NEW && it.dueDate <= now } +
-            cards.count { it.state == CardState.NEW }
+        val due = cards.count {
+            !it.isSuspended && ((it.state != CardState.NEW && it.dueDate <= now) || it.state == CardState.NEW)
+        }
         if (due > 0) notify(due)
         return Result.success()
     }
