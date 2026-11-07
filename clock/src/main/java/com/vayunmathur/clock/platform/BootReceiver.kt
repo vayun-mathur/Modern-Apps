@@ -11,6 +11,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
+/**
+ * Re-arms every enabled alarm whenever the instants AlarmManager holds stop
+ * meaning what the database says: after a reboot (AlarmManager is wiped),
+ * and after the timezone or the wall clock changes (AlarmManager entries are
+ * absolute epoch millis, so a 07:00 alarm computed in the old zone would
+ * otherwise fire at 07:00-old-zone in the new one). Timers need no such
+ * handling for time changes — their end is a duration from a stored instant,
+ * which a zone change does not move.
+ */
 class BootReceiver : BroadcastReceiver() {
     // Broad catch is deliberate: onReceive must not throw, and Room throws
     // undocumented RuntimeExceptions (not just SQLiteException).
@@ -19,6 +28,8 @@ class BootReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_TIME_CHANGED,
             "android.intent.action.QUICKBOOT_POWERON" -> {
                 val repository = ClockRepository.get(context)
                 val pendingResult = goAsync()
