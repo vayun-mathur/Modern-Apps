@@ -55,6 +55,16 @@ class ChessViewModelTest {
         assertEquals(PieceColor.WHITE, vm.uiState.value.turn)
     }
 
+    @Test fun `tapping another own piece reselects it`() {
+        val vm = ChessViewModel(app)
+        vm.onSquareClick(sq('e', 2))
+        assertEquals(sq('e', 2), vm.uiState.value.selectedPiece)
+        vm.onSquareClick(sq('d', 2)) // own pawn: reselect, not deselect
+        assertEquals(sq('d', 2), vm.uiState.value.selectedPiece)
+        vm.onSquareClick(sq('d', 2)) // same square again: deselect
+        assertNull(vm.uiState.value.selectedPiece)
+    }
+
     @Test fun `fools mate ends the game and blocks further clicks`() {
         val vm = ChessViewModel(app)
         fun move(f1: Char, r1: Int, f2: Char, r2: Int) { vm.onSquareClick(sq(f1, r1)); vm.onSquareClick(sq(f2, r2)) }

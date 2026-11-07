@@ -104,6 +104,12 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
             if (pieceAtPosition != null && pieceAtPosition.color == state.turn) {
                 _uiState.update { it.copy(selectedPiece = position) }
             }
+        } else if (position != selectedPiece && pieceAtPosition != null &&
+            pieceAtPosition.color == state.turn
+        ) {
+            // Tapping another of the player's own pieces reselects it,
+            // matching PuzzleViewModel and LearnViewModel.
+            _uiState.update { it.copy(selectedPiece = position) }
         } else {
             if (board.isValidMove(selectedPiece, position)) {
                 val newBoard = board.movePiece(selectedPiece, position)
