@@ -112,6 +112,19 @@ class KdbxSyncEngineTest {
 
     @Test fun firstSyncAdoptsMatchingVaultEntriesInsteadOfDuplicating() = runBlocking {
         val local = password(1, "GitHub", "octocat", "p", syncId = "local-1", updatedAt = 1000)
+        // An entry written by KeePassXC: same credential, but no sync identity.
+        val foreign = fields(local) - EntryMapper.FIELD_SYNC_ID - EntryMapper.FIELD_MODIFIED
+        val harness = Harness(passwords = listOf(local), remote = listOf(foreign))
+
+        harness.sync()
+
+        assertEquals(1, harness.pwDao.store.size)
+        assertEquals("local-1", harness.pwDao.store.single().syncId)
+        val remote = harness.remoteEntries()
+        assertEquals(1, remote.size)
+        assertEquals("local-1", remote.single()[EntryMapper.FIELD_SYNC_ID])
+    }
+
     @Test fun unmatchedForeignEntryIsPulledAsNew() = runBlocking {
         val harness = Harness(remote = listOf(mapOf("Title" to "Foreign", "UserName" to "x", "Password" to "y")))
 
