@@ -41,7 +41,7 @@ import com.vayunmathur.measure.platform.ArMeasureUiState
 fun ArMeasureContent(
     state: ArMeasureUiState,
     actions: ArMeasureActions,
-    screenPoints: List<Offset> = emptyList(),
+    screenPoints: List<Offset?> = emptyList(),
     onCanvasSized: (Size) -> Unit = {},
     onTap: (Float, Float) -> Unit = { _, _ -> },
     cameraContent: @Composable () -> Unit = {},
@@ -190,7 +190,7 @@ private fun ReadoutCard(state: ArMeasureUiState) {
 @Composable
 private fun ArOverlay(
     state: ArMeasureUiState,
-    screenPoints: List<Offset>,
+    screenPoints: List<Offset?>,
     onCanvasSized: (Size) -> Unit,
     onTap: (Float, Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -218,12 +218,17 @@ private fun ArOverlay(
         }
 
         for (i in 0 until screenPoints.size - 1) {
-            drawLine(primary, screenPoints[i], screenPoints[i + 1], 4f)
+            val a = screenPoints[i]
+            val b = screenPoints[i + 1]
+            if (a != null && b != null) drawLine(primary, a, b, 4f)
         }
         if (state.polygonClosed && screenPoints.size >= 3) {
-            drawLine(primary, screenPoints.last(), screenPoints.first(), 4f)
+            val a = screenPoints.last()
+            val b = screenPoints.first()
+            if (a != null && b != null) drawLine(primary, a, b, 4f)
         }
         for (p in screenPoints) {
+            if (p == null) continue
             drawCircle(primary, 12f, p)
             drawCircle(onPrimary, 5f, p)
         }

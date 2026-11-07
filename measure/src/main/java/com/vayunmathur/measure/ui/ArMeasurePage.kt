@@ -33,7 +33,7 @@ import kotlinx.coroutines.delay
 fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
     val state by viewModel.ar.collectAsState()
     var sessionHandle by remember { mutableLongStateOf(0L) }
-    var screenPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    var screenPoints by remember { mutableStateOf<List<Offset?>>(emptyList()) }
     var canvasSize by remember { mutableStateOf(Size.Zero) }
 
     val cameraGranted = rememberCameraPermission { viewModel.setCameraPermission(it) }
@@ -62,8 +62,15 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
                 ANALYSIS_SIZE.width.toDouble(),
                 ANALYSIS_SIZE.height.toDouble(),
             )
+            // The third component is the engine's visibility flag: points
+            // behind the camera project to (0, 0, false) and must not be
+            // drawn as an anchor in the top-left corner.
             screenPoints = projected.toList().chunked(3).map { c ->
-                Offset(c[0].toFloat() * canvasSize.width, c[1].toFloat() * canvasSize.height)
+                if (c[2] > 0.5) {
+                    Offset(c[0].toFloat() * canvasSize.width, c[1].toFloat() * canvasSize.height)
+                } else {
+                    null
+                }
             }
             delay(PROJECTION_INTERVAL_MS)
         }
