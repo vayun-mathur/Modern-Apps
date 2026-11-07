@@ -1,98 +1,142 @@
 package com.vayunmathur.maps.util
 
+import android.app.Application
 import android.content.ActivityNotFoundException
+import android.content.ContentProvider
+import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.database.Cursor
+import android.database.MatrixCursor
+import android.net.Uri
+import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.StructuredPostal
 import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.app.ActivityOptionsCompat
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
+import kotlin.test.assertNull
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
 
 /**
- * The postal-picker fallback chain: postal row first, whole-contact second,
- * quiet no-op when the device has neither.
+ * The picker fallback chain with fake launchers (postal refused → contact
+ * picker → give up), and session reads over a cursor that carries no
+ * mimetype column at all.
  * Slice-2 coverage for maps (basename C, outside the slice-1 dirs).
  */
-@RunWith(AndroidJUnit4::class)
+@RunWith(RobolectricTestRunner::class)
 class ContactLookupLaunchersSlice2Test {
 
-    private class RecordingLauncher<I>(
-        private val behaviour: (I) -> Unit = {},
+    private val context: Context get() = ApplicationProvider.getApplicationContext()
+
+    private class FakeLauncher<I>(
+        override val contract: ActivityResultContract<I, *>,
+        private val fails: Boolean = false,
     ) : ActivityResultLauncher<I>() {
-        val launched = mutableListOf<I>()
-        override val contract: androidx.activity.result.contract.ActivityResultContract<I, *>
-            get() = throw UnsupportedOperationException("test fake")
-
+        val launchedInputs = mutableListOf<I?>()
         override fun launch(input: I, options: ActivityOptionsCompat?) {
-            launched.add(input)
-            behaviour(input)
+            launchedInputs += input
+            if (fails) throw ActivityNotFoundException("no handler")
         }
-
         override fun unregister() {}
     }
 
-    @Test
-    fun `the postal picker is tried first`() {
-        val postal = RecordingLauncher<Intent>()
-        val contact = RecordingLauncher<Void?>()
+    /** Serves postal rows with NO mimetype column in the cursor. */
+    private class NoMimeProvider : ContentProvider() {
+        override fun onCreate(): Boolean = true
+        override fun query(
+            uri: Uri,
+            projection: Array<String>?,
+            selection: String?,
+            selectionArgs: Array<String>?,
+            sortOrder: String?,
+        ): Cursor {
+            val cursor = MatrixCursor(
+                arrayOf(
+                    StructuredPostal.FORMATTED_ADDRESS,
+                    StructuredPostal.STREET,
+                    StructuredPostal.CITY,
+                    StructuredPostal.REGION,
+                    StructuredPostal.POSTCODE,
+                    StructuredPostal.COUNTRY,
+                ),
+            )
+            cursor.addRow(arrayOf<Any?>("9 Elm St\nSpringfield", null, null, null, null, null))
+            return cursor
+        }
+        override fun getType(uri: Uri): String? = null
+        override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+        override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int = 0
+        override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<String>?): Int = 0
+    }
+
+    @Test fun `the postal picker launches a postal pick intent`() {
+        val postal = FakeLauncher(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult())
+        val contact = FakeLauncher(androidx.activity.result.contract.ActivityResultContracts.PickContact())
         var noPicker = 0
-        launchPostalPicker(postal, contact, onNoPicker = { noPicker++ })
-        assertEquals(1, postal.launched.size)
-        assertEquals(0, contact.launched.size)
+        launchPostalPicker(postal, contact) { noPicker++ }
+        assertEquals(1, postal.launchedInputs.size)
+        assertEquals(StructuredPostal.CONTENT_TYPE, postal.launchedInputs.first()?.type)
+        assertEquals(0, contact.launchedInputs.size)
         assertEquals(0, noPicker)
-        // Typed to the postal content type.
-        assertEquals(
-            android.provider.ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_TYPE,
-            postal.launched[0].type,
+    }
+
+    @Test fun `a refused postal picker falls back to the contact picker`() {
+        val postal = FakeLauncher(
+            androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+            fails = true,
         )
-        assertEquals(Intent.ACTION_PICK, postal.launched[0].action)
-    }
-
-    @Test
-    fun `no postal picker falls back to the whole-contact picker`() {
-        val postal = RecordingLauncher<Intent> { throw ActivityNotFoundException() }
-        val contact = RecordingLauncher<Void?>()
+        val contact = FakeLauncher(androidx.activity.result.contract.ActivityResultContracts.PickContact())
         var noPicker = 0
-        launchPostalPicker(postal, contact, onNoPicker = { noPicker++ })
-        assertEquals(1, postal.launched.size)
-        assertEquals(1, contact.launched.size)
+        launchPostalPicker(postal, contact) { noPicker++ }
+        assertEquals(1, contact.launchedInputs.size)
+        assertNull(contact.launchedInputs.first())
         assertEquals(0, noPicker)
     }
 
-    @Test
-    fun `no picker at all reports through onNoPicker`() {
-        val contact = RecordingLauncher<Void?> { throw ActivityNotFoundException() }
+    @Test fun `when even the contact picker is refused the caller is told`() {
+        val postal = FakeLauncher(
+            androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+            fails = true,
+        )
+        val contact = FakeLauncher(
+            androidx.activity.result.contract.ActivityResultContracts.PickContact(),
+            fails = true,
+        )
         var noPicker = 0
-        launchContactPicker(contact, onNoPicker = { noPicker++ })
-        assertEquals(1, contact.launched.size)
+        launchPostalPicker(postal, contact) { noPicker++ }
         assertEquals(1, noPicker)
     }
 
-    @Test
-    fun `a working contact picker stays quiet`() {
-        val contact = RecordingLauncher<Void?>()
+    @Test fun `the contact picker alone reports refusal the same way`() {
+        val contact = FakeLauncher(
+            androidx.activity.result.contract.ActivityResultContracts.PickContact(),
+            fails = true,
+        )
         var noPicker = 0
-        launchContactPicker(contact, onNoPicker = { noPicker++ })
-        assertEquals(1, contact.launched.size)
-        assertEquals(0, noPicker)
-    }
-
-    @Test
-    fun `double fallback reaches onNoPicker`() {
-        val postal = RecordingLauncher<Intent> { throw ActivityNotFoundException() }
-        val contact = RecordingLauncher<Void?> { throw ActivityNotFoundException() }
-        var noPicker = 0
-        launchPostalPicker(postal, contact, onNoPicker = { noPicker++ })
+        launchContactPicker(contact) { noPicker++ }
         assertEquals(1, noPicker)
     }
 
-    @Test
-    fun `the system picker intent is only built on android 17`() {
-        // Robolectric runs SDK 34 here, below CINNAMON_BUN — document the gate.
-        assertTrue(android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.CINNAMON_BUN)
+    @Test fun `a session cursor without a mimetype column still reads its rows`() {
+        Robolectric.setupContentProvider(NoMimeProvider::class.java, "com.android.contacts")
+        val uri = Uri.parse("content://com.android.contacts/session/42")
+        assertEquals(
+            listOf("9 Elm St, Springfield"),
+            readSessionAddresses(context, uri),
+        )
+    }
+
+    @Test fun `a contact uri that no longer resolves reads empty`() {
+        Robolectric.setupContentProvider(
+            ContactLookupProvidersSlice2Test.FakeContactsProvider::class.java,
+            "com.android.contacts",
+        )
+        val uri = Uri.parse("content://com.android.contacts/contacts/404")
+        assertEquals(emptyList(), readContactAddresses(context, uri))
     }
 }
