@@ -47,6 +47,7 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
 
     private val tokenStore = LichessTokenStore(application)
     private val authManager = LichessAuthManager(application, tokenStore)
+
     private val api = LichessApi(tokenStore)
 
     private val _uiState = MutableStateFlow(OnlineChessUiState())
@@ -404,10 +405,10 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
             "draw", "stalemate" -> context.getString(
                 com.vayunmathur.games.chess.R.string.online_result_draw
             )
-            // `winner` is the color that won: present → the other side resigned; absent → I resigned
-            // (my resign POST raced the state, or the server reports it without a winner).
+            // `winner` is the color that won: my color → the opponent resigned; the
+            // opponent's color (or no winner, when my resign POST raced the state) → I resigned.
             "resign" ->
-                if (iWon == false) context.getString(
+                if (iWon == true) context.getString(
                     com.vayunmathur.games.chess.R.string.online_result_opponent_resigned
                 ) else context.getString(
                     com.vayunmathur.games.chess.R.string.online_result_resigned
