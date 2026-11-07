@@ -42,7 +42,16 @@ import java.io.File
  */
 class Gemma4AudioHandle private constructor(private val file: File) : AutoCloseable {
 
-    private var handle: Long = if (MlNative.isAvailable) create(file) else 0L
+    // Internal (pass-3 test seam): tests drive [encode] with a fake handle
+    // and a fake native call instead of the JNI bridge (no host symbols).
+    internal var handle: Long = if (MlNative.isAvailable) create(file) else 0L
+
+    /** Test seam (pass 3): the [MlNative.encodeAudioGemma4] call. */
+    internal var encodeNative: (Long, FloatArray) -> FloatArray? =
+        { h, samples -> MlNative.encodeAudioGemma4(h, samples) }
+
+    /** Test seam (pass 3): the [MlNative.destroyGemma4Audio] call. */
+    internal var destroyNative: (Long) -> Unit = { MlNative.destroyGemma4Audio(it) }
 
     /** Whether the tower came up. False leaves the assistant without audio rather than crashing. */
     val isAvailable: Boolean
@@ -65,13 +74,13 @@ class Gemma4AudioHandle private constructor(private val file: File) : AutoClosea
             Log.status(TAG, "${samples.size} samples is under the $MIN_SAMPLES the band needs")
             return null
         }
-        return MlNative.encodeAudioGemma4(handle, samples)
+        return encodeNative(handle, samples)
     }
 
     override fun close() {
         val live = handle
         handle = 0L
-        if (live != 0L) MlNative.destroyGemma4Audio(live)
+        if (live != 0L) destroyNative(live)
     }
 
     override fun toString(): String = "Gemma 4 audio tower at $file"
