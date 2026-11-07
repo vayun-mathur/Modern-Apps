@@ -32,14 +32,46 @@ class ZipWorker(context: Context, params: WorkerParameters) : ProgressNotificati
         createNotificationChannel()
         setForeground(createForegroundInfo(0))
 
+        // Refusals happen before the try below on purpose: that block deletes
+        // the destination on failure, which is only safe for a file this run
+        // created - never for one it refused to touch.
+        try {
+            checkDestination(sourcePaths, destFile)
+        } catch (e: IOException) {
+            Log.status(TAG_ZIP, "refused archive destination", e)
+            cancelNotification()
+            return Result.failure()
+        }
+
         return try {
             archiveSources(sourcePaths, destFile)
             Result.success()
         } catch (e: IOException) {
             Log.status(TAG_ZIP, "failed to create archive", e)
+            // The destination was verified absent above, so anything at
+            // destFile now is this run's partial output: remove it rather
+            // than leaving a corrupt archive that looks like a finished one.
+            runCatching { destFile.delete() }
             Result.failure()
         } finally {
             cancelNotification()
+        }
+    }
+
+    /**
+     * Opening the destination truncates it, so never start if it already
+     * exists, is one of the sources, or sits inside a source directory
+     * (it would be read back into its own archive as it grows).
+     */
+    private fun checkDestination(sourcePaths: Array<String>, destFile: File) {
+        if (destFile.exists()) throw IOException("Archive already exists: ${destFile.path}")
+        val destCanonical = destFile.canonicalFile
+        for (sourcePath in sourcePaths) {
+            val source = File(sourcePath).canonicalFile
+            val insideSource = destCanonical == source ||
+                (source.isDirectory &&
+                    destCanonical.path.startsWith(source.path + File.separator))
+            if (insideSource) throw IOException("Archive would contain itself: ${destFile.path}")
         }
     }
 
