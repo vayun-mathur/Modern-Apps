@@ -28,6 +28,10 @@ dependencies {
     // The IPC contract, shared with every app that streams its content through here. Depended on
     // rather than duplicated, which is the one thing FamilyLocationProtocol gets wrong.
     implementation(project(":sdk:cast"))
+    // Test-only: the fake TV in unit tests holds a real PQC identity to seal against.
+    testImplementation(project(":library:e2ee-p2p"))
+    // Test-only: lets Robolectric load the remote-display provider against the stub surface.
+    testImplementation(project(":library:aosp-stubs"))
 }
 
 // No Rust crate. The protocol module already reaches ML-KEM through :library:e2ee-p2p, and
