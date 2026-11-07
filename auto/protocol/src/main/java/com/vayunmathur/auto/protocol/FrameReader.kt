@@ -62,6 +62,12 @@ class FrameReader(
      */
     private fun takeFrame(): ReassembledMessage? {
         if (pending.remaining() < FrameHeader.SHORT_HEADER_SIZE) return null
+        // The first fragment of a fragmented message carries an 8-byte long
+        // header. A read can end inside it (4-7 bytes in), and FrameHeader
+        // throws rather than waiting in that case, so wait for all of it.
+        val flags = pending.get(pending.position() + 1).toInt() and 0xFF
+        val isFirstFragment = flags and FrameFlags.FIRST != 0 && flags and FrameFlags.LAST == 0
+        if (isFirstFragment && pending.remaining() < FrameHeader.LONG_HEADER_SIZE) return null
 
         pending.mark()
         val header = FrameHeader.readFrom(pending)
