@@ -22,6 +22,20 @@ class AppStoreDatabaseRepositoryTest {
 
     private val ctx: Context get() = ApplicationProvider.getApplicationContext()
 
+    init {
+        // See UpdateCheckWorkerDoWorkTest: the SQLCipher production
+        // database cannot open under Robolectric, so bind an in-memory
+        // one into the shared builder cache.
+        synchronized(com.vayunmathur.library.util.databases) {
+            com.vayunmathur.library.util.databases[AppDatabase::class]
+                ?: androidx.room3.Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
+                    .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
+                    .allowMainThreadQueries()
+                    .build()
+                    .also { com.vayunmathur.library.util.databases[AppDatabase::class] = it }
+        }
+    }
+
     @Test
     fun `repo and cached app passthroughs round trip`() = runTest {
         val repo = AppStoreDatabaseRepository.get(ctx)
@@ -47,7 +61,11 @@ class AppStoreDatabaseRepositoryTest {
             assertTrue(repo.allRepos().none { it.url == url })
         } finally {
             runCatching { repo.deleteByUrl(url) }
-            runCatching { repo.database.cachedAppDao().deleteByRepo(url) }
+            runCatching {
+                repo.cachedAppByPackage(pkg)?.repoUrl?.let {
+                    repo.database.cachedAppDao().deleteByRepo(it)
+                }
+            }
         }
         assertNull(repo.cachedAppByPackage(pkg))
     }

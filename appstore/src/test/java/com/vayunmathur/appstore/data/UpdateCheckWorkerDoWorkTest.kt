@@ -35,6 +35,17 @@ class UpdateCheckWorkerDoWorkTest {
 
     @BeforeTest
     fun setUp() {
+        // The production database is SQLCipher via AndroidKeyStore, which
+        // Robolectric lacks: bind an in-memory database into the shared
+        // cache the database builder consults first.
+        synchronized(com.vayunmathur.library.util.databases) {
+            com.vayunmathur.library.util.databases[AppDatabase::class]
+                ?: androidx.room3.Room.inMemoryDatabaseBuilder(ctx, AppDatabase::class.java)
+                    .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
+                    .allowMainThreadQueries()
+                    .build()
+                    .also { com.vayunmathur.library.util.databases[AppDatabase::class] = it }
+        }
         settings = SettingsRepository(ctx, CoroutineScope(Dispatchers.IO))
         ctx.getSharedPreferences("appstore-update-check", Context.MODE_PRIVATE)
             .edit().clear().commit()
@@ -54,12 +65,15 @@ class UpdateCheckWorkerDoWorkTest {
 
     private suspend fun seedCatalogueUpdate() {
         val db = AppStoreDatabaseRepository.get(ctx).database
+        // Newer than whatever build is installed: the dev versionCode is a
+        // date (20261028), so a small constant would read as a downgrade.
+        val installed = ctx.packageManager.getPackageInfo(ctx.packageName, 0).longVersionCode
         db.cachedAppDao().upsert(
             UnifiedApp(
                 packageName = ctx.packageName,
                 source = AppSource.MODERN_APPS,
                 name = "This Store",
-                versionCode = 999_999L,
+                versionCode = installed + 1_000L,
                 repoUrl = DefaultRepos.MODERN_APPS.url,
             ).toEntity(),
         )
