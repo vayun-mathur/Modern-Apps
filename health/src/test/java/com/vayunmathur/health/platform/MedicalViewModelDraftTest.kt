@@ -10,7 +10,7 @@ import com.vayunmathur.health.data.HealthDatabase
 import com.vayunmathur.health.data.HealthRepository
 import com.vayunmathur.health.data.MedicationStatus
 import com.vayunmathur.health.data.VaccinationEntry
-import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import com.vayunmathur.library.util.databases
 
 /**
  * Tests for [MedicalViewModel]'s draft lifecycle: starting a blank form and
@@ -28,19 +29,28 @@ import org.robolectric.annotation.Config
  * a blank draft and an edit are pure state updates, and the flows below only
  * start collecting once subscribed. Anything reaching Room or Health Connect
  * belongs on the emulator.
+ *
+ * The singleton resolves its database through the shared cache, which would
+ * otherwise build the SQLCipher file database and need AndroidKeyStore, so
+ * each test points the cache at an in-memory instance first (seeding runs
+ * inside the Robolectric sandbox, where the application context exists).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MedicalViewModelDraftTest {
 
     private val context = ApplicationProvider.getApplicationContext<Application>()
-    private val db: HealthDatabase = Room.inMemoryDatabaseBuilder(context, HealthDatabase::class.java)
-        .allowMainThreadQueries()
-        .build()
 
-    @AfterTest
-    fun closeDb() {
-        db.close()
+    @BeforeTest
+    fun setup() {
+        synchronized(databases) {
+            if (databases[HealthDatabase::class] == null) {
+                databases[HealthDatabase::class] = Room
+                    .inMemoryDatabaseBuilder(context, HealthDatabase::class.java)
+                    .allowMainThreadQueries()
+                    .build()
+            }
+        }
     }
 
     private fun viewModel(): MedicalViewModel =
