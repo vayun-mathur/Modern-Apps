@@ -117,14 +117,63 @@ internal fun routePoint(route: List<Int>, at: Float, cols: Int, cell: Float): Of
 /**
  * One arrow: its body as a single joined stroke, and an arrowhead at the head.
  *
- * The stroke runs through cell centres, so a turn in the polyline becomes a rounded corner. The tip
- * reaches past the head's centre by [HEAD_REACH] to leave room for the barbs while staying inside its own
- * cell rather than poking into the next one.
+ * The stroke runs through cell centres, and a turn in the polyline is drawn as a rounded arc (see
+ * [arrowBodyPath]) rather than a sharp corner. The tip reaches past the head's centre by
+ * [HEAD_REACH] to leave room for the barbs while staying inside its own cell rather than poking
+ * into the next one.
  */
 internal fun DrawScope.drawArrow(piece: ArrowPiece, cols: Int, cell: Float, color: Color) {
     val centres = piece.cells.map { Offset((it % cols + 0.5f) * cell, (it / cols + 0.5f) * cell) }
     val heading = Offset(piece.direction.dCol.toFloat(), piece.direction.dRow.toFloat())
     drawArrowShape(centres, heading, cell, color)
+}
+
+/**
+ * The body path through [points] (cell centres, ending at the arrow tip), with every turn
+ * replaced by a rounded quarter-circle arc.
+ *
+ * The arc's radius follows the grid: half a cell, the largest quarter circle that fits inside
+ * one cell, so a turn reads as the arrow bending around the corner cell instead of pivoting on
+ * its centre. It is clamped to half the shorter neighbouring segment so two arcs on adjacent
+ * corners of a short hop can never overlap and swallow the straight between them; a straight
+ * (collinear) point keeps a plain line, and a degenerate zero-length neighbour is skipped.
+ *
+ * Quadratic curves stand in for the circular arc: with the control point on the corner itself
+ * the curve leaves one straight tangentially and joins the next the same way, which at stroke
+ * width is indistinguishable from the true arc while needing no angle bookkeeping per turn.
+ */
+internal fun arrowBodyPath(points: List<Offset>, cell: Float): Path {
+    val path = Path()
+    if (points.isEmpty()) return path
+    path.moveTo(points.first().x, points.first().y)
+    if (points.size == 1) return path
+
+    val maxRadius = cell * 0.5f
+    for (index in 1 until points.lastIndex) {
+        val previous = points[index - 1]
+        val corner = points[index]
+        val next = points[index + 1]
+        val inLength = kotlin.math.hypot(corner.x - previous.x, corner.y - previous.y)
+        val outLength = kotlin.math.hypot(next.x - corner.x, next.y - corner.y)
+        val radius = minOf(maxRadius, inLength / 2f, outLength / 2f)
+        // Collinear (or degenerate) points have no turn to round: cross product ~ 0.
+        val cross = (corner.x - previous.x) * (next.y - corner.y) -
+            (corner.y - previous.y) * (next.x - corner.x)
+        if (radius <= 0f || inLength <= 0f || outLength <= 0f ||
+            kotlin.math.abs(cross) <= 0.001f * inLength * outLength
+        ) {
+            path.lineTo(corner.x, corner.y)
+            continue
+        }
+        val inUnit = Offset((corner.x - previous.x) / inLength, (corner.y - previous.y) / inLength)
+        val outUnit = Offset((next.x - corner.x) / outLength, (next.y - corner.y) / outLength)
+        val arcStart = Offset(corner.x - inUnit.x * radius, corner.y - inUnit.y * radius)
+        val arcEnd = Offset(corner.x + outUnit.x * radius, corner.y + outUnit.y * radius)
+        path.lineTo(arcStart.x, arcStart.y)
+        path.quadraticBezierTo(corner.x, corner.y, arcEnd.x, arcEnd.y)
+    }
+    path.lineTo(points.last().x, points.last().y)
+    return path
 }
 
 /**
@@ -146,13 +195,8 @@ internal fun DrawScope.drawArrowShape(
     val head = centres.last()
     val tip = Offset(head.x + unit.x * cell * 0.34f, head.y + unit.y * cell * 0.34f)
 
-    val path = Path().apply {
-        moveTo(centres.first().x, centres.first().y)
-        for (point in centres.drop(1)) lineTo(point.x, point.y)
-        lineTo(tip.x, tip.y)
-    }
     drawPath(
-        path = path,
+        path = arrowBodyPath(centres + tip, cell),
         color = color,
         style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
     )
