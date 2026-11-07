@@ -47,7 +47,7 @@ class WhatsAppSocket(
     private val authData: WhatsAppAuthData,
     private val host: String = DEFAULT_HOST,
     private val port: Int = DEFAULT_PORT,
-) {
+) : WhatsAppTransport {
     companion object {
         private const val TAG = "WhatsAppSocket"
         const val DEFAULT_HOST = "g.whatsapp.net"
@@ -78,10 +78,10 @@ class WhatsAppSocket(
     @Volatile private var isHandshakeComplete = false
 
     private val _messages = MutableSharedFlow<ByteArray>(extraBufferCapacity = 256)
-    val messages: SharedFlow<ByteArray> = _messages.asSharedFlow()
+    override val messages: SharedFlow<ByteArray> = _messages.asSharedFlow()
 
     private val _connectionState = MutableSharedFlow<ConnectionState>(extraBufferCapacity = 16)
-    val connectionState: SharedFlow<ConnectionState> = _connectionState.asSharedFlow()
+    override val connectionState: SharedFlow<ConnectionState> = _connectionState.asSharedFlow()
 
     sealed interface ConnectionState {
         data object Connecting : ConnectionState
@@ -101,7 +101,7 @@ class WhatsAppSocket(
 
     // ---------------------------------------------------------------------------- lifecycle
 
-    fun connect() {
+    override fun connect() {
         scope.launch {
             _connectionState.emit(ConnectionState.Connecting)
             try {
@@ -121,7 +121,7 @@ class WhatsAppSocket(
         }
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         scope.launch { closeInternal("client disconnect") }
     }
 
@@ -338,7 +338,7 @@ class WhatsAppSocket(
     // or reorder frames (server rejects with <stream:error><bad-mac>).
     private val sendLock = Any()
 
-    fun send(data: ByteArray): Boolean {
+    override fun send(data: ByteArray): Boolean {
         if (!isConnected || !isHandshakeComplete) return false
         val socket = noiseSocket ?: return false
         return try {

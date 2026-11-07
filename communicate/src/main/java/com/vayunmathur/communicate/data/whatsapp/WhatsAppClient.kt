@@ -13,6 +13,7 @@ import com.vayunmathur.communicate.data.whatsapp.e2e.WhatsAppE2E.ParsedPreKeyBun
 import com.vayunmathur.communicate.data.whatsapp.encodeNode
 import com.vayunmathur.communicate.data.whatsapp.mex.MexResult
 import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppSocket
+import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppTransport
 import java.security.SecureRandom
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -84,7 +85,10 @@ object WhatsAppClient {
     // Use WebView-based WebSocket to bypass TLS fingerprinting
     // WhatsApp blocks non-browser TLS fingerprints (JA3). WebView uses Chromium's
     // network stack which is indistinguishable from Chrome browser.
-    internal var webSocket: WhatsAppSocket? = null
+    internal var webSocket: WhatsAppTransport? = null
+
+    /** Socket construction seam: production builds the real Noise socket; tests inject a fake. */
+    internal var transportFactory: (WhatsAppAuthData) -> WhatsAppTransport = ::WhatsAppSocket
     // Collector jobs for the current socket; cancelled on teardown so old (zombie) sockets
     // don't keep running keepalives or trigger reconnects, which causes self-conflicts.
     private var socketCollectorJobs: MutableList<Job> = mutableListOf()
@@ -570,7 +574,7 @@ object WhatsAppClient {
         teardownSocket()
 
         // Use WebView-based WebSocket to bypass TLS fingerprinting
-        val ws = WhatsAppSocket(auth)
+        val ws = transportFactory(auth)
         webSocket = ws
         socketCollectorJobs.add(
             scope.launch {

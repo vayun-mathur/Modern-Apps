@@ -12,7 +12,7 @@ import com.vayunmathur.communicate.data.whatsapp.buildReactionProto
 import com.vayunmathur.communicate.data.whatsapp.buildReadReceipt
 import com.vayunmathur.communicate.data.whatsapp.buildRevokeProto
 import com.vayunmathur.communicate.data.whatsapp.encodeNode
-import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppSocket
+import com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppTransport
 import com.vayunmathur.communicate.data.whatsapp.generateMessageId
 import com.vayunmathur.communicate.data.whatsapp.isRevokeFromMe
 import com.vayunmathur.library.log.Log
@@ -50,7 +50,7 @@ suspend fun WhatsAppClient.markRead(
 
 /** Batch group read receipts by sender (Go HandleMatrixReadReceipt). */
 private suspend fun WhatsAppClient.sendGroupReadReceipts(
-    ws: com.vayunmathur.communicate.data.whatsapp.transport.WhatsAppSocket,
+    ws: WhatsAppTransport,
     to: String,
     filteredIds: List<String>,
     senderJids: Map<String, String>,
@@ -467,7 +467,7 @@ suspend fun WhatsAppClient.setDisappearingTimer(conversationId: String, timerSec
 
 /** 1:1 disappearing timer via encrypted protocol message. */
 private suspend fun WhatsAppClient.sendDisappearingTimerMessage(
-    ws: WhatsAppSocket,
+    ws: WhatsAppTransport,
     chatJid: String,
     id: String,
     timerSeconds: Long,
