@@ -160,8 +160,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         mutate { state ->
             state.copy(
                 entries = state.entries.replacing(index, digit),
-                // A written digit makes its own pencil marks meaningless.
-                notes = state.notes.replacing(index, 0),
+                // A written digit makes its own pencil marks meaningless, and it is no
+                // longer a candidate anywhere it can be seen from.
+                notes = state.notesAfterPlacement(index, digit),
                 moveCount = state.moveCount + 1,
             )
         }
@@ -242,7 +243,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         mutate { state ->
             state.copy(
                 entries = state.entries.replacing(index, state.solution[index]),
-                notes = state.notes.replacing(index, 0),
+                notes = state.notesAfterPlacement(index, state.solution[index]),
                 selected = index,
                 hintsUsed = state.hintsUsed + 1,
                 moveCount = state.moveCount + 1,
@@ -324,6 +325,29 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         manager.onProgressUpdated("wins_10", totalWins)
         manager.onProgressUpdated("wins_50", totalWins)
         manager.onProgressUpdated("win_streak_5", statsRepository.getBestWinStreak())
+    }
+
+    /**
+     * The note masks after [digit] is written at [index]: the cell's own marks go, and the
+     * digit stops being a candidate in every cell that shares its row, column or box.
+     *
+     * Without the peer sweep a placed digit stayed pencilled into its neighbours, so the
+     * board kept claiming a digit was possible where it had just been ruled out — and the
+     * player had to erase those marks by hand after every placement.
+     */
+    private fun SudokuGameState.notesAfterPlacement(index: Int, digit: Int): List<Int> {
+        val clear = (1 shl (digit - 1)).inv()
+        val row = index / size.side
+        val col = index % size.side
+        val box = size.boxOf(index)
+        return notes.mapIndexed { other, mask ->
+            when {
+                other == index -> 0
+                other / size.side == row || other % size.side == col ||
+                    size.boxOf(other) == box -> mask and clear
+                else -> mask
+            }
+        }
     }
 
     private fun pushHistory(game: SudokuGameState) {

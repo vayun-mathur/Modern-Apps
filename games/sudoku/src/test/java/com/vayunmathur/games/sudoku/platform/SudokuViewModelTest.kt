@@ -168,6 +168,45 @@ class SudokuViewModelTest {
     }
 
     @Test
+    fun placingADigitRemovesItFromPeerNotesOnly() {
+        val vm = startedVm()
+        val game = vm.uiState.value.game!!
+        val side = game.size.side
+        // Three blanks: one to fill, one sharing its row, one sharing neither row,
+        // column nor box with it.
+        val blanks = game.blankIndices()
+        val target = blanks.first()
+        val row = target / side
+        val col = target % side
+        val peer = blanks.first {
+            it != target && it / side == row
+        }
+        val stranger = blanks.first {
+            it / side != row && it % side != col && game.size.boxOf(it) != game.size.boxOf(target)
+        }
+        val digit = game.solution[target]
+        val bit = 1 shl (digit - 1)
+
+        vm.toggleNotesMode()
+        vm.selectCell(peer); vm.enterDigit(digit)
+        vm.selectCell(stranger); vm.enterDigit(digit)
+        assertTrue(vm.uiState.value.game!!.notes[peer] and bit != 0)
+        assertTrue(vm.uiState.value.game!!.notes[stranger] and bit != 0)
+
+        vm.toggleNotesMode()
+        vm.selectCell(target)
+        vm.enterDigit(digit)
+        val after = vm.uiState.value.game!!
+        assertEquals(digit, after.valueAt(target))
+        assertEquals(0, after.notes[peer] and bit, "a placed digit is no longer a peer candidate")
+        assertTrue(after.notes[stranger] and bit != 0, "unrelated cells keep their marks")
+
+        // Undo restores the marks the placement swept away.
+        vm.undo()
+        assertTrue(vm.uiState.value.game!!.notes[peer] and bit != 0)
+    }
+
+    @Test
     fun notesTapOnFilledCellKeepsTheEntry() {
         val vm = startedVm()
         val cell = blank(vm)
