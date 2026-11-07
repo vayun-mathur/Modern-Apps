@@ -135,10 +135,18 @@ object NoteImageStore {
         }
     }
 
-    private fun contentName(file: File): String = "${sha256Hex(file.readBytes())}.jpg"
-
-    private fun sha256Hex(bytes: ByteArray): String {
+    // Streamed, not readBytes(): imported photos can be tens of MB, and loading
+    // the whole file to name it risks OOM on the import path.
+    private fun contentName(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(bytes).joinToString("") { "%02x".format(it) }
+        file.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return "${digest.digest().joinToString("") { "%02x".format(it) }}.jpg"
     }
 }
