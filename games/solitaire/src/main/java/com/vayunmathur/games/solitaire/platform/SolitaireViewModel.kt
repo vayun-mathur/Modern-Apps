@@ -5,6 +5,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.data.CardColorScheme
 import com.vayunmathur.games.solitaire.data.FreeCellState
@@ -18,7 +19,9 @@ import com.vayunmathur.games.solitaire.data.SolitaireStatsRepository
 import com.vayunmathur.games.solitaire.data.SolitaireSettingsRepository
 import com.vayunmathur.games.solitaire.data.SpiderState
 import com.vayunmathur.library.util.AchievementsManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -31,12 +34,66 @@ data class DragInfo(
     val cardSize: IntSize = IntSize.Zero
 )
 
+/**
+ * One animated card flight (tap-to-move or one autocomplete step): [cards]
+ * travel from [from] to [to] (root coordinates) over [durationMillis].
+ * The board hides the cards at the source for the duration and draws the
+ * travelling copies in an overlay; the move itself is only applied once
+ * the flight lands, so game state never shows an intermediate position.
+ * [id] distinguishes consecutive flights that are otherwise equal.
+ */
+data class AnimatedMove(
+    val id: Long,
+    val cards: List<Card>,
+    val sourceId: String,
+    val targetId: String,
+    val from: Rect,
+    val to: Rect,
+    val durationMillis: Int,
+)
+
+/**
+ * Whether this flight hides the card rendered under [sourceId]: the card
+ * at the flight's own source, plus — for a tableau stack — every card
+ * below it in the same column, since the whole stack is travelling.
+ */
+fun AnimatedMove.hides(sourceId: String): Boolean {
+    if (sourceId == this.sourceId) return true
+    val flight = parseTableauSource(this.sourceId) ?: return false
+    val candidate = parseTableauSource(sourceId) ?: return false
+    return flight.first == candidate.first && candidate.second >= flight.second
+}
+
+private fun parseTableauSource(sourceId: String): Pair<Int, Int>? {
+    if (!sourceId.startsWith("tableau_")) return null
+    val parts = sourceId.removePrefix("tableau_").split("_")
+    val column = parts.getOrNull(0)?.toIntOrNull() ?: return null
+    val index = parts.getOrNull(1)?.toIntOrNull() ?: return null
+    return column to index
+}
+
 class SolitaireViewModel(application: Application) : AndroidViewModel(application), SolitaireActions {
     internal val uiStateInternal = MutableStateFlow(SolitaireUiState())
     val uiState: StateFlow<SolitaireUiState> = uiStateInternal.asStateFlow()
 
     internal val dragInfoInternal = MutableStateFlow<DragInfo?>(null)
     override val dragInfo: StateFlow<DragInfo?> = dragInfoInternal.asStateFlow()
+
+    internal val animatedMoveInternal = MutableStateFlow<AnimatedMove?>(null)
+    override val animatedMove: StateFlow<AnimatedMove?> = animatedMoveInternal.asStateFlow()
+    override val cardPositions: MutableMap<String, Rect> = mutableMapOf()
+
+    private var animationJob: Job? = null
+    private var animationSeq = 0L
+
+    /** True while a tap-to-move flight or the autocomplete cascade runs. */
+    internal fun isMoveAnimating(): Boolean = animationJob?.isActive == true
+
+    internal fun nextAnimationId(): Long = ++animationSeq
+
+    internal fun launchMoveAnimation(block: suspend () -> Unit) {
+        animationJob = viewModelScope.launch { block() }
+    }
 
     internal val statsRepository = SolitaireStatsRepository(application)
     internal val settingsRepository = SolitaireSettingsRepository(application)
@@ -144,6 +201,11 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun autoMove(sourceId: String) = autoMoveImpl(sourceId)
 
+    override fun autoMoveAnimated(sourceId: String, from: Offset, cardSize: IntSize) =
+        autoMoveAnimatedImpl(sourceId, from, cardSize)
+
+    override fun klondikeAutoCompleteAnimated() = klondikeAutoCompleteAnimatedImpl()
+
     /**
      * Starts a drag from [sourceId], deriving the carried cards from current state.
      * Returns false (and starts nothing) when that source holds no card.
@@ -162,6 +224,10 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     override fun cancelDrag() = cancelDragImpl()
 
     override fun undo() {
+        // A flight in progress is about to apply its move against the
+        // current state; restoring history underneath it would make the
+        // landing unpredictable. Flights are short: ignore the tap.
+        if (isMoveAnimating()) return
         val history = uiStateInternal.value.history
         if (history.isEmpty()) return
         val prev = history.last()
