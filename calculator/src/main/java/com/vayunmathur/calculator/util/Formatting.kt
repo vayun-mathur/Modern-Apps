@@ -39,6 +39,15 @@ fun formatResult(value: Double): String {
     }
 }
 
+/**
+ * [formatResult] rewritten so the string re-parses as an expression: the parser's
+ * scientific notation is uppercase `E` (lowercase `e` is Euler's constant, so the
+ * display form `1e+12` re-parses as `1*e+12` = 14.718…). Non-finite values have no
+ * re-parsable form and keep their display spelling.
+ */
+fun formatResultToken(value: Double): String =
+    if (value.isFinite()) formatResult(value).replace('e', 'E') else formatResult(value)
+
 /** The magnitude of [q] expressed in [unit] (handling affine temperature and deltas). */
 fun displayValueIn(q: Quantity, unit: UnitDef): Double =
     if (q.dimension == Dimension.TEMPERATURE) {
@@ -56,10 +65,13 @@ fun displayValueIn(q: Quantity, unit: UnitDef): Double =
  */
 fun formatQuantity(q: Quantity, unit: UnitDef?, useToken: Boolean = false): String {
     if (q.instant) return formatInstant(q.value, useToken)
-    if (q.isDimensionless || unit == null) return formatResult(q.value)
+    if (q.isDimensionless || unit == null) {
+        return if (useToken) formatResultToken(q.value) else formatResult(q.value)
+    }
     val label = if (useToken) unit.token else unit.symbol
     val separator = if (useToken) " " else "\u202F"
-    return formatResult(displayValueIn(q, unit)) + separator + label
+    val number = if (useToken) formatResultToken(displayValueIn(q, unit)) else formatResult(displayValueIn(q, unit))
+    return number + separator + label
 }
 
 /**

@@ -107,7 +107,7 @@ class CalculatorTab {
 
     // Memory register operations. M+/M- fold the current preview (or input) into memory.
     fun memoryClear() { memory = 0.0 }
-    fun memoryRecall() = append(formatResult(memory))
+    fun memoryRecall() = append(formatResultToken(memory))
     fun memoryAdd() { currentValue()?.let { memory += it } }
     fun memorySubtract() { currentValue()?.let { memory -= it } }
 
