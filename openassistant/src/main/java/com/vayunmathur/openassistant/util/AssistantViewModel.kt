@@ -44,6 +44,17 @@ import kotlin.time.Clock
 class AssistantViewModel(
     application: Application,
     private val repository: OpenAssistantRepository,
+    // Behavior-preserving test seams: null (production) reads/writes the
+    // repository; tests inject in-memory flows/writers because the
+    // SQLCipher-backed Room database cannot open on the JVM.
+    private val conversationsSource: Flow<List<Conversation>>? = null,
+    private val memoriesSource: Flow<List<Memory>>? = null,
+    private val messagesSource: ((Long) -> Flow<List<Message>>)? = null,
+    private val conversationSource: ((Long) -> Flow<Conversation?>)? = null,
+    private val conversationUpserter: (suspend (Conversation) -> Long)? = null,
+    private val messageUpserter: (suspend (Message) -> Long)? = null,
+    private val conversationDeleter: ((Conversation) -> Unit)? = null,
+    private val memoryDeleter: ((Memory) -> Unit)? = null,
 ) : AndroidViewModel(application) {
 
     private val _isRecording = MutableStateFlow(false)
@@ -71,11 +82,11 @@ class AssistantViewModel(
     }
 
     /** All conversations, newest first. */
-    val conversations: StateFlow<List<Conversation>> = repository.conversationsFlow()
+    val conversations: StateFlow<List<Conversation>> = (conversationsSource ?: repository.conversationsFlow())
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** All memories. */
-    val memories: StateFlow<List<Memory>> = repository.memoriesFlow()
+    val memories: StateFlow<List<Memory>> = (memoriesSource ?: repository.memoriesFlow())
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Renders the A2UI surfaces on assistant messages; their events come back as user turns. */
@@ -99,7 +110,7 @@ class AssistantViewModel(
      * timestamp.
      */
     fun messagesFor(conversationId: Long): Flow<List<Message>> =
-        repository.messagesForConversationFlow(conversationId)
+        messagesSource?.invoke(conversationId) ?: repository.messagesForConversationFlow(conversationId)
 
     /**
      * Composable State that tracks the [Conversation] with [id], or null if it
@@ -107,25 +118,29 @@ class AssistantViewModel(
      */
     @Composable
     fun conversationByIdState(id: Long): State<Conversation?> {
-        val flow = remember(id) { repository.conversationByIdFlow(id) }
+        val flow = remember(id) { conversationSource?.invoke(id) ?: repository.conversationByIdFlow(id) }
         return flow.collectAsState(initial = null)
     }
 
     // ---------- Mutations ----------
 
     fun deleteConversation(conversation: Conversation) {
+        conversationDeleter?.let { it(conversation); return }
         viewModelScope.launch(Dispatchers.IO) { repository.deleteConversation(conversation) }
     }
 
     /** Suspending upsert returning the persisted row id. */
     suspend fun upsertConversation(conversation: Conversation): Long =
-        kotlinx.coroutines.withContext(Dispatchers.IO) { repository.upsertConversation(conversation) }
+        conversationUpserter?.invoke(conversation)
+            ?: kotlinx.coroutines.withContext(Dispatchers.IO) { repository.upsertConversation(conversation) }
 
     /** Suspending upsert returning the persisted row id. */
     suspend fun upsertMessage(message: Message): Long =
-        kotlinx.coroutines.withContext(Dispatchers.IO) { repository.upsertMessage(message) }
+        messageUpserter?.invoke(message)
+            ?: kotlinx.coroutines.withContext(Dispatchers.IO) { repository.upsertMessage(message) }
 
     fun deleteMemory(memory: Memory) {
+        memoryDeleter?.let { it(memory); return }
         viewModelScope.launch(Dispatchers.IO) { repository.deleteMemory(memory) }
     }
 

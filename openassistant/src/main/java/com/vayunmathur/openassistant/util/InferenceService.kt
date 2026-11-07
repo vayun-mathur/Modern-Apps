@@ -42,6 +42,9 @@ import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Clock
+import com.vayunmathur.openassistant.data.ConversationDao
+import com.vayunmathur.openassistant.data.MemoryDao
+import com.vayunmathur.openassistant.data.MessageDao
 import com.vayunmathur.openassistant.data.Message as DbMessage
 import com.vayunmathur.openassistant.data.OpenAssistantRepository
 import com.vayunmathur.openassistant.R
@@ -107,12 +110,21 @@ class InferenceService : Service() {
 
     private var engine: MamlChatEngine? = null
     private val engineLock = Mutex()
+
+    // Behavior-preserving test seams: production always uses the defaults
+    // (real MamlChatEngine, repository DAOs, wall clock); tests substitute
+    // fakes because the native engine and SQLCipher cannot load on the JVM.
+    internal var engineFactory: (File) -> MamlChatEngine = { dir -> MamlChatEngine(dir) }
+    internal var conversationDaoOverride: ConversationDao? = null
+    internal var messageDaoOverride: MessageDao? = null
+    internal var memoryDaoOverride: MemoryDao? = null
+    internal var nowMillis: () -> Long = { System.currentTimeMillis() }
     private val tools by lazy { AssistantTools(applicationContext, memoryDao) }
 
     private val repository by lazy { OpenAssistantRepository.get(applicationContext) }
-    private val conversationDao get() = repository.conversationDaoRef
-    private val messageDao get() = repository.messageDaoRef
-    private val memoryDao get() = repository.memoryDaoRef
+    private val conversationDao get() = conversationDaoOverride ?: repository.conversationDaoRef
+    private val messageDao get() = messageDaoOverride ?: repository.messageDaoRef
+    private val memoryDao get() = memoryDaoOverride ?: repository.memoryDaoRef
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -188,7 +200,7 @@ class InferenceService : Service() {
 
             if (receiver != null && schema != null) {
                 Log.status("InferenceService", "Queueing Intent Inference request")
-                intentQueue.trySend(InferenceJob.Intent(userText, imagePaths, schema, receiver))
+                intentQueue.trySend(InferenceJob.Intent(userText, imagePaths, schema, receiver, nowMillis()))
             } else if (conversationId != -1L) {
                 Log.dev("InferenceService", "Queueing standard inference for conversation: $conversationId")
                 standardQueue.trySend(InferenceJob.Standard(conversationId, userText, imagePaths, audioPath))
@@ -260,7 +272,7 @@ class InferenceService : Service() {
     }
 
     private suspend fun processIntentJob(job: InferenceJob.Intent) {
-        if (System.currentTimeMillis() - job.enqueuedTime > INTENT_QUEUE_TTL_MILLIS) {
+        if (nowMillis() - job.enqueuedTime > INTENT_QUEUE_TTL_MILLIS) {
             Log.status("InferenceService", "Intent job expired in queue, discarding.")
             job.receiver.send(
                 RESULT_ERROR_CODE,
@@ -376,7 +388,7 @@ class InferenceService : Service() {
     private suspend fun ensureEngineInitialized() = engineLock.withLock {
         if (engine != null) return@withLock
         val dir = ModelUrls.GemmaMaml.modelDir(applicationContext)
-        val created = MamlChatEngine(dir)
+        val created = engineFactory(dir)
         if (!created.load()) {
             val detail = created.loadError()
             created.close()
