@@ -89,7 +89,9 @@ private suspend fun LocationTrackingService.upsertSelfLocation(
     val locationValue = LocationValue(
         Networking.userid,
         Coord(location.latitude, location.longitude),
-        0f,
+        // Carry the fix's own speed: hardcoding 0 here made every peer's
+        // card read 0 forever, however fast they were actually moving.
+        if (location.hasSpeed()) location.speed else 0f,
         location.accuracy,
         now,
         bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).toFloat()
