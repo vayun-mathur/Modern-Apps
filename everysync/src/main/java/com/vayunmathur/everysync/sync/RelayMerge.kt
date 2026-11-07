@@ -241,7 +241,13 @@ object RelayMerge {
         val unidentified = mutableListOf<T>()
         for (entity in remoteEntities) {
             val id = kind.syncId(entity).takeIf { it.isNotBlank() }
-            if (id != null && id !in remote) {
+            if (id != null) {
+                // The relay log is append-only: a later envelope for the same
+                // id is the newer state of that record, so the fold is
+                // latest-wins. (First-wins would shadow every edit and
+                // tombstone behind the original append, and route the newer
+                // envelope into the blank-id adoption path, duplicating the
+                // record under a fresh random id.)
                 remote[id] = entity
             } else {
                 unidentified += entity
