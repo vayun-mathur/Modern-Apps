@@ -20,6 +20,14 @@ class DeckIoMediaTest {
     }
 
     @Test
+    fun csvRoundTripWithEmbeddedNewlines() {
+        val rows = listOf("line one\nline two" to "back\nwith lines", "next" to "row")
+        assertEquals(rows, DeckIo.parseCsv(DeckIo.writeCsv(rows)))
+        // Header is skipped even when it is not the first physical line's record.
+        assertEquals(rows, DeckIo.parseCsv("\n" + DeckIo.writeCsv(rows)))
+    }
+
+    @Test
     fun parseCsvSkipsHeaderBlankAndShortRows() {
         val parsed = DeckIo.parseCsv("front,back\n\nonlyone\na,b\n,c\n")
         assertEquals(listOf("a" to "b", "" to "c"), parsed)

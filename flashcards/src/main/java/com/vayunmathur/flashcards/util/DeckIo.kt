@@ -28,40 +28,58 @@ object DeckIo {
      */
     fun parseCsv(text: String): List<Pair<String, String>> {
         val rows = mutableListOf<Pair<String, String>>()
-        text.lineSequence().forEachIndexed { index, raw ->
-            if (raw.isBlank()) return@forEachIndexed
-            val fields = splitCsvLine(raw)
-            if (fields.size < 2) return@forEachIndexed
+        var firstRecord = true
+        for (fields in splitCsvRecords(text)) {
+            if (fields.size < 2) continue
             val front = fields[0].trim()
             val back = fields[1].trim()
-            if (index == 0 && front.equals("front", true) && back.equals("back", true)) {
-                return@forEachIndexed
+            if (front.isEmpty() && back.isEmpty()) continue
+            if (firstRecord && front.equals("front", true) && back.equals("back", true)) {
+                firstRecord = false
+                continue
             }
-            if (front.isNotEmpty() || back.isNotEmpty()) rows.add(front to back)
+            firstRecord = false
+            rows.add(front to back)
         }
         return rows
     }
 
-    private fun splitCsvLine(line: String): List<String> {
-        val out = mutableListOf<String>()
+    /**
+     * Splits CSV [text] into records. Quoted fields may span multiple lines
+     * (as [writeCsv] emits for fields containing newlines), so this must scan
+     * the whole text rather than one physical line at a time.
+     */
+    private fun splitCsvRecords(text: String): List<List<String>> {
+        val records = mutableListOf<List<String>>()
+        val record = mutableListOf<String>()
         val sb = StringBuilder()
         var inQuotes = false
+        var recordHasContent = false
         var i = 0
-        while (i < line.length) {
-            val c = line[i]
+        fun endRecord() {
+            record.add(sb.toString()); sb.clear()
+            records.add(record.toList()); record.clear()
+            recordHasContent = false
+        }
+        while (i < text.length) {
+            val c = text[i]
             when {
-                inQuotes && c == '"' && line.getOrNull(i + 1) == '"' -> {
+                inQuotes && c == '"' && text.getOrNull(i + 1) == '"' -> {
                     sb.append('"'); i++
                 }
-                c == '"' -> inQuotes = !inQuotes
+                c == '"' -> { inQuotes = !inQuotes; recordHasContent = true }
                 c == ',' && !inQuotes -> {
-                    out.add(sb.toString()); sb.clear()
+                    record.add(sb.toString()); sb.clear(); recordHasContent = true
                 }
-                else -> sb.append(c)
+                (c == '\n' || c == '\r') && !inQuotes -> {
+                    if (c == '\r' && text.getOrNull(i + 1) == '\n') i++
+                    if (recordHasContent || record.isNotEmpty() || sb.isNotEmpty()) endRecord()
+                }
+                else -> { sb.append(c); recordHasContent = true }
             }
             i++
         }
-        out.add(sb.toString())
-        return out
+        if (recordHasContent || record.isNotEmpty() || sb.isNotEmpty()) endRecord()
+        return records
     }
 }
