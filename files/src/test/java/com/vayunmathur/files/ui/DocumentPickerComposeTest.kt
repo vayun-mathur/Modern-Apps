@@ -190,6 +190,38 @@ class PickerTreeTest {
 }
 
 @RunWith(RobolectricTestRunner::class)
+@Config(shadows = [ShadowEnvironmentFix::class], qualifiers = "w810dp-h1280dp")
+class PickerCreateTraversalTest {
+    val rule = pickerRule(
+        pickerIntent(Intent.ACTION_CREATE_DOCUMENT) {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TITLE, "../escaped-create.txt")
+        },
+    )
+
+    @get:Rule
+    val chain: org.junit.rules.TestRule = org.junit.rules.RuleChain
+        .outerRule(EnablePickerComponent())
+        .around(rule)
+
+    @Test
+    fun `create with a path-like title stays in the chosen folder`() {
+        val root = seedExternalFiles()
+        rule.waitForIdle()
+        rule.onNodeWithText("Save").performClick()
+        val inFolder = File(root, "escaped-create.txt")
+        val escaped = File(root, "../escaped-create.txt").canonicalFile
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!inFolder.exists() && !escaped.exists() && System.currentTimeMillis() < deadline) {
+            rule.waitForIdle()
+            Thread.sleep(50)
+        }
+        assertTrue(inFolder.isFile, "expected the file to be created inside the chosen folder")
+        assertTrue(!escaped.exists(), "the title must not escape the chosen folder")
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
 @Config(shadows = [ShadowEnvironmentFix::class], qualifiers = "w808dp-h1280dp")
 class PickerCreateTest {
     val rule = pickerRule(
