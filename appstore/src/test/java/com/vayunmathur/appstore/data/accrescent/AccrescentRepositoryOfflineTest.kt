@@ -70,6 +70,12 @@ class AccrescentRepositoryOfflineTest {
     }
 
     @Test
+    fun `updateInfo throws when the api cannot answer`() = runBlocking {
+        assertFailsWith<Exception> { repo.updateInfo("app.does.not.exist", currentVersionCode = 1L) }
+        Unit
+    }
+
+    @Test
     fun `downloadInfo throws when the api cannot answer`() = runBlocking {
         assertFailsWith<Exception> { repo.downloadInfo("app.does.not.exist") }
         Unit
