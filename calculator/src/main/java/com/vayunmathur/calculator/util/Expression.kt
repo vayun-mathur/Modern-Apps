@@ -171,8 +171,8 @@ class Expression private constructor(private val root: Node) {
             name in SINGLE_ARG_FUNCTIONS -> evalSingle(singleArg(a))
             name in PAIR_FUNCTIONS -> evalPair(a, angle)
             name == "log" -> if (a.size == 2) ln(a[1]) / ln(a[0]) else log10(singleArg(a))
-            name == "max" -> a.max()
-            name == "min" -> a.min()
+            name == "max" -> a.maxOrNull() ?: throw ExpressionError("max expects at least 1 argument")
+            name == "min" -> a.minOrNull() ?: throw ExpressionError("min expects at least 1 argument")
             else -> throw ExpressionError("Unknown function '$name'")
         }
 
