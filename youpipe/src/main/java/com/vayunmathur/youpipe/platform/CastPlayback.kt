@@ -365,7 +365,8 @@ object CastPlayback {
      * failure: the user has navigated away from the video, and until the session learns to survive
      * that there is nothing to control.
      */
-    private fun apply(command: PlaybackCommand) {
+    // internal (was private) so unit tests can drive remote commands without a live cast session.
+    internal fun apply(command: PlaybackCommand) {
         val target = player ?: return
         when (command.action) {
             PlaybackAction.Play -> target.play()
