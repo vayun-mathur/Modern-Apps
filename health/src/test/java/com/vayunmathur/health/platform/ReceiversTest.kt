@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import org.junit.runner.RunWith
+import org.robolectric.Shadows
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -48,36 +49,23 @@ class ReceiversTest {
     }
 
 
-    private fun sendDose(intent: Intent) {
-        val receiver = DoseReceiver()
-        context.registerReceiver(receiver, android.content.IntentFilter("com.vayunmathur.health.DOSE_TEST"), android.content.Context.RECEIVER_NOT_EXPORTED)
+    private fun broadcast(intent: Intent, receiver: android.content.BroadcastReceiver, action: String) {
+        @Suppress("UnspecifiedRegisterReceiverFlag")
+        context.registerReceiver(receiver, android.content.IntentFilter(action), android.content.Context.RECEIVER_NOT_EXPORTED)
         try {
-            receiver.onReceive(context, intent)
-            Thread.sleep(50)
+            intent.action = action
+            context.sendBroadcast(intent)
+            Thread.sleep(100)
+            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Thread.sleep(100)
         } finally {
             runCatching { context.unregisterReceiver(receiver) }
         }
     }
 
-    private fun sendAction(intent: Intent) {
-        val receiver = DoseActionReceiver()
-        try {
-            receiver.onReceive(context, intent)
-            Thread.sleep(50)
-        } catch (_: NullPointerException) {
-            // goAsync() returns null when a receiver is invoked directly
-            // under Robolectric; the work before finish() still ran.
-        }
-    }
-
-    private fun sendBoot(action: String) {
-        val receiver = HealthBootReceiver()
-        try {
-            receiver.onReceive(context, Intent(action))
-            Thread.sleep(50)
-        } catch (_: NullPointerException) {
-        }
-    }
+    private fun sendDose(intent: Intent) = broadcast(intent, DoseReceiver(), "com.vayunmathur.health.DOSE_TEST")
+    private fun sendAction(intent: Intent) = broadcast(intent, DoseActionReceiver(), intent.action ?: "com.vayunmathur.health.ACTION_TEST")
+    private fun sendBoot(action: String) = broadcast(Intent(action), HealthBootReceiver(), action)
 
     @Test
     fun `dose receiver ignores intents without extras`() {
