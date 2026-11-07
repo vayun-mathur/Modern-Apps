@@ -126,6 +126,7 @@ object RcsOutbox {
                         threadRemoteId = row.conversationId,
                         attachments = attachments,
                         participants = emptyList(),
+                        fromOutbox = true,
                     )
                 }.getOrDefault(RcsSendResult.Failed)
                 if (result == RcsSendResult.Sent) {

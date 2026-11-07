@@ -535,6 +535,25 @@ class RcsSlice3Pass2TransportTest {
         db().conversationDao().deleteAll()
     }
 
+    @Test
+    fun outboxPumpDoesNotSpawnDuplicateRows() = runTest {
+        db().outboxDao().deleteAll()
+        val now = System.currentTimeMillis()
+        db().outboxDao().upsert(
+            com.vayunmathur.communicate.data.rcs.RcsOutboxMessage(
+                messageId = "pump-nodup", conversationId = "conv-pump", kind = "text",
+                body = "retry me", nextRetryMs = now - 1000, expiryMs = now + 60_000,
+                createdAt = now - 2000,
+            ),
+        )
+        RcsOutbox.pumpDue(context, CommunicateRepository)
+        // One original row, bumped in place — never a second row for the
+        // same message (which would double-send on recovery).
+        assertEquals(1, RcsOutbox.pendingCount(context))
+        assertEquals(1, db().outboxDao().get("pump-nodup")?.attempts)
+        db().outboxDao().deleteAll()
+    }
+
     // --- File transfer fail-closed ---
 
     @Test

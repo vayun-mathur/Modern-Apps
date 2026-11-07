@@ -123,6 +123,7 @@ suspend fun CommunicateRepository.sendRcsMessage(
     threadRemoteId: String? = null,
     attachments: List<CommunicateAttachment> = emptyList(),
     participants: List<String> = emptyList(),
+    fromOutbox: Boolean = false,
 ): RcsSendResult = withContext(Dispatchers.IO) {
     if (!RcsFeature.enabled) return@withContext RcsSendResult.Failed
     val recipient = threadRemoteId?.takeIf { it.isNotBlank() } ?: toRcsRecipient(context, address)
@@ -139,7 +140,7 @@ suspend fun CommunicateRepository.sendRcsMessage(
     if (!RcsSipTransport.canSend()) return@withContext RcsSendResult.FallbackSms
     // Group thread (remoteId `rcs-group:…`): fan out 1:1 per member.
     if (recipient.startsWith("rcs-group:") && participants.isNotEmpty()) {
-        return@withContext sendRcsGroup(context, recipient, body, attachments, participants)
+        return@withContext sendRcsGroup(context, recipient, body, attachments, participants, fromOutbox)
     }
     runCatching {
         // E2EE first: when the conversation has an MLS group, encrypt and send
@@ -162,7 +163,7 @@ suspend fun CommunicateRepository.sendRcsMessage(
         if (attachments.isNotEmpty()) {
             return@withContext sendRcsAttachments(context, recipient, body, attachments)
         }
-        return@withContext sendRcsPager(context, recipient, body)
+        return@withContext sendRcsPager(context, recipient, body, fromOutbox)
     }.getOrElse {
         RcsSendResult.FallbackSms
     }
@@ -182,11 +183,12 @@ private suspend fun CommunicateRepository.sendRcsGroup(
     body: String,
     attachments: List<CommunicateAttachment>,
     participants: List<String>,
+    fromOutbox: Boolean = false,
 ): RcsSendResult {
     var anyOk = false
     for (member in participants.map { it.trim() }.filter { it.isNotEmpty() }.distinct()) {
         val memberResult = sendRcsMessage(
-            context, member, body, member, attachments, emptyList(),
+            context, member, body, member, attachments, emptyList(), fromOutbox = fromOutbox,
         )
         if (memberResult == RcsSendResult.Sent) anyOk = true
     }
@@ -283,6 +285,7 @@ private suspend fun CommunicateRepository.sendRcsPager(
     context: Context,
     recipient: String,
     body: String,
+    fromOutbox: Boolean = false,
 ): RcsSendResult {
     val (startLine, headers, content) = RcsSipTransport.buildChatMessage(
         fromUri = "sip:me@rcs",
@@ -324,7 +327,11 @@ private suspend fun CommunicateRepository.sendRcsPager(
         // (transient): park for deferred retry (§4.3) AND report
         // FallbackSms so the caller still sends SMS now. Duplicate risk
         // (SMS now + RCS later) beats message loss on a dev-gated line.
-        RcsOutbox.enqueue(context, recipient, body)
+        // A retry that came FROM the outbox must not enqueue a second
+        // row for the same message: the pump keeps the original row and
+        // bumps its attempts, so a fresh row would send the message
+        // twice once the transport recovers.
+        if (!fromOutbox) RcsOutbox.enqueue(context, recipient, body)
         return RcsSendResult.FallbackSms
     }
     if (body.isNotBlank()) {
