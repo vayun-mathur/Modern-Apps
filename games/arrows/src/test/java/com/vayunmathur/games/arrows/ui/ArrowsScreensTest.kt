@@ -35,11 +35,13 @@ class ArrowsScreensTest {
         var commits = 0
         var nexts = 0
         var restarts = 0
+        var retries = 0
         val modes = mutableListOf<GameMode>()
         override fun tapArrow(pieceId: Int) { tapped += pieceId }
         override fun commitMove() { commits++ }
         override fun nextLevel() { nexts++ }
         override fun restartLevel() { restarts++ }
+        override fun retryGeneration() { retries++ }
         override fun setGameMode(mode: GameMode) { modes += mode }
     }
 
@@ -85,7 +87,10 @@ class ArrowsScreensTest {
         }
         rule.onNodeWithText(str(R.string.generation_failed)).assertIsDisplayed()
         rule.onNodeWithText(str(R.string.try_again)).performClick()
-        assertEquals(1, actions.restarts)
+        // Retrying generation, not restarting: a restart only resets progress and
+        // could never bring back a board that failed to generate.
+        assertEquals(1, actions.retries)
+        assertEquals(0, actions.restarts)
     }
 
     @Test
