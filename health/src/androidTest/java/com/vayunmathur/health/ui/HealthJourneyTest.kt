@@ -118,6 +118,9 @@ class HealthJourneyTest {
             device.wait(Until.findObject(By.text("Snooze")), 5_000L),
         )
         assertEquals(packageName, device.currentPackageName)
-        device.pressBack()
+        // Tapping Taken exercises the activity's action path (broadcast +
+        // finish) in the app process.
+        device.findObject(By.text("Taken"))!!.click()
+        Thread.sleep(1_000)
     }
 }
