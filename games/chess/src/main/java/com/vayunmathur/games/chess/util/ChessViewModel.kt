@@ -114,7 +114,17 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
             if (board.isValidMove(selectedPiece, position)) {
                 val newBoard = board.movePiece(selectedPiece, position)
                 val nextTurn = if (newBoard.promotionPosition != null) state.turn else state.turn.opposite
-                val (result, status) = statusFor(newBoard, nextTurn)
+                // While a promotion choice is pending the move is not
+                // complete: the pawn sits unpromoted on the last rank, so a
+                // check/checkmate verdict computed now can be wrong for the
+                // piece the player is about to pick (and would fire the
+                // win achievements + one-time win counter early). onPromote
+                // computes the real result once the piece is chosen.
+                val (result, status) = if (newBoard.promotionPosition != null) {
+                    null to null
+                } else {
+                    statusFor(newBoard, nextTurn)
+                }
                 _uiState.update {
                     it.copy(
                         board = newBoard,
