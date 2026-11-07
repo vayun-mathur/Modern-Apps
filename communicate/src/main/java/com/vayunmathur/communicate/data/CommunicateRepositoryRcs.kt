@@ -410,6 +410,9 @@ internal suspend fun CommunicateRepository.cacheInboundRcs(
     runCatching {
         val db = RcsDatabase.getDatabase(context)
         val now = System.currentTimeMillis()
+        // SIP/MSRP redelivery can hand us the same messageId twice; the
+        // upsert is idempotent but an unconditional unread bump is not.
+        val isNew = db.cachedMessageDao().get(messageId) == null
         db.cachedMessageDao().upsert(
             RcsCachedMessage(
                 messageId = messageId,
@@ -426,7 +429,7 @@ internal suspend fun CommunicateRepository.cacheInboundRcs(
         db.conversationDao().upsert(
             (existing ?: RcsConversation(remoteId = conversationId)).copy(
                 lastMessageTimestamp = now,
-                unreadCount = (existing?.unreadCount ?: 0) + 1,
+                unreadCount = (existing?.unreadCount ?: 0) + if (isNew) 1 else 0,
             ),
         )
     }
