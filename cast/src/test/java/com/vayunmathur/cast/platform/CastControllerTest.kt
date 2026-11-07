@@ -201,11 +201,34 @@ class CastControllerTest {
             pairedController(tv)
             val result = CastController.startContentSession(
                 context, 640, 480, wantAudio = true, appLabel = "Music",
+                wantVideo = false,
                 resources = { null },
             )
             assertTrue(result is ContentSessionResult.Failed)
             assertEquals(MirrorPhase.Failed, CastController.mirrorPhase.value)
             assertTrue(!CastController.mirrorFailure.value.isNullOrBlank())
+        } finally {
+            tv.close()
+        }
+    }
+
+    @Test
+    fun `served video session is not refused for a missing opus decoder`() = runBlocking {
+        // The TV's own rule (serveContent / ReceiverFailure.NoAudioDecoder) is
+        // that a video session with no sound is still worth having; only an
+        // audio-only session is refused. The sender must not be stricter, or
+        // a TV that would have shown the picture is turned away for its audio.
+        val tv = FakeTv(limitsOverride = DecoderLimits())
+        try {
+            pairedController(tv)
+            val result = CastController.startContentSession(
+                context, 640, 480, wantAudio = true, appLabel = "Music",
+                wantVideo = true,
+                resources = { null },
+            )
+            assertTrue(result is ContentSessionResult.Serving, "got $result")
+            CastController.stopMirroring(context)
+            await { CastController.mirrorPhase.value == MirrorPhase.Idle }
         } finally {
             tv.close()
         }
