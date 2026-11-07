@@ -150,19 +150,28 @@ class ClockViewModel(
     private fun loadStopwatchState() {
         val ctx = getApplication<Application>()
         val ds = DataStoreUtils.getInstance(ctx)
-        viewModelScope.launch(Dispatchers.IO) {
-            val isRunning = ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)
-            val totalMs = ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: 0L
-            val startMs = ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_START) ?: 0L
-            val lapsStr = ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS) ?: ""
-            
-            _stopwatchRunning.value = isRunning
-            _stopwatchTotal.value = totalMs.milliseconds
-            _stopwatchStart.value = if (startMs > 0) Instant.fromEpochMilliseconds(startMs) else Clock.System.now()
-            
-            if (lapsStr.isNotEmpty()) {
-                _lapTimes.value = lapsStr.split(",").mapNotNull { it.toLongOrNull()?.milliseconds }
-            }
+        // Observe, don't just read once: the notification actions are the
+        // stopwatch's control plane (see clock/AGENTS.md) and write these
+        // same keys. A one-shot load left a living ViewModel showing — and
+        // then persisting over — stale totals after a notification pause,
+        // lap or stop. Our own persistStopwatchState writes flow back as
+        // the identical values, so this converges instead of fighting.
+        viewModelScope.launch {
+            combine(
+                ds.booleanFlow(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false),
+                ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, 0L),
+                ds.longFlow(StopwatchActionReceiver.KEY_STOPWATCH_START, 0L),
+                ds.stringFlow(StopwatchActionReceiver.KEY_STOPWATCH_LAPS),
+            ) { isRunning, totalMs, startMs, lapsStr ->
+                _stopwatchRunning.value = isRunning
+                _stopwatchTotal.value = totalMs.milliseconds
+                _stopwatchStart.value =
+                    if (startMs > 0) Instant.fromEpochMilliseconds(startMs) else Clock.System.now()
+                _lapTimes.value = lapsStr
+                    .takeIf { it.isNotEmpty() }
+                    ?.split(",")?.mapNotNull { it.toLongOrNull()?.milliseconds }
+                    .orEmpty()
+            }.collect {}
         }
     }
     

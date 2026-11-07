@@ -10,6 +10,7 @@ import com.vayunmathur.clock.Route
 import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.clock.data.ClockRepository
 import com.vayunmathur.clock.data.Timer
+import com.vayunmathur.library.util.DataStoreUtils
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -136,6 +137,37 @@ class ClockViewModelTest {
         vm.resetStopwatch()
         assertTrue(vm.lapTimes.value.isEmpty())
         assertEquals(kotlin.time.Duration.ZERO, vm.stopwatchCountingTime.value)
+    }
+
+    @Test
+    fun stopwatchReflectsExternalWritesWhileAlive() {
+        val vm = vm()
+        vm.resetStopwatch()
+        // resetStopwatch persists asynchronously; wait for the store itself
+        // (not just the in-memory state) so the external writes below cannot
+        // interleave with the reset's still-landing edits.
+        val ds = DataStoreUtils.getInstance(app)
+        await("store settled after reset") {
+            !ds.getBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true) &&
+                (ds.getLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL) ?: -1L) == 0L &&
+                (ds.getString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS) ?: "x").isEmpty()
+        }
+        await("vm settled after reset") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
+        // Simulate StopwatchActionReceiver acting on the notification while
+        // this ViewModel (and its activity) stays alive.
+        runBlocking {
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, 65_000L)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_START, Clock.System.now().toEpochMilliseconds())
+            ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, "1000,2000")
+            ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, true)
+        }
+        await("vm observes external start") { vm.stopwatchRunning.value && vm.lapTimes.value.size == 2 }
+        runBlocking {
+            ds.setBoolean(StopwatchActionReceiver.KEY_STOPWATCH_RUNNING, false)
+            ds.setLong(StopwatchActionReceiver.KEY_STOPWATCH_TOTAL, 0L)
+            ds.setString(StopwatchActionReceiver.KEY_STOPWATCH_LAPS, "")
+        }
+        await("vm observes external stop") { !vm.stopwatchRunning.value && vm.lapTimes.value.isEmpty() }
     }
 
     @Test
