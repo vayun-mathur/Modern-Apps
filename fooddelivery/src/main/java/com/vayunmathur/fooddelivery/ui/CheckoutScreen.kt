@@ -60,6 +60,10 @@ fun CheckoutScreen(
     items: List<CartItem>,
     onBack: () -> Unit,
     onOrderPlaced: () -> Unit,
+    // Payment has succeeded: clear the cart, but stay here so the confirmation
+    // is actually seen. Defaults to onOrderPlaced for callers that want the old
+    // navigate-away-immediately behaviour.
+    onOrderCompleted: () -> Unit = onOrderPlaced,
 ) {
     val context = LocalContext.current
 
@@ -225,7 +229,10 @@ fun CheckoutScreen(
             is PaymentSheetResult.Completed -> {
                 orderSuccess = true
                 OrderTrackingService.start(context, checkoutResponse?.order?.id)
-                onOrderPlaced()
+                // Clear the cart now (a paid cart must not be payable again from
+                // the back stack), but do not navigate yet: leaving here is what
+                // the confirmation's button does, via onOrderPlaced.
+                onOrderCompleted()
             }
             is PaymentSheetResult.Canceled -> {
                 paying = false
@@ -238,7 +245,7 @@ fun CheckoutScreen(
     }
 
     if (orderSuccess) {
-        CheckoutSuccess()
+        CheckoutSuccess(onContinue = onOrderPlaced)
         return
     }
 

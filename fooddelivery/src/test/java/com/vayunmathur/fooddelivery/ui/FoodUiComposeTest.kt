@@ -147,6 +147,12 @@ class FoodUiComposeTest {
         }
         rule.waitForIdle()
     }
+    @Test fun checkoutSuccessContinueFires() {
+        var continued = false
+        rule.setContent { CheckoutSuccess(onContinue = { continued = true }) }
+        rule.onNodeWithText("View orders").assertIsDisplayed().performClick()
+        assertTrue(continued)
+    }
     @Test fun emailVerificationStates() {
         var verified = false
         rule.setContent { EmailVerificationScreen("cust-1", "tok", { verified = true }) }
