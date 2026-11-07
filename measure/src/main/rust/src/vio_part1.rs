@@ -1,3 +1,33 @@
+fn detect_points(gray: &Gray) -> Vec<(f32, f32)> {
+    let f = detect_and_describe(gray, TARGET_FEATURES, FAST_THRESHOLD);
+    f.kps.iter().map(|k| (k.x, k.y)).collect()
+}
+
+/// Add fresh detections that are not already covered, up to `target`.
+fn merge_points(existing: &mut Vec<(f32, f32)>, fresh: &[(f32, f32)], target: usize) {
+    const MIN_SEP2: f32 = 100.0; // 10 px
+    for &f in fresh {
+        if existing.len() >= target {
+            break;
+        }
+        let too_close = existing
+            .iter()
+            .any(|&e| (e.0 - f.0).powi(2) + (e.1 - f.1).powi(2) < MIN_SEP2);
+        if !too_close {
+            existing.push(f);
+        }
+    }
+}
+
+fn median(v: &mut [f32]) -> f32 {
+    if v.is_empty() {
+        return 0.0;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    v[v.len() / 2]
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
