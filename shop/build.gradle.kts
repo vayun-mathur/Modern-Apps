@@ -30,4 +30,6 @@ dependencies {
     implementation(libs.androidx.webkit)
     // Background order-tracking polls while any placed order is undelivered.
     implementation(project(":library:work"))
+
+    testImplementation(libs.androidx.work.testing)
 }
