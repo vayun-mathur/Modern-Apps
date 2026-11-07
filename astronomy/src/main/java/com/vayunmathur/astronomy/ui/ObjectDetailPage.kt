@@ -29,6 +29,7 @@ import com.vayunmathur.library.ui.OutlinedButton
 import com.vayunmathur.library.ui.Text
 import com.vayunmathur.library.ui.TopAppBarOverlay
 import com.vayunmathur.library.util.NavBackStack
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.ExperimentalTime
 import androidx.compose.ui.res.stringResource
 
@@ -185,6 +186,18 @@ private fun projectCatalogStar(
 }
 
 @OptIn(ExperimentalTime::class)
-private fun jdToLocal(jd: Double): String = TimeEngine.julianDateToInstant(jd).toString()
+private fun jdToLocal(jd: Double): String = formatJdInZone(jd, kotlinx.datetime.TimeZone.currentSystemDefault())
+
+/**
+ * Formats a Julian date as a wall-clock date/time in [timeZone]
+ * ("2025-06-21 05:30"). Rise/set instants are computed in UTC; showing
+ * the raw Instant.toString() presented them as UTC (with a trailing Z)
+ * to users in every other zone, hours away from the real local event.
+ */
+@OptIn(ExperimentalTime::class)
+internal fun formatJdInZone(jd: Double, timeZone: kotlinx.datetime.TimeZone): String =
+    TimeEngine.julianDateToInstant(jd)
+        .toLocalDateTime(timeZone)
+        .toString().take(16).replace('T', ' ')
 
 private fun Double.format(d: Int): String = "%.${d}f".format(this)
