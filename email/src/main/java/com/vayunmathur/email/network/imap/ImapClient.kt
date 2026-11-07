@@ -176,13 +176,34 @@ object ImapClient {
         // Gmail "INBOX" (see [canonicalizeMailbox]).
         val sel = conn.select(folderName)
         val storedFolderName = canonicalizeMailbox(folderName)
-        val seqSet = sequenceSet(sel.exists, limit, offset) ?: return Pair(emptyList(), emptyList())
-        val fetchResults = conn.fetch.fetchHeadersForSeq(seqSet)
-        val filtered = fetchResults.filter { it.uid !in skipUids }.reversed()
-        if (filtered.isEmpty()) return Pair(emptyList(), emptyList())
+        if (limit <= 0 || sel.exists == 0) return Pair(emptyList(), emptyList())
 
+        // Page backwards through the mailbox until [limit] unseen messages
+        // have been collected or sequence 1 is reached. Fetching only the
+        // newest window and filtering [skipUids] in memory (the old
+        // behaviour) lost mail twice over: folders larger than the window
+        // never backfilled past it, and a burst of more than [limit] new
+        // messages between syncs stranded the oldest of the burst forever,
+        // because every later sync re-fetched the same newest window.
         val assembler = MessageAssembler(user, storedFolderName, fetchBodies, context)
-        filtered.forEach { assembler.absorb(it) }
+        val collected = mutableSetOf<Long>()
+        var pageOffset = offset
+        while (assembler.messages.size < limit) {
+            val seqSet = sequenceSet(sel.exists, limit, pageOffset) ?: break
+            val page = conn.fetch.fetchHeadersForSeq(seqSet)
+            if (page.isEmpty()) break
+            for (result in page.filter { it.uid !in skipUids }.reversed()) {
+                if (!collected.add(result.uid)) continue
+                assembler.absorb(result)
+                if (assembler.messages.size >= limit) break
+            }
+            // sequenceSet() clamps the window start at 1; reaching it means
+            // the oldest message has been offered and paging must stop
+            // (this also terminates against servers that ignore the set).
+            val windowStart = seqSet.substringBefore(':').toIntOrNull() ?: 1
+            if (windowStart <= 1) break
+            pageOffset += limit
+        }
         return Pair(assembler.messages, assembler.attachments)
     }
 
