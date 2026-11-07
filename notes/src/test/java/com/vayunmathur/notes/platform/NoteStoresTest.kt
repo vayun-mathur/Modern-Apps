@@ -133,6 +133,18 @@ class NoteStoresTest {
         assertTrue(md.contains("data:image/jpeg;base64,"))
     }
 
+    @Test fun markdownCacheUriSanitizesPathHostileTitles() {
+        val uri = markdownCacheUri(context, Note(title = "a/b ../c", content = ""), "body")
+        assertTrue(uri.toString().isNotEmpty())
+        val dir = File(context.cacheDir, "shared_notes")
+        val written = File(dir, shareMarkdownFileName("a/b ../c"))
+        assertTrue(written.exists())
+        assertEquals(dir.absolutePath, written.parentFile!!.absolutePath)
+        assertEquals("note.md", shareMarkdownFileName(""))
+        assertEquals("note.md", shareMarkdownFileName("..."))
+        assertEquals("My Note.md", shareMarkdownFileName("My Note"))
+    }
+
     @Test fun markdownCacheUriWritesFile() {
         val note = Note(title = "My Note", content = "x")
         val uri = markdownCacheUri(context, note, "# hello")
