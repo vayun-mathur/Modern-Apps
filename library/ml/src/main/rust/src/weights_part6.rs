@@ -49,6 +49,19 @@ impl Graph {
                 })?;
                 Ok(found.word_offset())
             };
+        // The raw conv entry points below resolve offsets without asking the
+        // builder's weight source, so nothing would mark the consumed file
+        // tensors as read and `finish`'s every-tensor rule would refuse every
+        // lowered section at its first kernel. Lowering is the authority on
+        // what the pass reads — its nodes — so name them as they are replayed.
+        // (`host_tensor` only shape-checks and marks; the emitter's host list
+        // is derived as read-minus-node-consumed, so device weights named
+        // here are never misreported as host tensors.)
+        let mark_read = |builder: &mut crate::nets::Builder, index: u32| {
+            if let Ok(found) = table.tensor(index as usize) {
+                builder.host_tensor(index as usize, &found.dims[..found.rank as usize]);
+            }
+        };
         let act_of = |code: u32| -> Result<Act, String> {
             match code {
                 0 => Ok(Act::None),
@@ -106,6 +119,11 @@ impl Graph {
                         *group,
                         *pad_edge,
                     );
+                    mark_read(builder, *weight);
+                    mark_read(builder, *bias);
+                    if *act_weight != NO_TENSOR {
+                        mark_read(builder, *act_weight);
+                    }
                     ids[*out as usize] = Some(produced);
                 }
                 GraphNode::ConvInt8 {
@@ -140,8 +158,16 @@ impl Graph {
                         *dilation,
                         *pads,
                         *group,
-                        if *quant == 0 { crate::nets::Quant::I8 } else { crate::nets::Quant::I4 },
+                        match *quant {
+                            0 => crate::nets::Quant::I8,
+                            1 => crate::nets::Quant::I4,
+                            2 => crate::nets::Quant::Q2K,
+                            other => return Err(format!("quant code {other}")),
+                        },
                     );
+                    mark_read(builder, *weight);
+                    mark_read(builder, *scale);
+                    mark_read(builder, *bias);
                     ids[*out as usize] = Some(produced);
                 }
                 GraphNode::Add { a, b, out } => {
@@ -159,6 +185,8 @@ impl Graph {
                         offset(table, *beta)?,
                         f32::from_bits(*epsilon_bits),
                     );
+                    mark_read(builder, *gamma);
+                    mark_read(builder, *beta);
                     ids[*out as usize] = Some(produced);
                 }
                 GraphNode::GlobalAvgPool { input, out } => {
