@@ -35,9 +35,11 @@ internal fun MeasureViewModel.loadPreferenceValuesImpl(): PreferenceValues {
         diagnostics = ds.getBoolean(KEY_DIAGNOSTICS, false),
         haptics = ds.getBoolean(KEY_HAPTICS, true),
         keepOn = ds.getBoolean(KEY_KEEP_SCREEN_ON, true),
-        levelPitch = ds.getDouble(KEY_LEVEL_PITCH),
-        levelRoll = ds.getDouble(KEY_LEVEL_ROLL),
-        levelEdge = ds.getDouble(KEY_LEVEL_EDGE),
+        // Guard against NaN sentinels written by older versions on
+        // calibration clear: NaN is a stored value, not an absence.
+        levelPitch = ds.getDouble(KEY_LEVEL_PITCH)?.takeUnless { it.isNaN() },
+        levelRoll = ds.getDouble(KEY_LEVEL_ROLL)?.takeUnless { it.isNaN() },
+        levelEdge = ds.getDouble(KEY_LEVEL_EDGE)?.takeUnless { it.isNaN() },
     )
 }
 

@@ -103,9 +103,11 @@ class MeasureViewModel(app: Application) : AndroidViewModel(app),
         levelState.value = levelState.value.copy(isCalibrated = false)
         settingsState.value = settingsState.value.copy(levelCalibrated = false)
         viewModelScope.launch {
-            ds.setDouble(KEY_LEVEL_PITCH, Double.NaN)
-            ds.setDouble(KEY_LEVEL_ROLL, Double.NaN)
-            ds.setDouble(KEY_LEVEL_EDGE, Double.NaN)
+            // Remove the keys rather than writing NaN sentinels: a stored
+            // NaN reads back as a non-null Double, so the loader treated
+            // the level as calibrated forever and subtracted NaN offsets
+            // from every reading after a restart.
+            ds.removeKeys(listOf(KEY_LEVEL_PITCH, KEY_LEVEL_ROLL, KEY_LEVEL_EDGE))
         }
     }
 
