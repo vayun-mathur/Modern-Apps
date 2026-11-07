@@ -23,4 +23,6 @@ dependencies {
     // A/B slot writer. Present at runtime on a MAOS image because this app is privileged;
     // absent from the public SDK, and must NOT be packaged. See :library:aosp-stubs.
     compileOnly(project(":library:aosp-stubs"))
+
+    testImplementation(libs.androidx.work.testing)
 }

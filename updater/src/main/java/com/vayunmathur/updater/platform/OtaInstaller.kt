@@ -44,6 +44,43 @@ private val CARE_MAP_PATH = File("/data/ota_package/care_map.pb")
  */
 object OtaInstaller {
 
+    /** Test seam: replaces `RecoverySystem.verifyPackage`. True means verified. Null means real. */
+    internal var signatureCheckOverride: ((File, (Int) -> Unit) -> Boolean)? = null
+
+    /** Test seam: replaces staging the care map at its on-device path. Null means the real path. */
+    internal var careMapPathOverride: File? = null
+
+    /** The payload-engine surface [install] needs, so tests can drive the completion callback. */
+    internal interface PayloadEngine {
+        fun bind(
+            onStatusUpdate: (status: Int, percent: Float) -> Unit,
+            onPayloadApplicationComplete: (errorCode: Int) -> Unit,
+        ): Boolean
+        fun applyPayload(url: String, offset: Long, headers: Array<String>)
+        fun cancel()
+        fun unbind(): Boolean
+    }
+
+    /** Test seam: replaces constructing the real `UpdateEngine`. Null means the real engine. */
+    internal var payloadEngineOverride: (() -> PayloadEngine)? = null
+
+    private class RealPayloadEngine : PayloadEngine {
+        private val engine = UpdateEngine()
+        override fun bind(
+            onStatusUpdate: (Int, Float) -> Unit,
+            onPayloadApplicationComplete: (Int) -> Unit,
+        ): Boolean = engine.bind(object : UpdateEngineCallback() {
+            override fun onStatusUpdate(status: Int, percent: Float) =
+                onStatusUpdate(status, percent)
+            override fun onPayloadApplicationComplete(errorCode: Int) =
+                onPayloadApplicationComplete(errorCode)
+        })
+        override fun applyPayload(url: String, offset: Long, headers: Array<String>) =
+            engine.applyPayload(url, offset, 0L, headers)
+        override fun cancel() = engine.cancel()
+        override fun unbind(): Boolean = engine.unbind()
+    }
+
     sealed interface Result {
         /** Written to the inactive slot. A reboot will boot into it. */
         data object Applied : Result
@@ -107,6 +144,14 @@ object OtaInstaller {
         packageFile: File,
         onProgress: (percent: Int) -> Unit,
     ): Result.Failed? = withContext(Dispatchers.IO) {
+        signatureCheckOverride?.let { check ->
+            return@withContext if (check(packageFile, onProgress)) {
+                null
+            } else {
+                packageFile.delete()
+                Result.Failed("the update package failed signature verification")
+            }
+        }
         try {
             RecoverySystem.verifyPackage(
                 packageFile,
@@ -182,9 +227,9 @@ object OtaInstaller {
                     return
                 }
                 zip.getInputStream(entry).use { input ->
-                    CARE_MAP_PATH.outputStream().use { output -> input.copyTo(output) }
+                    (careMapPathOverride ?: CARE_MAP_PATH).outputStream().use { output -> input.copyTo(output) }
                 }
-                CARE_MAP_PATH.setReadable(true, false)
+                (careMapPathOverride ?: CARE_MAP_PATH).setReadable(true, false)
             }
         }.onFailure { Log.status(TAG, "could not stage the care map; continuing without it", it) }
     }
@@ -212,7 +257,7 @@ object OtaInstaller {
         onProgress: (percent: Int) -> Unit,
     ): Result {
         val engine = try {
-            UpdateEngine()
+            payloadEngineOverride?.invoke() ?: RealPayloadEngine()
         } catch (e: Exception) {
             // The constructor binds to the update_engine binder and throws when it is
             // unavailable - which is what a non-privileged build looks like from here.
@@ -233,44 +278,41 @@ object OtaInstaller {
     }
 
     private suspend fun awaitPayload(
-        engine: UpdateEngine,
+        engine: PayloadEngine,
         packageFile: File,
         payloadOffset: Long,
         headers: List<String>,
         onProgress: (percent: Int) -> Unit,
     ): Result = suspendCancellableCoroutine { continuation ->
 
-        val callback = object : UpdateEngineCallback() {
-            override fun onStatusUpdate(status: Int, percent: Float) {
-                // percent is 0..1 here, not 0..100.
-                onProgress((percent * 100).toInt().coerceIn(0, 100))
-            }
+        // percent is 0..1 here, not 0..100.
+        val onStatusUpdate: (Int, Float) -> Unit = { _, percent ->
+            onProgress((percent * 100).toInt().coerceIn(0, 100))
+        }
+        val onComplete: (Int) -> Unit = { errorCode ->
+            continuation.finish(
+                when (val outcome = UpdateEngineOutcome.of(errorCode)) {
+                    UpdateEngineOutcome.Outcome.Applied -> {
+                        // Whatever happened, the 1-2 GB staged package has served its
+                        // purpose and must not be left behind or resumed from.
+                        packageFile.delete()
+                        Result.Applied
+                    }
 
-            override fun onPayloadApplicationComplete(errorCode: Int) {
-                continuation.finish(
-                    when (val outcome = UpdateEngineOutcome.of(errorCode)) {
-                        UpdateEngineOutcome.Outcome.Applied -> {
-                            // Whatever happened, the 1-2 GB staged package has served its
-                            // purpose and must not be left behind or resumed from.
-                            packageFile.delete()
-                            Result.Applied
-                        }
-
-                        is UpdateEngineOutcome.Outcome.Failed -> {
-                            Log.error(TAG, "apply failed: ${outcome.reason} (${outcome.code})")
-                            packageFile.delete()
-                            Result.Failed(
-                                outcome.reason,
-                                outcome.retryable,
-                                outcome.initializationFailure,
-                            )
-                        }
-                    },
-                )
-            }
+                    is UpdateEngineOutcome.Outcome.Failed -> {
+                        Log.error(TAG, "apply failed: ${outcome.reason} (${outcome.code})")
+                        packageFile.delete()
+                        Result.Failed(
+                            outcome.reason,
+                            outcome.retryable,
+                            outcome.initializationFailure,
+                        )
+                    }
+                },
+            )
         }
 
-        if (!engine.bind(callback)) {
+        if (!engine.bind(onStatusUpdate, onComplete)) {
             continuation.resume(Result.Failed("could not attach to the system update service"))
             return@suspendCancellableCoroutine
         }
@@ -286,9 +328,6 @@ object OtaInstaller {
             engine.applyPayload(
                 "file://${packageFile.absolutePath}",
                 payloadOffset,
-                // 0 means "to the end of the file". The payload runs to the end of the zip
-                // entry and update_engine reads its real length out of the metadata headers.
-                0L,
                 headers.toTypedArray(),
             )
         } catch (e: Exception) {

@@ -23,6 +23,9 @@ object UpdateChecker {
 
     private const val CHANNEL = "stable"
 
+    /** Test seam: replaces opening the HTTPS connection. Null means the real [URL] connection. */
+    internal var connectionOverride: ((url: String) -> HttpsURLConnection)? = null
+
     /** The result of one check. Every failure is a value, not an exception. */
     sealed interface Result {
         /** A build newer than the running one is available. */
@@ -63,7 +66,8 @@ object UpdateChecker {
      * this device yet.
      */
     private fun fetch(url: String): String? = runCatching {
-        val connection = URL(url).openConnection() as? HttpsURLConnection
+        val connection = connectionOverride?.invoke(url)
+            ?: URL(url).openConnection() as? HttpsURLConnection
             ?: run {
                 Log.status(TAG, "refusing a non-HTTPS OTA URL")
                 return null

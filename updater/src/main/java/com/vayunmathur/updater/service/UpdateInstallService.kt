@@ -166,7 +166,7 @@ class UpdateInstallService : Service() {
     ) {
         UpdateNotifications.updateProgress(this, getString(R.string.notify_verifying), 0)
         val result = OtaInstaller.install(
-            packageFile = OtaDownloader.UPDATE_PATH,
+            packageFile = OtaDownloader.updateFile(),
             expected = OtaPackageValidation.Expected(
                 buildDateUtcSeconds = buildDate,
                 targetBuild = build,

@@ -51,6 +51,14 @@ object OtaDownloader {
     /** Where update_engine can reach it. See the class doc. */
     val UPDATE_PATH = File("/data/ota_package/update.zip")
 
+    /** Test seam: replaces the staged-package file (unwritable off-device). Null means [UPDATE_PATH]. */
+    internal var updateFileOverride: File? = null
+
+    /** Test seam: replaces opening the HTTPS connection. Null means the real [URL] connection. */
+    internal var connectionOverride: ((url: String, offset: Long) -> HttpsURLConnection)? = null
+
+    internal fun updateFile(): File = updateFileOverride ?: UPDATE_PATH
+
     sealed interface Result {
         data class Downloaded(val incremental: Boolean) : Result
 
@@ -84,11 +92,11 @@ object OtaDownloader {
         val incremental = artifacts.incremental.takeIf { it != null && it != failedIncremental }
 
         try {
-            UPDATE_PATH.parentFile?.mkdirs()
+            updateFile().parentFile?.mkdirs()
             val remembered = store.getStringAwait(UpdaterPreferences.DOWNLOAD_FILE)
             // Only a partial file whose artifact we can still name is worth resuming.
             val target = resolveTarget(remembered, incremental, artifacts.full)
-            if (!target.resumable) UPDATE_PATH.delete()
+            if (!target.resumable) updateFile().delete()
 
             return@withContext when (val request = requestArtifact(artifacts, target)) {
                 is ArtifactRequest.Complete -> Result.Downloaded(request.wanted == artifacts.incremental)
@@ -132,7 +140,7 @@ object OtaDownloader {
     ): DownloadTarget {
         val resumable = remembered != null && (remembered == incremental || remembered == full)
         val wanted = if (resumable) remembered!! else incremental ?: full
-        val offset = if (resumable) UPDATE_PATH.length() else 0L
+        val offset = if (resumable) updateFile().length() else 0L
         return DownloadTarget(wanted, offset, resumable)
     }
 
@@ -193,7 +201,7 @@ object OtaDownloader {
         connection.errorStream?.close()
         connection.disconnect()
         Log.status(TAG, "${target.wanted} is not published; falling back to ${artifacts.full}")
-        UPDATE_PATH.delete()
+        updateFile().delete()
         val retry = open(artifacts.full, 0L)
         val retryCode = retry.responseCode
         if (retryCode == HttpURLConnection.HTTP_NOT_FOUND) {
@@ -206,12 +214,13 @@ object OtaDownloader {
 
     /** Forget the staged package entirely, so the next run starts clean rather than resuming. */
     suspend fun discard(context: Context) {
-        UPDATE_PATH.delete()
+        updateFile().delete()
         DataStoreUtils.getInstance(context).setString(UpdaterPreferences.DOWNLOAD_FILE, "")
     }
 
     private fun open(fileName: String, offset: Long): HttpsURLConnection {
         val url = "${SystemBuild.otaServer()}/$fileName"
+        connectionOverride?.let { return it(url, offset) }
         // HTTPS only. The signature check is the real boundary, but there is no reason to let a
         // gigabyte of anything arrive over a connection nobody authenticated.
         val connection = URL(url).openConnection() as HttpsURLConnection
@@ -284,7 +293,7 @@ object OtaDownloader {
         var lastReport = 0L
         onProgress(soFar, total)
 
-        FileOutputStream(UPDATE_PATH, append).use { output ->
+        FileOutputStream(updateFile(), append).use { output ->
             connection.inputStream.use { input ->
                 val buffer = ByteArray(BUFFER_SIZE)
                 while (true) {
@@ -326,7 +335,7 @@ object OtaDownloader {
     private fun allocate(context: Context, bytes: Long) {
         runCatching {
             val storage = context.getSystemService<StorageManager>() ?: return
-            val uuid = storage.getUuidForPath(UPDATE_PATH)
+            val uuid = storage.getUuidForPath(updateFile())
             val flag = StorageManager::class.java
                 .getField("FLAG_ALLOCATE_AGGRESSIVE")
                 .getInt(null)
