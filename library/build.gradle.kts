@@ -22,4 +22,7 @@ dependencies {
 
     // GameHub SDK — GameHubReporter bridge
     implementation(project(":sdk:games"))
+
+    // The unit tests' Room database (MatchingDao) needs its generated impl.
+    add("kspTest", libs.androidx.room3.compiler)
 }
