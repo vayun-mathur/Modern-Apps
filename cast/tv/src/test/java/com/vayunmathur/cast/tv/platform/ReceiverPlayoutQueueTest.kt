@@ -64,6 +64,23 @@ class ReceiverPlayoutQueueTest {
     }
 
     @Test
+    fun `frames straddling the 32-bit rtp wrap still play out in order`() {
+        // RTP timestamps are 32 bits on the wire: at a 1 kHz timebase the
+        // counter wraps at 4294967296. Frame 0 sits 6 ticks before the wrap
+        // and frame 1 four ticks after it, i.e. 10 ms later, not ~49 days
+        // earlier. A plain subtraction rebased onto frame 1 and left frame 0
+        // scheduled one full wrap in the future, freezing playout for good.
+        val queue = PlayoutQueue(targetDelayMs = 150, timebase = 1_000)
+        queue.add(frame(0, 4_294_967_290L), 1_000)
+        queue.add(frame(1, 4L), 1_010)
+        assertEquals(0, queue.rebases)
+        assertNull(queue.due(1_149))
+        assertEquals(0L, queue.due(1_150)?.frameId?.value)
+        assertNull(queue.due(1_159))
+        assertEquals(1L, queue.due(1_160)?.frameId?.value)
+    }
+
+    @Test
     fun `clearing drops everything and re-establishes the mapping on the next frame`() {
         val queue = PlayoutQueue(targetDelayMs = 150, timebase = 1_000)
         queue.add(frame(0, 0), 1_000)

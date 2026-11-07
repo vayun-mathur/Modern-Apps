@@ -517,7 +517,33 @@ internal class PlayoutQueue(private val targetDelayMs: Long, private val timebas
     }
 
     private fun scheduleFor(rtpTimestamp: Long): Long =
-        baseWallMs + (rtpTimestamp - baseRtp) * MILLIS_PER_SECOND / timebase
+        baseWallMs + rtpDelta(rtpTimestamp) * MILLIS_PER_SECOND / timebase
+
+    /**
+     * The signed distance from [baseRtp] to [rtpTimestamp] on the 32-bit RTP clock.
+     *
+     * RTP timestamps are 32 bits on the wire (`RtpPacketizer` masks them, and
+     * `RtpDepacketizer` reads them back unsigned), so they wrap: after about
+     * 13 hours of video at 90 kHz, or 7 hours of audio at 48 kHz, the counter
+     * returns to near zero. A plain subtraction then reads the first post-wrap
+     * frame as ~13 hours *before* the base, the drift check in [add] rebases
+     * onto that newest frame, and every frame still queued from before the
+     * wrap is suddenly scheduled ~13 hours in the *future* - behind a head
+     * frame that is never due, so playout freezes and the queue grows for the
+     * rest of the session. Interpreting the difference as a signed 32-bit
+     * value makes the wrap a small positive step, like any other frame.
+     */
+    private fun rtpDelta(rtpTimestamp: Long): Long {
+        val raw = (rtpTimestamp - baseRtp) and RTP_TIMESTAMP_MASK
+        return if (raw >= RTP_SIGN_BIT) raw - RTP_TIMESTAMP_RANGE else raw
+    }
+
+    private companion object {
+        /** The wire width of an RTP timestamp, and where its sign falls once masked. */
+        const val RTP_TIMESTAMP_MASK = 0xffff_ffffL
+        const val RTP_TIMESTAMP_RANGE = 0x1_0000_0000L
+        const val RTP_SIGN_BIT = 0x8000_0000L
+    }
 }
 
 /** Bits per Mbit/s, for the human-readable line in `startStreaming`. */
