@@ -6,7 +6,12 @@ import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.clock.data.ClockRepository
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import org.junit.runner.RunWith
 import com.vayunmathur.clock.FakeAndroidKeyStore
 import org.junit.Before
@@ -52,6 +57,53 @@ class AlarmSchedulerTest {
         val trigger = AlarmScheduler.calculateNextTriggerMillis(alarm(days = 0b1111111, hour = 23, minute = 59))
         assertTrue(trigger > now)
         assertTrue(trigger <= now + 25 * 3600_000L, "daily alarm trigger too far: ${trigger - now}")
+    }
+
+    private val newYork = TimeZone.of("America/New_York")
+
+    private fun at(date: LocalDate, time: LocalTime, zone: TimeZone) =
+        LocalDateTime(date, time).toInstant(zone)
+
+    @Test
+    fun dailyAlarmAcrossSpringForwardKeepsWallClockTime() {
+        // Sat 2026-03-07 10:00 EST; the 09:00 daily alarm already passed today,
+        // so it must fire Sun 09:00 EDT (23h later), not 10:00 after a +24h step.
+        val now = at(LocalDate(2026, 3, 7), LocalTime(10, 0), newYork)
+        val trigger = AlarmScheduler.calculateNextTriggerMillis(alarm(days = 0b1111111, hour = 9, minute = 0), now, newYork)
+        val expected = at(LocalDate(2026, 3, 8), LocalTime(9, 0), newYork)
+        assertEquals(expected.toEpochMilliseconds(), trigger)
+        assertEquals(LocalTime(9, 0), kotlin.time.Instant.fromEpochMilliseconds(trigger).toLocalDateTime(newYork).time)
+    }
+
+    @Test
+    fun dailyAlarmAcrossFallBackKeepsWallClockTime() {
+        // Sat 2026-10-31 10:00 EDT; next fire is Sun 09:00 EST (25h later),
+        // not 08:00 after a +24h step.
+        val now = at(LocalDate(2026, 10, 31), LocalTime(10, 0), newYork)
+        val trigger = AlarmScheduler.calculateNextTriggerMillis(alarm(days = 0b1111111, hour = 9, minute = 0), now, newYork)
+        val expected = at(LocalDate(2026, 11, 1), LocalTime(9, 0), newYork)
+        assertEquals(expected.toEpochMilliseconds(), trigger)
+        assertEquals(LocalTime(9, 0), kotlin.time.Instant.fromEpochMilliseconds(trigger).toLocalDateTime(newYork).time)
+    }
+
+    @Test
+    fun recurringAlarmAfterDstJumpLandsOnSelectedWeekday() {
+        // Only Mondays selected; from Sat 2026-03-07 the next fire is Mon 2026-03-09 09:00 EDT.
+        val mondayBit = 1 shl 1
+        val now = at(LocalDate(2026, 3, 7), LocalTime(10, 0), newYork)
+        val trigger = AlarmScheduler.calculateNextTriggerMillis(alarm(days = mondayBit, hour = 9, minute = 0), now, newYork)
+        assertEquals(at(LocalDate(2026, 3, 9), LocalTime(9, 0), newYork).toEpochMilliseconds(), trigger)
+    }
+
+    @Test
+    fun oneShotInSpringForwardGapResolvesForward() {
+        // 02:30 does not exist on 2026-03-08 in New York; the alarm must still
+        // fire that morning (shifted to 03:30 EDT), never throw or skip a day.
+        val now = at(LocalDate(2026, 3, 7), LocalTime(10, 0), newYork)
+        val trigger = AlarmScheduler.calculateNextTriggerMillis(alarm(days = 0, hour = 2, minute = 30), now, newYork)
+        val local = kotlin.time.Instant.fromEpochMilliseconds(trigger).toLocalDateTime(newYork)
+        assertEquals(LocalDate(2026, 3, 8), local.date)
+        assertEquals(LocalTime(3, 30), local.time)
     }
 
     @Test

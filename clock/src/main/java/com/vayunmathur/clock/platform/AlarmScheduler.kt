@@ -5,14 +5,15 @@ import android.content.Context
 import android.content.Intent
 import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.clock.data.ClockRepository
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
@@ -155,9 +156,20 @@ object AlarmScheduler {
         }
     }
 
-    fun calculateNextTriggerMillis(alarm: Alarm): Long {
-        val now = Clock.System.now()
-        val timeZone = TimeZone.currentSystemDefault()
+    fun calculateNextTriggerMillis(alarm: Alarm): Long =
+        calculateNextTriggerMillis(alarm, Clock.System.now(), TimeZone.currentSystemDefault())
+
+    /**
+     * Next fire instant for [alarm] at or after [now] in [timeZone].
+     *
+     * Day stepping is calendar-based (next local date at the same wall-clock
+     * time), never a fixed 24h duration: adding 24h to an instant lands an
+     * hour late across the spring DST transition and an hour early across
+     * the autumn one, and also shifts the weekday the repeat mask is tested
+     * against near midnight. [LocalDateTime.toInstant] resolves a wall time
+     * inside a DST gap forward and an overlap to the earlier offset.
+     */
+    internal fun calculateNextTriggerMillis(alarm: Alarm, now: Instant, timeZone: TimeZone): Long {
         val today = now.toLocalDateTime(timeZone).date
 
         // 1. Create a LocalDateTime for today at the alarm time
@@ -166,7 +178,7 @@ object AlarmScheduler {
         // 2. Initial check: if the time has already passed today,
         // we must start looking from tomorrow
         if (candidate.toInstant(timeZone) <= now) {
-            candidate = candidate.toInstant(timeZone).plus(1.days).toLocalDateTime(timeZone)
+            candidate = candidate.nextDay(alarm)
         }
 
         // 3. Scenario A: No days selected (One-shot alarm)
@@ -187,12 +199,16 @@ object AlarmScheduler {
             }
 
             // Move to the next day and check again
-            candidate = candidate.toInstant(timeZone).plus(1.days).toLocalDateTime(timeZone)
+            candidate = candidate.nextDay(alarm)
         }
 
         // Fallback (should be unreachable if bits are set)
         return candidate.toInstant(timeZone).toEpochMilliseconds()
     }
+
+    /** Same wall-clock time on the next calendar date. */
+    private fun LocalDateTime.nextDay(alarm: Alarm): LocalDateTime =
+        LocalDateTime(date.plus(1, DateTimeUnit.DAY), alarm.time)
 
     private const val DAYS_IN_WEEK = 7
 }
