@@ -6,11 +6,22 @@ internal const val TERMINAL_SCROLLBACK = 2000
 fun EditorViewModel.startTerminal() {
     if (terminal != null) return
     val dir = rootDir ?: return
-    terminal = TerminalSession(
+    // Clear the session reference when its shell exits, otherwise startTerminal keeps
+    // early-returning on the dead session and every later command is silently swallowed
+    // by a process that no longer exists. The identity check keeps a stale exit from a
+    // killed session (see terminalInterrupt) from clearing its replacement.
+    var session: TerminalSession? = null
+    session = TerminalSession(
         dir = dir,
         onLine = { line -> appendTerminalLine(line) },
-        onExit = { terminalRunning = false },
+        onExit = {
+            if (terminal === session) {
+                terminal = null
+                terminalRunning = false
+            }
+        },
     )
+    terminal = session
     terminalRunning = true
 }
 
