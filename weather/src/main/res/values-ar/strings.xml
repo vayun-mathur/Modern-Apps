@@ -93,4 +93,5 @@
     <string name="weather_temp_format"><xliff:g id="temp" example="22">%1$d</xliff:g>°</string>
     <string name="condition_drizzle">رذاذ</string>
     <string name="weather_blob_widget_description">الطقس في فقاعة انسيابية - درجة حرارة كبيرة مع أيقونة، خلفية خضراء مزرق داكنة</string>
+    <string name="today_short">اليوم</string>
 </resources>
