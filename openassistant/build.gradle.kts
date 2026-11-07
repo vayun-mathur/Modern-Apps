@@ -45,4 +45,7 @@ dependencies {
     implementation(libs.androidx.a2ui.model)
     implementation(libs.androidx.a2ui.engine)
     implementation(libs.kotlinx.serialization.json)
+
+    // Mock Context/PackageManager for cross-app intent tests.
+    testImplementation(libs.mockito.core)
 }
