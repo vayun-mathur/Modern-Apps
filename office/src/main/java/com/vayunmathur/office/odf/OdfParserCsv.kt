@@ -49,7 +49,10 @@ private fun stepCsvChar(text: String, index: Int, acc: CsvAcc): Int {
     val c = text[i]
     when {
         acc.inQuotes -> i = stepCsvQuoted(text, i, c, acc)
-        c == '"' -> acc.inQuotes = true
+        // A quote only opens a quoted field at the start of a field; a quote in
+        // the middle of an unquoted field (e.g. 5" nail) is literal text.
+        c == '"' && acc.sb.isEmpty() -> acc.inQuotes = true
+        c == '"' -> acc.sb.append(c)
         c == acc.delimiter -> { acc.fields.add(acc.sb.toString()); acc.sb.clear() }
         c == '\r' -> { acc.endRecord(); if (i + 1 < text.length && text[i + 1] == '\n') i++ }
         c == '\n' -> acc.endRecord()
