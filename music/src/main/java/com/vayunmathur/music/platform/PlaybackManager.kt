@@ -113,6 +113,19 @@ class PlaybackManager private constructor(context: Context) {
         controllerFuture.addListener({
             try {
                 controller = controllerFuture.get().apply {
+                    // Seed from the player's current state: the listener
+                    // below only fires on changes, so connecting while the
+                    // service was already playing (app restart, process
+                    // death) otherwise left every observable at its default
+                    // - paused, no track, repeat off - until the next
+                    // transition, and the mini-player offered to play a
+                    // track that was already playing.
+                    _isPlaying.value = isPlaying
+                    _currentMediaItem.value = currentMediaItem
+                    _shuffleMode.value = shuffleModeEnabled
+                    _repeatMode.value = repeatMode
+                    _currentPosition.value = currentPosition.coerceAtLeast(0L)
+                    _duration.value = duration.coerceAtLeast(0L)
                     addListener(object : Player.Listener {
                         override fun onIsPlayingChanged(playing: Boolean) {
                             _isPlaying.value = playing
