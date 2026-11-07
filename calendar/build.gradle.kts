@@ -17,5 +17,7 @@ android {
 
 dependencies {
     implementation(project(":library:widgets"))
+    testImplementation(libs.androidx.glance.testing)
+    testImplementation(libs.androidx.glance.appwidget.testing)
 
 }
