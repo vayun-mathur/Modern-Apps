@@ -8,25 +8,21 @@ import kotlin.test.assertTrue
 /**
  * Pins the repeat and shuffle transitions behind the transport buttons.
  *
- * The buttons drive a service controller, so what is pinned here is the
- * transition each press applies: repeat cycles off, one, all and wraps,
- * while shuffle flips independently of it.
+ * Repeat is pinned against the production [nextRepeatMode] (this test
+ * previously re-implemented the cycle locally, so it kept passing while the
+ * app and notification surfaces cycled in different orders): repeat cycles
+ * off, all, one and wraps, while shuffle flips independently of it.
+ * Player constants: OFF=0, ONE=1, ALL=2.
  */
 class RepeatShuffleTest {
-
-    private fun nextRepeatMode(mode: Int): Int = when (mode) {
-        0 -> 1
-        1 -> 2
-        else -> 0
-    }
 
     private fun toggleShuffle(enabled: Boolean): Boolean = !enabled
 
     @Test
-    fun repeatCyclesOffOneAllThenWraps() {
-        assertEquals(1, nextRepeatMode(0))
-        assertEquals(2, nextRepeatMode(1))
-        assertEquals(0, nextRepeatMode(2))
+    fun repeatCyclesOffAllOneThenWraps() {
+        assertEquals(2, nextRepeatMode(0))
+        assertEquals(1, nextRepeatMode(2))
+        assertEquals(0, nextRepeatMode(1))
     }
 
     @Test
@@ -56,7 +52,7 @@ class RepeatShuffleTest {
         var mode = 0
         repeat(4) { mode = nextRepeatMode(mode) }
         assertTrue(shuffle)
-        assertEquals(1, mode)
+        assertEquals(2, mode)
     }
 
     @Test
