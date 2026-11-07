@@ -507,6 +507,10 @@ class FindFamilyViewModel(
             Networking.init(repository, DataStoreUtils.getInstance(ctx), ctx.getString(R.string.me_label))
             // Apply any due auto-toggles on cold start
             applyDueAutoToggles()
+            // Re-arm no-show checks: WorkManager work can be lost (app data
+            // restore, force-stop quirks), and an overdue unfired alert then
+            // sweeps immediately instead of never firing.
+            runCatching { NoShowCheckScheduler.rescheduleAll(ctx) }
         }
         // Trim location history older than a week.
         viewModelScope.launch(Dispatchers.IO) {
