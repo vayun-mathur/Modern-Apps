@@ -138,6 +138,30 @@ class E2eeDriveTest {
         assertTrue(NoteSink.listLocal(ctx, meta.vaultId).any { it.uid == "n2" })
     } }
 
+    @Test fun pullOnlyDoesNotOrphanLocalOnlyNotes() { runBlocking {
+        assertTrue(RelaySync.init(ctx))
+        val (meta, key) = makeVault("notes", "v-pull-orphan")
+        val provider = E2eeProvider()
+        val channel = RelaySync.recordChannel("notes", meta.vaultId)
+        NoteSink.upsert(ctx, meta.vaultId, RemoteNote(uid = "np1", title = "Local only", updatedAt = 1_000))
+        // A PULL cycle must not append, and must not mark np1 as synced:
+        // the following BOTH cycle still has to push it.
+        provider.sync(ctx, config(DataType.NOTES), SyncDirection.PULL)
+        assertTrue(relay.channel(channel).isEmpty())
+        provider.sync(ctx, config(DataType.NOTES), SyncDirection.BOTH)
+        val pulled = RelaySync.pullRecords(channel, key, 0)
+        assertEquals(listOf("np1"), pulled!!.items.mapNotNull { NoteKind.fromJson(it)?.uid })
+        // A diverged local edit made before a PULL must survive the next
+        // BOTH cycle (push it), not be overwritten by the stale remote copy.
+        NoteSink.upsert(ctx, meta.vaultId, RemoteNote(uid = "np1", title = "Edited offline", updatedAt = 2_000))
+        provider.sync(ctx, config(DataType.NOTES), SyncDirection.PULL)
+        provider.sync(ctx, config(DataType.NOTES), SyncDirection.BOTH)
+        val after = RelaySync.pullRecords(channel, key, 0)!!.items
+            .mapNotNull { NoteKind.fromJson(it) }
+        assertEquals("Edited offline", after.last { it.uid == "np1" }.title)
+        assertEquals("Edited offline", NoteSink.listLocal(ctx, meta.vaultId).single { it.uid == "np1" }.title)
+    } }
+
     @Test fun passwordsVaultHardDeleteCycle() { runBlocking {
         assertTrue(RelaySync.init(ctx))
         val (meta, key) = makeVault("passwords", "v-pass1")
