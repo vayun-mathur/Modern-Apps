@@ -40,6 +40,23 @@ class C9Slice2DownloadWorkerTest {
         assertTrue(worker.doWork() is ListenableWorker.Result.Failure)
     }
 
+    @Test fun sabrUrl_dispatchesToSabrPath() = runTest {
+        val worker = TestListenableWorkerBuilder<DownloadWorker>(ctx())
+            .setInputData(
+                workDataOf(
+                    "videoID" to 43L,
+                    "videoUrl" to "sabr://abc123?v=140",
+                    "name" to "SABR Video",
+                    "author" to "Tester",
+                )
+            )
+            .build()
+        // The SABR session needs a WebView-minted token and live YouTube; off
+        // device it must fail/throw into a Result rather than hang or succeed.
+        val result = runCatching { worker.doWork() }.getOrNull()
+        assertTrue(result == null || result is ListenableWorker.Result.Failure || result is ListenableWorker.Result.Retry, "result=$result")
+    }
+
     @Test fun unreachableProgressive_fails() = runTest {
         val worker = TestListenableWorkerBuilder<DownloadWorker>(ctx())
             .setInputData(

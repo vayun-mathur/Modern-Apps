@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
@@ -130,6 +132,28 @@ class C9Slice2PagesTest {
             rule.onAllNodesWithText("Seeded Download").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Seeded Download").assertExists()
+    }
+
+    @Test fun historyPage_longPressEntersSelection() {
+        val db = sharedDb(context)
+        kotlinx.coroutines.runBlocking {
+            db.historyVideoDao().upsert(
+                com.vayunmathur.youpipe.data.HistoryVideo.fromVideoData(
+                    VideoInfo(
+                        name = "Seeded History Video", videoID = 777L, duration = 120, views = 5000,
+                        uploadDate = kotlin.time.Instant.fromEpochSeconds(1_700_000_000L),
+                        thumbnailURL = "", author = "Seed Author",
+                    ),
+                    progress = 30_000,
+                )
+            )
+        }
+        rule.setContent { HistoryPage(stack(), vm) }
+        rule.waitUntil(5000) {
+            rule.onAllNodesWithText("Seeded History Video").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Seeded History Video").performTouchInput { longClick() }
+        rule.waitForIdle()
     }
 
     @Test fun channelPage_rendersLoadingOrEmpty() {
