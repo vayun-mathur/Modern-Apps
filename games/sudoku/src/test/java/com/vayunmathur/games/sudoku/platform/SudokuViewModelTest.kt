@@ -168,6 +168,21 @@ class SudokuViewModelTest {
     }
 
     @Test
+    fun notesTapOnFilledCellKeepsTheEntry() {
+        val vm = startedVm()
+        val cell = blank(vm)
+        val correct = vm.uiState.value.game!!.solution[cell]
+        vm.selectCell(cell)
+        vm.enterDigit(correct)
+        vm.toggleNotesMode()
+        val other = (1..vm.uiState.value.game!!.size.side).first { it != correct }
+        vm.enterDigit(other)
+        val after = vm.uiState.value.game!!
+        assertEquals(correct, after.valueAt(cell), "pencilling over an entry must not erase it")
+        assertEquals(0, after.notes[cell], "and no mark is written over it either")
+    }
+
+    @Test
     fun hintCorrectsWrongEntryFirstThenFillsSelectedBlank() {
         val vm = startedVm()
         val cell = blank(vm)
