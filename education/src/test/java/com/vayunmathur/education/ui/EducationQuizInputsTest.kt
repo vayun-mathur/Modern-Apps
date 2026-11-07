@@ -296,5 +296,18 @@ class EducationQuizInputsTest {
         rule.onNodeWithText("Space video").assertIsDisplayed()
     }
 
+    @Test fun videoPlayerRetryAfterErrorDoesNotCrash() {
+        val bs = com.vayunmathur.library.util.NavBackStack<com.vayunmathur.education.Route>(arrayOf(com.vayunmathur.education.Route.Home))
+        show { VideoPlayerPage(bs, "http://127.0.0.1:9/none.mp4", "Space video") }
+        // Unreachable URL must surface the error state with a Retry action.
+        rule.waitUntil(30_000) { onAllNodesWithText(str(R.string.retry)).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText(str(R.string.retry)).performClick()
+        rule.waitForIdle()
+        // Regression: retry used to reuse the ExoPlayer that the effect
+        // disposal had just released. The screen must survive and keep
+        // showing the player (title bar still present, no crash).
+        rule.onNodeWithText("Space video").assertIsDisplayed()
+    }
+
     private fun onAllNodesWithText(text: String) = rule.onAllNodesWithText(text)
 }
