@@ -60,6 +60,10 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
     // screen), which must not tick the counter again (#668). Reset on every new game.
     private var winScored = false
 
+    // Incremented by every new game. An AI reply computed for an older game
+    // (the engine call suspends) must never be applied to the current one.
+    private var gameGeneration = 0
+
     companion object {
         private const val AI_REPLY_DELAY_MS = 500L
     }
@@ -77,10 +81,11 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
 
     fun onNewGame(gameMode: GameMode) {
         winScored = false
+        gameGeneration++
         val isFlipped = gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK
         _uiState.value = ChessUiState(gameMode = gameMode, isBoardFlipped = isFlipped)
         if (gameMode is GameMode.VsAI && gameMode.playerColor == PieceColor.BLACK) {
-            makeAiMove()
+            makeAiMove(gameGeneration)
         }
     }
 
@@ -114,9 +119,10 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
                     )
                 }
                 if (mode is GameMode.VsAI && result == null && newBoard.promotionPosition == null) {
+                    val generation = gameGeneration
                     viewModelScope.launch {
                         delay(AI_REPLY_DELAY_MS)
-                        makeAiMove()
+                        if (generation == gameGeneration) makeAiMove(generation)
                     }
                 }
             } else {
@@ -135,20 +141,34 @@ class ChessViewModel(application: Application) : AndroidViewModel(application), 
             it.copy(board = newBoard, turn = nextTurn, gameStatus = status, gameResult = result)
         }
         if (_uiState.value.gameMode is GameMode.VsAI && result == null) {
-            makeAiMove()
+            val generation = gameGeneration
+            viewModelScope.launch {
+                delay(AI_REPLY_DELAY_MS)
+                if (generation == gameGeneration) makeAiMove(generation)
+            }
         }
     }
 
-    private fun makeAiMove() {
+    private fun makeAiMove(generation: Int) {
         val mode = _uiState.value.gameMode as? GameMode.VsAI ?: return
         viewModelScope.launch {
+            if (generation != gameGeneration) return@launch
             val state = _uiState.value
+            // Only ever move for the AI side of the current, unfinished game.
+            if (state.gameMode != mode || state.gameResult != null) return@launch
+            if (state.turn == mode.playerColor) return@launch
             // The side to move comes from the UI's own state rather than from the board: the
             // rules model infers a turn from its last move, which the puzzle path fakes.
             // Returns null when the engine has no move to make (mate or stalemate against the
             // AI, or an unavailable model).
             val bestMove = chessApi.getBestMove(state.board, state.turn, mode.difficulty)
                 ?: return@launch
+            // The engine call suspends: a new game may have started meanwhile.
+            // Never apply a move computed for a stale position.
+            val current = _uiState.value
+            if (generation != gameGeneration) return@launch
+            if (current.board != state.board || current.turn != state.turn) return@launch
+            if (current.gameResult != null) return@launch
             val newBoard = state.board.movePiece(bestMove.start, bestMove.end, bestMove.promotedTo)
             val nextTurn = state.turn.opposite
             val (result, status) = statusFor(newBoard, nextTurn)
