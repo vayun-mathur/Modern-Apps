@@ -30,7 +30,7 @@ class BugcheckVcardRegressionTest {
         val out = ByteArrayOutputStream()
         runBlocking { VcfUtils.exportContacts(listOf(contact), out) }
         return VcfUtils.parseContacts(
-            ByteArrayInputStream(out.toByteArray(Charsets.UTF_8))
+            ByteArrayInputStream(out.toByteArray())
         ).single()
     }
 
