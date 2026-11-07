@@ -38,7 +38,10 @@ class BugcheckInsertTest {
             return Array(operations.size) { ContentProviderResult(Uri.EMPTY) }
         }
 
-        override fun insert(uri: Uri, values: ContentValues?): Uri = Uri.EMPTY
+        override fun insert(uri: Uri, values: ContentValues?): Uri {
+            inserts += uri to values?.let { ContentValues(it) }
+            return Uri.EMPTY
+        }
         override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 1
         override fun update(
             uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?,
@@ -48,6 +51,7 @@ class BugcheckInsertTest {
 
         companion object {
             val batches = mutableListOf<ContentProviderOperation>()
+            val inserts = mutableListOf<Pair<Uri, ContentValues?>>()
         }
     }
 
@@ -62,6 +66,7 @@ class BugcheckInsertTest {
     @Test
     fun insertWritesNewDetailsAndStarred() {
         CapturingProvider.batches.clear()
+        CapturingProvider.inserts.clear()
         ShadowContentResolver.registerProviderInternal(
             ContactsContract.AUTHORITY, CapturingProvider()
         )
@@ -77,10 +82,16 @@ class BugcheckInsertTest {
         val contact = Contact(0L, null, null, true, stale)
         assertTrue(contact.save(ctx, fresh, ContactDetails.empty()))
 
-        val ops = CapturingProvider.batches
-        val rawValues = valuesOf(ops.first())
+        // Robolectric either forwards the whole batch to applyBatch or
+        // applies each operation as an individual insert; accept both.
+        val opValues = CapturingProvider.batches.mapNotNull { valuesOf(it) }
+        val allValues = opValues + CapturingProvider.inserts.mapNotNull { it.second }
+        assertTrue(allValues.isNotEmpty(), "save must reach the provider")
+        val rawValues = allValues.firstOrNull {
+            it.containsKey(ContactsContract.RawContacts.STARRED)
+        }
         assertEquals(1, rawValues?.getAsInteger(ContactsContract.RawContacts.STARRED))
-        val written = ops.mapNotNull { valuesOf(it) }.flatMap { values ->
+        val written = allValues.flatMap { values ->
             listOfNotNull(
                 values.getAsString(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME),
                 values.getAsString(ContactsContract.CommonDataKinds.Phone.NUMBER),
