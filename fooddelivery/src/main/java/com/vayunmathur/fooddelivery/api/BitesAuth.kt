@@ -2,7 +2,6 @@ package com.vayunmathur.fooddelivery.api
 
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.fooddelivery.data.AuthToken
-import com.vayunmathur.library.network.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
@@ -56,7 +55,7 @@ object BitesAuth {
             val body = "{\"phoneNumber\":\"$cleanPhone\"," +
                 "\"audience\":\"customer\"," +
                 "\"scope\":\"openid email profile offline_access\"}"
-            val resp = NetworkClient.performRequest(
+            val resp = BitesCore.transport(
                 "${BitesCore.BASE}/auth/verify_phone", "POST",
                 mapOf("Content-Type" to "application/json"), body,
             )
@@ -88,7 +87,7 @@ object BitesAuth {
     ): AuthToken? = withContext(Dispatchers.Default) {
         try {
             val body = "grant_type=phone_otp&state_id=$stateId&code=$code"
-            val resp = NetworkClient.performRequest(
+            val resp = BitesCore.transport(
                 "${BitesCore.BASE}/auth/token",
                 "POST",
                 mapOf(
