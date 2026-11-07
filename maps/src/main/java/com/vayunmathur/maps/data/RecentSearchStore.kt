@@ -28,8 +28,15 @@ class RecentSearchStore private constructor(private val ds: DataStoreUtils) {
     suspend fun add(query: String) {
         val q = query.trim()
         if (q.isEmpty()) return
-        val updated = (listOf(q) + current().filter { !it.equals(q, ignoreCase = true) }).take(MAX)
-        ds.setString(KEY, Json.encodeToString(updated))
+        // Read-modify-write inside one DataStore edit: current() reads the
+        // asynchronously-mirrored snapshot, which can lag the previous write,
+        // so two quick searches could each drop the other's entry.
+        ds.updateString(KEY) { raw ->
+            val existing = decode(raw)
+            Json.encodeToString(
+                (listOf(q) + existing.filter { !it.equals(q, ignoreCase = true) }).take(MAX)
+            )
+        }
     }
 
     /** Clear all recent searches. */
