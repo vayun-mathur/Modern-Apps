@@ -254,13 +254,24 @@ class EverySyncVaults(private val viewModel: EverySyncViewModel) {
         // A failed pull keeps the last-known roster: no verified data means no
         // roster change, never an emptied roster.
         val raw = RelaySync.pullRaw("members:$vaultId", 0) ?: return emptyList()
-        return raw.mapNotNull { r ->
+        // The roster channel is append-only: a role change appends a new
+        // record for the same member id, so the fold is last-wins per id
+        // (as in VaultRoster.fetchRoster). Flattening without the fold
+        // showed the member once per historical role, revoked included.
+        val byId = LinkedHashMap<String, RelaySync.Member>()
+        for (r in raw) {
             val envelope = runCatching { inboxJson.decodeFromString<RelaySync.SignedEnvelope>(r) }.getOrNull()
-                ?: return@mapNotNull null
+                ?: continue
             val valid = RelaySync.verify(ownerKey, envelope.payload.encodeToByteArray(), Base64.decode(envelope.sig))
-            if (!valid) return@mapNotNull null
-            runCatching { inboxJson.decodeFromString<List<RelaySync.Member>>(envelope.payload) }.getOrNull()
-        }.flatten()
+            if (!valid) continue
+            val members = runCatching {
+                inboxJson.decodeFromString<List<RelaySync.Member>>(envelope.payload)
+            }.getOrNull() ?: continue
+            for (member in members) {
+                if (member.id.isNotBlank()) byId[member.id] = member
+            }
+        }
+        return byId.values.toList()
     }
 
     private suspend fun publishTitle(meta: VaultMeta) {
