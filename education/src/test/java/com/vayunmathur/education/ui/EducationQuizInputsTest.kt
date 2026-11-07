@@ -89,6 +89,18 @@ class EducationQuizInputsTest {
         assertTrue(rule.onAllNodesWithText("3").fetchSemanticsNodes().isNotEmpty())
     }
 
+    @Test fun orderingNeverStartsSolved() {
+        // Regression: an unguarded shuffled() can return the identity order
+        // (1 in 6 for 3 items), publishing a correct answer before any input.
+        repeat(200) {
+            val order = shuffledOrdering(3)
+            assertEquals(listOf(0, 1, 2), order.sorted())
+            assertTrue(order != listOf(0, 1, 2), "ordering question must not start solved")
+        }
+        assertEquals(listOf(0), shuffledOrdering(1))
+        assertEquals(emptyList(), shuffledOrdering(0))
+    }
+
     @Test fun matchingPublishesWhenComplete() {
         var answer: Answer? = null
         show { QuestionInput(Fx.matching, null, enabled = true) { answer = it } }

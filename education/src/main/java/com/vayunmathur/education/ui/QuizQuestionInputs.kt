@@ -168,10 +168,23 @@ private fun ShortTextInput(enabled: Boolean, onAnswer: (Answer?) -> Unit) {
     )
 }
 
+/**
+ * Initial display order for an ordering question: a shuffled permutation of
+ * the item indices that is never the correct (identity) order, so a question
+ * cannot start out already solved and score a free correct answer.
+ */
+internal fun shuffledOrdering(size: Int): List<Int> {
+    val identity = (0 until size).toList()
+    if (size <= 1) return identity
+    var result = identity.shuffled()
+    while (result == identity) result = identity.shuffled()
+    return result
+}
+
 @Composable
 private fun OrderingInput(question: OrderingQuestion, enabled: Boolean, onAnswer: (Answer?) -> Unit) {
     // Display order holds ORIGINAL item indices; start shuffled (stable per question).
-    val order = remember { question.items.indices.shuffled().toMutableStateList() }
+    val order = remember { shuffledOrdering(question.items.size).toMutableStateList() }
 
     fun publish() = onAnswer(OrderingAnswer(order.toList()))
     // Publish the initial arrangement so "Check" is enabled.
