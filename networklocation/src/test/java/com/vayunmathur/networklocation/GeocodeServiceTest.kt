@@ -110,6 +110,20 @@ class GeocodeServiceTest {
     }
 
     @Test
+    fun `structured name query with a house number still matches the street`() {
+        installDb()
+        val controller = Robolectric.buildService(GeocodeService::class.java).create()
+        val addrs = mutableListOf<Address>()
+        val err = controller.get().provider.onGetFromLocationName(
+            "124 Main St, Springfield, CA, US", 0.0, 0.0, 0.0, 0.0, 10, params(), addrs,
+        )
+        assertNull(err)
+        assertEquals(2, addrs.size, "house number must not defeat the street lookup")
+        assertEquals("124 Main St", addrs[1].getAddressLine(0))
+        controller.destroy()
+    }
+
+    @Test
     fun `unstructured name query uses the name index`() {
         installDb()
         val controller = Robolectric.buildService(GeocodeService::class.java).create()
