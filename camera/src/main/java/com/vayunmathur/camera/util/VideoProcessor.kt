@@ -26,17 +26,27 @@ object VideoProcessor {
 
             val videoTrackIndex = findVideoTrack(extractor, muxer)
             // No video track (audio-only input): clean up the half-created muxer and the empty
-            // output so the caller falls back to the raw recording instead of a 0-byte file.
+            // output, then fail so the caller falls back to the raw recording instead of
+            // saving a 0-byte file.
             if (videoTrackIndex == NO_TRACK) {
                 releaseQuietly(extractor, muxer, outputFile)
-                return
+                throw java.io.IOException("Timelapse input has no video track")
             }
 
             extractor.selectTrack(videoTrackIndex)
             muxer.start()
             remuxAtSpeed(extractor, muxer, speedFactor)
 
-            try { muxer.stop() } catch (_: Exception) {}
+            // A failed stop() means the moov atom was never written and the
+            // output is unplayable. Swallowing it (the old behaviour) saved
+            // that corrupt file while the caller deleted the good raw
+            // recording, so surface it as a failure and drop the output.
+            try {
+                muxer.stop()
+            } catch (e: IllegalStateException) {
+                try { outputFile.delete() } catch (_: Exception) {}
+                throw java.io.IOException("Failed to finalize timelapse output", e)
+            }
         } finally {
             if (muxer != null) {
                 try { muxer.release() } catch (_: Exception) {}

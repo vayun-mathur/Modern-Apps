@@ -203,6 +203,11 @@ private fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.
     val processed = java.io.File(cacheFile.parent, "TL_$timestamp.mp4")
     return try {
         VideoProcessor.adjustSpeed(cacheFile, processed, TIMELAPSE_SPEED_FACTOR)
+        // Only trade the raw recording for the remux once the output is
+        // known-good; a missing/empty output keeps the raw file.
+        if (!processed.exists() || processed.length() == 0L) {
+            throw java.io.IOException("Timelapse remux produced no output")
+        }
         cacheFile.delete()
         processed
     } catch (e: java.io.IOException) {
