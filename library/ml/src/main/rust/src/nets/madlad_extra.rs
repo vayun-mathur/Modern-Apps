@@ -89,7 +89,7 @@ mod tests {
                 // The decode step computes the untied logits head itself, so it reads both ends
                 // of the file. The input table and the bias tables are host-read.
                 ranges.push(HEAD_LM..ENCODER);
-                ranges.push(DECODER..TABLE_DEC);
+                ranges.push(DECODER..TABLE_ENC);
             }
         }
         ranges
@@ -125,8 +125,14 @@ mod tests {
                 *counts.entry(super::super::tests::name_of(*kind)).or_insert(0usize) += 1;
             }
         }
-        // Six Q2_K convolutions per layer: q, k, v, the output projection, fused wi_01 and wo.
-        assert_eq!(counts.get("ConvQ2K"), Some(&(ENCODER_LAYERS * 6)), "{counts:?}");
+        // Six Q2_K convolutions per layer: q, k, v, the output projection, fused wi_01 and wo —
+        // plus the two cross-attention K/V projections this pass runs for every decoder layer
+        // so the decode step never has to (see `cross_kv`).
+        assert_eq!(
+            counts.get("ConvQ2K"),
+            Some(&(ENCODER_LAYERS * 6 + DECODER_LAYERS * 2)),
+            "{counts:?}"
+        );
         // Three RMS norms per layer would be post-norm. Pre-norm is two, plus one at the end.
         assert_eq!(counts.get("RmsNorm"), Some(&(ENCODER_LAYERS * 2 + 1)), "{counts:?}");
         // Prescaled scores (T5 applies no query scale), one bias Add per layer, and one
@@ -144,7 +150,9 @@ mod tests {
         for op in &plan.ops {
             if let Op::Dispatch { kind: Kind::GatedActivate, push, .. } = op {
                 assert_eq!(push.act, ACT_GELU, "the GEGLU gate is Gelu: {push:?}");
-                assert_eq!(push.in_c, FFN, "the gate halves 2 * FFN: {push:?}");
+                // `in_c` is the gate half's element count: FFN per position
+                // over the whole sequence (see the GatedActivate lowering).
+                assert_eq!(push.in_c, FFN * LEN, "the gate halves 2 * FFN: {push:?}");
                 gelu += 1;
             }
         }
@@ -185,11 +193,12 @@ mod tests {
                 *counts.entry(super::super::tests::name_of(*kind)).or_insert(0usize) += 1;
             }
         }
-        // Ten Q2_K convolutions per layer — self q/k/v/o, cross q/k/v/o, fused wi_01
+        // Eight Q2_K convolutions per layer — self q/k/v/o, cross q/o (its K and V
+        // were projected by the encode pass into the device caches), fused wi_01
         // and wo — and the four splits of the untied logits head.
         assert_eq!(
             counts.get("ConvQ2K"),
-            Some(&(DECODER_LAYERS * 10 + HEAD_SPLITS)),
+            Some(&(DECODER_LAYERS * 8 + HEAD_SPLITS)),
             "{counts:?}"
         );
         // Three RMS norms per layer, pre-norm, plus the trailing one.
@@ -203,8 +212,9 @@ mod tests {
         assert_eq!(counts.get("Softmax"), Some(&DECODER_LAYERS), "{counts:?}");
         assert_eq!(counts.get("SoftmaxPrefix"), Some(&DECODER_LAYERS), "{counts:?}");
         // One bias Add per layer (self only — cross has none), plus the residuals the
-        // fusion fold leaves behind (see Builder::add).
-        assert_eq!(counts.get("Add"), Some(&(DECODER_LAYERS * 2)), "{counts:?}");
+        // fusion fold leaves behind (see Builder::add): the 32 bias adds and 48 of
+        // the 96 residual adds survive it, 80 in total.
+        assert_eq!(counts.get("Add"), Some(&(DECODER_LAYERS * 2 + 16)), "{counts:?}");
         // K and V into the cache, per layer.
         assert_eq!(counts.get("CacheWrite"), Some(&(DECODER_LAYERS * 2)), "{counts:?}");
         assert_eq!(counts.get("GatedActivate"), Some(&DECODER_LAYERS), "{counts:?}");
@@ -267,8 +277,10 @@ mod tests {
                 Op::Dispatch { kind: Kind::CacheWrite, push, .. } => {
                     writes += 1;
                     assert_eq!(push.in_h, MAX_DECODE_POSITIONS, "{push:?}");
-                    assert_eq!(push.in_c, D_MODEL, "the row stride is d_model: {push:?}");
-                    assert_eq!(push.count, D_MODEL, "a position is d_model long: {push:?}");
+                    // Cache rows hold the projected K/V, so they are INNER wide,
+                    // not d_model: the caches are declared [INNER, 1, src_len].
+                    assert_eq!(push.in_c, INNER, "the row stride is inner: {push:?}");
+                    assert_eq!(push.count, INNER, "a position is inner long: {push:?}");
                 }
                 // The score map is as wide as the cache, and the bound comes from the step.
                 Op::Dispatch { kind: Kind::AttnScoresCached, push, .. } => {
@@ -278,7 +290,7 @@ mod tests {
                     assert_eq!(push.param0_bits, 1.0f32.to_bits(), "{push:?}");
                 }
                 Op::Dispatch { kind: Kind::AttnApplyCached, push, .. } => {
-                    assert_eq!((push.in_w, push.out_c), (MAX_DECODE_POSITIONS, D_MODEL), "{push:?}");
+                    assert_eq!((push.in_w, push.out_c), (MAX_DECODE_POSITIONS, INNER), "{push:?}");
                     assert_ne!(push.dyn_keys, 0, "the key count must come from the step");
                 }
                 // Cross-attention: one query over the source, which is a different length and a
@@ -336,7 +348,7 @@ mod tests {
         // MiB against a guaranteed 128 MiB. A quarter plus its scale and bias sits at ~64
         // MiB — comfortably inside, with headroom NLLB's tighter uneven split lacked.
         let whole = u64::from(VOCAB) * u64::from(D_MODEL);
-        assert!(whole > 250 << 20, "the whole table is {whole} bytes");
+        assert!(whole > 128 << 20, "the whole table is {whole} bytes, over the guaranteed 128 MiB");
         let quarter = u64::from(CLASSES_PER_SPLIT) * u64::from(D_MODEL)
             + u64::from(CLASSES_PER_SPLIT) * 4;
         assert!(quarter < 96 << 20, "a quarter is {quarter} bytes");
@@ -374,12 +386,20 @@ mod tests {
         let mut expected: Vec<Vec<u32>> = Vec::new();
         for _ in 0..HEAD_SPLITS * 2 {
             // Both untied tables split evenly: kernel, scale, bias per split.
-            expected.push(vec![CLASSES_PER_SPLIT, D_MODEL, 1, 1]);
-            expected.push(vec![CLASSES_PER_SPLIT]);
+            // Q2_K kernels are rank 2 `[out, taps]` (superblocks have no kernel
+            // axes to restate) — see `Builder::conv_quantised`.
+            expected.push(vec![CLASSES_PER_SPLIT, D_MODEL]);
+            expected.push(vec![CLASSES_PER_SPLIT * (D_MODEL / crate::weights::Q2K_BLOCK) * 2]);
             expected.push(vec![CLASSES_PER_SPLIT]);
         }
+        // Kernel, its `(d, dmin)` scale table (two values per Q2_K superblock
+        // of the input width), and the synthesised bias.
         let projection = |out: u32, inputs: u32| {
-            vec![vec![out, inputs, 1, 1], vec![out], vec![out]]
+            vec![
+                vec![out, inputs],
+                vec![out * (inputs / crate::weights::Q2K_BLOCK) * 2],
+                vec![out],
+            ]
         };
         let norm = || vec![vec![D_MODEL]];
         for (layers, cross) in [(ENCODER_LAYERS, false), (DECODER_LAYERS, true)] {
@@ -449,3 +469,4 @@ mod tests {
         assert_eq!(relative_bucket(-7, false), 7);
     }
 }
+

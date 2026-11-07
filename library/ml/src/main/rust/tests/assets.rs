@@ -291,9 +291,17 @@ fn the_shipped_whisper_asset_builds_both_passes() {
 
     let encode = whisper::build(&weights, whisper::Mode::Encode)
         .expect("the shipped asset matches nets::whisper's encoder");
-    // The hidden states, then twelve cross-attention caches in layer order.
-    assert_eq!(encode.outputs.len(), 1 + whisper::DECODER_LAYERS * 2);
-    for binding in &encode.outputs {
+    // The hidden states are the only output: the twelve cross-attention
+    // caches stay on the device as the first pinned tensors, where the
+    // decode step's plan declares them at the same offsets.
+    assert_eq!(encode.outputs.len(), 1);
+    assert_eq!(
+        encode.outputs[0].shape,
+        modelrunner::nets::Shape::new(whisper::D_MODEL, 1, whisper::SOURCE_POSITIONS)
+    );
+    let caches = whisper::DECODER_LAYERS * 2;
+    assert!(encode.pinned.len() >= caches, "the cross caches are pinned");
+    for binding in &encode.pinned[..caches] {
         assert_eq!(
             binding.shape,
             modelrunner::nets::Shape::new(whisper::D_MODEL, 1, whisper::SOURCE_POSITIONS)
