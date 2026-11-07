@@ -1,5 +1,6 @@
 package com.vayunmathur.library.avatar
 
+import android.content.res.AssetFileDescriptor
 import android.content.res.AssetManager
 import android.os.ParcelFileDescriptor
 import com.vayunmathur.library.log.Log
@@ -25,18 +26,24 @@ object YuuAvatarAssets {
     fun adoptBundledMesh(assets: AssetManager) {
         if (!YuuAvatarNative.isAvailable) return
         try {
-            assets.openFd(BASE_MESH_PATH).use { afd ->
-                val fd = afd.parcelFileDescriptor.detachFd()
-                var handed = false
-                try {
-                    YuuAvatarNative.setBundledMeshFd(fd, afd.startOffset, afd.length)
-                    handed = true
-                } finally {
-                    if (!handed) closeFd(fd)
-                }
-            }
+            assets.openFd(BASE_MESH_PATH).use { afd -> handOff(afd) }
         } catch (e: Exception) {
             Log.status("YuuAvatarAssets", "no bundled mesh - procedural fallback (${e.message})")
+        }
+    }
+
+    /**
+     * Detaches [afd]'s fd into native. Split from [adoptBundledMesh] so the
+     * fd ownership transfer can be exercised without a bundled mesh asset.
+     */
+    internal fun handOff(afd: AssetFileDescriptor) {
+        val fd = afd.parcelFileDescriptor.detachFd()
+        var handed = false
+        try {
+            YuuAvatarNative.setBundledMeshFd(fd, afd.startOffset, afd.length)
+            handed = true
+        } finally {
+            if (!handed) closeFd(fd)
         }
     }
 
