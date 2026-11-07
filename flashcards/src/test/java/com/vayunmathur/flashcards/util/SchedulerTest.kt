@@ -98,6 +98,21 @@ class SchedulerTest {
     }
 
     @Test
+    fun parseWeightsRejectsCorruptAndNonFiniteTokens() {
+        val good = Scheduler.weightsToJson(Scheduler.DEFAULT_W)
+        assertTrue(Scheduler.parseWeights(good).contentEquals(Scheduler.DEFAULT_W))
+        // One corrupt token among 20 tokens must not drop-and-shift into 19 weights.
+        val corrupt = "[" + (listOf("oops") + Scheduler.DEFAULT_W.map { it.toString() })
+            .joinToString(",") + "]"
+        assertTrue(Scheduler.parseWeights(corrupt).contentEquals(Scheduler.DEFAULT_W))
+        val nan = "[" + (listOf("NaN") + Scheduler.DEFAULT_W.drop(1).map { it.toString() })
+            .joinToString(",") + "]"
+        assertTrue(Scheduler.parseWeights(nan).contentEquals(Scheduler.DEFAULT_W))
+        assertTrue(Scheduler.parseWeights("[1,2,3]").contentEquals(Scheduler.DEFAULT_W))
+        assertTrue(Scheduler.parseWeights("").contentEquals(Scheduler.DEFAULT_W))
+    }
+
+    @Test
     fun againUsesShortStepSoItRecursThisSession() {
         val graded = Scheduler.schedule(newCard(), Grade.AGAIN, now)
         assertTrue(
