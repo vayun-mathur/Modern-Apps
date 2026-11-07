@@ -275,6 +275,27 @@ class SosServiceAndReceiverTest {
     }
 
     @Test
+    fun `countdown arms a call alarm for the countdown deadline`() {
+        Shadows.shadowOf(ctx.packageManager)
+            .setSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY, true)
+        val alarms = ctx.getSystemService(android.app.AlarmManager::class.java)
+        val controller = Robolectric.buildService(SosCountdownService::class.java)
+        val service = controller.create().get()
+        val before = System.currentTimeMillis()
+        val intent = Intent().putExtra("service.extra.remaining_time_ms", 60_000L)
+        service.onStartCommand(intent, 0, 1)
+        ShadowLooper.idleMainLooper()
+        // The countdown must arm the MAKE_CALL alarm for its deadline; the
+        // inexact fallback shares this same arming path when the exact-alarm
+        // grant is unavailable on device.
+        val scheduled = Shadows.shadowOf(alarms).scheduledAlarms
+        assertTrue(scheduled.isNotEmpty())
+        assertTrue(scheduled.first().triggerAtMs >= before + 50_000)
+        controller.destroy()
+        ShadowLooper.idleMainLooper()
+    }
+
+    @Test
     fun `service start and stop helpers build the right intents`() {
         SosCountdownService.start(ctx, 12_000)
         val started = Shadows.shadowOf(ctx as Application).nextStartedService
