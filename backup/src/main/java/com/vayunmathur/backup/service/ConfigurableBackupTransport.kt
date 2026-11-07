@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -133,6 +134,9 @@ class ConfigurableBackupTransport(private val context: Context) : BackupTranspor
                         val n = reader.readEntityData(data, offset, size - offset)
                         if (n <= 0) break
                         offset += n
+                    }
+                    if (offset < size) {
+                        throw IOException("truncated entity $key for $pkg: $offset of $size bytes")
                     }
                     repo.writeEncrypted(BackupRepository.kvPath(pkg, keyId), data)
                 }

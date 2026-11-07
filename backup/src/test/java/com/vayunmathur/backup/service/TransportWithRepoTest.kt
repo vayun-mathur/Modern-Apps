@@ -85,6 +85,21 @@ class TransportWithRepoTest {
         return result
     }
 
+    @Test fun truncatedKvEntityIsRejectedAndNotStored() {
+        // Header promises 10 bytes but the stream ends after 3: the entity
+        // must not be stored zero-padded as if it were complete.
+        val pipe = ParcelFileDescriptor.createPipe()
+        val raw = java.io.DataOutputStream(java.io.FileOutputStream(pipe[1].fileDescriptor))
+        val kb = "k1".toByteArray()
+        raw.writeInt(kb.size); raw.writeInt(10); raw.write(kb); raw.write("abc".toByteArray()); raw.flush()
+        pipe[1].close()
+        assertEquals(BackupTransport.TRANSPORT_ERROR, transport.performBackup(pkg("com.example.app"), pipe[0]))
+        pipe[0].close()
+        assertEquals(BackupTransport.TRANSPORT_OK, transport.startRestore(1L, arrayOf(pkg("com.example.app"))))
+        assertEquals(RestoreDescription.NO_MORE_PACKAGES, transport.nextRestorePackage())
+        transport.finishRestore()
+    }
+
     @Test fun kvAndFullBackupRestoreCycle() {
         assertEquals(BackupTransport.TRANSPORT_OK, transport.initializeDevice())
         assertTrue(transport.currentDestinationString().isNotEmpty())
