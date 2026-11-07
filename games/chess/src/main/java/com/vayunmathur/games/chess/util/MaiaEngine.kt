@@ -155,7 +155,14 @@ class MaiaEngine(private val context: Context) {
         model?.let { return it }
         if (closed || attempts >= MAX_ATTEMPTS) return null
         attempts++
-        val handle = MaiaHandle.inAssets(context.assets)
+        // A missing/unloadable native runtime surfaces as a LinkageError (e.g.
+        // NoSuchMethodError from ParcelFileDescriptor on runtimes without the
+        // API), which is exactly the "AI unavailable on this device" case.
+        val handle = try {
+            MaiaHandle.inAssets(context.assets)
+        } catch (_: LinkageError) {
+            return null
+        }
         if (!handle.isAvailable) {
             handle.close()
             return null
