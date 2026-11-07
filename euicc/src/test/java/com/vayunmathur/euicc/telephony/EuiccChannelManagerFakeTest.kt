@@ -90,6 +90,33 @@ class EuiccChannelManagerFakeTest {
         assertTrue(ex2.message!!.contains("invalid ISD-R channel"), ex2.message!!)
     }
 
+    @Test fun `channel sessions are exclusive across manager instances`() {
+        // EuiccNative.activeChannel is process-global: a second manager (the
+        // EuiccService owns one, the ViewModel another) must not enter while
+        // the first session is open, or APDUs would cross channels.
+        val firstEntered = java.util.concurrent.CountDownLatch(1)
+        val releaseFirst = java.util.concurrent.CountDownLatch(1)
+        val secondEntered = java.util.concurrent.CountDownLatch(1)
+        val first = Thread {
+            manager().withIsdrChannel {
+                firstEntered.countDown()
+                releaseFirst.await(10, java.util.concurrent.TimeUnit.SECONDS)
+            }
+        }
+        val second = Thread {
+            manager().withIsdrChannel { secondEntered.countDown() }
+        }
+        first.start()
+        assertTrue(firstEntered.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        second.start()
+        // Negative wait: the second session must still be locked out.
+        assertTrue(!secondEntered.await(500, java.util.concurrent.TimeUnit.MILLISECONDS))
+        releaseFirst.countDown()
+        assertTrue(secondEntered.await(10, java.util.concurrent.TimeUnit.SECONDS))
+        first.join(10_000)
+        second.join(10_000)
+    }
+
     @Test fun `block failure still closes channel and clears active channel`() {
         val ex = assertFailsWith<IllegalStateException> {
             manager().withIsdrChannel { throw IllegalStateException("inside") }
