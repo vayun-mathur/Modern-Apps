@@ -2,6 +2,7 @@ package com.vayunmathur.fooddelivery
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -42,6 +43,7 @@ class FoodDeliveryDeviceTest {
             when {
                 url.contains("/merchants/all/stores") -> SimpleResponse(200, "", """{"data":{"merchants":[{"id":1,"name":"Burger Barn","latitude":37.5,"longitude":-122.3,"averageRating":4.5}]}}""", emptyMap(), url)
                 url.contains("/merchants/1") -> SimpleResponse(200, "", """{"data":{"id":1,"name":"Burger Barn","categories":[{"id":1,"name":"Mains","itemIds":[10]}],"items":[{"id":10,"name":"Burger","description":"Tasty","price":999}]}}""", emptyMap(), url)
+                url.contains("verify-email") -> SimpleResponse(200, "", "{}", emptyMap(), url)
                 url.contains("/orders/past/all") -> SimpleResponse(200, "", """{"data":[{"id":9,"uuid":"u9","foodTotal":1000,"orderTotal":1500,"channel":"ORDER_CHANNEL_STOREFRONT_DELIVERY","deliveredAt":"2024-01-01T00:00:00Z","merchant":{"id":1,"name":"Burger Barn"}}]}""", emptyMap(), url)
                 else -> SimpleResponse(404, "", "{}", emptyMap(), url)
             }
@@ -61,6 +63,56 @@ class FoodDeliveryDeviceTest {
         assertNotNull(
             "tracking screen never showed the order stage",
             device.wait(Until.findObject(By.text("Delivered")), 20_000),
+        )
+        assertEquals(context.packageName, device.currentPackageName)
+    }
+
+    @Test fun emailVerificationDeepLinksOpenVerification() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val context = instrumentation.targetContext
+        installFakeTransport()
+        AppInit.start(context)
+        // storefront-scheme form
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("com.deliverycollective.storefront://email-verification/cust-1/tok-1"))
+                .setPackage(context.packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        assertNotNull(
+            "email verification screen never completed",
+            device.wait(Until.findObject(By.textContains("verified")), 20_000),
+        )
+        // Malformed link (bad characters in a segment) must not open verification:
+        // the app should land on its normal UI instead.
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("com.deliverycollective.storefront://email-verification/bad%20id/tok"))
+                .setPackage(context.packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+        )
+        assertNotNull(device.wait(Until.findObject(By.text("Home")), 20_000))
+    }
+
+    @Test fun trackingWithCoordinatesComposesMap() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val context = instrumentation.targetContext
+        // Coordinates on merchant, destination and courier: the tracking map and
+        // its three pins compose instead of the no-location fallback.
+        BitesCore.transport = { url, _, _, _ ->
+            when {
+                url.contains("/orders/past/all") -> SimpleResponse(200, "", """{"data":[{"id":9,"uuid":"u9","foodTotal":1000,"orderTotal":1500,"channel":"ORDER_CHANNEL_STOREFRONT_DELIVERY","pickedupAt":"2024-01-01T00:20:00Z","merchant":{"id":1,"name":"Burger Barn","latitude":37.5,"longitude":-122.3},"address":{"latitude":37.51,"longitude":-122.31},"driverLocations":[{"latitude":37.505,"longitude":-122.305}]}]}""", emptyMap(), url)
+                else -> SimpleResponse(404, "", "{}", emptyMap(), url)
+            }
+        }
+        AppInit.start(context)
+        val intent = Intent(context, MainActivity::class.java)
+            .putExtra(com.vayunmathur.fooddelivery.notifications.OrderLiveUpdate.EXTRA_TRACK_ORDER_ID, 9)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        assertNotNull(
+            "tracking screen with a live map never appeared",
+            device.wait(Until.findObject(By.textContains("Driving")), 20_000),
         )
         assertEquals(context.packageName, device.currentPackageName)
     }

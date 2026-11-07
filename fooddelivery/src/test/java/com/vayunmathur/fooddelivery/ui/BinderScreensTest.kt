@@ -146,6 +146,9 @@ class BinderScreensTest {
     }
 
     @Test fun checkoutBinderFetchesPricesAndPlaces() {
+        // Stripe's PaymentConfiguration is normally initialised by MainActivity;
+        // the checkout amount cross-check effect needs it to construct Stripe.
+        runCatching { com.stripe.android.PaymentConfiguration.init(ctx, "pk_test_dummy") }
         val items = listOf(CartItem(menuItem = MenuItem(id = 10, name = "Burger", price = 999), quantity = 1, merchantId = 1))
         var placed = false
         rule.setContent { CheckoutScreen(items, {}, { placed = true }) }
