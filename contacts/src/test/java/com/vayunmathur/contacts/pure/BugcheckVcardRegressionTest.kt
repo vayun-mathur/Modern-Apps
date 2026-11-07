@@ -105,7 +105,7 @@ class BugcheckVcardRegressionTest {
         assertEquals(false, text.contains("CATEGORIES:42"), "export must not carry raw ids: $text")
 
         val parsed = VcfUtils.parseContacts(
-            ByteArrayInputStream(out.toByteArray(Charsets.UTF_8))
+            ByteArrayInputStream(out.toByteArray())
         ) { names ->
             names.map { com.vayunmathur.contacts.data.GroupMembership(0, 7L) }
         }.single()
