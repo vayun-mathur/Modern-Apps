@@ -179,6 +179,15 @@ class FilesViewModelTest {
         assertFalse(File(dirA, "nope").exists())
     }
 
+    @Test
+    fun `rename onto an existing name keeps both files`() {
+        val one = itemOf("one.txt")
+        vm.rename(one, "two.md")
+        Thread.sleep(400); ShadowLooper.idleMainLooper()
+        assertEquals("one", File(dirA, "one.txt").readText())
+        assertEquals("two!", File(dirA, "two.md").readText())
+    }
+
     private fun itemOfZip(name: String) = FileBrowserItem(
         name = name, isDirectory = false, size = 1,
         realFile = File(dirA, "one.txt"), zipInnerPath = name, key = "zip:$name",
