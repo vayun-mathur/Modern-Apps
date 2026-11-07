@@ -134,10 +134,11 @@ object VcfUtils {
         for (addr in details.addresses) {
             val formatted = addr.formattedAddress
             val typeToken =
-                if (addr.type == ContactsContract.CommonDataKinds.StructuredPostal.TYPE_CUSTOM) {
-                    customTypeToken(addr.label)
-                } else {
-                    "HOME"
+                when (addr.type) {
+                    ContactsContract.CommonDataKinds.StructuredPostal.TYPE_CUSTOM ->
+                        customTypeToken(addr.label)
+                    ContactsContract.CommonDataKinds.StructuredPostal.TYPE_WORK -> "WORK"
+                    else -> "HOME"
                 }
             writeFolded(writer, "ADR;TYPE=$typeToken:;;${escapeV(formatted)};;;;")
         }
