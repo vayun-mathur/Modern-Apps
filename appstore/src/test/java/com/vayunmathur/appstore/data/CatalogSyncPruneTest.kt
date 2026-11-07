@@ -73,4 +73,19 @@ class CatalogSyncPruneTest {
         assertTrue(db.cachedAppDao().all().isEmpty(), "legacy rows survived")
         scope.cancel()
     }
+
+    @Test
+    fun `sync with every source enabled reports each in progress order`() = runTest {
+        val steps = mutableListOf<SyncStep>()
+        val report = catalog.sync(AppSource.entries.toSet()) { steps += it }
+        // Offline every provider fails, so every count is null and the
+        // run reports failure rather than a partial success.
+        assertEquals(
+            listOf(SyncStep.IZZY, SyncStep.FDROID, SyncStep.PROPRIETARY, SyncStep.MODERN_APPS),
+            steps,
+        )
+        assertTrue(report.anyFailed)
+        assertTrue(report.skipped.isEmpty())
+        scope.cancel()
+    }
 }

@@ -3,8 +3,11 @@ package com.vayunmathur.appstore.tv
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
@@ -66,15 +69,21 @@ class TvMainActivityTest {
         for (label in listOf("Home", "Search", "Updates", "Library", "Sources")) {
             composeRule.onNodeWithText(label).assertIsDisplayed()
         }
-        composeRule.onNodeWithText("Library").performClick()
+        composeRule.onNodeWithText("Library").performSemanticsAction(SemanticsActions.RequestFocus)
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            composeRule.onAllNodesWithText("Apps you install are listed here", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Sources").performSemanticsAction(SemanticsActions.RequestFocus)
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            composeRule.onAllNodesWithText("Automatically install updates", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Updates").performSemanticsAction(SemanticsActions.RequestFocus)
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Sources").performClick()
+        composeRule.onNodeWithText("Search").performSemanticsAction(SemanticsActions.RequestFocus)
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Updates").performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Search").performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Home").performSemanticsAction(SemanticsActions.RequestFocus)
         composeRule.waitForIdle()
         composeRule.onNodeWithText("Home").assertIsDisplayed()
     }
