@@ -118,9 +118,14 @@ class LogDocument(
         /**
          * A name for the saved or shared file: the title, then twelve hex characters so two saves
          * of the same log do not collide.
+         *
+         * The title budget is in UTF-8 bytes, not chars: filename limits (255 bytes on the
+         * filesystems behind the document picker) count bytes, so 200 three-byte chars made a
+         * 600-byte name that providers reject. Titles reach here from app labels and from the
+         * user's own filter regex, so multibyte titles are not exotic.
          */
         fun snapshotFileName(title: String): String =
-            trimToSize(title, 200) + ' ' + UUID.randomUUID().toString().substring(24) + ".txt"
+            trimToUtf8Size(title, 200) + ' ' + UUID.randomUUID().toString().substring(24) + ".txt"
 
         /**
          * Trailing empty strings are dropped, so a body ending in a newline does not gain a blank
@@ -153,10 +158,22 @@ class LogDocument(
             return bytes
         }
 
-        /** [android.text.TextUtils.trimToSize], reimplemented so this file stays Android-free. */
-        private fun trimToSize(s: String, maxLength: Int): String {
-            if (s.length <= maxLength) return s
-            val end = if (Character.isHighSurrogate(s[maxLength - 1])) maxLength - 1 else maxLength
+        /** Longest prefix of [s] fitting in [maxBytes] of UTF-8, never splitting a code point. */
+        private fun trimToUtf8Size(s: String, maxBytes: Int): String {
+            var bytes = 0
+            var end = 0
+            while (end < s.length) {
+                val codePoint = Character.codePointAt(s, end)
+                val codePointBytes = when {
+                    codePoint < 0x80 -> 1
+                    codePoint < 0x800 -> 2
+                    codePoint < 0x10000 -> 3
+                    else -> 4
+                }
+                if (bytes + codePointBytes > maxBytes) break
+                bytes += codePointBytes
+                end += Character.charCount(codePoint)
+            }
             return s.substring(0, end)
         }
     }
