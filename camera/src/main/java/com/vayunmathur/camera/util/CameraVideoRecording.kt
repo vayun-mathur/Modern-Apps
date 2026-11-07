@@ -144,7 +144,7 @@ internal fun CameraViewModel.startRecording() {
     }
     currentRecording = pending.start(ContextCompat.getMainExecutor(app)) { event ->
         if (event is VideoRecordEvent.Finalize) {
-            onRecordingFinalized(cacheFile, timestamp, recordingMode, displayName)
+            onRecordingFinalized(cacheFile, timestamp, recordingMode, displayName, event)
         }
     }
     // Apply the current mic-mute state to the freshly-started recording.
@@ -167,9 +167,23 @@ private fun CameraViewModel.onRecordingFinalized(
     cacheFile: java.io.File,
     timestamp: String,
     recordingMode: CameraMode,
-    displayName: String
+    displayName: String,
+    event: VideoRecordEvent.Finalize
 ) {
     stopRecordingTimer()
+    // A recording that finalized with an error (encoder failure, no valid
+    // data, interrupted mux) leaves a truncated/unplayable cache file.
+    // Saving it anyway puts a corrupt video in the gallery (the Slo-Mo path
+    // already discards these; the normal path did not). Drop it instead.
+    if (event.hasError()) {
+        Log.error(
+            "CameraViewModel",
+            "Recording finalized with error ${event.error}; discarding ${cacheFile.name}",
+            event.cause
+        )
+        cacheFile.delete()
+        return
+    }
     viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
         if (!cacheFile.exists()) return@launch
         val fileToSave = if (recordingMode == CameraMode.TIMELAPSE) {
