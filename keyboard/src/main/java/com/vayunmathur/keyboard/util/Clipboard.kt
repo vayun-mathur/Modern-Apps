@@ -142,6 +142,19 @@ class ClipboardStore(private val imageDir: File) {
             val id = nextId()
             val file = withContext(Dispatchers.IO) { copyImage(context, uri, id, mime) }
                 ?: return null
+            // The service re-sweeps the system clip on every field start, and an
+            // image cannot be content-compared the way text is (sameContentAs),
+            // so without this the same image is re-copied into a new file and a
+            // duplicate history entry every time the keyboard opens, crowding
+            // out the history up to the image cap. Same bytes = same clip:
+            // drop the fresh copy and hand back the entry already kept.
+            val duplicate = withContext(Dispatchers.IO) {
+                items.firstOrNull { it.isImage && sameFileBytes(it.imageFile, file) }
+            }
+            if (duplicate != null) {
+                withContext(Dispatchers.IO) { runCatching { file.delete() } }
+                return duplicate
+            }
             return ClipItem(
                 id = id,
                 imagePath = file.path,
@@ -237,6 +250,15 @@ class ClipboardStore(private val imageDir: File) {
         }
 
         private val json = Json { ignoreUnknownKeys = true }
+
+        /** True when both files exist with identical bytes; a cheap length check first. */
+        internal fun sameFileBytes(a: File?, b: File?): Boolean {
+            if (a == null || b == null) return false
+            return runCatching {
+                a.exists() && b.exists() && a.length() == b.length() &&
+                    a.readBytes().contentEquals(b.readBytes())
+            }.getOrDefault(false)
+        }
 
         /**
          * Trim to the caps, newest first, handing every dropped clip to [onDropped] so its

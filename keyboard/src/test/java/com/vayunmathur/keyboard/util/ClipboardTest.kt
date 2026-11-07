@@ -115,6 +115,25 @@ class ClipboardTest {
         assertTrue(ids.zipWithNext().all { (a, b) -> b > a }, "ids must be monotonic")
     }
 
+    /** Image de-duplication compares cached bytes, not ids, names or timestamps. */
+    @Test
+    fun `sameFileBytes compares image file contents`() {
+        val dir = kotlin.io.path.createTempDirectory("clips").toFile()
+        try {
+            val a = java.io.File(dir, "a.png").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+            val same = java.io.File(dir, "b.png").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+            val different = java.io.File(dir, "c.png").apply { writeBytes(byteArrayOf(1, 2, 4)) }
+            val longer = java.io.File(dir, "d.png").apply { writeBytes(byteArrayOf(1, 2, 3, 4)) }
+            assertTrue(ClipboardStore.sameFileBytes(a, same))
+            assertFalse(ClipboardStore.sameFileBytes(a, different))
+            assertFalse(ClipboardStore.sameFileBytes(a, longer))
+            assertFalse(ClipboardStore.sameFileBytes(a, java.io.File(dir, "missing.png")))
+            assertFalse(ClipboardStore.sameFileBytes(null, a))
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
     // --- persistence ---
 
     @Test
