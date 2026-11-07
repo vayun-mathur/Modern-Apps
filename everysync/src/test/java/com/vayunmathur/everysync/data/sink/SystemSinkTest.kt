@@ -70,6 +70,25 @@ class SystemSinkTest {
         ContactsSink.upsert(ctx, "acc", RemoteContact(uid = "new1", displayName = "New"))
         ContactsSink.delete(ctx, "acc", "c1"); ContactsSink.delete(ctx, "acc", "missing")
     }
+    @Test fun blankIdentityRowsGetBoundIdentityOnRead() {
+        val p = MapProvider(); ShadowContentResolver.registerProviderInternal(ContactsContract.AUTHORITY, p)
+        p.tables["raw_contacts"] = mutableListOf(
+            mapOf("_id" to 9L, "source_id" to null, "sync1" to null, "deleted" to 0),
+        )
+        p.tables["data"] = mutableListOf()
+        val contacts = ContactsSink.listLocal(ctx, "acc")
+        assertEquals(1, contacts.size)
+        assertTrue(contacts[0].uid.isNotBlank(), "blank SOURCE_ID must be bound to a minted relay id")
+
+        val cp = MapProvider(); ShadowContentResolver.registerProviderInternal(CalendarContract.AUTHORITY, cp)
+        cp.tables["calendars"] = mutableListOf(mapOf("_id" to 5L, "account_name" to "acc"))
+        cp.tables["events"] = mutableListOf(
+            mapOf("_id" to 21L, "_sync_id" to null, "sync_data1" to null, "deleted" to 0, "title" to "Local", "description" to "", "eventLocation" to "", "dtstart" to 1000L, "dtend" to 2000L, "allDay" to 0, "eventTimezone" to "UTC", "rrule" to null),
+        )
+        val events = CalendarSink.listLocal(ctx, 5)
+        assertEquals(1, events.size)
+        assertTrue(events[0].uid.isNotBlank(), "blank _SYNC_ID must be bound to a minted relay id")
+    }
     @Test fun calendarSinkWithFakeProvider() {
         val p = MapProvider(); ShadowContentResolver.registerProviderInternal(CalendarContract.AUTHORITY, p)
         p.tables["calendars"] = mutableListOf(mapOf("_id" to 5L), mapOf("_id" to 6L))

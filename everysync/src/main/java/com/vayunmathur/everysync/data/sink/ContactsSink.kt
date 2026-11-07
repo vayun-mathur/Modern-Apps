@@ -94,8 +94,8 @@ object ContactsSink {
      * missed read, so the merge resurrected the relay copy and the delete
      * never propagated. `updatedAt` comes from SYNC1 (the relay stamp
      * mirrors into `etag` on every relay write); rows that predate relay
-     * sync carry no stamp and merge as fresh local creates via the
-     * adoption path.
+     * sync carry no stamp, and rows with no SOURCE_ID are bound to a
+     * freshly minted relay identity on this row (see below).
      */
     fun listLocal(context: Context, accountName: String): List<RemoteContact> {
         val out = mutableListOf<RemoteContact>()
@@ -121,9 +121,22 @@ object ContactsSink {
                 cursor.use { c ->
                     while (c.moveToNext()) {
                         val rawId = c.getLong(CURSOR_RAW_ID)
-                        val uid = c.getStringOrNull(CURSOR_SOURCE_ID).orEmpty()
+                        var uid = c.getStringOrNull(CURSOR_SOURCE_ID).orEmpty()
                         val stamp = c.getStringOrNull(CURSOR_SYNC1)?.toLongOrNull() ?: 0L
-                        val contact = readContact(context, rawId, uid.ifBlank { null })
+                        if (uid.isBlank()) {
+                            // A contact created on-device has no relay
+                            // identity yet. Bind one to THIS row now: the
+                            // merge can only mint an id in memory, and a
+                            // later upsert-by-uid would insert a duplicate
+                            // instead of attaching to this row, re-minting
+                            // (and re-pushing) a copy every cycle.
+                            uid = com.vayunmathur.everysync.sync.newRelaySyncId()
+                            setSourceId(
+                                context, accountName, rawId, uid,
+                                c.getStringOrNull(CURSOR_SYNC1),
+                            )
+                        }
+                        val contact = readContact(context, rawId, uid)
                         out += contact.copy(
                             uid = uid,
                             updatedAt = stamp,
