@@ -18,6 +18,7 @@ import com.vayunmathur.library.util.DataStoreUtils
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -52,9 +53,9 @@ import androidx.work.WorkManager
 @OptIn(FlowPreview::class)
 class GalleryViewModel(
     application: Application,
-    private val repository: PhotosRepository,
-    private val scanRepository: PhotoScanRepository = PhotoScanRepository.get(application),
-    private val faceRepository: FaceRepository = FaceRepository.get(application),
+    internal val repository: PhotoStore = PhotoStoreRepository(application),
+    private val scanRepository: PhotoScanStore = PhotoScanStoreRepository(application),
+    private val faceRepository: FaceStore = FaceStoreRepository(application),
 ) : AndroidViewModel(application), GalleryActions {
 
     private val dataStore = DataStoreUtils.getInstance(application)
@@ -97,8 +98,7 @@ class GalleryViewModel(
     val selectedIds: StateFlow<Set<Long>> = _selectedIds.asStateFlow()
 
     /** True while a media sync is enqueued or running (drives pull-to-refresh). */
-    val isRefreshing: StateFlow<Boolean> = WorkManager.getInstance(application)
-        .getWorkInfosForUniqueWorkFlow(SyncWorker.WORK_NAME)
+    val isRefreshing: StateFlow<Boolean> = workInfosFlow(application, SyncWorker.WORK_NAME)
         .map { infos -> infos.any { it.state == WorkInfo.State.RUNNING } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -118,8 +118,7 @@ class GalleryViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** True while the face-grouping worker is actively indexing. */
-    val faceIndexing: StateFlow<Boolean> = WorkManager.getInstance(application)
-        .getWorkInfosForUniqueWorkFlow(FaceWorker.WORK_NAME)
+    val faceIndexing: StateFlow<Boolean> = workInfosFlow(application, FaceWorker.WORK_NAME)
         .map { infos -> infos.any { it.state == WorkInfo.State.RUNNING } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -395,8 +394,16 @@ class GalleryViewModel(
         }
     }
 
+    /**
+     * Test seam mirroring [workInfosOverride] below: unit tests have no
+     * WorkManager initializer, so they set this to a no-op (or a recorder).
+     * Production leaves it null to enqueue the real sync. Behavior-preserving:
+     * the default path is unchanged.
+     */
+    internal var runSyncHook: (() -> Unit)? = null
+
     override fun runSync() {
-        SyncWorker.runOnce(getApplication())
+        runSyncHook?.invoke() ?: SyncWorker.runOnce(getApplication())
     }
 
     /**
@@ -409,7 +416,7 @@ class GalleryViewModel(
     fun resolveAndIndex(uri: Uri, onResolved: (Long?) -> Unit) {
         viewModelScope.launch {
             val id = withContext(Dispatchers.IO) {
-                runCatching { syncPhotos(getApplication(), repository, listOf(uri)) }
+                runCatching { syncPhotos(getApplication(), resolveRepository(), listOf(uri)) }
                 repository.getByUri(uri.toString()).firstOrNull()?.id
             }
             runSync()
@@ -525,8 +532,104 @@ fun GalleryViewModelFactory(
     application: Application,
     repository: PhotosRepository,
 ): ViewModelProvider.Factory = viewModelFactory {
-    initializer { GalleryViewModel(application, repository) }
+    initializer { GalleryViewModel(application, PhotoStoreRepository(application, repository)) }
 }
+
+/**
+ * Narrow store interfaces seams for tests: the production implementations
+ * delegate one-to-one to the real repositories (see below); tests supply
+ * in-memory fakes. Behaviour-preserving: same members, same dispatch.
+ */
+interface PhotoStore {
+    fun getAllFlow(): Flow<List<Photo>>
+    fun getOCRCountFlow(): Flow<Int>
+    fun getIndexTargetCountFlow(): Flow<Int>
+    fun getClipCountFlow(): Flow<Int>
+    fun getFaceScannedCountFlow(): Flow<Int>
+    suspend fun searchPhotos(query: String): List<Photo>
+    suspend fun delete(photo: Photo): Int
+    suspend fun setTrashed(id: Long)
+    suspend fun setAlbum(ids: List<Long>, album: String?)
+    suspend fun getByUri(uri: String): List<Photo>
+    suspend fun getAll(): List<Photo>
+}
+
+interface PhotoScanStore {
+    suspend fun getClipEmbeddings(): List<com.vayunmathur.photos.data.PhotoEmbedding>
+}
+
+interface FaceStore {
+    fun personsFlow(): Flow<List<com.vayunmathur.photos.data.Person>>
+    fun faceGeometryFlow(): Flow<List<com.vayunmathur.photos.data.FaceGeometry>>
+    suspend fun photoIdsForCluster(clusterId: Long): List<Long>
+    suspend fun setPersonName(id: Long, name: String?)
+}
+
+private class PhotoStoreRepository(application: Application, val delegate: PhotosRepository = PhotosRepository.get(application)) : PhotoStore {
+    private val repository = delegate
+    override fun getAllFlow(): Flow<List<Photo>> = repository.getAllFlow()
+    override fun getOCRCountFlow(): Flow<Int> = repository.getOCRCountFlow()
+    override fun getIndexTargetCountFlow(): Flow<Int> = repository.getIndexTargetCountFlow()
+    override fun getClipCountFlow(): Flow<Int> = repository.getClipCountFlow()
+    override fun getFaceScannedCountFlow(): Flow<Int> = repository.getFaceScannedCountFlow()
+    override suspend fun searchPhotos(query: String): List<Photo> = repository.searchPhotos(query)
+    override suspend fun delete(photo: Photo): Int = repository.delete(photo)
+    override suspend fun setTrashed(id: Long) = repository.setTrashed(id)
+    override suspend fun setAlbum(ids: List<Long>, album: String?) = repository.setAlbum(ids, album)
+    override suspend fun getByUri(uri: String): List<Photo> = repository.getByUri(uri)
+    override suspend fun getAll(): List<Photo> = repository.getAll()
+}
+
+private class PhotoScanStoreRepository(application: Application, delegate: PhotoScanRepository = PhotoScanRepository.get(application)) : PhotoScanStore {
+    private val scanRepository = delegate
+    override suspend fun getClipEmbeddings() = scanRepository.getClipEmbeddings()
+}
+
+private class FaceStoreRepository(application: Application, delegate: FaceRepository = FaceRepository.get(application)) : FaceStore {
+    private val faceRepository = delegate
+    override fun personsFlow(): Flow<List<com.vayunmathur.photos.data.Person>> = faceRepository.personsFlow()
+    override fun faceGeometryFlow(): Flow<List<com.vayunmathur.photos.data.FaceGeometry>> = faceRepository.faceGeometryFlow()
+    override suspend fun photoIdsForCluster(clusterId: Long): List<Long> = faceRepository.photoIdsForCluster(clusterId)
+    override suspend fun setPersonName(id: Long, name: String?) = faceRepository.setPersonName(id, name)
+}
+
+/**
+ * [WorkManager] is unavailable in unit tests (no initializer); tests set a fake
+ * flow here, production leaves it null to read the real thing. Internal, not
+ * part of the UI contract.
+ */
+internal var workInfosOverride: ((Application, String) -> Flow<List<WorkInfo>>)? = null
+
+private fun workInfosFlow(application: Application, name: String): Flow<List<WorkInfo>> =
+    workInfosOverride?.invoke(application, name)
+        ?: WorkManager.getInstance(application).getWorkInfosForUniqueWorkFlow(name)
+
+/**
+ * Sync-enqueue seams for the page binders ([TrashPage][com.vayunmathur.photos.ui.TrashPage],
+ * [GalleryPage][com.vayunmathur.photos.ui.GalleryPage]), mirroring [workInfosOverride]:
+ * unit tests have no WorkManager initializer, so they set these to no-ops while
+ * production leaves them null to run the real sync. Behavior-preserving: the
+ * default path is unchanged. Defined here (slice 3/3) rather than in SyncWorker
+ * (slice 1/3) so no cross-slice edits are needed.
+ */
+internal var syncOnceHook: ((android.content.Context) -> Unit)? = null
+internal var syncEnqueueHook: ((android.content.Context) -> Unit)? = null
+
+internal fun runSyncOnce(context: android.content.Context) {
+    syncOnceHook?.invoke(context) ?: SyncWorker.runOnce(context)
+}
+
+internal fun enqueueSyncWork(context: android.content.Context) {
+    syncEnqueueHook?.invoke(context) ?: SyncWorker.enqueue(context)
+}
+
+/**
+ * Back-door for [resolveAndIndex]: the production [PhotoStore] holds the real
+ * [PhotosRepository] that [syncPhotos] needs. Tests never call resolveAndIndex.
+ */
+private fun GalleryViewModel.resolveRepository(): PhotosRepository =
+    (repository as? PhotoStoreRepository)?.delegate
+        ?: PhotosRepository.get(getApplication())
 
 /** A person-cluster and the library photos they appear in. */
 data class PersonCluster(

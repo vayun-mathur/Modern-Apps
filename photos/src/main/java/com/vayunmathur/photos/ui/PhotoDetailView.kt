@@ -172,7 +172,7 @@ fun PhotoDetailView(
         if (isSettled && canHaveOcrText) {
             // layoutFor JSON-decodes every recognised line and quad, which is far
             // too much to do on Main.immediate on every swipe.
-            ocrLayout = withContext(Dispatchers.Default) { OcrBoxStore.layoutFor(context, photo) }
+            ocrLayout = withContext(Dispatchers.Default) { ocrLayoutFor(context, photo) }
         }
     }
 
@@ -345,4 +345,20 @@ fun PhotoDetailView(
             },
         )
     }
+}
+
+/**
+ * OCR lookup seam for tests, mirroring `workInfosOverride` in GalleryViewModel:
+ * unit tests have no AndroidKeyStore (the scan database is SQLCipher-backed),
+ * so they set this to return null while production leaves it null to read the
+ * real recognised-text store. Behavior-preserving: the default path is unchanged.
+ */
+internal var ocrLayoutOverride: (suspend (android.content.Context, Photo) -> OcrLayout?)? = null
+
+private suspend fun ocrLayoutFor(context: android.content.Context, photo: Photo): OcrLayout? {
+    // Read the hook into a local first: `override?.invoke(...) ?: default`
+    // cannot tell "no override" apart from "override returned null".
+    val hook = ocrLayoutOverride
+    return if (hook != null) hook.invoke(context, photo)
+    else OcrBoxStore.layoutFor(context, photo)
 }

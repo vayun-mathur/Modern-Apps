@@ -47,7 +47,8 @@ import com.vayunmathur.photos.Route
 import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.util.GalleryViewModel
 import com.vayunmathur.photos.util.ImageLoader
-import com.vayunmathur.photos.util.SyncWorker
+import com.vayunmathur.photos.util.enqueueSyncWork
+import com.vayunmathur.photos.util.runSyncOnce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
@@ -61,8 +62,8 @@ fun TrashPage(backStack: NavBackStack<Route>, galleryViewModel: GalleryViewModel
     val resources = LocalResources.current
 
     LaunchedEffect(Unit) {
-        SyncWorker.runOnce(context)
-        SyncWorker.enqueue(context)
+        runSyncOnce(context)
+        enqueueSyncWork(context)
     }
 
     var columnCount by LocalColumnCount.current
@@ -73,7 +74,7 @@ fun TrashPage(backStack: NavBackStack<Route>, galleryViewModel: GalleryViewModel
     val trashLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             selectedIds.clear()
-            SyncWorker.runOnce(context)
+            runSyncOnce(context)
         }
     }
 

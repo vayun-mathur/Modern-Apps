@@ -25,6 +25,7 @@ import com.vayunmathur.photos.util.GalleryActions
 import com.vayunmathur.photos.util.GalleryUiState
 import com.vayunmathur.photos.util.GalleryViewModel
 import com.vayunmathur.photos.util.SecureFolderViewModel
+import com.vayunmathur.photos.util.enqueueSyncWork
 
 /** Binds [GalleryViewModel] to the stateless [GalleryScreen]. */
 @Composable
@@ -50,7 +51,10 @@ fun GalleryPage(
 
     LaunchedEffect(Unit) {
         galleryViewModel.runSync()
-        galleryViewModel.enqueueSync()
+        // Same no-WorkManager story as TrashPage (see runSyncOnce): the
+        // ViewModel's own runSync is seam-covered per instance, but enqueueSync
+        // is not, so route it through the shared hook here.
+        enqueueSyncWork(context)
     }
 
     val mediaResultLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
