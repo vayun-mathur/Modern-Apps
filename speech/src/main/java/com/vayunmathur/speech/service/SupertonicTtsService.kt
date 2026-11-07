@@ -38,9 +38,12 @@ import kotlin.math.roundToInt
  *   trusting one to fit.
  * * **The speech rate is ignored.** See [SupertonicEngine.synthesize] for why.
  */
-class SupertonicTtsService : TextToSpeechService() {
+open class SupertonicTtsService : TextToSpeechService() {
 
-    private val engine by lazy { SupertonicEngine(applicationContext) }
+    private val engine by lazy { createEngine() }
+
+    /** Factory so tests can substitute a fake engine; production uses the real one. */
+    protected open fun createEngine(): SupertonicEngine = SupertonicEngine(applicationContext)
 
     @Volatile private var stopped = false
     @Volatile private var language: SupertonicLanguage = SupertonicVoices.DEFAULT

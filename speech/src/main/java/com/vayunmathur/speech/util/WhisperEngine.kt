@@ -34,7 +34,7 @@ import org.json.JSONObject
  * Not thread-safe: a transcription re-records the network once per token. Call [transcribe] from a
  * single worker thread.
  */
-class WhisperEngine(context: Context) {
+open class WhisperEngine(context: Context) {
     private val app = context.applicationContext
     private val lock = Any()
 
@@ -85,10 +85,10 @@ class WhisperEngine(context: Context) {
      * Whether the recogniser can run. The model ships in the APK, so this is only false if it fails
      * to load — never because something still needs downloading.
      */
-    fun isModelPresent(): Boolean = ensure()
+    open fun isModelPresent(): Boolean = ensure()
 
     /** Load the model now (e.g. to warm up off the main thread). Returns true if ready. */
-    fun preload(): Boolean = ensure()
+    open fun preload(): Boolean = ensure()
 
     @Synchronized
     private fun ensure(): Boolean {
@@ -152,7 +152,7 @@ class WhisperEngine(context: Context) {
     // Broad catch is deliberate: native inference throws undocumented
     // RuntimeExceptions on bad input, which must read as "no transcription".
     @Suppress("TooGenericExceptionCaught")
-    fun transcribe(pcm16k: ShortArray, language: String?): String? {
+    open fun transcribe(pcm16k: ShortArray, language: String?): String? {
         if (!ensure()) return null
         val cfg = config ?: return null
         val tok = tokenizer ?: return null
@@ -182,7 +182,7 @@ class WhisperEngine(context: Context) {
     }
 
     @Synchronized
-    fun close() {
+    open fun close() {
         synchronized(lock) {
             runCatching { whisper?.close() }
             whisper = null

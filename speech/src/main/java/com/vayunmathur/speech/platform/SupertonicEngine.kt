@@ -24,7 +24,7 @@ import java.util.Locale
  * `TextToSpeechService` serialises `onSynthesizeText` itself, but [preload] runs on a background
  * thread from `onCreate` and [close] arrives from `onDestroy`, so the three can overlap.
  */
-class SupertonicEngine(private val context: Context) {
+open class SupertonicEngine(private val context: Context) {
     private val lock = Any()
     private var synthesizer: SupertonicSynthesizer? = null
     private var voice: String = SupertonicVoices.DEFAULT_VOICE
@@ -41,7 +41,7 @@ class SupertonicEngine(private val context: Context) {
      * Slow the first time: ~105 MB of weights are streamed out of the APK into GPU memory, and four
      * command buffers are recorded. That is why `onCreate` warms it off the main thread.
      */
-    fun preload(): Boolean = synchronized(lock) { ensure() != null }
+    open fun preload(): Boolean = synchronized(lock) { ensure() != null }
 
     /**
      * Switch to `style`, returning whether it took.
@@ -50,7 +50,7 @@ class SupertonicEngine(private val context: Context) {
      * unknown style is refused rather than ignored: silently reading every voice in `F1` would be
      * indistinguishable from the voice picker not working.
      */
-    fun voice(style: String): Boolean = synchronized(lock) {
+    open fun voice(style: String): Boolean = synchronized(lock) {
         if (style !in SupertonicVoices.VOICES) return false
         val engine = ensure() ?: return false
         if (style == voice) return true
@@ -83,7 +83,7 @@ class SupertonicEngine(private val context: Context) {
      * scaling the duration predictor's frame count natively, which is where Piper's `length_scale`
      * did it too.
      */
-    fun synthesize(text: String, language: String, onChunk: (FloatArray) -> Boolean): Boolean {
+    open fun synthesize(text: String, language: String, onChunk: (FloatArray) -> Boolean): Boolean {
         var spoke = false
         for (sentence in sentences(text, language)) {
             val samples = synchronized(lock) {
@@ -132,7 +132,7 @@ class SupertonicEngine(private val context: Context) {
      * rebuild ~105 MB of GPU state immediately after it was freed, with nothing left to free it
      * again.
      */
-    fun close() = synchronized(lock) {
+    open fun close() = synchronized(lock) {
         closed = true
         synthesizer?.close()
         synthesizer = null

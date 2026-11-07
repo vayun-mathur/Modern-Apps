@@ -28,9 +28,12 @@ import kotlin.math.sqrt
  * and the final pass is delivered via [Callback.results]. Transcription runs on a single
  * background worker so the recording thread never stops draining the mic.
  */
-class WhisperRecognitionService : RecognitionService() {
+open class WhisperRecognitionService : RecognitionService() {
 
-    private val engine by lazy { WhisperEngine(applicationContext) }
+    private val engine by lazy { createEngine() }
+
+    /** Factory so tests can substitute a fake engine; production uses the real one. */
+    protected open fun createEngine(): WhisperEngine = WhisperEngine(applicationContext)
     @Volatile private var session: Session? = null
 
     override fun onCreate() {
