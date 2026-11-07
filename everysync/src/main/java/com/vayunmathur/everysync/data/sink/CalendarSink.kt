@@ -145,10 +145,14 @@ object CalendarSink {
     }
 
     /**
-     * Every live event in one calendar in relay form, for the merge's local
-     * side. `updatedAt` comes from SYNC_DATA1 (the relay stamp mirrors into
-     * `etag` on every relay write); rows that predate relay sync carry no
-     * stamp and merge as fresh local creates via the adoption path.
+     * Every event in one calendar in relay form, for the merge's local
+     * side — including DELETED rows as tombstones. Filtering DELETED rows
+     * out (the old behaviour) made a local delete indistinguishable from
+     * a missed read, so the merge resurrected the relay copy and the
+     * delete never propagated. `updatedAt` comes from SYNC_DATA1 (the
+     * relay stamp mirrors into `etag` on every relay write); rows that
+     * predate relay sync carry no stamp and merge as fresh local creates
+     * via the adoption path.
      */
     fun listLocal(context: Context, localCalendarId: Long): List<RemoteEvent> {
         val out = mutableListOf<RemoteEvent>()
@@ -164,6 +168,7 @@ object CalendarSink {
         val colAllDay = 7
         val colTz = 8
         val colRrule = 9
+        val colDeleted = 10
         var failed = false
         try {
             val cursor = context.contentResolver.query(
@@ -179,8 +184,9 @@ object CalendarSink {
                     CalendarContract.Events.ALL_DAY,
                     CalendarContract.Events.EVENT_TIMEZONE,
                     CalendarContract.Events.RRULE,
+                    CalendarContract.Events.DELETED,
                 ),
-                "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DELETED} = 0",
+                "${CalendarContract.Events.CALENDAR_ID} = ?",
                 arrayOf(localCalendarId.toString()),
                 null,
             )
@@ -203,6 +209,7 @@ object CalendarSink {
                             allDay = c.getInt(colAllDay) == 1,
                             timezone = c.getStringOrNull(colTz) ?: "UTC",
                             rrule = c.getStringOrNull(colRrule),
+                            deleted = c.getInt(colDeleted) == 1,
                             updatedAt = c.getStringOrNull(colStamp)?.toLongOrNull() ?: 0L,
                         )
                     }
