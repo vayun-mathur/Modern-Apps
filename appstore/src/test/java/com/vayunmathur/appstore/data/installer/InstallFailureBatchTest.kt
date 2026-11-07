@@ -5,6 +5,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 
 /**
@@ -55,11 +57,15 @@ class InstallFailureBatchTest {
 
     @Test
     fun `install results publish to collectors`() = runTest {
+        val deferred = async { InstallEvents.results.first() }
+        // Let the collector subscribe before publishing: SharedFlow has no replay,
+        // so a publish first would be dropped and .first() would hang.
+        testScheduler.advanceUntilIdle()
         InstallEvents.publish(InstallResult("com.example.app", success = true))
 
         assertEquals(
             InstallResult("com.example.app", success = true),
-            InstallEvents.results.first(),
+            deferred.await(),
         )
     }
 }

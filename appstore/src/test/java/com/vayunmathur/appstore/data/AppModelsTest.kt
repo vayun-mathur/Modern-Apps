@@ -171,7 +171,12 @@ class AppModelsTest {
 
     @Test
     fun `a partial skip leaves the rest reportable`() {
-        val report = SyncReport(fdroidCount = 10, skipped = setOf(AppSource.IZZY))
+        val report = SyncReport(
+            fdroidCount = 10,
+            modernCount = 5,
+            proprietaryCount = 2,
+            skipped = setOf(AppSource.IZZY),
+        )
 
         assertFalse(report.allSkipped)
         // izzyCount is null but skipped, so no failure; every other source answered.

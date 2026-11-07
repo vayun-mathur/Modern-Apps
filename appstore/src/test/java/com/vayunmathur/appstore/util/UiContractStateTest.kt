@@ -39,9 +39,9 @@ class UiContractStateTest {
 
     @Test
     fun `detail update badge needs a newer catalogue version`() {
-        assertTrue(AppDetailUiState(app = app(2L), installedInfo = installed(1L)).hasUpdate)
-        assertFalse(AppDetailUiState(app = app(1L), installedInfo = installed(1L)).hasUpdate)
-        assertFalse(AppDetailUiState(app = app(1L), installedInfo = installed(2L)).hasUpdate)
+        assertTrue(AppDetailUiState(app = app(versionCode = 2L), installedInfo = installed(versionCode = 1L)).hasUpdate)
+        assertFalse(AppDetailUiState(app = app(versionCode = 1L), installedInfo = installed(versionCode = 1L)).hasUpdate)
+        assertFalse(AppDetailUiState(app = app(versionCode = 1L), installedInfo = installed(versionCode = 2L)).hasUpdate)
         assertFalse(AppDetailUiState(app = null, installedInfo = installed()).hasUpdate)
         assertFalse(AppDetailUiState(app = app(), installedInfo = null).hasUpdate)
     }

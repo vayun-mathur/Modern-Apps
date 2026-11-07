@@ -35,6 +35,14 @@ class GsfVersionProviderTest {
 
     @Test
     fun `built device profile carries the play client fields`() {
+        // Under Robolectric the PackageManager stub returns a null feature array and
+        // the profile builder doesn't guard it; prime the shadow's feature set so the
+        // Properties build completes, then assert the client fields.
+        val shadowPm = org.robolectric.Shadows.shadowOf(context.packageManager)
+        shadowPm.addSystemAvailableFeature(
+            android.content.pm.FeatureInfo().apply { name = "android.hardware.touchscreen" },
+        )
+
         val props = DeviceInfoProvider.buildDeviceProperties(context)
 
         assertEquals("android-google", props.getProperty("Client"))
@@ -48,6 +56,6 @@ class GsfVersionProviderTest {
     fun `aurora profile prefers the bundled pixel properties`() {
         val props = DeviceInfoProvider.auroraProfile(context)
 
-        assertTrue(props.getProperty("Client") == "android-google" || props.isNotEmpty)
+        assertTrue(props.getProperty("Client") == "android-google" || props.isNotEmpty())
     }
 }
