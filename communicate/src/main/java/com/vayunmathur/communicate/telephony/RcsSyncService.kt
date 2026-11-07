@@ -321,7 +321,12 @@ class RcsSyncService : Service() {
             RcsImdn.onReportReceived(text)
             return
         }
-        if (contentType.contains("im-composing", ignoreCase = true)) {
+        // The wire type is application/im-iscomposing+xml, which does not
+        // contain the substring "im-composing"; like parseInbound, fall back
+        // to sniffing the body so typing stanzas are not cached as messages.
+        if (contentType.contains("im-composing", ignoreCase = true) ||
+            parseIsComposingBody(text) != null
+        ) {
             RcsSessionManager.onSipRequest("MESSAGE", session.callId, conversationId, contentType, text)
             return
         }
