@@ -81,8 +81,11 @@ fun VideoPlayerPage(
 @Composable
 private fun VideoSurface(videoUrl: String, retryCount: Int, onError: () -> Unit) {
     val context = LocalContext.current
-    val player = remember(videoUrl) { ExoPlayer.Builder(context).build() }
-    var buffering by remember(videoUrl) { mutableStateOf(true) }
+    // Keyed by retryCount as well as the URL: the DisposableEffect below is
+    // keyed by both and releases the player when its keys change, so a retry
+    // must build a fresh player — reusing the released one throws.
+    val player = remember(videoUrl, retryCount) { ExoPlayer.Builder(context).build() }
+    var buffering by remember(videoUrl, retryCount) { mutableStateOf(true) }
 
     DisposableEffect(videoUrl, retryCount) {
         val listener = object : Player.Listener {
