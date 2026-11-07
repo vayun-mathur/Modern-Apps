@@ -120,11 +120,11 @@ internal class LyftRideParser(private val json: Json) {
     fun parseDriverLocation(resp: RawResponse): DriverLocation? {
         val contentType = resp.header("Content-Type")?.lowercase().orEmpty()
         val isProto = contentType.contains("protobuf") || contentType.contains("octet-stream")
-        fun proto(): DriverLocation? {
+        fun proto(): DriverLocation? = runCatching {
             val root = ProtoMessage(resp.bytes, 0, resp.bytes.size)
             // ReadDriverLocationResponse.location = 1; tolerate a bare DriverLocation too.
-            return root.message(1)?.let(::toDriverLocationProto) ?: toDriverLocationProto(root)
-        }
+            root.message(1)?.let(::toDriverLocationProto) ?: toDriverLocationProto(root)
+        }.getOrNull()
         fun asJson(): DriverLocation? {
             val root = runCatching { json.parseToJsonElement(resp.text) as? JsonObject }.getOrNull()
                 ?: return null
