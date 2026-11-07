@@ -84,10 +84,26 @@ object AlarmScheduler {
         alarm: Alarm,
         snoozeMinutes: Int,
     ): Long {
-        val alarmManager = context.getSystemService(AlarmManager::class.java)
         val triggerMillis = Clock.System.now().plus(
             snoozeMinutes.coerceAtLeast(1).minutes
         ).toEpochMilliseconds()
+        scheduleSnoozeAt(context, repository, alarm, triggerMillis)
+        return triggerMillis
+    }
+
+    /**
+     * Arms the snoozed ring for an exact [triggerMillis]. [BootReceiver] uses
+     * this with the persisted `snoozedUntil`: going through [scheduleSnooze]
+     * would first truncate the remaining time to whole minutes, ringing up
+     * to 59 seconds early.
+     */
+    suspend fun scheduleSnoozeAt(
+        context: Context,
+        repository: ClockRepository,
+        alarm: Alarm,
+        triggerMillis: Long,
+    ) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("ALARM_ID", alarm.id)
             putExtra(EXTRA_IS_SNOOZE, true)
@@ -108,7 +124,6 @@ object AlarmScheduler {
         repository.upsertAlarm(
             alarm.copy(snoozedUntil = Instant.fromEpochMilliseconds(triggerMillis))
         )
-        return triggerMillis
     }
 
     /** Drops the persisted snooze without touching the alarm's own schedule. */

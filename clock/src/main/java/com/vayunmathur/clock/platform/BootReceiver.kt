@@ -50,14 +50,14 @@ class BootReceiver : BroadcastReceiver() {
                             val snoozedUntil = alarm.snoozedUntil
                             if (snoozedUntil != null) {
                                 if (snoozedUntil > now) {
-                                    AlarmScheduler.scheduleSnooze(
+                                    // Re-arm for the persisted instant itself:
+                                    // recomputing from whole minutes would ring
+                                    // up to 59 seconds early.
+                                    AlarmScheduler.scheduleSnoozeAt(
                                         context,
                                         repository,
                                         alarm,
-                                        // scheduleSnooze recomputes from now; pass the
-                                        // remaining whole minutes, at least one.
-                                        ((snoozedUntil - now).inWholeMinutes).toInt()
-                                            .coerceAtLeast(1),
+                                        snoozedUntil.toEpochMilliseconds(),
                                     )
                                     snoozes++
                                 } else {
