@@ -209,7 +209,8 @@ class GamepadDirect(
          * their keys always fall through to the system.
          */
         fun isGamepad(device: InputDevice): Boolean =
-            (device.sources and (InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK)) != 0
+            (device.sources and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+                (device.sources and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
 
         /** A hardware value inside the device's own noise floor is rest, not input. */
         fun Float.zeroWithin(flat: Float): Float =
