@@ -16,6 +16,16 @@ import android.net.Uri
  */
 class FakeMediaProvider : ContentProvider() {
 
+    companion object {
+        /**
+         * Robolectric's provider registry and the repository singleton both
+         * outlive a test class in a shared sandbox, so the populated tests
+         * switch this off (and refresh) on the way out: later classes then
+         * query an authoritative empty library instead of this fixture.
+         */
+        @Volatile var enabled: Boolean = true
+    }
+
     override fun onCreate(): Boolean = true
 
     override fun query(
@@ -27,6 +37,7 @@ class FakeMediaProvider : ContentProvider() {
     ): Cursor {
         val columns = projection ?: emptyArray()
         val cursor = MatrixCursor(columns)
+        if (!enabled) return cursor
         fun row(values: Map<String, Any?>) {
             cursor.addRow(columns.map { values[it] })
         }
