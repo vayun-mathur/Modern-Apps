@@ -7,6 +7,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import kotlin.test.Test
@@ -51,6 +54,44 @@ class MapComposeTest {
         // and recompose by touching camera state.
         rule.runOnIdle { camera.setViewport(androidx.compose.ui.geometry.Size(400f, 800f)) }
         rule.onNodeWithText("PinHere").assertExists()
+    }
+
+    @Test fun vectorMap_withOverlays_renders() {
+        val camera = CameraState(CameraPosition(GeoPoint(-122.4194, 37.7749), 14.0))
+        rule.setContent {
+            VectorMap(
+                cameraState = camera, modifier = Modifier.size(360.dp, 640.dp),
+                style = MapStyle.Muted, darkBasemap = true, globeEnabled = false,
+                options = MapOptions(layerOptions = LayerOptions(poi = true, transit = true)),
+                userPuck = UserPuck(GeoPoint(-122.4194, 37.7749), bearing = 90f),
+                regionMask = 42L,
+                trafficColors = TrafficColorTable(longArrayOf(1L), intArrayOf(-65536)),
+                route = RouteOverlay(listOf(RouteSegment(listOf(GeoPoint(-122.42, 37.77), GeoPoint(-122.41, 37.78)), androidx.compose.ui.graphics.Color.Blue))),
+                markers = listOf(MapMarker(1L, GeoPoint(-122.4194, 37.7749), MarkerIcon.SEARCH)),
+                vehicles = listOf(MapMarker(2L, GeoPoint(-122.41, 37.78), MarkerIcon.VEHICLE_BUS)),
+            ) {
+                MapMarker(position = GeoPoint(-122.4194, 37.7749)) {
+                    androidx.compose.foundation.text.BasicText("OverlayPin")
+                }
+            }
+        }
+        rule.onNodeWithText("OverlayPin").assertExists()
+    }
+
+    @Test fun vectorMap_dragPansCamera() {
+        val camera = CameraState(CameraPosition(GeoPoint(-122.4194, 37.7749), 14.0))
+        rule.setContent {
+            VectorMap(cameraState = camera, modifier = Modifier.size(360.dp, 640.dp), darkBasemap = false)
+        }
+        rule.runOnIdle { camera.setViewport(androidx.compose.ui.geometry.Size(360f, 640f)) }
+        val before = camera.position.target
+        rule.onRoot().performTouchInput { down(center); moveBy(Offset(-150f, 0f)); up() }
+        rule.runOnIdle {
+            kotlin.test.assertTrue(
+                camera.position.target != before || camera.position.zoom != 14.0,
+                "drag should move camera from $before to ${camera.position.target}",
+            )
+        }
     }
 
     @Test fun vectorMap_rendersWithoutCrashing() {
