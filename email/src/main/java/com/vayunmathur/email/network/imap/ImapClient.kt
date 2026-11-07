@@ -348,6 +348,21 @@ object ImapClient {
         it.fetch.uidStoreFlags(uid, "\\Seen", add = seen)
     }
 
+    suspend fun setSeenFlagSet(
+        server: ServerConfig,
+        user: String,
+        auth: EmailManager.AuthType,
+        folderName: String,
+        uids: List<Long>,
+        seen: Boolean,
+    ) {
+        if (uids.isEmpty()) return
+        withConnection(server, user, auth) {
+            it.select(folderName)
+            it.fetch.uidStoreFlagsSet(uids.joinToString(","), "\\Seen", add = seen)
+        }
+    }
+
     suspend fun deleteMessage(
         server: ServerConfig,
         user: String,

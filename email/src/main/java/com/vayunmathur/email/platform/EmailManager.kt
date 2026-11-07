@@ -117,6 +117,15 @@ class EmailManager {
         seen: Boolean,
     ) = ImapClient.setSeenFlag(server, user, auth, folderName, uid, seen)
 
+    suspend fun setSeenFlagSet(
+        server: ServerConfig,
+        user: String,
+        auth: AuthType,
+        folderName: String,
+        uids: List<Long>,
+        seen: Boolean,
+    ) = ImapClient.setSeenFlagSet(server, user, auth, folderName, uids, seen)
+
     suspend fun deleteMessage(
         server: ServerConfig,
         user: String,
