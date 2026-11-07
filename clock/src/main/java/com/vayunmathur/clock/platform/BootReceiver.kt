@@ -4,12 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.vayunmathur.clock.data.ClockRepository
+import com.vayunmathur.clock.ui.components.sendTimerNotification
 import com.vayunmathur.library.log.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
+import kotlin.time.Duration
 
 /**
  * Re-arms every enabled alarm whenever the instants AlarmManager holds stop
@@ -63,9 +65,53 @@ class BootReceiver : BroadcastReceiver() {
                                 }
                             }
                         }
+                        // Running timers are AlarmManager entries too, so a reboot
+                        // kills them exactly like alarms; nothing else ever re-armed
+                        // them, and the row would sit at isRunning=true counting
+                        // into negative time with no finish notification. Re-arm
+                        // those still in the future and complete those that
+                        // expired while the device was off. (On a timezone/clock
+                        // change this same pass is a no-op repost: a timer's end
+                        // is a duration from a stored instant, which neither
+                        // change moves.)
+                        var timersRearmed = 0
+                        var timersCompleted = 0
+                        repository.getAllTimers().filter { it.isRunning }.forEach { timer ->
+                            // One bad timer must not take the others down with it.
+                            runCatching {
+                                if (timerRemaining(timer, now) > Duration.ZERO) {
+                                    sendTimerNotification(context, timer, true)
+                                    timersRearmed++
+                                } else {
+                                    repository.upsertTimer(
+                                        timer.copy(
+                                            isRunning = false,
+                                            remainingLength = Duration.ZERO,
+                                            remainingStartTime = now,
+                                        )
+                                    )
+                                    // TimerReceiver posts the "time's up"
+                                    // notification and re-writes the completed
+                                    // row. It is not direct-boot aware, so at
+                                    // LOCKED_BOOT_COMPLETED this broadcast may
+                                    // go nowhere; the completed row above is
+                                    // what the timer list then shows.
+                                    context.sendBroadcast(
+                                        Intent(context, TimerReceiver::class.java).apply {
+                                            putExtra("timer_id", timer.id)
+                                            putExtra("timer_name", timer.name)
+                                        }
+                                    )
+                                    timersCompleted++
+                                }
+                            }.onFailure {
+                                Log.error(TAG, "Timer ${timer.id}: could not restore after ${intent.action}", it)
+                            }
+                        }
                         Log.status(
                             TAG,
-                            "${intent.action}: rescheduled $rings alarm(s) and $snoozes snooze(s)",
+                            "${intent.action}: rescheduled $rings alarm(s) and $snoozes snooze(s); " +
+                                "rearmed $timersRearmed timer(s), completed $timersCompleted",
                         )
                     } catch (e: Exception) {
                         // Not expected at either action: ClockRepository is built with
