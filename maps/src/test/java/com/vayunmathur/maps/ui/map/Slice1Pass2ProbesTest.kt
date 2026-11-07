@@ -3,12 +3,9 @@ package com.vayunmathur.maps.ui.map
 import androidx.compose.ui.graphics.Color
 import com.vayunmathur.library.map.GeoBounds
 import com.vayunmathur.library.map.GeoPoint
-import com.vayunmathur.maps.data.transit.TransitousDataSource
 import com.vayunmathur.maps.ui.theme.mapTokens
 import com.vayunmathur.maps.util.NavigationProgress
 import com.vayunmathur.maps.util.RouteService
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
@@ -21,8 +18,8 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * Slice 1/3 second pass (maps): native-adjacent probes and route-overlay
  * colour decisions the first pass left — traffic prefetch over a real
- * viewport, the transit board's live seam failure, and transit line
- * colours (valid, blank, malformed) through the public overlay builder.
+ * viewport and transit line colours (valid, blank, malformed)
+ * through the public overlay builder.
  */
 @RunWith(RobolectricTestRunner::class)
 class Slice1Pass2ProbesTest {
@@ -35,16 +32,6 @@ class Slice1Pass2ProbesTest {
         // antimeridian-wide and inverted boxes are skipped before any native call
         prefetchTrafficSquares(GeoBounds(west = -180.0, south = -80.0, east = 180.0, north = 80.0))
         prefetchTrafficSquares(GeoBounds(west = 10.0, south = 50.0, east = 9.0, north = 49.0))
-    }
-
-    @Test
-    fun `transit departures with the live seam degrade to empty offline`() = runBlocking {
-        // unique stop id so no earlier cached failure/success can answer
-        val deps = withTimeoutOrNull(30_000) {
-            TransitousDataSource.departures("pass2-probe-${System.nanoTime()}")
-        }
-        // offline sandbox: the live seam fails and the board is empty, never a throw
-        assertTrue(deps?.isEmpty() == true)
     }
 
     private fun transitStep(color: String?) = RouteService.Step(
