@@ -51,6 +51,20 @@ private data class AuthSession(
     val ccRequired: Boolean = false,
 )
 
+/**
+ * Nickname seeded at install from the carrier preview: profile name first,
+ * carrier second, pending carrier as the fallback outside the preview states.
+ * Must be read from the pre-install [state] — once the flow moves to
+ * [DownloadState.Installing] the preview fields are gone.
+ */
+internal fun installNickname(state: DownloadState, pendingCarrier: String?): String =
+    when (state) {
+        is DownloadState.Confirm ->
+            state.profileName?.ifBlank { null } ?: state.carrier
+        is DownloadState.AwaitingConfirmationCode -> state.carrier
+        else -> pendingCarrier
+    }.orEmpty()
+
 private const val TAG = "EuiccViewModel"
 
 /** Switch focus to the confirmation-code screen after a `8.2.7` refusal. */
@@ -168,6 +182,10 @@ class EuiccViewModel(app: Application) : AndroidViewModel(app) {
         val transactionId = pendingTransaction ?: return
         val code = confirmationCode ?: pendingConfirmationCode
         if (download !is DownloadState.Confirm && download !is DownloadState.AwaitingConfirmationCode) return
+        // Capture the preview nickname before leaving the Confirm state:
+        // reading `download` after the Installing transition always yields
+        // the Installing branch and loses the profile name.
+        val nickname = installNickname(download, pendingCarrier)
         download = DownloadState.Installing(0f)
         viewModelScope.launch {
             val callback = object : EuiccNative.DownloadProgressCallback {
@@ -185,12 +203,6 @@ class EuiccViewModel(app: Application) : AndroidViewModel(app) {
             // carrier second); native applies it via SetNickname while the
             // channel is still open.
             val app = getApplication<Application>()
-            val nickname = when (val current = download) {
-                is DownloadState.Confirm ->
-                    current.profileName?.ifBlank { null } ?: current.carrier
-                is DownloadState.AwaitingConfirmationCode -> current.carrier
-                else -> pendingCarrier
-            }.orEmpty()
             DownloadService.start(app)
             val outcome = try {
                 withContext(Dispatchers.IO) {
