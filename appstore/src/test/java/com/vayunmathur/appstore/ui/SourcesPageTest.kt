@@ -10,7 +10,6 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.appstore.data.AppDatabase
 import com.vayunmathur.appstore.util.AppStoreViewModel
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,8 +41,9 @@ class SourcesPageTest {
         vm = AppStoreViewModel(app, db)
     }
 
-    @AfterTest
-    fun tearDown() = db.close()
+    // DB not closed: the ViewModel's background coroutines keep
+    // collecting its flows (see the matching fix in the ViewModel
+    // tests); the in-memory DB dies with the Robolectric sandbox.
 
     @Test
     fun `all source cards and the auto install row render`() {
