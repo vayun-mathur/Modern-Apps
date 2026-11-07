@@ -35,6 +35,18 @@ class FileBackupManagerTest {
         assertTrue(repo.exists("files/index.json"))
     }
 
+    @Test fun emptyRunPreservesPreviousManifest() = runBlocking<Unit> {
+        val (repo, _, manager) = setup()
+        // A previous backup exists; a later run that enumerates no media
+        // (e.g. media permission revoked) must not wipe its manifest and
+        // orphan the blobs it points at.
+        val entry = FileEntry("id1", "photo.jpg", "Pictures/", "image/jpeg", 3, 100L, "image")
+        repo.writeEncrypted("files/index.json", Json.encodeToString(FileIndex.serializer(), FileIndex(listOf(entry))).toByteArray())
+        repo.writeEncrypted(BackupRepository.filePath("id1"), "abc".toByteArray())
+        assertEquals(0, manager.backupAll())
+        assertEquals(listOf(entry), manager.listBackedUp())
+    }
+
     @Test fun corruptIndexYieldsEmptyList() = runBlocking<Unit> {
         val (repo, _, manager) = setup()
         repo.writeEncrypted("files/index.json", "not json".toByteArray())
