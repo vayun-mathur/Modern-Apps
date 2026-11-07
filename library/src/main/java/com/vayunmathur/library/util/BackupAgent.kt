@@ -41,16 +41,23 @@ abstract class BaseBackupAgent : BackupAgent() {
 
         val lastModified = backupFile.lastModified()
         
-        // Simple state management: check if file changed
-        val oldTimestamp = oldState?.let { readState(it) } ?: 0L
+        // Simple state management: check if file changed. The old state is
+        // read once into memory: a stream over the descriptor closes it when
+        // closed, so the unchanged path cannot re-read it for its copy.
+        val oldStateBytes = oldState?.let { readStateBytes(it) } ?: ByteArray(0)
+        val oldTimestamp = if (oldStateBytes.size >= STATE_TIMESTAMP_BYTES) {
+            java.nio.ByteBuffer.wrap(oldStateBytes).long
+        } else {
+            0L
+        }
         if (lastModified > oldTimestamp) {
             val bytes = backupFile.readBytes()
             data?.writeEntityHeader(BACKUP_KEY, bytes.size)
             data?.writeEntityData(bytes, bytes.size)
-            
+
             newState?.let { writeState(it, lastModified) }
         } else {
-            oldState?.let { newState?.let { it1 -> copyState(it, it1) } }
+            newState?.let { writeStateBytes(it, oldStateBytes) }
         }
         
         backupFile.delete()
@@ -92,15 +99,8 @@ abstract class BaseBackupAgent : BackupAgent() {
         }
     }
 
-    private fun readState(pfd: ParcelFileDescriptor): Long {
-        FileInputStream(pfd.fileDescriptor).use { fis ->
-            val bytes = fis.readBytes()
-            if (bytes.size >= STATE_TIMESTAMP_BYTES) {
-                return java.nio.ByteBuffer.wrap(bytes).long
-            }
-        }
-        return 0L
-    }
+    private fun readStateBytes(pfd: ParcelFileDescriptor): ByteArray =
+        FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
 
     private fun writeState(pfd: ParcelFileDescriptor, timestamp: Long) {
         FileOutputStream(pfd.fileDescriptor).use { fos ->
@@ -110,11 +110,9 @@ abstract class BaseBackupAgent : BackupAgent() {
         }
     }
     
-    private fun copyState(old: ParcelFileDescriptor, new: ParcelFileDescriptor) {
-        FileInputStream(old.fileDescriptor).use { fis ->
-            FileOutputStream(new.fileDescriptor).use { fos ->
-                fis.copyTo(fos)
-            }
+    private fun writeStateBytes(pfd: ParcelFileDescriptor, bytes: ByteArray) {
+        FileOutputStream(pfd.fileDescriptor).use { fos ->
+            fos.write(bytes)
         }
     }
 }
