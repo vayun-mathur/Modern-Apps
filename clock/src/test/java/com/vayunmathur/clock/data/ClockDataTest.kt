@@ -79,6 +79,18 @@ class ClockDataTest {
     }
 
     @Test
+    fun timerStoppedAfterExpiryClampsToZero() {
+        val overdue = Timer(
+            isRunning = true, name = "overdue",
+            remainingStartTime = Clock.System.now() - 10.minutes,
+            remainingLength = 5.minutes, totalLength = 5.minutes,
+        )
+        val stopped = overdue.stopped()
+        assertFalse(stopped.isRunning)
+        assertEquals(kotlin.time.Duration.ZERO, stopped.remainingLength)
+    }
+
+    @Test
     fun alarmDefaults() {
         val a = alarm()
         assertEquals(null, a.ringtoneUri)
