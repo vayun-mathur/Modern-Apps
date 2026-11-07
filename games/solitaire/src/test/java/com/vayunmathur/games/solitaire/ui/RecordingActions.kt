@@ -13,6 +13,7 @@ class RecordingActions : SolitaireActions {
     override val dragInfo: StateFlow<DragInfo?> = MutableStateFlow(null)
     val dragFlow = dragInfo as MutableStateFlow<DragInfo?>
     override val dropTargets: MutableMap<String, Rect> = mutableMapOf()
+    override val cardPositions: MutableMap<String, Rect> = mutableMapOf()
     val calls = mutableListOf<String>()
 
     override fun startDrag(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {

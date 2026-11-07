@@ -72,6 +72,9 @@ internal fun SolitaireViewModel.newKlondikeGameImpl(config: GameConfig) {
 }
 
 internal fun SolitaireViewModel.drawFromStockImpl() {
+    // A waste-card flight is in the air; drawing would swap the card it
+    // is carrying before it lands. Flights are short: ignore the tap.
+    if (isMoveAnimating()) return
     val state = uiStateInternal.value.klondike ?: return
     if (state.isWon) return
     if (state.stock.isEmpty() && state.waste.isEmpty()) return
@@ -181,6 +184,10 @@ internal fun SolitaireViewModel.klondikeMoveTableauToTableauImpl(fromColumn: Int
             moveCount = state.moveCount + 1
         ))
     }
+}
+
+internal fun SolitaireViewModel.klondikeAutoCompleteAnimatedImpl() {
+    klondikeAutoCompleteImpl()
 }
 
 internal fun SolitaireViewModel.klondikeAutoCompleteImpl() {
@@ -358,13 +365,23 @@ internal fun SolitaireViewModel.handleKlondikeDropImpl(sourceId: String, targetI
 }
 
 internal fun SolitaireViewModel.klondikeAutoMoveImpl(sourceId: String) {
-    val state = uiStateInternal.value.klondike ?: return
-    if (state.isWon) return
+    planKlondikeAutoMove(sourceId)?.apply?.invoke()
+}
+
+/**
+ * The auto-move a tap on [sourceId] would make, decided without applying
+ * it: the destination pile id plus the move itself. Tap-to-move animation
+ * needs the destination (and its on-screen rectangle) before anything
+ * moves; the instant path simply applies the plan.
+ */
+internal fun SolitaireViewModel.planKlondikeAutoMove(sourceId: String): PlannedMove? {
+    val state = uiStateInternal.value.klondike ?: return null
+    if (state.isWon) return null
     val cards = draggedCards(sourceId)
-    if (cards.isEmpty()) return
-    val origin = klondikeMoveOrigin(sourceId) ?: return
-    if (tryKlondikeFoundation(state, cards, sourceId, origin)) return
-    tryKlondikeTableau(state, cards, sourceId, origin)
+    if (cards.isEmpty()) return null
+    val origin = klondikeMoveOrigin(sourceId) ?: return null
+    return planKlondikeFoundation(state, cards, sourceId, origin)
+        ?: planKlondikeTableau(state, cards, sourceId, origin)
 }
 
 private data class KlondikeMoveOrigin(val fromCol: Int?, val fromIdx: Int)
@@ -379,40 +396,42 @@ private fun klondikeMoveOrigin(sourceId: String): KlondikeMoveOrigin? {
     )
 }
 
-private fun SolitaireViewModel.tryKlondikeFoundation(
+private fun SolitaireViewModel.planKlondikeFoundation(
     state: KlondikeState,
     cards: List<Card>,
     sourceId: String,
     origin: KlondikeMoveOrigin,
-): Boolean {
+): PlannedMove? {
     // Only a single top card can go up, and it is the preferred move.
-    if (cards.size != SINGLE_CARD) return false
+    if (cards.size != SINGLE_CARD) return null
     for (fi in state.foundations.indices) {
         if (!canPlaceOnFoundation(cards.first(), state.foundations[fi], fi)) continue
-        when {
-            sourceId == "waste" -> klondikeMoveWasteToFoundation(fi)
-            origin.fromCol != null -> klondikeMoveTableauToFoundation(origin.fromCol, fi)
-            else -> return false
+        return when {
+            sourceId == "waste" -> PlannedMove("foundation_$fi") { klondikeMoveWasteToFoundation(fi) }
+            origin.fromCol != null -> PlannedMove("foundation_$fi") {
+                klondikeMoveTableauToFoundation(origin.fromCol, fi)
+            }
+            else -> return null
         }
-        return true
     }
-    return false
+    return null
 }
 
-private fun SolitaireViewModel.tryKlondikeTableau(
+private fun SolitaireViewModel.planKlondikeTableau(
     state: KlondikeState,
     cards: List<Card>,
     sourceId: String,
     origin: KlondikeMoveOrigin,
-) {
+): PlannedMove? {
     val target = state.tableauPiles.indices.firstOrNull { toCol ->
         toCol != origin.fromCol && isViableKlondikeTarget(state, cards, origin, toCol)
-    } ?: return
-    when {
-        sourceId == "waste" -> klondikeMoveWasteToTableau(target)
-        origin.fromCol != null ->
+    } ?: return null
+    return when {
+        sourceId == "waste" -> PlannedMove("tableau_$target") { klondikeMoveWasteToTableau(target) }
+        origin.fromCol != null -> PlannedMove("tableau_$target") {
             klondikeMoveTableauToTableau(origin.fromCol, origin.fromIdx, target)
-        else -> return
+        }
+        else -> null
     }
 }
 

@@ -43,6 +43,32 @@ interface SolitaireActions {
      */
     fun autoMove(sourceId: String) {}
 
+    /** The tap/autocomplete card flight currently on screen, or null. */
+    val animatedMove: StateFlow<AnimatedMove?> get() = NoAnimatedMove
+
+    /**
+     * On-screen rectangles of individual cards, keyed by the same source ids
+     * drags use, registered by the card widgets as they are laid out. The
+     * autocomplete cascade reads the source rectangle of each card it sends
+     * to a foundation from here.
+     */
+    val cardPositions: MutableMap<String, Rect> get() = DiscardedCardPositions
+
+    /**
+     * Animated tap-to-move: like [autoMove], but the card (or stack) flies
+     * from [from] (root coordinates of the tapped card, [cardSize] its size)
+     * to its destination before the move is applied. The default applies
+     * the move instantly, which is what previews want.
+     */
+    fun autoMoveAnimated(sourceId: String, from: Offset, cardSize: IntSize) { autoMove(sourceId) }
+
+    /**
+     * Animated autocomplete: the same completion as [klondikeAutoComplete],
+     * played as a rapid cascade of flights to the foundations. The default
+     * completes instantly, which is what previews want.
+     */
+    fun klondikeAutoCompleteAnimated() { klondikeAutoComplete() }
+
     fun undo() {}
     fun restart() {}
     fun giveUp() {}
@@ -54,6 +80,11 @@ interface SolitaireActions {
 
 private val NoDrag: StateFlow<DragInfo?> = MutableStateFlow(null)
 
+private val NoAnimatedMove: StateFlow<AnimatedMove?> = MutableStateFlow(null)
+
 /** Somewhere for a [SolitaireActions.Noop] board to register its drop zones and forget them. */
 private val DiscardedDropTargets: MutableMap<String, Rect> = mutableMapOf()
+
+/** Somewhere for a [SolitaireActions.Noop] board to register card positions and forget them. */
+private val DiscardedCardPositions: MutableMap<String, Rect> = mutableMapOf()
 
