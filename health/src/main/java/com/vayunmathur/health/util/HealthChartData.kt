@@ -101,7 +101,18 @@ internal object HealthChartData {
         } else {
             HealthAPI.getListOfSums(config.recordType, startTime, endTimeNow, periodType2)
         }
-        return rawPairs to rawPairsHistory
+        // Height is stored in meters but its config/goal/unit are centimeters
+        // (175 cm); every other metric stores in its display unit already.
+        return scaleForDisplay(config, rawPairs) to scaleForDisplay(config, rawPairsHistory)
+    }
+
+    /** Converts stored values to the metric's display unit (height m -> cm only). */
+    internal fun scaleForDisplay(
+        config: HealthMetricConfig,
+        pairs: List<Tuple3<Long, Double, Double>>,
+    ): List<Tuple3<Long, Double, Double>> {
+        if (config.recordType != com.vayunmathur.health.data.RecordType.Height) return pairs
+        return pairs.map { Tuple3(it.first, it.second * 100.0, it.third * 100.0) }
     }
 
     /**
