@@ -2,6 +2,7 @@ package com.vayunmathur.youpipe.nativeext
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -83,6 +84,28 @@ class NativeJsonPass3Test {
         assertTrue(info.videoOnlyStreams.single().videoOnly)
         assertEquals(info, json.decodeFromString<StreamInfo>(json.encodeToString<StreamInfo>(info)))
         assertEquals(StreamKind.POST_LIVE, json.decodeFromString<StreamKind>("\"POST_LIVE\""))
+    }
+
+    @Test
+    fun unwrap_okEnvelopeReturnsData() {
+        val result = NativeExtractor.unwrap<SearchResult>(
+            """{"ok":true,"data":{"items":[],"next_page_token":"t"}}""",
+        )
+        assertEquals("t", result.nextPageToken)
+        val suggestions = NativeExtractor.unwrap<List<String>>("""{"ok":true,"data":["a","b"]}""")
+        assertEquals(listOf("a", "b"), suggestions)
+    }
+
+    @Test
+    fun unwrap_errorEnvelopeThrowsWithNativeMessage() {
+        val error = assertFailsWith<NativeExtractorException> {
+            NativeExtractor.unwrap<SearchResult>("""{"ok":false,"error":"rust exploded"}""")
+        }
+        assertEquals("rust exploded", error.message)
+        val unknown = assertFailsWith<NativeExtractorException> {
+            NativeExtractor.unwrap<SearchResult>("""{"ok":true,"data":null}""")
+        }
+        assertEquals("unknown extractor error", unknown.message)
     }
 
     @Test
