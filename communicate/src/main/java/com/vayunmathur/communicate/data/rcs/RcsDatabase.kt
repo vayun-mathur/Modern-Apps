@@ -93,8 +93,16 @@ abstract class RcsDatabase : RoomDatabase() {
 
         override val migrations = listOf(MIGRATION_1_2, MIGRATION_2_3)
 
+        /**
+         * Test seam: when set, [getDatabase] returns this instance instead
+         * of the SQLCipher-backed singleton (whose native library cannot
+         * load on a JVM test host). Production code never sets it.
+         */
+        @Volatile
+        internal var overrideForTest: RcsDatabase? = null
+
         fun getDatabase(context: Context): RcsDatabase =
-            RcsRepository.get(context).database()
+            overrideForTest ?: RcsRepository.get(context).database()
     }
 }
 

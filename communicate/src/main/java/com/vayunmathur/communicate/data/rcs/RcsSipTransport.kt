@@ -134,6 +134,30 @@ object RcsSipTransport {
     private val stateCallback: Any by lazy { transportCallbacks().first }
     private val messageCallback: Any by lazy { transportCallbacks().second }
 
+    /** Test seam: the lazily-built delegate callbacks, for JVM tests. */
+    internal fun callbacksForTest(): Pair<Any, Any> = stateCallback to messageCallback
+
+    /**
+     * Test seam: install (or clear, with null) a delegate connection plus
+     * its config version/snapshot, mirroring what `onCreated` +
+     * `onConfigurationChanged` set on device. Production code never calls
+     * this; the framework callbacks remain the only real installers.
+     */
+    internal fun installConnectionForTest(
+        connection: SipDelegateConnection?,
+        version: Long,
+        config: SipDelegateConfiguration?,
+    ) {
+        this.connection = connection
+        configVersion = version
+        lastConfig = config
+        _state.value = if (connection != null) {
+            RcsRegistrationState.Available
+        } else {
+            RcsRegistrationState.Unknown
+        }
+    }
+
     /**
      * Build the two delegate callbacks. The anonymous classes — and hence the
      * hidden-API callback types — load only when this function runs
@@ -254,10 +278,20 @@ object RcsSipTransport {
         activeSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID
     }
 
+    /**
+     * Test seam: when set, [canSend] is true and [sendSipMessage] routes to
+     * this sender instead of a live delegate/direct-SIP leg. Lets JVM tests
+     * drive the session/focus/typing layers that sit above the transport
+     * without an IMS PDN. Production code never sets it.
+     */
+    @Volatile
+    internal var fakeSenderForTest: ((startLine: String, headers: String, body: ByteArray) -> Boolean)? = null
+
     /** True when a SIP MESSAGE can be sent right now (either leg). */
     fun canSend(): Boolean =
         RcsFeature.enabled && (
-            (_state.value is RcsRegistrationState.Available && connection != null) ||
+            fakeSenderForTest != null ||
+                (_state.value is RcsRegistrationState.Available && connection != null) ||
                 directSipUp
             )
 
@@ -321,6 +355,8 @@ object RcsSipTransport {
      * retried with digest auth ([onSipResponseMessage]).
      */
     suspend fun sendSipMessage(startLine: String, headerSection: String, body: ByteArray): Boolean {
+        // Test seam (never set in production): record/accept the send.
+        fakeSenderForTest?.let { return it(startLine, headerSection, body) }
         // Direct-SIP leg: route to the P-CSCF socket (no delegate).
         if (directSipUp && RcsFeature.enabled) {
             return RcsDirectSip.sendMessage(startLine, headerSection, body)
