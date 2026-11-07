@@ -58,11 +58,16 @@ private const val TAG = "MailViewModel"
  * Owns identity, decryption, send gating, and the socket lifecycle.
  * Decrypt + private-key reads happen on Dispatchers.IO and only while unlocked.
  */
-class MailViewModel(app: Application) : AndroidViewModel(app) {
+class MailViewModel(
+    app: Application,
+    private val repo: com.vayunmathur.securemail.data.MailStore,
+) : AndroidViewModel(app) {
+
+    /** Production constructor used by `by viewModels()` (reflective lookup). */
+    constructor(app: Application) : this(app, MailRepository.get(app))
 
     private val config = MailConfig(app)
     private val keyManager = KeyManager(app)
-    private val repo: MailRepository = MailRepository.get(app)
 
     var state by mutableStateOf(
         MailUiState(

@@ -1,7 +1,7 @@
 package com.vayunmathur.securemail.platform
 
 import com.vayunmathur.securemail.data.MailFolder
-import com.vayunmathur.securemail.data.MailRepository
+import com.vayunmathur.securemail.data.MailStore
 import com.vayunmathur.securemail.data.StoredMessage
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +33,7 @@ data class Draft(
  * `toJson` as JSON; subject/body use the decrypted columns like Sent copies.
  */
 class DraftsController(
-    private val repo: MailRepository,
+    private val repo: MailStore,
     private val scope: CoroutineScope,
     private val ownAddress: () -> String,
 ) {

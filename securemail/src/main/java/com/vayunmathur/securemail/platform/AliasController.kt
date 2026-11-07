@@ -1,7 +1,7 @@
 package com.vayunmathur.securemail.platform
 
 import com.vayunmathur.securemail.data.MailIdentity
-import com.vayunmathur.securemail.data.MailRepository
+import com.vayunmathur.securemail.data.MailStore
 import com.vayunmathur.securemail.domain.mail.AliasGenerator
 import com.vayunmathur.securemail.domain.pgp.PgpCrypto
 import com.vayunmathur.securemail.network.MailSocket
@@ -14,7 +14,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * link aliases by fingerprint; nothing is stored unless the relay accepts the
  * signed SUB. Call from Dispatchers.IO.
  */
-class AliasController(private val repo: MailRepository) {
+class AliasController(private val repo: MailStore) {
 
     /** Waits briefly for the relay session (CHALLENGE received + SUBs sent). */
     suspend fun awaitRelay(): Boolean? =
