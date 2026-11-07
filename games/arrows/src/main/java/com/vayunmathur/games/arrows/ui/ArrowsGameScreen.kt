@@ -114,7 +114,7 @@ fun ArrowsGameScreen(
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
                     )
-                    Button(onClick = { actions.restartLevel() }) {
+                    Button(onClick = { actions.retryGeneration() }) {
                         Text(stringResource(R.string.try_again))
                     }
                 }

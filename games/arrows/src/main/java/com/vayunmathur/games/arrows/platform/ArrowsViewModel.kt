@@ -72,6 +72,17 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         ArrowsAchievementsManager(application, json, dataStore, dailyStore)
     }
 
+    /**
+     * Bumped to make [load] run again after a failed generation.
+     *
+     * Nothing else re-triggers it: a failed build leaves no progress collector running, so the
+     * error screen's retry has to ask for a fresh pass explicitly. Feeding the count through the
+     * same session flow keeps exactly one load in flight, since `collectLatest` cancels the
+     * previous one. The count also salts the generation seed (see [buildBoard]): generation is
+     * deterministic per seed, so retrying with the same seed would fail identically forever.
+     */
+    private val retryCount = MutableStateFlow(0)
+
     init {
         achievementsManager.checkExistingAchievements()
 
@@ -81,7 +92,10 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
                 dataStore.currentLevel,
                 dataStore.showRoutes,
                 dailyStore.currentStreak,
-            ) { mode, level, showRoutes, streak -> Session(mode, level, showRoutes, streak) }
+                retryCount,
+            ) { mode, level, showRoutes, streak, retries ->
+                Session(mode, level, showRoutes, streak, retries)
+            }
                 .collectLatest { session -> load(session) }
         }
     }
@@ -92,6 +106,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         val level: Int,
         val showRoutes: Boolean,
         val streak: Long,
+        val retries: Int = 0,
     )
 
     private suspend fun load(session: Session) {
@@ -111,7 +126,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         val puzzle = withContext(Dispatchers.Default) {
             val cached = if (daily) dailyBoard?.takeIf { it.first == day }?.second
             else casualBoard?.takeIf { it.first == session.level }?.second
-            cached ?: buildBoard(daily, session.level, day)
+            cached ?: buildBoard(daily, session.level, day, session.retries)
         }
 
         if (puzzle == null) {
@@ -123,7 +138,12 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         observeProgress(session, puzzle, day)
     }
 
-    private fun buildBoard(daily: Boolean, level: Int, day: Long): ArrowsPuzzle? =
+    /**
+     * [retries] salts the seed: the first attempt for a level or day always uses retry zero, so
+     * every player sees the same board, and only a board that failed to generate at all — which no
+     * player ever saw — is rebuilt from a different seed on retry.
+     */
+    private fun buildBoard(daily: Boolean, level: Int, day: Long, retries: Int): ArrowsPuzzle? =
         if (daily) {
             val (cols, rows) = DAILY_BOARD
             ArrowsGenerator.generateSeeded(
@@ -131,7 +151,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
                 rows = rows,
                 targetPieces = DAILY_ARROWS,
                 mirrorCount = DAILY_MIRRORS,
-                seed = DAILY_SEED_OFFSET + day,
+                seed = DAILY_SEED_OFFSET + day + retries * RETRY_SEED_STRIDE,
             )
         } else {
             val (cols, rows) = boardSizeForLevel(level)
@@ -140,7 +160,7 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
                 rows = rows,
                 targetPieces = arrowCountForLevel(level),
                 mirrorCount = mirrorCountForLevel(level),
-                seed = level.toLong(),
+                seed = level.toLong() + retries * RETRY_SEED_STRIDE,
             )
         }
 
@@ -251,6 +271,17 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /**
+     * Asks for a fresh generation pass after [load] found no board.
+     *
+     * Goes through [retryCount] rather than calling [load] directly, so the session collector
+     * stays the only place loads run and can cancel this one like any other if the session
+     * changes underneath it.
+     */
+    override fun retryGeneration() {
+        retryCount.value += 1
+    }
+
     override fun nextLevel() {
         val state = _uiState.value
         if (state.mode == GameMode.DAILY) return
@@ -351,5 +382,11 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
          * 1.1B nonogram).
          */
         private const val DAILY_SEED_OFFSET = 1_300_000_000L
+
+        /**
+         * Keeps retry seeds far from the seeds any first attempt uses, mirroring the generator's
+         * own per-round stride so a retried board is genuinely a different search.
+         */
+        private const val RETRY_SEED_STRIDE = 1_000_003L
     }
 }

@@ -22,6 +22,8 @@ interface ArrowsGameActions {
 
     fun nextLevel() {}
     fun restartLevel() {}
+    /** Rebuilds the board after generation failed. Restarting cannot do this: it only resets progress. */
+    fun retryGeneration() {}
     fun setGameMode(mode: GameMode) {}
 
     companion object { val Noop: ArrowsGameActions = object : ArrowsGameActions {} }
