@@ -85,11 +85,12 @@ fun WindDownSchedule.activeAt(at: LocalDateTime): Boolean {
     val minute = at.hour * MINUTES_PER_HOUR + at.minute
     val day = at.dayOfWeek.value - 1
     val set = (daysMask shr day) and 1 == 1
-    if (!set) return false
     return if (startMinute <= endMinute) {
-        minute >= startMinute && minute < endMinute
+        set && minute >= startMinute && minute < endMinute
     } else {
-        minute >= startMinute || (minute < endMinute && isYesterdaySet(day))
+        // The evening segment belongs to today; the after-midnight segment
+        // belongs to yesterday's window, so it is gated on yesterday alone.
+        (set && minute >= startMinute) || (minute < endMinute && isYesterdaySet(day))
     }
 }
 
