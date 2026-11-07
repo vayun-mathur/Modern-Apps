@@ -1,8 +1,8 @@
 package com.vayunmathur.taxi.network.uber
+import com.vayunmathur.taxi.network.TaxiHttp
 
 import android.os.Build
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.library.network.NetworkClient
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -91,7 +91,7 @@ object UberAuth {
                 ),
             ),
         )
-        val resp = NetworkClient.performRequest(
+        val resp = TaxiHttp.performRequest(
             url = "$BASE/rt/silk-screen/submit-form",
             method = "POST",
             headers = headers(),

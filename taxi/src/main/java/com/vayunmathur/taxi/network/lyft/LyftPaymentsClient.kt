@@ -1,8 +1,8 @@
 package com.vayunmathur.taxi.network.lyft
+import com.vayunmathur.taxi.network.TaxiHttp
 
 import android.net.Uri
 import com.vayunmathur.library.log.Log
-import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.taxi.data.AddCardResult
 import com.vayunmathur.taxi.data.NewCard
 import com.vayunmathur.taxi.data.PaymentActionResult
@@ -32,7 +32,7 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
 
     suspend fun paymentMethods(): PaymentMethodsResult {
         val token = session.accessToken() ?: return PaymentMethodsResult.NotSignedIn
-        val resp = NetworkClient.execute(
+        val resp = TaxiHttp.execute(
             url = "${LyftAuth.BASE}/chargeaccounts",
             method = "GET",
             headers = session.authHeaders(token),
@@ -60,7 +60,7 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
             put("skip_debt_collection", false)
             put("skip_persisted_challenge", false)
         }.toString()
-        val resp = NetworkClient.execute(
+        val resp = TaxiHttp.execute(
             url = "${LyftAuth.BASE}/charge-accounts-multi-provider",
             method = "PUT",
             headers = session.authProtoJsonHeaders(
@@ -83,7 +83,7 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
 
     suspend fun removePaymentMethod(id: String): PaymentActionResult {
         val token = session.accessToken() ?: return PaymentActionResult.Failed("Not signed in to Lyft")
-        val resp = NetworkClient.execute(
+        val resp = TaxiHttp.execute(
             url = "${LyftAuth.BASE}/chargeaccounts/${Uri.encode(id)}",
             method = "DELETE",
             headers = session.authHeaders(token),
@@ -145,7 +145,7 @@ internal class LyftPaymentsClient(private val session: LyftApiSession) {
         }.toString()
 
         val resp = runCatching {
-            NetworkClient.execute(
+            TaxiHttp.execute(
                 url = "${LyftAuth.BASE}/charge-accounts-multi-provider",
                 method = "POST",
                 headers = session.authProtoJsonHeaders(
