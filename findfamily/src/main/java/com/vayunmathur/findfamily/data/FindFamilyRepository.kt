@@ -20,14 +20,19 @@ import kotlinx.coroutines.flow.map
  * as before). Writes are `suspend` wrappers over the existing atomic DAO queries,
  * so no caller ever holds a DAO directly.
  */
-class FindFamilyRepository private constructor(context: Context) :
-    RoomRepository<FFDatabase>(context, FFDatabase::class) {
+class FindFamilyRepository internal constructor(
+    context: Context,
+    /** Test seam: an externally built database (e.g. Room in-memory) instead of the SQLCipher one. */
+    private val databaseOverride: FFDatabase? = null,
+) : RoomRepository<FFDatabase>(context, FFDatabase::class) {
 
-    private val userDao: UserDao get() = db.userDao()
-    private val waypointDao: WaypointDao get() = db.waypointDao()
-    private val locationValueDao: LocationValueDao get() = db.locationValueDao()
-    private val temporaryLinkDao: TemporaryLinkDao get() = db.temporaryLinkDao()
-    private val noShowAlertDao: NoShowAlertDao get() = db.noShowAlertDao()
+    private val daoDb: FFDatabase get() = databaseOverride ?: db
+
+    private val userDao: UserDao get() = daoDb.userDao()
+    private val waypointDao: WaypointDao get() = daoDb.waypointDao()
+    private val locationValueDao: LocationValueDao get() = daoDb.locationValueDao()
+    private val temporaryLinkDao: TemporaryLinkDao get() = daoDb.temporaryLinkDao()
+    private val noShowAlertDao: NoShowAlertDao get() = daoDb.noShowAlertDao()
 
     // ------------------------------------------------------------------
     // Read flows (cold)

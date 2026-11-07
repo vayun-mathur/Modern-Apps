@@ -111,7 +111,12 @@ class LocationTrackingService : Service(), SensorEventListener {
         }
     }
 
-    internal val repository by lazy { FindFamilyRepository.get(this) }
+    private val lazyRepository by lazy { FindFamilyRepository.get(this) }
+
+    /** Test seam: an externally built repository instead of the SQLCipher singleton. */
+    internal var repositoryOverride: FindFamilyRepository? = null
+
+    internal val repository: FindFamilyRepository get() = repositoryOverride ?: lazyRepository
     internal lateinit var bm: BatteryManager
     
     private var isGpsRunning = false
