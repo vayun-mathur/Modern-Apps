@@ -57,6 +57,31 @@ fun PasskeyPage(
     }
 
     val passwords by viewModel.passwords.collectAsState()
+    PasskeyScreen(
+        backStack = backStack,
+        passkey = passkey,
+        passwords = passwords,
+        passkeys = passkeys,
+        onDelete = { viewModel.deletePasskey(passkey) },
+        onSetLink = { link -> viewModel.setPasskeyLink(passkey, link) },
+    )
+}
+
+/**
+ * Stateless passkey detail, split from [PasskeyPage] so previews/tests can render it
+ * without opening the vault (same pattern as `PasswordScreen`).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PasskeyScreen(
+    backStack: NavBackStack<Route>,
+    passkey: com.vayunmathur.passwords.data.Passkey,
+    passwords: List<com.vayunmathur.passwords.data.Password>,
+    passkeys: List<com.vayunmathur.passwords.data.Passkey>,
+    onDelete: () -> Unit,
+    onSetLink: (PasskeyLink) -> Unit,
+) {
+    val id = passkey.id
     // Resolved through the same merge the list uses, so the two never disagree.
     val linkedSyncId = remember(passwords, passkeys) {
         mergeCredentials(passwords, passkeys).passkeysByPasswordSyncId
@@ -78,7 +103,7 @@ fun PasskeyPage(
             onDismiss = { picking = false },
             onSelect = { password ->
                 picking = false
-                viewModel.setPasskeyLink(passkey, PasskeyLink.To(password.syncId))
+                onSetLink(PasskeyLink.To(password.syncId))
                 messenger.show(
                     context.getString(
                         R.string.passkey_linked_message,
@@ -93,7 +118,7 @@ fun PasskeyPage(
         title = passkey.rpName.ifBlank { stringResource(R.string.passkey_detail_title) },
         backStack = backStack,
         actions = {
-            IconButton(onClick = { viewModel.deletePasskey(passkey); backStack.pop() }) {
+            IconButton(onClick = { onDelete(); backStack.pop() }) {
                 IconDelete()
             }
         },
@@ -130,7 +155,7 @@ fun PasskeyPage(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (linkedTo != null) {
                         TextButton(onClick = {
-                            viewModel.setPasskeyLink(passkey, PasskeyLink.Detached)
+                            onSetLink(PasskeyLink.Detached)
                             messenger.show(context.getString(R.string.passkey_unlinked_message))
                         }) {
                             IconLinkOff()
@@ -145,7 +170,7 @@ fun PasskeyPage(
                         }
                     }
                     if (link is PasskeyLink.Detached) {
-                        TextButton(onClick = { viewModel.setPasskeyLink(passkey, PasskeyLink.Auto) }) {
+                        TextButton(onClick = { onSetLink(PasskeyLink.Auto) }) {
                             Text(stringResource(R.string.passkey_link_use_auto))
                         }
                     }
