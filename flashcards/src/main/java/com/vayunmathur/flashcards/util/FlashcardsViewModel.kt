@@ -124,7 +124,16 @@ class FlashcardsViewModel(
     // -- Review session ----------------------------------------------------
 
     internal var session: ReviewSession? = null
-    internal var lastLogId: Long? = null
+
+    /**
+     * ReviewLog id written by each undoable session action, in action order
+     * (null for actions that write no log, e.g. suspend or a cram grade).
+     * [undoReviewImpl] pops one entry per undo so each undo deletes exactly
+     * the log its own action wrote — a single `lastLogId` would lose every
+     * earlier log after the second grade and delete the wrong log after a
+     * suspend.
+     */
+    internal val reviewLogUndoStack = ArrayDeque<Long?>()
     internal var sessionNotes: Map<Long, Note> = emptyMap()
     internal var sessionDeck: Deck? = null
     internal val reviewState = MutableStateFlow(ReviewUiState())

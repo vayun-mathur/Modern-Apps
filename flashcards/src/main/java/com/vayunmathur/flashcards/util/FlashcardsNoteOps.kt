@@ -110,6 +110,7 @@ internal fun FlashcardsViewModel.setNoteSuspendedImpl(noteId: Long, suspended: B
 internal fun FlashcardsViewModel.suspendCurrentCardImpl() = launchIoImpl {
     val s = session ?: return@launchIoImpl
     val card = s.removeCurrent() ?: return@launchIoImpl
+    reviewLogUndoStack.addLast(null)
     repository.setCardsSuspendedImpl(listOf(card.id), 1)
     publishReviewImpl()
 }
