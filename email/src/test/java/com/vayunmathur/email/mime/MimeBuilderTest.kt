@@ -86,7 +86,10 @@ class MimeBuilderTest {
         assertFalse(bare.contains("References:"), bare)
         val full = simple(cc = "c@x.com", bcc = "d@x.com", inReplyTo = "<m1>", references = "<m1> <m0>")
         assertTrue(full.contains("Cc: c@x.com\r\n"), full)
-        assertTrue(full.contains("Bcc: d@x.com\r\n"), full)
+        // Bcc must never appear in the wire headers (envelope-only); the
+        // previous assertion pinned the disclosure bug this guards.
+        assertFalse(full.contains("Bcc:"), full)
+        assertFalse(full.contains("d@x.com"), full)
         assertTrue(full.contains("In-Reply-To: <m1>\r\n"), full)
         assertTrue(full.contains("References: <m1> <m0>\r\n"), full)
     }
