@@ -46,6 +46,32 @@ class BugcheckVcardRegressionTest {
     }
 
     @Test
+    fun uriPhotoIsDroppedInsteadOfStoredVerbatim() {
+        val vcf = """
+            BEGIN:VCARD
+            VERSION:4.0
+            FN:Uri Photo
+            PHOTO:https://example.com/avatar.jpg
+            TEL:+15550101
+            END:VCARD
+            BEGIN:VCARD
+            VERSION:3.0
+            FN:Good Photo
+            PHOTO;ENCODING=b:iVBORw0KGgo=
+            TEL:+15550102
+            END:VCARD
+        """.trimIndent()
+        val parsed = VcfUtils.parseContacts(
+            ByteArrayInputStream(vcf.toByteArray(Charsets.UTF_8))
+        )
+        assertEquals(2, parsed.size)
+        assertEquals("+15550101", parsed[0].details.phoneNumbers.single().number)
+        assertEquals(0, parsed[0].details.photos.size)
+        // A real Base64 photo still imports.
+        assertEquals("iVBORw0KGgo=", parsed[1].details.photos.single().photo)
+    }
+
+    @Test
     fun homeAddressStillRoundTripsAsHome() {
         val parsed = exportAndReparse(
             contactWithAddress(ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME)
