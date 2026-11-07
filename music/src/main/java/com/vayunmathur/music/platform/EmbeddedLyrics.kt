@@ -261,7 +261,10 @@ object EmbeddedLyrics {
         head.flip()
         val declared = head.int.toLong() and 0xffffffffL
         val type = String(ByteArray(MAGIC_TEXT_LENGTH) { head.get() }, Charsets.ISO_8859_1)
-        val contentStart = position + MP4_BOX_HEADER
+        // A largesize box (declared == 1) carries an extra 8-byte size field,
+        // so its content starts after the 16-byte header, not the usual 8.
+        val contentStart = position +
+            if (declared == MP4_LARGE_MARKER) MP4_LARGE_HEADER else MP4_BOX_HEADER.toLong()
         val end = boxEnd(channel, position, size, declared) ?: return null
         if (end <= position || end > size) return null
         return BoxRange(type == "moov", contentStart, end)
