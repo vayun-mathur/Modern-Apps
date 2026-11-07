@@ -19,6 +19,7 @@ import com.vayunmathur.shop.data.EmbeddedCheckoutRequest
 import com.vayunmathur.shop.data.Money
 import com.vayunmathur.shop.data.PlacedOrder
 import com.vayunmathur.shop.data.ProfileRepository
+import com.vayunmathur.shop.data.ProfileStore
 import com.vayunmathur.shop.data.ShopCartStore
 import com.vayunmathur.shop.data.ShopProfile
 import com.vayunmathur.shop.data.UcpProduct
@@ -80,12 +81,16 @@ class ShopViewModel(
     var profileLoaded by mutableStateOf(false)
         private set
     val profileComplete: Boolean get() = profile?.validationError() == null && profile != null
-    private var profileRepository: ProfileRepository? = null
+    private var profileRepository: ProfileStore? = null
     private val nativeCheckout = NativeCheckoutCoordinator()
+
+    /** Test seam: replaces the encrypted profile database. Null means [ProfileRepository]. */
+    internal var profileStoreFactory: ((Context) -> ProfileStore)? = null
 
     fun observeProfile(context: Context) {
         if (profileRepository != null) return
-        val repository = ProfileRepository.get(context).also { profileRepository = it }
+        val repository = (profileStoreFactory?.invoke(context) ?: ProfileRepository.get(context))
+            .also { profileRepository = it }
         viewModelScope.launch { repository.profile.collect { profile = it; profileLoaded = true } }
     }
 
