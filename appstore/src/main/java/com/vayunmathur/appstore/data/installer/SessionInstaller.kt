@@ -82,6 +82,14 @@ class SessionInstaller(
                 Log.error(TAG, "Write failed for $packageName: ${expected.message}", expected)
                 abandonQuietly(session)
                 return false
+            } catch (expected: SecurityException) {
+                // openWrite/fsync can refuse with SecurityException, not just
+                // IOException. Without this the outer catch returns false with
+                // the session still open and un-abandoned: a leaked pending
+                // session for this package.
+                Log.error(TAG, "Write failed for $packageName: ${expected.message}", expected)
+                abandonQuietly(session)
+                return false
             }
 
             commitSession(session, sessionId, packageName)
