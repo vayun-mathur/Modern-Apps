@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.games.chess.data.Board
@@ -100,6 +101,42 @@ class ChessPass3DrawTest {
         }
         rule.waitForIdle()
         assertTrue(state.apples.isNotEmpty())
+    }
+
+    @Test fun learnPunishedFailureShowsRetryButtonAndRetries() {
+        val vm = LearnViewModel(app)
+        vm.loadStage("fundamentals", "protection")
+        await("protection loaded") { vm.uiState.value.level != null }
+        val state = vm.uiState.value
+        val level = state.level!!
+        var hanging: Pair<Position, Position>? = null
+        outer@ for (r in 0..7) for (c in 0..7) {
+            val piece = state.board.pieces[r][c] ?: continue
+            if (piece.color != state.playerColor) continue
+            for (r2 in 0..7) for (c2 in 0..7) {
+                val from = Position(r, c)
+                val to = Position(r2, c2)
+                if (!state.board.isValidMove(from, to) && !state.board.isPseudoLegalMove(from, to)) continue
+                val after = state.board.movePiece(from, to)
+                if (com.vayunmathur.games.chess.util.detectCaptureMove(level, after, state.playerColor) != null) {
+                    hanging = from to to
+                    break@outer
+                }
+            }
+        }
+        val (from, to) = hanging ?: error("protection level should offer a hanging move")
+        vm.onSquareClick(from)
+        vm.onSquareClick(to)
+        await("punished") { vm.uiState.value.status == LearnStatus.Failed }
+
+        rule.setContent {
+            LearnStageScreen(viewModel = vm, onBack = {}, onOpenStage = { _, _ -> })
+        }
+        rule.onNodeWithText(str(R.string.learn_lets_go)).performClick()
+        rule.onNodeWithText(str(UiR.string.retry)).assertExists()
+        rule.onNodeWithText(str(UiR.string.retry)).performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals(LearnStatus.Playing, vm.uiState.value.status)
     }
 
     @Test fun learnFailedStatusShowsRetryAndRetries() {
