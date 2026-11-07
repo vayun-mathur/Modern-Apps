@@ -57,7 +57,7 @@
     <!-- Section header for color picker -->
     <string name="color">Color</string>
     <!-- Slider label. %1$s = opacity value 0-100 -->
-    <string name="opacity">Opacity <xliff:g id="value" example="75">%1$s</xliff:g>%</string>
+    <string name="opacity">Opacity <xliff:g id="value" example="75">%1$s</xliff:g>%%</string>
     <!-- Checkbox/button to encrypt output PDF with password -->
     <string name="encrypt_with_password">Encrypt with password</string>
     <!-- Button: open encrypted PDF after entering password. Verb. -->

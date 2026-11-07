@@ -26,7 +26,7 @@
     <string name="green">Zelená</string>
     <string name="blue">Modrá</string>
     <string name="color">Barva</string>
-    <string name="opacity">Průhlednost <xliff:g id="value" example="75">%1$s</xliff:g> %</string>
+    <string name="opacity">Průhlednost <xliff:g id="value" example="75">%1$s</xliff:g> %%</string>
     <string name="encrypt_with_password">Zašifrovat heslem</string>
     <string name="open">Otevřít</string>
     <string name="sticky_note">Poznámka</string>

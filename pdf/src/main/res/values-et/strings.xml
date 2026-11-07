@@ -34,7 +34,7 @@
     <string name="red">Punane</string>
     <string name="green">Roheline</string>
     <string name="blue">Sinine</string>
-    <string name="opacity">Läbipaistmatus <xliff:g id="value" example="75">%1$s</xliff:g>%</string>
+    <string name="opacity">Läbipaistmatus <xliff:g id="value" example="75">%1$s</xliff:g>%%</string>
     <string name="note_text">Märke sisutekst</string>
     <string name="text">tekst</string>
     <string name="tap_to_append_a_pdf_or_image">PDF-faili või pildi lisamiseks klõpsa + nuppu</string>

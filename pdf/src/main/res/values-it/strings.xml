@@ -26,7 +26,7 @@
     <string name="green">Verde</string>
     <string name="blue">Blu</string>
     <string name="color">Colore</string>
-    <string name="opacity">Opacità <xliff:g id="value" example="75">%1$s</xliff:g>%</string>
+    <string name="opacity">Opacità <xliff:g id="value" example="75">%1$s</xliff:g>%%</string>
     <string name="encrypt_with_password">Crittografa con password</string>
     <string name="incorrect_password">Password errata</string>
     <string name="password_required">Password richiesta</string>

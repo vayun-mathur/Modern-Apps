@@ -27,7 +27,7 @@
     <string name="green">Grön</string>
     <string name="blue">Blå</string>
     <string name="color">Färg</string>
-    <string name="opacity">Opacitet <xliff:g id="value" example="75">%1$s</xliff:g>%</string>
+    <string name="opacity">Opacitet <xliff:g id="value" example="75">%1$s</xliff:g>%%</string>
     <string name="encrypt_with_password">Kryptera med lösenord</string>
     <string name="open">Öppna</string>
     <string name="sticky_note">Fästanteckning</string>

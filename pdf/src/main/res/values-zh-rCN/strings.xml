@@ -19,7 +19,7 @@
     <string name="password">密码</string>
     <string name="encrypt_with_password">使用密码加密</string>
     <string name="sign">签名</string>
-    <string name="opacity">不透明度 <xliff:g id="value" example="75">%1$s</xliff:g>%</string>
+    <string name="opacity">不透明度 <xliff:g id="value" example="75">%1$s</xliff:g>%%</string>
     <string name="pdf_cut_and_glue">PDF 剪切与粘贴</string>
     <string name="save_as_u2026">另存为…</string>
     <string name="failed_to_save_pdf">无法保存 PDF</string>

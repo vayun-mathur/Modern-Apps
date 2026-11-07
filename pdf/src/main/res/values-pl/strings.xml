@@ -28,7 +28,7 @@
     <string name="green">Zielony</string>
     <string name="blue">Niebieski</string>
     <string name="color">Kolor</string>
-    <string name="opacity">Przezroczystość: <xliff:g id="value" example="75">%1$s</xliff:g>%</string>
+    <string name="opacity">Przezroczystość: <xliff:g id="value" example="75">%1$s</xliff:g>%%</string>
     <string name="encrypt_with_password">Szyfruj hasłem</string>
     <string name="incorrect_password">Nieprawidłowe hasło</string>
     <string name="password_required">Wymagane hasło</string>
