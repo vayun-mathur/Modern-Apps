@@ -57,7 +57,7 @@ class SosActivity : ComponentActivity() {
 
     @Suppress("UNCHECKED_CAST")
     private val coordinator: SosCoordinator by lazy {
-        val remaining = intent.getLongExtra(EXTRA_REMAINING_MS, -1)
+        val remaining = remainingForIntent(intent, System.currentTimeMillis())
         ViewModelProvider(
             this,
             object : ViewModelProvider.Factory {
@@ -78,14 +78,43 @@ class SosActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // singleInstance reuses this activity for a fresh SOS launch (e.g. the
+        // countdown notification tap); the coordinator was built from the old
+        // intent, so rebuild from the new one instead of counting a stale clock.
+        setIntent(intent)
+        if (!isFinishing) recreate()
+    }
+
     companion object {
         private const val EXTRA_REMAINING_MS = "STATE_MILLIS_LEFT"
+        private const val EXTRA_DEADLINE_MS = "STATE_DEADLINE_WALL_MS"
 
         /** Opens the SOS screen counting down from [remainingMillis] (or the default). */
         fun intent(context: Context, remainingMillis: Long = -1): Intent =
             Intent(context, SosActivity::class.java)
                 .putExtra(EXTRA_REMAINING_MS, remainingMillis)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        /**
+         * Opens the SOS screen counting down to a wall-clock [deadlineMillis].
+         * Used for the countdown notification tap: baking the remaining time at
+         * notification-post time would restart the screen's clock from a stale
+         * value while the real alarm keeps its original deadline, leaving a
+         * cancel window that outlives the actual call.
+         */
+        fun intentForDeadline(context: Context, deadlineMillis: Long): Intent =
+            Intent(context, SosActivity::class.java)
+                .putExtra(EXTRA_DEADLINE_MS, deadlineMillis)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        /** Remaining time an intent asks for; deadline intents age in real time. */
+        internal fun remainingForIntent(intent: Intent, nowMillis: Long): Long {
+            val deadline = intent.getLongExtra(EXTRA_DEADLINE_MS, -1)
+            if (deadline > 0) return (deadline - nowMillis).coerceAtLeast(0)
+            return intent.getLongExtra(EXTRA_REMAINING_MS, -1)
+        }
     }
 }
 

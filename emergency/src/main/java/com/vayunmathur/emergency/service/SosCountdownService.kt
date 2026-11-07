@@ -68,7 +68,7 @@ class SosCountdownService : Service() {
         // the countdown row shows a meaningless time. Same clock as scheduleCall.
         val targetWallClock = System.currentTimeMillis() + remainingMs
         val contentIntent = PendingIntent.getActivity(
-            this, 0, SosActivity.intent(this, remainingMs),
+            this, 0, SosActivity.intentForDeadline(this, targetWallClock),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = SosNotifications.countdown(this, number, targetWallClock, contentIntent)
