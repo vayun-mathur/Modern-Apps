@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.vayunmathur.clock.data.Alarm
 import com.vayunmathur.clock.data.ClockRepository
+import com.vayunmathur.library.log.Log
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDateTime
@@ -61,10 +62,32 @@ object AlarmScheduler {
         val triggerTime = calculateNextTriggerMillis(alarm)
 
         // Use setAlarmClock so the user sees the alarm icon in their status bar
-        alarmManager.setAlarmClock(
-            AlarmManager.AlarmClockInfo(triggerTime, pendingIntent),
-            pendingIntent
-        )
+        setAlarmClockOrFallback(alarmManager, triggerTime, pendingIntent, alarm.id)
+    }
+
+    /**
+     * [AlarmManager.setAlarmClock] throws [SecurityException] once the user
+     * revokes the exact-alarm special access (the first-launch gate cannot
+     * stop them). An uncaught throw here crashed the alarm-edit UI actions
+     * and aborted BootReceiver's whole reschedule loop. An inexact
+     * while-idle alarm loses the status-bar alarm icon but still rings, so
+     * degrade instead of failing.
+     */
+    private fun setAlarmClockOrFallback(
+        alarmManager: AlarmManager,
+        triggerMillis: Long,
+        pendingIntent: PendingIntent,
+        alarmId: Long,
+    ) {
+        try {
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerMillis, pendingIntent),
+                pendingIntent
+            )
+        } catch (e: SecurityException) {
+            Log.error(TAG, "Alarm $alarmId: exact alarm denied; falling back to inexact", e)
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
+        }
     }
 
     fun cancel(context: Context, alarm: Alarm) {
@@ -120,7 +143,7 @@ object AlarmScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerMillis, pendingIntent), pendingIntent)
+        setAlarmClockOrFallback(alarmManager, triggerMillis, pendingIntent, alarm.id)
         repository.upsertAlarm(
             alarm.copy(snoozedUntil = Instant.fromEpochMilliseconds(triggerMillis))
         )
@@ -226,4 +249,5 @@ object AlarmScheduler {
         LocalDateTime(date.plus(1, DateTimeUnit.DAY), alarm.time)
 
     private const val DAYS_IN_WEEK = 7
+    private const val TAG = "AlarmScheduler"
 }
