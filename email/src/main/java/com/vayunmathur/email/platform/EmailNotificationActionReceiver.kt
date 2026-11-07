@@ -50,7 +50,10 @@ class EmailNotificationActionReceiver : BroadcastReceiver() {
                         }
                     }
                     ACTION_DELETE -> {
-                        messageDao.deleteMessageRow(accountEmail, folderName, uid)
+                        // Tombstone like EmailViewModel.deleteMessage: without
+                        // it, a failed/lagging server expunge lets the next
+                        // sync re-insert the message the user just deleted.
+                        messageDao.deleteMessageRow(accountEmail, folderName, uid, tombstone = true)
                         account?.let {
                             manager.deleteMessage(
                                 it.imapServer(),
