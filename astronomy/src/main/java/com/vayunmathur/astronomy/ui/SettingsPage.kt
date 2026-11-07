@@ -107,7 +107,10 @@ fun SettingsScreen(backStack: NavBackStack<Route>, state: SettingsUiState, actio
                 SettingsSwitchRow(title = stringResource(R.string.coordinate_grid_whole_sphere), checked = state.showGrid, onCheckedChange = { actions.setShowGrid(it) })
                 SettingsSwitchRow(title = stringResource(R.string.show_deep_sky), checked = state.showDeepSky, onCheckedChange = { actions.setShowDeepSky(it) })
                 SettingsSwitchRow(title = stringResource(R.string.planets_sun_moon), checked = state.showPlanets, onCheckedChange = { actions.setShowPlanets(it) })
-                SettingsSwitchRow(title = stringResource(R.string.show_below_horizon_all_sky), checked = state.showBelowHorizon, onCheckedChange = { actions.setShowBelowHorizon(it) })
+                // No below-horizon switch here: the sky deliberately
+                // always renders the full sphere (see ViewModel /
+                // projection comments), and the old switch changed
+                // nothing on the sky — it only persisted a flag.
                 SettingsSwitchRow(title = stringResource(R.string.night_mode), checked = state.nightMode, onCheckedChange = { actions.setNightMode(it) })
             }
 
