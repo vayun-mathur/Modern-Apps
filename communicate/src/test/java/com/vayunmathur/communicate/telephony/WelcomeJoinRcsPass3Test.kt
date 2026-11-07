@@ -139,13 +139,15 @@ class WelcomeJoinRcsPass3Test {
             assertEquals(meA, row.conversationId)
             assertTrue(row.messageId.startsWith("in-mls-"))
 
-            // The add-commit delivered as data is absorbed without a row.
+            // The add-commit delivered as data is absorbed without a row:
+            // an absorbed (Receipt-kind) result, not null — null would fall
+            // through to the plaintext path and cache the ciphertext.
             val commitRow = onDeviceSuspend(deviceB) {
                 service.handleE2EEInbound(
                     envelope(meA, RcsE2E.CT_COMMIT, wrapped(RcsE2E.CT_COMMIT, commit), "m2"),
                 )
             }
-            assertNull(commitRow)
+            assertEquals(InboundKind.Receipt, commitRow?.kind)
 
             // B replies in the group; A decrypts through its inbound route.
             val reply = onDeviceSuspend(deviceB) {
@@ -183,14 +185,17 @@ class WelcomeJoinRcsPass3Test {
                     envelope("+15550001002", "text/plain", "just a hello", "t1"),
                 ),
             )
-            // MLS data for a conversation with no group cannot decrypt.
-            assertNull(
+            // MLS data for a conversation with no group cannot decrypt:
+            // absorbed (Receipt kind) so it never reaches the plaintext
+            // cache as base64 gibberish.
+            assertEquals(
+                InboundKind.Receipt,
                 service.handleE2EEInbound(
                     envelope(
                         "+15550009999", RcsE2E.CT_MLS,
                         wrapped(RcsE2E.CT_MLS, byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9)), "m-x",
                     ),
-                ),
+                )?.kind,
             )
         } finally {
             service.onDestroy()

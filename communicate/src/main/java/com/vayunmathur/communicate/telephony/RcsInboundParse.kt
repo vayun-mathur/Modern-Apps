@@ -312,11 +312,16 @@ private suspend fun RcsSyncService.handleMlsData(
         contentType?.contains(RcsE2E.CT_COMMIT, ignoreCase = true) == true ||
         RcsE2E.isMlsPayload(body)
     if (!isMls) return null
-    val payload = decodePayloadBody(body) ?: return null
-    val (plaintext, isApp) = RcsE2E.decryptFor(this, from, payload) ?: return null
-    if (!isApp) return null
+    // From here the stanza is MLS, so every failure must be absorbed (a
+    // non-text result), never null: null makes handleInbound fall through
+    // to the plaintext path, which would cache the base64 ciphertext as a
+    // visible "message", notify for it, and send a delivery report.
+    val payload = decodePayloadBody(body) ?: return receiptResult(from, "mls-undecodable")
+    val (plaintext, isApp) = RcsE2E.decryptFor(this, from, payload)
+        ?: return receiptResult(from, "mls-undecryptable")
+    if (!isApp) return receiptResult(from, "mls-commit")
     val text = plaintext.toString(Charsets.UTF_8)
-    if (text.isBlank()) return null
+    if (text.isBlank()) return receiptResult(from, "mls-blank")
     val callId = text.hashCode().toString()
     return InboundRcs(
         conversationId = from,

@@ -143,8 +143,18 @@ suspend fun CommunicateRepository.sendRcsMessage(
     }
     runCatching {
         // E2EE first: when the conversation has an MLS group, encrypt and send
-        // the framed payload as an MLS content message.
-        if (sendRcsEncrypted(context, recipient, body)) return@withContext RcsSendResult.Sent
+        // the framed payload as an MLS content message. A conversation with a
+        // group must never fall through to the plaintext paths below when
+        // encryption or the encrypted send fails: that would silently
+        // downgrade an encrypted chat to cleartext SIP (and, via the caller's
+        // SMS fallback, to cleartext SMS). Fail instead so the user can retry.
+        if (hasRcsE2eGroup(context, recipient)) {
+            return@withContext if (sendRcsEncrypted(context, recipient, body)) {
+                RcsSendResult.Sent
+            } else {
+                RcsSendResult.Failed
+            }
+        }
         // Prefer an established session (MSRP) when one exists; else pager-mode CPIM.
         if (sendRcsViaSession(context, recipient, body, attachments)) {
             return@withContext RcsSendResult.Sent
@@ -592,10 +602,19 @@ internal suspend fun CommunicateRepository.applyRcsDeliveryReport(
     }
 }
 
+/** True when [recipient]'s conversation has an MLS E2EE group. */
+internal suspend fun CommunicateRepository.hasRcsE2eGroup(
+    context: Context,
+    recipient: String,
+): Boolean =
+    com.vayunmathur.communicate.data.rcs.RcsFeature.enabled &&
+        com.vayunmathur.communicate.data.rcs.e2e.RcsE2E.groupIdFor(context, recipient) != null
+
 /**
  * Encrypt [body] for [recipient]'s E2EE group when one exists. Returns the
  * framed MLS payload, or null when the conversation is plaintext (no group)
- * or encryption failed (caller falls through to plaintext paths).
+ * or encryption failed. Callers that know a group exists (see
+ * [hasRcsE2eGroup]) must treat null as a failure, never as plaintext.
  */
 internal suspend fun CommunicateRepository.encryptForE2E(
     context: Context,
