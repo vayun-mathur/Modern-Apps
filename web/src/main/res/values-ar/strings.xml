@@ -36,8 +36,8 @@
     <string name="your_choice_is_saved_per_site_change_it">يتم حفظ اختيارك لكل موقع. قم بتغييره في الإعدادات ← بيانات الموقع.</string>
     <string name="allow">سماح</string>
     <string name="block">حظر</string>
-    <string name="allow_location">السماح بالموقع؟</string>
-    <string name="uses_system_location_services_private_ta">يستخدم خدمات تحديد الموقع في النظام. علامات التبويب الخاصة لا تمنح الوصول للموقع أبدًا.</string>
+    <string name="allow_location">السماح بالموقع الجغرافي؟</string>
+    <string name="uses_system_location_services_private_ta">يستخدم خدمات تحديد الموقع في النظام. علامات التبويب الخاصة لا تمنح الوصول للموقع الجغرافي أبدًا.</string>
     <string name="choose_files">اختر ملفات</string>
     <string name="select_files_to_upload">حدد الملفات لتحميلها.</string>
     <string name="pick_files">اختر ملفات</string>
@@ -76,7 +76,7 @@
     </plurals>
     <string name="engine">المحرك: %1$s</string>
     <string name="allow_to_access">السماح لـ %1$s بالوصول؟</string>
-    <string name="wants_to_know_your_location">%1$s يريد معرفة موقعك.</string>
+    <string name="wants_to_know_your_location">%1$s يريد معرفة موقعك الجغرافي.</string>
     <string name="accepted">تم القبول: %1$s</string>
     <string name="open_a_site_and_tap_menu_install_app_add">افتح موقعًا واضغط على القائمة ← تثبيت التطبيق / إضافة إلى الشاشة الرئيسية. ينشئ اختصارًا مثبتًا يُشغّل PwaActivity بشكل مستقل (بدون متصفح chrome). يستخدم الرمز أفضل رمز 192x192 أو apple-touch-icon؛ ويعود إلى مربع الحرف.</string>
     <string name="bookmarks_inside_will_also_be_deleted">الإشارات المرجعية داخل \"%1$s\" سيتم أيضًا حذفها.</string>
