@@ -273,9 +273,11 @@ private fun FoodDeliveryApp(
                 items = cart,
                 onBack = { backStack.pop() },
                 onOrderPlaced = {
+                    backStack.reset(Route.Main(initialTab = 3))
+                },
+                onOrderCompleted = {
                     cart.clear()
                     CartStore.clear(context)
-                    backStack.reset(Route.Main(initialTab = 3))
                 },
             )
         }
