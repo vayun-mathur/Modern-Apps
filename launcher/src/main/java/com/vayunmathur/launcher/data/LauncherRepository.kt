@@ -303,6 +303,7 @@ class LauncherRepository private constructor(context: Context) :
         installed: Set<PackageKey>,
         unavailable: Set<PackageKey>,
         boundWidgetIds: Set<Int>,
+        unavailableProfiles: Set<Long> = emptySet(),
     ): List<Int> = db.withWriteTransaction {
         val all = dao.getAll()
         val actions = ReconcileUseCase.reconcile(
@@ -310,6 +311,7 @@ class LauncherRepository private constructor(context: Context) :
             installed = installed,
             unavailable = unavailable,
             boundWidgetIds = boundWidgetIds,
+            unavailableProfiles = unavailableProfiles,
         )
         val byId = all.associateBy { it.id }
         val orphanedWidgetIds = mutableListOf<Int>()

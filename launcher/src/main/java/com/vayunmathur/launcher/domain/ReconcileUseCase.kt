@@ -47,6 +47,7 @@ object ReconcileUseCase {
         installed: Set<PackageKey>,
         unavailable: Set<PackageKey>,
         boundWidgetIds: Set<Int>,
+        unavailableProfiles: Set<Long> = emptySet(),
     ): List<Action> = items.mapNotNull { item ->
         when (item.type) {
             // A folder's existence depends on its children, which FolderRules owns.
@@ -63,6 +64,14 @@ object ReconcileUseCase {
                 val key = item.key
                 when {
                     key == null -> Action.Delete(item.id)
+                    // A profile that is off (quiet mode) at cold start has sent
+                    // no onPackagesUnavailable callback yet, and its packages
+                    // cannot be enumerated to fill [unavailable]. The profile
+                    // itself is the only reliable signal, so hide by profile:
+                    // deleting here wipes every work-profile icon whenever
+                    // the launcher restarts while the profile is paused.
+                    item.profileSerial in unavailableProfiles ->
+                        Action.SetHidden(item.id, true).takeUnless { item.hidden }
                     key in unavailable -> Action.SetHidden(item.id, true).takeUnless { item.hidden }
                     key in installed -> Action.SetHidden(item.id, false).takeIf { item.hidden }
                     else -> Action.Delete(item.id)
