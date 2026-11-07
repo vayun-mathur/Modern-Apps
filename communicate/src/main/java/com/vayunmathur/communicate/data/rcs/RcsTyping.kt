@@ -161,6 +161,9 @@ internal suspend fun CommunicateRepository.cacheInboundRcsWithImdn(
     runCatching {
         val db = RcsDatabase.getDatabase(context)
         val now = System.currentTimeMillis()
+        // Same redelivery guard as cacheInboundRcs: only a genuinely new
+        // messageId may bump the unread count.
+        val isNew = db.cachedMessageDao().get(messageId) == null
         db.cachedMessageDao().upsert(
             RcsCachedMessage(
                 messageId = messageId,
@@ -178,7 +181,7 @@ internal suspend fun CommunicateRepository.cacheInboundRcsWithImdn(
         db.conversationDao().upsert(
             (existing ?: RcsConversation(remoteId = conversationId)).copy(
                 lastMessageTimestamp = now,
-                unreadCount = (existing?.unreadCount ?: 0) + 1,
+                unreadCount = (existing?.unreadCount ?: 0) + if (isNew) 1 else 0,
             ),
         )
     }

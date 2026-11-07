@@ -512,6 +512,29 @@ class RcsSlice3Pass2TransportTest {
         db().conversationDao().deleteAll()
     }
 
+    @Test
+    fun inboundCacheRedeliveryDoesNotDoubleCountUnread() = runTest {
+        db().cachedMessageDao().deleteAll()
+        db().conversationDao().deleteAll()
+        // The same SIP messageId delivered twice (retransmit / offline
+        // replay) must stay one row with an unread count of one.
+        repeat(2) {
+            with(CommunicateRepository) {
+                cacheInboundRcsWithImdn(
+                    context = context,
+                    conversationId = "conv-dup",
+                    body = "hello",
+                    messageId = "dup-1",
+                    imdnId = "imdn-dup-1",
+                )
+            }
+        }
+        assertEquals(1, db().cachedMessageDao().getForConversation("conv-dup").size)
+        assertEquals(1, db().conversationDao().getConversation("conv-dup")?.unreadCount)
+        db().cachedMessageDao().deleteAll()
+        db().conversationDao().deleteAll()
+    }
+
     // --- File transfer fail-closed ---
 
     @Test
