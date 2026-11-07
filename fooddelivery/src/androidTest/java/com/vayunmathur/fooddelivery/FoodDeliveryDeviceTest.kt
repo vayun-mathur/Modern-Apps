@@ -17,6 +17,9 @@ import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -43,6 +46,23 @@ class FoodDeliveryDeviceTest {
                 else -> SimpleResponse(404, "", "{}", emptyMap(), url)
             }
         }
+    }
+
+    @Test fun trackingExtraOpensTrackingScreen() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val device = UiDevice.getInstance(instrumentation)
+        val context = instrumentation.targetContext
+        installFakeTransport()
+        AppInit.start(context)
+        val intent = Intent(context, MainActivity::class.java)
+            .putExtra(com.vayunmathur.fooddelivery.notifications.OrderLiveUpdate.EXTRA_TRACK_ORDER_ID, 9)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        assertNotNull(
+            "tracking screen never showed the order stage",
+            device.wait(Until.findObject(By.text("Delivered")), 20_000),
+        )
+        assertEquals(context.packageName, device.currentPackageName)
     }
 
     @Test fun orderLookupIntentMatchesNearbyRestaurant() {
