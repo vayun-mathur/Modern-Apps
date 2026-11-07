@@ -390,8 +390,11 @@ object RcsMsrp {
         } else {
             readToEndMarker(input, txid)
         }
-        // Consume the end-marker line.
-        runCatching { input.readLine() }
+        // Consume the end-marker line — but only on the Content-Length path,
+        // where it is still queued. readToEndMarker already consumed it, so
+        // consuming again there would eat the next frame's start line and
+        // park delivery until another frame arrives.
+        if (contentLength >= 0) runCatching { input.readLine() }
         conn.lastActivityMs = System.currentTimeMillis()
         // Keepalive empty SEND (§2.5): ack quietly, no delivery.
         val range = headers["byte-range"]
@@ -499,6 +502,9 @@ object RcsMsrp {
                 if (line == null || line.startsWith("-------$txid")) break
                 sb.append(line).append("\r\n")
             }
+            // The CRLF immediately before the end-marker is framing, not
+            // body: drop exactly one so delivered bytes match what was sent.
+            if (sb.endsWith("\r\n")) sb.setLength(sb.length - 2)
             sb.toString().toByteArray(Charsets.UTF_8)
         }.getOrNull()
     }
