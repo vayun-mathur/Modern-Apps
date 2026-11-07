@@ -27,6 +27,11 @@ fun EditorViewModel.closeFolder() {
     rootDir = null
     rootName = null
     nodes.clear()
+    // The shell is scoped to the folder it was started in; don't leave it running (and
+    // accepting commands) against a project that is no longer open.
+    terminal?.close()
+    terminal = null
+    terminalRunning = false
     viewModelScope.launch { prefs.clearFolderPath() }
 }
 
