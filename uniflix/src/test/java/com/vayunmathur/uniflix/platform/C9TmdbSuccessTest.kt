@@ -20,6 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -141,6 +142,39 @@ class C9TmdbSuccessTest {
         assertEquals(2, vm.state.episodes.size)
         vm.selectSeason(MediaType.TV, 20, 1)
         assertTrue(await { vm.state.selectedSeason == 1 && vm.state.episodes.size == 2 })
+    }
+
+    @Test fun detailViewModel_notesRoundTrip() {
+        val vm = DetailViewModel(app)
+        vm.load(MediaType.MOVIE, 10)
+        assertTrue(await { vm.state.detail?.title == "Detail Film" }, "state=${vm.state}")
+        vm.addNote(MediaType.MOVIE, 10, "Great pacing", 5)
+        assertTrue(await {
+            kotlinx.coroutines.runBlocking {
+                vm.notesFor(10, MediaType.MOVIE).first().any { it.body == "Great pacing" }
+            }
+        }, "note not stored")
+        val note = kotlinx.coroutines.runBlocking {
+            vm.notesFor(10, MediaType.MOVIE).first().single()
+        }
+        assertEquals(5, note.score)
+        vm.deleteNote(note)
+        assertTrue(await {
+            kotlinx.coroutines.runBlocking {
+                vm.notesFor(10, MediaType.MOVIE).first().isEmpty()
+            }
+        }, "note not deleted")
+        assertEquals(0L, kotlinx.coroutines.runBlocking { vm.startPosition(MediaType.MOVIE, 10, 0, 0) })
+        vm.savePosition(MediaType.MOVIE, 10, "Detail Film", null, 0, 0, 42_000L, 120_000L)
+        assertTrue(await {
+            kotlinx.coroutines.runBlocking { vm.startPosition(MediaType.MOVIE, 10, 0, 0) } == 42_000L
+        }, "position not saved")
+        vm.addNote(MediaType.MOVIE, 10, "   ", 1)
+        assertTrue(await {
+            kotlinx.coroutines.runBlocking {
+                vm.notesFor(10, MediaType.MOVIE).first().isEmpty()
+            }
+        }, "blank note must be ignored")
     }
 
     @Test fun detailViewModel_noProviders_missing() {
