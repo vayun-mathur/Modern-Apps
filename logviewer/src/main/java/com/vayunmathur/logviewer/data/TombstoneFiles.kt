@@ -27,8 +27,8 @@ internal object TombstoneFiles {
 
     private const val DIRECTORY = "/data/tombstones"
 
-    fun findByHeader(header: ByteArray): TimestampedFile? {
-        val tombstones = File(DIRECTORY).listFiles() ?: return null
+    fun findByHeader(header: ByteArray, directory: File = File(DIRECTORY)): TimestampedFile? {
+        val tombstones = directory.listFiles() ?: return null
 
         val candidates = tombstones.mapNotNull { file ->
             val name = file.name

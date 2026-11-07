@@ -40,6 +40,14 @@ internal object LogcatReader {
         val filterRegex: String,
     )
 
+    /** Runs [command] and returns its stdout lines. Injectable for tests; production execs `logcat`. */
+    internal var executeCommand: (List<String>) -> List<String> = { command ->
+        val process = ProcessBuilder(command).start()
+        val lines = process.inputStream.bufferedReader(Charsets.UTF_8).useLines { it.toList() }
+        Log.debug(TAG, "logcat return code: " + process.waitFor())
+        lines
+    }
+
     /**
      * [LogLoadResult.Unavailable] when the log must not or cannot be shown.
      *
@@ -83,11 +91,7 @@ internal object LogcatReader {
         // Parsed as it streams in, so the raw dump is never held whole alongside its lines.
         val body = ArrayList<String>(INITIAL_LINE_CAPACITY)
         try {
-            val process = ProcessBuilder(command).start()
-            process.inputStream.bufferedReader(Charsets.UTF_8).useLines { lines ->
-                for (line in lines) body += stripUtcOffset(line)
-            }
-            Log.debug(TAG, "logcat return code: " + process.waitFor())
+            for (line in executeCommand(command)) body += stripUtcOffset(line)
         } catch (e: IOException) {
             Log.error(TAG, "logcat failed", e)
             return LogLoadResult.Unavailable()
