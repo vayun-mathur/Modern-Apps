@@ -36,7 +36,12 @@ fn grid_scene() -> (Vec<NPt>, Vec<NPt>, Vector3<f64>) {
     let mut bb = Vec::new();
     for ix in 0..5 {
         for iy in 0..4 {
-            let depth = 3.0 + (ix + iy) as f64 * 0.25;
+            // NOT an affine function of (ix, iy): an earlier version's
+            // `3.0 + (ix + iy) * 0.25` put all twenty points on one plane,
+            // where the eight-point problem is degenerate (any of the
+            // plane's homography-compatible E matrices fits, and Sampson
+            // residuals against the true motion are not small).
+            let depth = 3.0 + ((ix * 3 + iy * 7) % 4) as f64 * 0.45 + (ix * iy) as f64 * 0.05;
             let p = Vector3::new(ix as f64 * 0.5 - 1.0, iy as f64 * 0.5 - 0.75, depth);
             aa.push(project(&a, p));
             bb.push(project(&b, p));
@@ -158,3 +163,4 @@ fn blank_frames_keep_a_new_session_initialising_and_unmeasurable() {
     assert!(!s.has_plane());
     assert!(s.ray_to_world(160.0, 120.0).is_none());
 }
+
