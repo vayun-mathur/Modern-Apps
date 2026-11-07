@@ -18,13 +18,20 @@ object Identities {
      */
     suspend fun ensureMigrated(context: Context) {
         val app = context.applicationContext
-        val dao = MailRepository.get(app).identityDao()
+        ensureMigrated(
+            dao = MailRepository.get(app).identityDao(),
+            settings = MailConfig(app).settings.first(),
+            secretArmor = runCatching { KeyManager(app).getSecretArmor() }.getOrNull(),
+        )
+    }
+
+    /** Store-injected core of [ensureMigrated] (same idempotent backfill). */
+    internal suspend fun ensureMigrated(dao: IdentityDao, settings: MailSettings, secretArmor: String?) {
         if (dao.count() > 0) return
         migrateLock.withLock {
             if (dao.count() > 0) return
-            val settings = MailConfig(app).settings.first()
             if (!settings.isConfigured) return
-            val secret = runCatching { KeyManager(app).getSecretArmor() }.getOrNull() ?: return
+            val secret = secretArmor ?: return
             dao.upsert(
                 MailIdentity(
                     address = settings.address,
@@ -46,9 +53,12 @@ object Identities {
     /** The identity a message was delivered to, falling back to the primary. */
     suspend fun forDelivery(context: Context, deliveredTo: String?): MailIdentity? {
         ensureMigrated(context)
-        val dao = MailRepository.get(context.applicationContext).identityDao()
-        return deliveredTo?.let { dao.get(it.lowercase()) } ?: dao.primary()
+        return forDelivery(MailRepository.get(context.applicationContext).identityDao(), deliveredTo)
     }
+
+    /** Store-injected [forDelivery] without the migration step (callers that already migrated). */
+    internal suspend fun forDelivery(dao: IdentityDao, deliveredTo: String?): MailIdentity? =
+        deliveredTo?.let { dao.get(it.lowercase()) } ?: dao.primary()
 
     /** Signs a relay SUB challenge payload with [address]'s key; null when unavailable. */
     suspend fun sign(context: Context, address: String, payload: ByteArray): ByteArray? {
