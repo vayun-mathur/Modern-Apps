@@ -71,7 +71,9 @@ internal fun evaluateForWidget(input: String, ans: Double): WidgetResult? {
     } catch (ignored: ExpressionError) {
         return null
     }
-    if (quantity.value.isNaN()) return null
+    // Non-finite results have no re-parsable token form; storing "∞" as
+    // the widget input would strand it (the app's evaluate() does the same).
+    if (!quantity.value.isFinite()) return null
     val unit = if (quantity.isDimensionless || quantity.instant) {
         null
     } else {
