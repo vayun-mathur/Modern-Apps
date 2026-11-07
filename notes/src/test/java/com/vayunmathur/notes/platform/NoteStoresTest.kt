@@ -154,6 +154,13 @@ class NoteStoresTest {
         assertTrue(md.contains("M 1.23 2"), md)
     }
 
+    @Test fun backupFilesCoversImagesDir() {
+        writeImageFile("backed-up.jpg")
+        val files = NoteImageStore.backupFiles(context)
+        assertEquals(listOf(imagesDir.absolutePath), files.map { it.absolutePath })
+        assertTrue(File(files.single(), "backed-up.jpg").exists())
+    }
+
     @Test fun pruneSkipsNonLegacyKeysAndKeepsFiles() {
         writeImageFile("keepme.jpg")
         NoteImageStore.pruneMigratedSources(context, mapOf("keepme.jpg" to "hashed.jpg"))

@@ -26,6 +26,14 @@ object NoteImageStore {
 
     fun fileFor(context: Context, fileName: String): File = File(dir(context), fileName)
 
+    /**
+     * Files that must travel with the notes database in a backup: the whole
+     * images directory as a single entry, so restore recreates it in place.
+     * Without this, a restored database references image files that were
+     * never backed up and every embedded image renders blank.
+     */
+    fun backupFiles(context: Context): List<File> = listOf(dir(context))
+
     /** Copies [uri] into the images dir and returns the new file name, or null on failure. */
     // Broad catch is deliberate: any content-provider failure mode means "no file"
     // per this function's contract, and the failure is logged below.
