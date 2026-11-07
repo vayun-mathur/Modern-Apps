@@ -187,6 +187,29 @@ object VCard {
     private fun esc(s: String): String =
         s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
-    private fun unescape(s: String): String =
-        s.replace("\\n", "\n").replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\")
+    /**
+     * Single-pass unescape. Sequential String.replace calls corrupt text
+     * that itself contains a backslash: an escaped backslash followed by
+     * 'n' ("\\n" on the wire, a literal backslash + n in the value) would
+     * first become backslash + newline.
+     */
+    private fun unescape(s: String): String {
+        val out = StringBuilder(s.length)
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            if (c == '\\' && i + 1 < s.length) {
+                when (s[i + 1]) {
+                    'n', 'N' -> out.append('\n')
+                    ',', ';', '\\' -> out.append(s[i + 1])
+                    else -> out.append(s[i + 1])
+                }
+                i += 2
+            } else {
+                out.append(c)
+                i++
+            }
+        }
+        return out.toString()
+    }
 }
