@@ -206,7 +206,14 @@ class FindFamilyViewModel(
     }
 
     fun deleteWaypoint(waypoint: Waypoint) {
-        viewModelScope.launch(Dispatchers.IO) { repository.deleteWaypoint(waypoint) }
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                repository.noShowAlertStore.getAll()
+                    .filter { it.waypointId == waypoint.id }
+                    .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
+            }
+            repository.deleteWaypoint(waypoint)
+        }
     }
 
     override fun deleteTemporaryLink(link: TemporaryLink) {

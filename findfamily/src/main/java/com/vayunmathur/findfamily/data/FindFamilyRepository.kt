@@ -122,7 +122,20 @@ class FindFamilyRepository internal constructor(
     suspend fun getAllWaypoints(): List<Waypoint> = waypointDao.getAll()
     suspend fun getWaypoint(id: Long): Waypoint = waypointDao.get(id)
     suspend fun upsertWaypoint(waypoint: Waypoint): Long = waypointDao.upsert(waypoint)
-    suspend fun deleteWaypoint(waypoint: Waypoint): Int = waypointDao.delete(waypoint)
+
+    /**
+     * Delete a saved place and its dangling references: arrival auto-toggles
+     * and current-place pointers naming it, plus no-show watches expecting
+     * arrivals there. Without this they pointed at a place that no longer
+     * exists - toggles silently dead, watches firing for a deleted place.
+     */
+    suspend fun deleteWaypoint(waypoint: Waypoint): Int {
+        val deleted = waypointDao.delete(waypoint)
+        userDao.clearArrivalTogglesForWaypoint(waypoint.id)
+        userDao.clearLastWaypointForWaypoint(waypoint.id)
+        noShowAlertDao.deleteByWaypointId(waypoint.id)
+        return deleted
+    }
 
     // ------------------------------------------------------------------
     // LocationValue reads / writes
