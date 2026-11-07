@@ -10,6 +10,7 @@ import com.vayunmathur.e2ee.E2eeKeyStore
 import com.vayunmathur.e2ee.Pqc
 import com.vayunmathur.e2ee.PqcIdentity
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.library.network.SimpleResponse
 import com.vayunmathur.library.network.WebSocketClient
 import com.vayunmathur.library.network.WsSession
 import com.vayunmathur.library.network.webSocket
@@ -244,14 +245,27 @@ object OfficeSync {
         return r.status in HTTP_SUCCESS
     }
 
+    /** HTTP seam: null (the default) uses the real [NetworkClient]; unit tests install a fake. */
+    internal fun interface HttpTransport {
+        suspend fun post(url: String, bodyJson: String): SimpleResponse?
+    }
+
+    internal var httpTransport: HttpTransport? = null
+
     private suspend inline fun <reified T> raw(path: String, body: T) =
         try {
-            NetworkClient.performRequest(
-                url = "$URL$path",
-                method = "POST",
-                headers = mapOf("Content-Type" to "application/json"),
-                body = json.encodeToString(body),
-            )
+            val bodyJson = json.encodeToString(body)
+            val seam = httpTransport
+            if (seam != null) {
+                seam.post("$URL$path", bodyJson)
+            } else {
+                NetworkClient.performRequest(
+                    url = "$URL$path",
+                    method = "POST",
+                    headers = mapOf("Content-Type" to "application/json"),
+                    body = bodyJson,
+                )
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (expected: Exception) {
