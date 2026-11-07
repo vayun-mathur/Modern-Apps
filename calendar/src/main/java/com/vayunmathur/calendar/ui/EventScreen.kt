@@ -46,8 +46,10 @@ import com.vayunmathur.library.ui.IconSchedule
 import com.vayunmathur.library.ui.rememberMessenger
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.library.util.sharedText
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.minus
 import com.vayunmathur.library.ui.DateString
 import com.vayunmathur.library.ui.appBarScrollBehavior
 
@@ -226,10 +228,15 @@ fun EventScreen(state: EventUiState, actions: EventActions) {
 
 fun dateRangeString(context: Context, startDate: LocalDate, endDate: LocalDate, startTime: LocalTime, endTime: LocalTime, allDay: Boolean, includeDate: Boolean = true): String {
     return if(allDay) {
-        if(startDate.toEpochDays() + 1 == endDate.toEpochDays()) {
+        // Callers pass the stored exclusive end (midnight after the last
+        // covered day), so the last day a user sees is the day before it.
+        // Showing the exclusive end itself read one day too long for every
+        // multi-day all-day event (detail screen, agenda, widget, import).
+        val lastDate = if (endDate > startDate) endDate.minus(DatePeriod(days = 1)) else startDate
+        if (lastDate == startDate) {
             if (includeDate) DateString.dateWeekday(startDate) else context.getString(R.string.all_day)
         } else {
-            context.getString(R.string.date_range_format, DateString.dateWeekday(startDate), DateString.dateWeekday(endDate))
+            context.getString(R.string.date_range_format, DateString.dateWeekday(startDate), DateString.dateWeekday(lastDate))
         }
     } else {
         val is24 = DateFormat.is24HourFormat(context)

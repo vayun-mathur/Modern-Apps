@@ -281,6 +281,16 @@ class CalendarComposeScreensTest {
         assertTrue(single.isNotBlank())
         val multi = dateRangeString(context, D.TODAY, D.TODAY.plus(kotlinx.datetime.DatePeriod(days = 3)), kotlinx.datetime.LocalTime(0, 0), kotlinx.datetime.LocalTime(0, 0), allDay = true)
         assertTrue(multi.contains("-") || multi.isNotBlank())
+        // The end passed in is exclusive (midnight after the last day), so a
+        // 3-day all-day event must name its third day, never the fourth.
+        assertTrue(
+            multi.contains(com.vayunmathur.library.ui.DateString.dateWeekday(D.TODAY.plus(kotlinx.datetime.DatePeriod(days = 2)))),
+            "multi-day all-day range should end on the last covered day: $multi",
+        )
+        assertTrue(
+            !multi.contains(com.vayunmathur.library.ui.DateString.dateWeekday(D.TODAY.plus(kotlinx.datetime.DatePeriod(days = 3)))),
+            "multi-day all-day range must not show the exclusive end day: $multi",
+        )
         val timedSame = dateRangeString(context, D.TODAY, D.TODAY, kotlinx.datetime.LocalTime(9, 0), kotlinx.datetime.LocalTime(10, 0), allDay = false)
         assertTrue(timedSame.isNotBlank())
         val timedNoDate = dateRangeString(context, D.TODAY, D.TODAY, kotlinx.datetime.LocalTime(9, 0), kotlinx.datetime.LocalTime(10, 0), allDay = false, includeDate = false)
