@@ -413,9 +413,11 @@ mod encrypt_tests {
         let mut doc0 = Document::load_mem(&enc).unwrap();
         assert!(doc0.trailer.get(b"Encrypt").is_ok(), "should be encrypted");
         assert_ne!(crate::decrypt_in_place(&mut doc0, b""), crate::DecryptStatus::Ok);
-        // Correct password decrypts and recovers the /Title string.
-        let mut doc = Document::load_mem(&enc).unwrap();
-        assert_eq!(crate::decrypt_in_place(&mut doc, pw), crate::DecryptStatus::Ok);
+        // Correct password decrypts and recovers the /Title string. Goes
+        // through the production open path: plain load_mem cannot carry a
+        // user password (lopdf drops every object when its empty-password
+        // authentication fails), so decrypt_in_place alone sees a husk.
+        let doc = crate::registry::open_decrypted(&enc, pw).expect("open with correct password");
         let info_ref = doc.trailer.get(b"Info").unwrap().as_reference().unwrap();
         let info = doc.get_dictionary(info_ref).unwrap();
         let got = info.get(b"Title").unwrap().as_str().unwrap();
@@ -437,3 +439,5 @@ mod encrypt_tests {
         roundtrip(crate::EncryptAlgo::Aes256);
     }
 }
+
+
