@@ -159,9 +159,13 @@ class WidgetBindFlow(
 
     /** Default span for a provider, in cells, clamped by the caller to the current grid. */
     fun spanFor(provider: AppWidgetProviderInfo, cellWidthDp: Int, cellHeightDp: Int): Pair<Int, Int> {
-        val density = context.resources.displayMetrics.density
-        val widthDp = provider.minWidth.coerceAtLeast(1) / density
-        val heightDp = provider.minHeight.coerceAtLeast(1) / density
+        // AppWidgetProviderInfo.minWidth/minHeight are already in dp, not
+        // px. Dividing by density shrank every widget on a high-density
+        // screen (at density 3 a 210dp-wide widget got one 72dp cell
+        // instead of three), so widgets were placed far smaller than
+        // the size they declare they need.
+        val widthDp = provider.minWidth.coerceAtLeast(1).toFloat()
+        val heightDp = provider.minHeight.coerceAtLeast(1).toFloat()
         val spanX = ceil(widthDp / cellWidthDp).toInt().coerceAtLeast(1)
         val spanY = ceil(heightDp / cellHeightDp).toInt().coerceAtLeast(1)
         return spanX to spanY
