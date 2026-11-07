@@ -88,6 +88,50 @@ class C9Slice2PagesTest {
         rule.onAllNodesWithText("Downloads", substring = true)[0].assertExists()
     }
 
+    @Test fun historyPage_withSeededVideo_showsTitle() {
+        val db = sharedDb(context)
+        kotlinx.coroutines.runBlocking {
+            db.historyVideoDao().upsert(
+                com.vayunmathur.youpipe.data.HistoryVideo.fromVideoData(
+                    VideoInfo(
+                        name = "Seeded History Video", videoID = 777L, duration = 120, views = 5000,
+                        uploadDate = kotlin.time.Instant.fromEpochSeconds(1_700_000_000L),
+                        thumbnailURL = "", author = "Seed Author",
+                    ),
+                    progress = 30_000,
+                )
+            )
+        }
+        rule.setContent { HistoryPage(stack(), vm) }
+        rule.waitUntil(5000) {
+            rule.onAllNodesWithText("Seeded History Video").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Seeded History Video").assertExists()
+    }
+
+    @Test fun downloadedVideos_withSeededDownload_showsTitle() {
+        val db = sharedDb(context)
+        kotlinx.coroutines.runBlocking {
+            db.downloadedVideoDao().upsert(
+                com.vayunmathur.youpipe.data.DownloadedVideo(
+                    id = 888L,
+                    videoItem = VideoInfo(
+                        name = "Seeded Download", videoID = 888L, duration = 60, views = 10,
+                        uploadDate = kotlin.time.Instant.fromEpochSeconds(1_700_000_000L),
+                        thumbnailURL = "", author = "Seed Author",
+                    ),
+                    filePath = "/tmp/888.mp4",
+                    timestamp = kotlin.time.Instant.fromEpochSeconds(1_700_000_000L),
+                )
+            )
+        }
+        rule.setContent { DownloadedVideosPage(stack(), vm) }
+        rule.waitUntil(5000) {
+            rule.onAllNodesWithText("Seeded Download").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Seeded Download").assertExists()
+    }
+
     @Test fun channelPage_rendersLoadingOrEmpty() {
         rule.setContent { ChannelPage(stack(), vm, "UC1234567890") }
         // loadChannel hits the extractor/network off-device; the page must
