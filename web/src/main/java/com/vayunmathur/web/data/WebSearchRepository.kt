@@ -17,6 +17,13 @@ object WebSearchRepository {
     const val BASE_URL = "https://api.maproj.org/api/search"
 
     /**
+     * Test seam: when set, [search] delegates here instead of the network.
+     * Production never sets it; unit tests use it to drive the search pages
+     * deterministically (no live api.maproj.org in the test environment).
+     */
+    internal var searchOverride: (suspend (query: String, kind: WebSearchKind, safeSearch: Boolean, page: Int) -> WebSearchResponse)? = null
+
+    /**
      * Runs one search. `safeSearch=true` (parental supervision switch) maps to
      * the server's strict mode; otherwise moderate. Throws IOException on
      * transport failure — callers show the error state with a fallback button.
@@ -29,6 +36,7 @@ object WebSearchRepository {
         safeSearch: Boolean = false,
         page: Int = 1,
     ): WebSearchResponse {
+        searchOverride?.let { return it(query, kind, safeSearch, page) }
         val url = Urls.appendQuery(
             BASE_URL,
             mapOf(
