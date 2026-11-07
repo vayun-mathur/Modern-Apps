@@ -33,6 +33,8 @@ dependencies {
     implementation(libs.androidx.car.app)
     implementation(libs.androidx.car.app.projected)
 
+    testImplementation(libs.androidx.car.app.testing)
+
     implementation(project(":library:image"))
 
     // Casting. `:sdk:cast` owns no sockets and needs no network permission - which is the point,
