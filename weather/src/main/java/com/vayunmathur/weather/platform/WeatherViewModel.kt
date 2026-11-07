@@ -17,6 +17,7 @@ import com.vayunmathur.weather.widget.glance.WeatherGlanceWidget
 import com.vayunmathur.weather.network.AirQualityResponse
 import com.vayunmathur.weather.network.ForecastResponse
 import com.vayunmathur.weather.network.WeatherApi
+import com.vayunmathur.weather.network.WxBundle
 import com.vayunmathur.weather.network.toAirQuality
 import com.vayunmathur.weather.network.toForecastResponse
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,13 @@ data class ForecastUiState(
 class WeatherViewModel(
     application: Application,
     private val repository: WeatherRepository,
+    // Test seam: the bundle fetch, so unit tests can force the offline path
+    // instead of depending on the ambient network being unreachable (on a
+    // box with internet the old tests' "network failure" never happened and
+    // live data flowed into assertions). Production uses WeatherApi.
+    private val bundleFetcher: suspend (Double, Double) -> WxBundle = { lat, lon ->
+        WeatherApi.bundle(lat, lon)
+    },
 ) : AndroidViewModel(application), WeatherActions {
 
     val savedLocations: StateFlow<List<SavedLocation>?> = repository.locations
@@ -145,7 +153,7 @@ class WeatherViewModel(
             current + (location.id to refreshing)
         }
         // One bundle call carries forecast + AQ (same object, zero extra I/O).
-        val bundle = runCatching { WeatherApi.bundle(target.latitude, target.longitude) }
+        val bundle = runCatching { bundleFetcher(target.latitude, target.longitude) }
         val fetched = FetchResult(
             forecast = bundle.map { it.toForecastResponse() },
             air = bundle.map { it.toAirQuality() }.getOrNull(),

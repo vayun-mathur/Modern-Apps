@@ -17,6 +17,13 @@ object WeatherApi {
 
     private const val BUNDLE_BASE = "https://api.maproj.org/wx/v1"
 
+    // Test seam: point the bundle API at an unroutable address so the
+    // failure-path tests are hermetic on boxes that have internet.
+    @androidx.annotation.VisibleForTesting
+    internal var bundleBaseOverride: String? = null
+
+    private val bundleBase: String get() = bundleBaseOverride ?: BUNDLE_BASE
+
     /**
      * Fetch the full bundle (current + hourly + daily + 15-min + AQ) for a
      * single coordinate. Single HTTP call. Throws on network / parse failure
@@ -24,7 +31,7 @@ object WeatherApi {
      */
     suspend fun bundle(latitude: Double, longitude: Double, fields: String = "all"): WxBundle {
         val url = buildString {
-            append(BUNDLE_BASE).append("/bundle")
+            append(bundleBase).append("/bundle")
             append("?lat=").append(latitude)
             append("&lon=").append(longitude)
             append("&fields=").append(fields)
@@ -76,7 +83,7 @@ object WeatherApi {
     suspend fun currentTemperatures(points: List<Pair<Double, Double>>): Map<Pair<Double, Double>, Double> {
         if (points.isEmpty()) return emptyMap()
         val url = buildString {
-            append(BUNDLE_BASE).append("/current?points=")
+            append(bundleBase).append("/current?points=")
             append(points.take(20).joinToString("|") { (lat, lon) -> "$lat,$lon" })
         }
         val batch: WxCurrentBatch = NetworkClient.getJson(url)
