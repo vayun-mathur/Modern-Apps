@@ -171,7 +171,7 @@ internal fun FlashcardsViewModel.startSessionImpl(
         weights = Scheduler.parseWeights(deck.fsrsWeights),
         params = params,
     )
-    lastLogId = null
+    reviewLogUndoStack.clear()
     publishReviewImpl()
 }
 
@@ -184,6 +184,7 @@ internal fun FlashcardsViewModel.gradeCurrentImpl(grade: Grade) = launchIoImpl {
     val updated = s.grade(grade, now) ?: return@launchIoImpl
     // Cram mode is preview-only: don't persist scheduling or a review log.
     if (s.previewOnly) {
+        reviewLogUndoStack.addLast(null)
         publishReviewImpl()
         return@launchIoImpl
     }
@@ -192,7 +193,8 @@ internal fun FlashcardsViewModel.gradeCurrentImpl(grade: Grade) = launchIoImpl {
     val elapsedDays =
         if (prevLastReview > 0) (now - prevLastReview).toDouble() / Scheduler.DAY_MS else 0.0
     val scheduledDays = (updated.dueDate - now).toDouble() / Scheduler.DAY_MS
-    lastLogId = repository.insertReviewLogImpl(
+    reviewLogUndoStack.addLast(
+        repository.insertReviewLogImpl(
         ReviewLog(
             cardId = original.id,
             deckId = original.deckId,
@@ -201,6 +203,7 @@ internal fun FlashcardsViewModel.gradeCurrentImpl(grade: Grade) = launchIoImpl {
             elapsedDays = elapsedDays,
             scheduledDays = scheduledDays,
             state = updated.state,
+        ),
         ),
     )
     publishReviewImpl()
@@ -228,10 +231,7 @@ internal fun FlashcardsViewModel.undoReviewImpl() = launchIoImpl {
     val s = session ?: return@launchIoImpl
     val restored = s.undo() ?: return@launchIoImpl
     repository.upsertCardImpl(restored)
-    lastLogId?.let {
-        repository.deleteReviewLogByIdImpl(it)
-        lastLogId = null
-    }
+    reviewLogUndoStack.removeLastOrNull()?.let { repository.deleteReviewLogByIdImpl(it) }
     publishReviewImpl()
 }
 

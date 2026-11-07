@@ -325,6 +325,33 @@ class FlashcardsViewModelTest {
     }
 
     @Test
+    fun reviewUndoDeletesEachGradesOwnLog() {
+        val deck = uniqueDeck("UndoTwiceDeck")
+        saveBasicNote(deck.id, "UndoFront1", "UndoBack1")
+        saveBasicNote(deck.id, "UndoFront2", "UndoBack2")
+        vm.publishReviewImpl()
+        vm.startSessionImpl(deck.id)
+        await("undo session started") { !vm.review.value.done && vm.review.value.front.isNotBlank() }
+        vm.gradeCurrentImpl(Grade.GOOD)
+        await("first log written") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 1
+        }
+        vm.gradeCurrentImpl(Grade.GOOD)
+        await("second log written") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 2
+        }
+        vm.undoReviewImpl()
+        await("second grade undone, first log kept") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.size == 1
+        }
+        vm.undoReviewImpl()
+        await("first grade undone, logs empty") {
+            runBlocking { repo.getReviewLogsByDeckOrderedImpl(deck.id) }.isEmpty() &&
+                runBlocking { repo.getCardsByDeckImpl(deck.id) }.all { it.state == CardState.NEW }
+        }
+    }
+
+    @Test
     fun cramSessionDoesNotPersist() {
         val deck = uniqueDeck("CramDeck")
         val note = saveBasicNote(deck.id, "CramFront", "CramBack")
