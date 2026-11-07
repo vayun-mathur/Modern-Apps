@@ -64,7 +64,9 @@ class SleepDetailsPageTest {
 
     @Test
     fun `sleep details page shows seeded sleep session`() = runTest {
-        val end = Instant.now()
+        // Past date: the shared DB must not leak a sleep session into other
+        // tests that query today's sleep.
+        val end = Instant.parse("2024-05-02T06:00:00Z")
         val start = end.minusSeconds(8 * 3600)
         HealthRepository.get(context).upsert(listOf(Record(
             id = "sleep-page-1", index = 0, type = RecordType.Sleep, startTime = start, endTime = end, value = 8.0,

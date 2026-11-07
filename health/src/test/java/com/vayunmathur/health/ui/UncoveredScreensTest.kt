@@ -170,7 +170,7 @@ class UncoveredScreensTest {
     fun `log hydration dialog validates and saves`() = runBlocking<Unit> {
         HealthAPI.initLocal(context, repo())
         var dismissed = false
-        rule.setContent { LogHydrationDialog(vm(), Instant.parse("2026-03-04T09:00:00Z")) { dismissed = true } }
+        rule.setContent { LogHydrationDialog(vm(), Instant.parse("2024-02-10T09:00:00Z")) { dismissed = true } }
         rule.onNodeWithText("Log Hydration").assertIsDisplayed()
         rule.onNodeWithText("Quantity").performTextInput("0.75")
         rule.waitForIdle()
@@ -183,7 +183,7 @@ class UncoveredScreensTest {
     fun `log meal dialog lists seeded recipe`() = runBlocking<Unit> {
         repo().insertRecipe(Recipe(id = "rcp-meal-screen", name = "Meal Screen Bowl"))
         var dismissed = false
-        rule.setContent { LogMealDialog(vm(), Instant.parse("2026-03-04T09:00:00Z")) { dismissed = true } }
+        rule.setContent { LogMealDialog(vm(), Instant.parse("2024-02-10T09:00:00Z")) { dismissed = true } }
         rule.onNodeWithText("Log Meal").assertIsDisplayed()
         rule.onNodeWithText("Cancel").performClick()
         assertTrue(dismissed)
