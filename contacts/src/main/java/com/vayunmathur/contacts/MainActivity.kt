@@ -418,6 +418,39 @@ class MainActivity : MaActivity() {
             return uri.lastPathSegment?.toLongOrNull()
         }
 
+        // A phone_lookup URI identifies a contact by number, not by ID: resolve
+        // the number through PhoneLookup before the generic ID extraction below.
+        if (path.contains("/phone_lookup/")) {
+            val number = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return null
+            val filterUri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(number),
+            )
+            contentResolver.query(
+                filterUri,
+                arrayOf(ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return null
+                val phoneLookupId = cursor.getLong(0)
+                // Convert aggregated contact ID to raw contact ID (same as below).
+                contentResolver.query(
+                    ContactsContract.RawContacts.CONTENT_URI,
+                    arrayOf(ContactsContract.RawContacts._ID),
+                    "${ContactsContract.RawContacts.CONTACT_ID} = ? AND ${ContactsContract.RawContacts.DELETED} = 0",
+                    arrayOf(phoneLookupId.toString()),
+                    "${ContactsContract.RawContacts.STARRED} DESC, ${ContactsContract.RawContacts._ID} ASC"
+                )?.use { rawCursor ->
+                    if (rawCursor.moveToFirst()) {
+                        return rawCursor.getLong(0)
+                    }
+                }
+            }
+            return null
+        }
+
         // For contacts/lookup or contacts/<id> URIs, extract the aggregated contact ID
         val aggregatedId: Long? = when {
             path.contains("/lookup/") -> {
