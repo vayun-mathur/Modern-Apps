@@ -18,7 +18,18 @@ class GoogleVoiceAuthException(message: String) : IOException(message)
  * Networking goes through the repo's [NetworkClient] (HttpURLConnection, no OkHttp); parsing
  * is delegated to [GoogleVoiceParser].
  */
-class GoogleVoiceClient(private val session: GoogleVoiceSession) {
+class GoogleVoiceClient(
+    private val session: GoogleVoiceSession,
+    /**
+     * Transport seam: performs one POST and returns the response. The default is the
+     * real [NetworkClient] stack; tests inject a fake that replays recorded
+     * protojson so the client can be exercised without touching the network.
+     */
+    private val transport: suspend (url: String, headers: Map<String, String>, body: String) -> SimpleResponse =
+        { url, headers, body ->
+            NetworkClient.performRequest(url = url, method = "POST", headers = headers, body = body)
+        },
+) {
 
     suspend fun getAccount(): GvAccount {
         val body = post("account/get", GoogleVoiceParser.buildAccountBody())
@@ -106,12 +117,7 @@ class GoogleVoiceClient(private val session: GoogleVoiceSession) {
 
         val url = "$BASE$path?alt=protojson&key=$apiKey"
         val headers = GoogleVoiceAuth.headers(cookie, sapisid, authUser)
-        val response = NetworkClient.performRequest(
-            url = url,
-            method = "POST",
-            headers = headers,
-            body = jsonBody,
-        )
+        val response = transport(url, headers, jsonBody)
         checkVoiceResponse(path, response)
         // TEMP diagnostic logging of raw protojson so the positional parser can be pinned to the
         // real wire shapes. Chunked because logcat truncates long lines.
