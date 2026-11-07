@@ -192,9 +192,12 @@ internal object HealthChartData {
                 )
             }.reversed()
         } else if (selectedTab != 0) {
-            rawPairsHistory.mapIndexed { index, triple ->
+            // Label from the row's own bucket key, not its position: DAO rows
+            // only exist for periods with data, so position mislabels sparse
+            // months/years (same class as the fixed week bug #727).
+            rawPairsHistory.map { triple ->
                 HistoryItem(
-                    label = historyLabel(selectedTab, startTime, tz, resources, index),
+                    label = historyLabelForKey(selectedTab, triple.first, resources),
                     value = triple.second,
                     secondaryValue = if (config.isDualSeries) triple.third else null,
                     unit = config.unit,
@@ -207,31 +210,23 @@ internal object HealthChartData {
         }
     }
 
-    private fun historyLabel(
+    /** The calendar date a bucket key names (pure; label rendering needs Resources). */
+    internal fun bucketDate(epochDay: Long): LocalDate = LocalDate.fromEpochDays(epochDay.toInt())
+
+    /** History label from a bucket's epoch-day key (week/month start for tabs 2/3). */
+    internal fun historyLabelForKey(
         selectedTab: Int,
-        startTime: kotlin.time.Instant,
-        tz: TimeZone,
+        epochDay: Long,
         resources: Resources,
-        index: Int,
-    ): String = when (selectedTab) {
-        0 -> ""
-        1 -> localizedDayOfWeekNames(DateNameStyle.FULL)[
-            startTime.plus(index.toLong(), DateTimeUnit.DAY, tz)
-                .toLocalDateTime(tz).dayOfWeek.isoDayNumber - 1
-        ]
-        2 -> {
-            val date = startTime.plus(index.toLong(), DateTimeUnit.DAY, tz)
-                .toLocalDateTime(tz).date
-            resources.getString(
+    ): String {
+        val date = bucketDate(epochDay)
+        return when (selectedTab) {
+            2 -> resources.getString(
                 R.string.month_year_format,
                 localizedMonthNames(DateNameStyle.SHORT)[date.month.number - 1],
                 date.day,
             )
-        }
-        else -> {
-            val date = startTime.plus(index.toLong(), DateTimeUnit.MONTH, tz)
-                .toLocalDateTime(tz).date
-            localizedMonthNames(DateNameStyle.FULL)[date.month.number - 1]
+            else -> localizedMonthNames(DateNameStyle.FULL)[date.month.number - 1]
         }
     }
 
