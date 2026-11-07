@@ -215,7 +215,7 @@ class VpnTunnelService : VpnService() {
         }
     }
 
-    private inner class TunnelSession(val config: VpnConfig, val handle: Long) {
+    internal inner class TunnelSession(val config: VpnConfig, val handle: Long) {
         val dnsCache = DnsCache()
         val tracker = ConnectionTracker.getOrCreate()
         lateinit var appResolver: AppResolver
