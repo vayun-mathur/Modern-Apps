@@ -39,6 +39,17 @@ class MainActivityTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun manifestBackupAgentClassExists() {
+        val info = app.packageManager.getApplicationInfo(app.packageName, 0)
+        val agentName = info.backupAgentName
+        assertEquals("com.vayunmathur.notes.platform.AppBackupAgent", agentName)
+        // The named class must actually load, or Android backup silently never runs.
+        assertEquals(
+            com.vayunmathur.notes.platform.AppBackupAgent::class.java,
+            Class.forName(agentName),
+        )
+    }
+
     @Test fun onNewIntentWithDataUriDoesNotCrash() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).create().start().resume()
         val intent = Intent(Intent.ACTION_VIEW).apply { data = Uri.parse("content://x/new.md") }
