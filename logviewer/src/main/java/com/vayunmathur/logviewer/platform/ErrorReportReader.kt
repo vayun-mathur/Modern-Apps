@@ -18,9 +18,11 @@ import com.vayunmathur.logviewer.domain.LogDocument
 import com.vayunmathur.logviewer.domain.LogKind
 import com.vayunmathur.logviewer.intents.LogViewerIntents
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
-import java.nio.file.Files
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
 /**
@@ -40,6 +42,14 @@ internal object ErrorReportReader {
         "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***"
 
     private const val OS_VERSION_PREFIX = "osVersion: "
+
+    /**
+     * Largest report body accepted from an intent extra or a tombstone file. Real reports
+     * are stack traces (kilobytes to a few megabytes with memory maps); the cap exists so a
+     * crafted extra - a binder-sized gzip expands ~1000x - cannot OOM this process while
+     * decompressing. Oversized input degrades to Unavailable like corrupt input does.
+     */
+    private const val MAX_REPORT_BYTES = 16 shl 20
 
     fun read(context: Context, intent: Intent): LogLoadResult = when (intent.action) {
         LogViewerIntents.ACTION_ERROR_REPORT -> readErrorReport(context, intent)
@@ -107,11 +117,26 @@ internal object ErrorReportReader {
         val gzipped = extras.getByteArray(LogViewerIntents.EXTRA_GZIPPED_MESSAGE)
             ?: return null
         return try {
-            GZIPInputStream(ByteArrayInputStream(gzipped)).use { it.readBytes() }
+            GZIPInputStream(ByteArrayInputStream(gzipped)).use { readBounded(it) }
         } catch (e: IOException) {
             Log.dev(TAG, "corrupt gzipped message", e)
             null
         }
+    }
+
+    /** Reads [input] fully, or returns null once it passes [MAX_REPORT_BYTES]. */
+    private fun readBounded(input: InputStream): ByteArray? {
+        val out = ByteArrayOutputStream()
+        val buffer = ByteArray(64 * 1024)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > MAX_REPORT_BYTES) return null
+            out.write(buffer, 0, read)
+        }
+        return out.toByteArray()
     }
 
     private fun buildReportHeader(
@@ -386,11 +411,11 @@ internal object ErrorReportReader {
         val timestamped = textTombstoneFile(intent) ?: return null
         val file = timestamped.file
         val bytes = try {
-            Files.readAllBytes(file.toPath())
+            FileInputStream(file).use { readBounded(it) }
         } catch (e: IOException) {
             Log.error(TAG, "unable to read tombstone $file", e)
             return null
-        }
+        } ?: return null
         // Rechecked after the read: the ring may have recycled the file mid-read, and half of one
         // crash followed by half of another is worse than nothing.
         if (file.lastModified() != timestamped.lastModified) return null
