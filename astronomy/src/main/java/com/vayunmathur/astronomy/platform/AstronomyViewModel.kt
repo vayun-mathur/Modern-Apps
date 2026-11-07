@@ -334,7 +334,9 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
         _viewCenter.value = CenterOption.DevicePointing
         val latDeg = snapshot.latDeg
         val lonDeg = snapshot.lonDeg
-        if (latDeg != null && lonDeg != null) {
+        // Ignore an out-of-range persisted pair from an older build
+        // instead of resurrecting a nonsense observer every launch.
+        if (latDeg != null && lonDeg != null && latDeg in -90.0..90.0 && lonDeg in -180.0..180.0) {
             _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg, 0.0)
         }
     }
@@ -384,6 +386,11 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
         prefs.saveDouble("astro_fov", v.toDouble())
     }
     override fun setManualLocation(latDeg: Double, lonDeg: Double) {
+        // The settings form only checked that the text parsed as a
+        // Double, so e.g. latitude 999 was applied and persisted; the
+        // alt-az formulas then silently produced a sky for a latitude
+        // outside [-90, 90] (likewise longitude outside [-180, 180]).
+        if (latDeg !in -90.0..90.0 || lonDeg !in -180.0..180.0) return
         _observer.value = ObserverLocation(latDeg.toRad(), lonDeg.toRad(), latDeg, lonDeg)
         prefs.saveDouble("astro_lat", latDeg)
         prefs.saveDouble("astro_lon", lonDeg)
