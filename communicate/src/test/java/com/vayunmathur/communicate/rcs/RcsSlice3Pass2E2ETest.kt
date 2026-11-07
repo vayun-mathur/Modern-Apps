@@ -40,13 +40,28 @@ class RcsSlice3Pass2E2ETest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private lateinit var testDb: RcsDatabase
+    /** The peer's own device database: MLS state is per device, keyed by group id. */
+    private lateinit var peerDb: RcsDatabase
 
-    @BeforeTest
-    fun setUp() {
-        testDb = androidx.room3.Room.inMemoryDatabaseBuilder(context, RcsDatabase::class.java)
+    private fun newDb(): RcsDatabase =
+        androidx.room3.Room.inMemoryDatabaseBuilder(context, RcsDatabase::class.java)
             .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
             .allowMainThreadQueries()
             .build()
+
+    private inline fun <T> onDevice(db: RcsDatabase, block: () -> T): T {
+        RcsDatabase.overrideForTest = db
+        try {
+            return block()
+        } finally {
+            RcsDatabase.overrideForTest = testDb
+        }
+    }
+
+    @BeforeTest
+    fun setUp() {
+        testDb = newDb()
+        peerDb = newDb()
         RcsDatabase.overrideForTest = testDb
         RcsPeerKeys.clear()
     }
@@ -55,6 +70,7 @@ class RcsSlice3Pass2E2ETest {
     fun tearDown() {
         RcsDatabase.overrideForTest = null
         testDb.close()
+        peerDb.close()
         RcsPeerKeys.clear()
     }
 
@@ -201,28 +217,31 @@ class RcsSlice3Pass2E2ETest {
         assertNotNull(row)
         assertEquals(identity.toList(), row.identity.toList())
 
-        // Key packages for both sides.
+        // Key packages for both sides, each on its own device.
         val myKp = RcsE2E.freshKeyPackage(context, me)
         assertNotNull(myKp)
-        val peerIdentity = RcsE2E.identityFor(context, peer)
-        assertNotNull(peerIdentity)
-        val peerKp = RcsE2E.freshKeyPackage(context, peer)
+        val peerKp = onDevice(peerDb) {
+            assertNotNull(RcsE2E.identityFor(context, peer))
+            RcsE2E.freshKeyPackage(context, peer)
+        }
         assertNotNull(peerKp)
 
-        // Create a group adding the peer, then join from the Welcome.
+        // Create a group adding the peer; the peer joins from the Welcome on its device. The
+        // Welcome is sealed to the peer's key package, whose private keys sit in the peer's
+        // 1:1 pseudo-thread storage, not in the conversation it arrives on.
         val created = RcsE2E.createEncryptedGroup(context, me, "conv-mls-1", listOf(peerKp))
         assertNotNull(created)
         val (commit, welcome) = created
         assertTrue(commit.isNotEmpty() && welcome.isNotEmpty())
-        val groupId = RcsE2E.joinEncryptedGroup(context, "conv-mls-2", welcome)
+        val groupId = onDevice(peerDb) { RcsE2E.joinEncryptedGroup(context, me, welcome) }
         assertNotNull(groupId)
         assertEquals(groupId.toList(), RcsE2E.groupIdFor(context, "conv-mls-1")?.toList())
-        assertEquals(groupId.toList(), RcsE2E.groupIdFor(context, "conv-mls-2")?.toList())
+        assertEquals(groupId.toList(), onDevice(peerDb) { RcsE2E.groupIdFor(context, me) }?.toList())
 
         // Encrypt on one side, decrypt on the joined side.
         val payload = RcsE2E.encryptTo(context, me, "conv-mls-1", "secret hello".toByteArray(Charsets.UTF_8))
         assertNotNull(payload)
-        val decrypted = RcsE2E.decryptFor(context, "conv-mls-2", payload)
+        val decrypted = onDevice(peerDb) { RcsE2E.decryptFor(context, me, payload) }
         assertNotNull(decrypted)
         assertEquals("secret hello", decrypted.first.toString(Charsets.UTF_8))
         assertTrue(decrypted.second)

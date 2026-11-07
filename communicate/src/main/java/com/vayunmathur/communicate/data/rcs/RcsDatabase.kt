@@ -282,6 +282,10 @@ interface RcsMlsGroupDao {
     @Query("SELECT * FROM rcs_mls_group WHERE conversationId = :conversationId LIMIT 1")
     suspend fun getByConversation(conversationId: String): RcsMlsGroup?
 
+    /** Rows of the 1:1 pseudo-threads (`e2e:<e164>`), where freshKeyPackage keeps key-package state. */
+    @Query("SELECT * FROM rcs_mls_group WHERE conversationId LIKE 'e2e:%'")
+    suspend fun getKeyPackageSnapshots(): List<RcsMlsGroup>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(group: RcsMlsGroup)
 

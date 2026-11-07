@@ -364,9 +364,18 @@ object RcsE2E {
     ): ByteArray? = withContext(Dispatchers.IO) {
         if (!RcsFeature.enabled || !RustMlsCrypto.isAvailable) return@withContext null
         val db = RcsDatabase.getDatabase(context)
-        val storage = db.mlsGroupDao().getByConversation(conversationId)?.storage ?: ByteArray(0)
+        val dao = db.mlsGroupDao()
+        // The Welcome is encrypted to one of OUR key packages, whose private keys live in the
+        // storage freshKeyPackage keeps under the 1:1 pseudo-thread row (`e2e:<e164>`), not under
+        // [conversationId] (the sender's thread). Try this conversation's storage first, then each
+        // of those; OpenMLS only accepts the one holding the matching private key. A rejected
+        // candidate throws from JNI, so each attempt is caught on its own.
+        val candidates = listOf(dao.getByConversation(conversationId)?.storage ?: ByteArray(0)) +
+            dao.getKeyPackageSnapshots().map { it.storage }
         runCatching {
-            val out = RustMlsCrypto.joinGroup(storage, welcome) ?: return@runCatching null
+            val (storage, out) = candidates.firstNotNullOfOrNull { candidate ->
+                runCatching { RustMlsCrypto.joinGroup(candidate, welcome) }.getOrNull()?.let { candidate to it }
+            } ?: return@runCatching null
             val storageOut = out.getOrNull(0) ?: storage
             val groupId = out.getOrNull(1) ?: return@runCatching null
             db.mlsGroupDao().upsert(
