@@ -50,6 +50,9 @@ fun SudokuGrid(
     val scheme = MaterialTheme.colorScheme
     val selected = game.selected
     val selectedValue = if (selected >= 0) game.valueAt(selected) else 0
+    // Digits repeated within a row, column or box. Computable from the board alone, so
+    // marking them shows the player a mistake without revealing the solution.
+    val conflicts = game.conflictingIndices()
 
     BoxWithConstraints(modifier.aspectRatio(1f)) {
         val cell: Dp = maxWidth / side
@@ -68,6 +71,7 @@ fun SudokuGrid(
                             isSameValue = selectedValue != 0 &&
                                 index != selected &&
                                 game.valueAt(index) == selectedValue,
+                            isConflict = index in conflicts,
                             modifier = Modifier
                                 .size(cell)
                                 .clickable { onSelect(index) },
@@ -97,6 +101,7 @@ private fun SudokuCell(
     isSelected: Boolean,
     isPeer: Boolean,
     isSameValue: Boolean,
+    isConflict: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -105,14 +110,22 @@ private fun SudokuCell(
 
     val background = when {
         isSelected -> scheme.primary.copy(alpha = 0.40f)
+        // A duplicated digit, visible from the board alone: marked in the error palette
+        // without saying which copy is wrong, let alone what belongs there instead.
+        isConflict -> scheme.errorContainer.copy(alpha = 0.55f)
         isSameValue -> scheme.tertiary.copy(alpha = 0.30f)
         isPeer -> scheme.primary.copy(alpha = 0.13f)
         else -> Color.Transparent
     }
 
-    // Givens are the puzzle, entries are the player's work, so they read differently. There is no
-    // wrong-cell colour because a wrong digit is refused rather than written.
-    val digitColor = if (given) scheme.onSurface else scheme.primary
+    // Givens are the puzzle, entries are the player's work, so they read differently. A
+    // conflicting entry turns error-coloured; a conflicting given keeps its own colour,
+    // because the given is never the copy that is misplaced.
+    val digitColor = when {
+        isConflict && !given -> scheme.error
+        given -> scheme.onSurface
+        else -> scheme.primary
+    }
 
     val spoken = if (value == 0) stringResource(R.string.cd_empty) else sudokuSymbol(value)
     val side = game.size.side
