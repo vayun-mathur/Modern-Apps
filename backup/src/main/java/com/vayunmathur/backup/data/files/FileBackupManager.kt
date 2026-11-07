@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.security.MessageDigest
 
 /**
@@ -28,22 +29,31 @@ class FileBackupManager(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Backs up all enumerated media; returns the number of files stored. */
+    /** Backs up all enumerated media; returns the number of files stored in this run. */
     suspend fun backupAll(onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }): Int {
         val items = enumerate()
         onProgress(0, items.size)
-        val stored = ArrayList<FileEntry>(items.size)
+        // Start from the previous manifest: an item that fails this run (or a
+        // run that enumerates nothing because media permission was revoked)
+        // must not erase its existing entry, or the still-present blob becomes
+        // unrestorable. Entries are only replaced by a successful re-backup.
+        val merged = LinkedHashMap<String, FileEntry>()
+        for (entry in listBackedUp()) merged[entry.fileId] = entry
+        var stored = 0
         for ((i, item) in items.withIndex()) {
-            runCatching {
-                context.contentResolver.openInputStream(item.uri)?.use { input ->
-                    repo.writeEncrypted(BackupRepository.filePath(item.entry.fileId), input)
-                }
-                stored.add(item.entry)
+            val result = runCatching {
+                val input = context.contentResolver.openInputStream(item.uri)
+                    ?: throw IOException("cannot open ${item.entry.displayName}")
+                input.use { repo.writeEncrypted(BackupRepository.filePath(item.entry.fileId), it) }
+            }
+            if (result.isSuccess) {
+                merged[item.entry.fileId] = item.entry
+                stored++
             }
             onProgress(i + 1, items.size)
         }
-        repo.writeEncrypted(INDEX, json.encodeToString(FileIndex(stored)).toByteArray())
-        return stored.size
+        repo.writeEncrypted(INDEX, json.encodeToString(FileIndex(merged.values.toList())).toByteArray())
+        return stored
     }
 
     /** The manifest of previously backed-up files (empty if none). */
