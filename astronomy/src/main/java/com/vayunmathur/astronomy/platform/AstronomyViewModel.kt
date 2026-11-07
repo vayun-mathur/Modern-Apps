@@ -162,10 +162,11 @@ class AstronomyViewModel(app: Application) : AndroidViewModel(app), SkyMapAction
     private val _riseSet = MutableStateFlow<RiseSetCalculator.RiseTransitSet?>(null)
     val riseSet: StateFlow<RiseSetCalculator.RiseTransitSet?> = _riseSet
 
-    val visibleSky: StateFlow<VisibleSky> = combine(_simTime, _observer, _catalogReady) { args ->
-        val time = args[0] as Instant
-        val obs = args[1] as ObserverLocation?
-        val ready = args[2] as Boolean
+    // _magLimit is an input to computeVisibleSky (it filters the star
+    // list), so it must be one of the combined flows: without it, changing
+    // the magnitude limit in Settings only took effect on the next
+    // one-second live tick, and never while time was scrubbed/paused.
+    val visibleSky: StateFlow<VisibleSky> = combine(_simTime, _observer, _catalogReady, _magLimit) { time, obs, ready, _ ->
         if (!ready || obs == null) VisibleSky(observer = obs, time = time, jd = TimeEngine.instantToJulianDate(time))
         else computeVisibleSky(time, obs)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, VisibleSky())
