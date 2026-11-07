@@ -76,4 +76,16 @@ class FuzzyMatchTest {
         val items = listOf("ab1", "ab2", "ab3")
         assertEquals(items, fuzzyRank("ab", items) { it })
     }
+
+    @Test
+    fun shorterCandidateWinsScoreTies() {
+        val ranked = fuzzyRank("abc", listOf("xabcxx", "abc")) { it }
+        assertEquals(listOf("abc", "xabcxx"), ranked)
+    }
+
+    @Test
+    fun emptyCandidateNeverMatchesNonEmptyQuery() {
+        assertEquals(null, fuzzyScore("a", ""))
+        assertEquals(null, fuzzyScore("ab", "a"))
+    }
 }

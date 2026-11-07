@@ -38,6 +38,21 @@ class MarkdownFormattingTest {
     }
 
     @Test
+    fun quoteConverts() {
+        assertEquals("<blockquote>wise</blockquote>", markdownToHtml("> wise"))
+    }
+
+    @Test
+    fun numberedListConverts() {
+        assertEquals("<ol>\n<li>one</li>\n<li>two</li>\n</ol>", markdownToHtml("1. one\n2. two"))
+    }
+
+    @Test
+    fun adjacentParagraphLinesJoinWithSpaces() {
+        assertEquals("<p>first second</p>", markdownToHtml("first\nsecond"))
+    }
+
+    @Test
     fun fencedCodeEscapesHtml() {
         val html = markdownToHtml("```\n<a>\n```")
         assertEquals("<pre><code>&lt;a&gt;\n</code></pre>", html)
@@ -60,6 +75,16 @@ class MarkdownFormattingTest {
     fun jsonRejectsUnbalanced() {
         assertNull(formatJson("""{"a":1"""))
         assertNull(formatJson(""))
+        assertNull(formatJson("""{"a":1}}"""))
+        assertNull(formatJson("\"unterminated"))
+    }
+
+    @Test
+    fun jsonHandlesEscapesAndNesting() {
+        // Escaped quote inside a string does not end it; braces inside
+        // strings do not affect depth.
+        assertEquals("{\n  \"a\": \"x\\\"y{z\"\n}", formatJson("""{"a":"x\"y{z"}"""))
+        assertEquals("[\n  1,\n  [\n    2\n  ]\n]", formatJson("[1,[2]]"))
     }
 
     // ---- XML ----
@@ -73,5 +98,11 @@ class MarkdownFormattingTest {
     @Test
     fun xmlBlankIsNull() {
         assertNull(formatXml("   "))
+    }
+
+    @Test
+    fun xmlHandlesSelfClosingAndProlog() {
+        assertEquals("<?xml?>\n<br />", formatXml("<?xml?><br />"))
+        assertEquals("<a>\n  x\n</a>", formatXml("<a>x</a>"))
     }
 }

@@ -90,4 +90,29 @@ class TextEncodingTest {
         val reencoded = TextEncoding.encode(decoded.text, decoded.charset, decoded.lineEnding, decoded.hadBom)
         assertContentEquals(original, reencoded)
     }
+
+    @Test
+    fun utf16BeBomRoundTripsExactly() {
+        val body = "hi\r\nthere".toByteArray(Charsets.UTF_16BE)
+        val original = byteArrayOf(0xFE.toByte(), 0xFF.toByte()) + body
+        val decoded = TextEncoding.decode(original)
+        assertEquals(Charsets.UTF_16BE, decoded.charset)
+        assertTrue(decoded.hadBom)
+        assertEquals("hi\nthere", decoded.text)
+        assertContentEquals(original, TextEncoding.encode(decoded.text, decoded.charset, decoded.lineEnding, decoded.hadBom))
+    }
+
+    @Test
+    fun utf16LeWithoutBomDecodesAsUtf8WithoutThrowing() {
+        val original = "abc".toByteArray(Charsets.UTF_16LE)
+        val decoded = TextEncoding.decode(original)
+        // No BOM: sniffed as UTF-8 — documents the sniffing contract.
+        assertEquals(Charsets.UTF_8, decoded.charset)
+    }
+
+    @Test
+    fun encodeWithoutBomOmitsTheMark() {
+        val out = TextEncoding.encode("x", Charsets.UTF_16LE, LineEnding.LF, hadBom = false)
+        assertContentEquals("x".toByteArray(Charsets.UTF_16LE), out)
+    }
 }
