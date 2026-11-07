@@ -256,6 +256,34 @@ class ReconcileUseCaseTest {
     }
 
     @Test
+    fun `an app in a profile that is off is hidden even with no unavailable callback`() {
+        // Cold start with the work profile already in quiet mode: no
+        // onPackagesUnavailable has been received, so `unavailable` is empty
+        // and the package is absent from `installed`. Only the profile
+        // signal stands between this row and deletion.
+        val actions = ReconcileUseCase.reconcile(
+            items = listOf(app(1, work)),
+            installed = setOf(here),
+            unavailable = emptySet(),
+            boundWidgetIds = emptySet(),
+            unavailableProfiles = setOf(work.profileSerial),
+        )
+        assertEquals(listOf(ReconcileUseCase.Action.SetHidden(1, true)), actions)
+    }
+
+    @Test
+    fun `an already-hidden app in an off profile produces no redundant write`() {
+        val actions = ReconcileUseCase.reconcile(
+            items = listOf(app(1, work, hidden = true)),
+            installed = setOf(here),
+            unavailable = emptySet(),
+            boundWidgetIds = emptySet(),
+            unavailableProfiles = setOf(work.profileSerial),
+        )
+        assertTrue(actions.isEmpty())
+    }
+
+    @Test
     fun `a widget whose id the host has forgotten is deleted`() {
         val widget = ReconcileUseCase.Item(
             id = 5,

@@ -177,6 +177,21 @@ class LauncherAppsMonitor(context: Context, private val scope: CoroutineScope) {
     /** Packages present and usable right now, for reconciliation. */
     fun installedKeys(): Set<PackageKey> = _apps.value.map { it.packageKey }.toSet()
 
+    /**
+     * Profiles that exist but are currently off (quiet mode), by serial.
+     *
+     * Read live rather than accumulated from callbacks: a profile that was
+     * already quiet when this process started has delivered no
+     * `onPackagesUnavailable`, so the callback-built [unavailable] set is
+     * empty for it and reconciliation would mistake its apps for uninstalled.
+     */
+    fun unavailableProfileSerials(): Set<Long> = runCatching {
+        launcherApps.profiles
+            .filter { userManager.isQuietModeEnabled(it) }
+            .map { serialFor(it) }
+            .toSet()
+    }.getOrDefault(emptySet())
+
     fun icon(entry: AppEntry, densityDpi: Int): Drawable? = runCatching {
         val info = launcherApps.resolveActivity(
             android.content.Intent().setComponent(entry.componentName),
