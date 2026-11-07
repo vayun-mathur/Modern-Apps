@@ -49,12 +49,20 @@ object PoweredOffReporting {
      * no business reporting, or a relay that predates this feature) or the socket is down.
      */
     suspend fun reportSighting(sighting: PoweredOffSighting, finderLocation: LocationValue): Boolean {
-        if (!shouldReport(sighting.eid)) return false
+        if (isRecentlyReported(sighting.eid)) return false
         val handle = PoweredOffProtocol.handleOf(sighting.eid)
         val bundle = Networking.resolveTrackerBundle(handle) ?: return false
         val ct = TrackerProtocol.sealReport(bundle, finderLocation)
         val ok = Networking.uploadTrackerReport(handle, ct)
-        if (ok) Log.status(TAG, "uploaded powered-off sighting (rssi=${sighting.rssi})")
+        // Only a successful upload earns the dedup slot. Marking before the
+        // attempt (the old behaviour) meant one transient failure - socket
+        // mid-reconnect, relay unreachable - suppressed every retry for the
+        // EID's whole 1024-second slot, and on all-matches scanners that was
+        // the difference between a delayed sighting and a lost one.
+        if (ok) {
+            markReported(sighting.eid)
+            Log.status(TAG, "uploaded powered-off sighting (rssi=${sighting.rssi})")
+        }
         return ok
     }
 
@@ -98,16 +106,22 @@ object PoweredOffReporting {
             .copy(userid = userId, source = LocationSource.NETWORK_SIGHTING)
     }
 
+    /** True if [eid] was already successfully reported within the last two slots. */
     @Synchronized
-    private fun shouldReport(eid: ByteArray): Boolean {
+    internal fun isRecentlyReported(eid: ByteArray): Boolean {
         val hex = eid.joinToString("") { "%02x".format(it) }
-        val now = System.currentTimeMillis()
-        val staleBefore = now - PoweredOffProtocol.SLOT_SECONDS * 2000L
+        val staleBefore = System.currentTimeMillis() - PoweredOffProtocol.SLOT_SECONDS * 2000L
         reportedEids.entries.removeAll { it.value < staleBefore }
-        if (reportedEids.put(hex, now) != null) return false
+        return reportedEids.containsKey(hex)
+    }
+
+    /** Remember a successful report of [eid] so repeats within its slot are skipped. */
+    @Synchronized
+    internal fun markReported(eid: ByteArray) {
+        val hex = eid.joinToString("") { "%02x".format(it) }
+        reportedEids[hex] = System.currentTimeMillis()
         while (reportedEids.size > MAX_REMEMBERED_EIDS) {
             reportedEids.remove(reportedEids.keys.first())
         }
-        return true
     }
 }
