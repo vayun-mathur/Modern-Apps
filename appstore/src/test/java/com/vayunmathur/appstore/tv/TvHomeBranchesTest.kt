@@ -100,6 +100,7 @@ class TvHomeBranchesTest {
         vm.setSourceEnabled(AppSource.PLAYSTORE, false)
         await("play forgotten") {
             vm.sectionsFlow.value.none { it.source == AppSource.PLAYSTORE } &&
+                vm.playFullClustersFlow.value.isEmpty() &&
                 AppSource.PLAYSTORE !in vm.enabledSourcesFlow.value
         }
         assertTrue(vm.playFullClustersFlow.value.isEmpty())
