@@ -46,7 +46,7 @@ class SystemSinkTest {
     @Test fun contactsSinkWithFakeProvider() {
         val p = MapProvider(); ShadowContentResolver.registerProviderInternal(ContactsContract.AUTHORITY, p)
         p.tables["raw_contacts"] = mutableListOf(
-            mapOf("_id" to 7L, "source_id" to "c1", "sync1" to "100", "deleted" to 0),
+            mapOf("_id" to 7L, "sourceid" to "c1", "sync1" to "100", "deleted" to 0),
         )
         p.tables["data"] = mutableListOf(
             mapOf("mimetype" to "vnd.android.cursor.item/name", "data1" to "Ann Lee", "data2" to "Ann", "data3" to "Lee", "data4" to "Ms", "data5" to "Q", "data6" to "Jr"),
@@ -73,7 +73,7 @@ class SystemSinkTest {
     @Test fun blankIdentityRowsGetBoundIdentityOnRead() {
         val p = MapProvider(); ShadowContentResolver.registerProviderInternal(ContactsContract.AUTHORITY, p)
         p.tables["raw_contacts"] = mutableListOf(
-            mapOf("_id" to 9L, "source_id" to null, "sync1" to null, "deleted" to 0),
+            mapOf("_id" to 9L, "sourceid" to null, "sync1" to null, "deleted" to 0),
         )
         p.tables["data"] = mutableListOf()
         val contacts = ContactsSink.listLocal(ctx, "acc")

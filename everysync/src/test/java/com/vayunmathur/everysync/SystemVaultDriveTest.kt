@@ -110,7 +110,7 @@ class SystemVaultDriveTest {
 
     private fun seedContact() {
         contacts.tables["raw_contacts"] = mutableListOf(
-            mutableMapOf("_id" to 7L, "source_id" to "c1", "sync1" to "100", "deleted" to 0),
+            mutableMapOf("_id" to 7L, "sourceid" to "c1", "sync1" to "100", "deleted" to 0),
         )
         contacts.tables["data"] = mutableListOf(
             mutableMapOf("mimetype" to "vnd.android.cursor.item/name", "data1" to "Ann Lee", "data2" to "Ann", "data3" to "Lee"),
@@ -177,7 +177,7 @@ class SystemVaultDriveTest {
         // A fresh contact pushed, then a remote tombstone must delete it
         // locally (not be written back as a live contact).
         contacts.tables["raw_contacts"] = mutableListOf(
-            mutableMapOf("_id" to 8L, "source_id" to "c2", "sync1" to "100", "deleted" to 0),
+            mutableMapOf("_id" to 8L, "sourceid" to "c2", "sync1" to "100", "deleted" to 0),
         )
         provider.sync(ctx, cConfig, SyncDirection.BOTH)
         assertTrue(ContactsSink.listLocal(ctx, ACCOUNT).any { it.uid == "c2" && !it.deleted })
