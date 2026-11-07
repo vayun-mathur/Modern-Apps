@@ -72,11 +72,17 @@ class FileBackupManager(
             onProgress(0, entries.size)
             var restored = 0
             for ((i, e) in entries.withIndex()) {
-                runCatching {
-                    val outFile = File(baseDir, e.relativePath + e.displayName)
+                val outFile = File(baseDir, e.relativePath + e.displayName)
+                val result = runCatching {
                     outFile.parentFile?.mkdirs()
                     FileOutputStream(outFile).use { repo.readEncryptedTo(BackupRepository.filePath(e.fileId), it) }
+                }
+                if (result.isSuccess) {
                     restored++
+                } else {
+                    // Do not leave an empty/partially decrypted file behind:
+                    // it looks like a restored file but is corrupt.
+                    outFile.delete()
                 }
                 onProgress(i + 1, entries.size)
             }
