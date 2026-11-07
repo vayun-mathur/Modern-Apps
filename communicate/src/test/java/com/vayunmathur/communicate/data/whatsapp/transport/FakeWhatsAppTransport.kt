@@ -2,6 +2,7 @@ package com.vayunmathur.communicate.data.whatsapp.transport
 
 import com.vayunmathur.communicate.data.whatsapp.WhatsAppProtocol
 import com.vayunmathur.communicate.data.whatsapp.decodeNode
+import com.vayunmathur.communicate.data.whatsapp.encodeNode
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
