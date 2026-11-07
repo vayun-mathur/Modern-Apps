@@ -15,7 +15,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-class CatalogRepository(private val context: Context) {
+class CatalogRepository(
+    private val context: Context,
+    /** Reads one bundled asset as text, or null when it cannot be read. Injectable for tests. */
+    private val assetLoader: (String) -> String? = { path ->
+        try {
+            context.assets.open(path).bufferedReader().use { it.readText() }
+        } catch (_: Exception) {
+            null
+        }
+    },
+) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     var stars: List<Star> = emptyList(); private set
     var constellations: List<Constellation> = emptyList(); private set
@@ -37,12 +47,7 @@ class CatalogRepository(private val context: Context) {
         loaded = true
     }
 
-    private fun loadJsonAsset(path: String): String? =
-        try {
-            context.assets.open(path).bufferedReader().use { it.readText() }
-        } catch (_: Exception) {
-            null
-        }
+    private fun loadJsonAsset(path: String): String? = assetLoader(path)
 
     private fun loadStars(): List<Star> {
         val text = loadJsonAsset("catalog/stars.json") ?: return BuiltInCatalogs.stars
