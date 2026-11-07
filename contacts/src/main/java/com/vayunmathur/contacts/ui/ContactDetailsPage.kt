@@ -132,7 +132,10 @@ fun ContactDetailsPage(
             }
 
             override fun shareContacts(contacts: List<Contact>, filename: String) {
-                shareContactsAsVcf(scope, context, contacts, filename, shareContactLabel)
+                shareContactsAsVcf(
+                    scope, context, contacts, filename, shareContactLabel,
+                    groups.associate { it.id to it.name }
+                )
             }
 
             override fun pickRingtone(contact: Contact) {

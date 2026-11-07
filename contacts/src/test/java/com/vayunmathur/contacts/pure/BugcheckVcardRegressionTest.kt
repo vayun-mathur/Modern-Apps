@@ -88,6 +88,31 @@ class BugcheckVcardRegressionTest {
     }
 
     @Test
+    fun groupNamesExportAndResolveOnImport() {
+        val details = ContactDetails.empty().copy(
+            names = listOf(Name(0, "", "Ada", "", "Lovelace", "")),
+            groups = listOf(
+                com.vayunmathur.contacts.data.GroupMembership(0, 42L)
+            ),
+        )
+        val contact = Contact(0L, null, null, false, details)
+        val out = ByteArrayOutputStream()
+        runBlocking {
+            VcfUtils.exportContacts(listOf(contact), out, mapOf(42L to "Family"))
+        }
+        val text = out.toString(Charsets.UTF_8.name())
+        assertEquals(true, text.contains("CATEGORIES:Family"), "export must carry names: $text")
+        assertEquals(false, text.contains("CATEGORIES:42"), "export must not carry raw ids: $text")
+
+        val parsed = VcfUtils.parseContacts(
+            ByteArrayInputStream(out.toByteArray(Charsets.UTF_8))
+        ) { names ->
+            names.map { com.vayunmathur.contacts.data.GroupMembership(0, 7L) }
+        }.single()
+        assertEquals(7L, parsed.details.groups.single().groupId)
+    }
+
+    @Test
     fun homeAddressStillRoundTripsAsHome() {
         val parsed = exportAndReparse(
             contactWithAddress(ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME)

@@ -69,6 +69,7 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
     val hiddenAccounts by viewModel.hiddenAccounts.collectAsStateWithLifecycle()
     val isCalendarSyncEnabled by viewModel.isCalendarSyncEnabled.collectAsStateWithLifecycle()
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
     val allContactsForExport by viewModel.allContactsForExport.collectAsStateWithLifecycle()
     val simLabels by viewModel.simAccountLabels.collectAsStateWithLifecycle()
 
@@ -99,7 +100,10 @@ fun SettingsPage(viewModel: ContactViewModel, backStack: NavBackStack<Route>) {
                     try {
                         val exportList = allContactsForExport.ifEmpty { contacts }
                         context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                            VcfUtils.exportContacts(exportList, outputStream)
+                            VcfUtils.exportContacts(
+                                exportList, outputStream,
+                                groups.associate { g -> g.id to g.name }
+                            )
                         }
                     } catch (e: java.io.FileNotFoundException) {
                         Log.error("SettingsPage", "Error exporting contacts", e)
