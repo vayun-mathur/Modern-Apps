@@ -142,7 +142,7 @@ class E2eeProvider : SyncProvider {
             channelType = CH_CONTACTS,
             direction = direction,
             kind = ContactKind,
-            store = ContactRelayStore(context, config.accountName),
+            store = ContactRelayStore(context, config.accountName, vault.vaultId),
             writeRemoteStamps = { item, stamp ->
                 ContactsSink.upsert(
                     context,

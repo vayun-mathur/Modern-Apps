@@ -47,6 +47,7 @@ import com.vayunmathur.everysync.sync.adapters.TodoListKind
 class ContactRelayStore(
     private val context: Context,
     private val accountName: String,
+    private val vaultId: String,
 ) : RelayStore<RemoteContact> {
     /**
      * Contacts soft-delete at the platform layer (DELETED flags surfaced via
@@ -68,15 +69,23 @@ class ContactRelayStore(
         for (item in items) ContactsSink.delete(context, accountName, item.uid)
     }
 
+    // The baseline is keyed by vault, not account: rebinding the account
+    // to a different contacts vault (join another vault, recreate one)
+    // must not inherit the previous vault's agreed state — a record the
+    // old baseline remembers but the new vault's log has never seen
+    // would otherwise sit in reconcileLocalOnly's keep-forever branch
+    // and never push to the new vault.
+    private val baselineKey: String get() = "$accountName:$vaultId"
+
     override suspend fun loadBaseline(): Map<String, RelaySnapshot> =
-        VaultBaseline.load(context, accountName, ContactKind.kind)
+        VaultBaseline.load(context, baselineKey, ContactKind.kind)
 
     override suspend fun saveSnapshots(snapshots: List<RelaySnapshot>) {
-        VaultBaseline.save(context, accountName, ContactKind.kind, snapshots)
+        VaultBaseline.save(context, baselineKey, ContactKind.kind, snapshots)
     }
 
     override suspend fun removeSnapshots(syncIds: List<String>) {
-        VaultBaseline.remove(context, accountName, ContactKind.kind, syncIds)
+        VaultBaseline.remove(context, baselineKey, ContactKind.kind, syncIds)
     }
 
     override fun parseRemote(json: String): RemoteContact? =
