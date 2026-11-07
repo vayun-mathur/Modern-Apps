@@ -4,12 +4,18 @@ import android.content.Context
 import com.vayunmathur.library.room.RoomRepository
 import kotlinx.coroutines.flow.Flow
 
+/** The profile surface [com.vayunmathur.shop.platform.ShopViewModel] needs; faked in tests. */
+interface ProfileStore {
+    val profile: Flow<ShopProfile?>
+    suspend fun save(profile: ShopProfile)
+}
+
 class ProfileRepository private constructor(context: Context) :
-    RoomRepository<ProfileDatabase>(context, ProfileDatabase::class, PROFILE_DB_NAME) {
+    RoomRepository<ProfileDatabase>(context, ProfileDatabase::class, PROFILE_DB_NAME), ProfileStore {
 
-    val profile: Flow<ShopProfile?> get() = db.profileDao().observe()
+    override val profile: Flow<ShopProfile?> get() = db.profileDao().observe()
 
-    suspend fun save(profile: ShopProfile) = db.profileDao().upsert(profile.copy(id = 0))
+    override suspend fun save(profile: ShopProfile) = db.profileDao().upsert(profile.copy(id = 0))
 
     companion object {
         @Volatile private var instance: ProfileRepository? = null

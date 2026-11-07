@@ -18,6 +18,10 @@ import kotlinx.coroutines.withContext
  * local fetchers (#884).
  */
 object RemoteImageFetchers {
+
+    /** Test seam: replaces the HTTP fetch. Null means the real [NetworkClient] call. */
+    internal var fetchOverride: (suspend (String) -> FetchResult?)? = null
+
     suspend fun network(data: Any?, @Suppress("UNUSED_PARAMETER") context: Context): FetchResult? {
         val url: String = when (data) {
             is String -> data
@@ -28,6 +32,7 @@ object RemoteImageFetchers {
             else -> return null
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) return null
+        fetchOverride?.let { return it(url) }
         return withContext(Dispatchers.IO) {
             val resp = NetworkClient.execute(url)
             if (!resp.isSuccess) {
