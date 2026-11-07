@@ -40,15 +40,22 @@ class LocationReportingTask(
     private val offlineStore = OfflineBeaconStore(appContext)
 
     private var scope: CoroutineScope? = null
+    private var intervalMs: Long = 0L
 
     fun start(intervalMillis: Long) {
-        if (scope != null) return
+        val clamped = intervalMillis.coerceAtLeast(MIN_INTERVAL_MS)
+        // The framework re-calls onSetRequest with a new interval as clients
+        // come and go; keeping the first interval would report at a stale
+        // cadence (wasting battery, or starving a client that asked faster).
+        if (scope != null && clamped == intervalMs) return
+        scope?.cancel()
+        intervalMs = clamped
         val newScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         scope = newScope
         newScope.launch {
             while (isActive) {
                 runCatching { reportOnce() }.onFailure { Log.error(TAG, "fix attempt failed", it) }
-                delay(intervalMillis.coerceAtLeast(MIN_INTERVAL_MS))
+                delay(clamped)
             }
         }
     }
