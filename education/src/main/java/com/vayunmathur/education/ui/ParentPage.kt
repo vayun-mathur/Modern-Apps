@@ -64,6 +64,11 @@ import com.vayunmathur.education.R
 fun ParentPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel) {
     val learner by viewModel.learner.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    // Must be collected, not just read via deadlineFor(): the deadlines
+    // StateFlow is WhileSubscribed, so without a collector on this screen it
+    // freezes at whatever it last held and deadline edits made here would
+    // never show up (Set date would keep reading "Set date").
+    val deadlines by viewModel.deadlines.collectAsStateWithLifecycle()
     val content = viewModel.content
     val l = learner ?: return
 
@@ -135,7 +140,9 @@ fun ParentPage(backStack: NavBackStack<Route>, viewModel: EducationViewModel) {
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 course.units.forEach { unit ->
-                    val deadline = viewModel.deadlineFor(ModuleType.UNIT, unit.id)
+                    val deadline = deadlines.firstOrNull {
+                        it.moduleType == ModuleType.UNIT.name && it.moduleId == unit.id
+                    }
                     Row(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
