@@ -36,10 +36,10 @@ import org.mockito.Mockito.`when`
  * Slice 3/4: SyncA/B/C ViewModel helpers with no real network.
  *
  * A test PQC identity is installed on [OfficeSync] so signing/sealing runs
- * for real; every server call fails fast on DNS (devserver has no route to
- * the relay), so the production code's offline/null-result branches are the
- * behaviour under test. DataStore-backed helpers are driven against either
- * the real Robolectric store or a map-backed mock.
+ * for real; [OfficeSync.httpTransport] is replaced with a failing double so no
+ * test touches the real relay, and the production code's offline/null-result
+ * branches are the behaviour under test. DataStore-backed helpers are driven
+ * against either the real Robolectric store or a map-backed mock.
  */
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,8 +57,14 @@ class OfficeViewModelSyncSlice3Test {
     private val roboApp: android.app.Application
         get() = ApplicationProvider.getApplicationContext()
 
+    private var previousTransport: OfficeSync.HttpTransport? = null
+
     @BeforeTest
     fun setUp() {
+        // Never touch the real relay: every POST fails as if offline, so the
+        // production offline branches are exercised deterministically in CI too.
+        previousTransport = OfficeSync.httpTransport
+        OfficeSync.httpTransport = OfficeSync.HttpTransport { _, _ -> null }
         Dispatchers.setMain(UnconfinedTestDispatcher())
         runBlocking {
             if (runCatching { OfficeSync.identity }.isFailure) {
@@ -69,6 +75,7 @@ class OfficeViewModelSyncSlice3Test {
 
     @AfterTest
     fun tearDown() {
+        OfficeSync.httpTransport = previousTransport
         OfficeSync.stopLive()
         Dispatchers.resetMain()
     }
