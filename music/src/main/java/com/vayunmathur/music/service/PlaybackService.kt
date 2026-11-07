@@ -49,6 +49,22 @@ class PlaybackService : MediaLibraryService() {
     private var castQueue: CastQueue? = null
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /**
+     * Keeps the notification's shuffle/repeat icons honest when the mode is
+     * changed from somewhere other than the notification itself (the app's
+     * now-playing screen, a headset, Android Auto). Without this the buttons
+     * were only redrawn on service start and on their own clicks, so they
+     * showed the mode as it was before the app last changed it - and a tap
+     * then toggled from the player's real state, appearing to do nothing
+     * or the opposite of the icon shown.
+     */
+    private val buttonStateListener = object : Player.Listener {
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) =
+            updateNotificationButtons()
+
+        override fun onRepeatModeChanged(repeatMode: Int) = updateNotificationButtons()
+    }
+
     // Custom Command Constants
     companion object {
         const val ACTION_SHUFFLE = "ACTION_SHUFFLE"
@@ -89,6 +105,8 @@ class PlaybackService : MediaLibraryService() {
         libraryTree.onLibraryChanged = {
             mainHandler.post { notifyBrowseChildrenChanged() }
         }
+
+        player.addListener(buttonStateListener)
 
         // Initialize the notification buttons for the first time
         updateNotificationButtons()
@@ -243,6 +261,7 @@ class PlaybackService : MediaLibraryService() {
         castQueue?.release()
         castQueue = null
         mediaSession?.run {
+            player.removeListener(buttonStateListener)
             // Releasing the wrapper releases what it wraps, so the local player goes with it.
             player.release()
             release()
