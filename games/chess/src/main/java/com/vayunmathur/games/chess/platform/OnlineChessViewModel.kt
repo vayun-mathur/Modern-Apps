@@ -48,8 +48,22 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     private val tokenStore = LichessTokenStore(application)
     private val authManager = LichessAuthManager(application, tokenStore)
 
-    /** Test seam: tests swap in a [LichessApi] backed by a fake transport. */
+    /**
+     * Test seam: tests swap in a [LichessApi] backed by a fake transport.
+     *
+     * The swap restarts the event stream when already signed in: `init`
+     * launches its stream start on the main dispatcher, which may run
+     * before or after the swap depending on the test runtime's timing
+     * (Robolectric on a slow CI box ran it first, and the stream then
+     * talked to the real API while the test pushed into the fake).
+     */
     internal var api = LichessApi(tokenStore)
+        set(value) {
+            field = value
+            if (_uiState.value.auth is OnlineAuth.SignedIn) {
+                startEventStream()
+            }
+        }
 
     private val _uiState = MutableStateFlow(OnlineChessUiState())
     val uiState: StateFlow<OnlineChessUiState> = _uiState.asStateFlow()
