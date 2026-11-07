@@ -59,6 +59,23 @@ class FrameReaderTest {
     }
 
     @Test
+    fun `a fragmented message fed one byte at a time still reassembles`() {
+        // Regression: the first fragment has an 8-byte long header, so a
+        // one-byte feed passes through 4-7 buffered bytes, where reading the
+        // header used to throw instead of waiting for the rest of it.
+        val body = payload(50_000)
+        val wire = writer.frame(3, body).reduce { a, b -> a + b }
+
+        val reader = FrameReader()
+        val collected = mutableListOf<ReassembledMessage>()
+        for (byte in wire) {
+            collected += reader.offer(byteArrayOf(byte))
+        }
+
+        assertContentEquals(body, collected.single().payload)
+    }
+
+    @Test
     fun `one byte at a time still reassembles`() {
         val body = payload(200)
         val wire = writer.frame(1, body).single()
