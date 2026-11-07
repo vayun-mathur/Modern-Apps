@@ -56,14 +56,17 @@ fun AddPersonDialog(
         contactPhoto = photo
     }
 
-    val userStatus = usersByID[userid.decodeBase26()]?.requestStatus
+    // Typed input is sanitized to uppercase A-Z below, but a value can still be
+    // out of range (too long); never let decoding throw during composition.
+    val parsedUserId = runCatching { userid.decodeBase26() }.getOrNull()
+    val userStatus = parsedUserId?.let { usersByID[it]?.requestStatus }
     val context = LocalContext.current
     var showOutdatedPeer by remember { mutableStateOf(false) }
     var showKeyMismatch by remember { mutableStateOf(false) }
 
     // The fingerprint only vouches for the id that arrived in the link, so it stops applying
     // if the field gets edited to a different one.
-    val inviteFingerprint = fingerprint?.takeIf { id != null && userid.decodeBase26() == id }
+    val inviteFingerprint = fingerprint?.takeIf { id != null && parsedUserId == id }
 
     Dialog({backStack.pop()}) {
         Card {
@@ -109,7 +112,10 @@ fun AddPersonDialog(
 
                 OutlinedTextField(
                     userid,
-                    { userid = it },
+                    // Invite IDs are uppercase Base26; normalize typed/pasted
+                    // input instead of decoding lowercase or symbols into a
+                    // different person's ID.
+                    { userid = it.uppercase().filter { c -> c in 'A'..'Z' } },
                     readOnly = id != null,
                     label = { Text(stringResource(R.string.contact_findfamily_id)) },
                     isError = userStatus == RequestStatus.MUTUAL_CONNECTION || userStatus == RequestStatus.AWAITING_RESPONSE,
@@ -132,6 +138,7 @@ fun AddPersonDialog(
 
                 Button(
                     {
+                        val targetId = parsedUserId ?: return@Button
                         val userToAdd = User(
                             contactName!!,
                             contactPhoto,
@@ -140,7 +147,7 @@ fun AddPersonDialog(
                             if (userStatus == RequestStatus.AWAITING_REQUEST) RequestStatus.MUTUAL_CONNECTION else RequestStatus.AWAITING_RESPONSE,
                             Clock.System.now(),
                             null,
-                            userid.decodeBase26()
+                            targetId
                         )
                         ffViewModel.connectUser(
                             userToAdd,
@@ -150,7 +157,7 @@ fun AddPersonDialog(
                             onDone = { backStack.pop() },
                         )
                     },
-                    enabled = userid.isNotBlank() && contactName != null && !(userStatus == RequestStatus.MUTUAL_CONNECTION || userStatus == RequestStatus.AWAITING_RESPONSE)
+                    enabled = parsedUserId != null && userid.isNotBlank() && contactName != null && !(userStatus == RequestStatus.MUTUAL_CONNECTION || userStatus == RequestStatus.AWAITING_RESPONSE)
                 ) {
                     if (userStatus == RequestStatus.AWAITING_REQUEST) {
                         Text(stringResource(R.string.accept_location_request))
@@ -171,9 +178,24 @@ fun AddPersonDialog(
     }
 }
 
-fun String.decodeBase26(): Long = fold(0uL) { acc, c ->
-    acc * 26uL + (c.code - 65).toULong()
-}.toLong()
+/**
+ * Decodes an uppercase Base26 invite ID. Strict on purpose: characters outside
+ * `A`–`Z`, a value that would overflow, or one above [Long.MAX_VALUE] all throw
+ * [IllegalArgumentException] rather than wrapping or mapping onto some other
+ * person's ID. Callers handling typed or deep-linked input must sanitize /
+ * `runCatching` — see [AddPersonDialog] and `MainActivity.parseAddDeepLink`.
+ */
+fun String.decodeBase26(): Long {
+    var acc = 0uL
+    for (c in this) {
+        require(c in 'A'..'Z') { "invalid Base26 character: $c" }
+        val digit = (c.code - 65).toULong()
+        require(acc <= (ULong.MAX_VALUE - digit) / 26uL) { "Base26 value overflows" }
+        acc = acc * 26uL + digit
+    }
+    require(acc <= Long.MAX_VALUE.toULong()) { "Base26 value out of range" }
+    return acc.toLong()
+}
 
 fun Long.encodeBase26(): String = buildString {
     var remaining = this@encodeBase26.toULong()
