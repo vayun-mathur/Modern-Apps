@@ -35,6 +35,9 @@ dependencies {
     // JS plugin runtime: QuickJS engine + pure-Java WASM host (Chicory).
     implementation(libs.quickjs.kt)
     implementation(libs.chicory.runtime)
+
+    // Mocked ExoPlayer for WatchPlayerState transport tests.
+    testImplementation(libs.mockito.core)
 }
 
 // Desktop JVM unit tests cannot load the Android QuickJS .so: run them against
