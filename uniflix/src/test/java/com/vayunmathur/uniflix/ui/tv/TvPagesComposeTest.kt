@@ -3,11 +3,15 @@ package com.vayunmathur.uniflix.ui.tv
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.library.util.NavBackStack
+import com.vayunmathur.uniflix.data.TmdbApi
 import com.vayunmathur.uniflix.domain.MediaType
+import com.vayunmathur.uniflix.platform.DetailViewModel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule
@@ -46,8 +50,17 @@ class TvPagesComposeTest {
 
     @Test fun detailPageShowsFailureAndBackPops() {
         val stack = NavBackStack<TvRoute>(arrayOf(TvRoute.Main(), TvRoute.Detail("movie", 42)))
+        val vm = DetailViewModel(
+            ApplicationProvider.getApplicationContext(),
+            TmdbApi { throw java.io.IOException("offline test double") },
+        )
         composeRule.setContent {
-            DynamicTheme { TvDetailPage(backStack = stack, mediaType = "movie", tmdbId = 42) }
+            DynamicTheme {
+                TvDetailPage(backStack = stack, mediaType = "movie", tmdbId = 42, vm = vm)
+            }
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Detail failed to load.").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Detail failed to load.").assertIsDisplayed()
         composeRule.onNode(hasClickAction())

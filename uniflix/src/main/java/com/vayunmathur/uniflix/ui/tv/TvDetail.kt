@@ -56,9 +56,13 @@ import com.vayunmathur.uniflix.platform.DetailViewModel
  * + episodes as a 2-column grid of full-info cards, similar posters.
  */
 @Composable
-fun TvDetailPage(backStack: NavBackStack<TvRoute>, mediaType: String, tmdbId: Int) {
+fun TvDetailPage(
+    backStack: NavBackStack<TvRoute>,
+    mediaType: String,
+    tmdbId: Int,
+    vm: DetailViewModel = viewModel(),
+) {
     val type = mediaTypeOf(mediaType)
-    val vm: DetailViewModel = viewModel()
     LaunchedEffect(tmdbId, mediaType) { vm.load(type, tmdbId) }
     val state = vm.state
     val detail = state.detail
