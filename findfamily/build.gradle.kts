@@ -27,6 +27,7 @@ dependencies {
 
     implementation(libs.androidx.work.runtime.ktx)
     implementation(project(":library:work"))
+    testImplementation(libs.androidx.work.testing)
 
     implementation(project(":library:image"))
 
