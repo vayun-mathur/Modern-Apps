@@ -154,8 +154,10 @@ internal object LauncherIconOpsHolder : IconLoader {
 
 /** One-line grid mutation shared by the three grid setters. */
 internal fun LauncherViewModel.changeGridForSettings(transform: (GridSpec) -> GridSpec) {
-    val next = transform(homeState.value.grid)
+    // See changeGridImpl: the transform must read the grid inside the
+    // launch, or back-to-back setters lose each other's changes.
     viewModelScope.launch {
+        val next = transform(homeState.value.grid)
         repository.regrid(next)
         homeState.value = homeState.value.copy(grid = next)
         settingsState.value = settingsState.value.copy(

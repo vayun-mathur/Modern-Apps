@@ -125,8 +125,13 @@ internal fun LauncherViewModel.setHotseatSlotsImpl(slots: Int) = changeGridImpl 
  * hanging off the edge.
  */
 internal fun LauncherViewModel.changeGridImpl(transform: (GridSpec) -> GridSpec) {
-    val next = transform(homeState.value.grid)
+    // The transform is applied inside the launch, against the then-current
+    // grid: computing it here would snapshot the grid before any earlier
+    // setter's coroutine lands, so two setters in a row (rows, then hotseat
+    // slots) would each publish a whole grid and the second would silently
+    // undo the first.
     viewModelScope.launch {
+        val next = transform(homeState.value.grid)
         repository.regrid(next)
         homeState.value = homeState.value.copy(grid = next)
         settingsState.value = settingsState.value.copy(
