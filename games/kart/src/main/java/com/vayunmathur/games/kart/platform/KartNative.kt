@@ -22,7 +22,7 @@ import com.vayunmathur.library.log.Log
 @Suppress("TooManyFunctions")
 object KartNative {
     /** False until `libkart_engine` ships. The game checks this once per surface, like voxels. */
-    val isAvailable: Boolean = try {
+    var isAvailable: Boolean = try {
         System.loadLibrary("kart_engine")
         nativeInit()
         Log.status("KartNative", "libkart_engine loaded")
@@ -31,6 +31,8 @@ object KartNative {
         Log.status("KartNative", "libkart_engine absent - running the placeholder race")
         false
     }
+        // Internal so host tests can force the placeholder race on machines with the engine.
+        internal set
 
     /**
      * Start (or restart) the native race. `playerIds` is the grid in seat order;
