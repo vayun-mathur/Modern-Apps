@@ -96,11 +96,17 @@ class PlayStoreApi(
             val helper = SearchHelper(authData).using(httpClient)
             val found = LinkedHashMap<String, UnifiedApp>()
             var bundle = helper.searchResults(query)
-            var page = 1
-            while (shouldReadPage(found.values.toList(), answered, page, maxPages, bundle)) {
+            // Collect first, then decide whether another page is worth
+            // fetching. Checking hasNext() before collecting dropped a
+            // single-page result set entirely, and the page counter
+            // stopped one page short of maxPages while still fetching
+            // (and discarding) that last page.
+            var pagesRead = 0
+            while (true) {
                 collectPage(bundle, found)
+                pagesRead++
+                if (answered(found.values.toList()) || pagesRead >= maxPages || !bundle.hasNext()) break
                 bundle = helper.nextStreamBundle(query, bundle.streamNextPageUrl)
-                page++
             }
             found.values.toList()
         } catch (_: java.io.IOException) {
@@ -120,18 +126,6 @@ class PlayStoreApi(
                 val unified = app.toUnifiedApp()
                 found.putIfAbsent(unified.packageName, unified)
             }
-    }
-
-    private fun shouldReadPage(
-        found: List<UnifiedApp>,
-        answered: (List<UnifiedApp>) -> Boolean,
-        page: Int,
-        maxPages: Int,
-        bundle: com.aurora.gplayapi.data.models.StreamBundle,
-    ): Boolean {
-        if (answered(found)) return false
-        if (page >= maxPages || !bundle.hasNext()) return false
-        return true
     }
 
     /** A real top chart, rather than whatever the store's HTML happened to render. */
