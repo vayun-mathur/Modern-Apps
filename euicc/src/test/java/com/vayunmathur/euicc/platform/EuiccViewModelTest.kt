@@ -90,6 +90,28 @@ class EuiccViewModelTest {
         assertEquals(DownloadState.Idle, vm.download)
     }
 
+    @Test fun `install nickname prefers profile name then carrier`() {
+        // Regression: the nickname used to be read after the state had moved
+        // to Installing, so the Confirm branch (and the profile name) was dead.
+        assertEquals(
+            "Plan 5G",
+            installNickname(DownloadState.Confirm(carrier = "Carrier", profileName = "Plan 5G"), pendingCarrier = "Carrier"),
+        )
+        assertEquals(
+            "Carrier",
+            installNickname(DownloadState.Confirm(carrier = "Carrier", profileName = " "), pendingCarrier = "Other"),
+        )
+        assertEquals(
+            "Carrier",
+            installNickname(DownloadState.AwaitingConfirmationCode(carrier = "Carrier"), pendingCarrier = "Other"),
+        )
+        assertEquals(
+            "Pending",
+            installNickname(DownloadState.Installing(0.5f), pendingCarrier = "Pending"),
+        )
+        assertEquals("", installNickname(DownloadState.Idle, pendingCarrier = null))
+    }
+
     @Test fun `reload keeps profiles empty and sets error repeatedly`() {
         val vm = vm()
         awaitSettled(vm)
