@@ -4,6 +4,9 @@ import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -90,6 +93,7 @@ class ChartDrawAndRecipeEditTest {
         rule.waitForIdle()
         rule.onNodeWithText("Ingredients").performClick()
         rule.waitForIdle()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Rename Oats"))
         rule.onNodeWithText("Rename Oats").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Save").performClick()
