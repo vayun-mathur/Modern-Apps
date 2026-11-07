@@ -43,6 +43,13 @@ data class KeyboardSettings(
          * startup migration clearing the legacy key looked like a wipe request.
          */
         const val CLIPS_WIPE = "kb_clips_wipe"
+        /**
+         * The wipe-counter value the IME has actually carried out. A clear requested
+         * while the service is not running has to survive until its next start, which
+         * a "first flow emission is the baseline" rule cannot distinguish from an
+         * already-applied wipe; comparing against this marker can.
+         */
+        const val CLIPS_WIPE_APPLIED = "kb_clips_wipe_applied"
         const val EMOJI_RECENTS = "kb_emoji_recents"
         const val KEY_HEIGHT = "kb_key_height"
         const val ACTIVE_LAYOUT = "kb_active_layout"

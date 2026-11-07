@@ -29,19 +29,18 @@ internal fun KeyboardService.observeSettings() {
     }
     // Settings wipes the history by bumping the wipe counter; a counter (not a blank
     // string) means the one-time legacy migration below can clear the old key without
-    // looking like a wipe request. The first emission is the stored value, not a request.
+    // looking like a wipe request. What has actually been carried out is persisted in
+    // CLIPS_WIPE_APPLIED, so a clear tapped while this service was not running is
+    // still honoured on the next start instead of being read as the baseline, while
+    // an already-applied wipe (the marker's first write) never fires twice.
     scope.launch {
-        var first = true
-        var seen = 0L
-        ds.longFlow(keys.CLIPS_WIPE, 0L).collectLatest {
-            if (first) {
-                seen = it
-                first = false
-                return@collectLatest
-            }
-            if (it > seen) {
-                seen = it
+        ds.longFlow(keys.CLIPS_WIPE, 0L).collectLatest { wipe ->
+            val applied = ds.getLong(keys.CLIPS_WIPE_APPLIED)
+            if (applied == null) {
+                ds.setLong(keys.CLIPS_WIPE_APPLIED, wipe)
+            } else if (wipe > applied) {
                 forgetClips()
+                ds.setLong(keys.CLIPS_WIPE_APPLIED, wipe)
             }
         }
     }
