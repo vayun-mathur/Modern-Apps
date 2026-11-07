@@ -19,6 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -99,6 +100,16 @@ class StoresAndMiscTest {
         assertEquals(false, order("""{"id":3}""").isDelivery) // null channel is not delivery
         assertEquals(false, order("""{"channel":"ORDER_CHANNEL_STOREFRONT_PICKUP"}""").isDelivery)
         assertEquals(true, order("""{"channel":"ORDER_CHANNEL_STOREFRONT_DELIVERY"}""").isDelivery)
+    }
+
+    @Test fun cartOnlyAcceptsOneMerchant() {
+        val burger = CartItem(menuItem = MenuItem(id = 1, name = "Burger"), merchantId = 1)
+        val taco = CartItem(menuItem = MenuItem(id = 2, name = "Taco"), merchantId = 2)
+        assertTrue(emptyList<CartItem>().canAddFromSameMerchant(burger))
+        assertTrue(listOf(burger).canAddFromSameMerchant(burger.copy()))
+        assertFalse(listOf(burger).canAddFromSameMerchant(taco))
+        // A line with no merchant recorded is no evidence of a second restaurant.
+        assertTrue(listOf(burger).canAddFromSameMerchant(CartItem(menuItem = MenuItem(id = 3))))
     }
 
     @Test fun liveUpdateNotificationBuilds() {
