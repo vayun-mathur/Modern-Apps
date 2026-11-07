@@ -77,10 +77,10 @@ class PlayRepository(private val context: Context) {
     private val _authState = MutableStateFlow<PlayAuthState>(PlayAuthState.Idle)
     val authState: StateFlow<PlayAuthState> = _authState.asStateFlow()
 
-    private var cachedAuthData: AuthData? = null
+    internal var cachedAuthData: AuthData? = null
 
     /** When [cachedAuthData] was dispensed, for age-based cycling. */
-    private var dispensedAt: Long = 0L
+    internal var dispensedAt: Long = 0L
 
     /**
      * Serialises dispensing.
