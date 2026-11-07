@@ -72,6 +72,19 @@ class RRuleEdgeTest {
     }
 
     @Test
+    fun `a floating UNTIL keeps the rule and its written day`() {
+        // RFC 5545 permits a floating UNTIL with a floating DTSTART; exporters
+        // emit e.g. UNTIL=20260315T235959 with no Z/offset. This used to fail
+        // BasicIsoInstantFormat and poison the whole rule into a one-off event.
+        val rule = RRule.parse("FREQ=DAILY;UNTIL=20260315T235959", zone) as RRule.EveryXDays
+        assertEquals(RRule.EndCondition.Until(LocalDate(2026, 3, 15)), rule.endCondition)
+        val zoned = RRule.parse(
+            "FREQ=WEEKLY;UNTIL=20260315T120000", TimeZone.of("America/New_York"),
+        ) as RRule.EveryXWeeks
+        assertEquals(RRule.EndCondition.Until(LocalDate(2026, 3, 15)), zoned.endCondition)
+    }
+
+    @Test
     fun `a date-only UNTIL parses to that day`() {
         val rule = RRule.parse("FREQ=DAILY;UNTIL=20260315", zone) as RRule.EveryXDays
         assertEquals(RRule.EndCondition.Until(LocalDate(2026, 3, 15)), rule.endCondition)
