@@ -93,13 +93,24 @@ class SosCountdownService : Service() {
 
     private fun scheduleCall(remainingMs: Long) {
         val alarms = getSystemService<AlarmManager>() ?: return
-        runCatching {
-            alarms.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + remainingMs,
-                SosActionReceiver.makeCallPendingIntent(this),
-            )
-        }.onFailure { Log.status(TAG, "could not schedule the SOS call alarm", it) }
+        val at = System.currentTimeMillis() + remainingMs
+        val pending = SosActionReceiver.makeCallPendingIntent(this)
+        // SCHEDULE_EXACT_ALARM is revocable on modern Android. Dropping the call
+        // when the exact grant is gone would fail the SOS silently - the user
+        // watches the countdown end and no call is placed - so fall back to an
+        // inexact wakeup alarm (the screentime/parentalcontrols pattern): a
+        // slightly late call beats no call.
+        val exact = runCatching { alarms.canScheduleExactAlarms() }.getOrDefault(false)
+        if (exact) {
+            runCatching {
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
+            }.onSuccess { return }
+                .onFailure { Log.status(TAG, "exact SOS alarm refused; using inexact", it) }
+        } else {
+            Log.status(TAG, "no exact-alarm permission; SOS call will be approximate")
+        }
+        runCatching { alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending) }
+            .onFailure { Log.status(TAG, "could not schedule the SOS call alarm", it) }
     }
 
     companion object {
