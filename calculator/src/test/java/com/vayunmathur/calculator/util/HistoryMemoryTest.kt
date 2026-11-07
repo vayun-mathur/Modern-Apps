@@ -119,6 +119,38 @@ class HistoryMemoryTest {
     }
 
     @Test
+    fun useHistorySeedsTokenFormNotPrettySymbols() {
+        val tab = CalculatorTab()
+        tab.updateInput("0degC")
+        tab.selectOutputUnit("degC")
+        tab.evaluate()
+        // The history row shows the pretty symbol form, which the parser
+        // cannot read ('°' is not a token character); tapping it must seed
+        // the ASCII token form instead.
+        assertEquals("0\u202F°C", tab.history[0].result)
+        assertEquals("0 degC", tab.history[0].resultToken)
+        tab.clear()
+        tab.useHistory(tab.history[0])
+        assertEquals("0 degC", tab.input)
+        // The cleared tab falls back to the default output unit (K); what
+        // matters is that the seeded input re-parses to the same quantity
+        // instead of failing on the '°' symbol and blanking the preview.
+        assertEquals("273.15\u202FK", tab.preview)
+    }
+
+    @Test
+    fun useHistorySeedsInstantTokenNotLocalisedDate() {
+        val tab = CalculatorTab()
+        tab.insertInstant(1000000L)
+        tab.evaluate()
+        assertEquals("#1000000", tab.history[0].resultToken)
+        tab.clear()
+        tab.useHistory(tab.history[0])
+        assertEquals("#1000000", tab.input)
+        assertTrue(tab.preview.isNotEmpty())
+    }
+
+    @Test
     fun useHistorySeedsInputFromResult() {
         val tab = CalculatorTab()
         tab.updateInput("2+3")

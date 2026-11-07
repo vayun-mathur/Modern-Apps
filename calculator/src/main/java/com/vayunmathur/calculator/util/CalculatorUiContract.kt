@@ -9,8 +9,14 @@ package com.vayunmathur.calculator.util
  * `ui` depends on `util`, and the ViewModel implements these interfaces.
  */
 
-/** One evaluated expression, kept for the history sheet. */
-data class HistoryEntry(val expression: String, val result: String)
+/**
+ * One evaluated expression, kept for the history sheet. [result] is the pretty
+ * display form (thin space, unit symbols like `°C`/`µm`, localised dates);
+ * [resultToken] is the same value in the parser's ASCII token form, which is
+ * what tapping the entry seeds the input with — the display form does not
+ * re-parse. Defaults to [result] so plain numeric entries need no second form.
+ */
+data class HistoryEntry(val expression: String, val result: String, val resultToken: String = result)
 
 /** How far the graph can be zoomed out and in, in pixels per unit. */
 private const val MIN_GRAPH_SCALE = 2.0

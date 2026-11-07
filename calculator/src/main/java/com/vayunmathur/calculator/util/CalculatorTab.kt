@@ -90,14 +90,15 @@ class CalculatorTab {
             selectedUnit ?: UnitRegistry.defaultUnitFor(quantity.dimension)
         }
         val display = formatQuantity(quantity, unit)
-        history.add(0, HistoryEntry(input, display))
+        // The token form re-parses, so the result can seed the next calculation.
+        val token = formatQuantity(quantity, unit, useToken = true)
+        history.add(0, HistoryEntry(input, display, token))
         lastAnswer = quantity.value
         if (unit != null) selectedUnit = unit
-        // The token form re-parses, so the result can seed the next calculation.
-        updateInput(formatQuantity(quantity, unit, useToken = true))
+        updateInput(token)
     }
 
-    fun useHistory(entry: HistoryEntry) = updateInput(entry.result)
+    fun useHistory(entry: HistoryEntry) = updateInput(entry.resultToken)
 
     fun selectOutputUnit(token: String) {
         val unit = unitOptions.firstOrNull { it.token == token } ?: return
