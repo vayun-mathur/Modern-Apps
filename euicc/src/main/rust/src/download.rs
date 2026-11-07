@@ -267,8 +267,19 @@ pub fn finish_download(
 /// Retrieve → handle → remove for one install notification. Best-effort: the
 /// eUICC keeps the notification until acknowledged, so delivery failure must
 /// not fail the install itself.
+/// The eUICC sequence number to retrieve/remove, or `None` when the install
+/// result carried none (`parse_install_result` reports -1 then). Coercing a
+/// missing sequence to 0 would retrieve — and on success remove — an
+/// unrelated pending notification that happens to carry sequence 0.
+fn notification_seq(seq_number: i64) -> Option<u32> {
+    u32::try_from(seq_number).ok()
+}
+
 fn deliver_notification(env: &mut Env, smdp: &str, seq_number: i64, fallback: &[u8]) {
-    let Ok(seq) = u32::try_from(seq_number.max(0)) else {
+    let Some(seq) = notification_seq(seq_number) else {
+        // No sequence to retrieve by: post the raw result to the download
+        // server, like the retrieve-failure fallback below, and remove nothing.
+        let _ = es9p::handle_notification(smdp, fallback);
         return;
     };
     let Ok(retrieved) = store_data(env, &es10b::build_retrieve_notification(seq))
@@ -321,6 +332,15 @@ mod tests {
         assert!(ci_key_known(&list, &wrapped));
         assert!(!ci_key_known(&list, &[0xDD]));
         assert!(!ci_key_known(&[], &[0xAA, 0xBB, 0xCC]));
+    }
+
+    #[test]
+    fn notification_seq_rejects_missing_sequence() {
+        // -1 is parse_install_result's "no NotificationMetadata" sentinel.
+        assert_eq!(notification_seq(-1), None);
+        assert_eq!(notification_seq(0), Some(0));
+        assert_eq!(notification_seq(42), Some(42));
+        assert_eq!(notification_seq(i64::from(u32::MAX) + 1), None);
     }
 
     #[test]
