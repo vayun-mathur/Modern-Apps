@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import com.vayunmathur.launcher.domain.ActivityKey
 import com.vayunmathur.launcher.domain.PackageKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -185,6 +186,11 @@ class LauncherAppsMonitor(context: Context, private val scope: CoroutineScope) {
      * `onPackagesUnavailable`, so the callback-built [unavailable] set is
      * empty for it and reconciliation would mistake its apps for uninstalled.
      */
+    /** Launchable activities present right now, for reconciliation. */
+    fun installedActivityKeys(): Set<ActivityKey> = _apps.value.map {
+        ActivityKey(it.componentName.packageName, it.componentName.className, it.profileSerial)
+    }.toSet()
+
     fun unavailableProfileSerials(): Set<Long> = runCatching {
         launcherApps.profiles
             .filter { userManager.isQuietModeEnabled(it) }
