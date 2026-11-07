@@ -76,6 +76,26 @@ class FindFamilyRepositoryTest {
     }
 
     @Test
+    fun deleteWaypointCascadesReferences() = runTest {
+        val wpId = repo.upsertWaypoint(Waypoint(name = "Home", range = 150.0, coord = Coord(3.0, 4.0)))
+        val otherWp = repo.upsertWaypoint(Waypoint(name = "Work", range = 150.0, coord = Coord(5.0, 6.0)))
+        val uid = repo.upsertUser(user())
+        repo.setSharingAutoToggleWaypointId(uid, wpId)
+        repo.updateLocationMeta(uid, "Home", wpId, 1234L)
+        repo.noShowAlertStore.upsert(
+            NoShowAlert(watchedUserId = uid, waypointId = wpId, expectedAt = Clock.System.now(), grace = 5.minutes)
+        )
+        repo.noShowAlertStore.upsert(
+            NoShowAlert(watchedUserId = uid, waypointId = otherWp, expectedAt = Clock.System.now(), grace = 5.minutes)
+        )
+        assertEquals(1, repo.deleteWaypoint(repo.getWaypoint(wpId)))
+        val row = repo.getUser(uid)!!
+        assertNull(row.sharingAutoToggleWaypointId)
+        assertNull(row.lastWaypointId)
+        assertEquals(listOf(otherWp), repo.noShowAlertStore.getAll().map { it.waypointId })
+    }
+
+    @Test
     fun userMetaAndPairIds() = runTest {
         val id = repo.upsertUser(user())
         repo.updateLocationMeta(id, "Office", 7L, 1234L)

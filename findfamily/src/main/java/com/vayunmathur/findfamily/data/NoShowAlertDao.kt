@@ -40,6 +40,9 @@ interface NoShowAlertDao {
     @Query("DELETE FROM NoShowAlert WHERE watchedUserId = :userId")
     suspend fun deleteByWatchedUserId(userId: Long)
 
+    @Query("DELETE FROM NoShowAlert WHERE waypointId = :waypointId")
+    suspend fun deleteByWaypointId(waypointId: Long)
+
     /**
      * Mark fired only if the row has not fired yet, so two concurrent
      * scheduler runs cannot both claim it. Returns rows updated (0 or 1).
