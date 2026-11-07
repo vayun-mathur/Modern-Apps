@@ -182,8 +182,27 @@ impl Matrix3<f64> {
         for i in 0..3 {
             let vi = vmat.column(i);
             let mvi = *self * vi;
-            if sigma[i] > 1e-12 {
-                u.set_column(i, mvi / sigma[i]);
+            if sigma[i] <= 1e-12 {
+                degenerate[i] = true;
+                continue;
+            }
+            // u_i = M v_i / σ_i is only as good as v_i, and for a near-zero
+            // σ_i the Jacobi eigenvector is numerically in M's null space:
+            // the quotient comes out near zero instead of unit (an essential
+            // matrix's σ = (1, 1, 1e-9) did exactly this, and every consumer
+            // indexing u.column(2) — the translation direction — read noise).
+            // Orthogonalise against the accepted columns and let the fixup
+            // below complete any column that does not survive as unit.
+            let mut cand = mvi / sigma[i];
+            for (j, _) in degenerate.iter().enumerate().take(i) {
+                if !degenerate[j] {
+                    let uj = u.column(j);
+                    cand = cand - uj * uj.dot(&cand);
+                }
+            }
+            let n = cand.norm();
+            if n > 0.5 {
+                u.set_column(i, cand / n);
             } else {
                 degenerate[i] = true;
             }
