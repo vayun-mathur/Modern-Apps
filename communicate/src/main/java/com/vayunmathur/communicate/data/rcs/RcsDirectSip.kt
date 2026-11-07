@@ -16,7 +16,7 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
@@ -152,7 +152,11 @@ object RcsDirectSip {
         pcscf = null
         pendingSends.values.forEach { runCatching { it(false) } }
         pendingSends.clear()
-        scope.coroutineContext.cancel()
+        // Cancel children only, never the scope itself: cancelling the
+        // process-wide scope would leave every later start() without a
+        // reader loop (transact writes, then waits out its full timeout),
+        // making the stack un-restartable after any teardown.
+        scope.coroutineContext.cancelChildren()
     }
 
     /** True when REGISTERed with a live socket. */
@@ -508,7 +512,11 @@ object RcsDirectSip {
         val from = publicIdentity.ifBlank { "sip:anonymous@anonymous.invalid" }
         val filtered = headers.lineSequence().filter { line ->
             val t = line.trim()
-            !(t.startsWith("Via:", ignoreCase = true) ||
+            // Blank lines must go too: callers pass a header block ending in
+            // CRLF, and keeping its trailing empty line would end the head
+            // here, pushing the Via/From/Route below into the body.
+            !(t.isBlank() ||
+                t.startsWith("Via:", ignoreCase = true) ||
                 t.startsWith("From:", ignoreCase = true) ||
                 t.startsWith("Route:", ignoreCase = true))
         }.joinToString("\r\n")
