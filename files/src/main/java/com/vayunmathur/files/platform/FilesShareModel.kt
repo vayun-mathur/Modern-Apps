@@ -138,8 +138,13 @@ abstract class FilesShareModel(application: Application) :
     // ---- Archive ----
     override fun archive(archiveName: String) {
         if (isZipMode()) return
-        val destFileName = if (archiveName.endsWith(".zip")) archiveName else "$archiveName.zip"
-        val destFile = File(currentDirectoryState.value, destFileName)
+        // The dialog asks for a file name, not a path, and the archive must
+        // not clobber an existing file (ZipWorker refuses that too): pick a
+        // fresh "name (n).zip" on collision, like create and paste do.
+        val baseName = File(archiveName.trim()).name
+        if (baseName.isBlank()) return
+        val destFileName = if (baseName.endsWith(".zip")) baseName else "$baseName.zip"
+        val destFile = uniqueDestination(currentDirectoryState.value, destFileName)
         val sources = selectedPathsState.value.mapNotNull { it.realFile?.absolutePath }
             .toTypedArray()
         if (sources.isEmpty()) return

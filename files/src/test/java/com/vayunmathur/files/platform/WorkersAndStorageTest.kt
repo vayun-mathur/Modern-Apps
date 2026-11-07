@@ -54,6 +54,50 @@ class WorkersAndStorageTest {
         dir.deleteRecursively()
     } }
 
+    private fun zipWorker(dir: File, sources: Array<String>, dest: File) =
+        TestListenableWorkerBuilder<ZipWorker>(ctx)
+            .setInputData(
+                workDataOf(
+                    "source_paths" to sources,
+                    "dest_path" to dest.absolutePath,
+                ),
+            )
+            .build()
+
+    @Test
+    fun `zip worker refuses existing destination and destination as source`() { runBlocking {
+        val dir = tempDir("zip-clash")
+        val srcFile = File(dir, "a.txt").apply { writeText("alpha") }
+        val existing = File(dir, "out.zip").apply { writeText("keep me") }
+        assertEquals(
+            ListenableWorker.Result.failure(),
+            zipWorker(dir, arrayOf(srcFile.absolutePath), existing).doWork(),
+        )
+        assertEquals("keep me", existing.readText())
+        // the archive must never be one of its own sources (it would be
+        // truncated before being read)
+        assertEquals(
+            ListenableWorker.Result.failure(),
+            zipWorker(dir, arrayOf(srcFile.absolutePath), srcFile).doWork(),
+        )
+        assertEquals("alpha", srcFile.readText())
+        dir.deleteRecursively()
+    } }
+
+    @Test
+    fun `zip worker deletes its partial archive on failure`() { runBlocking {
+        val dir = tempDir("zip-partial")
+        val srcFile = File(dir, "a.txt").apply { writeText("alpha") }
+        val dest = File(dir, "out.zip")
+        // the same source twice makes ZipOutputStream reject the duplicate entry
+        assertEquals(
+            ListenableWorker.Result.failure(),
+            zipWorker(dir, arrayOf(srcFile.absolutePath, srcFile.absolutePath), dest).doWork(),
+        )
+        assertFalse(dest.exists())
+        dir.deleteRecursively()
+    } }
+
     @Test
     fun `zip worker fails without input`() { runBlocking {
         val worker = TestListenableWorkerBuilder<ZipWorker>(ctx).build()
