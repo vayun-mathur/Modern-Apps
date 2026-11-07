@@ -123,13 +123,11 @@ class ImapIdleService : Service() {
         val rawConn = RawImapConnection(server, trustAll = useTrustAll)
         rawConn.connect()
         var caps = rawConn.capability()
+        // Fail closed on STARTTLS failure (see ImapClient.withConnection):
+        // never fall through to a plaintext LOGIN with the password.
         if (!server.useSsl && caps.has("STARTTLS")) {
-            try {
-                rawConn.startTls()
-                caps = rawConn.capability()
-            } catch (e: IOException) {
-                Log.status(TAG, "STARTTLS fail ${account.email}: ${e.message}")
-            }
+            rawConn.startTls()
+            caps = rawConn.capability()
         }
 
         when (auth) {
