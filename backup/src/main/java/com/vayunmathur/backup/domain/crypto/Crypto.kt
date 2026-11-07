@@ -15,12 +15,18 @@ import java.io.OutputStream
  * truncation of segments is detected on decrypt (in addition to GCM's per-segment
  * integrity). Wrong key or tampering surfaces as an [javax.crypto.AEADBadTagException].
  *
- * On-disk stream layout:
+ * On-disk stream layout (version 2):
  * ```
- * [1 byte  version = 1]
+ * [1 byte  version = 2]
  * repeated: [4-byte BE segmentLen][segmentLen bytes: E2ee(iv||ct||tag)]
+ * [terminator segment: plaintext is just the 4-byte next index, no data]
  * ```
- * where each segment plaintext = `[4-byte BE index][data chunk ≤ SEGMENT_SIZE]`.
+ * where each data segment plaintext = `[4-byte BE index][data chunk ≤ SEGMENT_SIZE]`.
+ * The terminator makes truncation at a segment boundary detectable: without it, a
+ * stream cut short between segments is indistinguishable from a complete shorter
+ * backup. Version 1 streams (no terminator) are still accepted on decrypt for
+ * compatibility with backups written before the terminator existed, but new
+ * writes are always version 2.
  *
  * Ported concept (Seedvault segmented backup format) — see backup/LICENSE-Seedvault.
  */
@@ -45,16 +51,30 @@ class Crypto(private val masterKey: ByteArray) {
             index++
             if (read < SEGMENT_SIZE) break
         }
+        // Terminator: a segment whose plaintext is only the next index. Its
+        // presence proves the stream was not cut short at a segment boundary.
+        val terminator = ByteArray(4)
+        writeIntBE(terminator, 0, index)
+        val segment = E2ee.aesEncrypt(masterKey, terminator)
+        writeIntTo(output, segment.size)
+        output.write(segment)
         output.flush()
     }
 
     fun decrypt(input: InputStream, output: OutputStream) {
         val version = input.read()
         if (version < 0) throw IOException("empty backup stream")
-        require(version == VERSION) { "unsupported backup version: $version" }
+        require(version == VERSION || version == VERSION_V1) {
+            "unsupported backup version: $version"
+        }
         var expectedIndex = 0
         while (true) {
-            val length = readIntFrom(input) ?: break
+            val length = readIntFrom(input) ?: run {
+                // Clean EOF between segments. Only a legacy v1 stream may end
+                // here; a v2 stream must end with its terminator segment.
+                if (version == VERSION) throw IOException("truncated backup stream: missing terminator")
+                break
+            }
             if (length <= 0 || length > MAX_SEGMENT_BLOB) throw IOException("invalid segment length: $length")
             val segment = ByteArray(length)
             if (fill(input, segment) != length) throw IOException("truncated segment")
@@ -62,6 +82,13 @@ class Crypto(private val masterKey: ByteArray) {
             if (plain.size < 4) throw IOException("corrupt segment")
             val index = readIntBE(plain, 0)
             if (index != expectedIndex) throw IOException("segment out of order: $index != $expectedIndex")
+            if (plain.size == 4) {
+                // Terminator segment (v2 only; a v1 writer never emitted one).
+                if (version == VERSION_V1) throw IOException("corrupt segment")
+                if (readIntFrom(input) != null) throw IOException("trailing data after terminator")
+                output.flush()
+                return
+            }
             output.write(plain, 4, plain.size - 4)
             expectedIndex++
         }
@@ -75,7 +102,8 @@ class Crypto(private val masterKey: ByteArray) {
         ByteArrayOutputStream().also { decrypt(ByteArrayInputStream(blob), it) }.toByteArray()
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
+        private const val VERSION_V1 = 1
         const val SEGMENT_SIZE = 1 shl 20 // 1 MiB plaintext per segment
         // Sanity bound so a corrupt length can't request a huge allocation.
         private const val MAX_SEGMENT_BLOB = SEGMENT_SIZE + 1024
