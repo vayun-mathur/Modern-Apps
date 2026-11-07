@@ -30,4 +30,6 @@ dependencies {
     implementation(project(":library:e2ee-p2p"))
     // Local config (backend uri/creds handle, enabled sets, last-run).
     implementation(libs.androidx.datastore.preferences)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(project(":library:aosp-stubs"))
 }
