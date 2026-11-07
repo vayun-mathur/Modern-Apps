@@ -203,6 +203,18 @@ impl VioSession {
             // still "initialising".
             if matches!(self.quality, Quality::Good | Quality::Limited) {
                 self.quality = Quality::Lost;
+                // The metric map belonged to the lost track: keyframes were
+                // scaled by the old alignment and landmarks/plane refer to a
+                // world frame that can no longer be re-observed. Keeping them
+                // would let a later re-initialisation mix two scales in one
+                // solve and keep snapping taps to a stale plane.
+                self.keyframes.clear();
+                self.landmarks.clear();
+                self.plane = None;
+                self.scale = 1.0;
+                self.scale_confidence = 0.0;
+                self.pose = CameraPose::identity();
+                self.pending_imu.clear();
             }
             self.prev_points = detect_points(gray);
             self.prev_ids = self.fresh_ids(self.prev_points.len());
