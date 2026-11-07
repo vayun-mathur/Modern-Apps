@@ -337,10 +337,11 @@ data class Contact(
             ops += ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
                 .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, accountType)
                 .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, accountName)
+                .withValue(ContactsContract.RawContacts.STARRED, if (isFavorite) 1 else 0)
                 .withValue(ContactsContract.RawContacts.CUSTOM_RINGTONE, ringtoneToProvider(customRingtone))
                 .build()
 
-            ops += details.all().map { createInsertOperation(it) }
+            ops += newDetails.all().map { createInsertOperation(it) }
         } else {
             // Favorite and ringtone
             ops += ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
