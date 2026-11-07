@@ -222,6 +222,18 @@ private fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.
         Log.error("CameraViewModel", "Timelapse remux failed; saving unprocessed", e)
         processed.delete()
         cacheFile
+    } catch (e: IllegalArgumentException) {
+        // Extractor/muxer argument failures (e.g. a sample that still
+        // exceeds the buffer) must not crash the finalize coroutine or
+        // lose the recording; keep the raw recording.
+        Log.error("CameraViewModel", "Timelapse remux failed; saving unprocessed", e)
+        processed.delete()
+        cacheFile
+    } catch (e: java.nio.BufferOverflowException) {
+        // Same fallback as above for an oversized sample write.
+        Log.error("CameraViewModel", "Timelapse remux failed; saving unprocessed", e)
+        processed.delete()
+        cacheFile
     }
 }
 
