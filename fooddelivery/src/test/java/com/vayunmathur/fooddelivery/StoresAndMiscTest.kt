@@ -86,7 +86,8 @@ class StoresAndMiscTest {
 
     @Test fun orderStageDerivation() {
         assertEquals(OrderStage.DELIVERED, order("""{"deliveredAt":"2024-01-01T00:00:00Z"}""").stage)
-        assertEquals(OrderStage.DRIVING, order("""{"pickedupAt":"2024-01-01T00:20:00Z"}""").stage)
+        assertEquals(OrderStage.PICKED_UP, order("""{"pickedupAt":"2024-01-01T00:20:00Z"}""").stage)
+        assertEquals(OrderStage.DRIVING, order("""{"channel":"ORDER_CHANNEL_STOREFRONT_DELIVERY","pickedupAt":"2024-01-01T00:20:00Z"}""").stage)
         assertEquals(OrderStage.ARRIVING, order("""{"driverReachedCustomerAt":"2024-01-01T00:20:00Z"}""").stage)
         assertEquals(OrderStage.READY, order("""{"driverReachedMerchantAt":"2024-01-01T00:10:00Z"}""").stage)
         assertEquals(OrderStage.READY, order("""{"pickupReadyAt":"2024-01-01T00:00:00Z"}""").stage) // ready time in the past

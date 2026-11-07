@@ -294,7 +294,7 @@ private fun StageHeader(order: Order) {
                     OrderStage.PREPARING_SOON -> 0.1f
                     OrderStage.PREPARING -> 0.3f
                     OrderStage.READY -> 0.5f
-                    OrderStage.PICKED_UP -> 0.65f
+                    OrderStage.PICKED_UP -> if (order.isDelivery) 0.65f else 1f
                     OrderStage.DRIVING -> 0.8f
                     OrderStage.ARRIVING -> 0.95f
                     OrderStage.DELIVERED -> 1f

@@ -12,7 +12,7 @@ import com.vayunmathur.library.ui.Text
 @Composable
 fun OrdersScreenSection(status: String) {
     val color = when (status) {
-        "Delivered", "Picked up" -> MaterialTheme.colorScheme.primary
+        "Delivered", "Picked Up" -> MaterialTheme.colorScheme.primary
         "In progress" -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.outline
     }
