@@ -67,6 +67,39 @@ class SudokuGameStateTest {
     }
 
     @Test
+    fun duplicatedDigitsInAUnitConflict() {
+        // A second blank in the same row as [blank], entered with the same digit.
+        val side = puzzle.size.side
+        val peer = puzzle.givens.indices.first {
+            it != blank && it / side == blank / side && puzzle.givens[it] == 0
+        }
+        val s = fresh.withEntry(blank, 1).withEntry(peer, 1)
+        val conflicts = s.conflictingIndices()
+        assertTrue(blank in conflicts && peer in conflicts, "both copies are marked: $conflicts")
+        assertTrue(conflicts.all { s.valueAt(it) == 1 }, "only the duplicated digit conflicts")
+    }
+
+    @Test
+    fun anEntryDuplicatingAGivenConflictsWithIt() {
+        val given = puzzle.givens.indices.first { puzzle.givens[it] != 0 }
+        // The blank in the given's row that entering the given's digit would duplicate.
+        val side = puzzle.size.side
+        val cell = puzzle.givens.indices.first {
+            puzzle.givens[it] == 0 && it / side == given / side
+        }
+        val s = fresh.withEntry(cell, puzzle.givens[given])
+        val conflicts = s.conflictingIndices()
+        assertTrue(cell in conflicts && given in conflicts, "entry and given are marked: $conflicts")
+        assertTrue(conflicts.all { s.valueAt(it) == puzzle.givens[given] })
+    }
+
+    @Test
+    fun correctEntriesAndEmptyBoardsHaveNoConflicts() {
+        assertTrue(fresh.conflictingIndices().isEmpty())
+        assertTrue(fresh.withEntry(blank, puzzle.solution[blank]).conflictingIndices().isEmpty())
+    }
+
+    @Test
     fun wrongIndicesIsEmptyOnACleanBoard() {
         assertTrue(fresh.wrongIndices().isEmpty())
         assertTrue(fresh.withEntry(blank, puzzle.solution[blank]).wrongIndices().isEmpty())

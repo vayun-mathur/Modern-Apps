@@ -145,9 +145,11 @@ data class SudokuGameState(
     /**
      * True when [index] holds a digit that disagrees with the solution.
      *
-     * Nothing in the UI draws this. A wrong digit goes in silently and stays there; the player finds
-     * out because the puzzle refuses to complete, and a hint will fix it. It exists so [wrongIndices]
-     * can find those cells.
+     * The UI never draws this directly — marking it would hand out the answer. What the grid
+     * marks instead is [conflictingIndices], the duplicates a player can see for themselves.
+     * A wrong digit that duplicates nothing goes in silently and stays there; the player
+     * finds out because the puzzle refuses to complete, and a hint will fix it. It exists so
+     * [wrongIndices] can find those cells.
      */
     fun isWrong(index: Int): Boolean {
         val value = valueAt(index)
@@ -156,6 +158,34 @@ data class SudokuGameState(
 
     /** Filled cells that disagree with the solution, which a hint fixes before filling anything new. */
     fun wrongIndices(): List<Int> = (0 until size.cellCount).filter { isWrong(it) }
+
+    /**
+     * Cells whose digit is repeated by another cell in the same row, column or box.
+     *
+     * Unlike [isWrong] this needs no solution: a duplicate is visible from the board alone,
+     * which is exactly why the grid can mark it without giving the answer away. Both copies
+     * are reported — from the board alone there is no way to say which one is misplaced.
+     * Solved and answer-mode boards can never contain one, because every entry on them
+     * agrees with the solution.
+     */
+    fun conflictingIndices(): Set<Int> {
+        val conflicts = mutableSetOf<Int>()
+        for (index in 0 until size.cellCount) {
+            val value = valueAt(index)
+            if (value == 0) continue
+            for (other in 0 until size.cellCount) {
+                if (other == index || valueAt(other) != value) continue
+                val peer = other / size.side == index / size.side ||
+                    other % size.side == index % size.side ||
+                    size.boxOf(other) == size.boxOf(index)
+                if (peer) {
+                    conflicts.add(index)
+                    conflicts.add(other)
+                }
+            }
+        }
+        return conflicts
+    }
 
     /** Cells with nothing in them yet. */
     fun blankIndices(): List<Int> = (0 until size.cellCount).filter { valueAt(it) == 0 }
