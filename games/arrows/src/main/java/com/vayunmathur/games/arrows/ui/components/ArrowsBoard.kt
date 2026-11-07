@@ -4,10 +4,6 @@
 package com.vayunmathur.games.arrows.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -43,6 +39,7 @@ import com.vayunmathur.games.arrows.data.Mirror
 import com.vayunmathur.games.arrows.domain.ArrowsRules
 import com.vayunmathur.games.arrows.platform.ArrowMove
 import com.vayunmathur.library.ui.MaterialTheme
+import com.vayunmathur.library.ui.Motion
 import kotlinx.coroutines.delay
 
 /**
@@ -80,21 +77,27 @@ fun ArrowsBoard(
 
     LaunchedEffect(move) {
         if (move == null) return@LaunchedEffect
+        // Segments do not share this advance: each converts it with laggedAdvance(), so the head
+        // sets off first and the tail follows. The global value therefore has to run past each
+        // segment's own destination by one lag per trailing segment (globalAdvanceTarget()).
+        val segmentCount = game.remaining.firstOrNull { it.id == move.pieceId }?.cells?.size ?: 1
         if (move.clears) {
             // One past the end of the route, so the tail clears the edge too rather than winking
             // out on it. The route already ends with the head's escape path, so its size alone is
             // the distance that takes the tail out; adding `move.advance` counted that path twice
             // and kept the (by then invisible) arrow animating - and taps locked - for up to a
             // whole extra board crossing after it had left.
-            val target = move.route.size.toFloat()
-            advance.animateTo(target, tween(cellMillis(move.route.size), easing = LinearEasing))
+            val maxAdvance = move.route.size.toFloat()
+            val target = globalAdvanceTarget(maxAdvance, segmentCount)
+            advance.animateTo(target, Motion.over(cellMillis(target)))
         } else {
             // Wedged arrows still get a nudge, or a tap on one reads as the game ignoring the input.
-            val target = if (move.advance == 0) NUDGE_CELLS else move.advance.toFloat()
-            advance.animateTo(target, tween(cellMillis(move.advance), easing = LinearOutSlowInEasing))
+            val maxAdvance = if (move.advance == 0) NUDGE_CELLS else move.advance.toFloat()
+            val target = globalAdvanceTarget(maxAdvance, segmentCount)
+            advance.animateTo(target, Motion.open(cellMillis(target)))
             showBlocked = true
             delay(BLOCKED_HOLD_MILLIS)
-            advance.animateTo(0f, tween(cellMillis(move.advance), easing = FastOutSlowInEasing))
+            advance.animateTo(0f, Motion.close(cellMillis(target)))
         }
         onMoveFinished()
     }
@@ -142,7 +145,14 @@ fun ArrowsBoard(
                             else -> arrowColor
                         }
                         if (moving && move != null) {
-                            drawTravellingArrow(piece, move, advance.value, cols, cellPx, color)
+                            val maxAdvance = if (move.clears) {
+                                move.route.size.toFloat()
+                            } else if (move.advance == 0) {
+                                NUDGE_CELLS
+                            } else {
+                                move.advance.toFloat()
+                            }
+                            drawTravellingArrow(piece, move, advance.value, maxAdvance, cols, cellPx, color)
                         } else {
                             drawArrow(piece, cols, cellPx, color)
                         }
@@ -202,8 +212,8 @@ private const val MILLIS_PER_CELL = 45
 /** Floor on the animation, so a one-cell move is still long enough to register. */
 private const val MIN_MOVE_MILLIS = 120
 
-private fun cellMillis(cells: Int): Int =
-    (cells * MILLIS_PER_CELL).coerceAtLeast(MIN_MOVE_MILLIS)
+private fun cellMillis(cells: Float): Int =
+    (cells * MILLIS_PER_CELL).toInt().coerceAtLeast(MIN_MOVE_MILLIS)
 
 /** How far a wedged arrow lurches before coming back, in cells. */
 private const val NUDGE_CELLS = 0.3f

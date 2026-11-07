@@ -89,7 +89,7 @@ class ArrowsBoardDrawingTest {
         for (advance in listOf(0f, 0.5f, 1.5f, 3f)) {
             val bitmap = drawOnBitmap {
                 val cell = size.width / 5
-                drawTravellingArrow(piece, ArrowMove(piece.id, route, 3, true), advance, 5, cell, Color.Black)
+                drawTravellingArrow(piece, ArrowMove(piece.id, route, 3, true), advance, route.size.toFloat(), 5, cell, Color.Black)
             }
             assertTrue(nonTransparentPixels(bitmap) > 5, "travelling arrow at $advance should paint")
         }
@@ -102,7 +102,7 @@ class ArrowsBoardDrawingTest {
         val bitmap = drawOnBitmap {
             val cell = size.width / 5
             // Route is only the piece's own cells, so the sampled heading collapses at the head
-            drawTravellingArrow(piece, ArrowMove(piece.id, piece.cells, 0, false), 0f, 5, cell, Color.Black)
+            drawTravellingArrow(piece, ArrowMove(piece.id, piece.cells, 0, false), 0f, 0f, 5, cell, Color.Black)
         }
         assertTrue(nonTransparentPixels(bitmap) > 5)
     }
