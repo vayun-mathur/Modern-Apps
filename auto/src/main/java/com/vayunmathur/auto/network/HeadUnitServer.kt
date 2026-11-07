@@ -28,14 +28,19 @@ class HeadUnitServer(private val port: Int = DHU_PORT) : Closeable {
         // 127.0.0.1 on-device. Bind IPv4 explicitly and fall back to dual-stack
         // `::` only if the bind fails: adb can reach either, and the wildcard
         // would expose the socket only to the phone itself either way.
-        val socket = server ?: tryIpv4Loopback() ?: ServerSocket(port, BACKLOG)
-            .also {
-                Log.status(TAG, "IPv4 loopback bind failed; listening dual-stack instead")
-            }
-            .also {
-                server = it
-                Log.status(TAG, "listening for a head unit on ${it.inetAddress.hostAddress}:$port")
-            }
+        // The bound socket must be kept in `server` on BOTH bind paths:
+        // the also-chain below used to attach only to the dual-stack
+        // fallback, so the normal IPv4 socket was never stored. Every
+        // later accept() then tried to bind a second ServerSocket on the
+        // same port (BindException), close() closed nothing, and the
+        // leaked first socket kept the port while accepting nobody --
+        // reconnect after the first DHU session could never work.
+        val socket = server ?: (tryIpv4Loopback() ?: ServerSocket(port, BACKLOG).also {
+            Log.status(TAG, "IPv4 loopback bind failed; listening dual-stack instead")
+        }).also {
+            server = it
+            Log.status(TAG, "listening for a head unit on ${it.inetAddress.hostAddress}:$port")
+        }
         return socket.accept().apply {
             // Projection is latency-sensitive and its writes are small and frequent; Nagle
             // would coalesce frames and add a visible stutter.
