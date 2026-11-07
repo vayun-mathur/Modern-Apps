@@ -124,6 +124,14 @@ class PlaybackManager private constructor(context: Context) {
                 Log.error("PlaybackManager", "Error initializing MediaController", e)
             } catch (e: SecurityException) {
                 Log.error("PlaybackManager", "Error initializing MediaController", e)
+            } catch (e: java.util.concurrent.ExecutionException) {
+                // A refused session connection surfaces here, not as one of
+                // the types above: without this catch the failure escaped
+                // the listener as an uncaught exception on the main thread.
+                Log.error("PlaybackManager", "Error initializing MediaController", e)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                Log.error("PlaybackManager", "Error initializing MediaController", e)
             }
         }, MoreExecutors.directExecutor())
 
