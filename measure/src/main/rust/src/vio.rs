@@ -63,7 +63,11 @@ const MAX_REPROJ: f64 = 0.01;
 
 struct Keyframe {
     pose: CameraPose,
-    points: Vec<(f32, f32)>,
+    /// `(feature id, pixel)` observations. Ids are carried through KLT tracking
+    /// so two keyframes can be matched by identity, never by list position:
+    /// tracking drops and re-detects points, so index i in two keyframes is
+    /// in general a different scene feature.
+    points: Vec<(u64, (f32, f32))>,
     imu: Preintegrated,
 }
 
@@ -71,6 +75,9 @@ pub struct VioSession {
     intr: Intrinsics,
     prev_pyramid: Option<Pyramid>,
     prev_points: Vec<(f32, f32)>,
+    /// Feature ids parallel to `prev_points`.
+    prev_ids: Vec<u64>,
+    next_point_id: u64,
     keyframes: Vec<Keyframe>,
     pending_imu: Vec<ImuSample>,
     gyro_bias: Vector3<f64>,
@@ -94,6 +101,8 @@ impl VioSession {
             intr,
             prev_pyramid: None,
             prev_points: Vec::new(),
+            prev_ids: Vec::new(),
+            next_point_id: 1,
             keyframes: Vec::new(),
             pending_imu: Vec::new(),
             gyro_bias: Vector3::zeros(),
@@ -156,11 +165,14 @@ impl VioSession {
             None => {
                 // First frame: seed the feature set and the first keyframe.
                 self.prev_points = detect_points(gray);
+                self.prev_ids = self.fresh_ids(self.prev_points.len());
                 self.prev_pyramid = Some(pyramid);
                 self.last_frame_ns = t_ns;
+                let points: Vec<(u64, (f32, f32))> =
+                    self.prev_ids.iter().copied().zip(self.prev_points.iter().copied()).collect();
                 self.keyframes.push(Keyframe {
                     pose: CameraPose::identity(),
-                    points: self.prev_points.clone(),
+                    points,
                     imu: Preintegrated::identity(),
                 });
                 return self.quality;
@@ -171,6 +183,7 @@ impl VioSession {
         let results = track(&prev, &pyramid, &self.prev_points);
         let mut kept_prev = Vec::new();
         let mut kept_now = Vec::new();
+        let mut kept_ids = Vec::new();
         let mut flow = Vec::new();
         for (i, r) in results.iter().enumerate() {
             if !r.ok {
@@ -179,6 +192,7 @@ impl VioSession {
             let p = self.prev_points[i];
             kept_prev.push(p);
             kept_now.push((r.x, r.y));
+            kept_ids.push(self.prev_ids.get(i).copied().unwrap_or(0));
             flow.push(((r.x - p.0).powi(2) + (r.y - p.1).powi(2)).sqrt());
         }
 
@@ -191,6 +205,7 @@ impl VioSession {
                 self.quality = Quality::Lost;
             }
             self.prev_points = detect_points(gray);
+            self.prev_ids = self.fresh_ids(self.prev_points.len());
             self.prev_pyramid = Some(pyramid);
             self.last_frame_ns = t_ns;
             return self.quality;
@@ -198,23 +213,80 @@ impl VioSession {
 
         let median_flow = median(&mut flow);
         self.prev_points = kept_now.clone();
+        self.prev_ids = kept_ids;
         self.prev_pyramid = Some(pyramid);
 
         if self.prev_points.len() < (TARGET_FEATURES as f64 * REDETECT_FRACTION) as usize {
             // Top the set back up, keeping the survivors so continuity is preserved.
             let fresh = detect_points(gray);
+            let before = self.prev_points.len();
             merge_points(&mut self.prev_points, &fresh, TARGET_FEATURES);
+            let added = self.prev_points.len() - before;
+            if added > 0 {
+                let ids = self.fresh_ids(added);
+                self.prev_ids.extend(ids);
+            }
         }
 
         if median_flow >= KEYFRAME_MIN_FLOW_PX {
-            self.add_keyframe(&kept_prev, &kept_now, t_ns);
+            self.add_keyframe(t_ns);
         }
 
         self.last_frame_ns = t_ns;
         self.quality
     }
 
-    fn add_keyframe(&mut self, prev_pts: &[(f32, f32)], now_pts: &[(f32, f32)], t_ns: i64) {
+    /// Allocate `n` fresh feature ids.
+    fn fresh_ids(&mut self, n: usize) -> Vec<u64> {
+        let start = self.next_point_id;
+        self.next_point_id += n as u64;
+        (0..n as u64).map(|i| start + i).collect()
+    }
+
+    fn add_keyframe(&mut self, t_ns: i64) {
+        // Correspondences between the previous keyframe and now, matched by
+        // feature id. Previously the relative pose was estimated between the
+        // last two *frames* and then composed onto the last *keyframe*, which
+        // silently dropped every frame of motion in between; and the IMU
+        // interval (everything since the last keyframe) no longer matched the
+        // visual interval (one frame), corrupting the alignment solve.
+        let (prev_pts, now_pts): (Vec<(f32, f32)>, Vec<(f32, f32)>) = match self.keyframes.last() {
+            Some(last) => {
+                let current: std::collections::HashMap<u64, (f32, f32)> = self
+                    .prev_ids
+                    .iter()
+                    .copied()
+                    .zip(self.prev_points.iter().copied())
+                    .collect();
+                let mut a = Vec::new();
+                let mut b = Vec::new();
+                for (id, pt) in &last.points {
+                    if let Some(now) = current.get(id) {
+                        a.push(*pt);
+                        b.push(*now);
+                    }
+                }
+                (a, b)
+            }
+            None => (Vec::new(), Vec::new()),
+        };
+
+        if prev_pts.len() < 8 {
+            // No usable chain from the previous keyframe (fresh start, or the
+            // tracked set was wiped and re-detected). Re-anchor here at the
+            // current pose so later keyframes chain from a known frame.
+            let imu = preintegrate(&self.pending_imu, self.gyro_bias, self.accel_bias);
+            self.pending_imu.clear();
+            let points: Vec<(u64, (f32, f32))> =
+                self.prev_ids.iter().copied().zip(self.prev_points.iter().copied()).collect();
+            self.keyframes.push(Keyframe { pose: self.pose.clone(), points, imu });
+            if self.keyframes.len() > MAX_KEYFRAMES {
+                self.keyframes.remove(0);
+            }
+            let _ = t_ns;
+            return;
+        }
+
         let a: Vec<NPt> = prev_pts.iter().map(|p| self.intr.unproject(p.0, p.1)).collect();
         let b: Vec<NPt> = now_pts.iter().map(|p| self.intr.unproject(p.0, p.1)).collect();
 
@@ -225,7 +297,7 @@ impl VioSession {
             None => return,
         };
 
-        // Chain the relative pose onto the previous keyframe.
+        // Chain the keyframe-to-keyframe relative pose onto the previous keyframe.
         let last = self.keyframes.last().map(|k| k.pose.clone()).unwrap_or_else(CameraPose::identity);
         let new_pose = CameraPose {
             r: rel.r * last.r,
@@ -236,9 +308,11 @@ impl VioSession {
         let imu = preintegrate(&self.pending_imu, self.gyro_bias, self.accel_bias);
         self.pending_imu.clear();
 
+        let points: Vec<(u64, (f32, f32))> =
+            self.prev_ids.iter().copied().zip(self.prev_points.iter().copied()).collect();
         self.keyframes.push(Keyframe {
             pose: new_pose.clone(),
-            points: now_pts.to_vec(),
+            points,
             imu,
         });
         if self.keyframes.len() > MAX_KEYFRAMES {
@@ -305,13 +379,18 @@ impl VioSession {
         }
         let first = &self.keyframes[0];
         let last = &self.keyframes[self.keyframes.len() - 1];
-        let n = first.points.len().min(last.points.len());
+        // Only observations of the *same* feature (matched by id) may be
+        // triangulated together. Pairing by list index triangulated unrelated
+        // rays, because tracking drops and re-detection reorder the lists.
+        let last_by_id: std::collections::HashMap<u64, (f32, f32)> =
+            last.points.iter().map(|(id, pt)| (*id, *pt)).collect();
 
-        let mut pts = Vec::with_capacity(n);
-        for i in 0..n {
+        let mut pts = Vec::new();
+        for (id, fp) in &first.points {
+            let Some(lp) = last_by_id.get(id) else { continue };
             let views = vec![
-                (first.pose.clone(), self.intr.unproject(first.points[i].0, first.points[i].1)),
-                (last.pose.clone(), self.intr.unproject(last.points[i].0, last.points[i].1)),
+                (first.pose.clone(), self.intr.unproject(fp.0, fp.1)),
+                (last.pose.clone(), self.intr.unproject(lp.0, lp.1)),
             ];
             if let Some(p) = triangulate_checked(&views, MAX_REPROJ, MIN_PARALLAX_RAD) {
                 pts.push(p);
