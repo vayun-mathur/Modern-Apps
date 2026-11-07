@@ -75,20 +75,14 @@ object ImapClient {
             conn.connect()
             var caps = conn.capability()
 
-            if (!server.useSsl && caps.has("STARTTLS")) {
-                try {
-                    conn.startTls()
-                    caps = conn.capability()
-                } catch (e: IOException) {
-                    Log.status(TAG, "STARTTLS failed ${server.host}: ${e.message}")
-                }
-            } else if (!server.useSsl && caps.has("LOGINDISABLED")) {
-                try {
-                    conn.startTls()
-                    caps = conn.capability()
-                } catch (e: IOException) {
-                    Log.status(TAG, "STARTTLS required failed: ${e.message}")
-                }
+            // Fail closed: when the server advertises STARTTLS (or forbids
+            // plaintext login via LOGINDISABLED) a failed upgrade must abort
+            // the connection. Falling through would send the password over
+            // the plaintext socket the upgrade was meant to protect, which
+            // is exactly the STARTTLS-stripping downgrade attack.
+            if (!server.useSsl && (caps.has("STARTTLS") || caps.has("LOGINDISABLED"))) {
+                conn.startTls()
+                caps = conn.capability()
             }
 
             when (auth) {
