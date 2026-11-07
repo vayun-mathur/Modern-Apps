@@ -155,6 +155,21 @@ class FilesListingTest {
     }
 
     @Test
+    fun `atomic move refuses to overwrite an existing destination`() {
+        val dir = tempDir("move-clash")
+        val src = File(dir, "src.txt").apply { writeText("payload") }
+        val dest = File(dir, "dest.txt").apply { writeText("original") }
+        val failure = runCatching { src.atomicMoveTo(dest) }
+        assertTrue(failure.exceptionOrNull() is java.io.IOException, "expected IOException, got $failure")
+        assertEquals("original", dest.readText())
+        assertEquals("payload", src.readText())
+        // Moving a file onto itself is a harmless no-op, not an error.
+        src.atomicMoveTo(src)
+        assertEquals("payload", src.readText())
+        dir.deleteRecursively()
+    }
+
+    @Test
     fun `bookmarks load only existing paths sorted by name`() {
         val dir = tempDir("bm")
         val b = File(dir, "beta").apply { mkdirs() }
