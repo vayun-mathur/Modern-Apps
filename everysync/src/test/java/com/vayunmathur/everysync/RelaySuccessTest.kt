@@ -175,4 +175,22 @@ class RelaySuccessTest {
         // Wrong key pulls nothing (fail closed, no throw)
         assertTrue(RelayBlobStore.pull(ctx, "vB", RelaySync.newVaultKey()).isEmpty())
     } }
+
+    @Test fun blobNamesCannotEscapeVaultDir() { runBlocking {
+        initSelf()
+        val key = RelaySync.newVaultKey()
+        // Direct local access with a traversal name is a no-op
+        RelayBlobStore.writeLocal(ctx, "vEvil", "../escape.png", byteArrayOf(1))
+        assertNull(RelayBlobStore.readLocal(ctx, "vEvil", "../escape.png"))
+        assertFalse(java.io.File(ctx.filesDir, "escape.png").exists())
+        assertFalse(RelayBlobStore.isSafeBlobName("a/b.png"))
+        assertFalse(RelayBlobStore.isSafeBlobName(".."))
+        assertTrue(RelayBlobStore.isSafeBlobName("a.png"))
+        // A relay envelope carrying a traversal name is skipped on pull:
+        // nothing is written outside (or inside) the vault blob dir.
+        assertNotNull(RelayBlobStore.push("vEvil", key, listOf("../escape2.png" to byteArrayOf(2))))
+        assertTrue(RelayBlobStore.pull(ctx, "vEvil", key).isEmpty())
+        assertFalse(java.io.File(ctx.filesDir, "escape2.png").exists())
+        assertFalse(java.io.File(ctx.filesDir, "relay_blobs/escape2.png").exists())
+    } }
 }
