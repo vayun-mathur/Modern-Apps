@@ -11,6 +11,7 @@ import com.vayunmathur.clock.R
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.clock.data.Timer
 import com.vayunmathur.clock.platform.TimerReceiver
+import com.vayunmathur.library.log.Log
 import kotlin.time.Clock
 
 fun sendTimerNotification(context: Context, timer: Timer, isStarting: Boolean) {
@@ -61,5 +62,14 @@ fun sendTimerNotification(context: Context, timer: Timer, isStarting: Boolean) {
     builder.addAction(R.drawable.ic_reset_24, context.getString(UiR.string.reset), resetIntent)
 
     nm.notify(notificationId, builder.build())
-    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+    try {
+        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+    } catch (e: SecurityException) {
+        // Exact-alarm special access revoked after the first-launch gate:
+        // callers include Compose click handlers and the assistant-intent
+        // path, where this throw crashed the app. An inexact while-idle
+        // alarm still finishes the timer, just without exact timing.
+        Log.error("TimerNotification", "Timer ${timer.id}: exact alarm denied; falling back to inexact", e)
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTimestamp, pendingAlarm)
+    }
 }
