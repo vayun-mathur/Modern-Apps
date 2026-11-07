@@ -8,4 +8,7 @@ dependencies {
     implementation(project(":library"))
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment.ktx)
+    // The instrumented unlock tests drive the system credential screen.
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.uiautomator)
 }
