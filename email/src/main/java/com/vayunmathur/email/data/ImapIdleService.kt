@@ -240,12 +240,16 @@ class ImapIdleService : Service() {
     ) {
         try {
             val folders = rawConn.list("", "*").map { entry ->
-                val fullName = entry.mailbox
                 val delim = entry.delimiter ?: "/"
-                val nm = if (fullName.contains(delim)) {
-                    fullName.substringAfterLast(delim)
+                // Persist under the canonical name (see
+                // ImapClient.canonicalizeMailbox): storing the server's
+                // raw "Inbox" here split Outlook folders/messages from
+                // the "INBOX" bucket every other path uses.
+                val fullName = ImapClient.canonicalizeMailbox(entry.mailbox, delim)
+                val nm = if (entry.mailbox.contains(delim)) {
+                    entry.mailbox.substringAfterLast(delim)
                 } else {
-                    fullName.substringAfterLast('/')
+                    entry.mailbox.substringAfterLast('/')
                 }
                 val parent = fullName.lastIndexOf(delim)
                     .let { if (it > 0) fullName.substring(0, it) else null }
