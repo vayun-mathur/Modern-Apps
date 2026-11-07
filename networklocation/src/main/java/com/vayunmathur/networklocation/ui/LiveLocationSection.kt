@@ -1,5 +1,6 @@
 package com.vayunmathur.networklocation.ui
 
+import android.content.Context
 import android.location.Address
 import android.location.Location
 import android.location.LocationManager
@@ -46,7 +47,13 @@ private sealed interface GeocodeState {
  * the geocoder is judged against a position that does not depend on the beacon stores.
  */
 @Composable
-fun LiveLocationSection(modifier: Modifier = Modifier) {
+fun LiveLocationSection(
+    modifier: Modifier = Modifier,
+    // Injectable so tests can drive the Found/Failed states without a geocoder backend;
+    // production always uses the system Geocoder through this app's own GeocodeService.
+    geocodeLookup: suspend (Context, Double, Double) -> Result<Address?> =
+        { context, lat, lon -> reverseGeocode(context, lat, lon) },
+) {
     val context = LocalContext.current
     if (!hasFineLocation(context)) {
         Text(
@@ -80,7 +87,7 @@ fun LiveLocationSection(modifier: Modifier = Modifier) {
     LaunchedEffect(anchor) {
         val fix = anchor ?: return@LaunchedEffect
         geocode = GeocodeState.Looking
-        geocode = reverseGeocode(context, fix.latitude, fix.longitude).fold(
+        geocode = geocodeLookup(context, fix.latitude, fix.longitude).fold(
             onSuccess = { a -> a?.let { GeocodeState.Found(it, fix) } ?: GeocodeState.NoMatch },
             onFailure = { GeocodeState.Failed(it.message ?: it.javaClass.simpleName) },
         )

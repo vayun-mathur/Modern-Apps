@@ -23,7 +23,7 @@ class GeocodeService : Service() {
     private var pfd: ParcelFileDescriptor? = null
     private var handle: Long = 0L
 
-    private val provider: GeocodeProvider by lazy {
+    internal val provider: GeocodeProvider by lazy {
         object : GeocodeProvider() {
             override fun onGetFromLocation(
                 latitude: Double,

@@ -41,6 +41,12 @@ dependencies {
     // Resumable, checksummed, unmetered-only fetch of the offline databases, which are no
     // longer bundled (see OfflineDatabases). Also supplies the progress UI on the status screen.
     implementation(project(":library:downloadservice"))
+    // The provider stubs are compile-only in production (the framework supplies them
+    // at runtime), but unit tests exercise GeocodeService's provider callbacks on the
+    // JVM, so the stub signatures must be on the test runtime classpath too.
+    testImplementation(project(":library:locationprovider"))
+    // For initializing WorkManager when a test taps the offline-database download button.
+    testImplementation(libs.androidx.work.runtime.ktx)
     // The offline geocoder search runs natively (Rust/ruzstd) over geocoder.db; there is no
     // Kotlin-side DB code, so no zstd-jni / serialization deps are needed here.
 }
