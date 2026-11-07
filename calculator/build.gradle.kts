@@ -20,4 +20,5 @@ dependencies {
     // Live currency exchange rates fetched from api.maproj.org via the shared client.
     implementation(project(":library:network"))
     implementation(project(":library:widgets"))
+    testImplementation(libs.androidx.work.testing)
 }
