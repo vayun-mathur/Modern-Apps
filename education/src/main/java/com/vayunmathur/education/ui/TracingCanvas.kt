@@ -38,11 +38,14 @@ fun TracingCanvas(
     onTraced: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val strokes = remember { mutableStateListOf<Path>() }
-    var currentPath by remember { mutableStateOf<Path?>(null) }
-    var lastPoint by remember { mutableStateOf(Offset.Zero) }
-    var tracedLength by remember { mutableFloatStateOf(0f) }
-    var fired by remember { mutableStateOf(false) }
+    // Keyed by glyph: when a quiz advances from one tracing question to the
+    // next, this composable stays in the same slot, so unkeyed state would
+    // carry `fired`/strokes over and the new question could never complete.
+    val strokes = remember(glyph) { mutableStateListOf<Path>() }
+    var currentPath by remember(glyph) { mutableStateOf<Path?>(null) }
+    var lastPoint by remember(glyph) { mutableStateOf(Offset.Zero) }
+    var tracedLength by remember(glyph) { mutableFloatStateOf(0f) }
+    var fired by remember(glyph) { mutableStateOf(false) }
     val inkColor = MaterialTheme.colorScheme.primary
 
     Box(modifier, contentAlignment = Alignment.Center) {

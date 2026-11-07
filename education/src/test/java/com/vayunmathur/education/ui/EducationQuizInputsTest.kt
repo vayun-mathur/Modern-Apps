@@ -213,6 +213,33 @@ class EducationQuizInputsTest {
         rule.waitUntil(10_000) { finished == 2 }
     }
 
+    @Test fun k2QuizSecondTracingQuestionCanComplete() {
+        var finished: Int = -1
+        val actions = object : QuizActions {
+            override fun finish(questions: List<com.vayunmathur.education.content.Question>, answers: Map<String, Answer?>) { finished = questions.size }
+        }
+        // Regression: two tracing questions back to back (bundled ex.k-trace has
+        // three). The second must start unfired, or it can never complete.
+        val second = Fx.tracing.copy(id = "q-trace2", glyph = "B")
+        show { K2QuizScreen(QuizUiState(questions = listOf(Fx.tracing, second)), actions) }
+        rule.onNodeWithText("A").assertIsDisplayed()
+        val root = rule.onRoot()
+        var swipes = 0
+        while (onAllNodesWithText("B").fetchSemanticsNodes().isEmpty() && swipes < 8) {
+            root.performTouchInput { swipe(Offset(60f, center.y), Offset(width - 60f, center.y), 120) }
+            rule.waitForIdle()
+            swipes++
+        }
+        rule.waitUntil(10_000) { onAllNodesWithText("B").fetchSemanticsNodes().isNotEmpty() }
+        swipes = 0
+        while (finished != 2 && swipes < 8) {
+            root.performTouchInput { swipe(Offset(60f, center.y), Offset(width - 60f, center.y), 120) }
+            rule.waitForIdle()
+            swipes++
+        }
+        rule.waitUntil(10_000) { finished == 2 }
+    }
+
     @Test fun k2QuizEmptyShowsGoBack() {
         show { K2QuizScreen(QuizUiState(questions = emptyList()), QuizActions.Noop) }
         rule.onNodeWithText(str(R.string.let_s_go_back)).assertIsDisplayed()

@@ -23,6 +23,7 @@ import com.vayunmathur.library.ui.appBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -155,6 +156,11 @@ fun K2QuizScreen(state: QuizUiState, actions: QuizActions) {
                     }
                 }
 
+                // Per-question identity (as in the Scholar QuizScreen): the
+                // input composables keep interaction state that must not leak
+                // into the next question, or it can neither render fresh nor
+                // ever complete.
+                key(question.id) {
                 when (question) {
                     is MultipleChoiceQuestion -> K2Choices(
                         question = question,
@@ -179,6 +185,7 @@ fun K2QuizScreen(state: QuizUiState, actions: QuizActions) {
                         onSolved = { complete(MatchingAnswer(question.correctRightForLeft)) },
                     )
                     else -> {}
+                }
                 }
             }
 

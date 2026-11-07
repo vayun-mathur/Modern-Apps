@@ -37,11 +37,13 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun K2DragMatch(question: MatchingQuestion, enabled: Boolean, onSolved: () -> Unit) {
-    val targetBounds = remember { mutableStateMapOf<Int, Rect>() }
-    val chipBounds = remember { mutableStateMapOf<Int, Rect>() }
-    val dragOffset = remember { mutableStateMapOf<Int, Offset>() }
+    // Keyed by question: advancing to a second matching question reuses this
+    // slot, and stale `assigned`/bounds would leave it pre-solved yet stuck.
+    val targetBounds = remember(question.id) { mutableStateMapOf<Int, Rect>() }
+    val chipBounds = remember(question.id) { mutableStateMapOf<Int, Rect>() }
+    val dragOffset = remember(question.id) { mutableStateMapOf<Int, Offset>() }
     // left target index -> assigned right index (correct only)
-    val assigned = remember { mutableStateMapOf<Int, Int>() }
+    val assigned = remember(question.id) { mutableStateMapOf<Int, Int>() }
 
     Row(
         Modifier
