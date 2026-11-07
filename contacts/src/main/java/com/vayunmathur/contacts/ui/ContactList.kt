@@ -88,7 +88,10 @@ fun ContactList(
             }
 
             override fun shareContacts(contacts: List<Contact>, filename: String) {
-                shareContactsAsVcf(scope, context, contacts, filename, resources.getString(R.string.share_contact))
+                shareContactsAsVcf(
+                    scope, context, contacts, filename, resources.getString(R.string.share_contact),
+                    groups.associate { it.id to it.name }
+                )
             }
         },
     )
