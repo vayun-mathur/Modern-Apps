@@ -82,6 +82,8 @@ class SystemSinkTest {
         )
         val events = CalendarSink.listLocal(ctx, 5)
         assertEquals(2, events.size); assertEquals("Meet", events[0].summary); assertEquals(100L, events[0].updatedAt); assertEquals(true, CalendarSink.lastListLocalOk)
+        // DELETED rows surface as tombstones so local deletes can propagate
+        assertEquals(true, events[1].deleted); assertEquals("e2", events[1].uid)
         assertEquals(mapOf("e1" to "100", "e2" to null), CalendarSink.localUidToEtag(ctx, 5))
         val changes = CalendarSink.getLocalChanges(ctx, 5)
         assertEquals(2, changes.size); assertEquals(true, changes[1].deleted); assertEquals(null, changes[1].event); assertEquals("Meet", changes[0].event?.summary)

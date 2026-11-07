@@ -72,7 +72,16 @@ class SystemVaultDriveTest {
             if (row.isNotEmpty()) tables.getOrPut(table(uri)) { mutableListOf() }.add(row)
             return Uri.withAppendedPath(uri, "99")
         }
-        override fun delete(uri: Uri, s: String?, a: Array<String>?) = 1
+        override fun delete(uri: Uri, s: String?, a: Array<String>?): Int {
+            // Honor "_id = ?" deletes so sink delete paths remove rows.
+            if (s?.contains("_id") == true && !a.isNullOrEmpty()) {
+                val rows = tables[table(uri)] ?: return 0
+                val before = rows.size
+                rows.removeAll { it["_id"]?.toString() == a[0] }
+                return before - rows.size
+            }
+            return 1
+        }
         override fun update(uri: Uri, v: ContentValues?, s: String?, a: Array<String>?) = 1
         override fun getType(uri: Uri) = "vnd.test"
     }
@@ -146,6 +155,44 @@ class SystemVaultDriveTest {
         provider.sync(ctx, both, SyncDirection.PULL)
         provider.sync(ctx, both, SyncDirection.PUSH)
         Unit
+    } }
+
+    @Test fun contactsDeletesPropagateBothWays() { runBlocking {
+        assertTrue(RelaySync.init(ctx))
+        val (cMeta, cKey) = makeVault("contacts", "v-del-contacts")
+        seedContact()
+        val provider = E2eeProvider()
+        val cConfig = AccountConfig(ACCOUNT, "e2ee", setOf(DataType.CONTACTS))
+        val cChannel = RelaySync.recordChannel("contacts", cMeta.vaultId)
+        provider.sync(ctx, cConfig, SyncDirection.BOTH)
+        assertEquals(1, relay.channel(cChannel).size)
+        // Local delete (platform DELETED flag): must tombstone the relay,
+        // not resurrect the relay copy locally.
+        contacts.tables["raw_contacts"]!![0]["deleted"] = 1
+        provider.sync(ctx, cConfig, SyncDirection.BOTH)
+        val afterLocalDelete = RelaySync.pullRecords(cChannel, cKey, 0)!!.items
+            .mapNotNull { ContactKind.fromJson(it) }
+        assertTrue(afterLocalDelete.last { it.uid == "c1" }.deleted, afterLocalDelete.toString())
+        assertTrue(ContactsSink.listLocal(ctx, ACCOUNT).none { it.uid == "c1" && !it.deleted })
+        // A fresh contact pushed, then a remote tombstone must delete it
+        // locally (not be written back as a live contact).
+        contacts.tables["raw_contacts"] = mutableListOf(
+            mutableMapOf("_id" to 8L, "source_id" to "c2", "sync1" to "100", "deleted" to 0),
+        )
+        provider.sync(ctx, cConfig, SyncDirection.BOTH)
+        assertTrue(ContactsSink.listLocal(ctx, ACCOUNT).any { it.uid == "c2" && !it.deleted })
+        RelaySync.appendRecords(
+            cChannel, cKey,
+            listOf(ContactKind.toJson(
+                ContactKind.fromJson(RelaySync.pullRecords(cChannel, cKey, 0)!!.items.last { it.contains("c2") })!!
+                    .copy(deleted = true, updatedAt = 9_999),
+            )),
+        )
+        provider.sync(ctx, cConfig, SyncDirection.BOTH)
+        assertTrue(
+            ContactsSink.listLocal(ctx, ACCOUNT).none { it.uid == "c2" && !it.deleted },
+            ContactsSink.listLocal(ctx, ACCOUNT).toString(),
+        )
     } }
 
     @Test fun resolveCreatesVaultWhenUnboundAndNoneExists() { runBlocking {

@@ -315,14 +315,19 @@ class E2eeProvider : SyncProvider {
             // System-provider sinks mirror the relay stamp into their
             // change-detection column on write; the IPC stores persist
             // updatedAt via upsertRaw, so they need no stamping.
-            for (item in plan.localUpserts) {
+            // Tombstones are deletes, not upserts: the merge puts a winning
+            // tombstone in localUpserts (IPC sinks persist it as a deleted
+            // row), but the stamped system sinks have no deleted-row form —
+            // upserting one would resurrect it as a live contact/event.
+            val (tombstoneUpserts, liveUpserts) = plan.localUpserts.partition { kind.isDeleted(it) }
+            for (item in liveUpserts) {
                 writeRemoteStamps(item, kind.updatedAt(item))
             }
             RelayMerge.applyLocal(
                 store,
                 RelayPlan(
                     localUpserts = emptyList(),
-                    localDeletes = plan.localDeletes,
+                    localDeletes = plan.localDeletes + tombstoneUpserts,
                     remoteOut = emptyList(),
                     snapshots = pendingSnapshots,
                     removedSyncIds = plan.removedSyncIds,
