@@ -59,7 +59,11 @@ object LunarCalculator {
 
         val lonDeg = Lp + sigmaL / 1000000.0
         val latDeg = sigmaB / 1000000.0
-        val distMeters = 385000560.0 + sigmaR / 1000.0
+        // sigmaR coefficients are metres (the largest term, -20905355, is
+        // -20905.355 km expressed in metres), so they add to the metre
+        // base directly; dividing by 1000 first shrank the Moon's real
+        // ~+/-25000 km distance swing to ~+/-25 m in the returned km value.
+        val distMeters = 385000560.0 + sigmaR
 
         val lonRad = lonDeg.toRad().normalize2Pi()
         val latRad = latDeg.toRad()

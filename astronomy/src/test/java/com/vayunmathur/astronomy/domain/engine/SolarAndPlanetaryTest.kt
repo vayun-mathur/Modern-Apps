@@ -38,6 +38,21 @@ class SolarAndPlanetaryTest {
     }
 
     @Test
+    fun `lunar distance actually varies over a lunation`() {
+        // The Moon's distance swings by tens of thousands of km between
+        // perigee and apogee. The old metre/km scale mix-up returned
+        // 385000 km +/- ~30 km for every date.
+        val distances = (0 until 60).map { i ->
+            LunarCalculator.calc(2460676.5 + i * 0.5).distanceKm
+        }
+        assertTrue(distances.all { it in 350000.0..410000.0 }, "range $distances")
+        assertTrue(
+            distances.max() - distances.min() > 20000.0,
+            "distance range ${distances.max() - distances.min()} km is implausibly flat",
+        )
+    }
+
+    @Test
     fun kepler_solver_circular() {
         val meanAnomaly = 1.0; val e = 0.0
         val eccentricAnomaly = PlanetaryCalculator.solveKepler(meanAnomaly, e)
