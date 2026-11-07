@@ -76,6 +76,31 @@ class FrameReaderTest {
     }
 
     @Test
+    fun `a hostile total length hint neither throws nor breaks reassembly`() {
+        // Regression: totalLength is peer-controlled. A negative value made
+        // ByteArrayOutputStream(capacity) throw out of the pump loop, and a
+        // huge one attempted a gigabyte-scale up-front allocation. The hint
+        // must be ignored (the stream grows) while reassembly still works.
+        val first = payload(10)
+        val rest = payload(5)
+        fun frame(flags: Int, total: Int?, body: ByteArray): ByteArray {
+            val headerSize = if (total != null) 8 else 4
+            val out = java.nio.ByteBuffer.allocate(headerSize + body.size)
+            out.put(3.toByte()).put(flags.toByte()).putShort(body.size.toShort())
+            if (total != null) out.putInt(total)
+            out.put(body)
+            return out.array()
+        }
+        for (hostile in listOf(-1, Int.MAX_VALUE)) {
+            val reader = FrameReader()
+            val wire = frame(FrameFlags.FIRST, hostile, first) +
+                frame(FrameFlags.LAST, null, rest)
+            val collected = reader.offer(wire)
+            assertContentEquals(first + rest, collected.single().payload)
+        }
+    }
+
+    @Test
     fun `one byte at a time still reassembles`() {
         val body = payload(200)
         val wire = writer.frame(1, body).single()

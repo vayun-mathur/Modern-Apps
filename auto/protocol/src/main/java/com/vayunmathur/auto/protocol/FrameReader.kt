@@ -99,9 +99,14 @@ class FrameReader(
 
         // `totalLength` is only a capacity hint. The stream grows as needed rather than
         // trusting it, because the field counts one of plaintext or ciphertext depending on
-        // where you read it and being wrong there would truncate a message.
+        // where you read it and being wrong there would truncate a message. It is
+        // also peer-controlled: a negative value made ByteArrayOutputStream throw
+        // and a huge one tried to allocate gigabytes up front, so only a sane
+        // range is honoured as the initial capacity and anything else falls
+        // back to this fragment's size (the stream still grows to fit).
+        val hint = header.totalLength?.takeIf { it in 0..MAX_INITIAL_CAPACITY }
         val buffer = partial.getOrPut(header.channelId) {
-            ByteArrayOutputStream(header.totalLength ?: plaintext.size)
+            ByteArrayOutputStream(hint ?: plaintext.size)
         }
         buffer.write(plaintext)
 
@@ -124,5 +129,8 @@ class FrameReader(
 
     private companion object {
         val EMPTY: ByteBuffer = ByteBuffer.allocate(0)
+
+        /** Largest peer-supplied totalLength honoured as an allocation hint. */
+        const val MAX_INITIAL_CAPACITY = 64 * 1024
     }
 }
