@@ -15,7 +15,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,9 +89,9 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
     private val detailHistory = MutableStateFlow(UsageHistoryData())
 
     val state: StateFlow<ScreenTimeUiState> = combine(
-        rules.allTimers,
-        rules.pausedApps,
-        rules.windDownSchedule,
+        deferredRules { it.allTimers },
+        deferredRules { it.pausedApps },
+        deferredRules { it.windDownSchedule },
         installed,
         installedLoaded,
         hasUsageAccess,
@@ -132,8 +135,8 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
     val detailState: StateFlow<AppDetailsUiState> = combine(
         detailPackage,
         detailHistory,
-        rules.allTimers,
-        rules.pausedApps,
+        deferredRules { it.allTimers },
+        deferredRules { it.pausedApps },
         installed,
         period,
         anchorDate,
@@ -283,6 +286,14 @@ class ScreenTimeViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun ApplicationInfo.label(pm: PackageManager): String =
         runCatching { pm.getApplicationLabel(this).toString() }.getOrDefault(packageName)
+
+    /**
+     * Rules flows without touching the database at ViewModel construction:
+     * creating a DAO flow opens the (encrypted) database, so the read is
+     * deferred until the combined state is actually collected.
+     */
+    private fun <T> deferredRules(read: (ScreenTimeRules) -> Flow<T>): Flow<T> =
+        flow { emitAll(read(rules)) }
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
