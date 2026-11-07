@@ -83,8 +83,9 @@ fun TodayPage(backStack: NavBackStack<Route>, viewModel: HealthViewModel) {
     val floorsToday by remember(dayStart, dayEnd) {
         viewModel.sumInRange(RecordType.Floors, dayStart, dayEnd)
     }.collectAsState(0.0)
+    // Hydration records store liters; TodayUiState.hydrationMl / unit_ml need milliliters.
     val hydrationToday by remember(dayStart, dayEnd) {
-        viewModel.sumInRange(RecordType.Hydration, dayStart, dayEnd)
+        viewModel.sumInRange(RecordType.Hydration, dayStart, dayEnd).map { it * 1000.0 }
     }.collectAsState(0.0)
     val hrMax by remember(dayStart, dayEnd) {
         viewModel.maxInRange(RecordType.HeartRate, dayStart, dayEnd).map { it?.toLong() ?: 0L }
