@@ -170,10 +170,14 @@ private fun readSong(cursor: android.database.Cursor, columns: SongColumns): Mus
     val (discNumber, trackNumber) = splitDiscTrack(cursor.getInt(columns.track))
     return Music(
         id = id,
-        title = cursor.getString(columns.title),
-        artist = cursor.getString(columns.artist),
+        // MediaStore returns null for untagged files; Music's fields are
+        // non-null and consumers sort/search on them directly, so an
+        // untagged row crashed the scan or a later search. getArtists
+        // already normalises the same case; do it here too.
+        title = cursor.getString(columns.title) ?: "",
+        artist = cursor.getString(columns.artist) ?: "",
         artistId = cursor.getLong(columns.artistId),
-        album = cursor.getString(columns.album),
+        album = cursor.getString(columns.album) ?: "",
         albumId = cursor.getLong(columns.albumId),
         uri = uri,
         duration = cursor.getLong(columns.duration),
@@ -215,7 +219,7 @@ suspend fun getAlbums(context: Context): List<Album> = withContext(Dispatchers.I
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
-                val title = cursor.getString(titleColumn)
+                val title = cursor.getString(titleColumn) ?: ""
                 val contentUri = ContentUris.withAppendedId(
                     MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
                     id
