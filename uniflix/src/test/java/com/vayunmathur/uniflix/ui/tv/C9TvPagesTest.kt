@@ -5,6 +5,7 @@ import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.library.util.NavBackStack
 import com.vayunmathur.uniflix.data.UniflixDatabase
+import com.vayunmathur.uniflix.data.UniflixRepository
 import com.vayunmathur.uniflix.domain.MediaType
 import com.vayunmathur.uniflix.platform.FakeAndroidKeyStore
 import kotlin.test.BeforeTest
@@ -36,6 +37,7 @@ class C9TvPagesTest {
         val db = Room.inMemoryDatabaseBuilder(context, UniflixDatabase::class.java)
             .allowMainThreadQueries().build()
         com.vayunmathur.library.util.databases[UniflixDatabase::class] = db
+        UniflixRepository.resetInstanceForTest()
     }
 
     private fun stack() = NavBackStack<TvRoute>(arrayOf(TvRoute.Main()))

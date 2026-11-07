@@ -62,6 +62,7 @@ class C9DbScreensTest {
         FakeAndroidKeyStore.install()
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val db = sharedDb(context)
+        UniflixRepository.resetInstanceForTest()
         runBlocking {
             if (db.addonDao().count() == 0) {
                 db.addonDao().upsert(
