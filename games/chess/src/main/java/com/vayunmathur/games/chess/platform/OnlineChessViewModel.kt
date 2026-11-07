@@ -48,7 +48,8 @@ class OnlineChessViewModel(application: Application) : AndroidViewModel(applicat
     private val tokenStore = LichessTokenStore(application)
     private val authManager = LichessAuthManager(application, tokenStore)
 
-    private val api = LichessApi(tokenStore)
+    /** Test seam: tests swap in a [LichessApi] backed by a fake transport. */
+    internal var api = LichessApi(tokenStore)
 
     private val _uiState = MutableStateFlow(OnlineChessUiState())
     val uiState: StateFlow<OnlineChessUiState> = _uiState.asStateFlow()
