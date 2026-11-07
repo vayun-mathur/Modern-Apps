@@ -12,6 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -72,6 +73,21 @@ class FileBackupManagerTest {
         assertEquals("abc", File(base, "Pictures/photo.jpg").readText())
         assertEquals("wxyz", File(base, "Music/song.mp3").readText())
         assertEquals(0 to 3, progress.first()); assertEquals(3 to 3, progress.last())
+    }
+
+    @Test fun failedRestoreLeavesNoPartialFile() = runBlocking<Unit> {
+        val (repo, _, manager) = setup()
+        val entries = listOf(
+            FileEntry("missing", "gone.bin", "", "application/octet-stream", 1, 0L, "image"),
+            FileEntry("corrupt", "bad.jpg", "Pictures/", "image/jpeg", 3, 100L, "image"),
+        )
+        repo.writeEncrypted("files/index.json", Json.encodeToString(FileIndex.serializer(), FileIndex(entries)).toByteArray())
+        // Corrupt blob: valid framing is absent, so decrypt fails mid-restore.
+        repo.backend.save(BackupRepository.filePath("corrupt"), byteArrayOf(2, 0, 0))
+        assertEquals(0, manager.restoreAll())
+        val base = File(ctx.getExternalFilesDir(null), "BackupRestore")
+        assertFalse(File(base, "gone.bin").exists())
+        assertFalse(File(base, "Pictures/bad.jpg").exists())
     }
 
     @Test fun fileEntryAndIndexSerialization() {
