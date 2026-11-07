@@ -32,6 +32,9 @@ dependencies {
     // (android.service.euicc.*, EuiccProfileInfo). Provided by the framework at
     // runtime on a system image; must NOT be packaged.
     compileOnly(project(":library:aosp-stubs"))
+    // Unit tests reference the EuiccService surface at compile time; at runtime
+    // Robolectric supplies the framework's real classes.
+    testCompileOnly(project(":library:aosp-stubs"))
     // Rust reaches the SM-DP+ over HTTP through the flat-framed JNI bridge in
     // library:network (NativeHttpBridge), so libeuicc.so links no TLS of its own.
     implementation(project(":library:network"))
