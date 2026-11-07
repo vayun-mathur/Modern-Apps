@@ -202,6 +202,22 @@ class EducationViewModelTest {
         assertTrue(vm.verifyPin("1234")); assertFalse(vm.verifyPin("9999")); assertFalse(vm.verifyPin(""))
     }
 
+    @Test fun concurrentLearnerEditsAllPersist() = runBlocking<Unit> {
+        val repo = Fx.repository(ctx)
+        repo.upsertLearner(Learner(name = "Start", gradeLevel = 1))
+        awaitVm("learner seeded") { vm.learner.value?.name == "Start" }
+        // Fire distinct-field edits back to back (as ParentPage does per
+        // keystroke plus a grade tap): serialized read-modify-writes must
+        // leave every field applied, none clobbered by a stale base row.
+        repeat(10) {
+            vm.setName("Zoe"); vm.setGrade(7); vm.setDailyGoal(3); vm.setAvatar("🦊")
+        }
+        awaitVm("all concurrent edits persist") {
+            val l = runBlocking { repo.getLearner() }
+            l?.name == "Zoe" && l.gradeLevel == 7 && l.dailyGoal == 3 && l.avatar == "🦊"
+        }
+    }
+
     @Test fun deadlineSetUpdateRemoveThroughVm() = runBlocking<Unit> {
         val repo = Fx.repository(ctx)
         vm.setDeadline(ModuleType.UNIT, "u1", 100, "first")
