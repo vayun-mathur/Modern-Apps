@@ -24,6 +24,7 @@ class WebDavBackendTest {
     private val dirs = mutableSetOf<String>()
     private var base = ""
     @Volatile var failNextPut = false
+    @Volatile var failMkcol = false
 
     @Before fun setUp() {
         server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
@@ -41,7 +42,7 @@ class WebDavBackendTest {
             val b = "no auth".toByteArray(); ex.sendResponseHeaders(401, b.size.toLong()); ex.responseBody.use { it.write(b) }; ex.close(); return
         }
         when (ex.requestMethod) {
-            "MKCOL" -> { dirs.add(path); ex.sendResponseHeaders(201, -1) }
+            "MKCOL" -> { if (failMkcol) ex.sendResponseHeaders(500, -1) else { dirs.add(path); ex.sendResponseHeaders(201, -1) } }
             "PUT" -> handlePut(ex, path)
             "GET" -> handleGet(ex, path)
             "DELETE" -> {
@@ -121,6 +122,11 @@ class WebDavBackendTest {
         assertFailsWith<IOException> { b.save("bad.bin", "x".toByteArray()) }
         // list on existing dir includes nested leaf names only
         assertTrue("file.bin" in b.list("deep/nested/dir"))
+    }
+
+    @Test fun ensureDirSurfacesServerErrors() = runBlocking<Unit> {
+        failMkcol = true
+        assertFailsWith<IOException> { backend().ensureDir("kv/com.a") }
     }
 
     @Test fun pathsWithSpacesAreEncoded() = runBlocking<Unit> {
