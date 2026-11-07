@@ -59,6 +59,11 @@ data class Instance(
             } else {
                 endDateTime.date
             }
+            // A zero-duration event at midnight (begin == end) would compute an
+            // endDate before its startDate and span no days at all, making it
+            // invisible in every view (and crashing EventPositioner, which reads
+            // spanDays.first()). It still happens on its start day.
+            if (endDate < startDate) return listOf(startDate)
             return (startDate..endDate).toList()
         }
 
