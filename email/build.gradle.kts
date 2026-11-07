@@ -25,6 +25,17 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // With 40+ Robolectric/Compose classes in one JVM the test worker
+        // dies mid-suite (Gradle reports only EOFException) as sandboxes and
+        // socket-server threads accumulate. Fork per class, like the Rust
+        // modules, so each sandbox starts clean.
+        unitTests.all {
+            it.maxHeapSize = "2g"
+            it.forkEvery = 1
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -45,4 +56,7 @@ dependencies {
     implementation(libs.androidx.glance.material3)
     implementation(project(":library:widgets"))
     implementation(project(":library:network"))
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.androidx.glance.testing)
+    testImplementation(libs.androidx.glance.appwidget.testing)
 }
