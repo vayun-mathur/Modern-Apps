@@ -222,6 +222,9 @@ dependencies {
     // on the JVM; same reason emergency/pdf use it.
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    // Compile-only hidden-API stubs (SipMessage etc.) so RCS inbound tests can reference
+    // them; Robolectric's android-all supplies the real implementations at runtime.
+    testImplementation(project(":library:aosp-stubs"))
     // Route slice-6 contract tests use KClass reflection (sealedSubclasses, constructors).
     testImplementation(libs.kotlin.reflect)
     // RCS slice tests: real in-memory Room database via the bundled sqlite driver
