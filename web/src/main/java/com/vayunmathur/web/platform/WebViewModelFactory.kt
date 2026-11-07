@@ -2,10 +2,10 @@ package com.vayunmathur.web.platform
 
 import android.content.Context
 import com.vayunmathur.web.data.ShieldSetting
-import com.vayunmathur.web.data.WebRepository
+import com.vayunmathur.web.data.WebStores
 
 class WebViewModelFactory(
-    private val repository: WebRepository,
+    private val repository: WebStores,
     private val context: Context,
     private val windowId: String = WebViewModel.DEFAULT_WINDOW_ID,
     private val incognito: Boolean = false,
