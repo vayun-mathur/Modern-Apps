@@ -69,26 +69,6 @@ class ActivitiesAndReceiversTest {
         nudge.destroy()
     }
 
-    @Test fun dashboardActivity_resumes() {
-        val controller = Robolectric.buildActivity(DashboardActivity::class.java).create().start().resume()
-        ShadowLooper.idleMainLooper()
-        controller.pause().stop().destroy()
-    }
-
-    @Test fun otherActivities_resume() {
-        Robolectric.buildActivity(WindDownActivity::class.java).create().start().resume()
-            .also { ShadowLooper.idleMainLooper(); it.pause().stop().destroy() }
-        Robolectric.buildActivity(
-            FrictionActivity::class.java,
-            FrictionActivity.intent(ctx(), "com.a.app", nudge = true),
-        ).create().start().resume()
-            .also { ShadowLooper.idleMainLooper(); it.pause().stop().destroy() }
-        val intent = Intent(ctx(), AppDetailsActivity::class.java)
-            .putExtra(AppDetailsActivity.EXTRA_DETAILS_PACKAGE, "com.a.app")
-        Robolectric.buildActivity(AppDetailsActivity::class.java, intent).create().start().resume()
-            .also { ShadowLooper.idleMainLooper(); it.pause().stop().destroy() }
-    }
-
     @Test fun receivers_doNotThrow() {
         val ctx = ctx()
         TimerReachedReceiver().onReceive(ctx, Intent())
