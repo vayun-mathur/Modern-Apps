@@ -123,6 +123,16 @@ object FaceRecognizer {
             embedder = null
             initFailed = true
             false
+        } catch (e: LinkageError) {
+            // A loaded-but-incomplete libmodelrunner.so (missing JNI symbol) is
+            // an Error, not an Exception: without this the "models unavailable"
+            // degradation crashes instead of reporting unavailable.
+            Log.error(TAG, "Face models unavailable", e)
+            closeQuietly()
+            detector = null
+            embedder = null
+            initFailed = true
+            false
         }
     }
 

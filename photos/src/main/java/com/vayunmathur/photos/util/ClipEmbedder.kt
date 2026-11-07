@@ -117,7 +117,17 @@ object ClipEmbedder {
             }
             // Construction never throws: an absent, compressed or malformed asset, a missing
             // `libmodelrunner.so` and a device without fp16 compute all come back unavailable.
-            val handle = ClipHandle.inAssets(app.assets)
+            // A linkage failure inside the native bring-up is an Error, so guard
+            // it here to keep that guarantee on incomplete host/device libraries.
+            val handle = try {
+                ClipHandle.inAssets(app.assets)
+            } catch (_: LinkageError) {
+                Log.error(TAG, "TinyCLIP native library incomplete")
+                return false
+            } catch (_: RuntimeException) {
+                Log.error(TAG, "TinyCLIP bring-up failed")
+                return false
+            }
             if (!handle.isAvailable) {
                 Log.error(TAG, "cannot bring up $handle")
                 handle.close()
