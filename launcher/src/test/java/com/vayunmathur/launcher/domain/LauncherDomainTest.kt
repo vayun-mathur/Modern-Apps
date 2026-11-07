@@ -284,6 +284,47 @@ class ReconcileUseCaseTest {
     }
 
     @Test
+    fun `an app whose launcher activity is gone is deleted even though its package remains`() {
+        val item = app(1, here).copy(className = "com.example.here.OldMain")
+        val actions = ReconcileUseCase.reconcile(
+            items = listOf(item),
+            installed = setOf(here),
+            unavailable = emptySet(),
+            boundWidgetIds = emptySet(),
+            installedActivities = setOf(
+                com.vayunmathur.launcher.domain.ActivityKey("com.example.here", "com.example.here.NewMain", 0),
+            ),
+        )
+        assertEquals(listOf(ReconcileUseCase.Action.Delete(1)), actions)
+    }
+
+    @Test
+    fun `a pinned shortcut is not judged against the launcher activity list`() {
+        // A shortcut's target activity need not be launchable from a
+        // drawer at all, so its absence from installedActivities is
+        // not evidence that the row is dead.
+        val shortcut = ReconcileUseCase.Item(
+            id = 2,
+            type = LauncherItemType.DEEP_SHORTCUT,
+            packageName = here.packageName,
+            profileSerial = here.profileSerial,
+            appWidgetId = null,
+            hidden = false,
+            className = "com.example.here.ShortcutTarget",
+        )
+        val actions = ReconcileUseCase.reconcile(
+            items = listOf(shortcut),
+            installed = setOf(here),
+            unavailable = emptySet(),
+            boundWidgetIds = emptySet(),
+            installedActivities = setOf(
+                com.vayunmathur.launcher.domain.ActivityKey("com.example.here", "com.example.here.Main", 0),
+            ),
+        )
+        assertTrue(actions.isEmpty())
+    }
+
+    @Test
     fun `a widget whose id the host has forgotten is deleted`() {
         val widget = ReconcileUseCase.Item(
             id = 5,

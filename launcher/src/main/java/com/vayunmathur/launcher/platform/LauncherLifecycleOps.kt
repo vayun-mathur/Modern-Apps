@@ -51,6 +51,7 @@ internal fun LauncherViewModel.reconcileNowImpl() {
             unavailable = appsMonitor.unavailable.value,
             boundWidgetIds = widgetHost.boundIds(),
             unavailableProfiles = appsMonitor.unavailableProfileSerials(),
+            installedActivities = appsMonitor.installedActivityKeys(),
         )
         orphaned.forEach(widgets::release)
         widgets.releaseOrphans(repository.usedWidgetIds())

@@ -30,3 +30,6 @@ enum class LauncherItemType {
  * reboot.
  */
 data class PackageKey(val packageName: String, val profileSerial: Long)
+
+/** Identity of one launchable activity of an app for a given user. */
+data class ActivityKey(val packageName: String, val className: String, val profileSerial: Long)

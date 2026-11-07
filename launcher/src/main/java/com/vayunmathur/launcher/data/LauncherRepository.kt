@@ -2,6 +2,7 @@ package com.vayunmathur.launcher.data
 
 import android.content.Context
 import androidx.room3.withWriteTransaction
+import com.vayunmathur.launcher.domain.ActivityKey
 import com.vayunmathur.launcher.domain.AutoPlacer
 import com.vayunmathur.launcher.domain.CellRect
 import com.vayunmathur.launcher.domain.ContainerRef
@@ -304,6 +305,7 @@ class LauncherRepository private constructor(context: Context) :
         unavailable: Set<PackageKey>,
         boundWidgetIds: Set<Int>,
         unavailableProfiles: Set<Long> = emptySet(),
+        installedActivities: Set<ActivityKey> = emptySet(),
     ): List<Int> = db.withWriteTransaction {
         val all = dao.getAll()
         val actions = ReconcileUseCase.reconcile(
@@ -312,6 +314,7 @@ class LauncherRepository private constructor(context: Context) :
             unavailable = unavailable,
             boundWidgetIds = boundWidgetIds,
             unavailableProfiles = unavailableProfiles,
+            installedActivities = installedActivities,
         )
         val byId = all.associateBy { it.id }
         val orphanedWidgetIds = mutableListOf<Int>()
