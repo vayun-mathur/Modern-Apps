@@ -113,6 +113,22 @@ class AstronomyViewModelTest {
         }
     }
 
+    @Test fun `rise-set recomputes when the observer moves`() {
+        val vm = AstronomyViewModel(app)
+        await("catalog ready") { vm.catalogReady.value }
+        vm.setManualLocation(37.0, -122.0)
+        vm.selectObject("SUN")
+        await("riseSet") { vm.riseSet.value?.riseJd != null }
+        val firstRise = vm.riseSet.value!!.riseJd
+        // Sydney sunrise is many hours away from San Francisco's; a stale
+        // rise-set would keep returning the first value forever.
+        vm.setManualLocation(-33.86, 151.21)
+        await("riseSet for new location") {
+            val rise = vm.riseSet.value?.riseJd
+            rise != null && rise != firstRise
+        }
+    }
+
     @Test fun `time scrubbing leaves live mode and live-now restores it`() {
         val vm = AstronomyViewModel(app)
         val fixed = Instant.fromEpochMilliseconds(1_700_000_000_000)
