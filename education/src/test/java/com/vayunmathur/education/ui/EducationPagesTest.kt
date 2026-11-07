@@ -342,6 +342,18 @@ class EducationPagesTest {
         rule.waitForIdle()
     }
 
+    @Test fun parentPageDeadlineSetRefreshesRow() = runBlocking<Unit> {
+        seedLearner(Learner(name = "Maya", gradeLevel = 4))
+        val bs = stack(Route.Home, Route.Parent)
+        show { ParentPage(bs, vm) }
+        awaitText(str(R.string.parent_settings))
+        // No deadline yet for u1: setting one through the VM must flip the
+        // row to Change (the page reads the collected deadlines flow).
+        assertTrue(onAllNodesWithText(str(R.string.change)).fetchSemanticsNodes().isEmpty())
+        vm.setDeadline(com.vayunmathur.education.content.ModuleType.UNIT, "u1", 20_000)
+        rule.waitUntil(10_000) { onAllNodesWithText(str(R.string.change)).fetchSemanticsNodes().isNotEmpty() }
+    }
+
     @Test fun scholarHomeDeadlineAndParentAreaRoutes() = runBlocking<Unit> {
         seedLearner(Learner(name = "Maya", gradeLevel = 8, onboarded = false))
         Fx.repository(ctx).upsertDeadline(com.vayunmathur.education.data.Deadline(moduleType = "UNIT", moduleId = "u1", dueEpochDay = 20_000))
