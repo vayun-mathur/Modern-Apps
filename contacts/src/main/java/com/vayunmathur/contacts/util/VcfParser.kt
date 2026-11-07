@@ -392,7 +392,16 @@ private class VcfParser(
                 dv.substring(DATE_PREFIX_LENGTH, DATE_MONTH_END) + "-" +
                 dv.substring(DATE_MONTH_END, DATE_DAY_END)
         } else if (dv.startsWith("--")) {
-            dv = NO_YEAR_SENTINEL + "-" + dv.substring(2)
+            // Both "--MM-DD" and the compact "--MMDD" no-year forms occur
+            // in foreign vCards; only the dashed one parsed before, so
+            // compact birthdays were silently dropped on import.
+            val rest = dv.substring(2)
+            val monthDay = if (rest.length == 4 && rest.all { it.isDigit() }) {
+                rest.substring(0, 2) + "-" + rest.substring(2)
+            } else {
+                rest
+            }
+            dv = "$NO_YEAR_SENTINEL-$monthDay"
         }
         return try {
             LocalDate.parse(dv)
