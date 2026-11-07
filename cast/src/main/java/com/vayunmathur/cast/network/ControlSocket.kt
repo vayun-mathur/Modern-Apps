@@ -89,9 +89,20 @@ class ControlSocket(private val host: String, private val port: Int) {
     fun send(message: ControlMessage): ByteArray? {
         val stream = output ?: return null
         val body = codec.encode(message)
-        stream.write(ControlFraming.encode(body))
-        stream.flush()
-        return body
+        return try {
+            stream.write(ControlFraming.encode(body))
+            stream.flush()
+            body
+        } catch (e: IOException) {
+            // The peer hung up first: a write into that socket answers with a
+            // broken pipe rather than a clean refusal, which is the same
+            // "not connected" answer the null above gives - see the KDoc.
+            Log.status(TAG, "the TV closed the control channel before a send", e)
+            null
+        } catch (e: IllegalArgumentException) {
+            Log.status(TAG, "could not frame a control message", e)
+            null
+        }
     }
 
     /**
