@@ -58,6 +58,13 @@ class VCardTest {
         assertTrue(!text.contains("ORG:")); assertTrue(!text.contains("BDAY:")); assertTrue(!text.contains("NOTE:"))
         assertTrue(text.contains("TEL").not())
     }
+    @Test fun literalBackslashSequencesRoundTrip() {
+        // Note contains a literal backslash followed by 'n': on the wire
+        // the backslash is doubled and parsing must not produce a newline.
+        val orig = RemoteContact(uid = "u3", displayName = "X", note = "a\\nb")
+        val back = VCard.parse(VCard.serialize(orig))
+        assertEquals(orig.note, back.note)
+    }
     @Test fun lowercaseParamsAndMobileAlias() {
         val c = VCard.parse("tel;type=mobile:+9\nemail;type=home:a@b\n")
         assertEquals(Phone.TYPE_MOBILE, c.phones[0].type); assertEquals(Email.TYPE_HOME, c.emails[0].type)
