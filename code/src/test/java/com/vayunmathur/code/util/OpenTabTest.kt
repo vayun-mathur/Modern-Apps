@@ -46,6 +46,19 @@ class OpenTabTest {
     }
 
     @Test
+    fun clearHistoryDropsUndoAndRedo() {
+        val t = tab()
+        t.pushUndo(t.value)
+        t.value = TextFieldValue("changed", TextRange(7))
+        assertTrue(t.canUndo)
+        t.clearHistory()
+        assertFalse(t.canUndo)
+        assertFalse(t.canRedo)
+        t.undo()
+        assertEquals("changed", t.value.text)
+    }
+
+    @Test
     fun editingMarksDirty() {
         val t = tab()
         t.value = TextFieldValue("hello!", TextRange(6))
