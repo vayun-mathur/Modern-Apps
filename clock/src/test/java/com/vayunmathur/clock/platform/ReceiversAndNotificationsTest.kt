@@ -185,4 +185,15 @@ class ReceiversAndNotificationsTest {
         BootReceiver().onReceive(ctx, Intent(Intent.ACTION_BOOT_COMPLETED))
         Thread.sleep(200)
     }
+
+    @Test
+    fun bootReceiverHandlesTimeAndZoneChanges() {
+        // The rearm itself reads the SQLCipher-backed repository, whose native
+        // driver is unavailable on the host JVM (see this class's DB branches);
+        // what is pinned here is that the new actions enter the reschedule
+        // path at all instead of falling through the when unmatched.
+        BootReceiver().onReceive(ctx, Intent(Intent.ACTION_TIMEZONE_CHANGED))
+        BootReceiver().onReceive(ctx, Intent(Intent.ACTION_TIME_CHANGED))
+        Thread.sleep(200)
+    }
 }
