@@ -36,6 +36,19 @@ class HistoryMemoryTest {
     }
 
     @Test
+    fun infiniteResultIsNotRecorded() {
+        val tab = CalculatorTab()
+        tab.updateInput("1/0")
+        assertEquals("∞", tab.preview)
+        tab.evaluate()
+        // Before the fix this recorded "∞" and replaced the input with
+        // that glyph, which the parser cannot read back.
+        assertTrue(tab.history.isEmpty())
+        assertEquals("1/0", tab.input)
+        assertEquals(0.0, tab.lastAnswer)
+    }
+
+    @Test
     fun nanResultIsNotRecorded() {
         val tab = CalculatorTab()
         tab.updateInput("0/0")

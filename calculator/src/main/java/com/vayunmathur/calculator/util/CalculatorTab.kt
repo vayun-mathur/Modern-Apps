@@ -82,7 +82,10 @@ class CalculatorTab {
         } catch (ignored: ExpressionError) {
             return // leave input untouched; the preview already flagged the problem
         }
-        if (quantity.value.isNaN()) return
+        // Non-finite results (NaN, 1/0 = ∞) have no re-parsable token form:
+        // recording one would replace the input with "∞"/"Undefined" and
+        // strand it there. Like NaN, they stay a live preview only.
+        if (!quantity.value.isFinite()) return
         val isInstant = quantity.instant
         val unit = if (quantity.isDimensionless || isInstant) {
             null
