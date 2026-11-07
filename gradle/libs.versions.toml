@@ -152,6 +152,8 @@ ringrtcAndroid = "2.72.1"
 # XML
 kxml2 = "2.3.0"
 robolectric = "4.17"
+# Plain-JVM mocks for Android framework classes (Application, Context) in unit tests.
+mockito = "5.15.2"
 
 # Payments, telephony & auth
 stripe = "23.23.0"
@@ -369,6 +371,7 @@ kxml2 = { module = "net.sf.kxml:kxml2", version.ref = "kxml2" }
 
 # Testing
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 # Payments, telephony & auth
 stripe-android = { module = "com.stripe:stripe-android", version.ref = "stripe" }

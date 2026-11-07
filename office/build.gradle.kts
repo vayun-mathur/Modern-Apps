@@ -32,4 +32,8 @@ dependencies {
 
     // Provides a real XmlPullParser implementation for JVM unit tests (Android's is a stub).
     testImplementation(libs.kxml2)
+    // Android framework statics (Uri.parse/fromFile) for slice 3/4 ViewModel tests.
+    testImplementation(libs.robolectric)
+    // Plain-JVM mocks for Android framework classes (slice 3/4 ViewModel tests).
+    testImplementation(libs.mockito.core)
 }
