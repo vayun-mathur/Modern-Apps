@@ -228,10 +228,14 @@ object Scheduler {
      */
     fun parseWeights(json: String): DoubleArray {
         if (json.isBlank()) return DEFAULT_W
-        val nums = json.trim().removePrefix("[").removeSuffix("]")
-            .split(",")
-            .mapNotNull { it.trim().toDoubleOrNull() }
-        return if (nums.size == DEFAULT_W.size) nums.toDoubleArray() else DEFAULT_W
+        val tokens = json.trim().removePrefix("[").removeSuffix("]").split(",")
+        // Every token must parse to a finite double: mapNotNull would silently
+        // drop a corrupt token and shift the remaining weights into the wrong
+        // FSRS positions, and NaN/Infinity would poison every interval.
+        if (tokens.size != DEFAULT_W.size) return DEFAULT_W
+        val nums = tokens.map { it.trim().toDoubleOrNull() }
+        if (nums.any { it == null || !it.isFinite() }) return DEFAULT_W
+        return DoubleArray(nums.size) { nums[it]!! }
     }
 
     /** Serializes FSRS [weights] to a JSON array string for storage. */
