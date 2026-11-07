@@ -76,6 +76,20 @@ class FrameReaderTest {
     }
 
     @Test
+    fun `all fragments delivered in one read reassemble without another read`() {
+        // Regression: offer() stopped draining after a non-final fragment
+        // (it conflated "fragment consumed" with "need more bytes"), so a
+        // fragmented message delivered whole in one read only completed
+        // when yet another read arrived; at end of stream it stalled.
+        val body = payload(50_000)
+        val wire = writer.frame(3, body).reduce { a, b -> a + b }
+
+        val collected = FrameReader().offer(wire)
+
+        assertContentEquals(body, collected.single().payload)
+    }
+
+    @Test
     fun `a hostile total length hint neither throws nor breaks reassembly`() {
         // Regression: totalLength is peer-controlled. A negative value made
         // ByteArrayOutputStream(capacity) throw out of the pump loop, and a

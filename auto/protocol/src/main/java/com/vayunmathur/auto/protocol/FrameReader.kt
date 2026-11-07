@@ -41,9 +41,20 @@ class FrameReader(
         append(bytes, offset, count)
         val completed = mutableListOf<ReassembledMessage>()
         while (true) {
-            completed += takeFrame() ?: break
+            when (val step = takeFrame()) {
+                is FrameStep.Completed -> completed += step.message
+                FrameStep.Consumed -> Unit // a fragment (or dropped bad frame); keep draining
+                FrameStep.NeedMore -> break
+            }
         }
         return completed
+    }
+
+    /** Outcome of one [takeFrame] attempt; [Consumed] must not stop the drain. */
+    private sealed interface FrameStep {
+        data class Completed(val message: ReassembledMessage) : FrameStep
+        data object Consumed : FrameStep
+        data object NeedMore : FrameStep
     }
 
     private fun append(bytes: ByteArray, offset: Int, count: Int) {
@@ -60,21 +71,23 @@ class FrameReader(
      * @return the message if that frame completed one, null if more bytes are needed or the
      *   frame was a non-final fragment.
      */
-    private fun takeFrame(): ReassembledMessage? {
-        if (pending.remaining() < FrameHeader.SHORT_HEADER_SIZE) return null
+    private fun takeFrame(): FrameStep {
+        if (pending.remaining() < FrameHeader.SHORT_HEADER_SIZE) return FrameStep.NeedMore
         // The first fragment of a fragmented message carries an 8-byte long
         // header. A read can end inside it (4-7 bytes in), and FrameHeader
         // throws rather than waiting in that case, so wait for all of it.
         val flags = pending.get(pending.position() + 1).toInt() and 0xFF
         val isFirstFragment = flags and FrameFlags.FIRST != 0 && flags and FrameFlags.LAST == 0
-        if (isFirstFragment && pending.remaining() < FrameHeader.LONG_HEADER_SIZE) return null
+        if (isFirstFragment && pending.remaining() < FrameHeader.LONG_HEADER_SIZE) {
+            return FrameStep.NeedMore
+        }
 
         pending.mark()
         val header = FrameHeader.readFrom(pending)
         if (pending.remaining() < header.payloadLength) {
             // Not all here yet; rewind and wait for more.
             pending.reset()
-            return null
+            return FrameStep.NeedMore
         }
 
         val raw = ByteArray(header.payloadLength)
@@ -87,14 +100,16 @@ class FrameReader(
         val plaintext = if (header.isEncrypted) {
             runCatching { decrypt(raw) }.getOrElse {
                 onFramingError()
-                return null
+                return FrameStep.Consumed
             }
         } else {
             raw
         }
 
         if (header.isFirst && header.isLast) {
-            return ReassembledMessage(header.channelId, header.isControl, plaintext)
+            return FrameStep.Completed(
+                ReassembledMessage(header.channelId, header.isControl, plaintext),
+            )
         }
 
         // `totalLength` is only a capacity hint. The stream grows as needed rather than
@@ -110,9 +125,11 @@ class FrameReader(
         }
         buffer.write(plaintext)
 
-        if (!header.isLast) return null
+        if (!header.isLast) return FrameStep.Consumed
         partial.remove(header.channelId)
-        return ReassembledMessage(header.channelId, header.isControl, buffer.toByteArray())
+        return FrameStep.Completed(
+            ReassembledMessage(header.channelId, header.isControl, buffer.toByteArray()),
+        )
     }
 
     /** Drops consumed bytes so [pending] does not grow without bound. */
