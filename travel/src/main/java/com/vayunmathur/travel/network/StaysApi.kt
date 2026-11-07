@@ -49,12 +49,12 @@ object StaysApi {
                 append("&longitude=").append(longitude)
             }
         }
-        return NetworkClient.getJson(url)
+        return travelGetJson(url, "Search failed")
     }
 
     /** All rates for a search result. */
     suspend fun rates(searchResultId: String): StayRatesDto =
-        NetworkClient.getJson("$BASE/rates?id=${enc(searchResultId)}")
+        travelGetJson("$BASE/rates?id=${enc(searchResultId)}", "Rates failed")
 
     /** Create a trip for a chosen rate (confirming price). */
     suspend fun quote(rateId: String): StayQuoteDto =
@@ -67,12 +67,7 @@ object StaysApi {
     private const val MAX_ERROR_SNIPPET_LENGTH = 300
 
     private suspend inline fun <reified B, reified T> postJson(url: String, body: B, fallback: String): T {
-        val res = NetworkClient.performRequest(
-            url = url,
-            method = "POST",
-            headers = mapOf("Content-Type" to "application/json"),
-            body = travelRequestBody(body),
-        )
+        val res = travelPerform("POST", url, travelRequestBody(body))
         if (!res.isSuccess) throw travelHttpError(res.status, res.body, fallback)
         return json.decodeFromString(res.body)
     }

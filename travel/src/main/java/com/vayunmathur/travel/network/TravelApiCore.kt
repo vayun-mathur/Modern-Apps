@@ -94,21 +94,39 @@ internal fun travelHttpError(status: Int, body: String, fallback: String): Illeg
     )
 }
 
+/** Raw travel HTTP result used by the test transport seam. */
+internal class TravelRaw(val status: Int, val body: String) {
+    val isSuccess: Boolean get() = status in 200..299
+}
+
+/** Test seam: when set, travel HTTP is served by this handler instead of the network. */
+internal var travelTransport: (suspend (method: String, url: String, body: String?) -> TravelRaw)? = null
+
+internal suspend fun travelPerform(method: String, url: String, body: String? = null): TravelRaw {
+    travelTransport?.let { return it(method, url, body) }
+    val res = if (body == null) {
+        NetworkClient.performRequest(url = url, method = method)
+    } else {
+        NetworkClient.performRequest(
+            url = url,
+            method = method,
+            headers = mapOf("Content-Type" to "application/json"),
+            body = body,
+        )
+    }
+    return TravelRaw(res.status, res.body)
+}
+
 /** GET [url] and decode the JSON result, surfacing server errors. */
 internal suspend inline fun <reified T> travelGetJson(url: String, fallback: String): T {
-    val res = NetworkClient.performRequest(url = url, method = "GET")
+    val res = travelPerform("GET", url)
     if (!res.isSuccess) throw travelHttpError(res.status, res.body, fallback)
     return travelJson.decodeFromString(res.body)
 }
 
 /** POST [body] to [url] and decode the JSON result, surfacing server errors. */
 internal suspend inline fun <reified B, reified T> travelPostJson(url: String, body: B, fallback: String): T {
-    val res = NetworkClient.performRequest(
-        url = url,
-        method = "POST",
-        headers = mapOf("Content-Type" to "application/json"),
-        body = travelRequestBody(body),
-    )
+    val res = travelPerform("POST", url, travelRequestBody(body))
     if (!res.isSuccess) throw travelHttpError(res.status, res.body, fallback)
     return travelJson.decodeFromString(res.body)
 }
