@@ -326,6 +326,31 @@ class SudokuViewModelTest {
     }
 
     @Test
+    fun replayingASolvedPuzzleDoesNotRecordASecondWin() {
+        val vm = startedVm()
+        fun solve() {
+            var guard = 0
+            while (guard++ < 100) {
+                val game = vm.uiState.value.game!!
+                val next = game.blankIndices().firstOrNull() ?: break
+                vm.selectCell(next)
+                vm.enterDigit(game.solution[next])
+            }
+            assertTrue(vm.uiState.value.game!!.isWon)
+        }
+        solve()
+        assertEquals(1, stats.getStats(BoardSize.SIX, Difficulty.EASY).gamesWon)
+
+        // Play-again on the win overlay restarts the same puzzle; solving it again
+        // shows the win but must not count it twice.
+        vm.restart()
+        solve()
+        val statsAfter = stats.getStats(BoardSize.SIX, Difficulty.EASY)
+        assertEquals(1, statsAfter.gamesWon, "the same puzzle records one win")
+        assertEquals(1, statsAfter.currentWinStreak)
+    }
+
+    @Test
     fun answerModeRejectsWrongDigitsCostsLivesAndEndsGame() {
         stats.recordGameWon(BoardSize.SIX, Difficulty.EASY, 60)
         val vm = startedVm(GameConfig(BoardSize.SIX, Difficulty.EASY, answerMode = true))

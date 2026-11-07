@@ -62,6 +62,16 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     /** Set when the player ever tries a digit that disagrees with the solution. */
     private var madeMistake = false
 
+    /**
+     * Set once the dealt puzzle's win has been written to stats and achievements.
+     *
+     * Restarting a solved puzzle (the win overlay's play-again) keeps the same givens
+     * and solution, so without this the player could re-enter a solution they already
+     * know and farm wins, streaks and progress achievements off one puzzle. Cleared
+     * only by [newGame]: a fresh deal is a fresh record, a restart is not.
+     */
+    private var winRecorded = false
+
     /** Sequence numbers for answer-mode rejections, so repeats of one digit still animate. */
     private var rejectionAttempt = 0L
 
@@ -89,6 +99,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     fun newGame(config: GameConfig) {
         history.clear()
         madeMistake = false
+        winRecorded = false
         rejectionAttempt = 0
         _uiState.value = SudokuUiState(generating = true)
         viewModelScope.launch {
@@ -304,6 +315,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (game.isWon || !game.isComplete) return
         mutate { it.copy(isWon = true, selected = -1) }
 
+        // The board still shows its win on a restart replay; only the recording is once-only.
+        if (winRecorded) return
+        winRecorded = true
         statsRepository.recordGameWon(game.size, game.difficulty, game.elapsedSeconds)
         val manager = achievementsManager
         manager.onAchievementUnlocked("first_win")
