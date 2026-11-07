@@ -50,14 +50,15 @@ class HealthApiLocalTest {
 
     @Test
     fun `last record reads newest from room`() = runTest {
-        val at = Instant.parse("2026-03-04T09:00:00Z")
+        // Far-future date so this row is the newest Weight in the shared DB.
+        val at = Instant.parse("2027-06-01T09:00:00Z")
         repo().upsert(listOf(record(RecordType.Weight, 71.0, at, "api-w-1")))
         assertEquals(71.0, HealthAPI.lastRecord(RecordType.Weight)?.value)
     }
 
     @Test
     fun `delete record removes local row in local mode`() = runTest {
-        val at = Instant.parse("2026-03-04T09:00:00Z")
+        val at = Instant.parse("2024-02-10T09:00:00Z")
         val row = record(RecordType.Hydration, 0.5, at, "api-h-1")
         repo().upsert(listOf(row))
         HealthAPI.deleteRecord(row)
@@ -66,7 +67,7 @@ class HealthApiLocalTest {
 
     @Test
     fun `write record in local mode builds hc record but does not crash for supported types`() = runTest {
-        val at = Instant.parse("2026-03-04T09:00:00Z")
+        val at = Instant.parse("2024-02-10T09:00:00Z")
         // Each supported type exercises its HC record builder; local mode
         // returns after building, leaving Room unchanged.
         val cases = listOf(
@@ -86,7 +87,7 @@ class HealthApiLocalTest {
 
     @Test
     fun `daily sums and averages aggregate seeded rows`() = runTest {
-        val at = Instant.parse("2026-03-04T09:00:00Z")
+        val at = Instant.parse("2024-02-10T09:00:00Z")
         repo().upsert(listOf(record(RecordType.Steps, 1000.0, at, "api-steps-sum")))
         val start = kotlin.time.Instant.fromEpochMilliseconds(at.toEpochMilli() - 86_400_000)
         val end = kotlin.time.Instant.fromEpochMilliseconds(at.toEpochMilli() + 86_400_000)

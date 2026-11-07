@@ -6,6 +6,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.health.Route
@@ -91,10 +94,13 @@ class MedicalPageTest {
         // Rows below the fold exist without being displayed (per TodayScreenTest).
         rule.onNodeWithText("Vaccinations").performClick()
         rule.onNodeWithText("Flu Page").assertExists()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Medications"))
         rule.onNodeWithText("Medications").performClick()
         rule.onNodeWithText("Metformin Page").assertExists()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Allergies"))
         rule.onNodeWithText("Allergies").performClick()
         rule.onNodeWithText("Penicillin Page").assertExists()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Conditions"))
         rule.onNodeWithText("Conditions").performClick()
         rule.onNodeWithText("Asthma Page").assertExists()
     }
