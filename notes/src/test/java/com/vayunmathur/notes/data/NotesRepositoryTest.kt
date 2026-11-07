@@ -80,6 +80,16 @@ class NotesRepositoryTest {
         assertTrue(repo.getAllSnapshots().isEmpty())
     }
 
+    @Test fun upsertAllBumpsUpdatedAtSoReorderSyncs() = runTest {
+        repo.upsertRaw(Note(title = "A", content = "", syncId = "ord-a", updatedAt = 10, position = 1.0))
+        val stored = repo.getBySyncId("ord-a")!!
+        repo.upsertAll(listOf(stored.copy(position = 99.0)))
+        val after = repo.getBySyncId("ord-a")!!
+        assertEquals(99.0, after.position)
+        assertTrue(after.updatedAt > 10, "reorder must bump updatedAt or sync never sees it: ${after.updatedAt}")
+        assertEquals(listOf("ord-a"), repo.getUpdatedSince(100).map { it.syncId })
+    }
+
     @Test fun migrateImageReferencesRewritesOnlyImageBlocks() = runTest {
         val body = NoteBody(listOf(
             NoteBlock.Text("caption", "t1"),

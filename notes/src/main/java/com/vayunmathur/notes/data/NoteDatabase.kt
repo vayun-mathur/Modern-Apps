@@ -56,8 +56,9 @@ abstract class NoteDao {
     @Query("DELETE FROM Note")
     abstract suspend fun deleteAll()
 
-    @Upsert
-    abstract suspend fun upsertAll(t: List<Note>)
+    /** Local batch write (list reorder, legacy import): bumps updatedAt like [upsert]. */
+    suspend fun upsertAll(values: List<Note>) =
+        upsertAllRaw(values.map { it.copy(updatedAt = System.currentTimeMillis()) })
 
     /** Writes [values] verbatim. Only the relay sync uses this. */
     @Upsert
