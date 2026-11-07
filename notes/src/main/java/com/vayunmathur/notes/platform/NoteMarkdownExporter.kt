@@ -53,10 +53,21 @@ fun exportNoteMarkdown(context: Context, note: Note): String =
  * [NotesViewModel.requestShare], so no extra manifest setup is needed. Used by copy
  * so a note with inlined (multi-MB) images is passed as a URI instead of raw text.
  */
+/**
+ * Cache file name for a shared/copied note. The title is user text: used raw
+ * it can contain `/` or `..`, which either makes the write fail (missing
+ * parent dir, crashing the share) or escapes the shared_notes directory so
+ * FileProvider refuses the URI. Strip path-hostile characters instead.
+ */
+internal fun shareMarkdownFileName(title: String): String {
+    val cleaned = title.trim().replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim('.')
+    return "${cleaned.ifBlank { "note" }}.md"
+}
+
 fun markdownCacheUri(context: Context, note: Note, markdown: String): Uri {
     val cachePath = File(context.cacheDir, "shared_notes")
     cachePath.mkdirs()
-    val file = File(cachePath, "${note.title.ifBlank { "note" }}.md")
+    val file = File(cachePath, shareMarkdownFileName(note.title))
     file.writeText(markdown)
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }

@@ -165,7 +165,7 @@ class NotesViewModel(
                 val markdown = exportNoteMarkdown(ctx, note)
                 val cachePath = File(ctx.cacheDir, "shared_notes")
                 cachePath.mkdirs()
-                val file = File(cachePath, "${note.title.ifBlank { "note" }}.md")
+                val file = File(cachePath, shareMarkdownFileName(note.title))
                 file.writeText(markdown)
                 val uri = FileProvider.getUriForFile(
                     ctx,
