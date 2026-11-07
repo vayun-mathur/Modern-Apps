@@ -73,7 +73,10 @@ class FoodModelsTotalsTest {
     fun orderStageLadderAndEta() {
         assertEquals(OrderStage.PREPARING, Order().stage)
         assertEquals(OrderStage.READY, Order(driverReachedMerchantAt = "2024-01-01T00:00:00Z").stage)
-        assertEquals(OrderStage.DRIVING, Order(pickedupAt = "2024-01-01T00:00:00Z").stage)
+        assertEquals(OrderStage.DRIVING, Order(channel = "ORDER_CHANNEL_STOREFRONT_DELIVERY", pickedupAt = "2024-01-01T00:00:00Z").stage)
+        // A collected pickup is terminal, matching isDone and the live-update milestones.
+        assertEquals(OrderStage.PICKED_UP, Order(pickedupAt = "2024-01-01T00:00:00Z").stage)
+        assertEquals("Picked Up", Order(pickedupAt = "2024-01-01T00:00:00Z").displayStatus)
         assertEquals(OrderStage.ARRIVING, Order(driverReachedCustomerAt = "2024-01-01T00:00:00Z").stage)
         val future = java.time.Instant.now().plusSeconds(3600).toString()
         val past = java.time.Instant.now().minusSeconds(3600).toString()
