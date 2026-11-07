@@ -301,7 +301,7 @@
     <!-- Quote detail: refund amount %1$s issued to destination %2$s (e.g. original payment) -->
     <string name="refund_of_issued_to_your">Refund of <xliff:g id="amount" example="$120.00">%1$s</xliff:g> issued to your <xliff:g id="destination" example="original payment">%2$s</xliff:g>.</string>
     <!-- Quote detail: refund destination only when refundTo payment method known. %1$s = e.g. original payment -->
-    <string name="refunded_to_your">Refunded to your <xliff:g id="destination" example="original payment">%2$s</xliff:g>.</string>
+    <string name="refunded_to_your">Refunded to your <xliff:g id="destination" example="original payment">%1$s</xliff:g>.</string>
     <!-- Fallback noun for refund destination: original payment method. Lowercase -->
     <string name="original_payment">original payment</string>
     <!-- Success headline after cancellation API call succeeded -->
