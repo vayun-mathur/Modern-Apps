@@ -77,7 +77,7 @@ fun GameBoardScreen(state: SolitaireUiState, mode: GameMode, actions: SolitaireA
                     GameMode.KLONDIKE -> state.klondike?.let {
                         KlondikeBoard(it, actions, Modifier.align(Alignment.CenterHorizontally).widthIn(max = boardMaxWidth).fillMaxWidth())
                         if (canKlondikeAutoComplete(it)) {
-                            Button(onClick = { actions.klondikeAutoComplete() }, Modifier.align(Alignment.CenterHorizontally)) { Text(stringResource(R.string.auto_complete)) }
+                            Button(onClick = { actions.klondikeAutoCompleteAnimated() }, Modifier.align(Alignment.CenterHorizontally)) { Text(stringResource(R.string.auto_complete)) }
                         }
                     }
                     GameMode.SPIDER -> state.spider?.let { SpiderBoard(it, actions, Modifier.align(Alignment.CenterHorizontally).widthIn(max = boardMaxWidth).fillMaxWidth()) }

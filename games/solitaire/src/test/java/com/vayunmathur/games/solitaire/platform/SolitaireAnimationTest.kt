@@ -155,6 +155,89 @@ class SolitaireAnimationTest {
         }
     }
 
+    /** Foundations one king short per suit, kings in stock/waste/tableau. */
+    private fun almostWonState(): KlondikeState {
+        val foundations = Suit.entries.map { suit ->
+            Rank.entries.filter { it != Rank.KING }.map { Card(suit, it) }
+        }
+        return KlondikeState(
+            stock = listOf(c(Suit.SPADES, Rank.KING)),
+            waste = listOf(c(Suit.HEARTS, Rank.KING)),
+            tableauPiles = sevenPiles(
+                TableauPile(faceUp = listOf(c(Suit.DIAMONDS, Rank.KING))),
+                TableauPile(faceUp = listOf(c(Suit.CLUBS, Rank.KING))),
+            ),
+            foundations = foundations,
+            elapsedSeconds = 42,
+        )
+    }
+
+    @Test fun autoCompleteSimulationIsLegalStepSequence() {
+        val vm = vm()
+        val state = almostWonState()
+        setK(vm, state)
+        val (steps, finalState) = vm.simulateKlondikeAutoComplete(state)
+        // Four kings fly: waste hearts, two tableau kings, then the stock spade.
+        assertEquals(4, steps.size)
+        assertEquals(listOf("waste", "tableau_0_0", "tableau_1_0", "waste"), steps.map { it.sourceId })
+        assertEquals(listOf(0, 1, 3, 2), steps.map { it.foundationIndex })
+        // Every step moves exactly the foundation count up by one and
+        // chains: each step starts where the previous one ended.
+        var previous = state
+        for (step in steps) {
+            val before = previous.foundations.sumOf { it.size }
+            val after = step.stateAfter.foundations.sumOf { it.size }
+            assertEquals(before + 1, after)
+            assertEquals(step.card, step.stateAfter.foundations[step.foundationIndex].last())
+            previous = step.stateAfter
+        }
+        assertTrue(finalState.foundations.all { it.size == 13 })
+        assertTrue(finalState.stock.isEmpty() && finalState.waste.isEmpty())
+        // The simulation agrees with the instant completion's end state.
+        vm.klondikeAutoComplete()
+        val instant = vm.uiState.value.klondike!!
+        assertEquals(finalState.foundations, instant.foundations)
+        assertEquals(finalState.moveCount, instant.moveCount)
+        assertTrue(instant.isWon)
+    }
+
+    @Test fun animatedAutoCompleteCascadesAndUndoesAsOneStep() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val vm = vm()
+            val state = almostWonState()
+            setK(vm, state)
+            vm.cardPositions["waste"] = Rect(0f, 0f, 60f, 84f)
+            vm.cardPositions["tableau_0_0"] = Rect(100f, 200f, 160f, 284f)
+            vm.cardPositions["tableau_1_0"] = Rect(200f, 200f, 260f, 284f)
+            for (fi in 0 until 4) vm.dropTargets["foundation_$fi"] = Rect(300f + fi * 70f, 0f, 360f + fi * 70f, 84f)
+            vm.klondikeAutoCompleteAnimated()
+            runCurrent()
+            // First flight is up; nothing has landed yet, one history entry.
+            assertNotNull(vm.animatedMove.value)
+            assertEquals(12, vm.uiState.value.klondike!!.foundations[0].size)
+            assertEquals(1, vm.uiState.value.history.size)
+            // Let the whole cascade play out.
+            advanceTimeBy((AUTO_COMPLETE_STEP_MILLIS + AUTO_COMPLETE_GAP_MILLIS) * 10L)
+            runCurrent()
+            val k = vm.uiState.value.klondike!!
+            assertNull(vm.animatedMove.value)
+            assertTrue(k.isWon)
+            assertTrue(k.foundations.all { it.size == 13 })
+            assertEquals(1, vm.uiState.value.history.size)
+            // The cascade is a single undo step, like the instant completion.
+            vm.undo()
+            val restored = vm.uiState.value.klondike!!
+            assertFalse(restored.isWon)
+            assertEquals(state.foundations, restored.foundations)
+            assertEquals(state.waste, restored.waste)
+            assertTrue(restored.usedUndo)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
     @Test fun animatedTapMoveWithoutGeometryAppliesInstantly() {
         val vm = vm()
         val ace = c(Suit.HEARTS, Rank.ACE)
