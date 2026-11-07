@@ -40,13 +40,13 @@ class HubCalculatorsTest {
     }
 
     private fun session(dayOffset: Long, durationMs: Long? = 120_000, endTime: Long? = 1L): PlaySessionEntity {
-        val now = System.currentTimeMillis()
-        val day = 86_400_000L
-        // Anchor to start-of-day UTC-ish by using raw day multiples from a fixed epoch day.
-        val base = (now / day) * day
+        // Anchor to the local start of today: StreakCalculator works in local
+        // days, so UTC-day multiples land in the wrong local day outside UTC.
+        val base = java.time.LocalDate.now().minusDays(dayOffset)
+            .atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         return PlaySessionEntity(
             gameId = "g", sessionId = "s$dayOffset-${durationMs}-${endTime}",
-            startTime = base - dayOffset * day, endTime = endTime, durationMs = durationMs,
+            startTime = base, endTime = endTime, durationMs = durationMs,
         )
     }
 
