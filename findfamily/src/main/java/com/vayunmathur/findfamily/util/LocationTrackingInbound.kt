@@ -263,6 +263,13 @@ private fun LocationTrackingService.maybeNotifyLowBattery(
     lastLoc: LocationValue,
     lastSavedLoc: LocationValue?,
 ) {
+    // A network sighting carries no battery of the owner's at all: finders seal
+    // it with battery 0 (deliberately, so their own level is not leaked), and
+    // openSighting stamps that 0 onto the owner. Treating it as the owner's
+    // battery fired a low-battery alert the moment a powered-off phone was
+    // sighted at a healthy charge. UserCard already hides sighting battery
+    // for the same reason; this is the notification-side equivalent.
+    if (lastLoc.source == LocationSource.NETWORK_SIGHTING) return
     if (lastLoc.battery > LOW_BATTERY_THRESHOLD) return
     if ((lastSavedLoc?.battery ?: FULL_BATTERY) <= LOW_BATTERY_THRESHOLD) return
     if (user.id == Networking.userid) return

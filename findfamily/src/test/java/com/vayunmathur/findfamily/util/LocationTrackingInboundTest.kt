@@ -133,6 +133,23 @@ class LocationTrackingInboundTest {
     }
 
     @Test
+    fun networkSightingDoesNotFireLowBattery() = runBlocking {
+        val wpId = repo.upsertWaypoint(Waypoint(name = "HomeBase", range = 500.0, coord = Coord(51.5, -0.12)))
+        val uid = repo.upsertUser(user("Eve").copy(locationName = "HomeBase", lastWaypointId = wpId))
+        val now = Clock.System.now()
+        val previous = fix(uid, at = now, battery = 90f)
+        // A powered-off sighting of Eve: finder's position, battery sealed as 0.
+        // Already inside the same waypoint, so entry/exit cannot fire either;
+        // only the low-battery path could produce a notification here.
+        service.enrichIncomingLocations(
+            listOf(fix(uid, at = now, battery = 0f, source = LocationSource.NETWORK_SIGHTING)),
+            mapOf(uid to previous),
+        )
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        assertTrue(Shadows.shadowOf(nm).allNotifications.isEmpty())
+    }
+
+    @Test
     fun notificationBuildersAndUwbEnvelopes() = runBlocking {
         service.setupNotificationChannels()
         assertNotNull(service.createNotification())
