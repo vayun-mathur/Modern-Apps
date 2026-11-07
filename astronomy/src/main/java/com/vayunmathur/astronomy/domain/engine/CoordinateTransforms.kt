@@ -85,6 +85,12 @@ object CoordinateTransforms {
     // transform in Rust, rebuild the List<AltAz>.
     fun batchRaDecToAltAz(radecs: List<RaDec>, lstRad: Double, latRad: Double): List<AltAz> {
         if (radecs.isEmpty()) return emptyList()
+        // Same guard projectAll has: where the Rust library did not load
+        // (an ABI the APK does not ship, e.g. x86_64), transform in Kotlin
+        // rather than dying with UnsatisfiedLinkError.
+        if (!com.vayunmathur.astronomy.domain.AstronomyNative.available) {
+            return radecs.map { raDecToAltAz(it, lstRad, latRad) }
+        }
         val input = DoubleArray(radecs.size * 2)
         for (i in radecs.indices) {
             input[2 * i] = radecs[i].raRad
