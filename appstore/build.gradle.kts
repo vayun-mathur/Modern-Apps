@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.grpc.stub)
     implementation(libs.grpc.kotlin.stub)
     testImplementation(libs.androidx.sqlite.bundled.jvm)
+    testImplementation(libs.grpc.inprocess)
     implementation(libs.protobuf.javalite)
     // grpc-java generated stubs reference @javax.annotation.Generated, absent on Android.
     compileOnly(libs.javax.annotation.api)

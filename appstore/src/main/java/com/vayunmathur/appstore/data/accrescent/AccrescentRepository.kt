@@ -42,8 +42,8 @@ data class AccrescentPage(val apps: List<UnifiedApp>, val nextPageToken: String)
 class AccrescentRepository(
     context: Context,
     db: AppDatabase,
+    private val api: AccrescentApi = AccrescentApi(),
 ) {
-    private val api = AccrescentApi()
     private val repoDataFetcher = AccrescentRepoDataFetcher(context)
     private val trustStore = AccrescentTrustStore(db.accrescentTrustDao())
     private val deviceAttributes = DeviceAttributesProvider(context)

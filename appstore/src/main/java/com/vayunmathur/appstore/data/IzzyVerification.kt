@@ -70,7 +70,7 @@ object IzzyReproducibleBuilds {
         Verified(keys)
     }
 
-    private fun parseInto(file: File, into: MutableSet<String>) {
+    internal fun parseInto(file: File, into: MutableSet<String>) {
         JsonReader(file.reader()).use { r ->
             r.isLenient = true
             r.beginObject()
