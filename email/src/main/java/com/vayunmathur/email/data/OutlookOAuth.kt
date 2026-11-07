@@ -71,6 +71,13 @@ object OutlookOAuth {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Test seam: when set, token POSTs go to this endpoint instead of
+     * Microsoft's. Null (the default everywhere in production) keeps the
+     * real endpoint; tests point it at a local fake token server.
+     */
+    internal var tokenEndpointOverride: String? = null
+
     fun isConfigured(): Boolean = BuildConfig.OUTLOOK_OAUTH_CLIENT_ID.isNotBlank()
 
     fun start(context: Context, emailHint: String = "") {
@@ -316,7 +323,7 @@ object OutlookOAuth {
 
     private fun postTokenForm(form: Map<String, String>): Pair<Int, String> {
         val body = form.entries.joinToString("&") { "${Uri.encode(it.key)}=${Uri.encode(it.value)}" }
-        val conn = (URL(TOKEN_ENDPOINT).openConnection() as HttpURLConnection).apply {
+        val conn = (URL(tokenEndpointOverride ?: TOKEN_ENDPOINT).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             doOutput = true
             connectTimeout = TOKEN_TIMEOUT_MS

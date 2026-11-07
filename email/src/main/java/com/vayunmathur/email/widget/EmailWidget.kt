@@ -51,7 +51,9 @@ class EmailWidget : MaWidget<List<EmailPreview>>() {
         private const val WIDGET_PEEK_LEN = 50
     }
 
-    override suspend fun loadData(context: Context, id: GlanceId): List<EmailPreview> {
+    // Widened from MaWidget's protected so unit tests can drive the data
+    // layer directly; the framework only ever calls it via provideGlance.
+    public override suspend fun loadData(context: Context, id: GlanceId): List<EmailPreview> {
         // Query the database directly for recent messages.
         // No read status indicators, so widget doesn't need to refresh on read changes.
         return withContext(Dispatchers.IO) {
@@ -64,7 +66,7 @@ class EmailWidget : MaWidget<List<EmailPreview>>() {
         }
     }
 
-    override fun previewData(context: Context): List<EmailPreview> = listOf(
+    public override fun previewData(context: Context): List<EmailPreview> = listOf(
         EmailPreview(
             accountEmail = "alex@example.com", folderName = "INBOX", id = 1,
             subject = "Lunch tomorrow?", from = "Alex Johnson <alex@example.com>",
@@ -83,7 +85,7 @@ class EmailWidget : MaWidget<List<EmailPreview>>() {
     )
 
     @Composable
-    override fun Content(data: List<EmailPreview>) {
+    public override fun Content(data: List<EmailPreview>) {
         EmailWidgetContent(data)
     }
 
