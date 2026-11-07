@@ -57,7 +57,7 @@ suspend fun SignalClient.safetyNumber(peerAci: String): String? {
     val remoteKey = pendingIdentityChanges[peerAci] ?: e.storedIdentityKey(peerAci) ?: return null
     return SignalSafetyNumber.compute(
         localAci = localAci,
-        localIdentityKey = e.ownIdentityPublicKey,
+        localIdentityKey = e.ownIdentityPublicKeySerialized,
         remoteAci = peerAci,
         remoteIdentityKey = remoteKey,
     )
