@@ -50,4 +50,5 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     // Own WebSocketClient via :library:network – no Ktor
     implementation(project(":library:network"))
+    testImplementation(libs.androidx.work.testing)
 }
