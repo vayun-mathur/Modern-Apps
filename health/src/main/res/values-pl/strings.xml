@@ -144,6 +144,8 @@
     <string name="conditions">Choroby</string>
     <plurals name="records_recorded">
         <item quantity="one">%1$d wpis</item>
+        <item quantity="few">%1$d wpisy</item>
+        <item quantity="many">%1$d wpisów</item>
         <item quantity="other">%1$d wpisów</item>
     </plurals>
     <string name="nothing_recorded">Nie zapisano jeszcze żadnych danych</string>
@@ -324,4 +326,13 @@
     <string name="about_you_smoking_question">Czy palisz?</string>
     <string name="health_connect_required_title">Wymagana jest aplikacja Health Connect</string>
     <string name="health_connect_required_subtitle">Ta aplikacja zapisuje i odczytuje Twoje dane dotyczące zdrowia za pomocą usługi Health Connect, która nie jest jeszcze zainstalowana na tym urządzeniu.</string>
+    <string name="health_connect_required_body">W tej wersji systemu Android Health Connect to osobna aplikacja, którą możesz zainstalować ze sklepu Play – jest bezpłatna i stworzona przez Google. Zainstaluj ją, a następnie wróć tutaj – ten ekran zamknie się automatycznie. Twoja dokumentacja medyczna i tak pozostanie w tej aplikacji.</string>
+    <string name="health_connect_install_action">Zainstaluj Health Connect</string>
+    <string name="health_connect_update_title">Health Connect wymaga aktualizacji</string>
+    <string name="health_connect_update_subtitle">Aplikacja Health Connect na tym urządzeniu jest zbyt stara dla tej wersji aplikacji Zdrowie.</string>
+    <string name="health_connect_update_body">Zaktualizuj aplikację Health Connect w sklepie Play, a następnie wróć tutaj – ten ekran zamknie się automatycznie. Twoja dokumentacja medyczna i tak pozostanie w tej aplikacji.</string>
+    <string name="health_connect_update_action">Zaktualizuj Health Connect</string>
+    <string name="health_connect_install_failed">Nie udało się otworzyć Sklepu Play. Zainstaluj lub zaktualizuj ręcznie aplikację „Health Connect” firmy Google, a następnie wróć tutaj.</string>
+    <string name="delete_record_confirm">Usunąć wpis: %1$s?</string>
+    <string name="answer_unknown">Brak odpowiedzi</string>
 </resources>
