@@ -134,6 +134,36 @@ class OfficeViewModelSaveSlice3Test : OfficeViewModelSlice3Harness() {
     }
 
     @Test
+    fun `save to a docx target writes OOXML not an ODF package`() = runTest {
+        val vm = roboLoaded("docx line one")
+        val target = java.io.File(tmpDir, "roundtrip.docx")
+        val targetUri = android.net.Uri.fromFile(target)
+        vm.documentUri = null
+        vm.originalUri = targetUri
+        vm.save()
+        var spins = 0
+        while (!target.exists() && spins < 200) {
+            Thread.sleep(25)
+            spins++
+        }
+        assertTrue(target.exists(), "save should write ${target.absolutePath}")
+        val names = mutableListOf<String>()
+        java.util.zip.ZipInputStream(target.inputStream()).use { zip ->
+            var e = zip.nextEntry
+            while (e != null) {
+                names.add(e.name)
+                e = zip.nextEntry
+            }
+        }
+        assertTrue("word/document.xml" in names, "OOXML parts missing: $names")
+        assertTrue("content.xml" !in names, "ODF part leaked into docx: $names")
+        val reopened = com.vayunmathur.office.odf.DocumentImporter.open(
+            roboApp, targetUri, "roundtrip.docx")
+        assertTrue(
+            paragraphsOf(reopened as OdfDocument.TextDocument).contains("docx line one"))
+    }
+
+    @Test
     fun `loadDocument imports a saved package`() = runTest {
         // Seed a real .odt via the writer, then loadDocument should import it
         // (exercises the IO coroutine: persistToAppStorage + DocumentImporter.open).
