@@ -256,6 +256,20 @@ const DECOR_CUTS: &[(Block, Block)] = &[
     (Block::Netherrack, Block::NetherBricks),
 ];
 
+impl Inventory {
+    /// A blank inventory: no starter kit (see `Default`, which is the
+    /// new-player grant). For tests and anywhere an empty state is meant.
+    pub fn empty() -> Self {
+        Self {
+            selected: 0,
+            slots: [InvSlot::default(); SLOTS],
+            placed: 0,
+            broken: 0,
+            armor: [InvSlot::default(); 4],
+        }
+    }
+}
+
 impl Default for Inventory {
     fn default() -> Self {
         let mut slots = [InvSlot::default(); SLOTS];
