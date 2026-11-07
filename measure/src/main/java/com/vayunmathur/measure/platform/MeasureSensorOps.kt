@@ -133,7 +133,23 @@ internal fun MeasureViewModel.setPixelsPerMmImpl(v: Float) {
 }
 
 internal fun MeasureViewModel.onTrackingUpdateImpl(quality: TrackingQuality, hasPlane: Boolean) {
-    arState.value = arState.value.copy(quality = quality, hasPlane = hasPlane)
+    arState.value = if (quality == TrackingQuality.Lost) {
+        // Anchors from before a loss sit in a world frame the engine can
+        // no longer re-observe (see TrackingQuality.Lost); leaving them
+        // on screen would keep quoting distances that are not anchored
+        // to anything.
+        arState.value.copy(
+            quality = quality,
+            hasPlane = hasPlane,
+            anchors = emptyList(),
+            distanceM = null,
+            areaM2 = null,
+            perimeterM = null,
+            polygonClosed = false,
+        )
+    } else {
+        arState.value.copy(quality = quality, hasPlane = hasPlane)
+    }
 }
 
 internal fun MeasureViewModel.setCameraPermissionImpl(granted: Boolean) {
