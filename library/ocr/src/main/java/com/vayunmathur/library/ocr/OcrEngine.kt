@@ -112,7 +112,14 @@ class OcrEngine(private val context: Context) {
         recognizer?.let { return it.isAvailable }
         if (initTried) return false
         initTried = true
-        val created = TextRecognizer(context.applicationContext)
+        // TextRecognizer documents "never throws", but a JNI linkage failure is an
+        // Error, not an Exception, and escapes its catch - keep this engine's own
+        // "inert, never crashes" guarantee here rather than depending on that.
+        val created = try {
+            TextRecognizer(context.applicationContext)
+        } catch (_: Throwable) {
+            return false
+        }
         if (!created.isAvailable) {
             // Already logged natively under the `ModelRunner` tag, with the reason.
             created.close()
