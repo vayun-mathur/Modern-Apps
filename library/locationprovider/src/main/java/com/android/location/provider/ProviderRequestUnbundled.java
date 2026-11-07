@@ -13,5 +13,8 @@ public final class ProviderRequestUnbundled {
         throw new RuntimeException("stub");
     }
 
-    private ProviderRequestUnbundled() {}
+    // Package-private (not private as in AOSP) so JVM tests in this package can
+    // instantiate the stub and pin its throwing accessors. Compile-only either way:
+    // this class is never packaged, so the difference is invisible at runtime.
+    ProviderRequestUnbundled() {}
 }

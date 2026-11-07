@@ -88,10 +88,16 @@ class LocationStubsTest {
             )
         }
         assertEquals("stub", ex.message)
-        // ProviderRequestUnbundled has no accessible constructor (private, like
-        // the real class): its stub accessors are exercised only by the platform
-        // at runtime, so the type's presence is the contract pinned here.
         assertEquals("com.android.location.provider.ProviderRequestUnbundled", ProviderRequestUnbundled::class.java.name)
         assertEquals("android.location.GeocoderParams", GeocoderParams::class.java.name)
+    }
+
+    @Test
+    fun providerRequestAccessorsAreStubs() {
+        // Constructor is package-private in the stub (see the source note), so the
+        // throwing accessors can be pinned directly.
+        val request = ProviderRequestUnbundled()
+        assertEquals("stub", assertFailsWith<RuntimeException> { request.reportLocation }.message)
+        assertEquals("stub", assertFailsWith<RuntimeException> { request.interval }.message)
     }
 }
