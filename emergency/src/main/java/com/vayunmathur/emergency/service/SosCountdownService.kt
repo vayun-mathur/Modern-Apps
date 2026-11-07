@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.IBinder
-import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.telecom.TelecomManager
@@ -64,12 +63,15 @@ class SosCountdownService : Service() {
 
         val number = EmergencyNumberLookup(this)
             .policeNumber(GestureProvider.numberOverrideStatic(this))
-        val targetElapsed = SystemClock.elapsedRealtime() + remainingMs
+        // NotificationCompat's setWhen is a wall-clock (epoch) timestamp, and the
+        // chronometer counts down to it; an elapsedRealtime value lands in 1970 and
+        // the countdown row shows a meaningless time. Same clock as scheduleCall.
+        val targetWallClock = System.currentTimeMillis() + remainingMs
         val contentIntent = PendingIntent.getActivity(
             this, 0, SosActivity.intent(this, remainingMs),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = SosNotifications.countdown(this, number, targetElapsed, contentIntent)
+        val notification = SosNotifications.countdown(this, number, targetWallClock, contentIntent)
         SosNotifications.notify(this, notification)
         startForeground(SosNotifications.NOTIFICATION_ID, notification)
 

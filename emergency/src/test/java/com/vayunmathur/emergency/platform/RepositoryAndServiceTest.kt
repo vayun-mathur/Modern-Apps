@@ -253,6 +253,28 @@ class SosServiceAndReceiverTest {
     }
 
     @Test
+    fun `countdown notification counts down to a wall-clock deadline`() {
+        Shadows.shadowOf(ctx.packageManager)
+            .setSystemFeature(android.content.pm.PackageManager.FEATURE_TELEPHONY, true)
+        val controller = Robolectric.buildService(SosCountdownService::class.java)
+        val service = controller.create().get()
+        val before = System.currentTimeMillis()
+        val intent = Intent().putExtra("service.extra.remaining_time_ms", 60_000L)
+        service.onStartCommand(intent, 0, 1)
+        ShadowLooper.idleMainLooper()
+        val manager = ctx.getSystemService(android.app.NotificationManager::class.java)
+        val posted = manager.activeNotifications
+            .firstOrNull { it.id == SosNotifications.NOTIFICATION_ID }?.notification
+        assertNotNull(posted)
+        // setWhen is epoch wall time: an elapsedRealtime target lands in 1970 and
+        // the chronometer counts down to the wrong instant.
+        assertTrue(posted.`when` >= before + 59_000)
+        assertTrue(posted.`when` <= System.currentTimeMillis() + 61_000)
+        controller.destroy()
+        ShadowLooper.idleMainLooper()
+    }
+
+    @Test
     fun `service start and stop helpers build the right intents`() {
         SosCountdownService.start(ctx, 12_000)
         val started = Shadows.shadowOf(ctx as Application).nextStartedService
