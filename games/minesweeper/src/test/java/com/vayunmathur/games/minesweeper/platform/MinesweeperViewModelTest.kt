@@ -1,0 +1,139 @@
+package com.vayunmathur.games.minesweeper.platform
+
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.games.minesweeper.data.BoardSize
+import com.vayunmathur.games.minesweeper.data.Difficulty
+import com.vayunmathur.games.minesweeper.data.GameConfig
+import com.vayunmathur.games.minesweeper.data.GameOutcome
+import com.vayunmathur.games.minesweeper.data.MinesweeperGameState
+import com.vayunmathur.games.minesweeper.data.TapMode
+import com.vayunmathur.games.minesweeper.data.neighbourIndices
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/** Model maths (mine counts, neighbours) and the ViewModel game lifecycle. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class MinesweeperViewModelTest {
+
+    private val app = ApplicationProvider.getApplicationContext<Application>()
+    private fun vm() = MinesweeperViewModel(app)
+
+    @Test
+    fun mineCountsScaleAndCap() {
+        assertEquals(80, BoardSize.SMALL.cellCount)
+        assertEquals(140, BoardSize.MEDIUM.cellCount)
+        assertEquals(216, BoardSize.LARGE.cellCount)
+        assertEquals(8, Difficulty.EASY.mineCount(BoardSize.SMALL))
+        assertEquals(21, Difficulty.MEDIUM.mineCount(BoardSize.MEDIUM))
+        // Cap: never so many mines that the 9-cell opening has nowhere safe.
+        assertTrue(Difficulty.EXPERT.mineCount(BoardSize.SMALL) <= BoardSize.SMALL.cellCount - 9)
+        assertEquals("MEDIUM_MEDIUM", GameConfig().variant)
+        assertEquals("SMALL_EASY", GameConfig(BoardSize.SMALL, Difficulty.EASY).variant)
+    }
+
+    @Test
+    fun neighbourIndicesCornersEdgesCenter() {
+        // 3x3 field, row-major 0..8.
+        assertEquals(listOf(1, 3, 4), neighbourIndices(3, 3, 0).sorted())
+        assertEquals(listOf(0, 2, 3, 4, 5), neighbourIndices(3, 3, 1).sorted())
+        assertEquals(8, neighbourIndices(3, 3, 4).size)
+        assertEquals(listOf(4, 5, 7), neighbourIndices(3, 3, 8).sorted())
+        val state = MinesweeperGameState.of(3, 3, 1)
+        assertEquals(neighbourIndices(3, 3, 4), state.neighbours(4))
+    }
+
+    @Test
+    fun emptyStateDerivedCounts() {
+        val s = MinesweeperGameState.empty(GameConfig(BoardSize.SMALL, Difficulty.EASY))
+        assertEquals(8, s.cols)
+        assertEquals(10, s.rows)
+        assertEquals(8, s.mineCount)
+        assertFalse(s.started)
+        assertEquals(8, s.minesRemaining)
+        assertFalse(s.isOver)
+        assertFalse(s.isCleared)
+        val flagged = s.copy(flagged = List(s.cellCount) { it < 3 })
+        assertEquals(3, flagged.flagsPlaced)
+        assertEquals(5, flagged.minesRemaining)
+        // Over-flagging drives the counter negative.
+        val over = s.copy(flagged = List(s.cellCount) { it < 10 })
+        assertEquals(-2, over.minesRemaining)
+    }
+
+    @Test
+    fun newGameDealsBlankFieldAndKeepsTapMode() {
+        val vm = vm()
+        vm.setTapMode(TapMode.FLAG)
+        vm.newGame(GameConfig(BoardSize.SMALL, Difficulty.EASY))
+        val state = vm.uiState.value
+        assertEquals(TapMode.FLAG, state.tapMode)
+        val game = state.game!!
+        assertEquals(80, game.cellCount)
+        assertTrue(game.mines.none { it })
+        assertFalse(game.started)
+        assertTrue(vm.hasActiveGame())
+    }
+
+    @Test
+    fun firstTapLaysMinesSafelyAndStartsClock() {
+        val vm = vm()
+        vm.newGame(GameConfig(BoardSize.SMALL, Difficulty.EASY))
+        vm.tapCell(0)
+        val game = vm.uiState.value.game!!
+        assertTrue(game.started)
+        assertEquals(8, game.mines.count { it })
+        // Opening cell and its neighbours are mine-free and revealed by the cascade.
+        assertFalse(game.mines[0])
+        assertTrue(game.neighbours(0).none { game.mines[it] })
+        assertTrue(game.revealed[0])
+        assertTrue(game.revealed.count { it } > 1)
+        assertEquals(GameOutcome.PLAYING, game.outcome)
+        vm.incrementTimer()
+        assertEquals(1, vm.uiState.value.game!!.elapsedSeconds)
+    }
+
+    @Test
+    fun flagBeforeStartDoesNothingModeToggleFlagsAfterStart() {
+        val vm = vm()
+        vm.newGame(GameConfig(BoardSize.SMALL, Difficulty.EASY))
+        vm.flagCell(5)
+        assertEquals(0, vm.uiState.value.game!!.flagsPlaced)
+        vm.tapCell(0)
+        val started = vm.uiState.value.game!!
+        val hidden = started.revealed.indices.first { !started.revealed[it] && !started.mines[it] }
+        vm.flagCell(hidden)
+        assertEquals(1, vm.uiState.value.game!!.flagsPlaced)
+        vm.flagCell(hidden)
+        assertEquals(0, vm.uiState.value.game!!.flagsPlaced)
+        // Flag-mode tap also flags (never digs).
+        vm.setTapMode(TapMode.FLAG)
+        vm.tapCell(hidden)
+        assertEquals(1, vm.uiState.value.game!!.flagsPlaced)
+    }
+
+    @Test
+    fun giveUpClearsGameTimerStopsWhenOverOrUnstarted() {
+        val vm = vm()
+        vm.newGame(GameConfig())
+        vm.incrementTimer()
+        assertEquals(0, vm.uiState.value.game!!.elapsedSeconds)
+        vm.tapCell(40)
+        vm.giveUp()
+        assertNull(vm.uiState.value.game)
+        assertFalse(vm.hasActiveGame())
+        // Restart deals a fresh blank field with the same config.
+        vm.newGame(GameConfig(BoardSize.LARGE, Difficulty.HARD))
+        vm.restart()
+        val game = vm.uiState.value.game!!
+        assertEquals(216, game.cellCount)
+        assertFalse(game.started)
+    }
+}
