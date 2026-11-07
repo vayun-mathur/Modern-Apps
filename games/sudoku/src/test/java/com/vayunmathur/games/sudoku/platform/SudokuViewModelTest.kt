@@ -168,6 +168,17 @@ class SudokuViewModelTest {
     }
 
     @Test
+    fun clearingAnAlreadyEmptyCellIsANoOp() {
+        val vm = startedVm()
+        val cell = blank(vm)
+        vm.selectCell(cell)
+        vm.clearCell()
+        val after = vm.uiState.value.game!!
+        assertEquals(0, after.moveCount, "erasing nothing is not a move")
+        assertFalse(vm.uiState.value.canUndo, "and leaves no phantom undo step")
+    }
+
+    @Test
     fun placingADigitRemovesItFromPeerNotesOnly() {
         val vm = startedVm()
         val game = vm.uiState.value.game!!

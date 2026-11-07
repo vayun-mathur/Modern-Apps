@@ -221,6 +221,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val index = game.selected
         if (index !in 0 until game.size.cellCount || game.isGiven(index)) return
         if (game.isWon || game.isGameOver) return
+        // Nothing to clear: pushing history here would leave an undo step that visibly
+        // does nothing and count a move the player never made.
+        if (game.entries[index] == 0 && game.notes[index] == 0) return
         pushHistory(game)
         mutate { state ->
             state.copy(
