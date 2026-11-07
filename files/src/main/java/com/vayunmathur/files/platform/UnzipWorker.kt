@@ -98,9 +98,18 @@ class UnzipWorker(context: Context, params: WorkerParameters) : ProgressNotifica
     ): Long {
         val entryFile = ArchiveLimits.resolveEntry(destDirCanonical, entryName) ?: return totalWritten
         if (isDirectory) {
+            if (entryFile.isFile) throw IOException("Archive entry is an existing file: $entryName")
             entryFile.mkdirs()
             return totalWritten
         }
+        // Never overwrite what was already in the destination. Truncating an
+        // existing file here would destroy it even when a later entry then
+        // fails (budget, corrupt data), because cleanup can only delete the
+        // partial output, not restore the original contents. Refusing keeps
+        // extraction all-or-nothing: this run's new files are cleaned up and
+        // every pre-existing file stays exactly as it was. This also covers
+        // an archive listing the same name twice.
+        if (entryFile.exists()) throw IOException("File already exists: $entryName")
         entryFile.parentFile?.mkdirs()
         extracted.add(entryFile)
         FileOutputStream(entryFile).use { out ->
