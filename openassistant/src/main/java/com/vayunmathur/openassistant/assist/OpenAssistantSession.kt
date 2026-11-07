@@ -53,7 +53,7 @@ class OpenAssistantSession(context: Context) : VoiceInteractionSession(context) 
     }
 
     /** Flattens the view tree + assist content into a single length-capped string. */
-    private fun buildScreenText(
+    internal fun buildScreenText(
         structure: AssistStructure?,
         content: AssistContent?,
     ): String {

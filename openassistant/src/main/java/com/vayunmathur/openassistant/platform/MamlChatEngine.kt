@@ -52,25 +52,88 @@ sealed interface ChatResult {
  * [Mutex] covers a whole turn, tool rounds included. The vision and audio towers load on
  * first use and close after [TOWER_IDLE_MILLIS] without one.
  */
-class MamlChatEngine(private val modelDir: File) : AutoCloseable {
+open class MamlChatEngine(private val modelDir: File) : AutoCloseable {
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "maml-engine") }
     private val engineThread = executor.asCoroutineDispatcher()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val mutex = Mutex()
 
-    private var handle: Gemma4Handle? = null
+    private var handle: TextModel? = null
+
+    /**
+     * Behavior-preserving test seam: production opens the real Gemma4 handle
+     * via [openRealTextModel]; tests inject a Kotlin fake because the native
+     * model cannot load on the JVM. Null factory result means unavailable,
+     * with the second element carrying the load error to surface.
+     */
+    internal var textModelOpener: ((File) -> Pair<TextModel?, String?>)? = null
+
+    /** The text-generation surface [MamlChatEngine] needs from the model. */
+    internal interface TextModel {
+        val available: Boolean
+        fun loadPrefix(prefix: String): Boolean
+        fun positionsFor(
+            conversation: List<Gemma4Handle.Turn>,
+            system: String?,
+            tools: List<Gemma4Handle.ToolDeclaration>,
+            limit: Int,
+        ): Int
+        fun generate(
+            conversation: List<Gemma4Handle.Turn>,
+            system: String?,
+            tools: List<Gemma4Handle.ToolDeclaration>,
+            limit: Int,
+            continuation: String,
+            sampling: Sampling,
+            onToken: (String) -> Boolean,
+        ): String?
+        fun close()
+    }
+
+    private class RealTextModel(private val real: Gemma4Handle) : TextModel {
+        override val available: Boolean get() = real.isAvailable
+        override fun loadPrefix(prefix: String): Boolean = real.loadPrefix(prefix)
+        override fun positionsFor(
+            conversation: List<Gemma4Handle.Turn>,
+            system: String?,
+            tools: List<Gemma4Handle.ToolDeclaration>,
+            limit: Int,
+        ): Int = real.positionsFor(conversation, system, tools, limit)
+        override fun generate(
+            conversation: List<Gemma4Handle.Turn>,
+            system: String?,
+            tools: List<Gemma4Handle.ToolDeclaration>,
+            limit: Int,
+            continuation: String,
+            sampling: Sampling,
+            onToken: (String) -> Boolean,
+        ): String? = real.generate(conversation, system, tools, limit, continuation, sampling, onToken)
+        override fun close() = real.close()
+    }
+
+    private fun openRealTextModel(dir: File): Pair<TextModel?, String?> {
+        val opened = Gemma4Handle.inDirectory(dir)
+        if (!opened.isAvailable) {
+            val short = shortFiles(dir).takeIf { it.isNotEmpty() }
+                ?.let { "short files: ${it.joinToString()}" }
+            val error = listOfNotNull(short, opened.loadError).joinToString("; ")
+            opened.close()
+            return null to error
+        }
+        return RealTextModel(opened) to null
+    }
     private var vision: Gemma4VisionHandle? = null
     private var audio: Gemma4AudioHandle? = null
     private var towerIdleJob: Job? = null
     private var prefixKey: Int? = null
 
     /** Loads the model if needed; false when it cannot come up. */
-    suspend fun load(): Boolean = mutex.withLock { withContext(engineThread) { model() != null } }
+    open suspend fun load(): Boolean = mutex.withLock { withContext(engineThread) { model() != null } }
 
     /** Why the last load failed, for the error the user sees. Null when loaded. */
-    suspend fun loadError(): String? = mutex.withLock { lastLoadError }
+    open suspend fun loadError(): String? = mutex.withLock { lastLoadError }
 
-    suspend fun chat(request: ChatRequest, tools: AssistantTools, onText: (String) -> Boolean): ChatResult =
+    open suspend fun chat(request: ChatRequest, tools: AssistantTools, onText: (String) -> Boolean): ChatResult =
         mutex.withLock {
             val model = withContext(engineThread) { model() } ?: return@withLock ChatResult.Unavailable
             val declarations = tools.declarations
@@ -113,7 +176,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         }
 
     /** Single-turn structured extraction: greedy, no tools, no history. Null when unavailable. */
-    suspend fun extract(system: String, userText: String, imagePaths: List<String>, onText: (String) -> Boolean): String? =
+    open suspend fun extract(system: String, userText: String, imagePaths: List<String>, onText: (String) -> Boolean): String? =
         mutex.withLock {
             withContext(engineThread) {
                 val model = model() ?: return@withContext null
@@ -122,18 +185,17 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
             }
         }
 
-    private fun model(): Gemma4Handle? {
-        handle?.takeIf { it.isAvailable }?.let { return it }
+    private fun model(): TextModel? {
+        handle?.takeIf { it.available }?.let { return it }
         handle?.close()
-        val opened = Gemma4Handle.inDirectory(modelDir)
-        if (!opened.isAvailable) {
-            // Carry the cause here so the failure the user sees says *which*
-            // file broke, not just that the directory did not load (#901's
-            // undifferentiated error): short-file sizes first, then whatever
-            // native logged (already in logcat) via the handle's report.
-            opened.close()
+        // Carry the cause here so the failure the user sees says *which*
+        // file broke, not just that the directory did not load (#901's
+        // undifferentiated error): short-file sizes first, then whatever
+        // native logged (already in logcat) via the handle's report.
+        val (opened, error) = (textModelOpener ?: { dir -> openRealTextModel(dir) })(modelDir)
+        if (opened == null) {
             handle = null
-            lastLoadError = listOfNotNull(shortFilesReport(), opened.loadError).joinToString("; ")
+            lastLoadError = error
             return null
         }
         handle = opened
@@ -149,13 +211,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
     var lastLoadError: String? = null
         private set
 
-    /** `name actual/expected` for short gemma4 files, or null when none are short. */
-    private fun shortFilesReport(): String? {
-        val short = shortFiles(modelDir)
-        return short.takeIf { it.isNotEmpty() }?.let { "short files: ${it.joinToString()}" }
-    }
-
-    private fun seedPrefix(model: Gemma4Handle, system: String, tools: List<Gemma4Handle.ToolDeclaration>) {
+    private fun seedPrefix(model: TextModel, system: String, tools: List<Gemma4Handle.ToolDeclaration>) {
         val declared = Gemma4Handle.declareTools(tools)
         val key = (system + "\u0000" + declared).hashCode()
         if (key == prefixKey) return
@@ -217,7 +273,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         }
     }
 
-    override fun close() {
+    open override fun close() {
         scope.cancel()
         executor.execute {
             vision?.close()
@@ -230,7 +286,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         executor.shutdown()
     }
 
-    private companion object {
+    internal companion object {
         const val TAG = "MamlChatEngine"
         const val CHAT_REPLY_LIMIT = 1024
         const val EXTRACT_REPLY_LIMIT = 1024
@@ -238,7 +294,7 @@ class MamlChatEngine(private val modelDir: File) : AutoCloseable {
         const val MAX_IMAGE_SIDE = 1024
         const val LOG_CHARS = 120
 
-        fun decodeDownscaled(path: String): Bitmap? {
+        internal fun decodeDownscaled(path: String): Bitmap? {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(path, bounds)
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
