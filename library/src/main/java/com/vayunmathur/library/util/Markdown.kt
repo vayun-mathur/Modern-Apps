@@ -577,8 +577,11 @@ private val latexCommands = mapOf(
 private fun formatMathContent(content: String): String {
     var result = content
 
-    // 1. Strip \left and \right
-    result = result.replace("\\left", "").replace("\\right", "")
+    // 1. Strip \left and \right (but not \leftarrow / \rightarrow, which are
+    // commands of their own and are replaced below).
+    result = result
+        .replace(Regex("\\\\left(?![A-Za-z])"), "")
+        .replace(Regex("\\\\right(?![A-Za-z])"), "")
 
     // 2. Handle \frac{a}{b} -> ((a)/(b))
     repeat(FRAC_REPLACE_PASSES) {
