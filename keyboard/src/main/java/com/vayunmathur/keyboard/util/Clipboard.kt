@@ -98,7 +98,15 @@ class ClipboardStore(private val imageDir: File) {
     fun add(item: ClipItem): ClipItem? {
         val existing = items.firstOrNull { it.sameContentAs(item) }
         if (existing != null) {
-            items = listOf(existing) + (items - existing)
+            // Sensitivity only ever upgrades: the same text re-copied from a
+            // password field is a credential now, whatever it was before, and
+            // keeping the old entry would persist and display it as plain.
+            val kept = if (item.sensitive && !existing.sensitive) {
+                existing.copy(sensitive = true)
+            } else {
+                existing
+            }
+            items = listOf(kept) + (items - existing)
             return null
         }
         items = cap(listOf(item) + items, ::discardImage)

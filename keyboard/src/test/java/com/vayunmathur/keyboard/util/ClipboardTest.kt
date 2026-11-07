@@ -93,6 +93,21 @@ class ClipboardTest {
         assertEquals(listOf("one", "two"), store.items.map { it.text })
     }
 
+    /** The same text copied from a password field must not stay plain in the history. */
+    @Test
+    fun `re-copying as sensitive upgrades the existing entry`() {
+        val store = ClipboardStore(java.io.File("/tmp/clip-test-does-not-exist"))
+        store.add(text(1, "correct horse battery staple"))
+        assertEquals(null, store.add(text(2, "correct horse battery staple", sensitive = true)))
+        assertEquals(1, store.items.size)
+        assertTrue(store.items.single().sensitive)
+        // And it therefore stays out of the persisted form.
+        assertFalse(ClipboardStore.encode(store.items).contains("correct horse"))
+        // A later plain re-copy never downgrades it back.
+        store.add(text(3, "correct horse battery staple"))
+        assertTrue(store.items.single().sensitive)
+    }
+
     @Test
     fun `ids are unique and monotonic even within one millisecond`() {
         val ids = (1..1000).map { ClipboardStore.nextId() }
