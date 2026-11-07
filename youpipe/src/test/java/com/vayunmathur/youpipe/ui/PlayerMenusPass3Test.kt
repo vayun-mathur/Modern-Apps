@@ -21,6 +21,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -132,6 +133,29 @@ class PlayerMenusPass3Test {
         rule.onAllNodes(hasClickAction())[bottomClickableIndex(0)].performClick()
         rule.waitForIdle()
         assertEquals(true, fullscreen)
+    }
+
+    @Test
+    fun chaptersButton_opensChapterSheet() {
+        composePlayer()
+        // The chapters affordance is an icon in the top controls; find it by
+        // trying the top-area clickables until the sheet's chapters appear.
+        val nodes = rule.onAllNodes(hasClickAction()).fetchSemanticsNodes()
+        val root = rule.onRoot().fetchSemanticsNode().boundsInRoot
+        val topIndices = nodes.withIndex()
+            .filter { it.value.boundsInRoot.top < root.top + root.height * 0.4f }
+            .map { it.index }
+        var opened = false
+        for (index in topIndices) {
+            runCatching { rule.onAllNodes(hasClickAction())[index].performClick() }
+            rule.waitForIdle()
+            if (rule.onAllNodes(hasText("Middle Part")).fetchSemanticsNodes().isNotEmpty()) {
+                opened = true
+                break
+            }
+        }
+        assertTrue(opened, "chapter sheet never opened")
+        rule.onNodeWithText("Middle Part").assertExists()
     }
 
     @Test
