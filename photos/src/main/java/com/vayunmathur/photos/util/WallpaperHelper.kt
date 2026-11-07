@@ -39,6 +39,14 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
     private val _loadState = MutableStateFlow(WallpaperLoadState.Idle)
     val loadState: StateFlow<WallpaperLoadState> = _loadState.asStateFlow()
 
+    /**
+     * Test seam: decodes [uri] into a bitmap. Production uses [ImageDecoder]
+     * (see [decodeWithImageDecoder]); Robolectric's ImageDecoder shadow is
+     * broken, so tests substitute a decoder here. Behavior-preserving: the
+     * default is exactly the previous inline decode.
+     */
+    internal var bitmapDecoder: (Context, android.net.Uri) -> Bitmap = ::decodeWithImageDecoder
+
     fun load(uriString: String) {
         if (_loadState.value == WallpaperLoadState.Loading) return
         _loadState.value = WallpaperLoadState.Loading
@@ -46,19 +54,7 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch(Dispatchers.IO) {
             val prev = _bitmap.value
             try {
-                val uri = uriString.toUri()
-                val source = ImageDecoder.createSource(ctx.contentResolver, uri)
-                val bmp = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-                    val w = info.size.width
-                    val h = info.size.height
-                    // Cap at 4096 on the longest edge to avoid OOM while keeping quality
-                    val maxEdge = 4096
-                    if (w > maxEdge || h > maxEdge) {
-                        val scale = maxEdge.toFloat() / max(w, h)
-                        decoder.setTargetSize((w * scale).roundToInt(), (h * scale).roundToInt())
-                    }
-                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                }
+                val bmp = bitmapDecoder(ctx, uriString.toUri())
                 val argb = if (bmp.config == Bitmap.Config.ARGB_8888) bmp
                 else bmp.copy(Bitmap.Config.ARGB_8888, true).also {
                     if (bmp !== it) runCatching { bmp.recycle() }
@@ -81,6 +77,21 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
     override fun onCleared() {
         _bitmap.value?.recycle()
         _bitmap.value = null
+    }
+
+    private fun decodeWithImageDecoder(context: Context, uri: android.net.Uri): Bitmap {
+        val source = ImageDecoder.createSource(context.contentResolver, uri)
+        return ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+            val w = info.size.width
+            val h = info.size.height
+            // Cap at 4096 on the longest edge to avoid OOM while keeping quality
+            val maxEdge = 4096
+            if (w > maxEdge || h > maxEdge) {
+                val scale = maxEdge.toFloat() / max(w, h)
+                decoder.setTargetSize((w * scale).roundToInt(), (h * scale).roundToInt())
+            }
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+        }
     }
 
     companion object {
