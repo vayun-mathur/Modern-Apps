@@ -92,6 +92,27 @@ pub struct DownloadSession {
     server_certificate2: Vec<u8>,
 }
 
+#[cfg(test)]
+impl DownloadSession {
+    pub(crate) fn for_test(transaction_id: &str) -> Self {
+        Self {
+            activation: ActivationCode {
+                smdp: "smdp.example.com".to_string(),
+                matching_id: "MATCH-1".to_string(),
+                confirmation_code_required: false,
+            },
+            transaction_id: transaction_id.to_string(),
+            transaction_id_bin: vec![0x01],
+            metadata: Default::default(),
+            cc_required: false,
+            options: DownloadOptions::default(),
+            server_signed2: Vec::new(),
+            server_signature2: Vec::new(),
+            server_certificate2: Vec::new(),
+        }
+    }
+}
+
 /// Authenticates both sides up to `AuthenticateClient` and returns the session
 /// plus carrier preview — no eUICC profile-store write has happened yet, so
 /// cancelling here costs nothing (the server session should still be freed via
