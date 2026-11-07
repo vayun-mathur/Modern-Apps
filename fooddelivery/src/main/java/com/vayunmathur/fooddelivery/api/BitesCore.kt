@@ -54,6 +54,18 @@ internal object BitesCore {
         explicitNulls = false
     }
 
+    /**
+     * Testability seam: every HTTP call in the api/ package goes through this
+     * transport. Production keeps the default (the real [NetworkClient]);
+     * tests install a fake so no test ever touches the network. The default
+     * value is exactly the current behavior.
+     */
+    internal var transport: suspend (
+        url: String, method: String, headers: Map<String, String>, body: String?,
+    ) -> SimpleResponse = { url, method, headers, body ->
+        NetworkClient.performRequest(url, method, headers, body)
+    }
+
     @Volatile
     internal var storedToken: AuthToken? = null
 
@@ -123,14 +135,14 @@ internal object BitesCore {
         method: String = "GET",
         body: String? = null,
     ): SimpleResponse {
-        var resp = NetworkClient.performRequest(url, method, authHeaders(), body)
+        var resp = transport(url, method, authHeaders(), body)
         logd { "$method $url -> ${resp.status}" }
         val token = storedToken
         if (resp.status == HTTP_UNAUTHORIZED && token != null) {
             // On success this retries with the new token; after a sign-out it retries without
             // one, so public endpoints like the merchant list still load.
             if (refreshToken(token) != null || storedToken == null) {
-                resp = NetworkClient.performRequest(url, method, authHeaders(), body)
+                resp = transport(url, method, authHeaders(), body)
                 logd { "retry $method $url -> ${resp.status}" }
             } else {
                 logd { "token refresh failed" }
@@ -161,7 +173,7 @@ internal object BitesCore {
     ): RefreshResult = withContext(Dispatchers.Default) {
         try {
             val body = "grant_type=refresh_token&refresh_token=$refreshToken"
-            val resp = NetworkClient.performRequest(
+            val resp = transport(
                 "$BASE/auth/token",
                 "POST",
                 mapOf(

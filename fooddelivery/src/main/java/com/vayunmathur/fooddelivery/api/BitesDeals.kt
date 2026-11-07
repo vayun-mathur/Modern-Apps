@@ -3,7 +3,6 @@ package com.vayunmathur.fooddelivery.api
 import com.vayunmathur.fooddelivery.data.Deal
 import com.vayunmathur.fooddelivery.data.DealProgress
 import com.vayunmathur.fooddelivery.data.ApiResponse
-import com.vayunmathur.library.network.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -23,9 +22,11 @@ object BitesDeals {
                 parts.add("radius=$radius")
                 if (parts.isNotEmpty()) append("?${parts.joinToString("&")}")
             }
-            val resp = NetworkClient.performRequest(
+            val resp = BitesCore.transport(
                 "${BitesCore.API}/deals/active$params",
-                headers = BitesCore.authHeaders(),
+                "GET",
+                BitesCore.authHeaders(),
+                null,
             )
             if (resp.isSuccess) {
                 BitesCore.json.decodeFromString<ApiResponse<List<Deal>>>(resp.body).data
