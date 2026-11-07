@@ -97,6 +97,22 @@ class AstronomyViewModelTest {
         assertEquals(RaDec(0.0, 0.0), vm.getRaDecProvider("nope")(2460000.5))
     }
 
+    @Test fun `magnitude limit change recomputes the sky while time is paused`() {
+        val vm = AstronomyViewModel(app)
+        await("catalog ready") { vm.catalogReady.value }
+        vm.setManualLocation(37.0, -122.0)
+        // Pause time so the one-second live ticker cannot mask a missing
+        // recompute: only a magLimit-driven emission can change the sky now.
+        vm.setTime(Instant.fromEpochMilliseconds(1_700_000_000_000), live = false)
+        await("visible sky") { vm.visibleSky.value.stars.isNotEmpty() }
+        val before = vm.visibleSky.value.stars.size
+        vm.setMagLimit(1.0f)
+        await("sky filtered by new mag limit") {
+            val stars = vm.visibleSky.value.stars
+            stars.size < before && stars.all { it.star.mag <= 1.0 }
+        }
+    }
+
     @Test fun `time scrubbing leaves live mode and live-now restores it`() {
         val vm = AstronomyViewModel(app)
         val fixed = Instant.fromEpochMilliseconds(1_700_000_000_000)
