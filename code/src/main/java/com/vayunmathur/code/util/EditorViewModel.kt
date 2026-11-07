@@ -278,7 +278,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         if (tabs.any { it.key == path }) return
         val file = File(path)
         if (!file.isFile) return
-        tabs.add(makeFileTab(file))
+        makeFileTab(file)?.let { tabs.add(it) }
     }
 
     /** Persists the current set of file-backed tabs and the foreground tab for session restore. */

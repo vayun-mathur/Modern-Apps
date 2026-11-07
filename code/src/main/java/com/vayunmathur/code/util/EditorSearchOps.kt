@@ -106,7 +106,8 @@ internal fun EditorViewModel.openSearchResultImpl(result: SearchResult) {
     }
     val file = File(result.path)
     viewModelScope.launch {
-        tabs.add(makeFileTab(file, result.name))
+        val tab = makeFileTab(file, result.name) ?: return@launch
+        tabs.add(tab)
         currentIndex = tabs.lastIndex
         this@openSearchResultImpl.actions.goToLine(result.line)
         saveSession()

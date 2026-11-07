@@ -75,7 +75,8 @@ private suspend fun EditorViewModel.checkTab(tab: OpenTab) {
 /** Replaces [tab]'s buffer with the current disk contents and refreshes its snapshot. */
 internal suspend fun EditorViewModel.applyReload(tab: OpenTab) {
     val file = tab.file ?: return
-    val loaded = loadFile(file)
+    // A failed read must not wipe the buffer: keep the current text and snapshot untouched.
+    val loaded = loadFile(file) ?: return
     tab.value = TextFieldValue(loaded.decoded.text)
     tab.savedText = loaded.decoded.text
     tab.charset = loaded.decoded.charset
