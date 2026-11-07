@@ -174,6 +174,8 @@ class KdbxSyncEngine(
             document.read()
         } catch (_: FileNotFoundException) {
             return KdbxSyncResult.FileMissing
+        } catch (expected: IOException) {
+            return KdbxSyncResult.Error(expected.message ?: "Failed to read KDBX file")
         }
         // A brand new SAF document is zero bytes; that is an empty vault, not a failure.
         val remoteEntries = if (remoteBytes.isEmpty()) {
@@ -453,7 +455,11 @@ class KdbxSyncEngine(
         val remoteHash = EntryMapper.contentHash(remoteFields)
 
         if (localHash == remoteHash) {
-            accumulator.remoteOut += remoteEntry
+            // Strip a foreign same-named tombstone key: only an exact
+            // own-client tombstone entry (split out before merge) deletes.
+            val cleaned = remoteEntry - EntryMapper.FIELD_TOMBSTONE
+            if (cleaned.size != remoteEntry.size) accumulator.remoteChanged = true
+            accumulator.remoteOut += cleaned
             if (id in accumulator.freshlyIdentified) accumulator.localUpserts += localEntity
             accumulator.snapshots += kind.snapshot(
                 id,
@@ -527,7 +533,7 @@ class KdbxSyncEngine(
         // Pulled rows keep the remote timestamp, so the next cycle sees them
         // as clean rather than bouncing the change back.
         accumulator.localUpserts += kind.rebind(remoteEntity, kind.rowId(localEntity), id)
-        accumulator.remoteOut += remoteEntry
+        accumulator.remoteOut += remoteEntry - EntryMapper.FIELD_TOMBSTONE
         accumulator.pulled++
         val stamp = kind.updatedAt(remoteEntity)
         accumulator.snapshots += kind.snapshot(id, remoteHash, stamp, stamp, now)
@@ -542,14 +548,19 @@ class KdbxSyncEngine(
         accumulator: MergeAccumulator<T>,
         tombstonedIds: Set<String>,
     ) {
-        if (base != null) {
-            // Own-client deleted locally: write a tombstone entry (retained
-            // until acked) instead of dropping the row from the file.
-            accumulator.tombstones += id
-            accumulator.remoteChanged = true
-            accumulator.deletedRemote++
+        if (id in tombstonedIds) {
+            // Remote tombstone met the local row: the delete wins.
             accumulator.localDeletes += localEntity
             accumulator.removed += id
+            accumulator.retainedTombstones += id
+            accumulator.remoteChanged = true
+            accumulator.deletedLocal++
+            return
+        }
+        if (base != null) {
+            // Baselined id absent remotely with no tombstone is ambiguous;
+            // sync() quarantines before merge, so fail closed here too.
+            accumulator.quarantineIds += id
             return
         }
         val localFields = kind.fields(localEntity)
@@ -585,15 +596,18 @@ class KdbxSyncEngine(
             return
         }
         if (base != null) {
-            // Unreachable: ambiguous foreign absences quarantine in sync()
-            // before merge() runs, so a baselined id always has a live or
-            // tombstoned remote entry. Retained as a hard fail-closed guard.
-            accumulator.quarantineIds += id
+            // Baselined id is present remotely but gone locally: this
+            // client deleted it, so replace the live entry with a
+            // tombstone (retained until acked) instead of pulling it back.
+            accumulator.tombstones += id
+            accumulator.remoteChanged = true
+            accumulator.deletedRemote++
+            accumulator.removed += id
             return
         }
         val remoteEntity = kind.entity(remoteEntry)
         accumulator.localUpserts += kind.rebind(remoteEntity, 0, id)
-        accumulator.remoteOut += remoteEntry
+        accumulator.remoteOut += remoteEntry - EntryMapper.FIELD_TOMBSTONE
         accumulator.pulled++
         val stamp = kind.updatedAt(remoteEntity)
         accumulator.snapshots += kind.snapshot(
