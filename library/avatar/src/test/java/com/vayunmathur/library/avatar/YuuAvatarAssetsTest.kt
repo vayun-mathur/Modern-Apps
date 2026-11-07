@@ -35,7 +35,11 @@ class YuuAvatarAssetsTest {
             val afd = android.content.res.AssetFileDescriptor(pfd, 0, file.length())
             // Ownership moves to native; this must not throw even though the
             // bytes are not a real mesh (parsing happens on surface creation).
-            YuuAvatarAssets.handOff(afd)
+            // The fd is passed raw rather than detached: Robolectric's
+            // detachFd() needs a libcore-internal FileDescriptor method the
+            // host JDK lacks (NoSuchMethodError), which says nothing about
+            // the on-device detach path.
+            YuuAvatarAssets.handOff(afd) { it.fd }
         } finally {
             file.delete()
         }
