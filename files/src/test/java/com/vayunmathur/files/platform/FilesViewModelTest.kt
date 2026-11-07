@@ -53,6 +53,31 @@ class TestFileProvider : android.content.ContentProvider() {
     ): Int = 0
 }
 
+/** Provider whose DISPLAY_NAME is hostile: a path, not a plain file name. */
+class EvilNameProvider : android.content.ContentProvider() {
+    companion object { lateinit var rootDir: File }
+    override fun onCreate(): Boolean = true
+    override fun openFile(uri: Uri, mode: String): android.os.ParcelFileDescriptor =
+        android.os.ParcelFileDescriptor.open(
+            File(rootDir, "payload.txt"),
+            android.os.ParcelFileDescriptor.parseMode("r"),
+        )
+    override fun query(
+        uri: Uri, projection: Array<out String>?, selection: String?,
+        selectionArgs: Array<out String>?, sortOrder: String?,
+    ): android.database.Cursor =
+        android.database.MatrixCursor(arrayOf(android.provider.OpenableColumns.DISPLAY_NAME)).apply {
+            addRow(arrayOf("../../evil.txt"))
+        }
+    override fun getType(uri: Uri): String = "text/plain"
+    override fun insert(uri: Uri, values: android.content.ContentValues?): Uri? = null
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+    override fun update(
+        uri: Uri, values: android.content.ContentValues?, selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = 0
+}
+
 @RunWith(RobolectricTestRunner::class)
 @Config(shadows = [ShadowEnvironmentFix::class])
 class FilesViewModelTest {
@@ -436,6 +461,23 @@ class FilesViewModelTest {
         await(timeoutMs = 5_000) { vm.incomingUris.value == null }
         vm.clearIncomingUris()
         assertNull(vm.incomingUris.value)
+        Unit
+    }
+
+    @Test
+    fun `incoming uri with hostile display name stays in target directory`() = runBlocking {
+        EvilNameProvider.rootDir = base
+        org.robolectric.Robolectric.buildContentProvider(EvilNameProvider::class.java)
+            .create("evilshare")
+        File(base, "payload.txt").writeText("shared body")
+        val escaped = File(dirB, "../../evil.txt").canonicalFile
+        vm.setIncomingUris(listOf(Uri.parse("content://evilshare/item")))
+        vm.navigateTo(dirB)
+        await { vm.currentDirectory.value == dirB }
+        vm.saveIncomingUris()
+        await(timeoutMs = 5_000) { File(dirB, "evil.txt").isFile || escaped.isFile }
+        assertEquals("shared body", File(dirB, "evil.txt").readText())
+        assertFalse(escaped.exists())
         Unit
     }
 

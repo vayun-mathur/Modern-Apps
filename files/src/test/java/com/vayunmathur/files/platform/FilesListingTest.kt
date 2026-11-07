@@ -170,6 +170,20 @@ class FilesListingTest {
     }
 
     @Test
+    fun `sanitized file name drops any directory part`() {
+        assertEquals("report.txt", sanitizedFileName("report.txt"))
+        assertEquals("evil.txt", sanitizedFileName("../../evil.txt"))
+        assertEquals("evil.txt", sanitizedFileName("sub/dir/evil.txt"))
+        assertEquals("evil.txt", sanitizedFileName("/abs/evil.txt"))
+        assertNull(sanitizedFileName(null))
+        assertNull(sanitizedFileName(""))
+        assertNull(sanitizedFileName("   "))
+        assertNull(sanitizedFileName("."))
+        assertNull(sanitizedFileName(".."))
+        assertNull(sanitizedFileName("/"))
+    }
+
+    @Test
     fun `bookmarks load only existing paths sorted by name`() {
         val dir = tempDir("bm")
         val b = File(dir, "beta").apply { mkdirs() }

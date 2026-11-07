@@ -305,10 +305,16 @@ abstract class FilesShareModel(application: Application) :
 }
 
 /** Copies a shared content [Uri] into [targetDir] under its display name. */
-private fun saveUriToPath(context: Context, uri: Uri, targetDir: File) {
-    val name = getSharedFileName(context, uri) ?: "shared_file_${System.currentTimeMillis()}"
-    val targetFile = File(targetDir, name)
-    context.contentResolver.openInputStream(uri)?.use { input ->
+internal fun saveUriToPath(context: Context, uri: Uri, targetDir: File) {
+    // The display name is supplied by the sending app's provider, so it must
+    // never be treated as a path, and an existing file here must not be
+    // truncated: sanitize to a plain name and pick a fresh destination.
+    val name = sanitizedFileName(getSharedFileName(context, uri))
+        ?: "shared_file_${System.currentTimeMillis()}"
+    val targetFile = uniqueDestination(targetDir, name)
+    val input = context.contentResolver.openInputStream(uri)
+        ?: throw IOException("Could not open shared file: $uri")
+    input.use {
         targetFile.outputStream().use { out -> input.copyTo(out) }
     }
 }
