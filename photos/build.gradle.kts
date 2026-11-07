@@ -60,4 +60,7 @@ dependencies {
     implementation(project(":library:widgets"))
     implementation(project(":library:biometric"))
     implementation(project(":library:ocr"))
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.androidx.sqlite.bundled.jvm)
+    testImplementation(libs.mockito.core)
 }
