@@ -333,12 +333,17 @@ impl download::ProgressCallback for JniProgress {
 mod tests {
     use super::*;
 
+    /// The session store is process-global, so store tests must not run
+    /// concurrently with each other (cargo test defaults to parallel threads).
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
     fn session(id: &str) -> download::DownloadSession {
         download::DownloadSession::for_test(id)
     }
 
     #[test]
     fn session_survives_take_on_another_thread() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         sessions().clear();
         session_put("tx-cross-thread".to_string(), session("tx-cross-thread"));
         // Dispatchers.IO does not pin authenticate/finish to one thread; the
@@ -352,6 +357,7 @@ mod tests {
 
     #[test]
     fn session_eviction_is_oldest_first() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         sessions().clear();
         for i in 0..=MAX_SESSIONS {
             session_put(format!("tx-{i}"), session(&format!("tx-{i}")));
