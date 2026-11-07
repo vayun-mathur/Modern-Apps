@@ -25,6 +25,7 @@ import com.vayunmathur.measure.platform.MeasureViewModel
 import com.vayunmathur.measure.platform.trackingQualityFrom
 import com.vayunmathur.measure.platform.updateDiagnosticsImpl
 import com.vayunmathur.measure.ui.components.MeasureBottomBar
+import com.vayunmathur.measure.ui.components.ANALYSIS_SIZE
 import com.vayunmathur.measure.ui.components.MeasureCamera
 import kotlinx.coroutines.delay
 
@@ -51,11 +52,15 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
                 flat[i * 3 + 1] = a.y
                 flat[i * 3 + 2] = a.z
             }
+            // The engine projects with analysis-stream intrinsics and
+            // normalises by the size it is given, so it must be given the
+            // analysis size, not the canvas size: passing canvas pixels
+            // compressed every anchor into the top-left of the screen.
             val projected = MeasureNative.projectPoints(
                 sessionHandle,
                 flat,
-                canvasSize.width.toDouble(),
-                canvasSize.height.toDouble(),
+                ANALYSIS_SIZE.width.toDouble(),
+                ANALYSIS_SIZE.height.toDouble(),
             )
             screenPoints = projected.toList().chunked(3).map { c ->
                 Offset(c[0].toFloat() * canvasSize.width, c[1].toFloat() * canvasSize.height)
@@ -71,10 +76,13 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
         onCanvasSized = { canvasSize = it },
         onTap = { nx, ny ->
             if (canvasSize != Size.Zero) {
+                // rayToWorld unprojects with analysis-stream intrinsics, so
+                // the tap must be scaled into analysis pixels, not canvas
+                // pixels (the two differ by the screen/analysis ratio).
                 val hit = MeasureNative.rayToWorld(
                     sessionHandle,
-                    nx * canvasSize.width,
-                    ny * canvasSize.height,
+                    nx * ANALYSIS_SIZE.width,
+                    ny * ANALYSIS_SIZE.height,
                 )
                 if (hit != null) {
                     viewModel.addResolvedAnchor(hit[0], hit[1], hit[2], hit[3] > 0.5)
