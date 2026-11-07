@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** One launchable activity, as the drawer and the home screen see it. */
@@ -67,6 +69,17 @@ class LauncherAppsMonitor(context: Context, private val scope: CoroutineScope) {
      * install or removal. Null means "the list changed but no icon needs re-rasterising", which
      * spares the icon cache from being thrown away on every package event.
      */
+    /**
+     * Serializes refreshes. Package events burst during install
+     * sessions, and each load takes a different amount of binder
+     * time: without this, an older load can publish after a newer
+     * one, resurrecting a removed app (or hiding an added one)
+     * until the next package event, and reconciliation then runs
+     * against that stale list. The TV ViewModel serializes its
+     * rebuilds for the same reason.
+     */
+    private val refreshMutex = Mutex()
+
     private var onChanged: ((PackageKey?) -> Unit)? = null
 
     private val callback = object : LauncherApps.Callback() {
@@ -149,10 +162,12 @@ class LauncherAppsMonitor(context: Context, private val scope: CoroutineScope) {
      */
     fun refresh(stale: PackageKey? = null) {
         scope.launch {
-            val loaded = withContext(Dispatchers.IO) { loadApps() }
-            _apps.value = loaded
-            // Back on the caller's dispatcher - consumers update UI state from here.
-            onChanged?.invoke(stale)
+            refreshMutex.withLock {
+                val loaded = withContext(Dispatchers.IO) { loadApps() }
+                _apps.value = loaded
+                // Back on the caller's dispatcher - consumers update UI state from here.
+                onChanged?.invoke(stale)
+            }
         }
     }
 
