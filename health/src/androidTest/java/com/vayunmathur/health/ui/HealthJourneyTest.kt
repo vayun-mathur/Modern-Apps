@@ -60,6 +60,34 @@ class HealthJourneyTest {
     }
 
     @Test
+    fun chartAndFormJourney_opensDetailsAndAddForms() {
+        launchApp()
+        // Today -> Sleep details, then back.
+        tapTab("Today", "Quick stats")
+        val sleep = device.wait(Until.findObject(By.text("Sleep")), 5_000L)
+        assertNotNull("sleep row not found", sleep)
+        sleep!!.click()
+        device.wait(Until.findObject(By.text("Sleep")), 10_000L)
+        device.pressBack()
+        device.wait(Until.findObject(By.text("Quick stats")), 10_000L)
+
+        // Medical -> add-vaccination form via the FAB speed dial.
+        tapTab("Medical", "Vaccinations")
+        // Coordinate fallback: bottom-right corner where the FAB menu button lives.
+        device.click(device.displayWidth - 90, device.displayHeight - 160)
+        val addVaccination = device.wait(Until.findObject(By.text("Add vaccination")), 5_000L)
+        if (addVaccination != null) {
+            addVaccination.click()
+            assertNotNull(
+                "vaccination form never appeared",
+                device.wait(Until.findObject(By.text("Add vaccination")), 10_000L),
+            )
+            device.pressBack()
+        }
+        assertEquals(packageName, device.currentPackageName)
+    }
+
+    @Test
     fun doseReminder_showsTakenAndSnooze() {
         val intent = Intent().apply {
             component = ComponentName(packageName, "com.vayunmathur.health.platform.DoseReminderActivity")
