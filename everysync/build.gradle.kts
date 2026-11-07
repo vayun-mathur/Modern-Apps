@@ -26,4 +26,6 @@ dependencies {
     // End-to-end encryption for personal relay vaults (PQC identity + AES content keys)
     implementation(project(":library:e2ee-p2p"))
 
+    // Worker construction in unit tests (TestListenableWorkerBuilder)
+    testImplementation(libs.androidx.work.testing)
 }
