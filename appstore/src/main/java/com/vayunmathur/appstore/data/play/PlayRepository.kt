@@ -56,7 +56,7 @@ sealed interface PlayAuthState {
  * knowing that an account has to be dispensed first, and the "cycle a dead account and
  * try again" rule exists in exactly one place.
  */
-class PlayRepository(private val context: Context) {
+open class PlayRepository(private val context: Context) {
 
     private val anonAuthRepo = AnonymousAuthRepository()
     private val httpClient = PlayHttpClient()
@@ -221,7 +221,7 @@ class PlayRepository(private val context: Context) {
         return (direct + broader).distinctBy { it.packageName }.filterTv()
     }
 
-    suspend fun details(packageName: String): UnifiedApp? =
+    open suspend fun details(packageName: String): UnifiedApp? =
         withApi { it.getDetails(packageName) }?.filterTv()
 
     suspend fun details(packageNames: List<String>): List<UnifiedApp> =
@@ -251,7 +251,7 @@ class PlayRepository(private val context: Context) {
             }
 
     /** Throws, unlike the readers above: an install has no silent fallback. */
-    suspend fun purchase(
+    open suspend fun purchase(
         packageName: String,
         versionCode: Long,
         offerType: Int,
