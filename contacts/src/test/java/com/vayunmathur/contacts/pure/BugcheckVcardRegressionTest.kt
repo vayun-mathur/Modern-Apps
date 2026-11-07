@@ -72,6 +72,22 @@ class BugcheckVcardRegressionTest {
     }
 
     @Test
+    fun compactNoYearBirthdayParses() {
+        val vcf = """
+            BEGIN:VCARD
+            VERSION:3.0
+            FN:Compact Date
+            BDAY:--0102
+            END:VCARD
+        """.trimIndent()
+        val parsed = VcfUtils.parseContacts(
+            ByteArrayInputStream(vcf.toByteArray(Charsets.UTF_8))
+        ).single()
+        val birthday = parsed.details.dates.single()
+        assertEquals("1604-01-02", birthday.startDate.toString())
+    }
+
+    @Test
     fun homeAddressStillRoundTripsAsHome() {
         val parsed = exportAndReparse(
             contactWithAddress(ContactsContract.CommonDataKinds.StructuredPostal.TYPE_HOME)
