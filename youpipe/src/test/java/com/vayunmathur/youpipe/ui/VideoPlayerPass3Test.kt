@@ -2,7 +2,10 @@ package com.vayunmathur.youpipe.ui
 
 import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.onNodeWithText
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
@@ -163,6 +166,43 @@ class VideoPlayerPass3Test {
         assertEquals(12_345L, CastPlayback.transport.value.positionMs)
         assertEquals(false, CastPlayback.transport.value.hasNext)
         CastPlayback.update { CastPlayback.Transport() }
+    }
+
+    @Test
+    fun videoPlayer_tapTogglesControls() {
+        // Controls only auto-hide while playing; paused keeps them up by design.
+        CastPlayback.update { it.copy(playing = true) }
+        rule.setContent {
+            VideoPlayer(
+                ypvm = vm, videoInfo = info,
+                videoStreams = videoStreams, audioStreams = audioStreams,
+                subtitles = emptyList(), segments = emptyList(),
+                isFullscreen = false, onFullscreenChange = {},
+            )
+        }
+        rule.onNodeWithText("360p").assertIsDisplayed()
+        rule.onRoot().performTouchInput { click(center) }
+        rule.waitForIdle()
+        rule.onNodeWithText("360p").assertDoesNotExist()
+        rule.onRoot().performTouchInput { click(center) }
+        rule.waitForIdle()
+        rule.onNodeWithText("360p").assertIsDisplayed()
+        CastPlayback.update { CastPlayback.Transport() }
+    }
+
+    @Test
+    fun videoPlayer_fullscreenVariantRenders() {
+        var fullscreen = true
+        rule.setContent {
+            VideoPlayer(
+                ypvm = vm, videoInfo = info,
+                videoStreams = videoStreams, audioStreams = audioStreams,
+                subtitles = emptyList(), segments = emptyList(),
+                isFullscreen = fullscreen,
+                onFullscreenChange = { fullscreen = it },
+            )
+        }
+        rule.onNodeWithText("360p").assertIsDisplayed()
     }
 
     @Test
