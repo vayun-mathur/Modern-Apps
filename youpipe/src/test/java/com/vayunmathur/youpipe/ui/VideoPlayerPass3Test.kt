@@ -22,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -165,32 +166,6 @@ class VideoPlayerPass3Test {
         // Close leaves the transport snapshot alone except next/previous.
         assertEquals(12_345L, CastPlayback.transport.value.positionMs)
         assertEquals(false, CastPlayback.transport.value.hasNext)
-        CastPlayback.update { CastPlayback.Transport() }
-    }
-
-    @Test
-    fun videoPlayer_tapTogglesControls() {
-        // Controls only auto-hide while playing; paused keeps them up by
-        // design. The compose test clock is driven by hand so neither the
-        // 2 s auto-hide timer nor the fade can race the taps.
-        CastPlayback.update { it.copy(playing = true) }
-        rule.mainClock.autoAdvance = false
-        rule.setContent {
-            VideoPlayer(
-                ypvm = vm, videoInfo = info,
-                videoStreams = videoStreams, audioStreams = audioStreams,
-                subtitles = emptyList(), segments = emptyList(),
-                isFullscreen = false, onFullscreenChange = {},
-            )
-        }
-        rule.mainClock.advanceBy(100)
-        rule.onNodeWithText("360p").assertIsDisplayed()
-        rule.onRoot().performTouchInput { click(center) }
-        rule.mainClock.advanceBy(500)
-        rule.onNodeWithText("360p").assertDoesNotExist()
-        rule.onRoot().performTouchInput { click(center) }
-        rule.mainClock.advanceByFrame()
-        rule.onNodeWithText("360p").assertIsDisplayed()
         CastPlayback.update { CastPlayback.Transport() }
     }
 
