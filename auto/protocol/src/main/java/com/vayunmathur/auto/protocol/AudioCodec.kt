@@ -325,9 +325,14 @@ object AudioCodec {
         for (o in 0 until outSamples) {
             val position = o.toLong() * fromRateHz / toRateHz
             val index = position.toInt().coerceIn(0, input.size - 1)
-            val next = (index + 1).coerceIn(0, input.size - 1)
+            val nextIndex = (index + 1).coerceIn(0, input.size - 1)
             val fraction = ((o.toLong() * fromRateHz % toRateHz).toDouble() / toRateHz)
-            out.putShort((input[index] + (next - index) * fraction).toInt().toShort())
+            // Interpolate between the two neighbouring SAMPLES. This used
+            // (next - index) -- the index distance, 0 or 1 -- instead of
+            // (input[next] - input[index]), so resampled audio collapsed to
+            // the left sample plus at most 1 LSB instead of the ramp.
+            val interpolated = input[index] + (input[nextIndex] - input[index]) * fraction
+            out.putShort(kotlin.math.round(interpolated).toInt().toShort())
         }
         return out.array()
     }
