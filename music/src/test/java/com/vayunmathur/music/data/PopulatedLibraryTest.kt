@@ -20,6 +20,7 @@ import com.vayunmathur.music.platform.getSongs
 import com.vayunmathur.music.ui.HomeTabContent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.AfterClass
 import org.junit.Before
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -35,6 +36,10 @@ import kotlin.test.assertTrue
  * The populated half of the library: a fake media provider serves three
  * songs, and the MediaStore readers, the repository refresh and the
  * ViewModel's per-entity state all have to agree about them.
+ *
+ * The fake provider and the repository singleton both survive this class
+ * in Robolectric's shared sandbox, so [tearDownClass] switches the
+ * provider off and refreshes: later classes see an empty library again.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -43,8 +48,19 @@ class PopulatedLibraryTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    companion object {
+        @JvmStatic
+        @AfterClass
+        fun tearDownClass() {
+            FakeMediaProvider.enabled = false
+            val app = ApplicationProvider.getApplicationContext<Context>()
+            runBlocking { MusicRepository.get(app).refresh() }
+        }
+    }
+
     @Before
     fun setUp() {
+        FakeMediaProvider.enabled = true
         FakeAndroidKeyStore.install()
         ShadowContentResolver.registerProviderInternal("media", FakeMediaProvider())
         val app = ApplicationProvider.getApplicationContext<Application>()
@@ -57,55 +73,55 @@ class PopulatedLibraryTest {
         )
     }
 
-    private val context: Context get() = ApplicationProvider.getApplicationContext()
+    private val appContext: Context get() = ApplicationProvider.getApplicationContext()
 
     private fun viewModel(): MusicViewModel =
         MusicViewModel(
             ApplicationProvider.getApplicationContext(),
-            MusicRepository.get(context),
-            PlaybackManager.getInstance(context),
+            MusicRepository.get(appContext),
+            PlaybackManager.getInstance(appContext),
         )
 
     @Test
-    fun `media store readers parse the library`() { runBlocking {
-        val songs = getSongs(context)
-        assertEquals(listOf(1L, 2L, 3L), songs.map { it.id })
-        val beta = songs.first { it.id == 1L }
-        assertEquals("Beta Song", beta.title)
-        assertEquals(1, beta.discNumber)
-        assertEquals(2, beta.trackNumber)
-        assertEquals(2019, beta.year)
-        assertEquals("content://media/external/audio/media/1", beta.uri)
-        val alpha = songs.first { it.id == 2L }
-        // TRACK 2005 is MediaStore for disc 2, track 5; a missing year stays 0.
-        assertEquals(2, alpha.discNumber)
-        assertEquals(5, alpha.trackNumber)
-        assertEquals(0, alpha.year)
+    fun `media store readers parse the library`() {
+        runBlocking {
+            val songs = getSongs(appContext)
+            assertEquals(listOf(1L, 2L, 3L), songs.map { it.id })
+            val beta = songs.first { it.id == 1L }
+            assertEquals("Beta Song", beta.title)
+            assertEquals(1, beta.discNumber)
+            assertEquals(2, beta.trackNumber)
+            assertEquals(2019, beta.year)
+            assertEquals("content://media/external/audio/media/1", beta.uri)
+            val alpha = songs.first { it.id == 2L }
+            // TRACK 2005 is MediaStore for disc 2, track 5; missing year stays 0.
+            assertEquals(2, alpha.discNumber)
+            assertEquals(5, alpha.trackNumber)
+            assertEquals(0, alpha.year)
 
-        assertEquals(listOf("Album One", "Album Two"), getAlbums(context).map { it.name })
-        val artists = getArtists(context)
-        assertEquals("Artist One", artists.first { it.id == 11L }.name)
-        // The <unknown> sentinel normalises to empty so screens can localise it.
-        assertEquals("", artists.first { it.id == 12L }.name)
+            assertEquals(listOf("Album One", "Album Two"), getAlbums(appContext).map { it.name })
+            val artists = getArtists(appContext)
+            assertEquals("Artist One", artists.first { it.id == 11L }.name)
+            // The <unknown> sentinel normalises to empty so screens can localise it.
+            assertEquals("", artists.first { it.id == 12L }.name)
+        }
     }
 
-    } }
-
     @Test
-    fun `repository refresh publishes the fake library`() { runBlocking {
-        val repo = MusicRepository.get(context)
-        repo.refresh()
-        assertEquals(3, repo.getAllMusic().size)
-        assertEquals(2, repo.getAllAlbums().size)
-        assertEquals(2, repo.getAllArtists().size)
-        assertTrue(repo.loaded.first())
+    fun `repository refresh publishes the fake library`() {
+        runBlocking {
+            val repo = MusicRepository.get(appContext)
+            repo.refresh()
+            assertEquals(3, repo.getAllMusic().size)
+            assertEquals(2, repo.getAllAlbums().size)
+            assertEquals(2, repo.getAllArtists().size)
+            assertTrue(repo.loaded.first())
+        }
     }
 
-    } }
-
     @Test
-    fun `view model entity states find the fake songs`() { runBlocking {
-        MusicRepository.get(context).refresh()
+    fun `view model entity states find the fake songs`() {
+        runBlocking { MusicRepository.get(appContext).refresh() }
         val vm = viewModel()
         var title: String? = null
         var albumName: String? = null
@@ -123,11 +139,9 @@ class PopulatedLibraryTest {
         assertEquals("Artist One", artistName)
     }
 
-    } }
-
     @Test
-    fun `home tab lists the fake songs and a tap starts playback bookkeeping`() { runBlocking {
-        MusicRepository.get(context).refresh()
+    fun `home tab lists the fake songs and a tap starts playback bookkeeping`() {
+        runBlocking { MusicRepository.get(appContext).refresh() }
         val vm = viewModel()
         val stack = NavBackStack<Route>(arrayOf(Route.Home))
         composeRule.setContent { HomeTabContent(stack, vm) }
@@ -135,8 +149,6 @@ class PopulatedLibraryTest {
         composeRule.onNodeWithText("Beta Song").assertIsDisplayed()
         composeRule.onNodeWithText("Gamma Song").assertIsDisplayed()
         composeRule.onNodeWithText("Beta Song").performClick()
-        composeRule.runOnIdle { }
         assertNotNull(vm.currentSource.value, "a row tap must record the queue source")
     }
-    } }
 }
