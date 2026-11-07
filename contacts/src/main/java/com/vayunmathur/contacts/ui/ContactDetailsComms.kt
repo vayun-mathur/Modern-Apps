@@ -115,7 +115,7 @@ private fun smsIntentFor(number: String, packageName: String?): Intent =
         PackageUtils.TELEGRAM_PACKAGE ->
             Intent(
                 Intent.ACTION_VIEW,
-                "https://t.me/+${number.filter { it.isDigit() || it == '+' }}".toUri()
+                "https://t.me/+${number.filter { it.isDigit() }}".toUri()
             )
         else -> Intent(Intent.ACTION_SENDTO, "sms:$number".toUri())
     }
