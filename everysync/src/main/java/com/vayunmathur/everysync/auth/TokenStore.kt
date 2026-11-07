@@ -21,7 +21,11 @@ class TokenStore private constructor(context: Context) {
     private val ds = DataStoreUtils.getInstance(context)
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Test seam: a software key replacing the AndroidKeyStore key (which Robolectric lacks). */
+    internal var secretKeyForTest: SecretKey? = null
+
     private fun secretKey(): SecretKey {
+        secretKeyForTest?.let { return it }
         val ks = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (ks.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)

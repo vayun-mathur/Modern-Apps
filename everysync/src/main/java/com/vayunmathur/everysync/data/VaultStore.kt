@@ -165,7 +165,11 @@ object VaultKeyStore {
         cipher.doFinal(ct).decodeToString()
     }.getOrNull()
 
+    /** Test seam: a software key replacing the AndroidKeyStore key (which Robolectric lacks). */
+    internal var secretKeyForTest: javax.crypto.SecretKey? = null
+
     private fun secretKey(): javax.crypto.SecretKey {
+        secretKeyForTest?.let { return it }
         val ks = java.security.KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (ks.getEntry(KEY_ALIAS, null) as? java.security.KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         val generator = javax.crypto.KeyGenerator.getInstance(

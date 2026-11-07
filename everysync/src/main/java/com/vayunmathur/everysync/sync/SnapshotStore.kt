@@ -346,13 +346,17 @@ object SnapshotStore {
  * DataStore). Snapshots are recoverable only on this device — by design: the
  * relay already covers cross-device recovery, snapshots cover local disaster.
  */
-private object SnapshotKeyStore {
+internal object SnapshotKeyStore {
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "everysync_snapshot_key"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
     private const val GCM_TAG_BITS = 128
 
+    /** Test seam: a software key replacing the AndroidKeyStore key (which Robolectric lacks). */
+    internal var secretKeyForTest: javax.crypto.SecretKey? = null
+
     private fun secretKey(): javax.crypto.SecretKey {
+        secretKeyForTest?.let { return it }
         val ks = java.security.KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (ks.getEntry(KEY_ALIAS, null) as? java.security.KeyStore.SecretKeyEntry)?.let { return it.secretKey }
         val generator = javax.crypto.KeyGenerator.getInstance(

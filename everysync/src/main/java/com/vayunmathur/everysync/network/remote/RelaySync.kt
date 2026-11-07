@@ -313,17 +313,27 @@ object RelaySync {
         return r.isSuccess
     }
 
+    /**
+     * Test seam: when set, replaces the relay HTTP transport. Receives the
+     * request path (e.g. `/pull`) and the JSON body, and returns the response
+     * (null = transport failure). Null by default, so production always uses
+     * [NetworkClient] against the live relay. Lets unit tests run the whole
+     * vault stack against an in-memory fake relay with no network at all.
+     */
+    internal var transportForTest: (suspend (path: String, bodyJson: String) -> com.vayunmathur.library.network.SimpleResponse?)? = null
+
     // Broad catch is deliberate: any transport/serialization failure mode means
     // "no response" per this function's contract. Cancellation is rethrown so this
     // never swallows structured-concurrency signals.
     @Suppress("TooGenericExceptionCaught")
     private suspend inline fun <reified T> raw(path: String, body: T) =
         try {
-            NetworkClient.performRequest(
+            val bodyJson = json.encodeToString(body)
+            transportForTest?.let { it(path, bodyJson) } ?: NetworkClient.performRequest(
                 url = "$URL$path",
                 method = "POST",
                 headers = mapOf("Content-Type" to "application/json"),
-                body = json.encodeToString(body),
+                body = bodyJson,
             )
         } catch (e: CancellationException) {
             throw e
