@@ -81,7 +81,11 @@ fun NotesListPage(backStack: NavBackStack<Route>, viewModel: NotesViewModel) {
             BackupButtons(
                 dbConfigs = remember { noteDbConfigs(context) },
                 dbCodec = SqlCipherDbCodec,
-                extraFiles = emptyList()
+                extraFiles = remember { com.vayunmathur.notes.platform.NoteImageStore.backupFiles(context) },
+                extraFilesMapping = remember {
+                    val dir = com.vayunmathur.notes.platform.NoteImageStore.backupFiles(context).single()
+                    mapOf(dir.name to dir)
+                }
             )
         },
     )
