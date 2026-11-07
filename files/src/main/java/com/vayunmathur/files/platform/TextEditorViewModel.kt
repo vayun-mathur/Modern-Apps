@@ -23,17 +23,32 @@ class TextEditorViewModel(application: Application) : AndroidViewModel(applicati
     private val _initialContent = MutableStateFlow<String?>(null)
     val initialContent: StateFlow<String?> = _initialContent.asStateFlow()
 
+    /**
+     * True when the last load failed. Kept separate from [initialContent]
+     * because a failed load must not look like an empty file: presenting it
+     * as one invites the user to type into the "empty" document and save
+     * over the original, destroying it.
+     */
+    private val _loadFailed = MutableStateFlow(false)
+    val loadFailed: StateFlow<Boolean> = _loadFailed.asStateFlow()
+
+    /** True when the last save failed (nothing was written). */
+    private val _saveFailed = MutableStateFlow(false)
+    val saveFailed: StateFlow<Boolean> = _saveFailed.asStateFlow()
+
     fun load(uri: Uri) {
         val ctx = getApplication<Application>()
         viewModelScope.launch(Dispatchers.IO) {
-            val text = try {
-                ctx.contentResolver.openInputStream(uri)?.use {
+            try {
+                val text = ctx.contentResolver.openInputStream(uri)?.use {
                     it.bufferedReader().readText()
-                } ?: ""
+                } ?: throw java.io.IOException("Could not open $uri")
+                _loadFailed.value = false
+                _initialContent.value = text
             } catch (_: Exception) {
-                ""
+                _loadFailed.value = true
+                _initialContent.value = ""
             }
-            _initialContent.value = text
         }
     }
 
@@ -41,12 +56,16 @@ class TextEditorViewModel(application: Application) : AndroidViewModel(applicati
         val ctx = getApplication<Application>()
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                ctx.contentResolver.openOutputStream(uri)?.use {
+                val out = ctx.contentResolver.openOutputStream(uri)
+                    ?: throw java.io.IOException("Could not open $uri")
+                out.use {
                     it.writer().use { w -> w.write(content) }
                 }
             } catch (_: Exception) {
+                _saveFailed.value = true
                 return@launch
             }
+            _saveFailed.value = false
             _initialContent.value = content
         }
     }
