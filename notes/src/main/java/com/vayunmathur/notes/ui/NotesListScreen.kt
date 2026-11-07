@@ -53,6 +53,18 @@ import com.vayunmathur.notes.platform.NotesListActions
 import com.vayunmathur.notes.platform.NotesListUiState
 
 /**
+ * List search predicate: a note matches when the query appears in its title
+ * or its plain-text content (which [com.vayunmathur.notes.data.withBody]
+ * keeps in sync with the text blocks). Deliberately NOT the data-class
+ * `toString()`: that rendering also embeds the id, position, blocks JSON,
+ * syncId, updatedAt and deleted flag, so queries like "image", "deleted"
+ * or a digit from a timestamp matched nearly every note.
+ */
+internal fun noteMatchesSearch(note: Note, query: String): Boolean =
+    note.title.contains(query, ignoreCase = true) ||
+        note.content.contains(query, ignoreCase = true)
+
+/**
  * The notes list, with no dependency on the ViewModel or the back stack so it can be
  * rendered from a `@Preview` — see `src/screenshotTest`, which is where the store listing
  * images come from.
@@ -73,7 +85,7 @@ fun NotesListScreen(
     var searchQuery by remember { mutableStateOf(initialSearchQuery) }
     val filtered = remember(state.notes, searchQuery) {
         if (searchQuery.isBlank()) state.notes
-        else state.notes.filter { it.toString().contains(searchQuery, true) }
+        else state.notes.filter { noteMatchesSearch(it, searchQuery) }
     }
 
     BackHandler(enabled = searchQuery.isNotEmpty()) {
