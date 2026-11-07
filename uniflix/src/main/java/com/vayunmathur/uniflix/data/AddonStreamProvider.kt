@@ -1,6 +1,5 @@
 package com.vayunmathur.uniflix.data
 
-import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.uniflix.domain.AddonManifest
 import com.vayunmathur.uniflix.domain.AddonStreamsResponse
 import com.vayunmathur.uniflix.domain.ManifestError
@@ -59,7 +58,7 @@ class AddonStreamProvider(
     ): List<VideoSource> {
         val url = "$baseUrl/stream/${addonResourceType(mediaType)}/${addonStreamId(tmdbId, mediaType, season, episode)}.json"
         val resp = runCatching {
-            NetworkClient.execute(url, connectTimeoutMs = ADDON_TIMEOUT_MS)
+            uniflixGet(url, connectTimeoutMs = ADDON_TIMEOUT_MS)
         }.getOrElse {
             error("Addon '$displayName' unreachable: ${it.message}")
         }
@@ -81,7 +80,7 @@ class AddonStreamProvider(
         suspend fun fetchManifest(manifestUrl: String): Pair<String, AddonManifest> {
             val base = normalizeBaseUrl(manifestUrl)
             val resp = runCatching {
-                NetworkClient.execute("$base/manifest.json", connectTimeoutMs = ADDON_TIMEOUT_MS)
+                uniflixGet("$base/manifest.json", connectTimeoutMs = ADDON_TIMEOUT_MS)
             }.getOrElse {
                 throw ManifestError.Network("Could not reach $manifestUrl: ${it.message}")
             }

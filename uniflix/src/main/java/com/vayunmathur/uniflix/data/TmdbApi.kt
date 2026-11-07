@@ -1,6 +1,5 @@
 package com.vayunmathur.uniflix.data
 
-import com.vayunmathur.library.network.NetworkClient
 import com.vayunmathur.uniflix.domain.Episode
 import com.vayunmathur.uniflix.domain.MediaDetail
 import com.vayunmathur.uniflix.domain.MediaItem
@@ -17,7 +16,7 @@ class TmdbApi {
     private fun url(path: String): String = "$BASE$path"
 
     private suspend fun getItems(requestUrl: String): List<MediaItem> {
-        val resp = NetworkClient.execute(requestUrl)
+        val resp = uniflixGet(requestUrl)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         return json.decodeFromString(TmdbList.serializer(), resp.text).results.map { it.toMediaItem() }
     }
@@ -47,7 +46,7 @@ class TmdbApi {
 
     suspend fun movieDetail(tmdbId: Int): MediaDetail {
         val requestUrl = url("/movie/$tmdbId")
-        val resp = NetworkClient.execute(requestUrl)
+        val resp = uniflixGet(requestUrl)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         val dto = json.decodeFromString(TmdbMovieDetail.serializer(), resp.text)
         val recs = runCatching { movieRecommendations(tmdbId) }.getOrDefault(emptyList())
@@ -67,7 +66,7 @@ class TmdbApi {
 
     suspend fun tvDetail(tmdbId: Int): MediaDetail {
         val requestUrl = url("/tv/$tmdbId")
-        val resp = NetworkClient.execute(requestUrl)
+        val resp = uniflixGet(requestUrl)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         val dto = json.decodeFromString(TmdbTvDetail.serializer(), resp.text)
         return MediaDetail(
@@ -86,7 +85,7 @@ class TmdbApi {
     }
 
     suspend fun seasonEpisodes(tmdbId: Int, season: Int): List<Episode> {
-        val resp = NetworkClient.execute(url("/tv/$tmdbId/season/$season"))
+        val resp = uniflixGet(url("/tv/$tmdbId/season/$season"))
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         return json.decodeFromString(TmdbSeason.serializer(), resp.text).episodes.map {
             Episode(season, it.episodeNumber, it.name, it.overview, it.stillPath)
