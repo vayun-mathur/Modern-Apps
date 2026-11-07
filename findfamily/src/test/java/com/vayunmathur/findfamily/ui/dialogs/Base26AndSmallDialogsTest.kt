@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import com.vayunmathur.library.ui.DynamicTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -31,6 +32,16 @@ class Base26AndSmallDialogsTest {
         assertEquals(25L, "Z".decodeBase26())
         // Encoding is uppercase-only by construction.
         assertTrue(12345L.encodeBase26().all { it in 'A'..'Z' })
+    }
+
+    @Test fun base26RejectsInvalidAndOverflowingInput() {
+        // Anything that is not a valid uppercase ID must throw rather than
+        // silently decode to a different person's ID.
+        assertFailsWith<IllegalArgumentException> { "abc".decodeBase26() }
+        assertFailsWith<IllegalArgumentException> { "A1".decodeBase26() }
+        assertFailsWith<IllegalArgumentException> { "HELLO WORLD".decodeBase26() }
+        assertFailsWith<IllegalArgumentException> { "Z".repeat(20).decodeBase26() }
+        assertFailsWith<IllegalArgumentException> { "Z".repeat(14).decodeBase26() }
     }
 
     @Test fun gpsFallbackDialogDismisses() {
