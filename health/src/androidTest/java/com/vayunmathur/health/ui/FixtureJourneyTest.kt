@@ -111,7 +111,10 @@ class FixtureJourneyTest {
     private fun tapFabToggle() {
         val candidate = device.findObjects(By.clickable(true))
             .filter {
-                it.visibleBounds.centerX() > device.displayWidth * 0.6 &&
+                // The FAB is a small square at the bottom end; list rows are
+                // full-width, so width is what tells them apart.
+                it.visibleBounds.width() < device.displayWidth * 0.35 &&
+                    it.visibleBounds.centerX() > device.displayWidth * 0.6 &&
                     it.visibleBounds.centerY() > device.displayHeight * 0.5 &&
                     it.visibleBounds.centerY() < device.displayHeight * 0.85
             }
