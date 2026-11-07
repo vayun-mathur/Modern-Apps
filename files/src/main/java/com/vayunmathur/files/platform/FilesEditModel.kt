@@ -83,9 +83,12 @@ abstract class FilesEditModel(application: Application) :
         if (isZipMode()) return
         if (!target.isDirectory) return
         val targetPath = target.absolutePath
-        // Don't paste a folder into itself or a descendant.
+        // Don't paste a folder into itself or a descendant. The separator
+        // matters: a raw prefix check also rejects siblings that merely share
+        // a name prefix (moving "foo" into "foobar"), as pasteOne already
+        // handles correctly.
         moveFiles(sources, target) { source ->
-            source != target && !targetPath.startsWith(source.absolutePath)
+            source != target && !targetPath.startsWith(source.absolutePath + "/")
         }
     }
 

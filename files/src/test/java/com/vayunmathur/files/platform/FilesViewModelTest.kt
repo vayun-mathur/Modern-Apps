@@ -275,6 +275,20 @@ class FilesViewModelTest {
     }
 
     @Test
+    fun `moveInto allows a sibling whose name shares a prefix`() {
+        val foo = File(dirA, "foo").apply { mkdirs(); File(this, "in.txt").writeText("in") }
+        val foobar = File(dirA, "foobar").apply { mkdirs() }
+        vm.moveInto(listOf(foo), foobar)
+        await { File(foobar, "foo/in.txt").isFile && !foo.exists() }
+        // but a folder still cannot be moved into its own descendant
+        val outer = File(dirA, "outer").apply { mkdirs() }
+        val inner = File(outer, "inner").apply { mkdirs() }
+        vm.moveInto(listOf(outer), inner)
+        Thread.sleep(300); ShadowLooper.idleMainLooper()
+        assertTrue(outer.isDirectory && inner.parentFile == outer)
+    }
+
+    @Test
     fun `zip browsing navigation and back state`() {
         val zipFile = File(base, "sample.zip")
         ZipOutputStream(zipFile.outputStream()).use { out ->
