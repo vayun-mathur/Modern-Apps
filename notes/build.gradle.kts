@@ -17,6 +17,7 @@ android {
 }
 
 dependencies {
+    testImplementation(libs.androidx.sqlite.bundled.jvm)
     implementRoom(libs)
     implementation(project(":library:room"))
     implementation(project(":library:ink"))
