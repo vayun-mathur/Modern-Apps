@@ -76,12 +76,17 @@ class NotesRepository private constructor(context: Context) :
     suspend fun readAndClearLegacyNotes(): List<Note> {
         if (!appContext.getDatabasePath(LEGACY_DB_NAME).exists()) return emptyList()
         val legacy = openAuxiliary(LEGACY_DB_NAME)
-        return try {
+        // Delete only after a successful read: deleting in a finally would
+        // destroy the only copy if getAll() throws (corrupt/encrypted legacy
+        // file), and the caller upserts after this returns, so a failed read
+        // must leave the file in place for a later retry.
+        val notes = try {
             legacy.noteDao().getAll()
         } finally {
             legacy.close()
-            appContext.deleteDatabase(LEGACY_DB_NAME)
         }
+        appContext.deleteDatabase(LEGACY_DB_NAME)
+        return notes
     }
 
     companion object {
