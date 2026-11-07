@@ -22,7 +22,8 @@ pub mod session;
 pub mod wire;
 pub mod signal;
 
-#[cfg(target_os = "android")]
+// Compiled for the host too, so JVM unit tests can call the real crypto through
+// `cargoBuildHost_communicate_signal` instead of hitting UnsatisfiedLinkError.
 mod jni_bridge;
 
 #[cfg(test)]

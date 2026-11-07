@@ -15,7 +15,7 @@ pub mod keys;
 pub mod message;
 pub mod store;
 
-#[cfg(target_os = "android")]
+// Compiled for the host too (see ../rust/src/lib.rs): JVM tests load the host cdylib.
 #[allow(unsafe_code)]
 mod jni_bridge;
 
