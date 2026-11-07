@@ -65,18 +65,18 @@ class ChartLoadAndDrawTest {
     @Test
     fun `load bar chart data publishes dashboard for every tab`() = runTest {
         val repo = HealthRepository.get(context)
-        val at = Instant.parse("2026-03-04T09:00:00Z")
+        val at = Instant.parse("2024-03-04T09:00:00Z")
         repo.upsert(listOf(Record(id = "chartload-steps", index = 0, type = RecordType.Steps, startTime = at, endTime = at, value = 4000.0, metadata = "Steps")))
         val vm = vm()
         for (tab in 0..3) {
-            vm.loadBarChartData(HealthMetricConfig.STEPS, LocalDate(2026, 3, 4), tab)
+            vm.loadBarChartData(HealthMetricConfig.STEPS, LocalDate(2024, 3, 4), tab)
             settleUntil { vm.barChartData.value.chartData.isNotEmpty() || tab == 0 }
             assertNotNull(vm.barChartData.value)
         }
         // Dual-series and line metrics take the averages branch.
-        vm.loadBarChartData(HealthMetricConfig.BLOOD_PRESSURE, LocalDate(2026, 3, 4), 1)
+        vm.loadBarChartData(HealthMetricConfig.BLOOD_PRESSURE, LocalDate(2024, 3, 4), 1)
         settleUntil { true }
-        vm.loadBarChartData(HealthMetricConfig.HEART_RATE, LocalDate(2026, 3, 4), 2)
+        vm.loadBarChartData(HealthMetricConfig.HEART_RATE, LocalDate(2024, 3, 4), 2)
         settleUntil { true }
         assertTrue(vm.barChartData.value.totalBarCount >= 0)
     }
