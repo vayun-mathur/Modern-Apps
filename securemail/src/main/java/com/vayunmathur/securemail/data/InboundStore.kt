@@ -26,8 +26,28 @@ object InboundStore {
      */
     suspend fun store(context: Context, msg: MailSocket.InboundMsg) {
         val app = context.applicationContext
-        val repo = MailRepository.get(app)
-        val identity = Identities.forDelivery(app, msg.deliveredTo)
+        store(
+            store = MailRepository.get(app),
+            identity = Identities.forDelivery(app, msg.deliveredTo),
+            passphrase = KeyManager(app).getKeyPassphrase(),
+            senderKeyResolver = { SenderKeys.resolve(app, it) },
+            msg = msg,
+        )
+    }
+
+    /**
+     * Testable core of [store]: persistence, identity and key resolution
+     * are injected so the decrypt-on-arrival logic can run against an
+     * in-memory [MailStore] on a JVM host.
+     */
+    internal suspend fun store(
+        store: MailStore,
+        identity: MailIdentity?,
+        passphrase: String?,
+        senderKeyResolver: suspend (String) -> String?,
+        msg: MailSocket.InboundMsg,
+    ) {
+        val repo = store
         val deliveredTo = msg.deliveredTo.ifBlank { identity?.address.orEmpty() }
         val folder = if (msg.flags.spam) MailFolder.SPAM else MailFolder.INBOX
         val raw = msg.raw
@@ -51,7 +71,6 @@ object InboundStore {
             )
             return
         }
-        val passphrase = KeyManager(app).getKeyPassphrase()
         val stored = if (passphrase != null && identity != null) {
             runCatching {
                 val pgpB64 = MimeCodec.extractPgpPayloadB64(raw)
@@ -71,7 +90,7 @@ object InboundStore {
                 ).toString(Charsets.UTF_8)
                 val (_, _, claimedFrom) = MimeCodec.parseMime(provisional)
                 val (mime, verified) = if (claimedFrom.isNotBlank()) {
-                    val senderKey = SenderKeys.resolve(app, claimedFrom)
+                    val senderKey = senderKeyResolver(claimedFrom)
                     if (senderKey != null) {
                         val checked = PgpCrypto.decryptVerify(
                             pgpBytes,
