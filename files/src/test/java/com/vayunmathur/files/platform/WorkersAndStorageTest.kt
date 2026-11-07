@@ -107,6 +107,32 @@ class WorkersAndStorageTest {
     } }
 
     @Test
+    fun `unzip worker refuses to overwrite an existing file`() { runBlocking {
+        val dir = tempDir("unzip-clash")
+        val zipFile = File(dir, "in.zip")
+        java.util.zip.ZipOutputStream(zipFile.outputStream()).use { out ->
+            out.putNextEntry(java.util.zip.ZipEntry("fresh.txt")); out.write("fresh".toByteArray()); out.closeEntry()
+            out.putNextEntry(java.util.zip.ZipEntry("hello.txt")); out.write("replacement".toByteArray()); out.closeEntry()
+        }
+        val destDir = File(dir, "out").apply { mkdirs() }
+        File(destDir, "hello.txt").writeText("original")
+        val worker = TestListenableWorkerBuilder<UnzipWorker>(ctx)
+            .setInputData(
+                workDataOf(
+                    "zip_path" to zipFile.absolutePath,
+                    "dest_path" to destDir.absolutePath,
+                    "size_budget" to 1_000_000L,
+                ),
+            )
+            .build()
+        assertEquals(ListenableWorker.Result.failure(), worker.doWork())
+        // the pre-existing file is untouched and this run's partial output is gone
+        assertEquals("original", File(destDir, "hello.txt").readText())
+        assertFalse(File(destDir, "fresh.txt").exists())
+        dir.deleteRecursively()
+    } }
+
+    @Test
     fun `storage uris mime matching`() {
         assertEquals("text/plain", StorageUris.mimeTypeOf(File("a.txt")))
         assertEquals("image/png", StorageUris.mimeTypeOf(File("a.PNG")))
