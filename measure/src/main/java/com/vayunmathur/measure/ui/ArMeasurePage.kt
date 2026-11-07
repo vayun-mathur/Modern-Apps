@@ -103,7 +103,10 @@ fun ArMeasurePage(backStack: NavBackStack<Route>, viewModel: MeasureViewModel) {
                     onTrackingUpdate = { q, hasPlane ->
                         viewModel.onTrackingUpdate(trackingQualityFrom(q), hasPlane)
                     },
-                    onSessionReady = { sessionHandle = it },
+                    onSessionReady = {
+                        sessionHandle = it
+                        viewModel.nativeSessionHandle = it
+                    },
                     onDiagnostics = { fps, skew, imuHz, tracked, landmarks, confidence ->
                         viewModel.updateDiagnosticsImpl {
                             copy(
