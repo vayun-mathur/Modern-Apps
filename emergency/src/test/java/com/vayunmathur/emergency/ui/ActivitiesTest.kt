@@ -50,6 +50,19 @@ class ActivitiesTest {
     }
 
     @Test
+    fun `sos deadline intent ages in real time and plain intent does not`() {
+        val now = 1_000_000L
+        val deadline = SosActivity.intentForDeadline(ctx, now + 4_000)
+        assertEquals(4_000L, SosActivity.remainingForIntent(deadline, now))
+        assertEquals(1_500L, SosActivity.remainingForIntent(deadline, now + 2_500))
+        // a deadline already passed fires at once, never a fresh countdown
+        assertEquals(0L, SosActivity.remainingForIntent(deadline, now + 9_000))
+        val plain = SosActivity.intent(ctx, 12_000)
+        assertEquals(12_000L, SosActivity.remainingForIntent(plain, now + 9_000))
+        assertEquals(-1L, SosActivity.remainingForIntent(SosActivity.intent(ctx), now))
+    }
+
+    @Test
     fun `view info activity is direct-boot aware for pre-unlock responders`() {
         // The lock-screen card must open after a reboot before the owner has
         // unlocked: the repository reads device-protected storage for exactly

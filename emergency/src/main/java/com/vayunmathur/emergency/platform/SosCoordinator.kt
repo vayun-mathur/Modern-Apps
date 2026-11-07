@@ -31,7 +31,10 @@ class SosCoordinator(app: Application, private val openedWithMillis: Long) :
             val enabled = GestureProvider.isGestureEnabledStatic(app)
             val number = EmergencyNumberLookup(app)
                 .policeNumber(GestureProvider.numberOverrideStatic(app))
-            val total = if (openedWithMillis > 0) {
+            // -1 means "not specified" (use the default); 0 is a real value - a
+            // deadline that already passed must fire at once, not restart at the
+            // full default countdown.
+            val total = if (openedWithMillis >= 0) {
                 openedWithMillis
             } else {
                 app.resources.getInteger(

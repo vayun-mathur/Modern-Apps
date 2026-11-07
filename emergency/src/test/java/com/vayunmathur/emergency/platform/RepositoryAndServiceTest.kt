@@ -222,6 +222,11 @@ class ViewModelAndCoordinatorTest {
         val byDefault = SosCoordinator(app, openedWithMillis = -1)
         await { byDefault.state.value.loaded }
         assertEquals(5_000, byDefault.state.value.totalMillis)
+        // an explicit zero (a deadline that already passed) stays zero so the
+        // screen fires at once instead of restarting the full countdown
+        val expired = SosCoordinator(app, openedWithMillis = 0)
+        await { expired.state.value.loaded }
+        assertEquals(0, expired.state.value.totalMillis)
     }
 }
 
