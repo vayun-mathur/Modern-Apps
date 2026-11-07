@@ -71,7 +71,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
         Log.dev("EmailSync", ">>> RAW Starting sync for ${account.email} (nonInboxOnly=$nonInboxOnly)")
         val auth = account.resolveAuth(applicationContext)
 
-        val folders = ImapClient.fetchFolders(account.imapServer(), account.loginUser(), auth)
+        val folders = ImapClient.fetchFolders(account.imapServer(), account.loginUser(), auth, account.email)
         db.accountDao().insertFolders(folders)
         Log.dev("EmailSync", "Synced ${folders.size} folders.")
 
@@ -118,6 +118,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
                 fetchBodies = false,
                 skipUids = knownUids + deletedUids,
                 context = applicationContext,
+                accountEmail = account.email,
             )
             if (messages.isNotEmpty()) messagesDao.insertMessages(messages)
             if (attachments.isNotEmpty()) messagesDao.insertAttachments(attachments)
@@ -201,6 +202,7 @@ class EmailSyncWorker(appContext: Context, workerParams: WorkerParameters) :
                 folderName = msg.folderName,
                 uid = msg.id,
                 context = applicationContext,
+                accountEmail = account.email,
             )
             if (body != null || attachments.isNotEmpty()) {
                 messagesDao.insertMessages(

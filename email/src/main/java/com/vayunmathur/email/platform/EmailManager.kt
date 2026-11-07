@@ -58,8 +58,13 @@ class EmailManager {
 
     data class FullFetchResult(val contentTriple: Triple<String?, Boolean, List<Attachment>>)
 
-    suspend fun fetchFolders(server: ServerConfig, user: String, auth: AuthType): List<EmailFolder> =
-        ImapClient.fetchFolders(server, user, auth)
+    suspend fun fetchFolders(
+        server: ServerConfig,
+        user: String,
+        auth: AuthType,
+        accountEmail: String = user,
+    ): List<EmailFolder> =
+        ImapClient.fetchFolders(server, user, auth, accountEmail)
 
     suspend fun fetchMessages(
         server: ServerConfig,
@@ -70,8 +75,9 @@ class EmailManager {
         offset: Int = 0,
         fetchBodies: Boolean = false,
         skipUids: Set<Long> = emptySet(),
+        accountEmail: String = user,
     ): Pair<List<EmailMessage>, List<Attachment>> =
-        ImapClient.fetchMessages(server, user, auth, folderName, limit, offset, fetchBodies, skipUids, null)
+        ImapClient.fetchMessages(server, user, auth, folderName, limit, offset, fetchBodies, skipUids, null, accountEmail)
 
     suspend fun fetchMessageBody(
         server: ServerConfig,
@@ -79,8 +85,9 @@ class EmailManager {
         auth: AuthType,
         folderName: String,
         uid: Long,
+        accountEmail: String = user,
     ): Triple<String?, Boolean, List<Attachment>> =
-        ImapClient.fetchMessageBody(server, user, auth, folderName, uid, null)
+        ImapClient.fetchMessageBody(server, user, auth, folderName, uid, null, accountEmail)
 
     suspend fun fetchFullForBody(
         context: Context,
@@ -89,7 +96,8 @@ class EmailManager {
         auth: AuthType,
         folderName: String,
         uid: Long,
-    ): FullFetchResult = ImapClient.fetchFullForBody(context, server, user, auth, folderName, uid)
+        accountEmail: String = user,
+    ): FullFetchResult = ImapClient.fetchFullForBody(context, server, user, auth, folderName, uid, accountEmail)
 
     suspend fun fetchCidMap(
         context: Context,
