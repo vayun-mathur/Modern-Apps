@@ -41,7 +41,7 @@ class LogcatActivityTest {
         fun installFakeLogcat() {
             // Echo the level selector back as a line so reloads are observable on screen.
             LogcatReader.executeCommand = { command ->
-                listOf("log line for ${command.last()}", "second log line")
+                listOf("log line for ${command.last()}", "second log line").asSequence()
             }
         }
 
