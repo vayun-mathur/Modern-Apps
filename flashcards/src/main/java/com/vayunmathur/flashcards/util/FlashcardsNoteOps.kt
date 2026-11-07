@@ -253,7 +253,9 @@ internal fun FlashcardsViewModel.saveNoteTypeImpl(
 internal fun FlashcardsViewModel.deleteNoteTypeImpl(id: Long) = launchIoImpl {
     if (id in FlashcardsViewModel.BUILT_IN_NOTE_TYPE_IDS) return@launchIoImpl
     val notes = repository.getNotesByNoteTypeImpl(id)
+    val cardIds = notes.flatMap { repository.getCardsByNoteImpl(it.id) }.map { it.id }
     notes.forEach { repository.deleteCardsByNoteImpl(it.id) }
+    if (cardIds.isNotEmpty()) repository.deleteReviewLogsByCardsImpl(cardIds)
     notes.forEach { repository.deleteNoteImpl(it) }
     repository.deleteFieldsByNoteTypeImpl(id)
     repository.deleteTemplatesByNoteTypeImpl(id)
