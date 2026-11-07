@@ -61,4 +61,5 @@ dependencies {
     // Android-only network – HttpURLConnection + own WS; no direct okhttp dep
     implementation(project(":library:network"))
 
+    testImplementation(libs.androidx.work.testing)
 }
