@@ -88,6 +88,19 @@ class HealthJourneyTest {
     }
 
     @Test
+    fun doseSoundService_startsAndStops() {
+        val intent = Intent().apply {
+            component = ComponentName(packageName, "com.vayunmathur.health.service.DoseSoundService")
+            putExtra("MEDICATION_NAME", "Journey Med")
+        }
+        targetContext.startForegroundService(intent)
+        Thread.sleep(2_000)
+        targetContext.stopService(intent)
+        // The app process is still usable afterwards.
+        launchApp()
+    }
+
+    @Test
     fun doseReminder_showsTakenAndSnooze() {
         val intent = Intent().apply {
             component = ComponentName(packageName, "com.vayunmathur.health.platform.DoseReminderActivity")
