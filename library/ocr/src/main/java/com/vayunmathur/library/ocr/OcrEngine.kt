@@ -92,13 +92,7 @@ class OcrEngine(private val context: Context) {
         lock.withLock {
             if (!ensureInit()) return@withContext OcrResult("", emptyList())
             val engine = recognizer ?: return@withContext OcrResult("", emptyList())
-            val boxes = engine.recognize(bitmap)
-                .asSequence()
-                .filter { it.text.isNotBlank() }
-                .map { toTextBox(it) }
-                .filter { it.right > it.left && it.bottom > it.top }
-                .toList()
-            OcrResult(boxes.joinToString("\n") { it.text }.trim(), boxes)
+            linesToResult(engine.recognize(bitmap))
         }
     }
     /** Release the models. */
@@ -128,7 +122,23 @@ class OcrEngine(private val context: Context) {
         recognizer = created
         return true
     }
-    private companion object {
+    internal companion object {
+        /**
+         * Native lines to the public result: blank lines dropped, each line
+         * trimmed and mapped, degenerate (zero/negative-area) boxes dropped,
+         * surviving text joined by newlines. Internal so the mapping is
+         * host-testable without a Vulkan device.
+         */
+        fun linesToResult(lines: List<RecognizedLine>): OcrResult {
+            val boxes = lines.asSequence()
+                .filter { it.text.isNotBlank() }
+                .map { toTextBox(it) }
+                .filter { it.right > it.left && it.bottom > it.top }
+                .toList()
+            return OcrResult(boxes.joinToString("\n") { it.text }.trim(), boxes)
+        }
+
+
         /**
          * A [RecognizedLine]'s quad and its axis-aligned bounds.
          *
