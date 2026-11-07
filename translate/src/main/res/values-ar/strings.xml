@@ -16,4 +16,12 @@
     <string name="all_languages">جميع اللغات</string>
     <string name="no_languages_match">‌لا لغات مطابقة لـ ”%1$s“</string>
     <string name="app_name">ترجم</string>
+    <string name="history">السجل</string>
+    <string name="history_empty">ستظهر الترجمات التي تقوم بها هنا</string>
+    <string name="clear_history">مسح</string>
+    <string name="save">حفظ</string>
+    <string name="saved">المحفوظة</string>
+    <string name="could_not_read_image">تعذّر قراءة تلك الصورة</string>
+    <string name="pick_another_image">اختيار صورة أخرى</string>
+    <string name="history_language_pair"></string>
 </resources>
