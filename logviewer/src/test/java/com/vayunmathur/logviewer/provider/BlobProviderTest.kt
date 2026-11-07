@@ -69,6 +69,21 @@ class BlobProviderTest {
     }
 
     @Test
+    fun `getUri round-trips a name with uri-special characters`() {
+        // Snapshot names embed the title, which embeds the user's filter regex:
+        // '#', '?' and '/' must not fracture the Uri or the display name.
+        val name = "System log | a#b?c/d e1.txt"
+        val uri = BlobProvider.getUri(name) { it.write("data".toByteArray()) }
+        val cursor = resolver.query(uri, null, null, null, null)
+        assertNotNull(cursor)
+        cursor.use {
+            assertTrue(it.moveToFirst())
+            assertEquals(name, it.getString(it.getColumnIndex(OpenableColumns.DISPLAY_NAME)))
+            assertEquals(4L, it.getLong(it.getColumnIndex(OpenableColumns.SIZE)))
+        }
+    }
+
+    @Test
     fun `getUri counts single-byte writes toward the size`() {
         val uri = BlobProvider.getUri("bytes.txt") { out ->
             out.write('A'.code)
