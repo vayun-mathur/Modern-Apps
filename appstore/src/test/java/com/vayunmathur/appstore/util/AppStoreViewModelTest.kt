@@ -10,7 +10,6 @@ import com.vayunmathur.appstore.data.AppSource
 import com.vayunmathur.appstore.data.DefaultRepos
 import com.vayunmathur.appstore.data.UnifiedApp
 import com.vayunmathur.appstore.data.toEntity
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,8 +51,10 @@ class AppStoreViewModelTest {
         vm = AppStoreViewModel(app, db)
     }
 
-    @AfterTest
-    fun tearDown() = db.close()
+    // Not closed: the ViewModel's background coroutines keep collecting
+    // DB flows after a test, and closing the bundled-SQLite DB under them
+    // crashed the test JVM natively (SIGSEGV in sqlite3DbMallocRawNN).
+    // The in-memory DB dies with the Robolectric sandbox.
 
     private fun await(description: String, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 10_000
