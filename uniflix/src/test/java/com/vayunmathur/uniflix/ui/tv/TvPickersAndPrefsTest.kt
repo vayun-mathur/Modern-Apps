@@ -118,7 +118,9 @@ class TvPickersAndPrefsTest {
         assertEquals(1, opened)
     }
 
-    @Test fun addonPrefsDefaultRoundTrip() = runTest {
+    // runBlocking, not runTest: DataStore writes hop to a real IO dispatcher
+    // that runTest's virtual scheduler never advances, so the round-trip hangs.
+    @Test fun addonPrefsDefaultRoundTrip() = kotlinx.coroutines.runBlocking {
         val prefs = AddonPrefs(context)
         prefs.setDefaultAddonDbId(null)
         assertNull(prefs.defaultAddonDbId.first())
