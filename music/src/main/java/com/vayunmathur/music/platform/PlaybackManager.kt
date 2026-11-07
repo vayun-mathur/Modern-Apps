@@ -56,6 +56,18 @@ sealed interface PlaybackSource {
     }
 }
 
+/**
+ * The one repeat cycle, shared by the app transport and the notification
+ * buttons in `PlaybackService`: off -> all -> one -> off. Unknown modes fall
+ * back to off. The two surfaces previously cycled in different orders, so the
+ * same press meant different things depending on where it was pressed.
+ */
+fun nextRepeatMode(mode: Int): Int = when (mode) {
+    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+    else -> Player.REPEAT_MODE_OFF
+}
+
 class PlaybackManager private constructor(context: Context) {
 
     private var controller: MediaController? = null
@@ -188,7 +200,9 @@ class PlaybackManager private constructor(context: Context) {
         if (songs.isEmpty() || startWithIndex !in songs.indices) return
         val player = controller ?: return
 
-        player.repeatMode = Player.REPEAT_MODE_ALL
+        // Repeat is the user's setting, not a property of the new queue:
+        // forcing it here silently undid an explicit off/one chosen on the
+        // now-playing screen every time another song or album was tapped.
         player.shuffleModeEnabled = shuffle
 
         val mediaItems = songs.map { song ->
@@ -225,13 +239,7 @@ class PlaybackManager private constructor(context: Context) {
     }
 
     fun toggleRepeat() {
-        controller?.let {
-            it.repeatMode = when (it.repeatMode) {
-                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-                Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
-                else -> Player.REPEAT_MODE_OFF
-            }
-        }
+        controller?.let { it.repeatMode = nextRepeatMode(it.repeatMode) }
     }
 
     companion object {

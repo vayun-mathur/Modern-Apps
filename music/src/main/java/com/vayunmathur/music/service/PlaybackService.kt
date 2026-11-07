@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.vayunmathur.music.MainActivity
+import com.vayunmathur.music.platform.nextRepeatMode
 
 /**
  * Playback + media-browse service.
@@ -155,12 +156,7 @@ class PlaybackService : MediaLibraryService() {
                     updateNotificationButtons() // Redraw notification with new icon
                 }
                 ACTION_REPEAT -> {
-                    val nextMode = when (session.player.repeatMode) {
-                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                        else -> Player.REPEAT_MODE_OFF
-                    }
-                    session.player.repeatMode = nextMode
+                    session.player.repeatMode = nextRepeatMode(session.player.repeatMode)
                     updateNotificationButtons() // Redraw notification with new icon
                 }
             }
