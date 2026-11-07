@@ -134,6 +134,13 @@ class FindFamilyViewModel(
 
     fun deleteUser(user: User) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Cancel pending no-show work before the cascade deletes its rows,
+            // so no orphan WorkManager job fires for a removed person.
+            runCatching {
+                repository.noShowAlertStore.getAll()
+                    .filter { it.watchedUserId == user.id }
+                    .forEach { NoShowCheckScheduler.cancel(ctx, it.id) }
+            }
             repository.deleteUser(user)
             LocationServiceController.syncServiceState(ctx)
         }

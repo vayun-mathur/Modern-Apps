@@ -35,6 +35,9 @@ interface LocationValueDao {
     @Query("DELETE FROM LocationValue WHERE timestamp < :cutoffEpochSeconds")
     suspend fun deleteOlderThan(cutoffEpochSeconds: Long)
 
+    @Query("DELETE FROM LocationValue WHERE userid = :userid")
+    suspend fun deleteByUserid(userid: Long)
+
     @Upsert
     suspend fun upsert(value: LocationValue): Long
 
