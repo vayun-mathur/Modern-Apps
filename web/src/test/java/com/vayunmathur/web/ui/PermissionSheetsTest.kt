@@ -2,7 +2,9 @@ package com.vayunmathur.web.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.hasRole
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -56,7 +58,7 @@ class PermissionSheetsTest {
         rule.waitForIdle()
         // Uncheck the camera permission, then allow: only mic is granted.
         rule.onAllNodes(
-            androidx.compose.ui.test.hasRole(androidx.compose.ui.semantics.Role.Checkbox)
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)
         )[0].performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Allow").performClick()
