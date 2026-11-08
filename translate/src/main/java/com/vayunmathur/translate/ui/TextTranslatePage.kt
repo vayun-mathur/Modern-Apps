@@ -108,10 +108,11 @@ fun TextTranslatePage(
         )
     }
 
+    val micPermissionRequired = stringResource(R.string.mic_permission_required)
     val micPermission = rememberPermissionRequest(
         Manifest.permission.RECORD_AUDIO
     ) { granted ->
-        if (granted) startListening() else speechError = "Microphone permission is required"
+        if (granted) startListening() else speechError = micPermissionRequired
     }
 
     // Live, debounced translation as input / language selection changes.
