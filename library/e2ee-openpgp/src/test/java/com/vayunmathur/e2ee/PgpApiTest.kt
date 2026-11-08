@@ -153,9 +153,21 @@ class PgpApiTest {
         val data = "authenticate me".toByteArray(Charsets.UTF_8)
         val sig = Pgp.signDetached(alice.armoredSecret, ALICE_PW, data)
         assertTrue(sig.isNotEmpty())
-        assertContentEquals(sig, Pgp.signDetached(alice.armoredSecret, ALICE_PW, data))
+        // Ed25519 signing itself is deterministic, but the packet embeds a
+        // seconds-resolution creation time: two calls straddling a second
+        // boundary byte-differ. Compare consecutive pairs (bounded retries)
+        // so an attempt only fails if a boundary falls between its two calls.
+        var prev = sig
+        var resig = Pgp.signDetached(alice.armoredSecret, ALICE_PW, data)
+        var attempts = 1
+        while (!prev.contentEquals(resig) && attempts < 5) {
+            prev = resig
+            resig = Pgp.signDetached(alice.armoredSecret, ALICE_PW, data)
+            attempts++
+        }
+        assertContentEquals(prev, resig)
         val other = Pgp.signDetached(alice.armoredSecret, ALICE_PW, "authenticate me!".toByteArray())
-        assertFalse(sig.contentEquals(other))
+        assertFalse(prev.contentEquals(other))
         assertFailsWith<IllegalStateException> { Pgp.signDetached(alice.armoredSecret, "wrong", data) }
         assertFailsWith<IllegalStateException> { Pgp.signDetached("garbage", ALICE_PW, data) }
     }
