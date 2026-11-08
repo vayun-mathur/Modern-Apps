@@ -124,7 +124,7 @@ private fun createSession(context: Context): Long {
     return MeasureNative.createSession(intr.fx, intr.fy, intr.cx, intr.cy)
 }
 
-private class VioFrameAnalyzer(
+internal class VioFrameAnalyzer(
     private val handle: Long,
     private val imuRecorder: ImuRecorder,
     private val onTrackingUpdate: (Int, Boolean) -> Unit,
