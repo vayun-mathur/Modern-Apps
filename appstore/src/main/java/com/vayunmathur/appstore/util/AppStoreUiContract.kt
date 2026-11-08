@@ -131,6 +131,26 @@ data class UpdatesUiState(
     val statusMessage: String = "",
 )
 
+/**
+ * Background update-check health, shown on the settings screen.
+ *
+ * The store's updates depend on periodic work the OS may stop running — battery
+ * restriction, or GrapheneOS hibernation after long disuse — so the row reports
+ * what is actually true rather than what was scheduled: when anything last
+ * checked, whether the periodic work is still live, and whether the OS reports
+ * background work restricted for this app (public ActivityManager API).
+ */
+data class UpdateCheckStatus(
+    /** ms since epoch of the last completed check, foreground or background, 0 if never. */
+    val lastCheckMs: Long = 0L,
+    /** The unique periodic worker still has live (unfinished) work enqueued. */
+    val scheduled: Boolean = false,
+    /** WorkManager state name of that work (ENQUEUED, RUNNING, BLOCKED…), null when none. */
+    val workerState: String? = null,
+    /** The OS reports background work restricted for this app. */
+    val backgroundRestricted: Boolean = false,
+)
+
 /** Everything the library (installed apps) screen draws. */
 data class LibraryUiState(
     val apps: List<UnifiedApp> = emptyList(),

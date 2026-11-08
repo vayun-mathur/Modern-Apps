@@ -21,6 +21,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.vayunmathur.appstore.MainActivity
@@ -67,6 +68,13 @@ class UpdateCheckWorker(
             runCheck(scope)
         } finally {
             scope.cancel()
+        }
+        // The settings screen reports when the background check last ran, so a
+        // user can tell a quietly-working scheduler from a hibernated app whose
+        // work the OS stopped running. Recorded only on success: a failed run
+        // that will retry is not a completed check.
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putLong(KEY_LAST_CHECK, System.currentTimeMillis())
         }
         Result.success()
     } catch (expected: java.io.IOException) {
@@ -439,6 +447,7 @@ class UpdateCheckWorker(
         private const val INSTALLED_NOTIFICATION_ID = 4203
         private const val PREFS = "appstore-update-check"
         private const val KEY_LAST_NOTIFIED = "last_notified_packages"
+        private const val KEY_LAST_CHECK = "last_check_ms"
 
         /**
          * How long to wait after committing installs before re-reading the device.
@@ -474,5 +483,32 @@ class UpdateCheckWorker(
         }
 
         private const val WORK_NAME = "AppStoreUpdateCheck"
+
+        /**
+         * ms since epoch of the last completed background check, 0 if never.
+         *
+         * Read by the settings status row alongside the foreground check time,
+         * so "last checked" reflects reality whichever path ran most recently.
+         */
+        fun lastCheckTimeMs(context: Context): Long =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong(KEY_LAST_CHECK, 0L)
+
+        /**
+         * State of the unique periodic work, or null when nothing is enqueued.
+         *
+         * Null is the hibernation tell: the scheduler ([schedule]) runs on every
+         * app start, so live work should always exist — when it doesn't, the OS
+         * stopped or cancelled it while the app sat unused. Blocking WorkManager
+         * query, so call off the main thread. Null on any failure rather than
+         * reporting "not scheduled" for a query that never ran.
+         */
+        fun workerStateNow(context: Context): WorkInfo.State? = runCatching {
+            WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWork(WORK_NAME)
+                .get()
+                .firstOrNull { !it.state.isFinished }
+                ?.state
+        }.getOrNull()
     }
 }

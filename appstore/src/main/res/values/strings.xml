@@ -95,6 +95,13 @@
     <string name="updates_channel_description">Tells you when apps you installed here have a newer version.</string>
     <string name="setting_auto_install_updates_title">Automatically install updates</string>
     <string name="setting_auto_install_updates_summary">When on, updates install when found. When off, they wait for a tap. Store-installed apps update silently; the rest just notify.</string>
+    <!-- Sources page, background update-check status card. -->
+    <string name="setting_update_check_title">Background update checks</string>
+    <string name="setting_update_check_last">Last checked %1$s</string>
+    <string name="setting_update_check_never">Never checked yet</string>
+    <string name="setting_update_check_active">Scheduled — checks run in the background every twelve hours on Wi-Fi</string>
+    <string name="setting_update_check_inactive">Not scheduled — the system stopped the background checks, so updates only arrive while the store is open. Reopening the store reschedules them.</string>
+    <string name="setting_update_check_restricted">Background activity is restricted for this app, so the system may skip its checks. Allow background activity in system Settings to keep them running.</string>
     <plurals name="updates_count">
         <item quantity="one">%1$d update available</item>
         <item quantity="other">%1$d updates available</item>

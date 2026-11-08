@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -43,7 +44,12 @@ fun SourcesPage(
     val home by viewModel.home.collectAsState()
     val autoInstallUpdates by viewModel.autoInstallUpdates.collectAsState()
     val enabledSources by viewModel.enabledSources.collectAsState()
+    val updateCheckStatus by viewModel.updateCheckStatus.collectAsState()
     val noneEnabled = AppSource.TOGGLEABLE.none { it in enabledSources }
+
+    // WorkManager state and the OS restriction flag are reads, not flows — pull
+    // them every time the screen appears rather than polling for them.
+    LaunchedEffect(Unit) { viewModel.refreshUpdateCheckStatus() }
 
     Scaffold { padding ->
         Column(
@@ -81,6 +87,8 @@ fun SourcesPage(
                     onCheckedChange = { viewModel.setAutoInstallUpdates(it) },
                 )
             }
+
+            UpdateCheckStatusCard(status = updateCheckStatus)
 
             SourceCard(
                 title = stringResource(R.string.source_modern_apps),

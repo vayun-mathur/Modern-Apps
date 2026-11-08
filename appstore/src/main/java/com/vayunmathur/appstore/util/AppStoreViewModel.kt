@@ -1,5 +1,6 @@
 package com.vayunmathur.appstore.util
 
+import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -21,6 +22,7 @@ import com.vayunmathur.appstore.data.PlayStoreLinks
 import com.vayunmathur.appstore.data.SettingsRepository
 import com.vayunmathur.appstore.data.SyncStep
 import com.vayunmathur.appstore.data.UnifiedApp
+import com.vayunmathur.appstore.data.UpdateCheckWorker
 import com.vayunmathur.appstore.data.partitionUpdates
 import com.vayunmathur.appstore.data.accrescent.AccrescentRepository
 import com.vayunmathur.appstore.data.installer.InstallCoordinator
@@ -90,6 +92,17 @@ class AppStoreViewModel(
     internal val isLoadingHomeFlow = MutableStateFlow(false)
     internal val isCheckingUpdatesFlow = MutableStateFlow(false)
     internal val lastUpdateCheckFlow = MutableStateFlow(0L)
+
+    private val updateCheckStatusFlow = MutableStateFlow(UpdateCheckStatus())
+
+    /**
+     * Background update-check health for the settings screen.
+     *
+     * Refreshed on demand by [refreshUpdateCheckStatus], not observed: WorkManager
+     * state and the OS restriction flag are read, not flows, so the Sources page
+     * pulls them when it appears rather than the ViewModel polling for them.
+     */
+    val updateCheckStatus: StateFlow<UpdateCheckStatus> = updateCheckStatusFlow
 
     internal val playSectionsFlow = MutableStateFlow<List<AppSection>>(emptyList())
     /** Uncapped Play cluster apps per section id — Browse shows the whole cluster. */
@@ -610,6 +623,35 @@ class AppStoreViewModel(
     /** Turn fully unattended (no-tap) background update installation on or off. */
     fun setAutoInstallUpdates(enabled: Boolean) {
         viewModelScope.launch { settings.setAutoInstallUpdates(enabled) }
+    }
+
+    /**
+     * Re-read background-check reality for the settings status row.
+     *
+     * Three independent facts, each with its own failure mode: the persisted
+     * background last-run time (maxed with this process's foreground checks, so
+     * "last checked" is whichever ran most recently), the live WorkManager state
+     * of the unique periodic work (blocking query, hence IO), and the OS
+     * background-restriction flag via the public ActivityManager API. No hidden
+     * APIs — hibernation itself is not directly queryable, so its absence shows
+     * up as missing scheduled work plus a stale last-check time.
+     */
+    fun refreshUpdateCheckStatus() {
+        viewModelScope.launch {
+            val (backgroundLast, workerState) = withContext(Dispatchers.IO) {
+                UpdateCheckWorker.lastCheckTimeMs(context) to
+                    UpdateCheckWorker.workerStateNow(context)
+            }
+            val restricted = runCatching {
+                context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted
+            }.getOrNull() == true
+            updateCheckStatusFlow.value = UpdateCheckStatus(
+                lastCheckMs = maxOf(backgroundLast, lastUpdateCheckFlow.value),
+                scheduled = workerState != null,
+                workerState = workerState?.name,
+                backgroundRestricted = restricted,
+            )
+        }
     }
 
     // --- Library ------------------------------------------------------------------------
