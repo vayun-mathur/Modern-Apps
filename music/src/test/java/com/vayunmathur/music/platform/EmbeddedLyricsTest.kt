@@ -112,6 +112,21 @@ class EmbeddedLyricsTest {
     }
 
     @Test
+    fun `ogg comment lengths that overflow the offset return null instead of crashing`() {
+        // vendorLength = Int.MAX_VALUE wraps (start + 4 + vendorLength) negative;
+        // the bounds check then passes a negative offset to ByteBuffer.wrap.
+        val vendorOverflow = "OpusTags".toByteArray(Charsets.ISO_8859_1) +
+            intLe(Int.MAX_VALUE) + ByteArray(16)
+        assertNull(read(oggOpus(vendorOverflow)))
+        // Entry length = Int.MAX_VALUE wraps (start + length) negative, so the
+        // size guard passes a huge length to String(bytes, start, length).
+        val entryOverflow = "OpusTags".toByteArray(Charsets.ISO_8859_1) +
+            intLe(1) + "x".toByteArray(Charsets.UTF_8) + intLe(1) +
+            intLe(Int.MAX_VALUE) + ByteArray(4)
+        assertNull(read(oggOpus(entryOverflow)))
+    }
+
+    @Test
     fun `ogg comment packet spanning pages is reassembled`() {
         val lyrics = "word ".repeat(200)
         val packet = "OpusTags".toByteArray(Charsets.ISO_8859_1) +
@@ -163,6 +178,13 @@ class EmbeddedLyricsTest {
         val truncated = "fLaC".toByteArray(Charsets.ISO_8859_1) +
             byteArrayOf(0x84.toByte(), 0, 0, 100) + ByteArray(10)
         assertNull(read(truncated))
+    }
+
+    @Test
+    fun `flac comment lengths that overflow the offset return null instead of crashing`() {
+        val vendorOverflow = "fLaC".toByteArray(Charsets.ISO_8859_1) +
+            flacBlock(4, intLe(Int.MAX_VALUE) + ByteArray(16), last = true)
+        assertNull(read(vendorOverflow))
     }
 
     // ------------------------------------------------------------------
@@ -219,6 +241,19 @@ class EmbeddedLyricsTest {
         for (i in 0 until 8) moovHeader[8 + i] = (moovSize ushr (56 - 8 * i)).toByte()
         val ftyp = box("ftyp", "M4A ".toByteArray(Charsets.ISO_8859_1) + ByteArray(8))
         assertEquals("large box words", read(ftyp + moovHeader + moovPayload))
+    }
+
+    @Test
+    fun `mp4 box size that overflows the scan offset returns null instead of crashing`() {
+        // A box claiming size Int.MAX_VALUE wraps (offset + size) negative, so the
+        // end guard passes and the following iteration reads at a negative offset.
+        // (Read as a signed int, so the high bit must stay clear: 0x7FFFFFFF.)
+        val hugeFree = byteArrayOf(0x7F.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte()) +
+            "free".toByteArray(Charsets.ISO_8859_1) + ByteArray(8)
+        val meta = box("meta", ByteArray(4) + hugeFree)
+        val moov = box("moov", box("udta", meta))
+        val ftyp = box("ftyp", "M4A ".toByteArray(Charsets.ISO_8859_1) + ByteArray(8))
+        assertNull(read(ftyp + moov))
     }
 
     // ------------------------------------------------------------------
