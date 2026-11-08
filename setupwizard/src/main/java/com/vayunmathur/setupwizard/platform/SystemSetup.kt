@@ -320,16 +320,25 @@ class SystemSetup(context: Context) {
     /**
      * The write that ends setup. `DEVICE_PROVISIONED` is global and belongs to the device, so
      * only the owner sets it; `user_setup_complete` is per user and every user sets their own.
+     *
+     * Best effort like the clock and display seeds above: both writes need a privapp
+     * whitelist grant, and a build that has not granted it should lose the provisioning
+     * flags, not abort setup after the user already pressed finish - the exception would
+     * skip task removal, `finish()`, the status-bar restore and `disableSelf()`.
      */
     fun markSetupComplete(activity: Activity) {
         if (isPrimaryUser) {
-            Settings.Global.putInt(
-                activity.contentResolver,
-                Settings.Global.DEVICE_PROVISIONED,
-                1,
-            )
+            runCatching {
+                Settings.Global.putInt(
+                    activity.contentResolver,
+                    Settings.Global.DEVICE_PROVISIONED,
+                    1,
+                )
+            }.onFailure { Log.status(TAG, "could not mark device provisioned", it) }
         }
-        Settings.Secure.putInt(activity.contentResolver, SETTING_USER_SETUP_COMPLETE, 1)
+        runCatching {
+            Settings.Secure.putInt(activity.contentResolver, SETTING_USER_SETUP_COMPLETE, 1)
+        }.onFailure { Log.status(TAG, "could not mark user setup complete", it) }
     }
 
     /**
