@@ -171,12 +171,31 @@ object VTodo {
     }
 
     private fun escape(s: String) = s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
-    private fun unescape(s: String) = s
-        .replace("\\n", "\n")
-        .replace("\\N", "\n")
-        .replace("\\,", ",")
-        .replace("\\;", ";")
-        .replace("\\\\", "\\")
+    /**
+     * Single left-to-right pass. Chained replaces are wrong here: once `\\` unescapes to `\`,
+     * a following `n` (or `,`, `;`) would read as a new escape, so a literal backslash-n
+     * round-trips into a newline. Unknown escapes keep their backslash.
+     */
+    private fun unescape(s: String): String {
+        if ('\\' !in s) return s
+        val out = StringBuilder(s.length)
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            if (c != '\\' || i + 1 >= s.length) {
+                out.append(c)
+                i++
+                continue
+            }
+            when (s[i + 1]) {
+                'n', 'N' -> out.append('\n')
+                '\\', ',', ';' -> out.append(s[i + 1])
+                else -> out.append(c).append(s[i + 1])
+            }
+            i += 2
+        }
+        return out.toString()
+    }
 
     private fun utc(ms: Long): String {
         val t = Instant.fromEpochMilliseconds(ms).toLocalDateTime(TimeZone.UTC)
