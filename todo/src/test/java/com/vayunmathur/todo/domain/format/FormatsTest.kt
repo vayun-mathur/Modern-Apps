@@ -102,8 +102,20 @@ class FormatsTest {
     }
 
     @Test
-    fun `icalendar from other apps maps priority and dates`() {
-        val ics = """
+    fun `icalendar round trips literal backslashes before escapable chars`() {
+        val tricky = Todo(
+            syncId = "x1",
+            title = "C:\\new docs",
+            notes = "a\\nb and c\\,d",
+            createdAt = day(3, 1),
+        )
+        val back = VTodo.parse(VTodo.export(ExportSource(listOf(tricky), emptyList())), zone).single()
+        assertEquals(tricky.title, back.title)
+        assertEquals(tricky.notes, back.notes)
+    }
+
+    @Test
+    fun `icalendar from other apps maps priority and dates`() {        val ics = """
             BEGIN:VCALENDAR
             BEGIN:VTODO
             UID:abc
