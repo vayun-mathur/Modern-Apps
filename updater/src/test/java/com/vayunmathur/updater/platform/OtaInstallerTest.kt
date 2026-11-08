@@ -33,6 +33,7 @@ class OtaInstallerTest {
 
     private class FakeEngine(
         var bindResult: Boolean = true,
+        var bindThrows: Boolean = false,
         var completionCode: Int = 0,
         var applyThrows: Boolean = false,
         var unbindResult: Boolean = true,
@@ -50,6 +51,7 @@ class OtaInstallerTest {
             onStatusUpdate: (Int, Float) -> Unit,
             onPayloadApplicationComplete: (Int) -> Unit,
         ): Boolean {
+            if (bindThrows) throw IllegalStateException("binder died")
             onStatus = onStatusUpdate
             onComplete = onPayloadApplicationComplete
             return bindResult
@@ -273,6 +275,20 @@ class OtaInstallerTest {
     @Test
     fun `when binding fails nothing is applied`() {
         val engine = FakeEngine(bindResult = false)
+        OtaInstaller.payloadEngineOverride = { engine }
+        val file = zipFile()
+        val failed = assertIs<OtaInstaller.Result.Failed>(install(file))
+        assertTrue(failed.reason.contains("could not attach"), failed.reason)
+        assertTrue(engine.unbound)
+    }
+
+    @Test
+    fun `when binding throws the install fails cleanly instead of crashing`() {
+        // bind() crosses the binder, which throws undocumented RuntimeExceptions when the
+        // service is unavailable — the same condition a `false` return reports. The caller
+        // (UpdateInstallService) treats install() as returning a value, so a throw here
+        // would crash the run with no failure notification and no cleanup.
+        val engine = FakeEngine(bindThrows = true)
         OtaInstaller.payloadEngineOverride = { engine }
         val file = zipFile()
         val failed = assertIs<OtaInstaller.Result.Failed>(install(file))
