@@ -1,6 +1,5 @@
 package com.vayunmathur.games.hub.util
 
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -46,7 +45,9 @@ object StreakCalculator {
         var maxStreak = 1
         var curRun = 1
         for (i in 1 until sortedDays.size) {
-            if (sortedDays[i] - sortedDays[i - 1] == DAY_MILLIS) {
+            // Compare calendar days, not millis: across a DST transition
+            // consecutive local days start 23h/25h apart, never 24h.
+            if (epochDay(sortedDays[i]) - epochDay(sortedDays[i - 1]) == 1L) {
                 curRun++
                 if (curRun > maxStreak) maxStreak = curRun
             } else {
@@ -57,24 +58,29 @@ object StreakCalculator {
     }
 
     private fun currentStreak(sortedDays: List<Long>, now: Long): Int {
-        val todayStart = dayStart(now)
-        val yesterdayStart = todayStart - DAY_MILLIS
-        val lastDay = sortedDays.last()
-        if (lastDay != todayStart && lastDay != yesterdayStart) return 0
+        val today = epochDay(now)
+        val lastDay = epochDay(sortedDays.last())
+        if (lastDay != today && lastDay != today - 1) return 0
         var streak = 1
         var idx = sortedDays.lastIndex - 1
-        var expectedDay = lastDay - DAY_MILLIS
-        while (idx >= 0 && sortedDays[idx] >= expectedDay) {
-            if (sortedDays[idx] == expectedDay) {
+        var expectedDay = lastDay - 1
+        while (idx >= 0 && epochDay(sortedDays[idx]) >= expectedDay) {
+            if (epochDay(sortedDays[idx]) == expectedDay) {
                 streak++
-                expectedDay -= DAY_MILLIS
+                expectedDay--
             }
             idx--
         }
         return streak
     }
 
-    private val DAY_MILLIS = 1.days.inWholeMilliseconds
+    private fun epochDay(millis: Long): Long {
+        val tz = TimeZone.currentSystemDefault()
+        return Instant.fromEpochMilliseconds(millis)
+            .toLocalDateTime(tz)
+            .date
+            .toEpochDays()
+    }
 
     private fun dayStart(millis: Long): Long {
         val tz = TimeZone.currentSystemDefault()
