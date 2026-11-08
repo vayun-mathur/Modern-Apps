@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class ForecastUiState(
@@ -49,6 +51,10 @@ class WeatherViewModel(
     val forecasts: StateFlow<Map<Long, ForecastUiState>> = _forecasts.asStateFlow()
 
     private val inFlight = mutableSetOf<Long>()
+
+    // Serializes addLocation's check-then-insert so two rapid taps on the same
+    // search result can't both slip past the duplicate check.
+    private val addMutex = Mutex()
 
     private val _selected = MutableStateFlow<SelectedDateOrTime?>(null)
     val selectedDateOrTime: StateFlow<SelectedDateOrTime?> = _selected.asStateFlow()
@@ -220,17 +226,27 @@ class WeatherViewModel(
 
     fun addLocation(name: String, country: String, latitude: Double, longitude: Double) {
         viewModelScope.launch {
-            val existing = repository.getLocations()
-            repository.insertLocation(
-                SavedLocation(
-                    name = name,
-                    country = country,
-                    latitude = latitude,
-                    longitude = longitude,
-                    displayOrder = existing.size,
-                    isCurrent = false,
+            addMutex.withLock {
+                val existing = repository.getLocations()
+                // The same city tapped twice (or re-added after a new search)
+                // arrives with bit-identical coordinates, so exact equality
+                // only ever matches true duplicates — never two distinct
+                // nearby places. The live-GPS row is excluded: pinning the
+                // city you're standing in is deliberate, not a duplicate.
+                if (existing.any { !it.isCurrent && it.latitude == latitude && it.longitude == longitude }) {
+                    return@withLock
+                }
+                repository.insertLocation(
+                    SavedLocation(
+                        name = name,
+                        country = country,
+                        latitude = latitude,
+                        longitude = longitude,
+                        displayOrder = existing.size,
+                        isCurrent = false,
+                    )
                 )
-            )
+            }
         }
     }
 
