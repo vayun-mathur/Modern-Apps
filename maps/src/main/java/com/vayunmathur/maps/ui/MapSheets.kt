@@ -36,13 +36,25 @@ internal fun MapPageScope.MapSheets(
             SearchSheet(
                 searchState,
                 searchActions,
-                // Ride above the keyboard: the field keeps focus while typing, so
-                // without IME padding the keys cover the results being typed for.
-                Modifier.padding(top = Spacing.sm).imePadding(),
+                // Top breathing room only. IME padding lives on the scaffold
+                // root below, not here: this content is measured at a capped
+                // height (the sheet's current offset), so padding inside it
+                // shrinks the rows without lifting the sheet, and the keys
+                // would still cover the field. Padding the scaffold root
+                // shrinks the whole layout, which places the sheet above the
+                // keyboard. Keep this free of inset modifiers so the sheet
+                // is not double-counted once the scaffold lifts it.
+                Modifier.padding(top = Spacing.sm),
             )
         }
     },
-        Modifier,
+        // Ride above the keyboard: the field keeps focus while typing, and
+        // the activity is edge-to-edge (MaActivity.enableEdgeToEdge), which
+        // disables the manifest's adjustResize — the container does not
+        // shrink on its own, and the scaffold only reads the navigation and
+        // status bars as values. Without this the peek-0.35 search sheet
+        // sits under the keys, input included.
+        Modifier.imePadding(),
         sheet,
         // Roughly a third of the room the sheet has: enough to open on the field, the chips and
         // the first result or two, and no more. This is a floor as much as an opening height —
