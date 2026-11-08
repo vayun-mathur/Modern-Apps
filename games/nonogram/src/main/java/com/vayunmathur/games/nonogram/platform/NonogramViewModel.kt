@@ -52,6 +52,14 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
     private var casualPuzzle: Pair<Int, NonogramPuzzle>? = null
     private var dailyPuzzle: Pair<Long, NonogramPuzzle>? = null
 
+    /**
+     * How many generation retries have been asked for. Part of the session so a retry reloads the
+     * board; the attempt count only ever widens the seed search, never changes its start, so a
+     * puzzle found on retry N is the same one a fresh process finds on its own retry N — which is
+     * what keeps saved marks valid across a relaunch.
+     */
+    private val _generationAttempt = MutableStateFlow(0)
+
     val reminderEnabled: StateFlow<Boolean> = reminderSettings.enabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -78,7 +86,8 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
                 dataStore.currentLevel,
                 dataStore.markMode,
                 dailyStore.currentStreak,
-            ) { mode, level, markMode, streak -> Session(mode, level, markMode, streak) }
+                _generationAttempt,
+            ) { mode, level, markMode, streak, attempt -> Session(mode, level, markMode, streak, attempt) }
                 .collectLatest { session -> load(session) }
         }
     }
@@ -89,6 +98,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         val level: Int,
         val markMode: MarkMode,
         val streak: Long,
+        val attempt: Int,
     )
 
     private suspend fun load(session: Session) {
@@ -111,7 +121,14 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         val puzzle = withContext(Dispatchers.Default) {
             val cached = if (daily) dailyPuzzle?.takeIf { it.first == day }?.second
             else casualPuzzle?.takeIf { it.first == session.level }?.second
-            cached ?: NonogramGenerator.generateSeeded(size, seed)
+            // A retry keeps the same seed but searches more rounds: re-running the base search
+            // would deterministically find the same nothing, while a fresh seed would orphan any
+            // marks already saved against this level.
+            val rounds = (
+                NonogramGenerator.DEFAULT_ROUNDS +
+                    session.attempt * NonogramGenerator.RETRY_EXTRA_ROUNDS
+                ).coerceAtMost(MAX_GENERATION_ROUNDS)
+            cached ?: NonogramGenerator.generateSeeded(size, seed, rounds)
         }
 
         if (puzzle == null) {
@@ -249,6 +266,16 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { dataStore.clearMarks(daily) }
     }
 
+    /**
+     * Retries generation after [NonogramUiState.generationFailed].
+     *
+     * Clearing marks cannot help here — no marks flow feeds the load, so `restartLevel` leaves the
+     * failed screen stuck — and only a bump of [_generationAttempt] re-runs the search.
+     */
+    override fun retryGeneration() {
+        _generationAttempt.value += 1
+    }
+
     override fun setGameMode(mode: GameMode) {
         viewModelScope.launch { dataStore.setGameMode(mode) }
     }
@@ -332,5 +359,13 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
 
         /** Matches the "15x15" wording of the `big_picture` description. */
         private const val BIG_PICTURE_SIZE = 15
+
+        /**
+         * Caps the widening retry search: eight attempts of [NonogramGenerator.RETRY_EXTRA_ROUNDS].
+         * Each round is 60 solver checks over at most a 15x15 grid, so this bounds one retry at a
+         * few seconds on [Dispatchers.Default] with the spinner showing, instead of growing a
+         * longer search on every tap of Try again.
+         */
+        private const val MAX_GENERATION_ROUNDS = 64
     }
 }
