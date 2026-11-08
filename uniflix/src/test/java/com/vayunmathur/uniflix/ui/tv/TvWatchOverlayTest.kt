@@ -2,6 +2,7 @@ package com.vayunmathur.uniflix.ui.tv
 
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -56,7 +57,7 @@ class TvWatchOverlayTest {
                     qualityLabel = "1080p",
                     showQualityPicker = true,
                     onOpenQualityPicker = { quality++ },
-                    playFocus = FocusRequester(),
+                    playFocus = remember { FocusRequester() },
                     onBack = {})
             }
         }
@@ -88,7 +89,7 @@ class TvWatchOverlayTest {
                     qualityLabel = "1080p",
                     showQualityPicker = false,
                     onOpenQualityPicker = {},
-                    playFocus = FocusRequester(),
+                    playFocus = remember { FocusRequester() },
                     onBack = {})
             }
         }

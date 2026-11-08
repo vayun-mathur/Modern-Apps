@@ -1,5 +1,6 @@
 package com.vayunmathur.uniflix.ui.tv
 
+import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
@@ -154,7 +155,7 @@ class TvCardsAndRoutesTest {
                     mediaType = "movie",
                     backStack = stack,
                     vm = vm,
-                    playFocus = FocusRequester())
+                    playFocus = remember { FocusRequester() })
             }
         }
         composeRule.onNodeWithText("Play").assertExists()
@@ -180,7 +181,7 @@ class TvCardsAndRoutesTest {
                     mediaType = "tv",
                     backStack = stack,
                     vm = vm,
-                    playFocus = FocusRequester())
+                    playFocus = remember { FocusRequester() })
             }
         }
         composeRule.onNode(hasClickAction()).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
