@@ -6,6 +6,9 @@
     <!-- Sensors permission at install instead of auto-granting it. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
+    <!-- GitPage offers HTTPS cloning (GitRepo.clone); that needs sockets. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <application
