@@ -44,6 +44,14 @@ class UtilBatch2Slice3Test {
                     .build(),
             )
         }
+        // Test order within the class is not guaranteed: reset the overlay
+        // keys so the defaults test always sees a clean store.
+        val ds = DataStoreUtils.getInstance(app)
+        runBlocking {
+            ds.setLong(MapOverlayWorker.KEY_APPLIED_SEQ, 0L)
+            ds.setLong(MapOverlayWorker.KEY_PENDING_BYTES, 0L)
+            ds.setLong(MapOverlayWorker.KEY_LAST_CHECK, 0L)
+        }
     }
 
     private fun place(name: String = "Cafe") = SpecificFeature.GenericPlace(
@@ -140,6 +148,14 @@ class UtilBatch2Slice3Test {
     }
 
     // --- MapSettingsViewModel overlay progress ---
+
+    @Test
+    fun `overlay progress fields default to zero`() {
+        val vm = MapSettingsViewModel(app)
+        assertEquals(0L, vm.overlayAppliedSeq.value)
+        assertEquals(0L, vm.overlayPendingBytes.value)
+        assertEquals(0L, vm.overlayLastCheck.value)
+    }
 
     @Test
     fun `overlay progress follows direct datastore writes`() {
