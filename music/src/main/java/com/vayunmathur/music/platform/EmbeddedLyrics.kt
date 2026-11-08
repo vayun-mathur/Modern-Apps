@@ -67,6 +67,12 @@ object EmbeddedLyrics {
         null
     } catch (_: IllegalStateException) {
         null
+    } catch (_: IndexOutOfBoundsException) {
+        // Corrupt length fields can wrap the scan offset negative (e.g. a
+        // vendor/entry/box length near Int.MAX_VALUE), which escapes the
+        // bounds checks and fails inside ByteBuffer/array/String as an
+        // out-of-bounds access rather than an IllegalArgumentException.
+        null
     } catch (_: SecurityException) {
         null
     }
