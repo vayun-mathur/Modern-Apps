@@ -19,6 +19,10 @@
     <string name="answer_mode">Answer mode</string>
     <!-- HomeScreen: Explanation of answer mode under its title. Sentence -->
     <string name="answer_mode_description">Wrong digits are rejected and cost a life. Three strikes ends the puzzle.</string>
+    <!-- HomeScreen: Title of the highlight-mistakes setting row. Noun phrase -->
+    <string name="highlight_mistakes">Highlight mistakes</string>
+    <!-- HomeScreen: Explanation of highlight mistakes under its title. Sentence -->
+    <string name="highlight_mistakes_description">Wrong digits show in red as you play. Turn off for a harder game.</string>
     <!-- GameBoardScreen: Lives counter next to the hearts row, e.g. Lives: 2. Noun plural -->
     <string name="lives">Lives</string>
     <!-- GameOverOverlay: Title shown when answer mode runs out of lives. Declarative -->

@@ -68,6 +68,7 @@ class SudokuHomeAndGameScreenTest {
         rule.onNodeWithText(str(R.string.board_size)).assertExists()
         rule.onNodeWithText(str(R.string.difficulty)).assertExists()
         rule.onNodeWithText(str(R.string.answer_mode)).assertExists()
+        rule.onNodeWithText(str(R.string.highlight_mistakes)).assertExists()
         rule.onAllNodesWithText(str(R.string.size_six)).assertCountEquals(2)
         rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.new_game)).assertExists()
 

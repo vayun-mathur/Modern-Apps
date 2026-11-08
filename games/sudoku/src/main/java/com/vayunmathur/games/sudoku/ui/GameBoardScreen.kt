@@ -58,6 +58,7 @@ fun GameBoardScreen(
     state: SudokuUiState,
     actions: SudokuActions,
     onExit: () -> Unit,
+    highlightMistakes: Boolean = true,
 ) {
     val game = state.game
     AppScaffold(
@@ -134,6 +135,7 @@ fun GameBoardScreen(
                         game = game,
                         onSelect = actions::selectCell,
                         modifier = Modifier.size(boardSize),
+                        highlightMistakes = highlightMistakes,
                     )
                 }
             } else {
@@ -151,6 +153,7 @@ fun GameBoardScreen(
                         game = game,
                         onSelect = actions::selectCell,
                         modifier = Modifier.fillMaxWidth(),
+                        highlightMistakes = highlightMistakes,
                     )
 
                     StatusRow(game)

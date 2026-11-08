@@ -19,7 +19,16 @@ class SudokuDataStore(private val context: Context) {
         context.dataStore.edit { it[ANSWER_MODE_KEY] = enabled }
     }
 
+    /** On until the player opts out: wrong digits draw in red as they play. */
+    val highlightMistakes: Flow<Boolean> =
+        context.dataStore.data.map { it[HIGHLIGHT_MISTAKES_KEY] ?: true }
+
+    suspend fun setHighlightMistakes(enabled: Boolean) {
+        context.dataStore.edit { it[HIGHLIGHT_MISTAKES_KEY] = enabled }
+    }
+
     private companion object {
         val ANSWER_MODE_KEY = booleanPreferencesKey("answer_mode")
+        val HIGHLIGHT_MISTAKES_KEY = booleanPreferencesKey("highlight_mistakes")
     }
 }

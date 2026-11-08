@@ -162,6 +162,22 @@ class SudokuComponentsTest {
     }
 
     @Test
+    fun gridRendersWrongEntryWithHighlightMistakesOnAndOff() {
+        // Compose assertions cannot read the drawn color, so this locks the wiring: a wrong entry
+        // renders under both settings without crashing, and the model marks it wrong.
+        val base = game()
+        val blank = base.givens.indices.first { base.givens[it] == 0 }
+        val wrong = base.solution[blank] % base.size.side + 1
+        val entries = base.entries.toMutableList().also { it[blank] = wrong }
+        val game = base.copy(entries = entries)
+        assertTrue(game.isWrong(blank))
+        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = true) }
+        rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
+        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = false) }
+        rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
+    }
+
+    @Test
     fun numberPadTwelveUsesLetterKeys() {
         val tapped = mutableListOf<Int>()
         rule.setContent { NumberPad(game = game(BoardSize.TWELVE), onDigit = { tapped += it }) }

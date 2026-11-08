@@ -44,6 +44,7 @@ fun SudokuGrid(
     game: SudokuGameState,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    highlightMistakes: Boolean = true,
 ) {
     val size = game.size
     val side = size.side
@@ -68,6 +69,7 @@ fun SudokuGrid(
                             isSameValue = selectedValue != 0 &&
                                 index != selected &&
                                 game.valueAt(index) == selectedValue,
+                            highlightMistakes = highlightMistakes,
                             modifier = Modifier
                                 .size(cell)
                                 .clickable { onSelect(index) },
@@ -97,6 +99,7 @@ private fun SudokuCell(
     isSelected: Boolean,
     isPeer: Boolean,
     isSameValue: Boolean,
+    highlightMistakes: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -110,9 +113,14 @@ private fun SudokuCell(
         else -> Color.Transparent
     }
 
-    // Givens are the puzzle, entries are the player's work, so they read differently. There is no
-    // wrong-cell colour because a wrong digit is refused rather than written.
-    val digitColor = if (given) scheme.onSurface else scheme.primary
+    // Givens are the puzzle, entries are the player's work, so they read differently. A wrong
+    // entry draws in red unless the player turned the highlight off — answer mode never has wrong
+    // entries to draw, since a wrong digit is refused rather than written.
+    val digitColor = when {
+        !given && highlightMistakes && game.isWrong(index) -> scheme.error
+        given -> scheme.onSurface
+        else -> scheme.primary
+    }
 
     val spoken = if (value == 0) stringResource(R.string.cd_empty) else sudokuSymbol(value)
     val side = game.size.side

@@ -25,6 +25,7 @@ fun GameScreen(
     config: GameConfig,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val highlightMistakes by viewModel.highlightMistakes.collectAsState()
 
     LaunchedEffect(config) {
         if (uiState.game == null && !uiState.generating) viewModel.newGame(config)
@@ -42,5 +43,6 @@ fun GameScreen(
         state = uiState,
         actions = viewModel,
         onExit = { backStack.pop() },
+        highlightMistakes = highlightMistakes,
     )
 }
