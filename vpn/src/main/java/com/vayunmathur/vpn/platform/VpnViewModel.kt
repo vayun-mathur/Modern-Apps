@@ -21,6 +21,7 @@ import com.vayunmathur.vpn.data.DomainCountSummary
 import com.vayunmathur.vpn.data.VpnConfig
 import com.vayunmathur.vpn.data.VpnConfigDao
 import com.vayunmathur.vpn.data.WgConfigParser
+import com.vayunmathur.vpn.data.endpointHostOf
 import com.vayunmathur.vpn.data.toEntity
 import com.vayunmathur.vpn.data.toModel
 import com.vayunmathur.vpn.service.AppResolver
@@ -166,7 +167,7 @@ class VpnViewModel(
                 val nameFromFile = uri.lastPathSegment
                     ?.substringBeforeLast('.')
                     ?.takeIf { it.isNotBlank() }
-                    ?: imp.peerEndpoint.substringBefore(':').ifBlank { "Imported Tunnel" }
+                    ?: endpointHostOf(imp.peerEndpoint).ifBlank { "Imported Tunnel" }
                 val model = VpnConfig(
                     name = nameFromFile,
                     privateKey = imp.privateKey,
