@@ -116,6 +116,18 @@ data class Instrument(
             .sortedBy { strings[it].openMidi + fretted[it] }
 
     /**
+     * The most notes this instrument can sound at once.
+     *
+     * One per string, because a string sounds one pitch. This is the same kind of statement as
+     * [soundingRange] - a fact about the instrument, not a tuning parameter - and the chord
+     * pipeline uses it the same way, to discard note hypotheses outright. A ukulele producing
+     * five distinct pitch classes in one frame is not a difficult chord, it is extraction
+     * residue. A keyboard is bounded by the player's hands rather than by the model.
+     */
+    val polyphony: Int
+        get() = if (strings.isEmpty()) KEYBOARD_POLYPHONY else strings.size
+
+    /**
      * Every MIDI note this instrument can physically sound: open strings up to the highest
      * fretted note, or the keyboard compass.
      *
@@ -130,18 +142,6 @@ data class Instrument(
      * explain it with its own partials. An [InstrumentKind.UNFRETTED] instrument has no fret
      * span to bound the top, so it falls back to [analysis].
      */
-    /**
-     * The most notes this instrument can sound at once.
-     *
-     * One per string, because a string sounds one pitch. This is the same kind of statement as
-     * [soundingRange] - a fact about the instrument, not a tuning parameter - and the chord
-     * pipeline uses it the same way, to discard note hypotheses outright. A ukulele producing
-     * five distinct pitch classes in one frame is not a difficult chord, it is extraction
-     * residue. A keyboard is bounded by the player's hands rather than by the model.
-     */
-    val polyphony: Int
-        get() = if (strings.isEmpty()) KEYBOARD_POLYPHONY else strings.size
-
     val soundingRange: IntRange
         get() = keyboard?.let { it.lowestMidi..it.highestMidi }
             ?: when {
