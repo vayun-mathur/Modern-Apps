@@ -13,7 +13,8 @@ pub mod preintegrate;
 pub mod triangulate;
 pub mod vio;
 
-#[cfg(target_os = "android")]
+// Not cfg-gated to Android: the host build must export the same JNI symbols or
+// MeasureNative.available lies in JVM tests (library loads, every call throws).
 mod jni_bindings {
     use crate::preintegrate::ImuSample;
     use crate::vio::{Intrinsics, VioSession};
