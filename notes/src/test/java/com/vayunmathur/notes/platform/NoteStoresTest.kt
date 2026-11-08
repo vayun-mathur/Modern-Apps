@@ -157,6 +157,18 @@ class NoteStoresTest {
         assertTrue(blank.toString().isNotEmpty())
     }
 
+    @Test fun markdownCacheUriHandlesVeryLongTitle() {
+        // A 300-char title exceeds the 255-byte NAME_MAX: the cache write
+        // must still succeed instead of throwing (which crashes requestShare).
+        for (title in listOf("x".repeat(300), "字".repeat(150))) {
+            val uri = markdownCacheUri(context, Note(title = title, content = ""), "body")
+            assertTrue(uri.toString().isNotEmpty())
+            val written = File(File(context.cacheDir, "shared_notes"), shareMarkdownFileName(title))
+            assertTrue(written.exists(), title.take(20))
+            assertTrue(written.name.toByteArray().size <= 255, written.name)
+        }
+    }
+
     @Test fun exportInkAlphaAndFractionalValues() {
         val stroke = SerializedStroke("pen", 2.567f, 0x80102030.toInt(), 0.1f, listOf(SerializedPoint(1.234f, 2f, 0), SerializedPoint(3f, 4.891f, 1)))
         val note = Note(title = "", content = "").withBody(NoteBody(listOf(NoteBlock.Ink(listOf(stroke), heightDp = 10, id = "k"))))
