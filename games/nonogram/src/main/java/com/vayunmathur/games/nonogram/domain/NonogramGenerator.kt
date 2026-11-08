@@ -62,7 +62,12 @@ object NonogramGenerator {
     const val DEFAULT_FILL_RATIO = 0.55
 
     private const val DEFAULT_ATTEMPTS = 60
-    private const val DEFAULT_ROUNDS = 8
+
+    /** Rounds the seeded search runs per attempt; retries add more rounds beyond this base. */
+    const val DEFAULT_ROUNDS = 8
+
+    /** Extra rounds each generation retry adds, so a retry widens a search that found nothing. */
+    const val RETRY_EXTRA_ROUNDS = 8
 
     /** Keeps the per-round seeds far apart so consecutive rounds do not repaint near-identical grids. */
     private const val SEED_STRIDE = 1_000_003L

@@ -39,12 +39,13 @@ class NonogramScreensTest {
     class Recording : NonogramGameActions {
         val taps = mutableListOf<Int>(); val crosses = mutableListOf<Int>()
         val modes = mutableListOf<MarkMode>(); val gameModes = mutableListOf<GameMode>()
-        var next = 0; var restarts = 0
+        var next = 0; var restarts = 0; var retries = 0
         override fun tapCell(index: Int) { taps += index }
         override fun crossCell(index: Int) { crosses += index }
         override fun setMarkMode(mode: MarkMode) { modes += mode }
         override fun nextLevel() { next++ }
         override fun restartLevel() { restarts++ }
+        override fun retryGeneration() { retries++ }
         override fun setGameMode(mode: GameMode) { gameModes += mode }
     }
 
@@ -67,7 +68,8 @@ class NonogramScreensTest {
         rule.setContent { NonogramGameScreen(NonogramUiState(generationFailed = true), a, {}, {}) }
         rule.onNodeWithText(str(R.string.generation_failed)).assertIsDisplayed()
         rule.onNodeWithText(str(R.string.try_again)).performClick()
-        assertEquals(1, a.restarts)
+        assertEquals(1, a.retries, "try-again must widen the seed search, not just clear marks")
+        assertEquals(0, a.restarts)
     }
 
     @Test fun inProgressShowsHintToggleAndRestartWithoutConfirm() {

@@ -24,6 +24,14 @@ interface NonogramGameActions {
     fun setMarkMode(mode: MarkMode) {}
     fun nextLevel() {}
     fun restartLevel() {}
+
+    /**
+     * Retries a failed puzzle generation with a widened seed search.
+     *
+     * This is separate from [restartLevel] on purpose: restart only clears marks, which cannot
+     * retrigger generation, and re-running the same seed would find the same nothing.
+     */
+    fun retryGeneration() {}
     fun setGameMode(mode: GameMode) {}
 
     companion object { val Noop: NonogramGameActions = object : NonogramGameActions {} }
