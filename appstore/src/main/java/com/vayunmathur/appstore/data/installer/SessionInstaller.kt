@@ -4,8 +4,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
+import androidx.core.app.ActivityCompat
 import com.vayunmathur.library.log.Log
 import com.vayunmathur.appstore.data.security.InstallRequirement
 import com.vayunmathur.appstore.data.security.InstallVerifier
@@ -56,6 +58,22 @@ class SessionInstaller(
     private fun isInstalled(packageName: String): Boolean = runCatching {
         context.packageManager.getPackageInfo(packageName, 0)
     }.isSuccess
+
+    /**
+     * Whether the OS actually granted the privileged INSTALL_PACKAGES permission
+     * declared in the manifest.
+     *
+     * MAOS grants it to the store as a privileged app, enabling silent installs.
+     * Stock Android (sideloaded or regular user install) never grants it, so this
+     * returns false there and every install keeps the user-confirmed flow. Public
+     * API check only; never throws.
+     */
+    private fun hasSilentInstallPermission(): Boolean = runCatching {
+        ActivityCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.INSTALL_PACKAGES,
+        ) == PackageManager.PERMISSION_GRANTED
+    }.getOrDefault(false)
 
     private fun commit(packageName: String, files: List<File>, totalSize: Long): Boolean {
         val computedSize = if (totalSize > 0) totalSize else files.sumOf { it.length() }
@@ -145,8 +163,14 @@ class SessionInstaller(
             // Silent install is only offered for updates: the OS honours
             // USER_ACTION_NOT_REQUIRED when this app is the target's update owner, and
             // a first-time install of a package owned by someone else would prompt
-            // anyway. First installs keep the confirmation dialog unconditionally.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isInstalled(packageName)) {
+            // anyway. First installs keep the confirmation dialog unconditionally —
+            // unless the OS granted the privileged INSTALL_PACKAGES permission (MAOS),
+            // in which case silent commits are allowed for first installs too. The
+            // permission check is what makes this degrade gracefully: stock Android
+            // never grants it, so the flow there is byte-for-byte the old one.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                (isInstalled(packageName) || hasSilentInstallPermission())
+            ) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
             setInstallLocation(android.content.pm.PackageInfo.INSTALL_LOCATION_AUTO)
