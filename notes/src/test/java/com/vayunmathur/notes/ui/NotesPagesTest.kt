@@ -210,7 +210,12 @@ class NotesPagesTest {
             runCatching { rule.onNodeWithText("external-action").assertIsDisplayed(); true }.getOrDefault(false)
         }
         rule.onNodeWithContentDescription("Save").performClick()
-        rule.waitForIdle()
+        // saveExternal writes on Dispatchers.IO, which waitForIdle does not
+        // cover; poll so a torn read right after truncation cannot flake this.
+        val saveDeadline = System.currentTimeMillis() + 8000
+        while (System.currentTimeMillis() < saveDeadline && file.readText() != "original external") {
+            Thread.sleep(30); rule.waitForIdle()
+        }
         assertEquals("original external", file.readText())
         rule.onNodeWithContentDescription("Add").performClick()
         val deadline = System.currentTimeMillis() + 8000
