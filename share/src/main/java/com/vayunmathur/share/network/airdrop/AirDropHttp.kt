@@ -32,6 +32,8 @@ object AirDropHttp {
         val contentLength: Long? get() = this["content-length"]?.trim()?.toLongOrNull()
         val isChunked: Boolean get() = this["transfer-encoding"]?.contains("chunked", ignoreCase = true) == true
         val keepAlive: Boolean get() = this["connection"]?.equals("close", ignoreCase = true) != true
+        /** Snapshot of the parsed headers; keys are lowercased, like [get] expects. */
+        fun toMap(): Map<String, String> = LinkedHashMap(map)
         override fun toString(): String = map.toString()
     }
 
@@ -65,7 +67,7 @@ object AirDropHttp {
             "deflate" -> InflaterInputStream(raw)
             else -> raw
         }
-        return Response(status, emptyMap(), readLimited(decoded, limit))
+        return Response(status, headers.toMap(), readLimited(decoded, limit))
     }
 
     fun writeRequestHead(out: OutputStream, method: String, path: String, headers: List<Pair<String, String>>) {

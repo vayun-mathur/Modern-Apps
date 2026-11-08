@@ -53,6 +53,22 @@ class AirDropHttpTest {
     }
 
     @Test
+    fun `response round trips with its headers`() {
+        val out = ByteArrayOutputStream()
+        AirDropHttp.writeResponse(
+            out,
+            AirDropHttp.Response(
+                200,
+                mapOf("Content-Type" to "application/x-apple-binary-plist"),
+                "ok".toByteArray(),
+            ),
+            keepAlive = true,
+        )
+        val resp = AirDropHttp.readResponse(ByteArrayInputStream(out.toByteArray()))
+        assertEquals("application/x-apple-binary-plist", resp.headers["content-type"])
+    }
+
+    @Test
     fun `self signed certificate parses and verifies`() {
         val pair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
         val cert = AirDropTls.selfSignedCertificate(pair, "Pixel")
