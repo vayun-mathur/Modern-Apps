@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -82,15 +85,26 @@ fun OfflineBanner(online: Boolean, modifier: Modifier = Modifier) {
  * }
  * ```
  *
- * The banner carries [statusBarsPadding] so it clears the status bar under edge-to-edge; the content
- * keeps drawing edge-to-edge and manages its own insets exactly as before.
+ * The banner carries [statusBarsPadding] so it clears the status bar under edge-to-edge. While the
+ * banner is visible it has already absorbed the status-bar inset, so the content below it must not
+ * apply that inset a second time: `statusBarsPadding()` (and the Material3 top app bar's default
+ * `windowInsets`, which is also the status bars) do not consume the inset, and a wrapped
+ * `AppScaffold` would otherwise add a second, empty status-bar-height gap between the banner and
+ * its top app bar. Consuming [WindowInsets.statusBars] for the content while offline makes the
+ * app bar sit directly beneath the banner; while online nothing is consumed and the content
+ * manages its own insets exactly as before.
  */
 @Composable
 fun OfflineAware(content: @Composable () -> Unit) {
     val online by rememberIsOnline()
     Column(Modifier.fillMaxSize()) {
         OfflineBanner(online, Modifier.statusBarsPadding())
-        Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .then(if (online) Modifier else Modifier.consumeWindowInsets(WindowInsets.statusBars)),
+        ) { content() }
     }
 }
 
