@@ -269,6 +269,11 @@ fun warpQuadToBitmap(src: Bitmap, quad: Quadrilateral, width: Int, height: Int):
         val top = (bounds.top * src.height).roundToInt().coerceIn(0, src.height - 1)
         val w = targetWidth.coerceAtMost(src.width - left)
         val h = targetHeight.coerceAtMost(src.height - top)
-        Bitmap.createBitmap(src, left, top, w, h)
+        // The subset shares the source's pixel storage, so hand back an
+        // independent copy: every caller recycles the source right after this
+        // returns (and the result later), which would otherwise free pixels
+        // the returned bitmap still points at.
+        val subset = Bitmap.createBitmap(src, left, top, w, h)
+        subset.copy(Bitmap.Config.ARGB_8888, true).also { subset.recycle() }
     }
 }
