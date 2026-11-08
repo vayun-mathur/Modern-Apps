@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.net.Uri
+import androidx.compose.runtime.remember
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
@@ -123,7 +124,7 @@ class BrowserInteractionTest {
                 viewModel = v,
                 bookmarks = listOf(Bookmark(id = 1, url = "https://bm.example", title = "BmTitle")),
                 history = listOf(HistoryEntry(id = 2, url = "https://hist.example", title = "HistTitle")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = {},
                 onDismiss = {},
             )

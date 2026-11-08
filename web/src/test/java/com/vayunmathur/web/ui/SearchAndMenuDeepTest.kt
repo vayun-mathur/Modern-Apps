@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.os.Looper
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -141,7 +142,7 @@ class SearchAndMenuDeepTest {
                     viewModel = v,
                     bookmarks = emptyList(),
                     history = listOf(com.vayunmathur.web.data.HistoryEntry(id = 1, url = "https://bottom.example", title = "BottomHist")),
-                    searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                    searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                     onNavigate = {},
                     onDismiss = {},
                 )

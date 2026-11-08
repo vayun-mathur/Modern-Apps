@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.os.Looper
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -225,7 +226,7 @@ class WebPagesTest {
                 viewModel = v,
                 bookmarks = v.bookmarks.value,
                 history = listOf(HistoryEntry(url = "https://past.example", title = "Past Title")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = {},
                 onDismiss = {},
             )

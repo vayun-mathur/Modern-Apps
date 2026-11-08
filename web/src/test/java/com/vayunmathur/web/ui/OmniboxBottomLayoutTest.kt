@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.os.Looper
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -58,7 +59,7 @@ class OmniboxBottomLayoutTest {
                 viewModel = v,
                 bookmarks = emptyList(),
                 history = listOf(HistoryEntry(id = 1, url = "https://dock.example", title = "DockHist")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = { navigated = it },
                 onDismiss = { dismissed = true },
             )
@@ -87,7 +88,7 @@ class OmniboxBottomLayoutTest {
                 viewModel = v,
                 bookmarks = emptyList(),
                 history = listOf(HistoryEntry(id = 1, url = "https://top.example", title = "TopHist")),
-                searchFocusRequester = androidx.compose.ui.focus.FocusRequester(),
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = {},
                 onDismiss = {},
             )
