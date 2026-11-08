@@ -66,7 +66,7 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
     val reminderMinutesOfDay: StateFlow<Long> = reminderSettings.minutesOfDay
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DailyPuzzleReminder.DEFAULT_MINUTES_OF_DAY)
 
-    private val _hintCooldownEnd = MutableStateFlow(System.currentTimeMillis() + HINT_COOLDOWN_MILLIS)
+    private val _hintCooldownEnd = MutableStateFlow(0L)
     val hintCooldownEnd: StateFlow<Long> = _hintCooldownEnd.asStateFlow()
 
     // ---- Competitive mode state ----

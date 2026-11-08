@@ -181,6 +181,12 @@ class WordMakerViewModelTest {
         pollUntil { vm.gameMode.value == GameMode.CASUAL }
         assertFalse(vm.bonusWords.value.contains("ZQXCOMPWORD"))
     }
+    @Test fun hintAvailableImmediatelyOnLaunch() {
+        // No hint has been used yet, so there is no cooldown to serve: the
+        // UiState contract uses 0 for "available now" and the wheel enables
+        // the hint button when the remaining cooldown is <= 0.
+        assertEquals(0L, vm().hintCooldownEnd.value)
+    }
     @Test fun revealHintRevealsACellAndStartsCooldown() {
         val vm = vm()
         pollUntil { vm.crosswordData.value != null }
