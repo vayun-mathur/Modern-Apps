@@ -122,11 +122,13 @@ fun TravelViewModel.confirmCancellation(orderId: String) {
     cancellationMutable.value = cancellationMutable.value.copy(confirming = true, error = null)
     viewModelScope.launch {
         val stored = repository.getBookedTrip(orderId)
-        val confirmed = runCatching { TravelOrderApi.confirmCancellation(quote.id) }.getOrNull()
-        if (confirmed == null) {
+        val confirmed = runCatching { TravelOrderApi.confirmCancellation(quote.id) }.getOrElse {
             cancellationMutable.value = cancellationMutable.value.copy(
                 confirming = false,
-                error = errorMessage(IllegalStateException("Cancellation failed. Please try again."))
+                // Surface the server's reason (e.g. window closed, already
+                // cancelled); keep a specific fallback for blank messages.
+                error = it.message?.takeIf { msg -> msg.isNotBlank() }
+                    ?: "Cancellation failed. Please try again."
             )
             return@launch
         }
