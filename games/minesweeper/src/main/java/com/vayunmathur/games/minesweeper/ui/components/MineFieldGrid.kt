@@ -21,6 +21,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -125,7 +127,18 @@ private fun MineCell(
                     },
                 )
             }
-            .clearAndSetSemantics { contentDescription = "$position, $stateWord" },
+            .clearAndSetSemantics {
+                contentDescription = "$position, $stateWord"
+                // Screen-reader activation. Semantics-only on purpose: a clickable
+                // modifier would also deliver a tap on press-and-hold and break the
+                // tap/long-press split that detectTapGestures above preserves.
+                onClick { onTap(); true }
+                onLongClick {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongPress()
+                    true
+                }
+            },
         contentAlignment = Alignment.Center,
     ) {
         when {
