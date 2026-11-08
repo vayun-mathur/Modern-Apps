@@ -340,6 +340,19 @@ class WebViewModelTest {
         awaitCondition("storage cleared") { v.storageInfos.value.none { it.origin == "https://store.example" } }
     }
 
+    @Test fun siteDataClearAlsoClearsWebViewState() {
+        val cleared = mutableListOf<String>()
+        val v = WebViewModel(stores, context, incognito = false, originStateClearer = OriginStateClearer { cleared += it })
+        createdVms += v
+        shadowOf(Looper.getMainLooper()).idle()
+        val origin = "https://cookie-clear.example"
+        v.updateStorageFootprint(origin, cookieCount = 2, hasLocalStorage = true, hasIndexedDb = false, hasServiceWorker = false, estBytes = 100)
+        awaitCondition("storage recorded") { v.storageInfos.value.any { it.origin == origin } }
+        v.clearSiteData(origin)
+        awaitCondition("origin web state cleared") { origin in cleared }
+        awaitCondition("storage cleared") { v.storageInfos.value.none { it.origin == origin } }
+    }
+
     @Test fun shieldsPersistThroughRepository() {
         val v = vm(incognito = false)
         v.updateShields(ShieldsSettings(level = ShieldLevel.STANDARD, blockTrackers = false, cosmeticFiltering = true, fingerprintProtection = true, httpsUpgrade = true))

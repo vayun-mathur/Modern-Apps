@@ -67,6 +67,7 @@ class WebViewModel(
      * start from being farbled on a site the user turned shields off for.
      */
     initialShieldSettings: List<ShieldSetting> = emptyList(),
+    val originStateClearer: OriginStateClearer = WebViewCookieClearer,
 ) : ViewModel() {
 
     companion object {
