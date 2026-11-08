@@ -2,6 +2,7 @@ package com.vayunmathur.pdf.ui
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
@@ -93,7 +94,7 @@ class ChromeAndFormsTest {
                     scroll = SafePdfScrollState(), zoom = SafePdfZoomState(),
                     drawerState = rememberDrawerState(DrawerValue.Closed),
                     pageViewer = { androidx.compose.foundation.layout.Box(it) { com.vayunmathur.library.ui.Text("PagesHere") } },
-                    searchFocus = FocusRequester(), onBack = {}, onShare = {}, onSaveInPlace = {}, onSaveCopyName = {},
+                    searchFocus = remember { FocusRequester() }, onBack = {}, onShare = {}, onSaveInPlace = {}, onSaveCopyName = {},
                 )
             }
         }
@@ -113,7 +114,7 @@ class ChromeAndFormsTest {
                     scroll = SafePdfScrollState(), zoom = SafePdfZoomState(),
                     drawerState = rememberDrawerState(DrawerValue.Closed),
                     pageViewer = { androidx.compose.foundation.layout.Box(it) {} },
-                    searchFocus = FocusRequester(), onBack = {}, onShare = {}, onSaveInPlace = {}, onSaveCopyName = {},
+                    searchFocus = remember { FocusRequester() }, onBack = {}, onShare = {}, onSaveInPlace = {}, onSaveCopyName = {},
                 )
             }
         }
@@ -133,7 +134,7 @@ class ChromeAndFormsTest {
                     scroll = SafePdfScrollState(), zoom = SafePdfZoomState(),
                     drawerState = rememberDrawerState(DrawerValue.Closed),
                     pageViewer = { androidx.compose.foundation.layout.Box(it) {} },
-                    searchFocus = FocusRequester(), onBack = {}, onShare = {}, onSaveInPlace = {}, onSaveCopyName = {},
+                    searchFocus = remember { FocusRequester() }, onBack = {}, onShare = {}, onSaveInPlace = {}, onSaveCopyName = {},
                 )
             }
         }
