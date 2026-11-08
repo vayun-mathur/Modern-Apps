@@ -29,4 +29,5 @@
     <string name="peer_publickey">المفتاح العام للنظير: %1$s</string>
     <string name="vpn_channel_name">نفق VPN</string>
     <string name="vpn_wireguard_gotatun">VPN — WireGuard (gotatun)</string>
+    <string name="mtu_keepalive_s">MTU: %1$s Keepalive: %2$ss</string>
 </resources>
