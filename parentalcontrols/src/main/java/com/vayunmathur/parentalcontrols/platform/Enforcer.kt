@@ -133,13 +133,12 @@ class Enforcer(private val context: Context) {
 
     private suspend fun notifyDeviceBudgetCrossed() {
         val day = LocalDate.now().toString()
-        if (deviceOverBudgetNow(rules.bonusesToday(day))) return
+        if (!deviceOverBudgetNow(rules.bonusesToday(day))) return
         // Device-wide budget crossing is detected here rather than by an observer (the
-        // platform has no device-total primitive): if the last minute pushed the total over,
-        // the child gets one notice. Per-app trips already notified via onLimitReached.
-        if (deviceOverBudgetNow(rules.bonusesToday(LocalDate.now().toString()))) {
-            LockNotifier.notifyLocked(context, BlockReason.DailyLimit, null)
-        }
+        // platform has no device-total primitive). This runs only on window-boundary alarms,
+        // so while the budget stays spent the child gets at most one notice per boundary.
+        // Per-app trips already notified via onLimitReached.
+        LockNotifier.notifyLocked(context, BlockReason.DailyLimit, null)
     }
 
     /**
