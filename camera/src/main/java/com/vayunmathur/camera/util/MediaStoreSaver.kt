@@ -83,8 +83,8 @@ object MediaStoreSaver {
         val ok = try {
             resolver.openOutputStream(uri)?.use { os ->
                 os.write(bytes)
-            }
-            true
+                true
+            } ?: false
         } catch (e: java.io.FileNotFoundException) {
             Log.status("MediaStoreSaver", "saveJpegBytes write failed for $uri", e)
             false
@@ -108,20 +108,22 @@ object MediaStoreSaver {
         dest: Uri,
         bitmap: Bitmap,
         quality: Int = 95,
-    ): Uri? = try {
-        resolver.openOutputStream(dest)?.use { os ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, os)
+    ): Uri? {
+        val ok = try {
+            resolver.openOutputStream(dest)?.use { os ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, os)
+            } ?: false
+        } catch (e: java.io.FileNotFoundException) {
+            Log.status("MediaStoreSaver", "saveBitmapToUri failed for $dest", e)
+            false
+        } catch (e: java.io.IOException) {
+            Log.status("MediaStoreSaver", "saveBitmapToUri failed for $dest", e)
+            false
+        } catch (e: SecurityException) {
+            Log.status("MediaStoreSaver", "saveBitmapToUri failed for $dest", e)
+            false
         }
-        dest
-    } catch (e: java.io.FileNotFoundException) {
-        Log.status("MediaStoreSaver", "saveBitmapToUri failed for $dest", e)
-        null
-    } catch (e: java.io.IOException) {
-        Log.status("MediaStoreSaver", "saveBitmapToUri failed for $dest", e)
-        null
-    } catch (e: SecurityException) {
-        Log.status("MediaStoreSaver", "saveBitmapToUri failed for $dest", e)
-        null
+        return if (ok) dest else null
     }
 
     /** Write pre-encoded JPEG [bytes] to a caller-supplied [dest]. */
@@ -129,37 +131,43 @@ object MediaStoreSaver {
         resolver: ContentResolver,
         dest: Uri,
         bytes: ByteArray,
-    ): Uri? = try {
-        resolver.openOutputStream(dest)?.use { os ->
-            os.write(bytes)
+    ): Uri? {
+        val ok = try {
+            resolver.openOutputStream(dest)?.use { os ->
+                os.write(bytes)
+                true
+            } ?: false
+        } catch (e: java.io.FileNotFoundException) {
+            Log.status("MediaStoreSaver", "saveJpegBytesToUri failed for $dest", e)
+            false
+        } catch (e: java.io.IOException) {
+            Log.status("MediaStoreSaver", "saveJpegBytesToUri failed for $dest", e)
+            false
+        } catch (e: SecurityException) {
+            Log.status("MediaStoreSaver", "saveJpegBytesToUri failed for $dest", e)
+            false
         }
-        dest
-    } catch (e: java.io.FileNotFoundException) {
-        Log.status("MediaStoreSaver", "saveJpegBytesToUri failed for $dest", e)
-        null
-    } catch (e: java.io.IOException) {
-        Log.status("MediaStoreSaver", "saveJpegBytesToUri failed for $dest", e)
-        null
-    } catch (e: SecurityException) {
-        Log.status("MediaStoreSaver", "saveJpegBytesToUri failed for $dest", e)
-        null
+        return if (ok) dest else null
     }
 
     /** Copy a staged [file] into a caller-supplied [dest] (e.g. SAF video doc). */
-    fun saveVideoFileToUri(resolver: ContentResolver, dest: Uri, file: File): Uri? = try {
-        resolver.openOutputStream(dest)?.use { os ->
-            file.inputStream().use { input -> input.copyTo(os) }
+    fun saveVideoFileToUri(resolver: ContentResolver, dest: Uri, file: File): Uri? {
+        val ok = try {
+            resolver.openOutputStream(dest)?.use { os ->
+                file.inputStream().use { input -> input.copyTo(os) }
+                true
+            } ?: false
+        } catch (e: java.io.FileNotFoundException) {
+            Log.status("MediaStoreSaver", "saveVideoFileToUri failed for $dest", e)
+            false
+        } catch (e: java.io.IOException) {
+            Log.status("MediaStoreSaver", "saveVideoFileToUri failed for $dest", e)
+            false
+        } catch (e: SecurityException) {
+            Log.status("MediaStoreSaver", "saveVideoFileToUri failed for $dest", e)
+            false
         }
-        dest
-    } catch (e: java.io.FileNotFoundException) {
-        Log.status("MediaStoreSaver", "saveVideoFileToUri failed for $dest", e)
-        null
-    } catch (e: java.io.IOException) {
-        Log.status("MediaStoreSaver", "saveVideoFileToUri failed for $dest", e)
-        null
-    } catch (e: SecurityException) {
-        Log.status("MediaStoreSaver", "saveVideoFileToUri failed for $dest", e)
-        null
+        return if (ok) dest else null
     }
 
     fun saveVideoFile(resolver: ContentResolver, values: ContentValues, file: File): Uri? {
@@ -167,8 +175,8 @@ object MediaStoreSaver {
         val ok = try {
             resolver.openOutputStream(uri)?.use { os ->
                 file.inputStream().use { input -> input.copyTo(os) }
-            }
-            true
+                true
+            } ?: false
         } catch (e: java.io.FileNotFoundException) {
             Log.status("MediaStoreSaver", "saveVideoFile write failed for $uri", e)
             false

@@ -8,11 +8,16 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.`when`
 import org.robolectric.Shadows.shadowOf
 import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
@@ -73,6 +78,60 @@ class MediaStoreSaverAndProcessingTest {
         assertNotNull(uri)
         val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
         assertNotNull(MediaStoreSaver.saveBitmap(resolver, MediaStoreSaver.imageValues("x.jpg"), bitmap))
+    }
+
+    // Robolectric backs MediaStore inserts with real streams, so the
+    // null-stream failure path needs a deterministic mock instead: the
+    // insert succeeds but openOutputStream yields null, and the saver
+    // must delete the ghost row and report failure (null).
+    private fun nullStreamResolver(row: Uri): android.content.ContentResolver {
+        val resolver = mock(android.content.ContentResolver::class.java)
+        `when`(resolver.insert(any(), any())).thenReturn(row)
+        `when`(resolver.openOutputStream(any())).thenReturn(null)
+        `when`(resolver.delete(any(), any(), any())).thenReturn(1)
+        return resolver
+    }
+
+    @Test fun saveJpegBytesReturnsNullWhenStreamUnavailable() {
+        val resolver = nullStreamResolver(Uri.parse("content://fake/media/1"))
+        assertNull(
+            MediaStoreSaver.saveJpegBytes(
+                resolver, MediaStoreSaver.imageValues("ghost.jpg"), byteArrayOf(1)
+            )
+        )
+        verify(resolver).delete(any(), any(), any())
+    }
+
+    @Test fun saveVideoFileReturnsNullWhenStreamUnavailable() {
+        val resolver = nullStreamResolver(Uri.parse("content://fake/media/2"))
+        val src = File.createTempFile("vid", ".mp4").apply { writeBytes(byteArrayOf(9, 8, 7)) }
+        try {
+            assertNull(
+                MediaStoreSaver.saveVideoFile(
+                    resolver, MediaStoreSaver.videoValues("ghost.mp4"), src
+                )
+            )
+        } finally {
+            src.delete()
+        }
+        verify(resolver).delete(any(), any(), any())
+    }
+
+    @Test fun saveToUriReturnsNullWhenStreamUnavailable() {
+        // No stream for dest: every ToUri variant must report failure so
+        // callers fall through to the MediaStore fallback.
+        val resolver = mock(android.content.ContentResolver::class.java)
+        `when`(resolver.openOutputStream(any())).thenReturn(null)
+        val dest = Uri.parse("content://fake/missing.jpg")
+        assertNull(MediaStoreSaver.saveJpegBytesToUri(resolver, dest, byteArrayOf(1, 2, 3)))
+        val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+        assertNull(MediaStoreSaver.saveBitmapToUri(resolver, dest, bitmap))
+        val src = File.createTempFile("vid", ".mp4").apply { writeBytes(byteArrayOf(9)) }
+        try {
+            assertNull(MediaStoreSaver.saveVideoFileToUri(resolver, dest, src))
+        } finally {
+            src.delete()
+        }
     }
 
     @Test fun pendingStillSaveRoutingWithoutTarget() {
