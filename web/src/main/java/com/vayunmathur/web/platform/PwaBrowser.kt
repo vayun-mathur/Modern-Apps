@@ -269,7 +269,7 @@ private fun createPwaWebView(
     )
     val cookieManager = CookieManager.getInstance()
     cookieManager.setAcceptCookie(true)
-    cookieManager.setAcceptThirdPartyCookies(this, true)
+    cookieManager.setAcceptThirdPartyCookies(this, shouldAcceptPwaThirdPartyCookies(ctx))
 
     applyPwaWebSettings(this, ctx)
 
@@ -296,6 +296,18 @@ private fun createPwaWebView(
     (webViewClient as ShieldsWebViewClient)
         .installFarbling(this, FarblingConfig.of(ShieldsSettings.AGGRESSIVE_DEFAULTS, emptyMap()))
     loadUrl(initialUrl)
+}
+
+/**
+ * Whether the PWA WebView accepts third-party cookies. Browser tabs gate this on the
+ * global block-third-party setting; the PWA window must honour the same pref instead of
+ * hardcoding acceptance.
+ */
+internal fun shouldAcceptPwaThirdPartyCookies(context: Context): Boolean {
+    val blocked = context
+        .getSharedPreferences("web_prefs", Context.MODE_PRIVATE)
+        .getBoolean(P_BLOCK_THIRD_PARTY, false)
+    return !blocked
 }
 
 private fun applyPwaWebSettings(webView: WebView, ctx: Context) {

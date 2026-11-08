@@ -220,6 +220,22 @@ class ChromeGrantAndPwaDownloadTest {
         assertTrue(req.granted == null, "granted=${req.granted}")
     }
 
+    @Test fun pwaThirdPartyCookieDecisionHonoursGlobalPref() {
+        // Robolectric's cookie manager ignores setAcceptThirdPartyCookies, so the
+        // decision itself is the unit under test; createPwaWebView feeds it through.
+        val prefs = context.getSharedPreferences("web_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("web_block_third_party", true).apply()
+        try {
+            assertEquals(
+                false,
+                com.vayunmathur.web.platform.shouldAcceptPwaThirdPartyCookies(context),
+            )
+        } finally {
+            prefs.edit().remove("web_block_third_party").apply()
+        }
+        assertEquals(true, com.vayunmathur.web.platform.shouldAcceptPwaThirdPartyCookies(context))
+    }
+
     @Test fun pwaBackPressFinishesWhenNoHistory() {
         rule.setContent {
             com.vayunmathur.web.platform.PwaBrowser(initialUrl = "https://pwa.example/app", title = "PWA")
