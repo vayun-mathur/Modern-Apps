@@ -46,6 +46,16 @@ object MapChromeMetrics {
     val aboveEtaStripTight: Dp = etaStripHeight + 4.dp
 
     /**
+     * Clearance for chrome sitting directly above the scale bar.
+     *
+     * The bar is a labelSmall line (16 dp) + 8 dp vertical padding + a 2 dp gap
+     * + a 3 dp rule ≈ 29 dp, rounded up so the pill never kisses it. An
+     * estimate like [etaStripHeight], for the same reason: one shared number
+     * beats a magic one at each call site.
+     */
+    val aboveScaleBar: Dp = 32.dp + 12.dp
+
+    /**
      * Radius of the tolerance box around a tap used to hit-test map pins.
      *
      * Coupled to the marker `iconSize` ramps in the pin layers, not to any spacing value: it

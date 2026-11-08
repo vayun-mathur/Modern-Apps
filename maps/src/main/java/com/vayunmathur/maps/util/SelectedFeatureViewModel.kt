@@ -120,6 +120,10 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
     private val _userBearing = MutableStateFlow<Float?>(null)
     val userBearing = _userBearing.asStateFlow()
 
+    /** Latest GPS speed in m/s (0 when the fix carries none), for the ambient speed readout. */
+    private val _userSpeedMps = MutableStateFlow(0f)
+    val userSpeedMps = _userSpeedMps.asStateFlow()
+
     // Magnetometer accuracy backing the compass calibration banner. Defaults to
     // HIGH so the banner stays hidden until the sensor reports a lower value.
     private val _userHeadingAccuracy = MutableStateFlow(SensorManager.SENSOR_STATUS_ACCURACY_HIGH)
@@ -148,9 +152,10 @@ class SelectedFeatureViewModel(application: Application): AndroidViewModel(appli
 
     init {
         locationManager.startUpdates(
-            onUpdateReceived = { position, bearing ->
+            onUpdateReceived = { position, bearing, speedMps ->
                 _userPosition.value = position
                 _userBearing.value = bearing
+                _userSpeedMps.value = speedMps
                 persistPosition(position)
             },
             onAccuracyReceived = { accuracy ->

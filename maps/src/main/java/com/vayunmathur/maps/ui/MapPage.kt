@@ -133,6 +133,7 @@ fun MapPage(
     val userPosition by viewModel.userPosition.collectAsState()
     val userBearing by viewModel.userBearing.collectAsState()
     val userHeadingAccuracy by viewModel.userHeadingAccuracy.collectAsState()
+    val userSpeedMps by viewModel.userSpeedMps.collectAsState()
 
     val savedList by savedPlacesViewModel.saved.collectAsState()
     // The starred list drawn as one pin set, deduped.
@@ -278,6 +279,7 @@ fun MapPage(
         userPosition = userPosition,
         userBearing = userBearing,
         userHeadingAccuracy = userHeadingAccuracy,
+        userSpeedMps = userSpeedMps,
         savedPins = savedPins,
         parkingSpot = parkingSpot,
         searchResults = searchResults,

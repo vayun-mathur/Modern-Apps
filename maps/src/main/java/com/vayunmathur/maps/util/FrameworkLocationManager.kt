@@ -27,10 +27,11 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
 
-    // Callback to pass both GeoPoint and Heading (Compass). The heading is null until a
+    // Callback to pass GeoPoint, heading (compass), and speed. The heading is null until a
     // real one has been seen: "unknown" and "due north" are different things, and the map
-    // draws the puck's bearing cone only for the second.
-    private var onUpdate: ((GeoPoint, Float?) -> Unit)? = null
+    // draws the puck's bearing cone only for the second. Speed is m/s, 0 when the fix
+    // carries none — same convention as the navigation service.
+    private var onUpdate: ((GeoPoint, Float?, Float) -> Unit)? = null
     // Callback for magnetometer accuracy so the UI can prompt for calibration.
     private var onAccuracy: ((Int) -> Unit)? = null
     private var lastLocation: Location? = null
@@ -56,7 +57,7 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
 
     @SuppressLint("MissingPermission")
     fun startUpdates(
-        onUpdateReceived: (GeoPoint, Float?) -> Unit,
+        onUpdateReceived: (GeoPoint, Float?, Float) -> Unit,
         onAccuracyReceived: (Int) -> Unit = {},
     ): LocationListener {
         this.onUpdate = onUpdateReceived
@@ -102,7 +103,7 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
                 // the next sensor sample compares against what the UI just drew
                 // rather than a pre-fix heading.
                 if (location.hasBearing()) lastEmittedHeading = location.bearing
-                onUpdate?.invoke(point, heading)
+                onUpdate?.invoke(point, heading, speedMps)
             }
             @Deprecated("Overrides deprecated LocationListener.onStatusChanged")
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -147,7 +148,8 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
                 accuracyM = lastFix!!.accuracyM,
                 sinceNanos = lastFix!!.elapsedRealtimeNanos,
             )
-            onUpdate?.invoke(point, heading)
+            val speedMps = if (location.hasSpeed()) location.speed else 0f
+            onUpdate?.invoke(point, heading, speedMps)
         }
 
         // 2. Setup Sensor Updates (Compass)
@@ -257,7 +259,8 @@ class FrameworkLocationManager(context: Context) : SensorEventListener {
                 if (!it.hasBearing() && moved >= HEADING_EMIT_DEGREES) {
                     lastEmittedHeading = currentHeading
                     val point = positionHold?.drawn ?: GeoPoint(it.longitude, it.latitude)
-                    onUpdate?.invoke(point, currentHeading)
+                    val speedMps = if (it.hasSpeed()) it.speed else 0f
+                    onUpdate?.invoke(point, currentHeading, speedMps)
                 }
             }
         }

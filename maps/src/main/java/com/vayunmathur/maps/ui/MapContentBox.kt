@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.vayunmathur.library.map.GeoPoint
@@ -31,13 +30,11 @@ import com.vayunmathur.maps.ui.map.MapChromeState
 import com.vayunmathur.maps.ui.map.MapFabStack
 import com.vayunmathur.maps.ui.map.MapOverlay
 import com.vayunmathur.maps.ui.map.MapOverlays
-import com.vayunmathur.maps.ui.map.MapSearchBar
 import com.vayunmathur.maps.ui.map.MapSurface
 import com.vayunmathur.maps.ui.map.NavigationCameraFollow
 import com.vayunmathur.maps.ui.map.WaypointList
+import com.vayunmathur.maps.ui.nav.AmbientSpeedOverlay
 import com.vayunmathur.maps.ui.streetview.StreetViewPegman
-import com.vayunmathur.maps.ui.theme.MapChromeMetrics
-import com.vayunmathur.maps.util.visibleBoundsOrWorld
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -174,41 +171,10 @@ internal fun MapPageScope.MapContentBox(
                         }
                     }
 
-                    // The search entry point, where the top app bar's used to be but at the other
-                    // end of the screen. Browse-only: an open sheet — either of them — owns the
-                    // bottom and brings its own field or its own title.
-                    if (searchBarVisible) {
-                        MapSearchBar(
-                            onOpenSearch = { query -> openSearch(query, null) },
-                            onContactAddress = { address ->
-                                val bbox = camera.visibleBoundsOrWorld()
-                                searchViewModel.resolveAndSelect(
-                                    address,
-                                    (bbox.north + bbox.south) / 2.0,
-                                    (bbox.east + bbox.west) / 2.0,
-                                ) { place ->
-                                    if (place != null) {
-                                        viewModel.stashRouteSelection()
-                                        // Fly there and open the peek pane, the same direct-open
-                                        // path a geo:/maps deep link takes.
-                                        viewModel.selectAndFocus(
-                                            place,
-                                            zoom = (camera.position.zoom).coerceAtLeast(14.0),
-                                        )
-                                    } else {
-                                        messenger.show(noResultsMessage)
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                // Measured, not assumed: the bar's height is what the FAB stack
-                                // and the scale bar have to clear, and it moves with the font
-                                // scale. Outside the padding, so the margin is included.
-                                .onSizeChanged { onSearchBarLift(it.height) }
-                                .padding(MapChromeMetrics.chromeMargin),
-                        )
-                    }
+                    // The search entry point; see [MapSearchBarSection].
+                    MapSearchBarSection(
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
 
                     // Browse controls, plus the layers and settings buttons, which stay out while
                     // a place is selected and ride above the sheet — see [MapFabStack].
@@ -283,6 +249,16 @@ internal fun MapPageScope.MapContentBox(
                         destinationName = navSession.destinationName,
                         darkBasemap = darkMap,
                         route = navSession.route,
+                    )
+
+                    // Ambient speed readout: the navigation speedometer while moving,
+                    // even outside navigation; see [AmbientSpeedOverlay].
+                    AmbientSpeedOverlay(
+                        visible = browsing && searchRequest == null,
+                        speedMps = userSpeedMps,
+                        postedLimit = chrome.postedLimit,
+                        darkBasemap = darkMap,
+                        liftPx = if (searchBarVisible) searchBarLiftPx else 0,
                     )
 
                     MapOverlays(

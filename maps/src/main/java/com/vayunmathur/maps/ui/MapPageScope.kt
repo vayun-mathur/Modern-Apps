@@ -118,6 +118,8 @@ internal class MapPageScope(
     val userPosition: GeoPoint,
     val userBearing: Float?,
     val userHeadingAccuracy: Int,
+    /** Latest GPS speed in m/s (0 when the fix carries none), for the ambient speed readout. */
+    val userSpeedMps: Float,
     val savedPins: List<SavedPlace>,
     val parkingSpot: ParkingSpot?,
     val searchResults: List<SearchResult>,
