@@ -50,4 +50,28 @@ class BrowserUtilsTest {
         assertEquals("HTTP://example.com/", BrowserUtils.toNavigationUrl("HTTP://example.com/"))
         assertEquals("HTTPS://example.com/a", BrowserUtils.toNavigationUrl("HTTPS://example.com/a"))
     }
+
+    @Test
+    fun `only http, https and about blank may reach WebView loadUrl`() {
+        assertTrue(BrowserUtils.canLoadInWebView("https://example.com/"))
+        assertTrue(BrowserUtils.canLoadInWebView("http://nas.local/"))
+        assertTrue(BrowserUtils.canLoadInWebView("HTTP://example.com/"))
+        assertTrue(BrowserUtils.canLoadInWebView("about:blank"))
+        assertTrue(BrowserUtils.canLoadInWebView("ABOUT:BLANK"))
+    }
+
+    @Test
+    fun `programmatic javascript and exotic schemes never reach WebView loadUrl`() {
+        assertFalse(BrowserUtils.canLoadInWebView("javascript:alert(1)"))
+        assertFalse(BrowserUtils.canLoadInWebView("JaVaScRiPt:alert(1)"))
+        assertFalse(BrowserUtils.canLoadInWebView("   javascript:alert(1)"))
+        assertFalse(BrowserUtils.canLoadInWebView("data:text/html,<h1>x</h1>"))
+        assertFalse(BrowserUtils.canLoadInWebView("blob:https://example.com/uuid"))
+        assertFalse(BrowserUtils.canLoadInWebView("file:///etc/hosts"))
+        assertFalse(BrowserUtils.canLoadInWebView("content://media/external/images/1"))
+        assertFalse(BrowserUtils.canLoadInWebView("intent://scan/#Intent;scheme=zxing;end"))
+        assertFalse(BrowserUtils.canLoadInWebView("tel:+15551234567"))
+        assertFalse(BrowserUtils.canLoadInWebView("search://results?q=weather"))
+        assertFalse(BrowserUtils.canLoadInWebView(""))
+    }
 }
