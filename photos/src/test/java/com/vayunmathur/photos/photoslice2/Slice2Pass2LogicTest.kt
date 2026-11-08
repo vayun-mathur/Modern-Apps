@@ -21,6 +21,7 @@ import com.vayunmathur.photos.data.EditDocument
 import com.vayunmathur.photos.data.ImageAdjustments
 import com.vayunmathur.photos.data.LevelsAdj
 import com.vayunmathur.photos.data.PixelLayer
+import com.vayunmathur.photos.data.Photo
 import com.vayunmathur.photos.data.PhotosRepository
 import com.vayunmathur.photos.data.Selection
 import com.vayunmathur.photos.data.TextLayer
@@ -35,7 +36,6 @@ import com.vayunmathur.photos.ui.EditorMode
 import com.vayunmathur.photos.ui.LayersPanel
 import com.vayunmathur.photos.util.LayerCompositor
 import com.vayunmathur.photos.util.VideoEditViewModel
-import com.vayunmathur.photos.util.pass3Photo
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -203,7 +203,12 @@ class Slice2Pass2LogicTest {
         val vm = VideoEditViewModel(app, PhotosRepository.get(app))
         var completed = false
         // Unknown content URI: Transformer.start() throws synchronously.
-        vm.export(app, pass3Photo(1, "clip.mp4"), true) { completed = true }
+        val missing = Photo(
+            name = "clip.mp4", uri = "content://invalid/clip.mp4", date = 0L,
+            width = 0, height = 0, dateModified = 0L, exifSet = false,
+            lat = null, long = null, videoData = null, panoData = null,
+        )
+        vm.export(app, missing, true) { completed = true }
         assertTrue(completed, "onComplete must fire on unrecoverable failure")
         assertFalse(vm.exporting.value)
         val orphans = app.cacheDir.listFiles { f -> f.name.startsWith("video_edit_") } ?: emptyArray()
