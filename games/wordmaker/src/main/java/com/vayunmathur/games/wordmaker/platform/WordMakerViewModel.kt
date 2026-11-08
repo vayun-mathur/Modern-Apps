@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -96,6 +97,15 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
     private val _competitiveCrossword = MutableStateFlow<CrosswordData?>(null)
     private val _competitiveFoundWords = MutableStateFlow<Set<String>>(emptySet())
 
+    /**
+     * Bonus words found in competitive play. Competitive boards are generated on the
+     * fly and never persisted, so their bonus words stay in memory: folding them into
+     * the saved casual set would show them as already-found when the player returns
+     * to their casual level, and the showing flow would likewise surface the casual
+     * set mid-competition.
+     */
+    private val _competitiveBonusWords = MutableStateFlow<Set<String>>(emptySet())
+
     /** Epoch millis at which the current competitive level's timer expires (0 when inactive). */
     private val _competitiveDeadline = MutableStateFlow(0L)
     val competitiveDeadline: StateFlow<Long> = _competitiveDeadline.asStateFlow()
@@ -164,13 +174,23 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val bonusWords: StateFlow<Set<String>> =
-        combine(gameMode, casualBonusWords, dailyBonusWords) { mode, casual, daily ->
-            if (mode == GameMode.DAILY) daily else casual
+        combine(gameMode, casualBonusWords, _competitiveBonusWords, dailyBonusWords) { mode, casual, competitive, daily ->
+            when (mode) {
+                GameMode.COMPETITIVE -> competitive
+                GameMode.DAILY -> daily
+                GameMode.CASUAL -> casual
+            }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val revealedHints: StateFlow<Set<Pair<Int, Int>>> =
         combine(gameMode, casualRevealedHints, dailyRevealedHints) { mode, casual, daily ->
-            if (mode == GameMode.DAILY) daily else casual
+            when (mode) {
+                // Hints cannot be earned in competitive play (the button is hidden
+                // there), so show none rather than stale cells from the casual board.
+                GameMode.COMPETITIVE -> emptySet()
+                GameMode.DAILY -> daily
+                GameMode.CASUAL -> casual
+            }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val _error = MutableStateFlow<String?>(null)
@@ -296,6 +316,7 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
             // Show the loading spinner while the next board is generated.
             _competitiveCrossword.value = null
             _competitiveFoundWords.value = emptySet()
+            _competitiveBonusWords.value = emptySet()
             val data = withContext(Dispatchers.Default) {
                 resolveGenerator(ctx).generate()
             }
@@ -363,8 +384,16 @@ class WordMakerViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     override suspend fun addBonusWord(word: String): Int =
-        if (gameMode.value == GameMode.DAILY) levelDataStore.addDailyBonusWord(word)
-        else levelDataStore.addBonusWord(word)
+        when (gameMode.value) {
+            GameMode.DAILY -> levelDataStore.addDailyBonusWord(word)
+            // Competitive boards are unlimited generated layouts, so their bonus words
+            // stay in memory and never inflate the lifetime bonus_hunter total.
+            GameMode.COMPETITIVE -> {
+                _competitiveBonusWords.value = _competitiveBonusWords.value + word
+                levelDataStore.totalBonusWords.first()
+            }
+            GameMode.CASUAL -> levelDataStore.addBonusWord(word)
+        }
 
     fun setTapToSpell(enabled: Boolean) {
         viewModelScope.launch { levelDataStore.setTapToSpell(enabled) }
