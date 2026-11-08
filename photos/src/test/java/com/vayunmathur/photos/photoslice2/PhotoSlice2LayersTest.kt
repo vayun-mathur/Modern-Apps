@@ -86,6 +86,28 @@ class PhotoSlice2LayersTest {
     }
 
     @Test
+    fun moveLayerKeepsActiveLayerSelected() {
+        var doc = EditDocument(canvasWidth = 8, canvasHeight = 8)
+        doc = doc.addLayer(pixelLayer("A")).addLayer(pixelLayer("B"))
+            .addLayer(pixelLayer("C")).addLayer(pixelLayer("D"))
+        // Active layer below the moved range shifts down with it.
+        doc = doc.setActiveLayer(2).moveLayer(0, 3)
+        assertEquals(listOf("B", "C", "D", "A"), doc.layers.map { it.name })
+        assertEquals("C", doc.activeLayer?.name)
+        assertEquals(1, doc.activeLayerIndex)
+        // Active layer above the moved range shifts up with it.
+        doc = doc.setActiveLayer(1).moveLayer(3, 0)
+        assertEquals(listOf("A", "B", "C", "D"), doc.layers.map { it.name })
+        assertEquals("C", doc.activeLayer?.name)
+        assertEquals(2, doc.activeLayerIndex)
+        // Active layer outside the moved range stays put.
+        doc = doc.setActiveLayer(3).moveLayer(0, 1)
+        assertEquals(listOf("B", "A", "C", "D"), doc.layers.map { it.name })
+        assertEquals("D", doc.activeLayer?.name)
+        assertEquals(3, doc.activeLayerIndex)
+    }
+
+    @Test
     fun updateLayerAndCopyBase() {
         var doc = EditDocument(canvasWidth = 8, canvasHeight = 8).addLayer(pixelLayer("A"))
         doc = doc.updateLayer(0) { it.copyBase(name = "Renamed", opacity = 0.5f, visible = false) }
