@@ -58,8 +58,19 @@ class TodoRepository private constructor(
         dao.upsertAll(dao.getSubtasks(value.syncId).map { it.copy(deleted = true) })
     }
 
+    /**
+     * Undoes [tombstone]: restores the task and the subtasks the delete cascaded to.
+     * Only rows still marked deleted are touched, so live subtasks keep their timestamps.
+     * (A subtask deleted on its own before its parent was deleted comes back too — the
+     * rows carry no deletion timestamps to tell the two cases apart.)
+     */
     suspend fun restore(value: Todo) = inTransaction {
         dao.upsert(value.copy(deleted = false))
+        dao.upsertAll(
+            dao.getSubtasksIncludingDeleted(value.syncId)
+                .filter { it.deleted }
+                .map { it.copy(deleted = false) },
+        )
     }
 
     /**
