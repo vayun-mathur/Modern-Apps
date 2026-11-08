@@ -46,8 +46,13 @@ class ExtractorPureUtilPass3Test {
         assertEquals(expected, parseSharedVideoId("https://youtu.be/dQw4w9WgXcQ"))
         assertEquals(expected, parseSharedVideoId("https://www.youtube.com/shorts/dQw4w9WgXcQ"))
         assertEquals(expected, parseSharedVideoId("https://www.youtube.com/embed/dQw4w9WgXcQ"))
+        assertEquals(expected, parseSharedVideoId("https://www.youtube.com/live/dQw4w9WgXcQ"))
+        assertEquals(expected, parseSharedVideoId("https://m.youtube.com/watch?v=dQw4w9WgXcQ"))
         assertNull(parseSharedVideoId("no video here"))
         assertNull(parseSharedVideoId("https://example.com/watch?v=short"))
+        // Malformed `v` params must not parse (deep links with these used to crash onCreate).
+        assertNull(parseSharedVideoId("https://www.youtube.com/watch?v=!!!"))
+        assertNull(parseSharedVideoId("https://www.youtube.com/watch"))
         assertNull(parseSharedVideoId(""))
     }
     @Test fun channelUrlHelpers() {

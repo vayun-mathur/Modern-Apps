@@ -58,7 +58,6 @@ import com.vayunmathur.youpipe.ui.dialogs.CreatePlaylist
 import com.vayunmathur.youpipe.ui.dialogs.AddToPlaylist
 import com.vayunmathur.youpipe.ui.dialogs.AddToWatchLater
 import kotlinx.serialization.Serializable
-import com.vayunmathur.youpipe.util.videoURLtoID
 import com.vayunmathur.youpipe.util.parseSharedVideoId
 
 internal fun Context.findActivity(): ComponentActivity {
@@ -139,8 +138,13 @@ class MainActivity : MaActivity() {
             }
         }
         val uri = intent.data
-        if (uri != null && "watch" in uri.pathSegments && "v" in uri.queryParameterNames) {
-            return listOf(Route.Main(TAB_HOME), Route.VideoPage(videoURLtoID(uri.toString())))
+        // Total parse: watch, youtu.be, /shorts/, /live/ and /embed/ links route to the
+        // video; anything without an 11-char id (channel pages, playlists, garbage `v`
+        // params that used to crash videoURLtoID in onCreate) falls through to default.
+        if (uri != null) {
+            parseSharedVideoId(uri.toString())?.let { videoID ->
+                return listOf(Route.Main(TAB_HOME), Route.VideoPage(videoID))
+            }
         }
         return defaultBackStack(DataStoreUtils.getInstance(this).getString(DEFAULT_PAGE_KEY))
     }
