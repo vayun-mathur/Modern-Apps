@@ -90,6 +90,10 @@ fun RideTrackingScreen(rideId: String) {
                             ride = byId.ride
                             error = null
                         }
+                        // A transient lookup failure must not end tracking for a
+                        // live ride: surface it and keep polling, mirroring the
+                        // active-ride Failed branch above.
+                        is RideStatusResult.Failed -> error = byId.message
                         else -> ended = true
                     }
                 }
