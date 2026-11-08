@@ -61,8 +61,8 @@ object PersonalHealthRecords {
         HealthPermission.PERMISSION_READ_MEDICAL_DATA_PERSONAL_DETAILS,
     )
 
-    /** Health Connect currently accepts only FHIR R4. */
-    private val FHIR_VERSION = FhirVersion(4, 0, 1)
+    /** Health Connect currently accepts only FHIR R4. Lazy so class load never probes the PHR feature. */
+    private val FHIR_VERSION: FhirVersion by lazy { FhirVersion(4, 0, 1) }
 
     /** Key in the existing `"sync"` SharedPreferences that `HealthAPI` owns. */
     private const val PREF_DATA_SOURCE_ID = "phr_data_source_id"
