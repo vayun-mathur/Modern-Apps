@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -124,14 +125,14 @@ class Slice4ShellTest {
                 isOnline = false,
                 focusedPara = -1,
                 saveAsName = "Notes.odt",
-                activeCell = mutableStateOf(null),
-                activeSlide = mutableIntStateOf(0),
-                activeSlideEl = mutableIntStateOf(-1),
-                activeRunStart = mutableIntStateOf(-1),
-                activeRunEnd = mutableIntStateOf(-1),
-                selStart = mutableIntStateOf(0),
-                selEnd = mutableIntStateOf(0),
-                pendingReplace = mutableStateOf(null),
+                activeCell = remember { mutableStateOf(null) },
+                activeSlide = remember { mutableIntStateOf(0) },
+                activeSlideEl = remember { mutableIntStateOf(-1) },
+                activeRunStart = remember { mutableIntStateOf(-1) },
+                activeRunEnd = remember { mutableIntStateOf(-1) },
+                selStart = remember { mutableIntStateOf(0) },
+                selEnd = remember { mutableIntStateOf(0) },
+                pendingReplace = remember { mutableStateOf(null) },
                 listState = rememberLazyListState(),
                 scope = rememberCoroutineScope(),
                 launchers = rememberDocumentLaunchers(
@@ -160,14 +161,14 @@ class Slice4ShellTest {
                 isOnline = false,
                 focusedPara = -1,
                 saveAsName = "Notes.odt",
-                activeCell = mutableStateOf(null),
-                activeSlide = mutableIntStateOf(0),
-                activeSlideEl = mutableIntStateOf(-1),
-                activeRunStart = mutableIntStateOf(-1),
-                activeRunEnd = mutableIntStateOf(-1),
-                selStart = mutableIntStateOf(0),
-                selEnd = mutableIntStateOf(0),
-                pendingReplace = mutableStateOf(null),
+                activeCell = remember { mutableStateOf(null) },
+                activeSlide = remember { mutableIntStateOf(0) },
+                activeSlideEl = remember { mutableIntStateOf(-1) },
+                activeRunStart = remember { mutableIntStateOf(-1) },
+                activeRunEnd = remember { mutableIntStateOf(-1) },
+                selStart = remember { mutableIntStateOf(0) },
+                selEnd = remember { mutableIntStateOf(0) },
+                pendingReplace = remember { mutableStateOf(null) },
                 listState = rememberLazyListState(),
                 scope = rememberCoroutineScope(),
                 launchers = rememberDocumentLaunchers(

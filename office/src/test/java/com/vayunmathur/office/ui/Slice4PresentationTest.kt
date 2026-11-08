@@ -1,6 +1,7 @@
 package com.vayunmathur.office.ui
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -151,9 +152,9 @@ class Slice4PresentationTest {
                 document = document,
                 viewModel = viewModel,
                 isPresentation = true,
-                activeCell = mutableStateOf(null),
-                activeSlide = mutableStateOf(0),
-                pendingReplace = mutableStateOf(null),
+                activeCell = remember { mutableStateOf(null) },
+                activeSlide = remember { mutableStateOf(0) },
+                pendingReplace = remember { mutableStateOf(null) },
                 launchers = rememberDocumentLaunchers(
                     viewModel,
                     DocumentScreenState(),
@@ -211,9 +212,9 @@ class Slice4PresentationTest {
                     listOf(OdfContentBlock.Paragraph(OdfParagraph(listOf(OdfSpan("x")))))),
                 viewModel = vm(deck()),
                 isPresentation = false,
-                activeCell = mutableStateOf(null),
-                activeSlide = mutableStateOf(0),
-                pendingReplace = mutableStateOf(null),
+                activeCell = remember { mutableStateOf(null) },
+                activeSlide = remember { mutableStateOf(0) },
+                pendingReplace = remember { mutableStateOf(null) },
                 launchers = rememberDocumentLaunchers(
                     vm(deck()),
                     DocumentScreenState(),
