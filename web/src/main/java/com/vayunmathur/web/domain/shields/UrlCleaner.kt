@@ -43,10 +43,12 @@ object UrlCleaner {
      * can compare by identity to decide whether a reload is warranted.
      */
     fun clean(url: String): String {
+        val fragmentStart = url.indexOf('#')
         val queryStart = url.indexOf('?')
-        if (queryStart < 0) return url
+        // A '?' at or after the '#' is fragment content (hash-routed app state), not a
+        // query: stripping it would corrupt the page's own state on every navigation.
+        if (queryStart < 0 || (fragmentStart >= 0 && queryStart > fragmentStart)) return url
 
-        val fragmentStart = url.indexOf('#', queryStart)
         val query = if (fragmentStart < 0) {
             url.substring(queryStart + 1)
         } else {

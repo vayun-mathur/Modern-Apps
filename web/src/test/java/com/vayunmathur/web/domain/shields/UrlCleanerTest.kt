@@ -32,6 +32,20 @@ class UrlCleanerTest {
     }
 
     @Test
+    fun `leaves a question mark inside the fragment alone`() {
+        // Hash-routed app state: the '?' is fragment content, not a query, so even
+        // tracking-looking names in it must survive.
+        val url = "https://app.example/#/item/123?utm_source=x&tab=reviews"
+        assertSame(url, UrlCleaner.clean(url))
+    }
+
+    @Test
+    fun `keeps a fragment that is only tracking-looking parameters`() {
+        val url = "https://app.example/#/p?utm_medium=x"
+        assertSame(url, UrlCleaner.clean(url))
+    }
+
+    @Test
     fun `preserves order and repeated keys`() {
         assertEquals(
             "https://example.com/?b=2&a=1&a=3",
