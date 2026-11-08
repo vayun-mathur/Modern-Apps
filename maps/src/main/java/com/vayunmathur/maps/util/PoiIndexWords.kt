@@ -150,122 +150,154 @@ private fun PoiIndex.Mapped.matchesAt(i: Int, key: ByteArray): Boolean {
     return wordStartsWith(w, key)
 }
 
-private class WordRanked(val record: PoiIndex.PoiRecord, val rank: Int, val distSq: Double)
-
 private class Ranked(val record: PoiIndex.PoiRecord, val rank: Int, val distSq: Double)
 
-internal fun searchByScan(
+/**
+ * The unified offline search behind [PoiIndex.searchByName].
+ *
+ * Matching is token-based (see [PoiSearch]): every query token must match
+ * a word of the place name — by word prefix, substring, or (as a last
+ * resort) a small edit distance — so multi-word queries, diacritics and
+ * small typos all resolve. Category terms ("coffee", "gas station") also
+ * match places by their POI type. There is deliberately no bounding-box
+ * restriction: the whole offline index is searched and results are ranked
+ * by match tier, then by distance to ([nearLat], [nearLon]), so the
+ * nearest good match wins wherever it is.
+ *
+ * Candidate gathering prefers the word index (one binary search per
+ * token, intersected by ordinal) and falls back to the name-pool scan
+ * when the index is absent or the intersection is empty — which is also
+ * the path that provides substring and fuzzy matches the sorted index
+ * cannot answer.
+ */
+internal fun searchPoi(
     m: PoiIndex.Mapped,
     query: String,
     nearLat: Double,
     nearLon: Double,
     limit: Int,
 ): List<PoiIndex.PoiRecord> {
-    val q = query.trim().lowercase()
-    if (q.isEmpty()) return emptyList()
+    val queryTokens = PoiSearch.tokens(query)
+    if (queryTokens.isEmpty()) return emptyList()
+    val queryNorm = queryTokens.joinToString(" ")
 
-    // Pass 1: walk the name pool once, recording matching offsets and their
-    // rank (0 = prefix match, 1 = substring). Decoding each unique name once
-    // is the dedup win the side-file layout is designed for.
-    val matchRank = matchNamePool(m, q)
-    if (matchRank.isEmpty()) return emptyList()
+    // ordinal -> best tier so far.
+    val tiers = HashMap<Int, Int>()
+    if (m.nameIdx != null) {
+        collectIndexedMatches(m, queryTokens, queryNorm, tiers)
+    }
+    if (tiers.isEmpty()) {
+        collectScanMatches(m, queryNorm, queryTokens, tiers)
+    }
+    collectCategoryMatches(m, queryTokens, tiers)
 
-    // Pass 2: scan records, keeping those whose name offset matched.
-    val out = collectScanMatches(m, matchRank, nearLat, nearLon)
-    out.sortWith(compareBy({ it.rank }, { it.distSq }))
-    return out.take(limit).map { it.record }
+    if (tiers.isEmpty()) return emptyList()
+    val ranked = ArrayList<Ranked>(tiers.size)
+    for ((ordinal, tier) in tiers) {
+        if (ordinal < 0 || ordinal >= m.count) continue
+        ranked.add(
+            Ranked(
+                m.record(ordinal),
+                tier,
+                PoiIndex.distanceSq(
+                    m.latE7(ordinal) * PoiIndex.E7_TO_DEGREES,
+                    m.lonE7(ordinal) * PoiIndex.E7_TO_DEGREES,
+                    nearLat,
+                    nearLon,
+                ),
+            )
+        )
+    }
+    ranked.sortWith(compareBy({ it.rank }, { it.distSq }))
+    return ranked.take(limit).map { it.record }
 }
 
-private fun matchNamePool(m: PoiIndex.Mapped, q: String): Map<Int, Int> {
+/**
+ * Intersect per-token word-prefix matches from the word index: an ordinal
+ * is a candidate only when every query token prefixes some word of its
+ * name. Tiers are then scored exactly with [PoiSearch.matchTier].
+ */
+private fun collectIndexedMatches(
+    m: PoiIndex.Mapped,
+    queryTokens: List<String>,
+    queryNorm: String,
+    tiers: HashMap<Int, Int>,
+) {
+    var candidates: MutableSet<Int>? = null
+    for (token in queryTokens) {
+        val hits = m.wordPrefixMatches(poiQueryKey(token), PoiIndex.CANDIDATE_CAP)
+        val ordinals = hits.mapTo(HashSet()) { it[0] }
+        candidates = candidates?.apply { retainAll(ordinals) } ?: ordinals
+        if (candidates.isEmpty()) return
+    }
+    for (ordinal in candidates.orEmpty()) {
+        if (ordinal < 0 || ordinal >= m.count) continue
+        val tier = PoiSearch.matchTier(m.record(ordinal).name, queryNorm, queryTokens)
+        if (tier != PoiSearch.NO_MATCH) tiers[ordinal] = tier
+    }
+}
+
+/** Name-pool scan: match unique names once, then join records by offset. */
+private fun collectScanMatches(
+    m: PoiIndex.Mapped,
+    queryNorm: String,
+    queryTokens: List<String>,
+    tiers: HashMap<Int, Int>,
+) {
+    val matchRank = matchNamePool(m, queryNorm, queryTokens)
+    if (matchRank.isEmpty()) return
+    var i = 0
+    while (i < m.count && tiers.size < PoiIndex.CANDIDATE_CAP) {
+        matchRank[m.nameOff(i)]?.let { tiers[i] = it }
+        i++
+    }
+}
+
+private fun matchNamePool(
+    m: PoiIndex.Mapped,
+    queryNorm: String,
+    queryTokens: List<String>,
+): Map<Int, Int> {
     val matchRank = HashMap<Int, Int>()
     var pos = 0
     while (pos < m.namesLen) {
         var end = pos
         while (end < m.namesLen && m.names.get(end).toInt() != 0) end++
         if (end > pos) {
-            rankName(m.nameAt(pos), q)?.let { matchRank[pos] = it }
+            val name = m.nameAt(pos)
+            if (name != null) {
+                val tier = PoiSearch.matchTier(name, queryNorm, queryTokens)
+                if (tier != PoiSearch.NO_MATCH) matchRank[pos] = tier
+            }
         }
         pos = end + 1
     }
     return matchRank
 }
 
-/** Rank of [name] against the query (0 = prefix, 1 = substring), or null. */
-private fun rankName(name: String?, q: String): Int? {
-    if (name == null) return null
-    val lower = name.lowercase()
-    if (lower.startsWith(q)) return 0
-    if (lower.contains(q)) return 1
-    return null
-}
-
-private fun collectScanMatches(
+/**
+ * Category candidates: when every query token is a category term ("gas",
+ * "station", "coffee"), places of those POI types match at
+ * [PoiSearch.TIER_CATEGORY] even though their names do not contain the
+ * words. This is what makes the category chips work offline.
+ */
+private fun collectCategoryMatches(
     m: PoiIndex.Mapped,
-    matchRank: Map<Int, Int>,
-    nearLat: Double,
-    nearLon: Double,
-): ArrayList<Ranked> {
-    val out = ArrayList<Ranked>(minOf(PoiIndex.CANDIDATE_CAP, m.count))
+    queryTokens: List<String>,
+    tiers: HashMap<Int, Int>,
+) {
+    val types = HashSet<Int>()
+    for (token in queryTokens) {
+        val found = PoiCategories.typesForTerm(PoiSearch.singular(token))
+        if (found.isEmpty()) return // Not a purely categorical query.
+        types.addAll(found)
+    }
+    if (types.isEmpty()) return
     var i = 0
-    while (i < m.count && out.size < PoiIndex.CANDIDATE_CAP) {
-        scanMatchAt(m, i, matchRank, nearLat, nearLon)?.let { out.add(it) }
+    while (i < m.count && tiers.size < PoiIndex.CANDIDATE_CAP) {
+        if (m.type(i) in types) tiers.putIfAbsent(i, PoiSearch.TIER_CATEGORY)
         i++
     }
-    return out
 }
 
-private fun scanMatchAt(
-    m: PoiIndex.Mapped,
-    i: Int,
-    matchRank: Map<Int, Int>,
-    nearLat: Double,
-    nearLon: Double,
-): Ranked? {
-    val off = m.nameOff(i)
-    val rank = matchRank[off] ?: return null
-    val latE7 = m.latE7(i)
-    val lonE7 = m.lonE7(i)
-    return Ranked(
-        PoiIndex.PoiRecord(latE7, lonE7, m.type(i), m.nameAt(off) ?: "", i),
-        rank,
-        PoiIndex.distanceSq(
-            latE7 * PoiIndex.E7_TO_DEGREES,
-            lonE7 * PoiIndex.E7_TO_DEGREES,
-            nearLat,
-            nearLon,
-        ),
-    )
-}
 
-internal fun searchByWordIndex(
-    m: PoiIndex.Mapped,
-    query: String,
-    nearLat: Double,
-    nearLon: Double,
-    limit: Int,
-    candidateCap: Int,
-): List<PoiIndex.PoiRecord> {
-    val key = poiQueryKey(query.trim())
-    if (key.isEmpty()) return emptyList()
-    val out = ArrayList<WordRanked>()
-    for (hit in m.wordPrefixMatches(key, candidateCap)) {
-        val (ordinal, wordIdx) = hit
-        // Matching the name's first word is the indexed equivalent of the scan's
-        // "starts with", and ranks the same way.
-        val rank = if (wordIdx == 0) 0 else 1
-        out.add(
-            WordRanked(
-                m.record(ordinal),
-                rank,
-                PoiIndex.distanceSq(
-                    nearLat,
-                    nearLon,
-                    m.latE7(ordinal) * PoiIndex.E7_TO_DEGREES,
-                    m.lonE7(ordinal) * PoiIndex.E7_TO_DEGREES,
-                ),
-            )
-        )
-    }
-    out.sortWith(compareBy({ it.rank }, { it.distSq }))
-    return out.take(limit).map { it.record }
-}

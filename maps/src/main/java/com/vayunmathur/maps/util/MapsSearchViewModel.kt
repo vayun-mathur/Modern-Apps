@@ -94,6 +94,22 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
     fun setQuery(query: String, nearLat: Double, nearLon: Double) {
         _query.value = query
         searchJob?.cancel()
+        // A "lat,lon" query is a place in itself: resolve it directly
+        // instead of asking the name index, which can only answer empty.
+        PoiSearch.parseCoordinateQuery(query)?.let { (lat, lon) ->
+            _results.value = listOf(
+                SearchResult(
+                    id = "coord:$lat:$lon",
+                    title = "%.5f, %.5f".format(lat, lon),
+                    subtitle = null,
+                    lat = lat,
+                    lon = lon,
+                    category = null,
+                )
+            )
+            _searching.value = false
+            return
+        }
         if (query.length < 2) {
             _results.value = emptyList()
             _searching.value = false

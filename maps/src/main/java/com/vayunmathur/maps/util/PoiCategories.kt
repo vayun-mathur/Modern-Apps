@@ -80,6 +80,50 @@ object PoiCategories {
     /** Human-readable category label (used as the search-result subtitle). */
     fun label(type: Int): String = LABELS.getOrElse(type) { "Place" }
 
+    /**
+     * POI types a normalised singular search term names as a category, or
+     * empty when the term is not a category word.
+     *
+     * Derived from [LABELS] (so "pharmacy" or "bakery" work with no extra
+     * table) plus synonyms people actually type ("coffee" for a cafe,
+     * "gas" for a gas station, "food" for eating places). Search uses this
+     * so category queries — including the category chips, whose queries are
+     * words like "gas station" that no POI is literally named — return the
+     * nearest places of that kind instead of nothing.
+     */
+    fun typesForTerm(term: String): Set<Int> {
+        val out = HashSet<Int>()
+        LABELS.forEachIndexed { type, label ->
+            val words = label.lowercase().split(' ', '/')
+            if (words.any { PoiSearch.singular(it) == term }) out.add(type)
+        }
+        SYNONYM_TYPES[term]?.let { out.addAll(it) }
+        return out
+    }
+
+    private val SYNONYM_TYPES: Map<String, Set<Int>> = mapOf(
+        "coffee" to setOf(1),
+        "gas" to setOf(6),
+        "petrol" to setOf(6),
+        "fuel" to setOf(6),
+        "food" to setOf(0, 2),
+        "eat" to setOf(0, 2),
+        "drink" to setOf(3, 1),
+        "cash" to setOf(9),
+        "atm" to setOf(9),
+        "sleep" to setOf(8),
+        "stay" to setOf(8),
+        "shop" to setOf(4),
+        "store" to setOf(4, 33),
+        "train" to setOf(STATION_TYPE),
+        "station" to setOf(STATION_TYPE),
+        "bus" to setOf(STATION_TYPE),
+        "car" to setOf(28, 16),
+        "parking" to setOf(16),
+        "health" to setOf(10, 34, 35),
+        "medical" to setOf(10, 35),
+    )
+
 
     /**
      * The numeric type an archive `kind` corresponds to, or `null` when nothing here means
