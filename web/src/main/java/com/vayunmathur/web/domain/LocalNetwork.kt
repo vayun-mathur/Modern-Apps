@@ -99,6 +99,10 @@ object LocalNetwork {
         for (i in 0..3) {
             val part = parts[i]
             if (part.isEmpty() || part.length > 3 || !part.all { it in '0'..'9' }) return null
+            // The URL parser reads a leading-zero part as octal (`010` is 8), so a
+            // decimal reading here would classify a different address than the one
+            // the renderer connects to. Reject and let the caller fail closed.
+            if (part.length > 1 && part[0] == '0') return null
             val value = part.toInt()
             if (value > 255) return null
             octets[i] = value
