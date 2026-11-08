@@ -256,7 +256,10 @@ fun NotesListScreen(
                             },
                             trailingContent = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (localData.size > 1 && selectedIds.size < localData.size && (!isSelectionMode || isContiguous)) {
+                                    // No drag handle while searching: onMove reassigns positions within
+                                    // the visible (filtered) subset and upsertAll persists them, which
+                                    // would corrupt the global order of the hidden notes.
+                                    if (searchQuery.isBlank() && localData.size > 1 && selectedIds.size < localData.size && (!isSelectionMode || isContiguous)) {
                                         IconButton(
                                             modifier = Modifier.reorderDragHandle(
                                                 reorderState = reorderState,
