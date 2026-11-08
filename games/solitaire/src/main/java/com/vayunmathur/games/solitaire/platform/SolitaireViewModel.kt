@@ -38,6 +38,9 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     internal val dragInfoInternal = MutableStateFlow<DragInfo?>(null)
     override val dragInfo: StateFlow<DragInfo?> = dragInfoInternal.asStateFlow()
 
+    internal val flightInfoInternal = MutableStateFlow<CardFlight?>(null)
+    override val flightInfo: StateFlow<CardFlight?> = flightInfoInternal.asStateFlow()
+
     internal val statsRepository = SolitaireStatsRepository(application)
     internal val settingsRepository = SolitaireSettingsRepository(application)
     override val dropTargets: MutableMap<String, Rect> = mutableMapOf()
@@ -73,6 +76,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun selectMode(mode: GameMode, config: GameConfig = GameConfig()) {
+        clearFlight()
         when (mode) {
             GameMode.KLONDIKE -> newKlondikeGame(config)
             GameMode.SPIDER -> newSpiderGame(config)
@@ -104,6 +108,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     override fun giveUp() {
+        clearFlight()
         val mode = uiStateInternal.value.gameMode ?: return
         statsRepository.recordGameLost(mode, currentVariant())
         uiStateInternal.value = SolitaireUiState()
@@ -144,6 +149,13 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun autoMove(sourceId: String) = autoMoveImpl(sourceId)
 
+    override fun requestAutoMove(sourceId: String, startPos: Offset): Boolean =
+        requestFlightImpl(sourceId, startPos)
+
+    override fun commitFlight() = commitFlightImpl()
+
+    override fun cancelFlight() = cancelFlightImpl()
+
     /**
      * Starts a drag from [sourceId], deriving the carried cards from current state.
      * Returns false (and starts nothing) when that source holds no card.
@@ -162,6 +174,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     override fun cancelDrag() = cancelDragImpl()
 
     override fun undo() {
+        clearFlight()
         val history = uiStateInternal.value.history
         if (history.isEmpty()) return
         val prev = history.last()

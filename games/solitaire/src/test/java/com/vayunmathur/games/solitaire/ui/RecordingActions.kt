@@ -3,6 +3,7 @@ package com.vayunmathur.games.solitaire.ui
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
+import com.vayunmathur.games.solitaire.platform.CardFlight
 import com.vayunmathur.games.solitaire.platform.DragInfo
 import com.vayunmathur.games.solitaire.platform.SolitaireActions
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 class RecordingActions : SolitaireActions {
     override val dragInfo: StateFlow<DragInfo?> = MutableStateFlow(null)
     val dragFlow = dragInfo as MutableStateFlow<DragInfo?>
+    override val flightInfo: StateFlow<CardFlight?> = MutableStateFlow(null)
+    val flightFlow = flightInfo as MutableStateFlow<CardFlight?>
     override val dropTargets: MutableMap<String, Rect> = mutableMapOf()
     val calls = mutableListOf<String>()
 
@@ -29,6 +32,12 @@ class RecordingActions : SolitaireActions {
     override fun pyramidTapCard(id: String) { calls += "pyramidTapCard:$id" }
     override fun pyramidDealStock() { calls += "pyramidDealStock" }
     override fun autoMove(sourceId: String) { calls += "autoMove:$sourceId" }
+    override fun requestAutoMove(sourceId: String, startPos: Offset): Boolean {
+        calls += "autoMove:$sourceId"
+        return true
+    }
+    override fun commitFlight() { calls += "commitFlight" }
+    override fun cancelFlight() { calls += "cancelFlight" }
     override fun undo() { calls += "undo" }
     override fun restart() { calls += "restart" }
     override fun giveUp() { calls += "giveUp" }

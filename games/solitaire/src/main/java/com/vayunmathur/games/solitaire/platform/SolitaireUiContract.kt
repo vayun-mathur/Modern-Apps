@@ -21,6 +21,12 @@ interface SolitaireActions {
     /** The drag in flight, or null. A preview has none, which is why the default is empty. */
     val dragInfo: StateFlow<DragInfo?> get() = NoDrag
 
+    /**
+     * A tap-to-move travelling to its destination, or null. The overlay animates it;
+     * the move itself commits only when the flight lands.
+     */
+    val flightInfo: StateFlow<CardFlight?> get() = NoFlight
+
     /** Drop zones, registered by the piles as they are laid out. */
     val dropTargets: MutableMap<String, Rect> get() = DiscardedDropTargets
 
@@ -43,6 +49,20 @@ interface SolitaireActions {
      */
     fun autoMove(sourceId: String) {}
 
+    /**
+     * Animated tap-to-move: resolves the best legal destination for [sourceId] and
+     * stages the flight from [startPos], which the overlay animates before committing.
+     * Returns false (and stages nothing) when there is no legal move or a flight is
+     * already active. Klondike and FreeCell only, like [autoMove].
+     */
+    fun requestAutoMove(sourceId: String, startPos: Offset): Boolean = false
+
+    /** Lands the staged flight, performing its move. A no-op without one. */
+    fun commitFlight() {}
+
+    /** Drops the staged flight without moving anything. */
+    fun cancelFlight() {}
+
     fun undo() {}
     fun restart() {}
     fun giveUp() {}
@@ -53,6 +73,7 @@ interface SolitaireActions {
 }
 
 private val NoDrag: StateFlow<DragInfo?> = MutableStateFlow(null)
+private val NoFlight: StateFlow<CardFlight?> = MutableStateFlow(null)
 
 /** Somewhere for a [SolitaireActions.Noop] board to register its drop zones and forget them. */
 private val DiscardedDropTargets: MutableMap<String, Rect> = mutableMapOf()

@@ -221,14 +221,37 @@ internal fun SolitaireViewModel.handleFreeCellDropImpl(sourceId: String, targetI
 }
 
 internal fun SolitaireViewModel.freeCellAutoMoveImpl(sourceId: String) {
-    val state = uiStateInternal.value.freeCell ?: return
-    if (state.isWon) return
+    val targetId = resolveFreeCellAutoMoveTarget(sourceId) ?: return
+    handleFreeCellDropImpl(sourceId, targetId)
+}
+
+/**
+ * The destination [freeCellAutoMoveImpl] would take [sourceId] to — a foundation
+ * first, then a viable tableau column, then an empty cell — as a drop-target id,
+ * or null when there is no legal move. Pure: resolves without moving anything, so
+ * both the instant auto-move and the staged flight commit through the same drop
+ * handler.
+ */
+internal fun SolitaireViewModel.resolveFreeCellAutoMoveTarget(sourceId: String): String? {
+    val state = uiStateInternal.value.freeCell ?: return null
+    if (state.isWon) return null
     val cards = draggedCards(sourceId)
-    if (cards.isEmpty()) return
-    val origin = freeCellMoveOrigin(sourceId) ?: return
-    if (tryFoundationMove(state, cards, origin)) return
-    if (tryTableauMove(state, cards, origin)) return
-    moveToEmptyCell(state, cards, origin)
+    if (cards.isEmpty()) return null
+    val origin = freeCellMoveOrigin(sourceId) ?: return null
+    if (cards.size == SINGLE_CARD) {
+        for (fi in state.foundations.indices) {
+            if (canPlaceOnFoundation(cards.first(), state.foundations[fi], fi)) return "foundation_$fi"
+        }
+    }
+    state.tableauPiles.indices.firstOrNull { toCol ->
+        toCol != origin.fromCol && isViableTableauTarget(state, cards, origin, toCol)
+    }?.let { return "tableau_$it" }
+    // Empty free cell — last resort for a single card off a tableau column.
+    if (cards.size == SINGLE_CARD && origin.fromCol != null) {
+        val emptyCell = state.freeCells.indexOfFirst { it == null }
+        if (emptyCell >= 0) return "freecell_$emptyCell"
+    }
+    return null
 }
 
 private data class FreeCellMoveOrigin(val fromCol: Int?, val fromIdx: Int, val fromCell: Int?)
@@ -252,38 +275,6 @@ private fun freeCellMoveOrigin(sourceId: String): FreeCellMoveOrigin? {
     return null
 }
 
-private fun SolitaireViewModel.tryFoundationMove(
-    state: FreeCellState,
-    cards: List<Card>,
-    origin: FreeCellMoveOrigin,
-): Boolean {
-    if (cards.size != SINGLE_CARD) return false
-    val topCard = cards.first()
-    for (fi in state.foundations.indices) {
-        if (!canPlaceOnFoundation(topCard, state.foundations[fi], fi)) continue
-        if (origin.fromCell != null) freeCellMoveFreeCellToFoundation(origin.fromCell, fi)
-        else if (origin.fromCol != null) freeCellMoveTableauToFoundation(origin.fromCol, fi)
-        else return false
-        return true
-    }
-    return false
-}
-
-private fun SolitaireViewModel.tryTableauMove(
-    state: FreeCellState,
-    cards: List<Card>,
-    origin: FreeCellMoveOrigin,
-): Boolean {
-    val target = state.tableauPiles.indices.firstOrNull { toCol ->
-        toCol != origin.fromCol && isViableTableauTarget(state, cards, origin, toCol)
-    } ?: return false
-    if (origin.fromCell != null) freeCellMoveFromFreeCell(origin.fromCell, target)
-    else if (origin.fromCol != null) {
-        freeCellMoveTableauToTableau(origin.fromCol, origin.fromIdx, target)
-    } else return false
-    return true
-}
-
 private fun isLoneCardChurn(
     state: FreeCellState,
     cards: List<Card>,
@@ -305,17 +296,6 @@ private fun SolitaireViewModel.isViableTableauTarget(
     if (!canPlaceOnFreeCellTableau(cards.first(), toPile)) return false
     // Skip moving a lone card between empty columns — pointless churn.
     return !isLoneCardChurn(state, cards, origin, toPile)
-}
-
-private fun SolitaireViewModel.moveToEmptyCell(
-    state: FreeCellState,
-    cards: List<Card>,
-    origin: FreeCellMoveOrigin,
-) {
-    // Empty free cell — last resort for a single card off a tableau column.
-    if (cards.size != SINGLE_CARD || origin.fromCol == null) return
-    val emptyCell = state.freeCells.indexOfFirst { it == null }
-    if (emptyCell >= 0) freeCellMoveToFreeCell(origin.fromCol, emptyCell)
 }
 
 internal const val SINGLE_CARD = 1

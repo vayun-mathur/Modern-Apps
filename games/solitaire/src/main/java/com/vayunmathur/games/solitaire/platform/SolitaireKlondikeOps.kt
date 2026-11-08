@@ -358,13 +358,31 @@ internal fun SolitaireViewModel.handleKlondikeDropImpl(sourceId: String, targetI
 }
 
 internal fun SolitaireViewModel.klondikeAutoMoveImpl(sourceId: String) {
-    val state = uiStateInternal.value.klondike ?: return
-    if (state.isWon) return
+    val targetId = resolveKlondikeAutoMoveTarget(sourceId) ?: return
+    handleKlondikeDropImpl(sourceId, targetId)
+}
+
+/**
+ * The destination [klondikeAutoMoveImpl] would take [sourceId] to — a foundation
+ * first, otherwise a viable tableau column — as a drop-target id, or null when
+ * there is no legal move. Pure: resolves without moving anything, so both the
+ * instant auto-move and the staged flight commit through the same drop handler.
+ */
+internal fun SolitaireViewModel.resolveKlondikeAutoMoveTarget(sourceId: String): String? {
+    val state = uiStateInternal.value.klondike ?: return null
+    if (state.isWon) return null
     val cards = draggedCards(sourceId)
-    if (cards.isEmpty()) return
-    val origin = klondikeMoveOrigin(sourceId) ?: return
-    if (tryKlondikeFoundation(state, cards, sourceId, origin)) return
-    tryKlondikeTableau(state, cards, sourceId, origin)
+    if (cards.isEmpty()) return null
+    val origin = klondikeMoveOrigin(sourceId) ?: return null
+    // Only a single top card can go up, and it is the preferred move.
+    if (cards.size == SINGLE_CARD) {
+        for (fi in state.foundations.indices) {
+            if (canPlaceOnFoundation(cards.first(), state.foundations[fi], fi)) return "foundation_$fi"
+        }
+    }
+    return state.tableauPiles.indices.firstOrNull { toCol ->
+        toCol != origin.fromCol && isViableKlondikeTarget(state, cards, origin, toCol)
+    }?.let { "tableau_$it" }
 }
 
 private data class KlondikeMoveOrigin(val fromCol: Int?, val fromIdx: Int)
@@ -377,43 +395,6 @@ private fun klondikeMoveOrigin(sourceId: String): KlondikeMoveOrigin? {
         fromCol = parts.getOrNull(0)?.toIntOrNull() ?: return null,
         fromIdx = parts.getOrNull(1)?.toIntOrNull() ?: 0,
     )
-}
-
-private fun SolitaireViewModel.tryKlondikeFoundation(
-    state: KlondikeState,
-    cards: List<Card>,
-    sourceId: String,
-    origin: KlondikeMoveOrigin,
-): Boolean {
-    // Only a single top card can go up, and it is the preferred move.
-    if (cards.size != SINGLE_CARD) return false
-    for (fi in state.foundations.indices) {
-        if (!canPlaceOnFoundation(cards.first(), state.foundations[fi], fi)) continue
-        when {
-            sourceId == "waste" -> klondikeMoveWasteToFoundation(fi)
-            origin.fromCol != null -> klondikeMoveTableauToFoundation(origin.fromCol, fi)
-            else -> return false
-        }
-        return true
-    }
-    return false
-}
-
-private fun SolitaireViewModel.tryKlondikeTableau(
-    state: KlondikeState,
-    cards: List<Card>,
-    sourceId: String,
-    origin: KlondikeMoveOrigin,
-) {
-    val target = state.tableauPiles.indices.firstOrNull { toCol ->
-        toCol != origin.fromCol && isViableKlondikeTarget(state, cards, origin, toCol)
-    } ?: return
-    when {
-        sourceId == "waste" -> klondikeMoveWasteToTableau(target)
-        origin.fromCol != null ->
-            klondikeMoveTableauToTableau(origin.fromCol, origin.fromIdx, target)
-        else -> return
-    }
 }
 
 private fun isLoneKingShuffle(

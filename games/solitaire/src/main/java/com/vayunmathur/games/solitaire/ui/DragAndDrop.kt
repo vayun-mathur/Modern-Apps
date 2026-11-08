@@ -43,6 +43,10 @@ fun DraggableCard(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var startPos by remember { mutableStateOf(Offset.Zero) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
+    // Hidden while a staged flight covers this card, so the flight — not a
+    // duplicate underneath — is what the player sees travelling.
+    val flight by actions.flightInfo.collectAsState()
+    val isFlying = flight?.cards?.contains(card) == true
 
     Box(
         modifier = modifier
@@ -52,7 +56,7 @@ fun DraggableCard(
             }
             .pointerInput(card, sourceId) {
                 detectTapGestures(
-                    onTap = { actions.autoMove(sourceId) },
+                    onTap = { actions.requestAutoMove(sourceId, startPos) },
                 )
             }
             .pointerInput(card, sourceId) {
@@ -80,7 +84,7 @@ fun DraggableCard(
                 )
             }
             .graphicsLayer {
-                if (isDragging) alpha = 0f
+                if (isDragging || isFlying) alpha = 0f
             }
     ) {
         content()
