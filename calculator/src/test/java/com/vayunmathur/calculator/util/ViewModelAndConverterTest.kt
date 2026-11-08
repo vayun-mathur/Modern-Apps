@@ -95,10 +95,15 @@ class ViewModelAndConverterTest {
 
     @Test fun viewModelConverterStartLoadsAndFailsCurrencyGracefully() {
         // The VM starts the converter tab: it restores the persisted
-        // selection and attempts a currency fetch, which fails offline
-        // (no NetworkClient in tests) and must surface as an error state
-        // on the Currency tab rather than crashing.
-        val vm = CalculatorViewModel(app)
+        // selection and attempts a currency fetch, which is made to fail
+        // below and must surface as an error state on the Currency tab
+        // rather than crashing.
+        // Hermetic offline: inject a failing fetcher (the real one reaches
+        // api.maproj.org on internet-connected boxes and succeeds).
+        val vm = CalculatorViewModel(
+            app,
+            converter = UnitConverterTab(app) { throw java.io.IOException("offline (test)") },
+        )
         val deadline = System.currentTimeMillis() + 10_000
         var state = vm.unitConverterUiState
         while (System.currentTimeMillis() < deadline) {

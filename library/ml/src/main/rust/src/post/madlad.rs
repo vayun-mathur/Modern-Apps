@@ -115,6 +115,12 @@ pub fn translate(
     if table.id_of(tag).is_none() {
         return Err(format!("{tag} is not a piece in this table"));
     }
+    // Nothing to translate is not a failure — and with the tag prepended the
+    // encoded body is never empty, so this must be decided on the text itself
+    // or a whitespace-only input would run the encoder and decode its noise.
+    if text.trim().is_empty() {
+        return Ok(String::new());
+    }
     // The tag leads, exactly as trained: `<2en> text`, one string, one Viterbi run. The
     // space separates the tag from the body so the dummy prefix applies once, to the tag.
     let body = table.encode_unigram(&format!("{tag} {text}"));
@@ -190,10 +196,13 @@ mod tests {
     /// plus a `<2en>` tag piece for the prefix tests.
     fn table_bytes() -> Vec<u8> {
         let mut out = b"SPM1".to_vec();
-        let pieces: Vec<String> = ["<unk>", "<s>", "</s>", "<unk>"]
+        // T5's specials (sentencepiece_flavours::T5): <unk>=0 doubles as the
+        // decoder start, <s>=1 is pad, </s>=2 is EOS, and id 3 is the real
+        // newline piece — not a fourth special.
+        let pieces: Vec<String> = ["<unk>", "<s>", "</s>", "\n"]
             .iter()
             .map(|s| s.to_string())
-            .chain(["<2en>".to_string()])
+            .chain(["\u{2581}<2en>".to_string(), "<2en>".to_string()])
             .chain((0..6).map(|i| format!("\u{2581}w{i}")))
             .chain((0..26).map(|i| ((b'a' + i) as char).to_string()))
             .collect();
@@ -217,7 +226,8 @@ mod tests {
         let table = Table::parse_with(&bytes, super::super::sentencepiece_flavours::T5).expect("parses");
         let mut nets = scripted(&[EOS]);
         translate(&mut nets, &table, "<2en>", "a b").expect("translates");
-        // The tag tokenised first: id 4 is `<2en>`.
+        // The tag tokenised first: id 4 is `\u{2581}<2en>`, the tag carrying
+        // the dummy prefix, exactly as sentencepiece emits it.
         assert_eq!(nets.source.first(), Some(&4u32));
         assert_eq!(nets.source.last(), Some(&EOS));
         // The decoder was primed with `<unk>`, not with the tag and not with `</s>`.
@@ -238,7 +248,7 @@ mod tests {
     #[test]
     fn eos_ends_the_loop_and_is_not_emitted() {
         let bytes = table_bytes();
-        let table = Table::parse(&bytes).expect("parses");
+        let table = Table::parse_with(&bytes, super::super::sentencepiece_flavours::T5).expect("parses");
         let mut nets = scripted(&[14, 15, EOS, 16]);
         let got = translate(&mut nets, &table, "<2en>", "a").expect("translates");
         // The script's winners decode through the letter pieces; 16 is past the `</s>`.
@@ -251,7 +261,7 @@ mod tests {
         // Greedy decoding can loop forever by repeating itself, and the KV cache is only 128
         // deep, so the loop stops rather than running past it.
         let bytes = table_bytes();
-        let table = Table::parse(&bytes).expect("parses");
+        let table = Table::parse_with(&bytes, super::super::sentencepiece_flavours::T5).expect("parses");
         // A script of one repeated non-EOS token, longer than the cap.
         let script = vec![20u32; MAX_TOKENS + 10];
         let mut nets = scripted(&script);
@@ -262,7 +272,7 @@ mod tests {
     #[test]
     fn text_with_nothing_to_translate_returns_nothing_and_runs_no_net() {
         let bytes = table_bytes();
-        let table = Table::parse(&bytes).expect("parses");
+        let table = Table::parse_with(&bytes, super::super::sentencepiece_flavours::T5).expect("parses");
         let mut nets = scripted(&[EOS]);
         let got = translate(&mut nets, &table, "<2en>", "   ").expect("translates");
         assert_eq!(got, "");

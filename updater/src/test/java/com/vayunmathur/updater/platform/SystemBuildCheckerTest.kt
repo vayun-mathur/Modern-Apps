@@ -16,6 +16,7 @@ class SystemBuildCheckerTest {
     @AfterTest
     fun tearDown() {
         UpdateChecker.connectionOverride = null
+        TestSysProps.reset()
     }
 
     @Test

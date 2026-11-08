@@ -674,7 +674,14 @@ class OfficeViewModelSyncSlice3Test {
         v.onLocalEdit()
         // The live-push job syncs via the unreachable relay and completes.
         v.livePushJob?.join()
-        assertTrue(realDs().getString("crdt:doc-jobs") != null)
+        // saveTree commits through a suspending DataStore edit while
+        // getString reads the asynchronously-updated mirror; on a loaded
+        // box the mirror can lag the completed job, so wait for the
+        // persisted tree to become visible instead of reading it once.
+        assertTrue(
+            await(12_000) { realDs().getString("crdt:doc-jobs") != null },
+            "live-push job completed but no tree persisted",
+        )
         stopJobs(v)
     }
 

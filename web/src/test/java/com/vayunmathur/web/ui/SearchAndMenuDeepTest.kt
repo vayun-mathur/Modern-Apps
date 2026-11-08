@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.os.Looper
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -135,14 +136,13 @@ class SearchAndMenuDeepTest {
         val v = vm()
         v.updateSearchBarAtBottom(true)
         v.newTab()
-        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.then(androidx.compose.ui.Modifier)) {
                 OmniboxEditor(
                     viewModel = v,
                     bookmarks = emptyList(),
                     history = listOf(com.vayunmathur.web.data.HistoryEntry(id = 1, url = "https://bottom.example", title = "BottomHist")),
-                    searchFocusRequester = searchFocusRequester,
+                    searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                     onNavigate = {},
                     onDismiss = {},
                 )

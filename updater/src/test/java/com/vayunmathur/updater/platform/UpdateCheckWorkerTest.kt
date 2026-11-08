@@ -42,6 +42,7 @@ class UpdateCheckWorkerTest {
     @AfterTest
     fun tearDown() {
         UpdateChecker.connectionOverride = null
+        TestSysProps.reset()
     }
 
     private fun fakeBody(body: String, code: Int = 200) {

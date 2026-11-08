@@ -31,7 +31,9 @@ class ViewModelFetchTest {
             androidx.work.WorkManager.initialize(app, androidx.work.Configuration.Builder().build())
         }
         repo = FakeRepository(app)
-        vm = WeatherViewModel(app, repo)
+        // Hermetic offline: the fetch always fails, on any box (these tests
+        // previously relied on the ambient network being unreachable).
+        vm = WeatherViewModel(app, repo) { _, _ -> throw java.io.IOException("offline (test)") }
     }
 
     private fun await(cond: () -> Boolean): Boolean {
@@ -123,7 +125,9 @@ class ViewModelDeviceFixTest {
             android.Manifest.permission.ACCESS_FINE_LOCATION,
         )
         repo = FakeRepository(app)
-        vm = WeatherViewModel(app, repo)
+        // Hermetic offline: the fetch always fails, on any box (these tests
+        // previously relied on the ambient network being unreachable).
+        vm = WeatherViewModel(app, repo) { _, _ -> throw java.io.IOException("offline (test)") }
     }
 
     private fun setFix(lat: Double, lon: Double) {

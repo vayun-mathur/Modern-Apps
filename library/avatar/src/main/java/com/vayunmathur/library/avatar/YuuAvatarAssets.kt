@@ -36,8 +36,21 @@ object YuuAvatarAssets {
      * Detaches [afd]'s fd into native. Split from [adoptBundledMesh] so the
      * fd ownership transfer can be exercised without a bundled mesh asset.
      */
-    internal fun handOff(afd: AssetFileDescriptor) {
-        val fd = afd.parcelFileDescriptor.detachFd()
+    internal fun handOff(afd: AssetFileDescriptor) =
+        handOff(afd, ParcelFileDescriptor::detachFd)
+
+    /**
+     * [handOff] with the detach step injectable. Robolectric's
+     * ParcelFileDescriptor.detachFd() calls a libcore-internal
+     * FileDescriptor method that does not exist on the host JDK, so the
+     * unit test supplies the raw fd instead; on-device the real detach
+     * above is used and ownership semantics are unchanged.
+     */
+    internal fun handOff(
+        afd: AssetFileDescriptor,
+        detachFd: (ParcelFileDescriptor) -> Int,
+    ) {
+        val fd = detachFd(afd.parcelFileDescriptor)
         var handed = false
         try {
             YuuAvatarNative.setBundledMeshFd(fd, afd.startOffset, afd.length)

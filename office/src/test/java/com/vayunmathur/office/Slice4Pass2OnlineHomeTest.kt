@@ -16,10 +16,12 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.util.DataStoreUtils
 import com.vayunmathur.office.ui.OfficeEditorWideLayout
 import com.vayunmathur.office.util.OfficeDocMeta
 import com.vayunmathur.office.util.OfficeSync
 import com.vayunmathur.office.util.OfficeViewModel
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Rule
 import org.junit.Test
@@ -63,16 +65,37 @@ class Slice4Pass2OnlineHomeTest {
         val viewModel = settledVm()
         val owned = meta("doc-owned-1", "Owned Report", owner = true)
         val shared = meta("doc-shared-2", "Shared Notes", owner = false)
+        val requests = listOf(
+            OfficeSync.JoinRequest(docId = "doc-owned-1", requesterId = "device-abcdef", name = "Carol"),
+            OfficeSync.JoinRequest(docId = "missing-doc", requesterId = "device-123456", name = ""),
+        )
+        // Seed the persisted index/requests the Online tab actually reads.
+        // OnlineInit fires initSync as soon as the tab composes, and its
+        // asynchronous loadIndex overwrites the StateFlows from storage;
+        // setting only the flows raced that load, and on the CI box the
+        // load landed mid-scroll and the doc list vanished under the test.
+        // A failing transport keeps initSync/refreshOnline offline.
+        val previousTransport = OfficeSync.httpTransport
+        OfficeSync.httpTransport = OfficeSync.HttpTransport { _, _ -> null }
+        val ds = DataStoreUtils.getInstance(ctx)
+        kotlinx.coroutines.runBlocking {
+            ds.setString("officeDocsIndex", Json.encodeToString(listOf(owned, shared)))
+            ds.setString("officePendingRequests", Json.encodeToString(requests))
+        }
+        val seedDeadline = System.currentTimeMillis() + 10_000
+        while (
+            ds.getString("officeDocsIndex")?.contains("doc-owned-1") != true &&
+            System.currentTimeMillis() < seedDeadline
+        ) {
+            Thread.sleep(20)
+        }
         var opened: OfficeDocMeta? = null
         rule.setContent { OnlineTab(viewModel = viewModel, onOpenDoc = { opened = it }) }
         rule.waitForIdle()
         viewModel.onlineEnabledMutable.value = true
         rule.waitForIdle()
         viewModel.onlineDocsMutable.value = listOf(owned, shared)
-        viewModel.pendingRequestsMutable.value = listOf(
-            OfficeSync.JoinRequest(docId = "doc-owned-1", requesterId = "device-abcdef", name = "Carol"),
-            OfficeSync.JoinRequest(docId = "missing-doc", requesterId = "device-123456", name = ""),
-        )
+        viewModel.pendingRequestsMutable.value = requests
         rule.waitForIdle()
         rule.onNode(androidx.compose.ui.test.hasScrollAction())
             .performScrollToNode(androidx.compose.ui.test.hasText(str(R.string.requests_header)))
@@ -84,6 +107,12 @@ class Slice4Pass2OnlineHomeTest {
         rule.onNodeWithText(str(R.string.shared_by_you), substring = true).assertExists()
         rule.onNodeWithText("Owned Report").performClick()
         assertEquals(owned, opened)
+        // Leave the shared store empty for the other tests in this class.
+        kotlinx.coroutines.runBlocking {
+            ds.setString("officeDocsIndex", "[]")
+            ds.setString("officePendingRequests", "[]")
+        }
+        OfficeSync.httpTransport = previousTransport
     }
 
     @Test fun onlineTabJoinRequestButtonsRender() {

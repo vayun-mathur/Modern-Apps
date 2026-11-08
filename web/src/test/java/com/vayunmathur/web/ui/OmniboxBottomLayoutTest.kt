@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.os.Looper
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -53,13 +54,12 @@ class OmniboxBottomLayoutTest {
         v.newTab()
         var navigated: String? = null
         var dismissed = false
-        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = emptyList(),
                 history = listOf(HistoryEntry(id = 1, url = "https://dock.example", title = "DockHist")),
-                searchFocusRequester = searchFocusRequester,
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = { navigated = it },
                 onDismiss = { dismissed = true },
             )
@@ -83,13 +83,12 @@ class OmniboxBottomLayoutTest {
         shadowOf(Looper.getMainLooper()).idle()
         v.updateSearchBarAtBottom(false)
         v.newTab()
-        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = emptyList(),
                 history = listOf(HistoryEntry(id = 1, url = "https://top.example", title = "TopHist")),
-                searchFocusRequester = searchFocusRequester,
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = {},
                 onDismiss = {},
             )

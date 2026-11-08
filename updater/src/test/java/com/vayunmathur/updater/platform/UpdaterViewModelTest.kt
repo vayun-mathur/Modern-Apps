@@ -38,6 +38,7 @@ class UpdaterViewModelTest {
     @AfterTest
     fun tearDown() {
         UpdateChecker.connectionOverride = null
+        TestSysProps.reset()
     }
 
     private fun awaitState(vm: UpdaterViewModel, condition: (UpdaterUiState) -> Boolean) {

@@ -172,10 +172,14 @@ class AssistantIntentsPass2Test {
         companion object {
             val batchSizes = mutableListOf<Int>()
             val inserts = mutableListOf<Pair<Uri, ContentValues?>>()
-            val deletes = mutableListOf<Uri>()
+            // Deletes record the selection too: GroupAndSimImport filters for the
+            // group-membership shape, and stray deletes from other tests sharing
+            // this JVM's static provider registry must not count toward it.
+            val deletes = mutableListOf<Pair<Uri, String?>>()
         }
         override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int {
-            deletes += uri; return 1
+            deletes += uri to selection
+            return 1
         }
         override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
         override fun getType(uri: Uri): String? = null

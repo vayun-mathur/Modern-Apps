@@ -74,15 +74,22 @@ class EsimApiDtoTest {
     }
 
     @Test fun endpointsFailOffline() = runTest {
-        // The devserver has no route to api.maproj.org: every call fails as an
-        // IOException (never a successful fake), which ViewModels map to the
-        // "No connection" message.
-        assertTrue(runCatching { EsimApi.rates() }.exceptionOrNull() is java.io.IOException)
-        assertTrue(runCatching { EsimApi.status("acc") }.exceptionOrNull() is java.io.IOException)
-        assertTrue(runCatching { EsimApi.stripeKey() }.exceptionOrNull() is java.io.IOException)
-        assertTrue(runCatching { EsimApi.stripeIntent("acc", 500L) }.exceptionOrNull() is java.io.IOException)
-        assertTrue(runCatching { EsimApi.nowPayInvoice("acc", 500L) }.exceptionOrNull() is java.io.IOException)
-        assertTrue(runCatching { EsimApi.nowPayCancel("acc") }.exceptionOrNull() is java.io.IOException)
-        assertTrue(runCatching { EsimApi.claim("sim", "acc") }.exceptionOrNull() is java.io.IOException)
+        // Hermetic offline: a dead loopback address fails on any box, so
+        // every call surfaces as an IOException (never a successful fake),
+        // which ViewModels map to the "No connection" message. These tests
+        // previously relied on the ambient network being unreachable; on
+        // the internet-connected CI box the real API answered instead.
+        EsimApi.baseUrlOverride = "https://127.0.0.1:9"
+        try {
+            assertTrue(runCatching { EsimApi.rates() }.exceptionOrNull() is java.io.IOException)
+            assertTrue(runCatching { EsimApi.status("acc") }.exceptionOrNull() is java.io.IOException)
+            assertTrue(runCatching { EsimApi.stripeKey() }.exceptionOrNull() is java.io.IOException)
+            assertTrue(runCatching { EsimApi.stripeIntent("acc", 500L) }.exceptionOrNull() is java.io.IOException)
+            assertTrue(runCatching { EsimApi.nowPayInvoice("acc", 500L) }.exceptionOrNull() is java.io.IOException)
+            assertTrue(runCatching { EsimApi.nowPayCancel("acc") }.exceptionOrNull() is java.io.IOException)
+            assertTrue(runCatching { EsimApi.claim("sim", "acc") }.exceptionOrNull() is java.io.IOException)
+        } finally {
+            EsimApi.baseUrlOverride = null
+        }
     }
 }

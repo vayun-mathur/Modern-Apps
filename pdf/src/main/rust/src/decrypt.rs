@@ -57,9 +57,15 @@ fn crypt_object_split(
     streams: Option<&dyn Fn(&[u8]) -> Vec<u8>>,
 ) {
     match obj {
-        Object::String(s, _) => {
+        Object::String(s, fmt) => {
             if let Some(apply) = strings {
                 *s = apply(s);
+                // Transformed (encrypted or decrypted) bytes are arbitrary
+                // binary: as a literal string they can contain unbalanced
+                // parens/backslashes that corrupt the file for every parser
+                // (a saved-then-reloaded encrypted doc lost all objects but
+                // the /Encrypt dict). Hex strings carry any bytes safely.
+                *fmt = lopdf::StringFormat::Hexadecimal;
             }
         }
         Object::Array(a) => {

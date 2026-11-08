@@ -47,20 +47,51 @@ pub(crate) fn next_handle() -> i64 {
 /// failure, wrong password, or unsupported encryption.
 ///
 /// Size guard: rejects inputs larger than 200 MB to prevent OOM DoS.
+/// Load `bytes` and, if encrypted, decrypt with `password`; None on any
+/// failure (bad password, unparseable, unsupported).
+///
+/// Why the password goes to the loader: lopdf 0.45's `load_mem` authenticates
+/// with the (empty) load password and, when that fails, returns a document
+/// whose objects were never loaded — only the /Encrypt dictionary survives.
+/// `decrypt_in_place` on such a husk reports Ok after "decrypting" nothing,
+/// so a user-password-protected PDF used to open as a successful empty
+/// document. Loading with the password lets lopdf decrypt during the parse
+/// (objects present, plaintext, /Encrypt cleared); the in-place path remains
+/// as the fallback for passwords lopdf's &str API cannot carry and for
+/// encryption variants its handler refuses.
+pub(crate) fn open_decrypted(bytes: &[u8], password: &[u8]) -> Option<Document> {
+    let mut doc = load_document_lenient(bytes)?;
+    if doc.trailer.get(b"Encrypt").is_err() {
+        return Some(doc);
+    }
+    if let Ok(pw) = std::str::from_utf8(password) {
+        if let Ok(d2) = Document::load_mem_with_options(
+            bytes,
+            lopdf::LoadOptions::with_password(pw),
+        ) {
+            // was_encrypted + !is_encrypted means lopdf authenticated and
+            // decrypted in-place; an auth failure comes back as a husk
+            // (still "encrypted", no objects), which must not win.
+            if d2.was_encrypted() && !d2.is_encrypted() && !d2.objects.is_empty() {
+                return Some(d2);
+            }
+        }
+    }
+    if decrypt_in_place(&mut doc, password) != DecryptStatus::Ok {
+        return None;
+    }
+    Some(doc)
+}
+
 pub(crate) fn open_document_pw(bytes: &[u8], password: &[u8]) -> i64 {
     // Zip-bomb / OOM guard: reject absurdly large PDF before parsing.
     if bytes.len() > MAX_PDF_BYTES {
         return 0;
     }
-    let mut doc = match load_document_lenient(bytes) {
+    let doc = match open_decrypted(bytes, password) {
         Some(d) => d,
         None => return 0,
     };
-    if doc.trailer.get(b"Encrypt").is_ok()
-        && decrypt_in_place(&mut doc, password) != DecryptStatus::Ok
-    {
-        return 0;
-    }
     let handle = next_handle();
     // Lock ordering: registry first, then index_cache if eviction needed.
     let mut map = registry()

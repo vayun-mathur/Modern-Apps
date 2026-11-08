@@ -113,45 +113,97 @@ class GroupAndSimImportPass2Test {
         val vm = seededVm()
         val device = contact(1, "Aisha")
         val sim = contact(2, "Simmy", accountType = SIM_ACCOUNT_TYPE)
-        vm.allContactsState.value = listOf(device, sim)
-        awaitContacts(vm, 2)
 
         // recording provider takes over so the group batches are observable
-        AssistantIntentsPass2Test.RecordingProvider.batchSizes.clear()
-        AssistantIntentsPass2Test.RecordingProvider.inserts.clear()
-        AssistantIntentsPass2Test.RecordingProvider.deletes.clear()
         ShadowContentResolver.registerProviderInternal(
             ContactsContract.AUTHORITY, AssistantIntentsPass2Test.RecordingProvider()
         )
-
-        vm.addContactsToGroup(listOf(1L, 2L), 11L)
-        vm.removeContactsFromGroup(listOf(1L), 11L)
-
-        val deadline = System.nanoTime() + 20_000_000_000L
-        while (System.nanoTime() < deadline) {
-            Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-            val ops = AssistantIntentsPass2Test.RecordingProvider.batchSizes.sum() +
-                AssistantIntentsPass2Test.RecordingProvider.inserts.size +
-                AssistantIntentsPass2Test.RecordingProvider.deletes.size
-            if (ops >= 2) break
-            Thread.sleep(20)
+        val rec = AssistantIntentsPass2Test.RecordingProvider
+        // Only group-membership-shaped ops count. ShadowContentResolver keeps
+        // providers in a static registry shared by every test in this JVM, so
+        // async provider writes left in flight by earlier tests land here too —
+        // and Contact.save() itself emits group-membership rows for grouped
+        // contacts — so inserts filter on mimetype, deletes on the selection.
+        fun groupInserts() = rec.inserts.filter {
+            it.second?.getAsString(ContactsContract.Data.MIMETYPE) ==
+                ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE
         }
-        val totalOps = AssistantIntentsPass2Test.RecordingProvider.batchSizes.sum() +
-            AssistantIntentsPass2Test.RecordingProvider.inserts.size +
-            AssistantIntentsPass2Test.RecordingProvider.deletes.size
-        // one add (SIM contact filtered out) + one remove must have been applied
-        assertTrue(totalOps >= 2, "group ops reaching provider: batches=${AssistantIntentsPass2Test.RecordingProvider.batchSizes} inserts=${AssistantIntentsPass2Test.RecordingProvider.inserts.size}")
+        fun groupDeletes() = rec.deletes.filter {
+            it.second?.contains(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID) == true
+        }
+        fun groupOpCount(): Int = groupInserts().size + groupDeletes().size
+        // The VM re-syncs allContactsState from the provider on every contacts
+        // change notification (debounced 300ms) — our own writes, plus stray
+        // writes from other tests, all fire it. Pin our rows and confirm they
+        // stuck before driving each step.
+        fun pinAndSettle(): Boolean {
+            val deadline = System.nanoTime() + 10_000_000_000L
+            var stableSince = 0L
+            while (System.nanoTime() < deadline) {
+                if (vm.allContactsState.value.map { it.id } != listOf(1L, 2L)) {
+                    vm.allContactsState.value = listOf(device, sim)
+                    stableSince = 0L
+                } else if (stableSince == 0L) {
+                    stableSince = System.nanoTime()
+                } else if (System.nanoTime() - stableSince >= 500_000_000L) {
+                    return true
+                }
+                Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                Thread.sleep(20)
+            }
+            return vm.allContactsState.value.map { it.id } == listOf(1L, 2L)
+        }
 
-        // an all-SIM add is a no-op: nothing more reaches the provider
-        val before = AssistantIntentsPass2Test.RecordingProvider.batchSizes.sum() +
-            AssistantIntentsPass2Test.RecordingProvider.inserts.size +
-            AssistantIntentsPass2Test.RecordingProvider.deletes.size
-        vm.addContactsToGroup(listOf(2L), 11L)
-        Thread.sleep(500)
-        val after = AssistantIntentsPass2Test.RecordingProvider.batchSizes.sum() +
-            AssistantIntentsPass2Test.RecordingProvider.inserts.size +
-            AssistantIntentsPass2Test.RecordingProvider.deletes.size
-        assertEquals(before, after)
+        // A re-sync can still slip between the pin and the fire under load, so
+        // verify the recorded evidence matches this test's own ops exactly and
+        // retry the step boundedly instead of asserting on global provider state.
+        var attempt = 0
+        var verified = false
+        var lastDetail = ""
+        while (attempt < 3 && !verified) {
+            attempt++
+            rec.batchSizes.clear(); rec.inserts.clear(); rec.deletes.clear()
+            if (!pinAndSettle()) { lastDetail = "state would not pin"; continue }
+
+            vm.addContactsToGroup(listOf(1L, 2L), 11L)
+            vm.removeContactsFromGroup(listOf(1L), 11L)
+
+            val deadline = System.nanoTime() + 20_000_000_000L
+            while (System.nanoTime() < deadline) {
+                Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                if (groupOpCount() >= 2) break
+                Thread.sleep(20)
+            }
+            // drain stragglers until the group-op count is stable
+            var last = groupOpCount()
+            var stableSince = System.nanoTime()
+            val drainEnd = System.nanoTime() + 10_000_000_000L
+            while (System.nanoTime() < drainEnd) {
+                Thread.sleep(100)
+                val cur = groupOpCount()
+                if (cur != last) { last = cur; stableSince = System.nanoTime() }
+                if (System.nanoTime() - stableSince >= 1_000_000_000L) break
+            }
+
+            // one add (SIM contact filtered out) + one remove must have been applied
+            val addRawIds =
+                groupInserts().map { it.second?.getAsLong(ContactsContract.Data.RAW_CONTACT_ID) }
+            val removeCount = groupDeletes().size
+            if (addRawIds != listOf(1L) || removeCount != 1) {
+                lastDetail = "add/remove evidence: adds=$addRawIds removes=$removeCount"
+                continue
+            }
+
+            // an all-SIM add is a no-op: nothing more reaches the provider
+            if (!pinAndSettle()) { lastDetail = "state would not re-pin"; continue }
+            val before = groupOpCount()
+            vm.addContactsToGroup(listOf(2L), 11L)
+            Thread.sleep(500)
+            val after = groupOpCount()
+            if (before == after) verified = true
+            else lastDetail = "all-SIM add moved provider count $before -> $after"
+        }
+        assertTrue(verified, "group ops reaching provider after $attempt attempt(s): $lastDetail")
     }
 
     @Test

@@ -327,12 +327,13 @@ class WordMakerComposeTest {
         assertTrue(hinted)
     }
     @Test fun overlaysBonusAndDefinitionDialogs() {
+        val animationProgress = Animatable(0f)
         rule.setContent {
             DynamicTheme {
                 WordGameOverlays(
                     showHintDialog = false, onDismissHint = {}, crosswordData = board(), foundWords = emptySet(), revealedHints = emptySet(),
                     actions = WordGameActions.Noop, showBonusWordsDialog = true, onDismissBonusWords = {}, bonusWords = setOf("DOG"),
-                    wordWithDefinition = null, onDismissDefinition = {}, animatedWord = null, animationProgress = Animatable(0f),
+                    wordWithDefinition = null, onDismissDefinition = {}, animatedWord = null, animationProgress = animationProgress,
                     wordBoxOffset = Offset.Zero, bonusButtonOffset = Offset.Zero, animatedLetters = emptyList(), scale = 1f,
                 )
             }

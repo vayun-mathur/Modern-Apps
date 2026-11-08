@@ -25,7 +25,14 @@ internal fun unitsToKey(categoryName: String) = "calculator_units_to_$categoryNa
  * the ViewModel delegates [UnitConverterActions] to this and exposes [uiState]. Call
  * [start] once the ViewModel's scope is available.
  */
-class UnitConverterTab(private val application: Application) {
+class UnitConverterTab(
+    private val application: Application,
+    // Test seam: the currency-rate fetch, so unit tests can force the
+    // offline path instead of depending on the ambient network being
+    // unreachable (on a box with internet the old test's "fails offline"
+    // fetch succeeded and no error state ever appeared).
+    private val ratesFetcher: suspend () -> CurrencyRatesDto = { CurrencyApi.rates() },
+) {
     private val dataStore = DataStoreUtils.getInstance(application)
     private var scope: CoroutineScope? = null
 
@@ -168,7 +175,7 @@ class UnitConverterTab(private val application: Application) {
         currencyLoading = true
         currencyError = null
         scope?.launch {
-            runCatching { CurrencyApi.rates() }
+            runCatching { ratesFetcher() }
                 .onSuccess { dto ->
                     val category = UnitRegistry.currencyCategory(dto.rates)
                     if (category == null) {

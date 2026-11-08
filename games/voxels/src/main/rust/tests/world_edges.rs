@@ -110,7 +110,9 @@ fn block_predicates_cover_shapes_and_light() {
 
 #[test]
 fn inventory_hotbar_rules_hold() {
-    let mut inv = Inventory::default();
+    // The rules below are about an empty inventory; `Inventory::default()`
+    // is the new-player starter kit (64 stone among it), not a blank state.
+    let mut inv = Inventory::empty();
     assert_eq!(inv.selected, 0);
     inv.select(HOTBAR + 5);
     assert_eq!(inv.selected, 0, "out-of-hotbar selection is ignored");
@@ -131,7 +133,7 @@ fn inventory_hotbar_rules_hold() {
     assert!(total <= (SLOTS as i32) * (STACK as i32), "capacity is bounded: {total}");
     inv.move_item(SLOTS + 1, 0);
     inv.move_item(0, 0);
-    let mut swap_inv = Inventory::default();
+    let mut swap_inv = Inventory::empty();
     swap_inv.try_add_block(Block::Stone as u16);
     swap_inv.slots[1].id = Block::Dirt as u16;
     swap_inv.slots[1].count = 3;

@@ -1,5 +1,7 @@
 package com.vayunmathur.library.util
 
+import android.Manifest
+import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
 import android.content.ContextWrapper
@@ -53,6 +55,8 @@ class LibraryAndroid2Test {
     }
 
     @Test fun maNotificationsPostAndBroadcast() {
+        val app = ctx.applicationContext as Application
+        Shadows.shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         val id = MaNotifications.post(
             ctx, "ma-chan", "MA Channel", notificationId = 77,
             launchIntent = Intent(ctx, ComponentActivity::class.java),
@@ -72,6 +76,13 @@ class LibraryAndroid2Test {
 
         val pending = MaNotifications.broadcastIntent(ctx, Intent("com.example.PING"), 5)
         assertNotNull(pending)
+
+        // Without the runtime permission the post is refused with null.
+        Shadows.shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        val denied = MaNotifications.post(ctx, "ma-chan", "MA Channel", notificationId = 79) { builder ->
+            builder.setSmallIcon(android.R.drawable.ic_dialog_info)
+        }
+        assertNull(denied)
     }
 
     @Test fun liveUpdateSupportOnSdk34() {

@@ -50,9 +50,50 @@ class FakeHttpsConnection(
 
 /** Sets a hidden `android.os.SystemProperties` value the way a real build would report it. */
 object TestSysProps {
+    private val managedKeys = listOf(
+        "ro.build.version.incremental",
+        "ro.build.date.utc",
+        "ro.product.device",
+        "ro.build.fingerprint",
+        "ro.maos.ota.server",
+    )
+    private const val backupPrefix = "updater.testsysprops.orig."
+    private const val backupDone = "updater.testsysprops.backupDone"
+
     fun set(key: String, value: String) {
+        backupOnce()
+        sysPropsSet(key, value)
+    }
+
+    /**
+     * Restores every managed key to the value it held before the first [set] call in this
+     * JVM. Robolectric's `android.os.SystemProperties` state is JVM-global, so without this
+     * a fake `ro.build.fingerprint` leaks into later test classes' sandboxes, where it
+     * changes `Build.FINGERPRINT` and breaks Compose's Robolectric fingerprint check.
+     * Call from `@AfterTest` in every test that mutates system properties.
+     */
+    fun reset() {
+        for (key in managedKeys) {
+            sysPropsSet(key, System.getProperty(backupPrefix + key) ?: "")
+        }
+    }
+
+    private fun backupOnce() {
+        if (System.getProperty(backupDone) == "true") return
+        for (key in managedKeys) {
+            System.setProperty(backupPrefix + key, sysPropsGet(key) ?: "")
+        }
+        System.setProperty(backupDone, "true")
+    }
+
+    private fun sysPropsSet(key: String, value: String) {
         val cls = Class.forName("android.os.SystemProperties")
         cls.getMethod("set", String::class.java, String::class.java).invoke(null, key, value)
+    }
+
+    private fun sysPropsGet(key: String): String? {
+        val cls = Class.forName("android.os.SystemProperties")
+        return cls.getMethod("get", String::class.java).invoke(null, key) as String?
     }
 
     fun setRunningBuild(build: String = "2026090500", dateUtcSeconds: Long = 1000L, device: String = "shiba") {

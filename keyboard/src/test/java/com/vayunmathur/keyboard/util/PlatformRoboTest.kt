@@ -40,7 +40,17 @@ class PlatformRoboTest {
         ds.setBoolean(KeyboardSettings.Keys.HAPTIC, false)
         ds.setDouble(KeyboardSettings.Keys.KEY_HEIGHT, 1.2)
         ds.setString(KeyboardSettings.Keys.ACTIVE_LAYOUT, "de_qwertz")
-        val loaded = KeyboardSettings.load(ds)
+        // DataStoreUtils' synchronous getters read an eagerly-collected
+        // mirror of the store; the mirror catches up asynchronously after
+        // a suspending edit commits, so poll instead of assuming the very
+        // next load sees the write (on a loaded CI box it did not, and the
+        // layout read back as the default).
+        var loaded = KeyboardSettings.load(ds)
+        val deadline = System.currentTimeMillis() + 10_000
+        while (loaded.activeLayoutId != "de_qwertz" && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20)
+            loaded = KeyboardSettings.load(ds)
+        }
         assertTrue(loaded.sound)
         assertFalse(loaded.haptic)
         assertEquals(1.2f, loaded.keyHeightScale)

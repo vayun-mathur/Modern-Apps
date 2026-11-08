@@ -14,9 +14,16 @@ private val HTTP_STATUS = Regex("^HTTP (\\d{3})\\b")
 object EsimApi {
     const val BASE_URL = "https://api.maproj.org"
 
+    // Test seam: point the API at an unroutable address so offline-path
+    // tests are hermetic on boxes that have internet.
+    @androidx.annotation.VisibleForTesting
+    internal var baseUrlOverride: String? = null
+
+    private val baseUrl: String get() = baseUrlOverride ?: BASE_URL
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    fun url(path: String): String = BASE_URL + path
+    fun url(path: String): String = baseUrl + path
 
     /** HTTP failure with a parsed status code. NetworkClient surfaces
      * non-2xx as `IOException("HTTP <code>: ...")`. */

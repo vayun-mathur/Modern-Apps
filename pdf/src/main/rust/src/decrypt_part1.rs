@@ -310,7 +310,9 @@ mod tests {
         ]);
         crypt_object(&mut obj, &flip);
         let Object::Array(a) = &obj else { panic!() };
-        assert_eq!(a[0], Object::String(flip(b"s"), lopdf::StringFormat::Literal));
+        // Transformed strings are re-tagged hexadecimal (binary-safe); the
+        // payload is the flipped bytes either way.
+        assert_eq!(a[0], Object::String(flip(b"s"), lopdf::StringFormat::Hexadecimal));
         let Object::Stream(s) = &a[1] else { panic!() };
         assert_eq!(s.content, flip(b"c"));
     }

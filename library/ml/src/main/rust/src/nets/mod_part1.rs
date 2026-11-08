@@ -464,6 +464,9 @@ impl Kind {
                 }
                 Reads::Ranges(ranges)
             }
+            // Both halves of the fused [gate | up] projection (`in_c` is the
+            // gate half's element count); not the generic `dense` below.
+            Kind::GatedActivate => one(push.in0, push.in_c + push.count),
             // The whole input plane, whatever the kernel touches.
             Kind::MaxPool
             | Kind::AvgPool
@@ -480,7 +483,6 @@ impl Kind {
             | Kind::Quantize
             | Kind::QuantizeBlocks
             | Kind::Activate
-            | Kind::GatedActivate
             | Kind::MulScalar
             | Kind::Clamp => one(push.in0, dense),
             // As above, plus a folded residual addend (see `Push::res`): the

@@ -3,7 +3,9 @@ package com.vayunmathur.globalesim.platform
 import android.app.Application
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
+import com.vayunmathur.globalesim.data.api.EsimApi
 import com.vayunmathur.globalesim.data.api.ProfileDto
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,7 +27,14 @@ class EsimViewModelTest {
     private lateinit var vm: EsimViewModel
 
     @BeforeTest fun setUp() {
+        // Hermetic offline: dead loopback, so the API fails on any box
+        // (CI has internet and the real API answered these tests before).
+        EsimApi.baseUrlOverride = "https://127.0.0.1:9"
         vm = EsimViewModel(app)
+    }
+
+    @AfterTest fun tearDown() {
+        EsimApi.baseUrlOverride = null
     }
 
     private fun await(timeoutMs: Long = 15_000, cond: () -> Boolean): Boolean {

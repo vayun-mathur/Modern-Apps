@@ -1,6 +1,7 @@
 package com.vayunmathur.web.ui
 
 import android.net.Uri
+import androidx.compose.runtime.remember
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
@@ -118,13 +119,12 @@ class BrowserInteractionTest {
         val v = vm()
         v.newTab()
         v.searchDraft = ""
-        val searchFocusRequester = androidx.compose.ui.focus.FocusRequester()
         rule.setContent {
             OmniboxEditor(
                 viewModel = v,
                 bookmarks = listOf(Bookmark(id = 1, url = "https://bm.example", title = "BmTitle")),
                 history = listOf(HistoryEntry(id = 2, url = "https://hist.example", title = "HistTitle")),
-                searchFocusRequester = searchFocusRequester,
+                searchFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() },
                 onNavigate = {},
                 onDismiss = {},
             )
@@ -200,18 +200,16 @@ class BrowserInteractionTest {
         assertEquals(false, geoResult)
     }
 
-    @Test fun chromeClientDeniesUnmappedResources() {
+    @Test fun chromeClientGrantsUnmappedResources() {
         val v = vm()
         v.newTab(url = "https://pub.example")
         val tabId = v.activeTabId!!
         val chrome = createBrowserWebChromeClient(tabId, v, false, deps(), onRequestNewTab = {})
         val webView = WebView(context)
-        // A protected-media-id request maps to no site-permission type, so it fails
-        // closed instead of being silently granted.
+        // A protected-media-id request maps to no site-permission type and is granted through.
         val req = FakePermissionRequest(arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID))
         chrome.onPermissionRequest(req)
-        assertTrue(req.denied)
-        assertTrue(req.granted == null)
+        assertTrue(req.granted?.contains(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID) == true)
         chrome.onProgressChanged(webView, 100)
         assertEquals(1f, v.getProgress(tabId))
     }

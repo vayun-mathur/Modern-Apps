@@ -381,7 +381,7 @@ mod tests {
         let weights = Weights::parse(&blob, graph::SUPERTONIC_VE).expect("parses");
         let reader = weights.reader();
         let past = reader.int4_row(0, 1, &[2, 4], 2).expect_err("row 2 of 2");
-        assert!(past.contains("row 2"), "{past}");
+        assert!(past.contains("rows 2..3 of a 2-row tensor"), "{past}");
         // And the last code is -8, which only survives if the nibble is sign-extended.
         let last = reader.int4_row(0, 1, &[2, 4], 1).expect("row 1");
         assert!((last[3] + 8.0).abs() < 1e-6, "sign extension: {last:?}");

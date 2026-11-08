@@ -45,6 +45,7 @@ class LauncherHomePopupsTest {
         optionsAnchor: Rect? = null,
         widgetPickerOpen: Boolean = false,
     ) {
+        val popup = Animatable(1f)
         rule.setContent {
             CompositionLocalProvider(LocalLauncherDrag provides LauncherDragController()) {
                 HomePopups(
@@ -56,7 +57,7 @@ class LauncherHomePopupsTest {
                         canUninstall = true,
                     ),
                     itemMenuActions = ItemMenuActions.Noop,
-                    popup = Animatable(1f),
+                    popup = popup,
                     onClosePopup = {},
                     optionsAnchor = optionsAnchor,
                     onPickWallpaper = {},

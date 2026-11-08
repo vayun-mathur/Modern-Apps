@@ -3,6 +3,7 @@ package com.vayunmathur.office
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -164,9 +165,9 @@ class Slice4MenusOverlaysTest {
             CellOverlays(
                 state = state,
                 viewModel = viewModel,
-                activeCell = mutableStateOf(Triple(0, 0, 0)),
-                activeSlide = mutableIntStateOf(0),
-                activeSlideEl = mutableIntStateOf(-1),
+                activeCell = remember { mutableStateOf(Triple(0, 0, 0)) },
+                activeSlide = remember { mutableIntStateOf(0) },
+                activeSlideEl = remember { mutableIntStateOf(-1) },
             )
         }
         rule.onNodeWithText("Text Color").assertIsDisplayed()
@@ -185,9 +186,9 @@ class Slice4MenusOverlaysTest {
             CellOverlays(
                 state = state,
                 viewModel = vm(sheetDoc()),
-                activeCell = mutableStateOf(null),
-                activeSlide = mutableIntStateOf(0),
-                activeSlideEl = mutableIntStateOf(-1),
+                activeCell = remember { mutableStateOf(null) },
+                activeSlide = remember { mutableIntStateOf(0) },
+                activeSlideEl = remember { mutableIntStateOf(-1) },
             )
         }
         // No active cell: color pickers stay hidden, nothing crashes.
@@ -202,8 +203,8 @@ class Slice4MenusOverlaysTest {
             SlideElementOverlays(
                 state = state,
                 viewModel = vm(textDoc()),
-                activeSlide = mutableIntStateOf(0),
-                activeSlideEl = mutableIntStateOf(-1),
+                activeSlide = remember { mutableIntStateOf(0) },
+                activeSlideEl = remember { mutableIntStateOf(-1) },
             )
         }
         rule.onNodeWithText("Text Color").assertDoesNotExist()

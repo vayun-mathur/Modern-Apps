@@ -64,17 +64,25 @@ class GeoAndWorkerTest {
 
     @JUnitTest(timeout = 60_000)
     fun apiBundleFailsWithoutNetwork() = runTest {
+        // Hermetic: point the API at a dead loopback port so the failure
+        // happens on internet-connected boxes too (CI reached the real
+        // api.maproj.org and the "expected failure" never came).
+        com.vayunmathur.weather.network.WeatherApi.bundleBaseOverride = "https://127.0.0.1:9/wx/v1"
         try {
-            WeatherApi.bundle(52.0, 13.0)
-            fail("expected network failure")
-        } catch (e: Exception) {
-            assertTrue(e.message != null || e is RuntimeException)
-        }
-        try {
-            WeatherApi.currentTemperatures(listOf(52.0 to 13.0))
-            fail("expected network failure")
-        } catch (e: Exception) {
-            assertTrue(true)
+            try {
+                WeatherApi.bundle(52.0, 13.0)
+                fail("expected network failure")
+            } catch (e: Exception) {
+                assertTrue(e.message != null || e is RuntimeException)
+            }
+            try {
+                WeatherApi.currentTemperatures(listOf(52.0 to 13.0))
+                fail("expected network failure")
+            } catch (e: Exception) {
+                assertTrue(true)
+            }
+        } finally {
+            com.vayunmathur.weather.network.WeatherApi.bundleBaseOverride = null
         }
     }
 }

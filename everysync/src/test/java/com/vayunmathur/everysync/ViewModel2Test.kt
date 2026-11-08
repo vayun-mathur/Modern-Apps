@@ -76,14 +76,23 @@ class ViewModel2Test {
             "local_read_failed" to true, "relay_unavailable" to true, "some raw error" to false,
         )) {
             store.upsert(AccountConfig("err-acc", "e2ee", emptySet(), lastSyncError = "vault sync aborted: $code (notes)"))
+            // AccountStore.get reads DataStoreUtils' asynchronously-updated
+            // mirror, so the just-committed error may not be visible yet on
+            // a loaded box; wait until the store itself sees this write.
+            assertTrue(
+                await { store.get("err-acc")?.lastSyncError?.contains(code) == true },
+                "store never showed $code: ${store.get("err-acc")?.lastSyncError}",
+            )
             val text = vm.syncErrorText("err-acc")
             assertNotNull(text, code)
             if (!expectDistinct) assertEquals("vault sync aborted: some raw error (notes)", text)
         }
         // Distinct codes map to distinct user-facing strings
         store.upsert(AccountConfig("err-acc", "e2ee", emptySet(), lastSyncError = "pull_transport_failed"))
+        assertTrue(await { store.get("err-acc")?.lastSyncError == "pull_transport_failed" })
         val a = vm.syncErrorText("err-acc")
         store.upsert(AccountConfig("err-acc", "e2ee", emptySet(), lastSyncError = "log_undecryptable"))
+        assertTrue(await { store.get("err-acc")?.lastSyncError == "log_undecryptable" })
         assertTrue(a != vm.syncErrorText("err-acc"))
         Unit
     } }
