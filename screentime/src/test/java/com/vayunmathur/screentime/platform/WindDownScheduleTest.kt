@@ -71,4 +71,49 @@ class WindDownScheduleTest {
         assertFalse(schedule.activeAt(at(day = 9, month = 11, hour = 23)))
         assertFalse(schedule.activeAt(at(day = 10, month = 11, hour = 2)))
     }
+
+    // Boundary + defaults coverage from cov/c9 (same-day month pinned to November).
+
+    @Test fun disabledNeverActive() {
+        val s = WindDownSchedule(enabled = false, startMinute = 22 * 60, endMinute = 7 * 60)
+        assertFalse(s.activeAt(at(day = 2, month = 11, hour = 23)))
+        assertFalse(s.activeAt(at(day = 3, month = 11, hour = 2)))
+    }
+
+    @Test fun overnightAllDaysBoundaries() {
+        val s = WindDownSchedule(enabled = true, startMinute = 22 * 60, endMinute = 7 * 60)
+        assertFalse(s.activeAt(at(day = 2, month = 11, hour = 21, minute = 59)))
+        assertTrue(s.activeAt(at(day = 2, month = 11, hour = 22, minute = 0)))
+        assertTrue(s.activeAt(at(day = 2, month = 11, hour = 23, minute = 59)))
+        assertTrue(s.activeAt(at(day = 3, month = 11, hour = 0, minute = 0)))
+        assertTrue(s.activeAt(at(day = 3, month = 11, hour = 6, minute = 59)))
+        assertFalse(s.activeAt(at(day = 3, month = 11, hour = 7, minute = 0)))
+        assertFalse(s.activeAt(at(day = 3, month = 11, hour = 12, minute = 0)))
+    }
+
+    @Test fun sameDayWindowBoundaries() {
+        val s = WindDownSchedule(enabled = true, startMinute = 9 * 60, endMinute = 17 * 60)
+        assertFalse(s.activeAt(at(day = 2, month = 11, hour = 8, minute = 59)))
+        assertTrue(s.activeAt(at(day = 2, month = 11, hour = 9, minute = 0)))
+        assertTrue(s.activeAt(at(day = 2, month = 11, hour = 16, minute = 59)))
+        assertFalse(s.activeAt(at(day = 2, month = 11, hour = 17, minute = 0)))
+    }
+
+    @Test fun dayMaskWeekdaysOnly() {
+        // Monday..Friday = bits 0..4; 2026-11-06/07/08 are Fri/Sat/Sun.
+        val s = WindDownSchedule(enabled = true, startMinute = 22 * 60, endMinute = 7 * 60, daysMask = 0b001_1111)
+        assertTrue(s.activeAt(at(day = 6, month = 11, hour = 23))) // Friday 23:00
+        assertTrue(s.activeAt(at(day = 7, month = 11, hour = 2))) // Saturday 02:00 (started Friday)
+        assertFalse(s.activeAt(at(day = 7, month = 11, hour = 23))) // Saturday 23:00 not set
+        assertFalse(s.activeAt(at(day = 8, month = 11, hour = 2))) // Sunday 02:00 (started Saturday, not set)
+    }
+
+    @Test fun defaultsAreOvernight() {
+        val s = WindDownSchedule(enabled = true)
+        kotlin.test.assertEquals(22 * 60, s.startMinute)
+        kotlin.test.assertEquals(7 * 60, s.endMinute)
+        kotlin.test.assertEquals(WindDownSchedule.ALL_DAYS, s.daysMask)
+        assertTrue(s.activeAt(at(day = 2, month = 11, hour = 23)))
+        assertFalse(s.activeAt(at(day = 2, month = 11, hour = 12)))
+    }
 }

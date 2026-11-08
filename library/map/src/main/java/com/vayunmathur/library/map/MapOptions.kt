@@ -25,7 +25,13 @@ data class GestureOptions(
             )
 
         /** All gestures disabled (static map). */
-        val AllDisabled = GestureOptions(isScrollEnabled = false, isZoomEnabled = false)
+        val AllDisabled =
+            GestureOptions(
+                isScrollEnabled = false,
+                isZoomEnabled = false,
+                isRotateEnabled = false,
+                isTiltEnabled = false,
+            )
     }
 }
 

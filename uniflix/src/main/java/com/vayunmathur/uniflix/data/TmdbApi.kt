@@ -1,7 +1,5 @@
 package com.vayunmathur.uniflix.data
 
-import com.vayunmathur.library.network.NetworkClient
-import com.vayunmathur.library.network.RawResponse
 import com.vayunmathur.uniflix.domain.Episode
 import com.vayunmathur.uniflix.domain.MediaDetail
 import com.vayunmathur.uniflix.domain.MediaItem
@@ -12,15 +10,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /** TMDB catalog client via the self-hosted proxy. Keyless: the server holds the TMDB API key. */
-class TmdbApi(
-    private val fetch: suspend (String) -> RawResponse = { url -> NetworkClient.execute(url) },
-) {
+class TmdbApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun url(path: String): String = "$BASE$path"
 
     private suspend fun getItems(requestUrl: String): List<MediaItem> {
-        val resp = fetch(requestUrl)
+        val resp = uniflixGet(requestUrl)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         return json.decodeFromString(TmdbList.serializer(), resp.text).results.map { it.toMediaItem() }
     }
@@ -50,7 +46,7 @@ class TmdbApi(
 
     suspend fun movieDetail(tmdbId: Int): MediaDetail {
         val requestUrl = url("/movie/$tmdbId")
-        val resp = fetch(requestUrl)
+        val resp = uniflixGet(requestUrl)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         val dto = json.decodeFromString(TmdbMovieDetail.serializer(), resp.text)
         val recs = runCatching { movieRecommendations(tmdbId) }.getOrDefault(emptyList())
@@ -70,7 +66,7 @@ class TmdbApi(
 
     suspend fun tvDetail(tmdbId: Int): MediaDetail {
         val requestUrl = url("/tv/$tmdbId")
-        val resp = fetch(requestUrl)
+        val resp = uniflixGet(requestUrl)
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         val dto = json.decodeFromString(TmdbTvDetail.serializer(), resp.text)
         return MediaDetail(
@@ -89,7 +85,7 @@ class TmdbApi(
     }
 
     suspend fun seasonEpisodes(tmdbId: Int, season: Int): List<Episode> {
-        val resp = fetch(url("/tv/$tmdbId/season/$season"))
+        val resp = uniflixGet(url("/tv/$tmdbId/season/$season"))
         if (!resp.isSuccess) error("TMDB request failed: ${resp.status}")
         return json.decodeFromString(TmdbSeason.serializer(), resp.text).episodes.map {
             Episode(season, it.episodeNumber, it.name, it.overview, it.stillPath)

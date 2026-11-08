@@ -42,7 +42,7 @@ object TravelApi {
         cabin: String = "economy",
         maxConnections: Int = -1,
         loyalty: String = "",
-    ): OfferSearchDto = NetworkClient.getJson(
+    ): OfferSearchDto = travelGetJson(
         flightsUrl(
             "/flights",
             origin,
@@ -56,7 +56,8 @@ object TravelApi {
             cabin,
             maxConnections,
             loyalty
-        )
+        ),
+        "Search failed",
     )
 
     private fun flightsUrl(
@@ -112,10 +113,7 @@ object TravelApi {
      * raises [StillPricingException] too, via [travelHttpError].
      */
     suspend fun ancillaries(id: String): TripAncillariesDto {
-        val res = NetworkClient.performRequest(
-            url = "$BASE/trips/${enc(id)}/ancillaries",
-            method = "GET",
-        )
+        val res = travelPerform("GET", "$BASE/trips/${enc(id)}/ancillaries")
         if (!res.isSuccess) throw travelHttpError(res.status, res.body, "Could not load extras")
         val data: TripAncillariesDto = travelJson.decodeFromString(res.body)
         if (data.status == "pricing") {

@@ -70,6 +70,11 @@ class UniflixRepository private constructor(context: Context) :
             instance ?: synchronized(this) {
                 instance ?: UniflixRepository(context).also { instance = it }
             }
+
+        /** Test seam: drop the singleton so the next [get] re-resolves its database. */
+        internal fun resetInstanceForTest() {
+            synchronized(this) { instance = null }
+        }
     }
 }
 

@@ -88,7 +88,9 @@ class ScreenTimeRules private constructor(context: Context) :
     private val paused get() = db.pausedAppsDao()
     private val windDown get() = db.windDownDao()
 
-    val allTimers: Flow<List<AppTimer>> = timers.allFlow()
+    // Getters, not vals: a val here would open the database at construction,
+    // before any caller has asked for data.
+    val allTimers: Flow<List<AppTimer>> get() = timers.allFlow()
 
     suspend fun allTimersNow(): List<AppTimer> = timers.all()
 
@@ -99,7 +101,7 @@ class ScreenTimeRules private constructor(context: Context) :
     suspend fun delete(timer: AppTimer) = timers.delete(timer)
 
     /** The user-paused set, defaulted rather than nullable. */
-    val pausedApps: Flow<PausedApps> =
+    val pausedApps: Flow<PausedApps> get() =
         paused.pausedFlow().map { it ?: PausedApps() }
 
     suspend fun pausedNow(): PausedApps = paused.paused() ?: PausedApps()
@@ -107,7 +109,7 @@ class ScreenTimeRules private constructor(context: Context) :
     suspend fun setPaused(paused: PausedApps) = this.paused.upsert(paused)
 
     /** The wind-down schedule, defaulted rather than nullable. */
-    val windDownSchedule: Flow<WindDownSchedule> =
+    val windDownSchedule: Flow<WindDownSchedule> get() =
         windDown.scheduleFlow().map { it ?: WindDownSchedule() }
 
     suspend fun windDownNow(): WindDownSchedule = windDown.schedule() ?: WindDownSchedule()

@@ -4,7 +4,8 @@ import android.content.Context
 import com.vayunmathur.library.room.RoomRepository
 import kotlinx.coroutines.flow.Flow
 
-class TravelRepository private constructor(context: Context) :
+/** Test seam: subclassable + overridable flows so unit tests can drive ViewModels without SQLCipher. */
+open class TravelRepository internal constructor(context: Context) :
     RoomRepository<TravelDatabase>(context, TravelDatabase::class, DB_NAME) {
 
     private val recentSearchDao: RecentSearchDao get() = db.recentSearchDao()
@@ -13,30 +14,30 @@ class TravelRepository private constructor(context: Context) :
     private val customerDao: CustomerDao get() = db.customerDao()
 
     // RecentSearch
-    fun observeRecent(limit: Int = 10): Flow<List<RecentSearch>> = recentSearchDao.observeRecent(limit)
-    suspend fun insertRecent(value: RecentSearch) = recentSearchDao.insert(value)
-    suspend fun deleteRecent(value: RecentSearch) = recentSearchDao.delete(value)
-    suspend fun clearRecent() = recentSearchDao.clear()
-    suspend fun trimRecent(keep: Int = 20) = recentSearchDao.trim(keep)
+    open fun observeRecent(limit: Int = 10): Flow<List<RecentSearch>> = recentSearchDao.observeRecent(limit)
+    open suspend fun insertRecent(value: RecentSearch) = recentSearchDao.insert(value)
+    open suspend fun deleteRecent(value: RecentSearch) = recentSearchDao.delete(value)
+    open suspend fun clearRecent() = recentSearchDao.clear()
+    open suspend fun trimRecent(keep: Int = 20) = recentSearchDao.trim(keep)
 
     // BookedTrip
-    fun observeBookedTrips(): Flow<List<BookedTrip>> = bookedTripDao.observeAll()
-    suspend fun getAllBookedTrips(): List<BookedTrip> = bookedTripDao.getAll()
-    suspend fun getBookedTrip(orderId: String): BookedTrip? = bookedTripDao.byId(orderId)
-    suspend fun upsertBookedTrip(value: BookedTrip) = bookedTripDao.upsert(value)
-    suspend fun deleteBookedTripById(orderId: String) = bookedTripDao.deleteById(orderId)
+    open fun observeBookedTrips(): Flow<List<BookedTrip>> = bookedTripDao.observeAll()
+    open suspend fun getAllBookedTrips(): List<BookedTrip> = bookedTripDao.getAll()
+    open suspend fun getBookedTrip(orderId: String): BookedTrip? = bookedTripDao.byId(orderId)
+    open suspend fun upsertBookedTrip(value: BookedTrip) = bookedTripDao.upsert(value)
+    open suspend fun deleteBookedTripById(orderId: String) = bookedTripDao.deleteById(orderId)
 
     // FrequentFlyer
-    fun observeFrequentFlyers(): Flow<List<FrequentFlyer>> = frequentFlyerDao.observeAll()
-    suspend fun getAllFrequentFlyers(): List<FrequentFlyer> = frequentFlyerDao.getAll()
-    suspend fun upsertFrequentFlyer(value: FrequentFlyer) = frequentFlyerDao.upsert(value)
-    suspend fun deleteFrequentFlyer(airlineIata: String) = frequentFlyerDao.deleteById(airlineIata)
+    open fun observeFrequentFlyers(): Flow<List<FrequentFlyer>> = frequentFlyerDao.observeAll()
+    open suspend fun getAllFrequentFlyers(): List<FrequentFlyer> = frequentFlyerDao.getAll()
+    open suspend fun upsertFrequentFlyer(value: FrequentFlyer) = frequentFlyerDao.upsert(value)
+    open suspend fun deleteFrequentFlyer(airlineIata: String) = frequentFlyerDao.deleteById(airlineIata)
 
     // Customer
-    fun observeCustomers(): Flow<List<Customer>> = customerDao.observeAll()
-    suspend fun getCustomer(id: String): Customer? = customerDao.byId(id)
-    suspend fun upsertCustomer(value: Customer) = customerDao.upsert(value)
-    suspend fun deleteCustomerById(id: String) = customerDao.deleteById(id)
+    open fun observeCustomers(): Flow<List<Customer>> = customerDao.observeAll()
+    open suspend fun getCustomer(id: String): Customer? = customerDao.byId(id)
+    open suspend fun upsertCustomer(value: Customer) = customerDao.upsert(value)
+    open suspend fun deleteCustomerById(id: String) = customerDao.deleteById(id)
 
     companion object {
         @Volatile private var instance: TravelRepository? = null
