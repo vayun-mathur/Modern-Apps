@@ -75,7 +75,8 @@ object NativeExtractor {
     private suspend inline fun <T> io(crossinline block: () -> T): T =
         withContext(Dispatchers.IO) { block() }
 
-    private inline fun <reified T> unwrap(payload: String): T {
+    // internal (was private) so unit tests can exercise envelope handling without the native library.
+    internal inline fun <reified T> unwrap(payload: String): T {
         val envelope = json.decodeFromString<Envelope<T>>(payload)
         if (!envelope.ok || envelope.data == null) {
             throw NativeExtractorException(envelope.error ?: "unknown extractor error")
@@ -84,7 +85,8 @@ object NativeExtractor {
     }
 
     @Serializable
-    private data class Envelope<T>(val ok: Boolean, val data: T? = null, val error: String? = null)
+    @PublishedApi
+    internal data class Envelope<T>(val ok: Boolean, val data: T? = null, val error: String? = null)
 
     private const val DEFAULT_HL = "en-GB"
     private const val DEFAULT_GL = "GB"
