@@ -1,6 +1,5 @@
 package com.vayunmathur.vpn.platform
 
-import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -94,12 +93,21 @@ class VpnViewModel(
         }
     }
 
-    fun startVpn(activity: Activity, config: VpnConfig) {
+    /**
+     * Connects [config], requesting system VPN consent first when needed.
+     *
+     * When [VpnService.prepare] returns a consent intent, the tunnel cannot
+     * start yet: the intent is handed to [onPermissionNeeded] so the caller
+     * can launch it through the Activity Result API, and the caller retries
+     * this same method after the user grants consent (at which point
+     * prepare() returns null and the tunnel starts directly).
+     */
+    fun startVpn(config: VpnConfig, onPermissionNeeded: (Intent) -> Unit) {
         val ctx = getApplication<Application>()
-        val intent = VpnService.prepare(ctx)
-        if (intent != null) {
-            activity.startActivityForResult(intent, VPN_PERMISSION_REQUEST)
+        val permissionIntent = VpnService.prepare(ctx)
+        if (permissionIntent != null) {
             _status.value = "Granting VPN permission…"
+            onPermissionNeeded(permissionIntent)
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -114,6 +122,10 @@ class VpnViewModel(
                 _status.value = "Connecting to ${config.name}…"
             }
         }
+    }
+
+    fun onVpnPermissionDenied() {
+        _status.value = "VPN permission denied"
     }
 
     fun stopVpn() {
@@ -215,7 +227,6 @@ class VpnViewModel(
     companion object {
         private const val STOP_TIMEOUT_MS = 5_000L
         private const val POLL_RUNNING_MS = 500L
-        private const val VPN_PERMISSION_REQUEST = 1001
     }
 }
 
