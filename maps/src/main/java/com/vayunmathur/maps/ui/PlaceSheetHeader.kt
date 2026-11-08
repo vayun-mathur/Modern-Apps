@@ -34,6 +34,7 @@ import com.vayunmathur.library.ui.SecondaryTabRow
 import com.vayunmathur.library.ui.Surface
 import com.vayunmathur.library.ui.Tab
 import com.vayunmathur.library.ui.Text
+import com.vayunmathur.library.ui.TextButton
 import com.vayunmathur.maps.R
 import com.vayunmathur.maps.data.SavedPlace
 import com.vayunmathur.maps.data.SpecificFeature
@@ -153,6 +154,9 @@ private fun PlaceSheetHeaderContent(
             override fun removeSaved(place: SavedPlace) {
                 savedPlacesViewModel.removeSaved(place)
             }
+            override fun revealDetails() {
+                viewModel.revealDetails()
+            }
         }
     }
     PlaceSheetHeaderContent(
@@ -181,6 +185,14 @@ private fun PlaceSheetHeaderContent(
     val poi = panelState.poi
     val selectedSection = panelState.poiSection
     val context = LocalContext.current
+    if (!panelState.detailsRevealed) {
+        MaskedPlaceHeader(
+            name = feature.name,
+            onReveal = { panelActions.revealDetails() },
+            modifier = modifier,
+        )
+        return
+    }
     // If this is a restaurant/food place, ask fooddelivery whether it's orderable
     // (off the main thread, null-safe). Absent/not-orderable → null → no Order button.
     val orderDeepLink by rememberOrderDeepLink(context, feature, poi?.category)
@@ -230,6 +242,25 @@ private fun PlaceSheetHeaderContent(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The masked place header: the place name plus the explicit reveal action, and
+ * nothing else — no category, rating, hours, action row or tabs until the user
+ * taps through. Private: only this file's header content renders it.
+ */
+@Composable
+private fun MaskedPlaceHeader(
+    name: String,
+    onReveal: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(name, style = MaterialTheme.typography.titleLarge)
+        TextButton(onClick = onReveal) {
+            Text(stringResource(R.string.show_details))
         }
     }
 }

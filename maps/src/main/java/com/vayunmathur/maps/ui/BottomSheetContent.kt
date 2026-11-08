@@ -65,6 +65,9 @@ fun BottomSheetContent(
             override fun openNearestStop(lat: Double, lon: Double) {
                 transitViewModel.openNearestStop(lat, lon)
             }
+            override fun revealDetails() {
+                viewModel.revealDetails()
+            }
         }
     }
     BottomSheetContent(
