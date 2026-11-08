@@ -85,6 +85,10 @@ internal suspend fun GamesHubProvider.updateSession(
 ): Int {
     val sessionId = uri.pathSegments.lastOrNull() ?: return 0
     val existing = repo.sessions.getSessionById(sessionId) ?: return 0
+    // Idempotent end: a repeated update (game-side retry, double lifecycle
+    // callback, process-death replay) must not add playtime or log completion
+    // twice. An already-ended session stays ended.
+    if (existing.endTime != null) return 1
     val endTime = v.getAsLong(GameHubContract.Sessions.END_TIME)
         ?: v.getAsLong("end_time") ?: System.currentTimeMillis()
     val duration = (endTime - existing.startTime).coerceAtLeast(0L)
