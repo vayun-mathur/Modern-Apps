@@ -115,12 +115,8 @@ data class DetailUiState(
     val startPositionMs: Long = 0L,
 )
 
-class DetailViewModel(
-    app: Application,
-    private val api: TmdbApi = TmdbApi(),
-) : AndroidViewModel(app) {
-    constructor(app: Application) : this(app, TmdbApi())
-
+class DetailViewModel(app: Application) : AndroidViewModel(app) {
+    private val api = TmdbApi()
     private val repository = UniflixRepository.get(app)
     private val addonPrefs = AddonPrefs(app)
 

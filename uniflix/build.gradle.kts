@@ -40,13 +40,6 @@ dependencies {
     testImplementation(libs.mockito.core)
 }
 
-// One JVM per test class: Robolectric sandboxes sharing a JVM each create their
-// own DataStore instance for the same AddonPrefs file, and those instances
-// deadlock each other (TvPickersAndPrefsTest only hung in full-suite runs).
-tasks.withType<Test>().configureEach {
-    forkEvery = 1
-}
-
 // Desktop JVM unit tests cannot load the Android QuickJS .so: run them against
 // the -jvm artifact (per quickjs-kt README) while the app keeps the -android AAR.
 // configureEach (not named) so this holds however AGP creates the test configs.

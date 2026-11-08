@@ -32,9 +32,6 @@ class UniflixViewModelsTest {
 
     private val app: Application get() = ApplicationProvider.getApplicationContext()
 
-    /** Catalog client whose every request fails, so tests never touch the network. */
-    private fun offlineApi(): TmdbApi = TmdbApi { throw java.io.IOException("offline test double") }
-
     @BeforeTest fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @AfterTest fun tearDown() { Dispatchers.resetMain() }
 
@@ -68,7 +65,7 @@ class UniflixViewModelsTest {
     // ---- Detail ----
 
     @Test fun detailResolveSuccessSetsSource() {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         val fake = FakeProvider(Result.success(VideoSource("https://x/v.m3u8", "Stream")))
         vm.streamProviders = listOf(fake)
         vm.resolve(MediaType.MOVIE, 42)
@@ -80,7 +77,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun detailResolveWithNoProvidersMarksMissing() {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         vm.streamProviders = emptyList()
         vm.resolve(MediaType.TV, 7, season = 1, episode = 2)
         assertTrue(await { vm.state.providerMissing }, "state=${vm.state}")
@@ -89,7 +86,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun detailResolveFailureSurfacesError() {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         vm.streamProviders = listOf(FakeProvider(Result.failure(IllegalStateException("no streams here"))))
         vm.resolve(MediaType.MOVIE, 3)
         assertTrue(await { vm.state.resolveError != null }, "state=${vm.state}")
@@ -98,7 +95,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun detailLoadServersAndSelectServer() {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         val fake = FakeProvider(
             Result.success(VideoSource("https://x/v", "S")),
             serverNames = listOf("Alpha", "Beta"))
@@ -116,7 +113,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun detailLoadFailsOfflineIntoErrorState() {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         vm.load(MediaType.MOVIE, 42)
         assertTrue(await { !vm.state.loading && vm.state.detail == null }, "state=${vm.state}")
         vm.load(MediaType.TV, 42)
@@ -125,7 +122,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun detailSeasonAndGuardsOffline() = runTest {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         vm.selectSeason(MediaType.TV, 7, 3)
         assertTrue(await { vm.state.episodes.isEmpty() })
         assertEquals(1, vm.state.selectedSeason)
@@ -141,7 +138,7 @@ class UniflixViewModelsTest {
     // ---- Browse / Search / Home / Lists ----
 
     @Test fun browseLoadsFailOfflineIntoEmptyStates() {
-        val vm = BrowseViewModel(app, offlineApi())
+        val vm = BrowseViewModel(app)
         vm.loadMovies()
         assertTrue(await { !vm.movies.loading && vm.movies.items.isEmpty() }, "movies=${vm.movies}")
         vm.loadSeries()
@@ -149,7 +146,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun searchBlankClearsAndQueryFailsOffline() {
-        val vm = SearchViewModel(app, offlineApi())
+        val vm = SearchViewModel(app)
         vm.onQueryChange("  ")
         assertEquals("  ", vm.state.query)
         assertTrue(vm.state.results.isEmpty())
@@ -162,7 +159,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun homeRefreshFailsOffline() {
-        val vm = HomeViewModel(app, offlineApi())
+        val vm = HomeViewModel(app)
         vm.refresh()
         assertTrue(
             await { !vm.state.loading && vm.state.trendingMovies.isEmpty() },
@@ -178,7 +175,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun tmdbApiEndpointsFailOffline() = runTest {
-        val api = offlineApi()
+        val api = TmdbApi()
         assertTrue(runCatching { api.trendingMovies() }.isFailure)
         assertTrue(runCatching { api.trendingTv() }.isFailure)
         assertTrue(runCatching { api.topRatedMovies() }.isFailure)
@@ -192,7 +189,7 @@ class UniflixViewModelsTest {
     }
 
     @Test fun detailResolveViaCustomRegistryFactory() {
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         val fake = FakeProvider(Result.success(VideoSource("https://x/custom", "Custom")))
         vm.streamProviders = null
         vm.registryFactory = RegistryFactory { _, _ ->
@@ -206,7 +203,7 @@ class UniflixViewModelsTest {
 
     @Test fun detailLoadServersFailsGracefullyWithRealFactory() {
         FakeAndroidKeyStore.install()
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         // Default AllInstalled factory reads the addon DB, which cannot open
         // under Robolectric; loadServers must swallow that and keep no servers.
         vm.loadServers()
@@ -217,7 +214,7 @@ class UniflixViewModelsTest {
 
     @Test fun registryFactoriesAreDistinctObjects() {
         assertTrue(RegistryFactory.HttpAddons !== RegistryFactory.AllInstalled)
-        val vm = DetailViewModel(app, offlineApi())
+        val vm = DetailViewModel(app)
         assertEquals(RegistryFactory.AllInstalled, vm.registryFactory)
         vm.registryFactory = RegistryFactory.HttpAddons
         assertEquals(RegistryFactory.HttpAddons, vm.registryFactory)

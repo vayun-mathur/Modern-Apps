@@ -22,18 +22,14 @@ import com.vayunmathur.library.ui.rememberOdfMarkdownEditorController
 import com.vayunmathur.library.util.NavBackStack
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
-import kotlinx.datetime.toInstant
 import androidx.compose.ui.unit.dp
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.Locale
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -48,22 +44,6 @@ class EditEventComposeTest {
 
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private fun backStack() = NavBackStack<Route>(arrayOf(Route.Calendar))
-
-    // Test data is built in UTC (CalendarTestData.at), while Instance renders timed
-    // events in the system zone. Pin UTC so a CI box in another zone cannot move
-    // the 09:00 event to a different hour (or off the visible grid).
-    private var previousTimeZone: java.util.TimeZone? = null
-
-    @BeforeTest
-    fun pinTimeZoneToUtc() {
-        previousTimeZone = java.util.TimeZone.getDefault()
-        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
-    }
-
-    @AfterTest
-    fun restoreTimeZone() {
-        java.util.TimeZone.setDefault(previousTimeZone)
-    }
 
     // --- reminderLabel / presets ------------------------------------------
 
@@ -331,16 +311,8 @@ class EditEventComposeTest {
     @Test
     fun `hourly grid shows timed event and click fires`() {
         var clicked: com.vayunmathur.calendar.data.Instance? = null
-        // Instance renders timed events in the system zone, so build the fixture
-        // at 01:00 in that zone (not UTC): another zone would otherwise move the
-        // event to a different hour, and 01:00 stays near the top of the 24-hour
-        // scroll view so it is displayed without scrolling on any viewport.
-        val zone = TimeZone.currentSystemDefault()
-        val inst = D.instance().copy(
-            begin = LocalDateTime(D.TODAY, LocalTime(1, 0)).toInstant(zone).toEpochMilliseconds(),
-            end = LocalDateTime(D.TODAY, LocalTime(2, 0)).toInstant(zone).toEpochMilliseconds(),
-        )
-        val timed = mapOf(D.TODAY to mapOf(1 to listOf(inst)))
+        val inst = D.instance()
+        val timed = mapOf(D.TODAY to mapOf(9 to listOf(inst)))
         rule.mainClock.autoAdvance = false
         rule.setContent {
             HourlyGrid(context, timed, listOf(D.TODAY), shrinkEmptyHours = false, onEventClick = { clicked = it }, innerPadding = androidx.compose.foundation.layout.PaddingValues(0.dp))
