@@ -61,19 +61,12 @@ class WindDownApplier(private val context: Context) {
     }
 
     /**
-     * The daltonizer mode value for full monochromacy, read live rather than hardcoded.
+     * The daltonizer mode value for full monochromacy.
      *
-     * Hardcoding the integer bakes an AOSP constant into the APK; reading the current value
-     * first and only overriding the enabled flag keeps us correct if the constant moves.
-     * Falls back to the documented monochromacy value when unreadable.
+     * This is always the documented monochromacy constant: wind-down grayscale must
+     * desaturate fully, not reapply whatever transform the key currently holds.
      */
-    private fun daltonizerMode(): String =
-        runCatching {
-            Settings.Secure.getString(
-                context.contentResolver,
-                "accessibility_display_daltonizer_mode",
-            )
-        }.getOrNull() ?: MONOCHROMACY_MODE
+    private fun daltonizerMode(): String = MONOCHROMACY_MODE
 
     private fun setDnd(on: Boolean) {
         val nm = notifications ?: return
@@ -90,7 +83,7 @@ class WindDownApplier(private val context: Context) {
     }
 
     private companion object {
-        /** `AccessibilityManager` monochromacy mode. Documented AOSP value, fallback only. */
+        /** `AccessibilityManager` monochromacy mode. Documented AOSP value. */
         const val MONOCHROMACY_MODE = "0"
     }
 }
