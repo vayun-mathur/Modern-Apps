@@ -22,6 +22,7 @@ import com.vayunmathur.vpn.ui.components.AppIconImage
 import com.vayunmathur.vpn.ui.components.LockdownWarning
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -110,15 +111,17 @@ class FinalVpnBatchTest {
         Unit
     } }
 
-    @Test fun viewModelStartVpnWithActivityAsksPermission() {
+    @Test fun viewModelStartVpnAsksPermission() {
         val dao = VpnViewModelTest.FakeConfigDao()
         val vm = VpnViewModel(app, dao, VpnViewModelTest.FakeLogDao())
-        vm.startVpn(rule.activity, com.vayunmathur.vpn.data.VpnConfig(id = 4, name = "PermTun"))
+        var asked: android.content.Intent? = null
+        vm.startVpn(com.vayunmathur.vpn.data.VpnConfig(id = 4, name = "PermTun")) { asked = it }
         // Robolectric's VpnService.prepare returns a consent intent, so the VM must
-        // ask for permission instead of starting the service.
-        assertTrue(
-            vm.status.value?.contains("Granting") == true || Shadows.shadowOf(rule.activity).nextStartedActivityForResult != null,
-            "status=${vm.status.value}",
-        )
+        // hand it out for the Activity Result launcher instead of starting the service.
+        assertNotNull(asked, "status=${vm.status.value}")
+        assertTrue(vm.status.value?.contains("Granting") == true, "status=${vm.status.value}")
+        // A denied grant surfaces a status instead of hanging on "Granting…".
+        vm.onVpnPermissionDenied()
+        assertEquals("VPN permission denied", vm.status.value)
     }
 }
