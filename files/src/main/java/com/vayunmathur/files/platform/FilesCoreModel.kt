@@ -298,21 +298,32 @@ internal fun File.atomicMoveTo(target: File) {
     } catch (_: IOException) {
         // Cross-volume (or non-atomic) move: rename, else copy then delete the source.
         // The copy never overwrites, and the source is only deleted after it succeeds.
+        // A failed copy deletes the partial destination before rethrowing, so a
+        // retry sees a clean slate instead of "already exists".
         if (target.exists()) {
             throw java.nio.file.FileAlreadyExistsException(
                 absolutePath, target.absolutePath, "destination already exists"
             )
         }
         if (!this.renameTo(target)) {
-            if (this.isDirectory) {
-                if (!this.copyRecursively(target, overwrite = false)) {
-                    target.deleteRecursively()
-                    throw IOException("Could not move $absolutePath to ${target.absolutePath}")
+            try {
+                if (this.isDirectory) {
+                    if (!this.copyRecursively(target, overwrite = false)) {
+                        throw IOException("Could not move $absolutePath to ${target.absolutePath}")
+                    }
+                    this.deleteRecursively()
+                } else {
+                    this.copyTo(target, overwrite = false)
+                    this.delete()
                 }
-                this.deleteRecursively()
-            } else {
-                this.copyTo(target, overwrite = false)
-                this.delete()
+            } catch (e: java.nio.file.FileAlreadyExistsException) {
+                // A concurrent creation raced the copy: never delete a file we did not create.
+                throw e
+            } catch (e: IOException) {
+                // A failed copy must not leave a partial destination behind to
+                // block a retry with "already exists".
+                target.deleteRecursively()
+                throw e
             }
         }
     }
