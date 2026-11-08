@@ -59,5 +59,7 @@ internal suspend fun FlashcardsRepository.insertReviewLogImpl(value: ReviewLog):
 internal suspend fun FlashcardsRepository.deleteReviewLogByIdImpl(id: Long) = reviewLogDao.deleteById(id)
 internal suspend fun FlashcardsRepository.deleteReviewLogsByCardsImpl(cardIds: List<Long>) =
     reviewLogDao.deleteByCards(cardIds)
+internal suspend fun FlashcardsRepository.moveReviewLogsByNotesImpl(noteIds: List<Long>, deckId: Long) =
+    reviewLogDao.moveByNotes(noteIds, deckId)
 internal suspend fun FlashcardsRepository.deleteReviewLogsByDeckImpl(deckId: Long) =
     reviewLogDao.deleteByDeck(deckId)
