@@ -70,7 +70,7 @@ class ChessPass3DrawTest {
             ),
             playerColor = PieceColor.WHITE,
         )
-        rule.setContent { LearnBoard(state) {} }
+        rule.setContent { LearnBoard(state, onSquareClick = {}) }
         rule.waitForIdle()
         val squares = rule.onAllNodes(androidx.compose.ui.test.hasClickAction(), useUnmergedTree = true)
             .fetchSemanticsNodes()
@@ -88,7 +88,7 @@ class ChessPass3DrawTest {
         )
         rule.setContent {
             Column {
-                LearnBoard(state) {}
+                LearnBoard(state, onSquareClick = {})
                 BoardGrid(
                     board = Board.initialState,
                     selectedPiece = Position(6, 4),

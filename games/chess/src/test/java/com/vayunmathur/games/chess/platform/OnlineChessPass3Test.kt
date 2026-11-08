@@ -266,4 +266,12 @@ class OnlineChessPass3Test {
         assertNotNull(vm.uiState.value.connection)
         vm.signOut()
     }
+
+    @Test fun dropCommitsMoveLikeTwoTaps() {
+        val vm = playingVm()
+        // Drag the e2 pawn to e4: POSTed and the selection cleared, like two taps.
+        vm.onSquareDrop(Position(6, 4), Position(4, 4))
+        await("move posted") { fake.requests.any { it.contains("/api/board/game/g1/move/e2e4") } }
+        await("selection cleared") { playing(vm).selectedPiece == null }
+    }
 }

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.chess.data.Board
 import com.vayunmathur.games.chess.data.Piece
@@ -30,8 +31,10 @@ class GameScreensTest {
 
     private class RecordingActions : ChessActions {
         val clicks = mutableListOf<Position>()
+        val drops = mutableListOf<Pair<Position, Position>>()
         val promotes = mutableListOf<PieceType>()
         override fun onSquareClick(position: Position) { clicks += position }
+        override fun onSquareDrop(from: Position, to: Position) { drops += from to to }
         override fun onPromote(pieceType: PieceType) { promotes += pieceType }
     }
 
@@ -61,6 +64,43 @@ class GameScreensTest {
         }
         rule.onAllNodes(hasClickAction())[10].performClick()
         assertEquals(listOf(Position(1, 2)), actions.clicks)
+    }
+
+    @Test fun `board grid tap routes click and never fires drop`() {
+        val actions = RecordingActions()
+        rule.setContent {
+            BoardGrid(board = Board.initialState, selectedPiece = null,
+                isFlipped = false, turn = PieceColor.WHITE,
+                onSquareClick = actions::onSquareClick, onSquareDrop = actions::onSquareDrop)
+        }
+        // e2 is row 6, col 4 in layout order.
+        rule.onAllNodes(hasClickAction())[6 * 8 + 4].performClick()
+        assertEquals(listOf(Position(6, 4)), actions.clicks)
+        assertTrue(actions.drops.isEmpty(), "a quick tap must not start a drag")
+    }
+
+    @Test fun `board grid long-press drag commits drop from e2 to e4`() {
+        val actions = RecordingActions()
+        rule.setContent {
+            BoardGrid(board = Board.initialState, selectedPiece = null,
+                isFlipped = false, turn = PieceColor.WHITE,
+                onSquareClick = actions::onSquareClick, onSquareDrop = actions::onSquareDrop)
+        }
+        val squares = rule.onAllNodes(hasClickAction())
+        // Touch-injection coordinates are local to the interacted node, so express
+        // the e4 center relative to the e2 node's top-left.
+        val fromNode = squares[6 * 8 + 4].fetchSemanticsNode()
+        val toCenter = squares[4 * 8 + 4].fetchSemanticsNode().boundsInRoot.center
+        val target = toCenter - fromNode.boundsInRoot.topLeft
+        squares[6 * 8 + 4].performTouchInput {
+            down(center)
+            advanceEventTime(600)
+            moveTo(target)
+            advanceEventTime(100)
+            up(0)
+        }
+        assertEquals(listOf(Position(6, 4) to Position(4, 4)), actions.drops)
+        assertTrue(actions.clicks.isEmpty(), "the drag consumes the gesture; no tap fires")
     }
 
     @Test fun `promotion dialog offers four pieces and routes choice`() {
