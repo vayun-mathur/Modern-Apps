@@ -111,7 +111,21 @@ object WgConfigParser {
     }
 }
 
-fun VpnConfig.endpointHost(): String = peerEndpoint.substringBefore(':').trim()
+fun VpnConfig.endpointHost(): String = endpointHostOf(peerEndpoint)
+
+/**
+ * Host part of a wg-quick `Endpoint` value (`host:port`). Bracketed IPv6
+ * literals (`[2001:db8::1]:51820`) yield the address inside the brackets;
+ * anything else yields the text before the first `:`.
+ */
+fun endpointHostOf(peerEndpoint: String): String {
+    val ep = peerEndpoint.trim()
+    if (ep.startsWith("[")) {
+        val end = ep.indexOf(']')
+        if (end > 1) return ep.substring(1, end).trim()
+    }
+    return ep.substringBefore(':').trim()
+}
 fun VpnConfig.endpointPort(): Int = peerEndpoint.substringAfterLast(':').toIntOrNull() ?: DEFAULT_WG_PORT
 
 private const val DEFAULT_WG_PORT = 51820

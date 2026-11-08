@@ -88,9 +88,14 @@ class WgConfigParserTest {
         assertEquals(51820, VpnConfig(peerEndpoint = "vpn.example.com:abc").endpointPort())
         assertEquals("", VpnConfig(peerEndpoint = "").endpointHost())
         assertEquals(51820, VpnConfig(peerEndpoint = "").endpointPort())
-        // Known limitation pinned as-is: a bracketed IPv6 endpoint host parses as "["
-        // (substringBefore(':')), so IPv6-literal endpoints do not resolve. Recorded, not fixed here.
-        assertEquals("[", VpnConfig(peerEndpoint = "[::1]:51820").endpointHost())
+        // Bracketed IPv6 literals resolve to the address inside the brackets,
+        // so IPv6 endpoints connect instead of resolving to "[".
+        assertEquals("::1", VpnConfig(peerEndpoint = "[::1]:51820").endpointHost())
+        assertEquals("2001:db8::1", VpnConfig(peerEndpoint = "[2001:db8::1]:51820").endpointHost())
+        assertEquals(51820, VpnConfig(peerEndpoint = "[2001:db8::1]:51820").endpointPort())
+        assertEquals("2001:db8::1", endpointHostOf("  [2001:db8::1]:51820  "))
+        // Malformed brackets fall back to the pre-colon text, as before.
+        assertEquals("[", VpnConfig(peerEndpoint = "[:51820").endpointHost())
         assertEquals(1234, VpnConfig(peerEndpoint = "10.0.0.1:1234").endpointPort())
     }
 
