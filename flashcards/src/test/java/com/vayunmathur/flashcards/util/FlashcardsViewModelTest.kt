@@ -244,6 +244,12 @@ class FlashcardsViewModelTest {
         vm.saveNoteTypeImpl(0, "VmClozeType", "", 1, listOf("Text", "Extra"),
             listOf(TemplateDraft("T1", "{{cloze:Text}}", "{{cloze:Text}}"), TemplateDraft("T2", "x", "y")))
         await("cloze type created") { vm.noteTypes.value.any { it.noteType.name == "VmClozeType" } }
+        // The note type row is published before its templates finish
+        // loading into the flow; on a loaded box the first emission had
+        // zero templates and the assert below read that early snapshot.
+        await("cloze templates loaded") {
+            vm.noteTypes.value.firstOrNull { it.noteType.name == "VmClozeType" }?.templates?.size == 1
+        }
         val created = vm.noteTypes.value.first { it.noteType.name == "VmClozeType" }
         assertEquals(1, created.templates.size)
         vm.deleteNoteTypeImpl(created.noteType.id)
