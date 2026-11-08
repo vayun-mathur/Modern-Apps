@@ -39,6 +39,13 @@ data class SearchResult(
     val lat: Double,
     val lon: Double,
     val category: String?,
+    /**
+     * Tagged OSM boundary id from `poi_region.bin` (low 2 bits are the id
+     * space), or 0 when the hit resolves to no boundary. Survives into the
+     * sheet's [SpecificFeature.GenericPlace] so a region picked from search
+     * masks without an admin-label upgrade round-trip.
+     */
+    val regionId: Long = 0L,
 )
 
 /**
@@ -85,6 +92,7 @@ private fun PoiIndex.PoiRecord.toSearchResult() = SearchResult(
     lat = lat,
     lon = lon,
     category = PoiCategories.label(type),
+    regionId = regionId,
 )
 
 /**
@@ -251,6 +259,7 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
                             name = it.title.ifBlank { address },
                             position = GeoPoint(it.lon, it.lat),
                             poiType = null,
+                            regionId = it.regionId,
                         )
                     }
                 )
@@ -283,7 +292,11 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
      * else. It is also a mapped-file read, hence [osmPlace] and this suspend.
      */
     suspend fun toFeature(result: SearchResult): SpecificFeature.GenericPlace =
-        osmPlace(name = result.title, position = GeoPoint(result.lon, result.lat))
+        osmPlace(
+            name = result.title,
+            position = GeoPoint(result.lon, result.lat),
+            regionId = result.regionId,
+        )
 
     /**
      * Reverse-geocode [lat],[lon] to the nearest offline POI and hand it back
@@ -305,6 +318,7 @@ class MapsSearchViewModel(application: Application) : AndroidViewModel(applicati
                     osmPlace(
                         name = it.name,
                         position = GeoPoint(it.lon, it.lat),
+                        regionId = it.regionId,
                     )
                 }
             )

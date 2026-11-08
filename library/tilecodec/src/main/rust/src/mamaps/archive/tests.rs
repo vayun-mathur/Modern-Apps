@@ -88,9 +88,10 @@ fn the_footer_is_32_bytes_behind_mama8() {
     assert!(ArchiveFooter::parse(&bad).is_err(), "bad magic is refused");
 }
 
-/// Fail-watched: entries are 32 bytes, the overlay is kind 14, and any non-zero
-/// kind parses (so a newer writer's section does not lock out older readers)
-/// while only the defined ones count as known.
+/// Fail-watched: entries are 32 bytes, the overlay is kind 14, the POI region
+/// sidecar is kind 15, and any non-zero kind parses (so a newer writer's
+/// section does not lock out older readers) while only the defined ones count
+/// as known.
 #[test]
 fn entries_are_32_bytes_and_unknown_kinds_parse() {
     let e = ArchiveEntry { kind: ARCHIVE_KIND_TRANSIT, flags: 0, offset: 8192, len: 128, extra: 0 };
@@ -99,10 +100,11 @@ fn entries_are_32_bytes_and_unknown_kinds_parse() {
     assert_eq!(ARCHIVE_KIND_GRAPH_META, 1, "graph meta is kind 1");
     assert_eq!(ARCHIVE_KIND_TRANSIT, 13, "transit is kind 13");
     assert_eq!(ARCHIVE_KIND_GRAPH_OVERLAY, 14, "the highway overlay is kind 14");
+    assert_eq!(ARCHIVE_KIND_POI_REGION, 15, "the POI region sidecar is kind 15");
     let mut future = e.serialize();
     future[0] = 99;
     assert_eq!(ArchiveEntry::parse(&future).expect("a future kind parses").kind, 99);
-    assert!(!is_known_kind(99) && is_known_kind(ARCHIVE_KIND_GRAPH_OVERLAY) && !is_known_kind(0));
+    assert!(!is_known_kind(99) && is_known_kind(ARCHIVE_KIND_POI_REGION) && !is_known_kind(0));
     let mut zero = e.serialize();
     zero[0] = 0;
     assert!(ArchiveEntry::parse(&zero).is_err(), "kind 0 is never a section");

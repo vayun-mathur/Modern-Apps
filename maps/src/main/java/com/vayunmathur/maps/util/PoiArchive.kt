@@ -8,9 +8,9 @@ import java.nio.MappedByteBuffer
 /**
  * Load the POI side files out of a single-archive `.mamaps` file.
  *
- * The archive carries the same five payloads as the side files (`poi_index`,
+ * The archive carries the same six payloads as the side files (`poi_index`,
  * `poi_names`, and the optional `poi_attrs` / `poi_spatial` / `poi_name_index`
- * sections, kinds 8-12) after the tile data, each 8-byte aligned and named by
+ * / `poi_region` sections, kinds 8-12 and 15) after the tile data, each 8-byte aligned and named by
  * the section directory + `MAMA8` footer. This maps the one file once and
  * slices views of it, then runs the same validators the multi-file path runs
  * ([PoiIndex.attrsFromBuffer] and siblings) — only the mapping step differs,
@@ -60,6 +60,7 @@ object PoiArchive {
     const val KIND_ATTRS = 10
     const val KIND_SPATIAL = 11
     const val KIND_WORDS = 12
+    const val KIND_REGION = 15
 
     /** Tile-header offsets this needs: `build_id` at 16, `file_len` at 24. */
     private const val HEADER_BUILD_ID_OFF = 16
@@ -175,6 +176,8 @@ object PoiArchive {
             ?.let { PoiIndex.spatialFromBuffer(it, count) }
         val words = overrideOrBase(overrides, KIND_WORDS, sections, whole)
             ?.let { PoiIndex.nameIndexFromBuffer(it, count) }
+        val region = overrideOrBase(overrides, KIND_REGION, sections, whole)
+            ?.let { regionFromBuffer(it, count) }
         return PoiIndex.Mapped(
             index = indexBuf,
             names = namesBuf,
@@ -190,6 +193,7 @@ object PoiArchive {
             cols = grid?.cols ?: 0,
             nameIdx = words?.first,
             entryCount = words?.second ?: 0,
+            region = region,
             archive = whole,
         ).also {
             Log.debug(

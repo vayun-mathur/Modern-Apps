@@ -179,6 +179,10 @@ pub fn is_stop_node(highway: Option<&str>, railway: Option<&str>, public_transpo
 /// Catch-all bucket for a recognised POI key with an unmapped value.
 pub const TYPE_OTHER: u16 = 255;
 
+/// Place labels (cities, towns, …) are searchable POI-index records. Appended —
+/// never renumber — like every other POI type number.
+pub const TYPE_PLACE: u16 = 51;
+
 fn amenity_type(v: &str) -> Option<u16> {
     Some(match v {
         "restaurant" | "food_court" => 0,
@@ -267,6 +271,18 @@ fn healthcare_type(v: &str) -> Option<u16> {
     })
 }
 
+/// Named administrative places worth searching: countries down to city
+/// neighbourhoods. Deliberately not every `place=*` value — counties are
+/// covered by their boundary relations, and islands/islets/seas are not
+/// searchable settlements.
+fn place_type(v: &str) -> Option<u16> {
+    match v {
+        "country" | "state" | "province" | "city" | "town" | "village" | "hamlet" | "suburb"
+        | "borough" | "neighbourhood" | "quarter" | "macrohood" => Some(TYPE_PLACE),
+        _ => None,
+    }
+}
+
 /// The tags a POI classification needs, so the classifier is testable without a
 /// PBF block behind it.
 pub struct PoiTags<'a> {
@@ -278,6 +294,7 @@ pub struct PoiTags<'a> {
     pub leisure: Option<&'a str>,
     pub healthcare: Option<&'a str>,
     pub office: Option<&'a str>,
+    pub place: Option<&'a str>,
 }
 
 /// A POI key's tag value paired with the value -> type-number map for that key.
@@ -288,13 +305,22 @@ type KeyedMap<'a> = (Option<&'a str>, fn(&str) -> Option<u16>);
 /// Station-like `railway`/`public_transport` values win outright (type 50).
 /// Bare transit values — tracks, signals, bus poles, platforms — are explicitly
 /// *not* POIs and must not reach the generic "recognised key -> other" path, or
-/// they flood the map. Otherwise precedence is amenity, shop, tourism, leisure,
-/// healthcare, then `office=*`.
+/// they flood the map. Otherwise precedence is place, amenity, shop, tourism,
+/// leisure, healthcare, then `office=*`.
 pub fn classify(t: &PoiTags) -> Option<u16> {
     if matches!(t.railway, Some("station" | "halt" | "tram_stop"))
         || matches!(t.public_transport, Some("station"))
     {
         return Some(50);
+    }
+
+    if let Some(p) = t.place {
+        if !p.is_empty() && p != "no" {
+            if let Some(ty) = place_type(p) {
+                return Some(ty);
+            }
+            return Some(TYPE_OTHER);
+        }
     }
 
     let order: [KeyedMap; 5] = [
@@ -441,6 +467,7 @@ mod tests {
             leisure: get("leisure"),
             healthcare: get("healthcare"),
             office: get("office"),
+            place: get("place"),
         }
     }
 
@@ -487,9 +514,41 @@ mod tests {
     fn classify_unmapped_but_recognised_key_is_other() {
         assert_eq!(classify(&tags(&[("amenity", "bbq")])), Some(TYPE_OTHER));
         assert_eq!(classify(&tags(&[("shop", "anime")])), Some(TYPE_OTHER));
+        assert_eq!(classify(&tags(&[("place", "island")])), Some(TYPE_OTHER));
         // `no` and empty values do not count as recognised.
         assert_eq!(classify(&tags(&[("amenity", "no")])), None);
         assert_eq!(classify(&tags(&[("shop", "")])), None);
+        assert_eq!(classify(&tags(&[("place", "no")])), None);
         assert_eq!(classify(&tags(&[])), None);
+    }
+
+    #[test]
+    fn classify_place_labels_are_type_51() {
+        for v in [
+            "country",
+            "state",
+            "province",
+            "city",
+            "town",
+            "village",
+            "hamlet",
+            "suburb",
+            "borough",
+            "neighbourhood",
+            "quarter",
+            "macrohood",
+        ] {
+            assert_eq!(classify(&tags(&[("place", v)])), Some(TYPE_PLACE), "place {v:?}");
+        }
+        assert_eq!(classify(&tags(&[("place", "city")])), Some(51));
+        // Stations still win over place; place wins over amenity.
+        assert_eq!(
+            classify(&tags(&[("railway", "station"), ("place", "town")])),
+            Some(50)
+        );
+        assert_eq!(
+            classify(&tags(&[("place", "town"), ("amenity", "cafe")])),
+            Some(TYPE_PLACE)
+        );
     }
 }

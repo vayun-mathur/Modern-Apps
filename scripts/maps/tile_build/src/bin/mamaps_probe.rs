@@ -430,6 +430,7 @@ fn sidecars(path: &str) -> ExitCode {
             11 => "poi_spatial (poi_spatial.bin: PSP1 spatial grid)",
             12 => "poi_words (poi_name_index.bin: PNI1 full-text word index)",
             13 => "transit (world.transit: TRIX pack of routes/shapes)",
+            15 => "poi_region (poi_region.bin: PRG1 region-id sidecar)",
             _ => "unknown",
         }
     }

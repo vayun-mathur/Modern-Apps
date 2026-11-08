@@ -313,6 +313,8 @@ internal fun regionMaskFor(
         selectedFeature.regionId.takeIf { it != 0L && selectedFeature.position != null }
     is com.vayunmathur.maps.data.SpecificFeature.Admin2Label ->
         selectedFeature.regionId.takeIf { it != 0L && selectedFeature.position != null }
+    is com.vayunmathur.maps.data.SpecificFeature.GenericPlace ->
+        selectedFeature.regionId.takeIf { it != 0L }
     else -> null
 }
 
@@ -320,14 +322,13 @@ internal fun regionMaskFor(
  * The admin-region selection that should replace a focused [place] because
  * a rendered admin label at its position names the same place, or null.
  *
- * Search (and deep links) can only build a [SpecificFeature.GenericPlace]:
- * the offline POI index carries no boundary link, so a region picked from
- * search could never mask. Once the camera has flown to the place, the
- * rendered labels at that spot do carry the baked `regionId` — upgrading
- * the selection to the matching admin label is what wires the mask (and
- * the admin card) into the search path. Name equality (normalised, see
- * [PoiSearch]) is required so a POI inside a city is never silently
- * replaced by the city itself.
+ * Search (and deep links) can only build a [SpecificFeature.GenericPlace].
+ * A linked place already masks on its own (see [regionMaskFor]); this is the
+ * fallback for an unlinked one (deep links, saved places, tapped pins): once
+ * the camera has flown to the place, the rendered labels at that spot carry
+ * the baked `regionId`, so upgrading the selection to the matching admin
+ * label wires the mask into that path. Name equality (normalised, see
+ * [PoiSearch]) keeps a POI inside a city from being silently replaced by it.
  */
 internal fun adminUpgradeFor(
     place: com.vayunmathur.maps.data.SpecificFeature.GenericPlace,

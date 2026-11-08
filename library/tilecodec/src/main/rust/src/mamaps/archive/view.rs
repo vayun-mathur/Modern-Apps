@@ -360,6 +360,19 @@ impl ArchiveView {
                 return err("a single-archive POI word index covers a different index");
             }
         }
+        // Region: PRG1 header + one u64 tagged id per index ordinal (ordinal join).
+        if let Some(b) = slice(ARCHIVE_KIND_POI_REGION)? {
+            if b.len() < 12 {
+                return err("a single-archive POI region ends before its header");
+            }
+            if &b[0..4] != b"PRG1" {
+                return err("a single-archive POI region has bad PRG1 magic");
+            }
+            let n = u32::from_le_bytes([b[8], b[9], b[10], b[11]]) as u64;
+            if Some(n) != poi_count {
+                return err("a single-archive POI region covers a different index");
+            }
+        }
         // Transit: TRIX v3..=6 with a directory that fits.
         if let Some(b) = slice(ARCHIVE_KIND_TRANSIT)? {
             if b.len() < 80 {

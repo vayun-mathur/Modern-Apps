@@ -7,7 +7,7 @@ import java.nio.MappedByteBuffer
 
 /**
  * Side-file mapping for [PoiIndex]: `poi_index.bin` + `poi_names.bin` plus the
- * three optional sidecars.
+ * four optional sidecars.
  *
  * Split out so `PoiIndex` stays under the function cap. Same package, so no
  * API changes for any other caller.
@@ -24,6 +24,7 @@ internal object PoiIndexSideFiles {
         val attrs = openAttrs(File(dir, PoiIndex.ATTRS_FILE), count)
         val grid = openSpatial(File(dir, PoiIndex.SPATIAL_FILE), count)
         val words = openNameIndex(File(dir, PoiIndex.NAME_INDEX_FILE), count)
+        val region = openRegion(File(dir, REGION_FILE), count)
         return PoiIndex.Mapped(
             index = indexBuf,
             names = namesBuf,
@@ -39,6 +40,7 @@ internal object PoiIndexSideFiles {
             cols = grid?.cols ?: 0,
             nameIdx = words?.first,
             entryCount = words?.second ?: 0,
+            region = region,
         )
     }
 
@@ -76,5 +78,17 @@ internal object PoiIndexSideFiles {
     private fun openNameIndex(file: File, count: Int): Pair<MappedByteBuffer, Int>? {
         if (!file.isFile) return null
         return PoiIndex.nameIndexFromBuffer(PoiIndex.mapReadOnly(file), count)
+    }
+
+    /**
+     * Map `poi_region.bin`, or null when it is absent, stale or malformed.
+     *
+     * The record-count check matters for the same reason it does for the
+     * others: the sidecar joins purely by ordinal, so a region file from a
+     * different build would hand every place someone else's boundary.
+     */
+    private fun openRegion(file: File, count: Int): MappedByteBuffer? {
+        if (!file.isFile) return null
+        return regionFromBuffer(PoiIndex.mapReadOnly(file), count)
     }
 }

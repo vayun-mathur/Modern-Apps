@@ -34,6 +34,19 @@
 //! u8  word_idx[entry_count]   which word of that record's name
 //! ```
 //!
+//! **`poi_region.bin`** — one tagged OSM boundary id per POI ordinal:
+//!
+//! ```text
+//! magic "PRG1" | u32 version | u32 record_count  (12-byte header)
+//! u64 tagged_ids[record_count]  native OSM label-member link first,
+//!                               smallest containing admin fallback, else 0
+//! ```
+//!
+//! The tagged id packs the OSM id space in the low 2 bits (0 none / 1 node /
+//! 2 way / 3 relation): `tagged = (osm_id << 2) | space`. Boundary relations
+//! use space 3, boundary ways space 2. `0` (`REGION_NONE`) stamps nothing, so
+//! the reader masks nothing and the app's name-match fallback still applies.
+//!
 //! Parallel arrays rather than a packed struct, so an entry costs 5 bytes and not the 8
 //! that alignment would round it up to. It is still the largest of the POI files:
 //! indexing *every* word, not just the name's first, means the entry count is roughly
@@ -57,6 +70,19 @@
 //!
 //! The Kotlin reader is `PoiIndex.kt`; [`tests`] pins the ordering from this side.
 
+/// Tagged-OSM-id space bits packed into the low 2 bits of a region link.
+pub const REGION_NONE: u64 = 0;
+
+/// Tag an OSM relation id as a region link.
+pub fn tag_relation(id: i64) -> u64 {
+    ((id as u64) << 2) | 3
+}
+
+/// Tag an OSM way id as a region link.
+pub fn tag_way(id: i64) -> u64 {
+    ((id as u64) << 2) | 2
+}
+
 use std::cmp::Ordering;
 use std::io::{self, Write};
 
@@ -67,6 +93,10 @@ pub const SPATIAL_HEADER_BYTES: usize = 32;
 pub const NAME_MAGIC: &[u8; 4] = b"PNI1";
 pub const NAME_VERSION: u32 = 1;
 pub const NAME_HEADER_BYTES: usize = 16;
+
+pub const REGION_MAGIC: &[u8; 4] = b"PRG1";
+pub const REGION_VERSION: u32 = 1;
+pub const REGION_HEADER_BYTES: usize = 12;
 
 /// Grid cell size in 1e-7 degrees: 0.02°, the same as the transit pack's.
 pub const CELL_E7: u32 = 200_000;
@@ -253,6 +283,20 @@ pub fn write_name_index<W: Write>(out: &mut W, names: &[&[u8]]) -> io::Result<us
         out.write_all(&[word_idx])?;
     }
     Ok(entries.len())
+}
+
+/// Write `poi_region.bin`: one tagged OSM boundary id per record ordinal, in
+/// the same Morton-sorted order as `poi_index.bin`. Same count-refused
+/// convention as the other side files: the reader joins by ordinal only when
+/// the counts agree.
+pub fn write_region<W: Write>(out: &mut W, region_ids: &[u64]) -> io::Result<()> {
+    out.write_all(REGION_MAGIC)?;
+    out.write_all(&REGION_VERSION.to_le_bytes())?;
+    out.write_all(&(region_ids.len() as u32).to_le_bytes())?;
+    for id in region_ids {
+        out.write_all(&id.to_le_bytes())?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

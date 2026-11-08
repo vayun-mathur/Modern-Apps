@@ -4,6 +4,8 @@ fn make_poi(
     osm_id: i64,
     name: &[u8],
     attrs: Vec<u8>,
+    region: u64,
+    place_cap: u8,
 ) -> Poi {
     let lat_e7 = (lat * 1e7).round() as i32;
     let lon_e7 = (lon * 1e7).round() as i32;
@@ -19,6 +21,8 @@ fn make_poi(
         osm_id,
         name: name.to_vec(),
         attrs,
+        region,
+        place_cap,
     }
 }
 
@@ -41,6 +45,7 @@ fn write_outputs(
     attrs: &Path,
     spatial: &Path,
     name_index: &Path,
+    region: &Path,
 ) -> Result<Written> {
     let mut pool = NamePool::new(BufWriter::new(create(names)?));
     let mut index_out = BufWriter::new(create(index)?);
@@ -89,6 +94,13 @@ fn write_outputs(
         poi_side::write_name_index(&mut name_index_out, &name_slices).map_err(io_err)?;
     name_index_out.flush().map_err(io_err)?;
 
+    // The region sidecar joins by the same ordinal, in the same function, for the
+    // same reason as the two above.
+    let region_ids: Vec<u64> = pois.iter().map(|p| p.region).collect();
+    let mut region_out = BufWriter::new(create(region)?);
+    poi_side::write_region(&mut region_out, &region_ids).map_err(io_err)?;
+    region_out.flush().map_err(io_err)?;
+
     index_out.flush().map_err(io_err)?;
     geojson_out.flush().map_err(io_err)?;
     let unique = pool.unique_count();
@@ -135,6 +147,8 @@ pub struct Args {
     pub attrs: PathBuf,
     pub spatial: PathBuf,
     pub name_index: PathBuf,
+    /// Tagged boundary ids per POI ordinal. Defaults beside `--index`.
+    pub region: PathBuf,
     /// Region bbox filter. `None` (world) keeps everything.
     pub bbox: Option<crate::bbox::BBox>,
     /// `None` leaves the pool at whatever `par::threads()` decides.
@@ -214,6 +228,7 @@ pub fn parse_args(args: &[String]) -> std::result::Result<Args, String> {
     let attrs = attrs.unwrap_or_else(|| index.with_file_name("poi_attrs.bin"));
     let spatial = spatial.unwrap_or_else(|| index.with_file_name("poi_spatial.bin"));
     let name_index = name_index.unwrap_or_else(|| index.with_file_name("poi_name_index.bin"));
+    let region_ids = index.with_file_name("poi_region.bin");
     Ok(Args {
         input,
         geojson,
@@ -222,6 +237,7 @@ pub fn parse_args(args: &[String]) -> std::result::Result<Args, String> {
         attrs,
         spatial,
         name_index,
+        region: region_ids,
         bbox: region.and_then(|r| r.bbox()),
         threads,
         reviews,

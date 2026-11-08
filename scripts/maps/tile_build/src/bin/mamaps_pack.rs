@@ -19,7 +19,7 @@
 //!   graph: metadata.bin nodes.bin edges.bin intermediate.bin road_names.bin
 //!          lanes.bin elevation.bin
 //!   poi:   poi_index.bin poi_names.bin poi_attrs.bin poi_spatial.bin
-//!          poi_name_index.bin
+//!          poi_name_index.bin poi_region.bin
 //!   transit: world.transit (one TRIX pack; `<feed>.transit` naming is a
 //!            delivery rename, the bytes are what matter)
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -30,7 +30,7 @@ use tile_build::mamaps::archive::{
     ARCHIVE_KIND_GRAPH_EDGES, ARCHIVE_KIND_GRAPH_ELEVATION, ARCHIVE_KIND_GRAPH_INTERMEDIATE,
     ARCHIVE_KIND_GRAPH_LANES, ARCHIVE_KIND_GRAPH_META, ARCHIVE_KIND_GRAPH_NAMES,
     ARCHIVE_KIND_GRAPH_NODES, ARCHIVE_KIND_GRAPH_OVERLAY, ARCHIVE_KIND_POI_ATTRS, ARCHIVE_KIND_POI_INDEX,
-    ARCHIVE_KIND_POI_NAMES,
+    ARCHIVE_KIND_POI_NAMES, ARCHIVE_KIND_POI_REGION,
     ARCHIVE_KIND_POI_SPATIAL, ARCHIVE_KIND_POI_WORDS, ARCHIVE_KIND_TRANSIT,
 };
 use tile_build::mamaps::header::Header;
@@ -209,6 +209,17 @@ fn load_sidecars_impl(
         Ok(_) => {}
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(format!("cannot stat {}: {e}", overlay.display())),
+    }
+    // The POI region sidecar (`poi_region.bin`) is optional and sorts last: kind 15
+    // comes after the overlay's 14, and `ArchiveView::parse` requires ascending kinds.
+    let poi_region = poi.join("poi_region.bin");
+    match std::fs::metadata(&poi_region) {
+        Ok(m) if m.len() > 0 => {
+            staged.push(Staged::whole(ARCHIVE_KIND_POI_REGION, poi_region, m.len()))
+        }
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(format!("cannot stat {}: {e}", poi_region.display())),
     }
     // Validate every sidecar's magic/version/count BEFORE anything is written: each section's
     // check is the same one its loader runs, and a mismatch fails closed with a non-zero exit
@@ -407,13 +418,14 @@ fn validate_sidecars(
     if poi_names.is_empty() && poi_count > 0 {
         return Err("poi carries an index but no names".to_string());
     }
-    for name in ["poi_attrs.bin", "poi_spatial.bin", "poi_name_index.bin"] {
+    for name in ["poi_attrs.bin", "poi_spatial.bin", "poi_name_index.bin", "poi_region.bin"] {
         let path = poi.join(name);
         if path.exists() {
             let b = read_file(&path)?;
             let (magic, want, kind) = match name {
                 "poi_attrs.bin" => (&b"MAPA"[..], 12usize, "attrs"),
                 "poi_spatial.bin" => (&b"PSP1"[..], 32usize, "grid"),
+                "poi_region.bin" => (&b"PRG1"[..], 12usize, "region"),
                 _ => (&b"PNI1"[..], 16usize, "word index"),
             };
             if b.len() < want {
@@ -988,6 +1000,33 @@ mod tests {
         let header = Header::parse(&packed).expect("packed header");
         let view = ArchiveView::parse(&packed, &header).expect("packed archive opens");
         assert_eq!(view.section(&packed, ARCHIVE_KIND_GRAPH_OVERLAY), Some(&overlay[..]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    fn region_payload(tagged: u64) -> Vec<u8> {
+        // `poi_region.bin`: PRG1 + version + one u64 tagged id per index ordinal.
+        // The round-trip fixture's POI dir stages one index record.
+        let mut out = Vec::new();
+        out.extend_from_slice(b"PRG1");
+        out.extend_from_slice(&1u32.to_le_bytes());
+        out.extend_from_slice(&1u32.to_le_bytes());
+        out.extend_from_slice(&tagged.to_le_bytes());
+        out
+    }
+    #[test]
+    fn a_region_sidecar_packs_after_the_overlay() {
+        let (dir, poi) = overlay_fixture("region");
+        let region = region_payload((300u64 << 2) | 3);
+        std::fs::write(poi.join("poi_region.bin"), &region).expect("fixture region");
+        let validated = load_sidecars(&dir, &poi, None).expect("stage fixtures");
+        assert_eq!(validated.staged.last().map(|s| s.kind), Some(ARCHIVE_KIND_POI_REGION));
+        let out = dir.join("packed.mamaps");
+        pack_streaming(&dir.join("tiles.mamaps"), &validated, 0xBEEF, &out).expect("pack");
+        let packed = std::fs::read(&out).expect("read packed");
+        let header = Header::parse(&packed).expect("packed header");
+        // `ArchiveView::parse` requires ascending kinds, so this open also proves
+        // kind 15 stages after the overlay's 14.
+        let view = ArchiveView::parse(&packed, &header).expect("packed archive opens");
+        assert_eq!(view.section(&packed, ARCHIVE_KIND_POI_REGION), Some(&region[..]));
         let _ = std::fs::remove_dir_all(&dir);
     }
     #[test]

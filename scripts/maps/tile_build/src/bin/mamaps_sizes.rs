@@ -30,11 +30,11 @@ use tile_build::mamaps::dict::Dictionary;
 use tile_build::mamaps::header::Header;
 use tile_build::mamaps::index::{decompress_leaf, parse_leaf, parse_root, LEAF_ENTRY_LEN, ROOT_ENTRY_LEN};
 
-const KIND_NAMES: [(u8, &str); 13] = [
+const KIND_NAMES: [(u8, &str); 14] = [
     (1, "graph_meta"), (2, "graph_nodes"), (3, "graph_edges"), (4, "graph_intermediate"),
     (5, "graph_names"), (6, "graph_lanes"), (7, "graph_elevation"), (8, "poi_index"),
     (9, "poi_names"), (10, "poi_attrs"), (11, "poi_spatial"), (12, "poi_words"),
-    (13, "transit"),
+    (13, "transit"), (15, "poi_region"),
 ];
 
 fn gb(n: u64) -> f64 {

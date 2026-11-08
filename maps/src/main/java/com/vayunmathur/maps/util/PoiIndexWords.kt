@@ -317,7 +317,7 @@ private fun scanMatchAt(
     val lonE7 = m.lonE7(i)
     val name = m.nameAt(off) ?: ""
     return Ranked(
-        PoiIndex.PoiRecord(latE7, lonE7, m.type(i), name, i),
+        PoiIndex.PoiRecord(latE7, lonE7, m.type(i), name, i, m.regionId(i)),
         boostWeight(boost, name),
         rank,
         PoiIndex.distanceSq(

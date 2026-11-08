@@ -1,7 +1,7 @@
 //! POI extraction: `.osm.pbf` -> a geojsonseq for tippecanoe plus
 //! `poi_names.bin`, `poi_index.bin` and `poi_attrs.bin`.
 //!
-//! A port of the former `scripts/maps/poi_extract.cpp`. The four outputs are
+//! A port of the former `scripts/maps/poi_extract.cpp`. The seven outputs are
 //! mutually consistent — same POI set, same order, same coordinates:
 //!
 //! 1. **geojsonseq** newline-delimited GeoJSON `Point` features, fed to
@@ -20,6 +20,14 @@
 //!    matching `poi_index.bin` record. See [`crate::poi_attrs`] for the layout.
 //!    Kept separate because the 14-byte record is full and its width is load
 //!    bearing in three places.
+//! 5. **`poi_spatial.bin`** coarse-grid CSR over the record coordinates, so the
+//!    app can jump to a spatial range. See [`crate::poi_side`].
+//! 6. **`poi_name_index.bin`** word-level inverted index into the record
+//!    ordinals for name search. See [`crate::poi_side`].
+//! 7. **`poi_region.bin`** one tagged OSM boundary id per record ordinal — the
+//!    member link first, else the smallest containing administrative boundary —
+//!    so the app can mask search results to a region. Zero where the POI
+//!    matched nothing. See [`crate::poi_side`].
 //!
 //! A POI is any node, or closed-way / multipolygon area, carrying BOTH a `name`
 //! and one of the recognised POI keys (see [`crate::tags::classify`]). Area
@@ -41,14 +49,15 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use crate::geojson::json_escape;
+use crate::geojson::{json_escape, Coord};
 use crate::names::NamePool;
-use crate::osm::{self, visit_block, Element, MEMBER_WAY};
+use crate::osm::{self, visit_block, Element, MEMBER_NODE, MEMBER_WAY};
 use crate::pbf::{self, KIND_NODES, KIND_RELATIONS, KIND_WAYS};
 use crate::poi_attrs::AttrPool;
 use crate::poi_reviews::{ReviewTable, ELEMENT_NODE, ELEMENT_RELATION, ELEMENT_WAY};
 use crate::poi_side;
 use crate::proto::{Error, Result};
+use crate::rings::{self, MemberWay, RingStats};
 use crate::spatial::spatial_from_e7;
 use crate::tags::{self, PoiTags};
 
@@ -75,6 +84,8 @@ pub struct Stats {
     pub name_entries: usize,
     /// POIs that matched a row of the `--reviews` table.
     pub with_reviews: usize,
+    /// POIs stamped with a non-zero boundary link in `poi_region.bin`.
+    pub with_region: usize,
 }
 
 struct Poi {
@@ -88,6 +99,13 @@ struct Poi {
     name: Vec<u8>,
     /// Encoded sidecar record body, empty when the POI has no attributes.
     attrs: Vec<u8>,
+    /// Tagged OSM boundary id (`poi_side::tag_relation`/`tag_way`), or
+    /// [`crate::poi_side::REGION_NONE`]. A self-link is stamped at creation;
+    /// member-link and containment links are resolved pre-sort in [`build`].
+    region: u64,
+    /// Deepest `admin_level` this POI may link to: place-implied
+    /// (country 2, state/province 4, everything else 8).
+    place_cap: u8,
 }
 
 /// A `type=multipolygon`/`boundary` relation that is itself a POI.
@@ -97,11 +115,27 @@ struct RelArea {
     name: Vec<u8>,
     attrs: Vec<u8>,
     outer_ways: Vec<i64>,
+    /// [`crate::poi_side::tag_relation`] of this relation when it is itself an
+    /// administrative boundary, else [`crate::poi_side::REGION_NONE`].
+    self_region: u64,
+    place_cap: u8,
+}
+
+/// A `type=boundary` + `boundary=administrative` relation (POI or not) whose
+/// geometry POIs link against.
+struct BoundaryRel {
+    id: i64,
+    admin_level: u8,
+    /// `(way id, outer)` — empty-role ways count as outer per OSM convention.
+    member_ways: Vec<(i64, bool)>,
+    /// Node members with a `label`/`admin_centre` role.
+    label_nodes: Vec<i64>,
 }
 
 #[derive(Default)]
 struct RelPass {
     areas: Vec<RelArea>,
+    boundaries: Vec<BoundaryRel>,
 }
 
 /// A closed way that is a POI in its own right.
@@ -111,6 +145,10 @@ struct WayArea {
     name: Vec<u8>,
     attrs: Vec<u8>,
     refs: Vec<i64>,
+    /// [`crate::poi_side::tag_way`] of this way when it is itself tagged
+    /// `boundary=administrative`, else [`crate::poi_side::REGION_NONE`].
+    self_region: u64,
+    place_cap: u8,
 }
 
 #[derive(Default)]
@@ -135,8 +173,9 @@ pub fn build(
     attrs: &Path,
     spatial: &Path,
     name_index: &Path,
+    region: &Path,
 ) -> Result<Stats> {
-    build_with(input, geojson, names, index, attrs, spatial, name_index, None)
+    build_with(input, geojson, names, index, attrs, spatial, name_index, region, None)
 }
 
 /// [`build`] with a region bbox filter: `Some` keeps only POIs touching the
@@ -151,9 +190,12 @@ pub fn build_with(
     attrs: &Path,
     spatial: &Path,
     name_index: &Path,
+    region: &Path,
     bbox: Option<crate::bbox::BBox>,
 ) -> Result<Stats> {
-    build_with_reviews(input, geojson, names, index, attrs, spatial, name_index, bbox, None)
+    build_with_reviews(
+        input, geojson, names, index, attrs, spatial, name_index, region, bbox, None,
+    )
 }
 
 /// [`build_with`] plus an external review table whose rows are appended to the
@@ -167,12 +209,13 @@ pub fn build_with_reviews(
     attrs: &Path,
     spatial: &Path,
     name_index: &Path,
+    region: &Path,
     bbox: Option<crate::bbox::BBox>,
     reviews: Option<&ReviewTable>,
 ) -> Result<Stats> {
     // Fail before the three passes rather than after them if an output path is
     // unwritable.
-    for path in [geojson, names, index, attrs, spatial, name_index] {
+    for path in [geojson, names, index, attrs, spatial, name_index, region] {
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             std::fs::create_dir_all(parent)
                 .map_err(|e| Error(format!("cannot create {}: {e}", parent.display())))?;
@@ -195,12 +238,15 @@ pub fn build_with_reviews(
         relation_blob,
     )?;
     let mut rel_areas: Vec<RelArea> = Vec::new();
+    let mut boundaries: Vec<BoundaryRel> = Vec::new();
     for chunk in chunks {
         rel_areas.extend(chunk.areas);
+        boundaries.extend(chunk.boundaries);
     }
     let mut outer_wanted: Vec<i64> = rel_areas
         .iter()
         .flat_map(|a| a.outer_ways.iter().copied())
+        .chain(boundaries.iter().flat_map(|b| b.member_ways.iter().map(|(w, _)| *w)))
         .collect();
     outer_wanted.sort_unstable();
     outer_wanted.dedup();
@@ -286,7 +332,15 @@ pub fn build_with_reviews(
         // node.
         if let Some(poi) = ring_centroid(area.refs[..area.refs.len() - 1].iter().copied(), &location)
         {
-            pois.push(make_poi(poi, area.type_, area.id, &area.name, area.attrs.clone()));
+            pois.push(make_poi(
+                poi,
+                area.type_,
+                area.id,
+                &area.name,
+                area.attrs.clone(),
+                area.self_region,
+                area.place_cap,
+            ));
         }
     }
     let from_ways = pois.len() - from_nodes;
@@ -308,7 +362,15 @@ pub fn build_with_reviews(
             continue;
         }
         if let Some(poi) = ring_centroid(refs.iter().copied(), &location) {
-            pois.push(make_poi(poi, area.type_, -area.id, &area.name, area.attrs.clone()));
+            pois.push(make_poi(
+                poi,
+                area.type_,
+                -area.id,
+                &area.name,
+                area.attrs.clone(),
+                area.self_region,
+                area.place_cap,
+            ));
         }
     }
     let from_relations = pois.len() - from_nodes - from_ways;
@@ -328,13 +390,22 @@ pub fn build_with_reviews(
         None => 0,
     };
 
+    // Before the sort: `pois` is still nodes, then ways, then relations, which is
+    // the only place the OSM element type is known. Region links resolve here
+    // for the same reason reviews do — and the stamped ids ride the Morton sort
+    // on the `Poi` struct, so `poi_region.bin` joins by ordinal afterwards.
+    let with_region = resolve_regions(&mut pois, from_nodes, &boundaries, &outer_refs, &location);
+    if with_region > 0 {
+        println!("{with_region} POI(s) with a boundary link");
+    }
+
     // Morton order, ties broken by osm_id, so both poi_index.bin and the geojson
     // are stable across runs.
     timer.switch("sort");
     pois.sort_by_key(|p| (p.morton, p.osm_id));
 
     timer.switch("write");
-    let written = write_outputs(&pois, geojson, names, index, attrs, spatial, name_index)?;
+    let written = write_outputs(&pois, geojson, names, index, attrs, spatial, name_index, region)?;
     timer.finish();
     Ok(Stats {
         records: written.records,
@@ -349,6 +420,7 @@ pub fn build_with_reviews(
         spatial_cells: written.spatial_cells,
         name_entries: written.name_entries,
         with_reviews,
+        with_region,
     })
 }
 
@@ -373,6 +445,148 @@ fn apply_reviews(pois: &mut [Poi], from_nodes: usize, from_ways: usize, table: &
     matched
 }
 
+/// One assembled boundary: its polygons, each exterior ring's absolute area
+/// (smallest-wins needs no sign), its bbox, and its tagged link.
+struct BoundaryPoly {
+    tagged: u64,
+    admin_level: u8,
+    polys: Vec<rings::Polygon>,
+    areas: Vec<f64>,
+    min_lon: f64,
+    min_lat: f64,
+    max_lon: f64,
+    max_lat: f64,
+}
+
+/// Stamp every POI's [`Poi::region`]: self-links are already set, a node carried
+/// as a boundary's `label`/`admin_centre` member takes that boundary's tagged id,
+/// otherwise the smallest-area containing admin at or above the POI's
+/// place-implied cap wins. Returns the stamped count.
+///
+/// `pois[..from_nodes]` are nodes, which is the only slice the member-link map
+/// can hit — node ids and way/relation ids share a namespace per element type,
+/// and a way id equal to a label node id is a different object.
+///
+/// Containment runs through a coarse 1°-cell grid over boundary bboxes, so a
+/// planet build tests each POI only against the boundaries whose bbox covers it
+/// instead of every admin relation on earth.
+fn resolve_regions<L>(
+    pois: &mut [Poi],
+    from_nodes: usize,
+    boundaries: &[BoundaryRel],
+    outer_refs: &HashMap<i64, Vec<i64>>,
+    location: &L,
+) -> usize
+where
+    L: Fn(i64) -> Option<(i32, i32)>,
+{
+    // Deterministic on double-labelling: the lowest boundary id wins.
+    let mut ordered: Vec<&BoundaryRel> = boundaries.iter().collect();
+    ordered.sort_by_key(|b| b.id);
+    let mut labels: HashMap<i64, u64> = HashMap::new();
+    for b in &ordered {
+        let tagged = poi_side::tag_relation(b.id);
+        for n in &b.label_nodes {
+            labels.entry(*n).or_insert(tagged);
+        }
+    }
+
+    let locate = |id: i64| -> Option<Coord> {
+        location(id).map(|(lat_e7, lon_e7)| (lon_e7 as f64 * 1e-7, lat_e7 as f64 * 1e-7))
+    };
+    let mut assembled: Vec<BoundaryPoly> = Vec::new();
+    let mut ring_stats = RingStats::default();
+    for b in &ordered {
+        let members: Vec<MemberWay> = b
+            .member_ways
+            .iter()
+            .map(|(w, outer)| MemberWay {
+                refs: outer_refs.get(w).cloned().unwrap_or_default(),
+                outer: *outer,
+            })
+            .collect();
+        let polys = rings::assemble(&members, &locate, &mut ring_stats);
+        if polys.is_empty() {
+            continue;
+        }
+        let (mut min_lon, mut min_lat) = (f64::INFINITY, f64::INFINITY);
+        let (mut max_lon, mut max_lat) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+        let mut areas = Vec::with_capacity(polys.len());
+        for poly in &polys {
+            areas.push(rings::ring_area(&poly[0]).abs());
+            for ring in poly {
+                for &(lon, lat) in ring {
+                    min_lon = min_lon.min(lon);
+                    min_lat = min_lat.min(lat);
+                    max_lon = max_lon.max(lon);
+                    max_lat = max_lat.max(lat);
+                }
+            }
+        }
+        assembled.push(BoundaryPoly {
+            tagged: poi_side::tag_relation(b.id),
+            admin_level: b.admin_level,
+            polys,
+            areas,
+            min_lon,
+            min_lat,
+            max_lon,
+            max_lat,
+        });
+    }
+
+    let mut grid: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
+    for (i, b) in assembled.iter().enumerate() {
+        for cx in b.min_lon.floor() as i32..=b.max_lon.floor() as i32 {
+            for cy in b.min_lat.floor() as i32..=b.max_lat.floor() as i32 {
+                grid.entry((cx, cy)).or_default().push(i);
+            }
+        }
+    }
+
+    let mut matched = 0;
+    for (i, p) in pois.iter_mut().enumerate() {
+        if p.region != poi_side::REGION_NONE {
+            matched += 1;
+            continue;
+        }
+        // Member links win over containment.
+        if i < from_nodes {
+            if let Some(tagged) = labels.get(&p.osm_id) {
+                p.region = *tagged;
+                matched += 1;
+                continue;
+            }
+        }
+        let lon = p.lon_e7 as f64 * 1e-7;
+        let lat = p.lat_e7 as f64 * 1e-7;
+        let Some(cands) = grid.get(&(lon.floor() as i32, lat.floor() as i32)) else {
+            continue;
+        };
+        let mut best: Option<(f64, u64)> = None;
+        for bi in cands {
+            let b = &assembled[*bi];
+            if b.admin_level > p.place_cap {
+                continue;
+            }
+            for (poly, area) in b.polys.iter().zip(&b.areas) {
+                // Holes excluded: inside an inner ring is not inside the admin.
+                if rings::point_in_ring((lon, lat), &poly[0])
+                    && !poly[1..].iter().any(|h| rings::point_in_ring((lon, lat), h))
+                    && best.is_none_or(|(a, _)| *area < a)
+                {
+                    best = Some((*area, b.tagged));
+                }
+            }
+        }
+        if let Some((_, tagged)) = best {
+            p.region = tagged;
+            matched += 1;
+        }
+    }
+    matched
+}
+
 fn poi_tags<'a>(t: &osm::Tags<'_, 'a>) -> PoiTags<'a> {
     PoiTags {
         railway: t.get_str("railway"),
@@ -383,6 +597,19 @@ fn poi_tags<'a>(t: &osm::Tags<'_, 'a>) -> PoiTags<'a> {
         leisure: t.get_str("leisure"),
         healthcare: t.get_str("healthcare"),
         office: t.get_str("office"),
+        place: t.get_str("place"),
+    }
+}
+
+/// Deepest `admin_level` a place POI may link to, from its `place` value:
+/// a country links at level 2, a state/province at 4, everything else (cities
+/// down to neighbourhoods) at 8. Non-place POIs link at any level.
+fn place_level_cap(place: Option<&str>) -> u8 {
+    match place {
+        Some("country") => 2,
+        Some("state" | "province") => 4,
+        Some(_) => 8,
+        None => 8,
     }
 }
 
@@ -390,6 +617,46 @@ fn relation_blob(state: &mut RelPass, block: &pbf::PrimitiveBlock) -> Result<u8>
     let mut kinds = 0u8;
     visit_block(block, KIND_RELATIONS, &mut kinds, &mut |el: Element| {
         if let Element::Relation(r) = el {
+            // Boundary relations feed the region-link geometry whether or not they
+            // are POIs themselves. A `boundary=administrative` relation is
+            // linkable when it carries an `admin_level`; `type=boundary` without
+            // one still assembles but links at the deepest level.
+            if r.tags.get_str("type") == Some("boundary")
+                && r.tags.get_str("boundary") == Some("administrative")
+            {
+                let admin_level: u8 = r
+                    .tags
+                    .get_str("admin_level")
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(8);
+                state.boundaries.push(BoundaryRel {
+                    id: r.id,
+                    admin_level,
+                    member_ways: r
+                        .members
+                        .iter()
+                        .filter(|m| {
+                            m.kind == MEMBER_WAY
+                                && (m.role == b"outer"
+                                    || m.role == b"inner"
+                                    || m.role.is_empty())
+                        })
+                        .map(|m| (m.id, m.role != b"inner"))
+                        .collect(),
+                    label_nodes: r
+                        .members
+                        .iter()
+                        .filter(|m| {
+                            m.kind == MEMBER_NODE
+                                && (m.role == b"label" || m.role == b"admin_centre")
+                        })
+                        .map(|m| m.id)
+                        .collect(),
+                    });
+                // A boundary relation with a name and POI tags is still a POI in its
+                // own right (a national park on the relation, a `place` label on the
+                // boundary). Fall through to the area path below.
+            }
             let is_area = r
                 .tags
                 .get_str("type")
@@ -402,6 +669,11 @@ fn relation_blob(state: &mut RelPass, block: &pbf::PrimitiveBlock) -> Result<u8>
                 _ => return Ok(()),
             };
             if let Some(type_) = tags::classify(&poi_tags(&r.tags)) {
+                let self_region = if r.tags.get_str("boundary") == Some("administrative") {
+                    poi_side::tag_relation(r.id)
+                } else {
+                    poi_side::REGION_NONE
+                };
                 state.areas.push(RelArea {
                     id: r.id,
                     type_,
@@ -413,6 +685,8 @@ fn relation_blob(state: &mut RelPass, block: &pbf::PrimitiveBlock) -> Result<u8>
                         .filter(|m| m.kind == MEMBER_WAY && (m.role == b"outer" || m.role.is_empty()))
                         .map(|m| m.id)
                         .collect(),
+                    self_region,
+                    place_cap: place_level_cap(r.tags.get_str("place")),
                 });
             }
         }
@@ -448,12 +722,19 @@ fn way_blob(
                 _ => return Ok(()),
             };
             if let Some(type_) = tags::classify(&poi_tags(&w.tags)) {
+                let self_region = if w.tags.get_str("boundary") == Some("administrative") {
+                    poi_side::tag_way(w.id)
+                } else {
+                    poi_side::REGION_NONE
+                };
                 state.areas.push(WayArea {
                     id: w.id,
                     type_,
                     name: name.to_vec(),
                     attrs: crate::poi_attrs::encode(|k| w.tags.get(k)),
                     refs: w.refs.to_vec(),
+                    self_region,
+                    place_cap: place_level_cap(w.tags.get_str("place")),
                 });
             }
         }
@@ -493,6 +774,8 @@ fn node_blob(
                     n.id,
                     name,
                     crate::poi_attrs::encode(|k| n.tags.get(k)),
+                    poi_side::REGION_NONE,
+                    place_level_cap(n.tags.get_str("place")),
                 ));
             }
         }

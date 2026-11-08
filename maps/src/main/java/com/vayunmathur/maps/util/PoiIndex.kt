@@ -130,6 +130,8 @@ object PoiIndex {
          * attribute sidecar. -1 for a record not read from the index.
          */
         val ordinal: Int = -1,
+        /** Tagged OSM boundary id, or 0 when this POI links to no boundary. */
+        val regionId: Long = 0L,
     ) {
         val lat: Double get() = latE7 * E7_TO_DEGREES
         val lon: Double get() = lonE7 * E7_TO_DEGREES
@@ -207,6 +209,8 @@ object PoiIndex {
         /** The word index, or null when absent or mismatched. */
         internal val nameIdx: MappedByteBuffer? = null,
         internal val entryCount: Int = 0,
+        /** The region sidecar, or null when absent or mismatched. */
+        internal val region: MappedByteBuffer? = null,
         /** The whole archive mapping, when loaded from one file: pins every slice above. */
         @Suppress("unused")
         val archive: MappedByteBuffer? = null,
@@ -221,7 +225,7 @@ object PoiIndex {
         fun spatialAt(i: Int): Long = spatialFromE7(latE7(i), lonE7(i))
 
         internal fun record(i: Int): PoiRecord =
-            PoiRecord(latE7(i), lonE7(i), type(i), nameAt(nameOff(i)) ?: "", i)
+            PoiRecord(latE7(i), lonE7(i), type(i), nameAt(nameOff(i)) ?: "", i, regionId(i))
 
         /** Read the NUL-terminated UTF-8 name that starts at byte [off], or null. */
         fun nameAt(off: Int): String? {
@@ -514,7 +518,7 @@ object PoiIndex {
      * can actually produce — buffer overruns and bounds checks. Anything else
      * is a programming error and keeps propagating.
      */
-    private fun <T> bufferFailure(cause: Throwable, file: String): T? {
+    internal fun <T> bufferFailure(cause: Throwable, file: String): T? {
         when (cause) {
             is IndexOutOfBoundsException,
             is IllegalArgumentException,

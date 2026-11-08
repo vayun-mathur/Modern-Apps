@@ -363,6 +363,116 @@ fn write_pbf(tag: &str, bytes: &[u8]) -> (std::path::PathBuf, std::path::PathBuf
     (path, dir)
 }
 
+// ---- the POI region-link fixture -------------------------------------------
+//
+// A FOURTH fixture, for `poi_build`'s boundary links. The road-graph, vector and
+// POI tests assert exact counts against the fixtures above, so this one is
+// separate: a `type=boundary` + `boundary=administrative` relation that is
+// itself a POI (`leisure=park` gives it a type, so it self-links), a
+// `place=town` label carried as a `label` member OUTSIDE the ring (only the
+// member link, never containment, can stamp it), one cafe inside the ring
+// (containment) and one outside it (unstamped).
+
+/// `type=boundary` + `boundary=administrative` + `admin_level=8`, itself a park
+/// POI.
+pub const REGION_BOUNDARY_ID: i64 = 300;
+/// The boundary's single closed outer ring.
+pub const REGION_RING_WAY_ID: i64 = 400;
+/// `amenity=cafe` inside the ring.
+pub const REGION_INSIDE_CAFE_ID: i64 = 15;
+/// `amenity=cafe` outside the ring.
+pub const REGION_OUTSIDE_CAFE_ID: i64 = 16;
+/// `place=town` carried as a `label` member, deliberately outside the ring.
+pub const REGION_TOWN_NODE_ID: i64 = 17;
+
+/// `(id, lat_e7, lon_e7)` of the ring corners plus the POI nodes: a
+/// 0.04-degree square, with the cafes and the town on its middle parallel.
+pub const REGION_NODES: [(i64, i32, i32); 7] = [
+    (11, 371_000_000, -1_221_000_000),
+    (12, 371_000_000, -1_220_600_000),
+    (13, 371_040_000, -1_220_600_000),
+    (14, 371_040_000, -1_221_000_000),
+    (REGION_INSIDE_CAFE_ID, 371_020_000, -1_220_800_000),
+    (REGION_OUTSIDE_CAFE_ID, 371_100_000, -1_220_800_000),
+    (REGION_TOWN_NODE_ID, 371_120_000, -1_220_850_000),
+];
+
+fn region_block() -> Vec<u8> {
+    let mut st = StringTable::new();
+    let k_amenity = st.id("amenity");
+    let v_cafe = st.id("cafe");
+    let k_name = st.id("name");
+    let v_inside = st.id("Inside Cafe");
+    let v_outside = st.id("Outside Cafe");
+    let k_place = st.id("place");
+    let v_town = st.id("town");
+    let v_testville = st.id("Testville");
+    let k_type = st.id("type");
+    let k_boundary = st.id("boundary"); // also the value of `type=*`
+    let v_admin = st.id("administrative");
+    let k_admin_level = st.id("admin_level");
+    let v_eight = st.id("8");
+    let v_green = st.id("Green Boundary");
+    let k_leisure = st.id("leisure");
+    let v_park = st.id("park");
+    let role_outer = st.id("outer");
+    let role_label = st.id("label");
+
+    let nodes: Vec<FixtureNode> = REGION_NODES
+        .iter()
+        .map(|(id, lat, lon)| {
+            let tags = match *id {
+                REGION_INSIDE_CAFE_ID => vec![(k_amenity, v_cafe), (k_name, v_inside)],
+                REGION_OUTSIDE_CAFE_ID => vec![(k_amenity, v_cafe), (k_name, v_outside)],
+                REGION_TOWN_NODE_ID => vec![(k_place, v_town), (k_name, v_testville)],
+                _ => Vec::new(),
+            };
+            (*id, *lat, *lon, tags)
+        })
+        .collect();
+    let dense = dense_group(&nodes);
+    let ways = [way(REGION_RING_WAY_ID, &[], &[11, 12, 13, 14, 11])];
+    let rels = [relation(
+        REGION_BOUNDARY_ID,
+        &[
+            (k_type, k_boundary),
+            (k_boundary, v_admin),
+            (k_admin_level, v_eight),
+            (k_name, v_green),
+            (k_leisure, v_park),
+        ],
+        // Ascending, so the delta encoding stays small.
+        &[
+            (REGION_TOWN_NODE_ID, role_label, 0),
+            (REGION_RING_WAY_ID, role_outer, 1),
+        ],
+    )];
+
+    let mut node_group = Vec::new();
+    bytes_field(2, &dense, &mut node_group);
+    let mut way_group = Vec::new();
+    for w in &ways {
+        bytes_field(3, w, &mut way_group);
+    }
+    let mut rel_group = Vec::new();
+    for r in &rels {
+        bytes_field(4, r, &mut rel_group);
+    }
+
+    let mut block = Vec::new();
+    bytes_field(1, &st.encode(), &mut block);
+    bytes_field(2, &node_group, &mut block);
+    bytes_field(2, &way_group, &mut block);
+    bytes_field(2, &rel_group, &mut block);
+    varint_field(17, 100, &mut block); // granularity
+    block
+}
+
+/// Write the region-link fixture to a unique temp directory.
+pub fn write_region_sample(tag: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+    write_pbf(tag, &pbf_from_block(&region_block()))
+}
+
 // ---- the vector-layer fixture --------------------------------------------
 //
 // A SECOND fixture rather than more features in the one above. The road-graph and

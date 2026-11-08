@@ -47,6 +47,7 @@ fn run(
             &dir.join("poi_attrs.bin"),
             &dir.join("poi_spatial.bin"),
             &dir.join("poi_name_index.bin"),
+            &dir.join("poi_region.bin"),
             run.region.bbox(),
         )
         .map_err(|e| format!("poi build: {e}"))?;

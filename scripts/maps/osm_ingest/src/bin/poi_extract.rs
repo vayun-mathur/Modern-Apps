@@ -42,6 +42,7 @@ fn main() -> ExitCode {
         &args.attrs,
         &args.spatial,
         &args.name_index,
+        &args.region,
         args.bbox,
         reviews.as_ref(),
     ) {
@@ -67,14 +68,16 @@ fn main() -> ExitCode {
                 "{} populated grid cell(s), {} name index entr(ies)",
                 stats.spatial_cells, stats.name_entries
             );
+            println!("{} POI(s) with a boundary link", stats.with_region);
             println!(
-                "Wrote {}, {}, {}, {}, {}, {}",
+                "Wrote {}, {}, {}, {}, {}, {}, {}",
                 args.geojson.display(),
                 args.names.display(),
                 args.index.display(),
                 args.attrs.display(),
                 args.spatial.display(),
-                args.name_index.display()
+                args.name_index.display(),
+                args.region.display()
             );
             ExitCode::SUCCESS
         }

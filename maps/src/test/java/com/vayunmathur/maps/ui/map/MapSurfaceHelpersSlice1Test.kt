@@ -122,6 +122,17 @@ class MapSurfaceHelpersSlice1Test {
                 ),
             ),
         )
+        // A region picked from search carries the index hit's boundary link,
+        // so it masks without an admin-label upgrade.
+        assertEquals(
+            7L,
+            regionMaskFor(
+                SpecificFeature.GenericPlace(
+                    name = "Testville", phone = null, website = null, openingHours = null,
+                    position = paris, regionId = 7L,
+                ),
+            ),
+        )
     }
 
     @Test

@@ -66,6 +66,25 @@ mod tests {
             .collect()
     }
 
+    /// Decode `poi_region.bin` the way [`crate::poi_side`] documents it: one
+    /// tagged OSM boundary id per record ordinal, `0` where the POI matched
+    /// nothing.
+    fn read_regions(dir: &Path) -> Vec<u64> {
+        use crate::poi_side::{REGION_HEADER_BYTES, REGION_MAGIC, REGION_VERSION};
+        let bytes = std::fs::read(dir.join("poi_region.bin")).unwrap();
+        assert_eq!(&bytes[0..4], REGION_MAGIC);
+        assert_eq!(
+            u32::from_le_bytes(bytes[4..8].try_into().unwrap()),
+            REGION_VERSION
+        );
+        let count = u32::from_le_bytes(bytes[8..12].try_into().unwrap()) as usize;
+        assert_eq!(bytes.len(), REGION_HEADER_BYTES + 8 * count);
+        bytes[REGION_HEADER_BYTES..]
+            .chunks_exact(8)
+            .map(|r| u64::from_le_bytes(r.try_into().unwrap()))
+            .collect()
+    }
+
     fn build_sample(tag: &str) -> (Stats, PathBuf) {
         let (pbf_path, dir) = testpbf::write_sample(tag);
         let stats = build(
@@ -76,6 +95,7 @@ mod tests {
             &dir.join("poi_attrs.bin"),
             &dir.join("poi_spatial.bin"),
             &dir.join("poi_name_index.bin"),
+            &dir.join("poi_region.bin"),
         )
         .unwrap();
         (stats, dir)
@@ -191,6 +211,7 @@ mod tests {
                 &dir.join(format!("attrs{suffix}.bin")),
                 &dir.join(format!("spatial{suffix}.bin")),
                 &dir.join(format!("nameidx{suffix}.bin")),
+                &dir.join(format!("region{suffix}.bin")),
             )
             .unwrap();
         };
@@ -203,6 +224,7 @@ mod tests {
             ("attrsa.bin", "attrsb.bin"),
             ("spatiala.bin", "spatialb.bin"),
             ("nameidxa.bin", "nameidxb.bin"),
+            ("regiona.bin", "regionb.bin"),
         ] {
             assert_eq!(
                 std::fs::read(dir.join(a)).unwrap(),
@@ -258,6 +280,45 @@ mod tests {
         assert_eq!(index.len(), stats.records * 14);
     }
 
+    /// Member links win, containment covers the rest, misses stay zero: the
+    /// town label is a `label` member of the boundary relation (stamped even
+    /// though it sits outside the ring), the inside cafe resolves by
+    /// containment, the outside cafe matches nothing.
+    #[test]
+    fn boundary_links_resolve_member_first_then_containment() {
+        let (pbf_path, dir) = testpbf::write_region_sample("poi_region");
+        let stats = build(
+            &pbf_path,
+            &dir.join("pois.geojsonseq"),
+            &dir.join("poi_names.bin"),
+            &dir.join("poi_index.bin"),
+            &dir.join("poi_attrs.bin"),
+            &dir.join("poi_spatial.bin"),
+            &dir.join("poi_name_index.bin"),
+            &dir.join("poi_region.bin"),
+        )
+        .unwrap();
+        let (records, _) = read_records(&dir);
+        assert_eq!(records.len(), 4);
+        assert_eq!(stats.with_region, 3);
+
+        let regions = read_regions(&dir);
+        assert_eq!(regions.len(), records.len());
+        let of = |n: &str| regions[records.iter().position(|r| r.name == n).unwrap()];
+
+        // Tagged ids carry the OSM id space in the low 2 bits: relation 300 is
+        // `(300 << 2) | 3`.
+        let boundary = (testpbf::REGION_BOUNDARY_ID as u64) << 2 | 3;
+        // The town label is type 51 and resolves through the member link alone.
+        let town = records.iter().find(|r| r.name == "Testville").unwrap();
+        assert_eq!(town.type_, 51);
+        assert_eq!(of("Testville"), boundary);
+        // The boundary relation is itself a park POI and links to itself.
+        assert_eq!(of("Green Boundary"), boundary);
+        assert_eq!(of("Inside Cafe"), boundary);
+        assert_eq!(of("Outside Cafe"), 0);
+    }
+
     /// Review rows join on (element, OSM id) before the Morton sort, and land on the
     /// right ordinal after it. The relation row uses the plain id even though the
     /// POI stores it negated.
@@ -284,6 +345,7 @@ mod tests {
             &dir.join("poi_attrs.bin"),
             &dir.join("poi_spatial.bin"),
             &dir.join("poi_name_index.bin"),
+            &dir.join("poi_region.bin"),
             None,
             Some(&table),
         )
@@ -331,6 +393,7 @@ mod tests {
         // Defaulted beside the index, so a caller written before the sidecar existed
         // still emits one rather than silently skipping it.
         assert_eq!(ok.attrs, PathBuf::from("out/poi_attrs.bin"));
+        assert_eq!(ok.region, PathBuf::from("out/poi_region.bin"));
         assert!(ok.threads.is_none(), "the pool defaults to the box");
         assert!(parse_args(&["in.pbf".into()]).is_err());
         assert!(parse_args(&["in.pbf".into(), "--geojson".into()]).is_err());

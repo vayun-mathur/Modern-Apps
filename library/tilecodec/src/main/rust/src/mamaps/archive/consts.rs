@@ -37,9 +37,12 @@ pub const ARCHIVE_KIND_POI_WORDS: u8 = 12;
 pub const ARCHIVE_KIND_TRANSIT: u8 = 13;
 /// Graph `overlay.bin` payload: the `MOVL` highway overlay (optional).
 pub const ARCHIVE_KIND_GRAPH_OVERLAY: u8 = 14;
+/// POI `poi_region.bin` payload: one tagged OSM boundary id per index ordinal
+/// (`PRG1` + version + count, then `u64` ids; 0 means no boundary).
+pub const ARCHIVE_KIND_POI_REGION: u8 = 15;
 /// Highest kind this build writes. Readers accept any non-zero kind and skip
 /// the ones they do not know, so a newer archive still opens in an older app.
-pub const ARCHIVE_KIND_MAX_KNOWN: u8 = ARCHIVE_KIND_GRAPH_OVERLAY;
+pub const ARCHIVE_KIND_MAX_KNOWN: u8 = ARCHIVE_KIND_POI_REGION;
 
 /// `metadata.bin` (`MARG`) magic, little-endian `u32`.
 pub const GRAPH_MAGIC: u32 = 0x4752_414D;

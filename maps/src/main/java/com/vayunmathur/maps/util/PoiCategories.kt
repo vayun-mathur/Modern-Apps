@@ -17,7 +17,7 @@ package com.vayunmathur.maps.util
  */
 object PoiCategories {
     /**
-     * Human-readable labels indexed by type id (0..50), in the stable numbering
+     * Human-readable labels indexed by type id (0..51), in the stable numbering
      * defined in `scripts/maps/README.md` / `osm_ingest/src/tags.rs`.
      *
      * A list rather than a `when`: the ids are dense, so the index IS the id and
@@ -75,6 +75,7 @@ object PoiCategories {
         "Gift", // 48
         "Marketplace", // 49
         "Station", // 50
+        "Place", // 51: cities, towns and other place labels
     )
 
     /** Human-readable category label (used as the search-result subtitle). */

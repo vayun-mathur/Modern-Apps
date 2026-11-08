@@ -84,6 +84,13 @@ sealed interface SpecificFeature {
         val rating: Double? = null,
         val reviewCount: Int? = null,
         val reviewSummary: String? = null,
+        /**
+         * Tagged OSM boundary id from `poi_region.bin`, as in [Admin0Label]:
+         * search and reverse-geocode carry the index hit's link through, so a
+         * region picked off-index masks without an admin-label upgrade. 0 when
+         * unlinked (deep links, saved places, tapped pins).
+         */
+        val regionId: Long = 0L,
     ) : RoutableFeature
     @Serializable
     data class Route(val waypoints: List<RoutableFeature?>) : SpecificFeature
@@ -110,6 +117,7 @@ suspend fun osmPlace(
     name: String,
     position: GeoPoint,
     poiType: Int? = null,
+    regionId: Long = 0L,
 ): SpecificFeature.GenericPlace {
     val attrs: PoiIndex.PoiAttributes? = withContext(Dispatchers.IO) {
         PoiIndex.attributesNear(position.latitude, position.longitude, name)
@@ -127,6 +135,7 @@ suspend fun osmPlace(
         rating = attrs?.rating,
         reviewCount = attrs?.reviewCount,
         reviewSummary = attrs?.reviewSummary,
+        regionId = regionId,
     )
 }
 
