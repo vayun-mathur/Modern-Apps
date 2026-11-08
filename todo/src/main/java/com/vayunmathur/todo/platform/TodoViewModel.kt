@@ -221,7 +221,7 @@ class TodoViewModel(
     }
 
     fun restore(todos: List<Todo>) {
-        viewModelScope.launch(io) { repository.upsertAll(todos.map { it.copy(deleted = false) }) }
+        viewModelScope.launch(io) { todos.forEach { repository.restore(it) } }
     }
 
     fun upsertAll(todos: List<Todo>) {

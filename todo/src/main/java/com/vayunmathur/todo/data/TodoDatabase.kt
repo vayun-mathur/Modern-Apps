@@ -41,6 +41,10 @@ abstract class TodoDao {
     @Query("SELECT * FROM Todo WHERE parentSyncId = :parentSyncId AND deleted = 0 ORDER BY position")
     abstract fun getSubtasksFlow(parentSyncId: String): Flow<List<Todo>>
 
+    /** Subtasks tombstones included: what [TodoRepository.restore] needs to undo a delete. */
+    @Query("SELECT * FROM Todo WHERE parentSyncId = :parentSyncId ORDER BY position")
+    abstract suspend fun getSubtasksIncludingDeleted(parentSyncId: String): List<Todo>
+
     @Query("SELECT * FROM Todo WHERE updatedAt > :since")
     abstract suspend fun getUpdatedSince(since: Long): List<Todo>
 
