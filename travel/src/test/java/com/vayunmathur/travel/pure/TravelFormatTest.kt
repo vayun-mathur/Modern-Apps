@@ -45,6 +45,19 @@ class TravelFormatTest {
     }
 
     @Test
+    fun fractionalAmountsIgnoreDefaultLocale() {
+        val previous = java.util.Locale.getDefault()
+        try {
+            // Comma-decimal locale: the label must still use a decimal point.
+            java.util.Locale.setDefault(java.util.Locale.GERMANY)
+            assertEquals("€220.50", formatMoney("220.5", "EUR"))
+            assertEquals("$412.50", formatMoney("412.5", "USD"))
+        } finally {
+            java.util.Locale.setDefault(previous)
+        }
+    }
+
+    @Test
     fun unparseableAmountFallsBackToRaw() {
         assertEquals("USD abc", formatMoney("abc", "USD"))
         assertEquals("USD ", formatMoney("", "USD"))
