@@ -454,7 +454,9 @@ private fun handlePwaPermissionRequest(deps: PwaChromeDeps, request: PermissionR
     val needsCamera = resources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE)
     val needsMic = resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
     if (!needsCamera && !needsMic) {
-        request.grant(resources)
+        // No per-site sheet exists for these resources (MIDI, DRM device id, ...):
+        // fail closed rather than silently granting, mirroring the browser tab.
+        request.deny()
         return
     }
     if (hasMediaPermissions(deps.context, needsCamera, needsMic)) {

@@ -199,6 +199,27 @@ class ChromeGrantAndPwaDownloadTest {
         assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW, webView.settings.mixedContentMode)
     }
 
+    @Test fun pwaChromeClientDeniesResourcesWithNoCameraOrMic() {
+        // Mirror of chromeClientDeniesResourcesWithNoPermissionSheet: resources that need
+        // neither camera nor mic (MIDI, DRM device id, ...) have no consent path in the
+        // PWA window, so they must fail closed, never be silently granted.
+        rule.setContent {
+            com.vayunmathur.web.platform.PwaBrowser(initialUrl = "https://pwa.example/app", title = "PWA")
+        }
+        rule.waitForIdle()
+        val webView = findWebView(rule.activity.window.decorView)
+        assertNotNull(webView)
+        val chrome = shadowOf(webView).webChromeClient
+        assertNotNull(chrome)
+        val req = FakePermissionRequest(
+            arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID),
+            Uri.parse("https://pwa.example"),
+        )
+        chrome.onPermissionRequest(req)
+        assertTrue(req.denied, "unlisted resource must be denied, granted=${req.granted}")
+        assertTrue(req.granted == null, "granted=${req.granted}")
+    }
+
     @Test fun pwaBackPressFinishesWhenNoHistory() {
         rule.setContent {
             com.vayunmathur.web.platform.PwaBrowser(initialUrl = "https://pwa.example/app", title = "PWA")
