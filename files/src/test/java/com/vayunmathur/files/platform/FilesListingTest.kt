@@ -170,6 +170,39 @@ class FilesListingTest {
     }
 
     @Test
+    fun `atomic move deletes partial destination when fallback copy fails`() {
+        val srcParent = tempDir("move-partial-src")
+        val src = File(srcParent, "srcdir").apply { mkdirs() }
+        File(src, "good.txt").writeText("good")
+        // Dangling symlink: the fallback copy copies good.txt, then fails here,
+        // leaving a partial destination behind unless it is cleaned up.
+        java.nio.file.Files.createSymbolicLink(
+            File(src, "badlink.txt").toPath(), java.nio.file.Path.of("does-not-exist")
+        )
+        val destParent = tempDir("move-partial-dest")
+        val dest = File(destParent, "destdir")
+        // Force the NIO atomic move onto the copy fallback: renaming a directory
+        // out of a read-only parent fails, so the fallback copy runs instead.
+        srcParent.setWritable(false)
+        try {
+            // Running as root ignores permission bits, leaving no way to force
+            // the fallback; skip rather than assert a move that went another way.
+            if (srcParent.canWrite()) return
+            val failure = runCatching { src.atomicMoveTo(dest) }
+            assertTrue(
+                failure.exceptionOrNull() is java.io.IOException,
+                "expected IOException, got $failure"
+            )
+            assertTrue(src.exists(), "failed move must leave the source intact")
+            assertFalse(dest.exists(), "failed move must not leave a partial destination behind")
+        } finally {
+            srcParent.setWritable(true)
+            srcParent.deleteRecursively()
+            destParent.deleteRecursively()
+        }
+    }
+
+    @Test
     fun `sanitized file name drops any directory part`() {
         assertEquals("report.txt", sanitizedFileName("report.txt"))
         assertEquals("evil.txt", sanitizedFileName("../../evil.txt"))
