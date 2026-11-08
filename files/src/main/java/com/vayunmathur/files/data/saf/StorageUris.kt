@@ -43,6 +43,32 @@ object StorageUris {
             DocumentsContract.buildDocumentUri(EXTERNAL_STORAGE_AUTHORITY, it)
         }
 
+    /** Volume id and relative path of a tree document id, split at the first colon only. */
+    internal fun volumeAndRelative(documentId: String): Pair<String, String>? {
+        val colon = documentId.indexOf(':')
+        if (colon <= 0) return null
+        return documentId.substring(0, colon) to documentId.substring(colon + 1)
+    }
+
+    /**
+     * The [File] a tree [uri] points at, or null when its volume is unknown.
+     *
+     * The inverse of [treeUriFor]: the volume part selects the storage volume
+     * (an SD card's UUID is not the primary volume), and everything after the
+     * first colon is the path inside it, colons in folder names included.
+     */
+    fun fileForTreeUri(context: Context, uri: Uri): File? {
+        val documentId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
+            ?: return null
+        val (volumeId, relative) = volumeAndRelative(documentId) ?: return null
+        val sm = context.getSystemService(StorageManager::class.java) ?: return null
+        val volume = sm.storageVolumes.firstOrNull { vol ->
+            if (volumeId == "primary") vol.isPrimary else vol.uuid == volumeId
+        } ?: return null
+        val root = volume.directory ?: return null
+        return if (relative.isEmpty()) root else File(root, relative)
+    }
+
     /** Provider-backed tree URI for directory [dir], or null if it isn't on a known volume. */
     fun treeUriFor(context: Context, dir: File): Uri? =
         documentIdFor(context, dir)?.let {
