@@ -21,7 +21,7 @@ import java.security.SecureRandom
  * credential-protected storage is fine here: nothing on the boot path reads the verifier.
  *
  * Brute force is throttled: 5 wrong attempts lock verification for a minute, doubling each
- * subsequent failure up to 30 minutes. The counter lives beside the verifier so clearing app
+ * subsequent failure up to 16 minutes. The counter lives beside the verifier so clearing app
  * data (which wipes both) also wipes the rules database - there is nothing left to protect.
  */
 class ParentPin(context: Context) : DatabaseHelper(context) {
