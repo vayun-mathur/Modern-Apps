@@ -28,8 +28,11 @@ class UpdateCheckWorkerTest {
     private val store get() = DataStoreUtils.getInstance(ctx)
     private val fetchCount = AtomicInteger(0)
 
+    private lateinit var sysProps: Map<String, String>
+
     @BeforeTest
     fun setUp() = runBlocking {
+        sysProps = TestSysProps.snapshot()
         runCatching { WorkManagerTestInitHelper.initializeTestWorkManager(ctx) }
         TestSysProps.setRunningBuild(dateUtcSeconds = 1000L)
         store.setString(UpdaterPreferences.PENDING_REBOOT_BUILD, "")
@@ -42,6 +45,7 @@ class UpdateCheckWorkerTest {
     @AfterTest
     fun tearDown() {
         UpdateChecker.connectionOverride = null
+        TestSysProps.restore(sysProps)
     }
 
     private fun fakeBody(body: String, code: Int = 200) {

@@ -9,6 +9,8 @@ import androidx.compose.ui.test.performClick
 import com.vayunmathur.library.ui.DynamicTheme
 import com.vayunmathur.updater.platform.TestSysProps
 import com.vayunmathur.updater.platform.UpdaterViewModel
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -21,6 +23,18 @@ class MainActivityNavigationTest {
 
     @get:Rule
     val composeRule = createComposeRule()
+
+    private lateinit var sysProps: Map<String, String>
+
+    @BeforeTest
+    fun saveProps() {
+        sysProps = TestSysProps.snapshot()
+    }
+
+    @AfterTest
+    fun restoreProps() {
+        TestSysProps.restore(sysProps)
+    }
 
     @Test
     fun `navigation hosts the updater screen for the home route`() {
@@ -37,6 +51,18 @@ class MainActivityNavigationTest {
 
 @RunWith(RobolectricTestRunner::class)
 class MainActivityTest {
+
+    private lateinit var sysProps: Map<String, String>
+
+    @BeforeTest
+    fun saveProps() {
+        sysProps = TestSysProps.snapshot()
+    }
+
+    @AfterTest
+    fun restoreProps() {
+        TestSysProps.restore(sysProps)
+    }
 
     @Test
     fun `the activity launches, schedules checks and renders the home route`() {

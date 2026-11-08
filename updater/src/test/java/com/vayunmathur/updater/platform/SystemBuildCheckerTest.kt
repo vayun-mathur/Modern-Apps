@@ -2,6 +2,7 @@ package com.vayunmathur.updater.platform
 
 import java.net.URL
 import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -13,9 +14,17 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class SystemBuildCheckerTest {
 
+    private lateinit var sysProps: Map<String, String>
+
+    @BeforeTest
+    fun saveProps() {
+        sysProps = TestSysProps.snapshot()
+    }
+
     @AfterTest
     fun tearDown() {
         UpdateChecker.connectionOverride = null
+        TestSysProps.restore(sysProps)
     }
 
     @Test

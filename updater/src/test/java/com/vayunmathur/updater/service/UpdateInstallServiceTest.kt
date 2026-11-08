@@ -59,9 +59,11 @@ class UpdateInstallServiceTest {
     private lateinit var staged: File
     private lateinit var careMap: File
     private val responses = ArrayDeque<FakeHttpsConnection>()
+    private lateinit var sysProps: Map<String, String>
 
     @BeforeTest
     fun setUp() = runBlocking {
+        sysProps = TestSysProps.snapshot()
         TestSysProps.setRunningBuild(dateUtcSeconds = 1000L)
         staged = File(ctx.cacheDir, "service-update-${System.nanoTime()}.zip")
         careMap = File(ctx.cacheDir, "service-care-${System.nanoTime()}.pb")
@@ -82,6 +84,7 @@ class UpdateInstallServiceTest {
         OtaInstaller.signatureCheckOverride = null
         OtaInstaller.payloadEngineOverride = null
         OtaInstaller.careMapPathOverride = null
+        TestSysProps.restore(sysProps)
         staged.delete(); careMap.delete()
     }
 

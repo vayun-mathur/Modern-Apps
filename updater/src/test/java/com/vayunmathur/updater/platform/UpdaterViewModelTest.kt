@@ -26,8 +26,11 @@ class UpdaterViewModelTest {
     private val store get() = DataStoreUtils.getInstance(app)
     private val fetchCount = AtomicInteger(0)
 
+    private lateinit var sysProps: Map<String, String>
+
     @BeforeTest
     fun setUp() = runBlocking {
+        sysProps = TestSysProps.snapshot()
         TestSysProps.setRunningBuild(dateUtcSeconds = 1000L)
         store.setBoolean(UpdaterPreferences.AUTO_INSTALL, true)
         store.setBoolean(UpdaterPreferences.METERED_ALLOWED, false)
@@ -38,6 +41,7 @@ class UpdaterViewModelTest {
     @AfterTest
     fun tearDown() {
         UpdateChecker.connectionOverride = null
+        TestSysProps.restore(sysProps)
     }
 
     private fun awaitState(vm: UpdaterViewModel, condition: (UpdaterUiState) -> Boolean) {
