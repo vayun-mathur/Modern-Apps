@@ -171,12 +171,16 @@ class PipesViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     fun loadLevel(packIndex: Int, levelIndex: Int) {
+        val levelData = levelsFor(packIndex)?.getOrNull(levelIndex) ?: return
         val current = _uiState.value
+        // Same-index reloads are a no-op only while they resolve to the same board. The
+        // daily pack is regenerated at midnight, so a DailyGame route kept open across the
+        // rollover must pick up the new day's board instead of keeping yesterday's (whose
+        // IDs the stats store has already pruned, silently losing the win).
         if (current.packIndex == packIndex &&
             current.levelIndex == levelIndex &&
-            current.levelData != null
+            current.levelData == levelData
         ) return
-        val levelData = levelsFor(packIndex)?.getOrNull(levelIndex) ?: return
         _uiState.value = PipesUiState(
             packIndex = packIndex,
             levelIndex = levelIndex,
