@@ -52,7 +52,6 @@ class ThingsAppTest {
                 onScaleScanClick = { scaleScans++ },
                 onScaleDeviceClick = {},
                 onForgetScale = {},
-                onHealthConnectClick = {},
             )
         }
         composeRule.onNodeWithText(str(R.string.no_devices)).assertIsDisplayed()
@@ -86,7 +85,6 @@ class ThingsAppTest {
                 onScaleScanClick = {},
                 onScaleDeviceClick = {},
                 onForgetScale = {},
-                onHealthConnectClick = {},
             )
         }
         composeRule.onNodeWithText(str(R.string.bottle_status)).assertIsDisplayed()

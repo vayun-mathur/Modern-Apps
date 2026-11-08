@@ -46,7 +46,6 @@ class ThingsPagesExtraTest {
         onForgetBottle: () -> Unit = {},
         onForgetScale: () -> Unit = {},
         onResetScale: () -> Unit = {},
-        onHealthConnectClick: () -> Unit = {},
         onOpenDevices: () -> Unit = {},
     ) {
         composeRule.setContent {
@@ -66,7 +65,7 @@ class ThingsPagesExtraTest {
                 onScaleHeightChange = onScaleHeightChange,
                 onScaleAthleteChange = onScaleAthleteChange,
                 onForgetBottle = onForgetBottle, onForgetScale = onForgetScale,
-                onResetScale = onResetScale, onHealthConnectClick = onHealthConnectClick,
+                onResetScale = onResetScale,
                 onOpenDevices = onOpenDevices,
             )
         }
@@ -86,14 +85,6 @@ class ThingsPagesExtraTest {
             composeRule.onAllNodesWithText("Updated", substring = true)
                 .fetchSemanticsNodes().isNotEmpty(),
         )
-    }
-
-    @Test
-    fun healthConnectButtonFires() {
-        var clicked = false
-        home(onHealthConnectClick = { clicked = true })
-        composeRule.onNodeWithText(str(R.string.permission_health_connect)).performClick()
-        assertTrue(clicked)
     }
 
     @Test
