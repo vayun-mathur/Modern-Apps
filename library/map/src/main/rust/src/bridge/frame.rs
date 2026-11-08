@@ -193,12 +193,15 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     // never straddle a `set`.
     let (snap_toggles, snap_kinds, generation) = map.toggles.get();
     // Gesture debounce (MapLibre's "load while moving" rule): while a gesture is active
-    // the *fetch* zoom freezes at the gesture-start level, so a pinch does not churn the
-    // wanted set every frame with tiles that scroll out before they land. Rendering keeps
-    // the live camera — resident ancestors/descendants cover the gap with overzoom — and
-    // the real zoom fetches once the camera settles. Pan-only motion never freezes (the
-    // zoom is unchanged, so ideal and fetch agree). Skipped on Moon frames with the
-    // selection below.
+    // the *fetch* zoom freezes, so a pinch does not churn the wanted set every frame
+    // with tiles that scroll out before they land. The freeze is per integer tile
+    // level — it advances as the live zoom crosses into a new level, so the entered
+    // level's wave starts mid-gesture rather than waiting for release (see
+    // `GestureDebounce::fetch_zoom`: that wait is the zoom-lags-while-pan-is-instant
+    // asymmetry). Rendering keeps the live camera — resident ancestors/descendants
+    // cover the gap with overzoom — and the settled zoom fetches once the camera
+    // settles. Pan-only motion never freezes (the zoom is unchanged, so ideal and
+    // fetch agree). Skipped on Moon frames with the selection below.
     let moon = crate::camera::moon_active(&camera);
     let fetch_zoom = if moon {
         camera.zoom
