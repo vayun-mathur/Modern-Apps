@@ -325,7 +325,6 @@ object PoiIndex {
 
     @Volatile
     private var mapped: Mapped? = null
-    private var tried = false
 
     /** Read access for the extension queries in PoiIndexSpatial.kt / PoiIndexWords.kt. */
     internal fun mappedForQuery(): Mapped? = mapped
@@ -344,14 +343,17 @@ object PoiIndex {
      * safe to call repeatedly. Prefers the single-archive `.mamaps` file when
      * present (one download carries tiles, graph, POI and transit), falling
      * back to the side files. Returns false (and stays a no-op) when neither
-     * is present. Not retried automatically after a failure unless [reload]
-     * is called (e.g. after the download completes).
+     * is present. A failed attempt does not latch: the next call retries,
+     * so a call made before the download finished cannot poison later ones.
      */
     @Synchronized
     fun initialize(context: Context): Boolean {
         if (mapped != null) return true
-        if (tried) return false
-        tried = true
+        // No failure latch: a first call made before the archive download
+        // finished (e.g. a cold-start deep link handled before the download
+        // gate) must not poison every later search for the process lifetime.
+        // The check is two file stats once mapped, and callers already run
+        // it on IO, so retrying a miss is cheap.
         val dir = context.getExternalFilesDir(null) ?: return false
         if (tryArchive(dir)) return true
         return open(dir)
@@ -368,7 +370,6 @@ object PoiIndex {
     @Synchronized
     fun reloadArchive(file: File): Boolean {
         mapped = null
-        tried = true
         val fromArchive = PoiArchive.openArchive(file) ?: return false
         mapped = fromArchive
         return true
@@ -395,7 +396,6 @@ object PoiIndex {
     /** Shared re-map body: clear state, then map from [dir]. */
     private fun reloadMapped(dir: File): Boolean {
         mapped = null
-        tried = true
         if (tryArchive(dir)) return true
         return open(dir)
     }
@@ -579,20 +579,16 @@ object PoiIndex {
         }
 
     /**
-     * Name search, ranked first-word-first then by distance to ([nearLat],[nearLon]).
+     * Offline place search over the whole index (no bounding-box limit),
+     * ranked by match tier then by distance to ([nearLat],[nearLon]).
      *
-     * Two implementations, picked by whether `poi_name_index.bin` was mapped:
-     *
-     *  * **Indexed** — binary search to the query's place in a word-sorted index, then a
-     *    walk of the matching range, so the cost is the number of matches. Because every
-     *    word of a name is indexed, "pizza" still finds "Joe's Pizza".
-     *  * **Scan** — the name pool, then every record. Two passes whose cost is the whole
-     *    dataset, kept only because the side file is optional.
-     *
-     * **The two do not match exactly, by design.** The scan matches a substring anywhere,
-     * so "izza" finds "Pizza"; a sorted index can only answer prefix questions, so the
-     * indexed path matches a prefix *of any word*. That is a deliberate narrowing —
-     * mid-word matches are lost, whole-word ones are not.
+     * Token-based: every query token must match a word of the name (word
+     * prefix, substring, or a small edit distance), so multi-word names,
+     * diacritics and small typos resolve. Purely categorical queries
+     * ("coffee", "gas station") match by POI type instead. Candidate
+     * gathering uses the word index when mapped and the name-pool scan
+     * otherwise (and as the substring/fuzzy fallback); see
+     * [searchPoi][com.vayunmathur.maps.util.searchPoi] and [PoiSearch].
      */
     fun searchByName(
         query: String,
@@ -602,30 +598,10 @@ object PoiIndex {
     ): List<PoiRecord> {
         val m = mapped ?: return emptyList()
         if (query.isBlank()) return emptyList()
-        if (m.nameIdx != null) return searchByWordIndex(m, query, nearLat, nearLon, limit)
-        return searchByScan(m, query, nearLat, nearLon, limit)
+        // Token-based matching with category and fuzzy fallbacks; see
+        // PoiIndexWords.searchPoi and PoiSearch for the ranking contract.
+        return searchPoi(m, query, nearLat, nearLon, limit)
     }
-
-    // Indexed search lives in PoiIndexWords.kt; this delegates so searchByName is unchanged.
-    private fun searchByWordIndex(
-        m: Mapped,
-        query: String,
-        nearLat: Double,
-        nearLon: Double,
-        limit: Int,
-    ): List<PoiRecord> = searchByWordIndex(m, query, nearLat, nearLon, limit, CANDIDATE_CAP)
-
-    // Scan search lives in PoiIndexWords.kt; this delegates so searchByName is unchanged.
-    // (This must call the package-level function there: calling itself
-    // recurses forever — StackOverflowError on every scan-path search.)
-    private fun searchByScan(
-        m: Mapped,
-        query: String,
-        nearLat: Double,
-        nearLon: Double,
-        limit: Int,
-    ): List<PoiRecord> =
-        com.vayunmathur.maps.util.searchByScan(m, query, nearLat, nearLon, limit)
 
     // Spatial queries (nearest/inViewport) live in PoiIndexSpatial.kt as
     // extensions, alongside the grid they walk.
