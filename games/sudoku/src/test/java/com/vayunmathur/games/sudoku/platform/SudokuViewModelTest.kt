@@ -39,6 +39,7 @@ class SudokuViewModelTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         app.getSharedPreferences("sudoku_stats", Context.MODE_PRIVATE).edit().clear().commit()
         runBlocking { SudokuDataStore(app).setAnswerMode(false) }
+        runBlocking { SudokuDataStore(app).setHighlightMistakes(true) }
     }
 
     @AfterTest
@@ -427,6 +428,22 @@ class SudokuViewModelTest {
             assertTrue(runBlocking { SudokuDataStore(app).answerMode.first() })
             vm.setAnswerMode(false)
             await("answerMode flow false") { !vm.answerMode.value }
+        } finally {
+            collector.cancel()
+        }
+    }
+
+    @Test
+    fun setHighlightMistakesPersistsAndFlowReflectsItWhenCollected() {
+        val vm = SudokuViewModel(app)
+        val collector = CoroutineScope(Dispatchers.Unconfined).launch { vm.highlightMistakes.collect {} }
+        try {
+            assertTrue(vm.highlightMistakes.value)
+            vm.setHighlightMistakes(false)
+            await("highlightMistakes flow false") { !vm.highlightMistakes.value }
+            assertFalse(runBlocking { SudokuDataStore(app).highlightMistakes.first() })
+            vm.setHighlightMistakes(true)
+            await("highlightMistakes flow true") { vm.highlightMistakes.value }
         } finally {
             collector.cancel()
         }

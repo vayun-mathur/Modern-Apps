@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -123,6 +125,57 @@ class SudokuComponentsTest {
         // Same completed digit stays enabled in classic mode.
         rule.onNodeWithContentDescription(ctx.getString(R.string.cd_digit_key, "3")).performClick()
         assertEquals(listOf(2, 3), tapped)
+    }
+
+    @Test
+    fun numberPadShowsRemainingCountBadges() {
+        // Fill every copy of digit 1, so its badge reads 0; other badges read their own counts.
+        val base = game()
+        val side = base.size.side
+        val entries = base.entries.toMutableList()
+        for (index in base.solution.indices) {
+            if (base.solution[index] == 1 && base.givens[index] == 0) entries[index] = 1
+        }
+        val game = base.copy(entries = entries)
+        rule.setContent { NumberPad(game = game, onDigit = {}) }
+
+        fun remaining(digit: Int) =
+            side - (0 until game.size.cellCount).count { game.valueAt(it) == digit }
+        assertEquals(0, remaining(1))
+        // A "0" badge is unambiguous: no digit label is ever "0" (1-9, then letters).
+        val full = (1..side).count { remaining(it) == 0 }
+        assertTrue(full >= 1)
+        rule.onAllNodesWithText("0", useUnmergedTree = true).assertCountEquals(full)
+
+        // A digit still missing copies shows its own count, whatever the givens dealt.
+        // Counted exactly: digit labels share the same text (a "3" badge reads like the 3 key),
+        // so the assertion adds badges and labels together.
+        val missing = (2..side).firstOrNull { remaining(it) > 0 }
+        if (missing != null) {
+            val want = remaining(missing).toString()
+            val badges = (1..side).count { remaining(it).toString() == want }
+            val labels = (1..side).count {
+                com.vayunmathur.games.sudoku.data.sudokuSymbol(it) == want
+            }
+            rule.onAllNodesWithText(want, useUnmergedTree = true).assertCountEquals(badges + labels)
+        }
+    }
+
+    @Test
+    fun gridRendersWrongEntryWithHighlightMistakesOnAndOff() {
+        // Compose assertions cannot read the drawn color, so this locks the wiring: a wrong entry
+        // renders under both settings without crashing, and the model marks it wrong.
+        val base = game()
+        val blank = base.givens.indices.first { base.givens[it] == 0 }
+        val wrong = base.solution[blank] % base.size.side + 1
+        val entries = base.entries.toMutableList().also { it[blank] = wrong }
+        val game = base.copy(entries = entries)
+        assertTrue(game.isWrong(blank))
+        var highlight by mutableStateOf(true)
+        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = highlight) }
+        rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
+        highlight = false
+        rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
     }
 
     @Test

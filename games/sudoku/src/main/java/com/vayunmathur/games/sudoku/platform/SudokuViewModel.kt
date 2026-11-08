@@ -56,6 +56,19 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch { settingsStore.setAnswerMode(enabled) }
     }
 
+    /**
+     * Whether wrong digits draw in red.
+     *
+     * Read live by the board rather than once per deal like [answerMode], so flipping the switch
+     * repaints the game in progress.
+     */
+    val highlightMistakes: StateFlow<Boolean> = settingsStore.highlightMistakes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setHighlightMistakes(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.setHighlightMistakes(enabled) }
+    }
+
     /** Undo snapshots, oldest first. Cleared whenever a new puzzle is dealt. */
     private val history = ArrayDeque<SudokuSnapshot>()
 

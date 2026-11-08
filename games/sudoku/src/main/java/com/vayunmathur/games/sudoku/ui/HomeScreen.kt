@@ -51,6 +51,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val answerMode by viewModel.answerMode.collectAsState()
+    val highlightMistakes by viewModel.highlightMistakes.collectAsState()
     var size by rememberSaveable { mutableStateOf(GameConfig().size) }
     var difficulty by rememberSaveable { mutableStateOf(GameConfig().difficulty) }
 
@@ -130,6 +131,13 @@ fun HomeScreen(
                 supportingText = stringResource(R.string.answer_mode_description),
                 checked = answerMode,
                 onCheckedChange = { viewModel.setAnswerMode(it) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SettingsSwitchRow(
+                title = stringResource(R.string.highlight_mistakes),
+                supportingText = stringResource(R.string.highlight_mistakes_description),
+                checked = highlightMistakes,
+                onCheckedChange = { viewModel.setHighlightMistakes(it) },
                 modifier = Modifier.fillMaxWidth(),
             )
             Button(

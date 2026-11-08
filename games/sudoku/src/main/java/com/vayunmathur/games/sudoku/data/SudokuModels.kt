@@ -145,11 +145,10 @@ data class SudokuGameState(
     /**
      * True when [index] holds a digit that disagrees with the solution.
      *
-     * The UI never draws this directly — marking it would hand out the answer. What the grid
-     * marks instead is [conflictingIndices], the duplicates a player can see for themselves.
-     * A wrong digit that duplicates nothing goes in silently and stays there; the player
-     * finds out because the puzzle refuses to complete, and a hint will fix it. It exists so
-     * [wrongIndices] can find those cells.
+     * The grid draws these cells in red while the highlight-mistakes setting is on; a hint fixes
+     * them first (see [wrongIndices]) regardless of the setting. Duplicates need no solution to
+     * spot, so the grid always marks [conflictingIndices] instead — a wrong digit that duplicates
+     * nothing stays silent until the highlight setting or a hint exposes it.
      */
     fun isWrong(index: Int): Boolean {
         val value = valueAt(index)

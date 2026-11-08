@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.games.sudoku.Navigation
 import com.vayunmathur.games.sudoku.R
@@ -68,12 +69,14 @@ class SudokuHomeAndGameScreenTest {
         rule.onNodeWithText(str(R.string.board_size)).assertExists()
         rule.onNodeWithText(str(R.string.difficulty)).assertExists()
         rule.onNodeWithText(str(R.string.answer_mode)).assertExists()
+        rule.onNodeWithText(str(R.string.highlight_mistakes)).assertExists()
         rule.onAllNodesWithText(str(R.string.size_six)).assertCountEquals(2)
         rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.new_game)).assertExists()
 
         rule.onAllNodesWithText(str(R.string.size_six))[0].performClick()
         rule.onNodeWithText(str(R.string.difficulty_expert)).performClick()
-        rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.new_game)).performClick()
+        rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.new_game))
+            .performScrollTo().performClick()
 
         assertEquals(2, stack.backStack.size)
         val route = assertIs<Route.Game>(stack.backStack.last())
@@ -146,7 +149,8 @@ class SudokuHomeAndGameScreenTest {
     fun navigationNewGameOpensBoard() {
         val vm = SudokuViewModel(app)
         rule.setContent { Navigation(vm) }
-        rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.new_game)).performClick()
+        rule.onNodeWithText(str(com.vayunmathur.library.ui.R.string.new_game))
+            .performScrollTo().performClick()
         await("game dealt via navigation") { vm.uiState.value.game != null }
         rule.onNodeWithText(str(R.string.hint)).assertExists()
         rule.onNodeWithText(str(R.string.erase)).assertExists()

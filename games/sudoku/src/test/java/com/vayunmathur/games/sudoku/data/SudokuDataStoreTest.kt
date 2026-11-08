@@ -27,4 +27,20 @@ class SudokuDataStoreTest {
         store.setAnswerMode(false)
         assertFalse(store.answerMode.first())
     }
+
+    @Test
+    fun highlightMistakesRoundTrips() = runBlocking {
+        val store = SudokuDataStore(context)
+        store.setHighlightMistakes(false)
+        assertFalse(store.highlightMistakes.first(), "explicit off must read back off")
+
+        store.setHighlightMistakes(true)
+        assertTrue(
+            SudokuDataStore(context).highlightMistakes.first(),
+            "on must persist across instances",
+        )
+
+        store.setHighlightMistakes(false)
+        assertFalse(store.highlightMistakes.first())
+    }
 }

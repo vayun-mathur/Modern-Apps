@@ -54,6 +54,11 @@ import kotlinx.coroutines.delay
  * player wants to move. In answer mode wrong digits can never land, so a digit with every copy on
  * the board is done — its key is greyed out — and a refused digit flashes red on its key.
  *
+ * Every key carries a remaining-count badge: how many copies of the digit are still missing from
+ * the grid. It counts what is on the board, not what is correct, so in classic mode it can sit at
+ * zero while wrong entries hide elsewhere — the badge is a progress hint, not a verdict.
+ * In notes mode the key stays a pure pencil-mark preview (see [DigitKey]) and shows no badge.
+ *
  * @param rejected the last digit answer mode refused, with a sequence number telling repeats
  * apart. The pad flashes the matching key and settles back on its own; the state is never cleared,
  * so a correct entry landing mid-flash cannot cut it short.
@@ -75,6 +80,11 @@ fun NumberPad(
                         digit = digit,
                         size = size,
                         notesMode = game.notesMode,
+                        // What is on the board, clamped: classic mode accepts duplicates, so the
+                        // count can overshoot and the badge must never go negative.
+                        remaining = (size.side - (0 until size.cellCount).count {
+                            game.valueAt(it) == digit
+                        }).coerceAtLeast(0),
                         // Only answer mode can complete a digit: classic entries may be wrong or
                         // moved, so the count proves nothing there.
                         enabled = !game.answerMode || !game.isDigitComplete(digit),
@@ -93,7 +103,9 @@ fun NumberPad(
  *
  * In notes mode the digit shrinks into the slot it would occupy as a pencil mark, so the key is a
  * preview of the mark it will place — which is also what tells the player the mode is on, without
- * needing a second colour for it.
+ * needing a second colour for it. The preview fills the whole key, leaving no room for the
+ * remaining-count badge, so notes-mode keys show none; the badge is back as soon as the key
+ * writes digits again.
  *
  * A refused digit tints the key red and settles back on its own: [flashing] turns on when a
  * rejection names this key and [flashKey] tells repeats apart, so two wrong taps on one key flash
@@ -105,6 +117,7 @@ private fun DigitKey(
     digit: Int,
     size: BoardSize,
     notesMode: Boolean,
+    remaining: Int,
     enabled: Boolean,
     flashing: Boolean,
     flashKey: Long?,
@@ -161,12 +174,26 @@ private fun DigitKey(
         if (notesMode) {
             NoteSlot(digit = digit, label = label, size = size, contentColor = noteColor)
         } else {
-            Text(
-                text = label,
-                color = contentColor,
-                fontSize = FullFontSize,
-                textAlign = TextAlign.Center,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = label,
+                    color = contentColor,
+                    fontSize = FullFontSize,
+                    // Tight line boxes: the badge below must fit the 50dp key with the digit.
+                    lineHeight = FullFontSize * 1.1f,
+                    textAlign = TextAlign.Center,
+                )
+                // Unspoken: the key's clearAndSetSemantics replaces the whole subtree, so the
+                // count stays visual-only and the digit's description — and its tests — are
+                // unchanged.
+                Text(
+                    text = remaining.toString(),
+                    color = contentColor,
+                    fontSize = BadgeFontSize,
+                    lineHeight = BadgeFontSize * 1.1f,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -224,6 +251,9 @@ private val OutlineWidth = 1.dp
 
 /** Size of a digit that a tap will write into the grid. */
 private val FullFontSize = 19.sp
+
+/** Remaining-count badge under the digit: small enough to share the 50dp key with it. */
+private val BadgeFontSize = 11.sp
 
 /** How long a refused key stays red before settling back, in milliseconds. */
 private const val FLASH_MILLIS = 450L

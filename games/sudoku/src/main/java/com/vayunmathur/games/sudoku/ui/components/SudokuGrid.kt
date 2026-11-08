@@ -44,6 +44,7 @@ fun SudokuGrid(
     game: SudokuGameState,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    highlightMistakes: Boolean = true,
 ) {
     val size = game.size
     val side = size.side
@@ -72,6 +73,7 @@ fun SudokuGrid(
                                 index != selected &&
                                 game.valueAt(index) == selectedValue,
                             isConflict = index in conflicts,
+                            highlightMistakes = highlightMistakes,
                             modifier = Modifier
                                 .size(cell)
                                 .clickable { onSelect(index) },
@@ -102,6 +104,7 @@ private fun SudokuCell(
     isPeer: Boolean,
     isSameValue: Boolean,
     isConflict: Boolean,
+    highlightMistakes: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -119,10 +122,14 @@ private fun SudokuCell(
     }
 
     // Givens are the puzzle, entries are the player's work, so they read differently. A
-    // conflicting entry turns error-coloured; a conflicting given keeps its own colour,
-    // because the given is never the copy that is misplaced.
+    // conflicting entry turns error-coloured — duplicates are derivable from the board alone,
+    // so marking them cannot hand out the answer, and the highlight-mistakes setting does not
+    // apply. A conflicting given keeps its own colour, because the given is never the copy
+    // that is misplaced. Answer mode never has wrong entries to draw, since a wrong digit is
+    // refused rather than written.
     val digitColor = when {
         isConflict && !given -> scheme.error
+        !given && highlightMistakes && game.isWrong(index) -> scheme.error
         given -> scheme.onSurface
         else -> scheme.primary
     }
