@@ -3,6 +3,7 @@ package com.vayunmathur.web.platform
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -73,5 +74,26 @@ class BrowserUtilsTest {
         assertFalse(BrowserUtils.canLoadInWebView("tel:+15551234567"))
         assertFalse(BrowserUtils.canLoadInWebView("search://results?q=weather"))
         assertFalse(BrowserUtils.canLoadInWebView(""))
+    }
+
+    @Test
+    fun `launch extractor passes clean web URLs through`() {
+        assertEquals("https://example.com/app", BrowserUtils.extractHttpUrl("https://example.com/app"))
+        assertEquals("HTTP://example.com/", BrowserUtils.extractHttpUrl("  HTTP://example.com/  "))
+        assertEquals(
+            "https://example.com/page",
+            BrowserUtils.extractHttpUrl("check this out https://example.com/page"),
+        )
+    }
+
+    @Test
+    fun `launch extractor rejects non-web launch strings`() {
+        assertNull(BrowserUtils.extractHttpUrl(""))
+        assertNull(BrowserUtils.extractHttpUrl("   "))
+        assertNull(BrowserUtils.extractHttpUrl("javascript:alert(1)"))
+        assertNull(BrowserUtils.extractHttpUrl("JaVaScRiPt:alert(1)"))
+        assertNull(BrowserUtils.extractHttpUrl("file:///etc/hosts"))
+        assertNull(BrowserUtils.extractHttpUrl("data:text/html,<h1>x</h1>"))
+        assertNull(BrowserUtils.extractHttpUrl("just some words"))
     }
 }
