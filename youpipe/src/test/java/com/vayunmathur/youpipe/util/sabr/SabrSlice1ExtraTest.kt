@@ -171,15 +171,15 @@ class SabrSlice1ExtraTest {
         assertEquals((spec.getInitializationData(137)!!.size - 4).toLong(), source.open(offsetSpec))
         val tail = ByteArray(4); assertEquals(4, source.read(tail, 0, 4))
         source.close()
-        // Unknown itag init: served as empty, not an error.
+        // Unknown itag init: manifest/request mismatch, surfaced as an error so
+        // ExoPlayer retries instead of choking on an empty resource.
         val unknownInit = DataSpec.Builder().setUri("sabrseg://999/init".toUri()).build()
-        assertEquals(0L, source.open(unknownInit))
-        assertEquals(C.RESULT_END_OF_INPUT, source.read(buffer, 0, buffer.size))
+        assertFailsWith<IOException> { source.open(unknownInit) }
         source.close()
-        // Media segment without a pump: times out, serves as empty.
+        // Media segment without a pump: times out, surfaced as an error so
+        // ExoPlayer takes its load-error/retry path instead of failing opaquely.
         val mediaSpec = DataSpec.Builder().setUri("sabrseg://140/1".toUri()).build()
-        assertEquals(0L, source.open(mediaSpec))
-        assertEquals(C.RESULT_END_OF_INPUT, source.read(buffer, 0, buffer.size))
+        assertFailsWith<IOException> { source.open(mediaSpec) }
         source.close(); source.close()
         session.stop()
     }
