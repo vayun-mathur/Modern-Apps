@@ -210,13 +210,20 @@ internal fun DeviceController.loadScaleProfile() {
     } catch (_: Exception) {}
 }
 
+// Health Connect seams: production always talks to the real provider; tests substitute a
+// fake client because the provider does not exist under Robolectric or on the emulator.
+internal var healthStatusProvider: (android.content.Context) -> Int =
+    { HealthConnectHelper.availabilityStatus(it) }
+internal var healthClientProvider: (android.content.Context) -> HealthConnectClient =
+    { HealthConnectClient.getOrCreate(it) }
+
 internal fun DeviceController.writeHydrationToHealthConnect(reading: HydrationReading) {
     // Check Health Connect availability synchronously; writes are async.
-    val status = HealthConnectHelper.availabilityStatus(appContext)
+    val status = healthStatusProvider(appContext)
     if (status != HealthConnectClient.SDK_AVAILABLE) return
     deviceScope.launch {
         try {
-            val client = HealthConnectClient.getOrCreate(appContext)
+            val client = healthClientProvider(appContext)
             if (!HealthConnectHelper.hasAllPermissions(client)) return@launch
             // The bottle's clock runs a little ahead of the phone's, and Health Connect
             // rejects any future-dated record outright, so a few seconds of skew would
@@ -235,11 +242,11 @@ internal fun DeviceController.writeBodyCompositionToHealthConnect(
     measuredAtMillis: Long,
     clientRecordId: String?,
 ) {
-    val status = HealthConnectHelper.availabilityStatus(appContext)
+    val status = healthStatusProvider(appContext)
     if (status != HealthConnectClient.SDK_AVAILABLE) return
     deviceScope.launch {
         try {
-            val client = HealthConnectClient.getOrCreate(appContext)
+            val client = healthClientProvider(appContext)
             if (!HealthConnectHelper.hasAllPermissions(client)) {
                 // Otherwise a missing grant looks identical to the scale not reporting at all.
                 // Only surfaced for live readings, so a history replay can't spam it.

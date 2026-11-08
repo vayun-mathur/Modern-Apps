@@ -373,7 +373,9 @@ class BleManager {
         }
     }
 
-    private fun dispatch(value: ByteArray) {
+    // Internal so tests can feed wire packets without a radio; production only
+    // calls this from the GATT notification callback.
+    internal fun dispatch(value: ByteArray) {
         val b0 = value[0].toInt() and BYTE_MASK
         val b1 = value[1].toInt() and BYTE_MASK
         when {

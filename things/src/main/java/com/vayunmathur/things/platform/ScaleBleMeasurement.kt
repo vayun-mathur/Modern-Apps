@@ -255,7 +255,10 @@ internal fun ScaleBleManager.startHandshake() {
     val age = profile.age.coerceIn(6, 80)
     // The config frame inverts the sex encoding used everywhere else in the SDK.
     val gender = if (profile.sex == Sex.Male) 0 else 1
-    Log.dev(ScaleBleManager.TAG, "handshake: scaleType=$scaleType h=$height age=$age gender=$gender holtek=$isHoltek va=$isVaScale")
+    Log.dev(
+        ScaleBleManager.TAG,
+        "handshake: scaleType=$scaleType h=$height age=$age gender=$gender holtek=$isHoltek va=$isVaScale",
+    )
     if (isVaScale) {
         // The VA config frame carries display settings only; the profile goes in 0xA0 instead.
         enqueue(configChar, buildCmd(CMD_CONFIG, UNIT_KG, LIGHT_INTERVAL, 0, 0, 0))
