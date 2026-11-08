@@ -287,7 +287,8 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
      * Reached from the marks collector, so it can fire more than once for the same win as unrelated
      * flows re-emit. Everything it touches is idempotent for a given day: [DailyChallengeStore] treats
      * a repeat of the same day as a no-op, and unlocking an already-unlocked achievement does nothing.
-     * The lifetime counter is the exception, so it is guarded.
+     * The lifetime counter is banked under the win key in the store, so even a relaunch replaying an
+     * already-recorded win cannot count it twice; [recordedWin] is just the in-memory fast path.
      */
     private fun onWin(game: NonogramGameState, daily: Boolean, day: Long) {
         // Daily wins are keyed by day and casual wins by negated level, which cannot collide.
@@ -296,7 +297,7 @@ class NonogramViewModel(application: Application) : AndroidViewModel(application
         recordedWin = key
 
         viewModelScope.launch {
-            val total = dataStore.recordCompleted()
+            val total = dataStore.recordCompletedOnce(key)
             val manager = achievementsManager
             manager.onAchievementUnlocked("first_puzzle")
             if (game.size >= BIG_PICTURE_SIZE) manager.onAchievementUnlocked("big_picture")
