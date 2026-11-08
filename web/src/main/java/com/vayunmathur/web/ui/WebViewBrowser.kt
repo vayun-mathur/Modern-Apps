@@ -30,6 +30,7 @@ import com.vayunmathur.library.ui.rememberMultiplePermissionRequest
 import com.vayunmathur.library.ui.rememberPermissionRequest
 import com.vayunmathur.web.platform.shields.FarblingConfig
 import com.vayunmathur.web.platform.shields.ShieldsWebViewClient
+import com.vayunmathur.web.platform.BrowserUtils
 import com.vayunmathur.web.platform.WebViewModel
 import com.vayunmathur.web.platform.addDownload
 import com.vayunmathur.web.platform.denyGeolocation
@@ -224,7 +225,10 @@ fun WebViewBrowser(
                 val toLoad = if (initialUrl.isBlank()) "about:blank" else initialUrl
                 // Before the first load: document-start scripts do not apply retroactively.
                 (webViewClient as ShieldsWebViewClient).installFarbling(this, farblingConfig)
-                loadUrl(toLoad)
+                // Fail closed: a non-web initial URL (e.g. a javascript: string mirrored from a
+                // server-supplied result or a stale tab row) must never execute in this pooled
+                // WebView's origin. Park on a blank page instead of loading it.
+                loadUrl(if (BrowserUtils.canLoadInWebView(toLoad)) toLoad else "about:blank")
             }.also {
                 webViewPool[tabId] = it
                 applyWebViewSettings(it, viewModel)
@@ -233,7 +237,11 @@ fun WebViewBrowser(
         update = { webView ->
             val current = webView.url ?: ""
             val desired = viewModel.getCurrentUrl(tabId)
-            if (desired.isNotBlank() && desired != current && !viewModel.omniboxFocused) {
+            // canLoadInWebView fails closed: server- or page-supplied non-web strings mirrored
+            // into tab state (search results, history rows, long-press links) are never handed
+            // to loadUrl, where javascript: would execute in this WebView's stale origin.
+            if (desired.isNotBlank() && desired != current && !viewModel.omniboxFocused &&
+                BrowserUtils.canLoadInWebView(desired)) {
                 if (viewModel.activeTabId == tabId) {
                     // Always load when desired differs — the previous prog >= 1f guard prevented
                     // external intents from loading while the current page was still loading,

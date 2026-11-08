@@ -131,6 +131,26 @@ object BrowserUtils {
     fun isWebUrl(url: String): Boolean =
         url.startsWith("http://", ignoreCase = true) || url.startsWith("https://", ignoreCase = true)
 
+    /**
+     * Fail-closed gate for programmatic `WebView.loadUrl` calls (the tab-sync update block
+     * and the pool factory in `WebViewBrowser`).
+     *
+     * Only `http(s)` and `about:blank` may be handed to `loadUrl`. Anything else — `javascript:`
+     * above all — must never reach it: `loadUrl("javascript:…")` executes in the pooled WebView's
+     * current (stale) page origin, so a server-supplied search result or fallback URL, a poisoned
+     * history/bookmark row, or a page-supplied long-press link would run script in another site's
+     * context. In-page `javascript:` links are unaffected: those never pass through this gate.
+     *
+     * `search://` pseudo-URLs return false on purpose — they render natively in
+     * `SearchResultsPage` and must never be handed to a WebView either.
+     */
+    fun canLoadInWebView(url: String): Boolean {
+        val trimmed = url.trim()
+        if (trimmed.isEmpty()) return false
+        if (trimmed.equals("about:blank", ignoreCase = true)) return true
+        return isWebUrl(trimmed)
+    }
+
     /** Kept for migration only â€” new tabs use "" and search uses selected engine. */
     const val HOMEPAGE = "https://duckduckgo.com"
 
