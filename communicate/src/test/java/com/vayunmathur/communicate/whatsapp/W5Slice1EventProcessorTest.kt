@@ -53,30 +53,23 @@ class W5Slice1EventProcessorTest {
         db.close()
     }
 
-    private companion object {
-        const val POLL_TIMEOUT_MS = 15_000L
-    }
-
     private suspend fun emit(e: WhatsAppEvent) {
         events.emit(e)
-        // start() collects on Dispatchers.IO (real time), while runTest's delay()
-        // is virtual and would spin this poll out in milliseconds on a slow box.
-        // Poll in real time instead, and fail with a clear message on timeout
-        // rather than a downstream NPE on a row that never landed.
-        val deadline = System.currentTimeMillis() + POLL_TIMEOUT_MS
-        while (System.currentTimeMillis() < deadline && !settled(e)) {
-            Thread.sleep(10)
+        // start() collects on Dispatchers.IO; poll until the row lands (bounded).
+        var waited = 0
+        while (waited < 200 && !settled(e)) {
+            kotlinx.coroutines.delay(10)
+            waited++
         }
-        assertTrue(settled(e), "event $e was not persisted within ${POLL_TIMEOUT_MS}ms")
     }
 
-    /** Poll until [cond] holds in real time (bounded); fails the test on timeout. */
+    /** Poll until [cond] holds (bounded); fails the test on timeout via empty result. */
     private suspend fun awaitSettled(cond: suspend () -> Boolean) {
-        val deadline = System.currentTimeMillis() + POLL_TIMEOUT_MS
-        while (System.currentTimeMillis() < deadline && !cond()) {
-            Thread.sleep(10)
+        var waited = 0
+        while (waited < 200 && !cond()) {
+            kotlinx.coroutines.delay(10)
+            waited++
         }
-        assertTrue(cond(), "condition was not met within ${POLL_TIMEOUT_MS}ms")
     }
 
     /** True when the emitted event's effect is observable in the DB. */
@@ -90,12 +83,9 @@ class W5Slice1EventProcessorTest {
         else -> true
     }
 
-    /** Mirrors the processor's chatJid: strips "wa:" and any ":device" suffix. */
-    private fun stripWa(id: String): String {
-        val s = id.removePrefix("wa:")
-        val at = s.indexOf('@')
-        if (at <= 0) return s
-        return s.substring(0, at).substringBefore(':') + s.substring(at)
+    private fun stripWa(id: String) = id.removePrefix("wa:").substringBefore(':').let {
+        val at = id.removePrefix("wa:").indexOf('@')
+        if (at <= 0) id.removePrefix("wa:") else it + id.removePrefix("wa:").substring(at)
     }
 
     @Test

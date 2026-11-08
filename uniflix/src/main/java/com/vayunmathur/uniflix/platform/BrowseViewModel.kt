@@ -17,11 +17,8 @@ data class BrowseUiState(
     val items: List<MediaItem> = emptyList(),
 )
 
-class BrowseViewModel(
-    app: Application,
-    private val api: TmdbApi = TmdbApi(),
-) : AndroidViewModel(app) {
-    constructor(app: Application) : this(app, TmdbApi())
+class BrowseViewModel(app: Application) : AndroidViewModel(app) {
+    private val api = TmdbApi()
 
     var movies by mutableStateOf(BrowseUiState())
         private set

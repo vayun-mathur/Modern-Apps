@@ -127,12 +127,15 @@ class GeneratedBoardPropertiesTest {
     }
 
     @Test
-    fun generatingTheWholeLadderCompletesForEveryLevel() {
-        // Generates fresh rather than reusing the shared ladder. No wall-clock budget:
-        // CI machines vary too much for a timing assertion to be meaningful, so this
-        // only pins that fresh generation succeeds for every level in the ladder.
+    fun generatingTheWholeLadderStaysAffordable() {
+        // Generation is off the main thread behind a spinner, so this is about not leaving the player
+        // watching it. Deliberately loose: it is a guard against a pathological regression, not a target.
+        // Generates fresh rather than reusing the shared ladder, since the point is to time the work.
+        val started = System.nanoTime()
         val boards = ladder.count { generate(it) != null }
+        val millis = (System.nanoTime() - started) / 1_000_000
         assertEquals(LADDER_DEPTH, boards)
+        assertTrue(millis < BUDGET_MILLIS, "generating $LADDER_DEPTH boards took ${millis}ms")
     }
 
     /**
@@ -157,6 +160,9 @@ class GeneratedBoardPropertiesTest {
         const val LADDER_DEPTH = 120
 
         const val LEVEL_SEED = 104_729L
+
+        /** Roughly three times the measured cost, so ordinary variation does not turn this red. */
+        const val BUDGET_MILLIS = 25_000L
 
         fun generate(level: Int): ArrowsPuzzle? = ArrowsGenerator.generateSeeded(
             cols = boardSizeForLevel(level).first,

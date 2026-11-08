@@ -20,11 +20,8 @@ data class SearchUiState(
     val results: List<MediaItem> = emptyList(),
 )
 
-class SearchViewModel(
-    app: Application,
-    private val api: TmdbApi = TmdbApi(),
-) : AndroidViewModel(app) {
-    constructor(app: Application) : this(app, TmdbApi())
+class SearchViewModel(app: Application) : AndroidViewModel(app) {
+    private val api = TmdbApi()
     private var searchJob: Job? = null
 
     var state by mutableStateOf(SearchUiState())

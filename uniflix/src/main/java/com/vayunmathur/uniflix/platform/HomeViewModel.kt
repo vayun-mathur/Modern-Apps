@@ -22,12 +22,8 @@ data class HomeUiState(
     val topTv: List<MediaItem> = emptyList(),
 )
 
-class HomeViewModel(
-    app: Application,
-    private val api: TmdbApi = TmdbApi(),
-) : AndroidViewModel(app) {
-    constructor(app: Application) : this(app, TmdbApi())
-
+class HomeViewModel(app: Application) : AndroidViewModel(app) {
+    private val api = TmdbApi()
     val repository = UniflixRepository.get(app)
 
     var state by mutableStateOf(HomeUiState())
