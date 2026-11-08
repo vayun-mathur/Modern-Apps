@@ -82,7 +82,7 @@ fun formatHourAxisLabel(epochSec: Long, use24Hour: Boolean, utcOffsetSeconds: In
 
 /** Hourly-strip label "3 PM" / "9" for an epoch second in the location's zone. */
 fun formatStripHour(epochSec: Long, use24Hour: Boolean, utcOffsetSeconds: Int? = null): String =
-    localTimeAt(epochSec, utcOffsetSeconds).format(if (use24Hour) HourOfDayBare else HourAmPm)
+    localTimeAt(epochSec, utcOffsetSeconds).format(if (use24Hour) HourOfDayWithZero else HourAmPm)
 
 /** Clock time "3:05 PM" / "15:00" for an epoch second in the location's zone. */
 fun formatClockTime(epochSec: Long, use24Hour: Boolean, utcOffsetSeconds: Int? = null): String =
