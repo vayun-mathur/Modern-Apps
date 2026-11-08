@@ -15,6 +15,7 @@ import com.vayunmathur.taxi.network.lyft.LyftToken
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicInteger
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.AfterTest
@@ -141,14 +142,37 @@ class TaxiPass3TrackingScreenTest {
     }
 
     @Test
+    fun trackingScreenByIdFailureRecovers() {
+        // The active-ride endpoint does not surface this ride, so tracking
+        // falls back to the by-id read; the first read fails transiently.
+        http.on("/v1/activeride") { http.raw(404, "none", "text/plain", it.url) }
+        http.on("/driver-location") {
+            http.raw(200, """{"location":{"lat":37.71,"lng":-122.41}}""", url = it.url)
+        }
+        val attempts = AtomicInteger()
+        http.on("/v1/rides/") {
+            if (attempts.incrementAndGet() <= 1) {
+                http.raw(500, "kaput", "text/plain", it.url)
+            } else {
+                http.raw(200, rideJson("approaching"), url = it.url)
+            }
+        }
+        rule.setContent { RideTrackingScreen(rideId = "r1") }
+        // The transient failure must not end tracking: the next poll recovers
+        // and the ride renders with cancel still offered.
+        waitForText("Jo Smith")
+        rule.onNodeWithText(str(R.string.cancel_ride)).assertIsDisplayed()
+    }
+
+    @Test
     fun trackingScreenErrorState() {
         http.on("/v1/activeride") { http.raw(500, "kaput", "text/plain", it.url) }
         http.on("/v1/rides/") { http.raw(500, "kaput", "text/plain", it.url) }
         http.on("/driver-location") { http.raw(500, "x", "text/plain", it.url) }
         rule.setContent { RideTrackingScreen(rideId = "r1") }
-        // Active fails with an error; the by-id read also fails, which ends
-        // tracking - the screen settles out of its initial state without
-        // crashing (loading or error, never a stuck spinner assertion here).
+        // Active fails with an error, so the screen keeps polling and shows
+        // the error - it settles out of its initial state without crashing
+        // (loading or error, never a stuck spinner assertion here).
         rule.waitUntil(20_000) {
             rule.onAllNodesWithText(str(R.string.tracking_loading)).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodesWithText(str(R.string.tracking_error, "Lyft returned HTTP 500: kaput"))
