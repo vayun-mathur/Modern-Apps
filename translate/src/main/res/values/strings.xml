@@ -38,4 +38,12 @@
     <string name="could_not_read_image">Couldn’t read that image</string>
     <!-- Image translate: retry action after a failed image load. -->
     <string name="pick_another_image">Pick another image</string>
+    <!-- Placeholder in the translation output card before any input is typed. -->
+    <string name="translation_placeholder">Translation will appear here</string>
+    <!-- Mic status under the source field while audio is being captured. -->
+    <string name="listening">Listening…</string>
+    <!-- Mic status under the source field while speech is being transcribed. -->
+    <string name="transcribing">Transcribing…</string>
+    <!-- Error shown when microphone permission is denied for speech input. -->
+    <string name="mic_permission_required">Microphone permission is required</string>
 </resources>
