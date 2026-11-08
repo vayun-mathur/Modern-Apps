@@ -47,6 +47,19 @@ class JsonValidationTest {
         assertTrue(validate("""{"a":1}""", """{"type":"object"}""")!!.contains("Unexpected field"))
     }
 
+    @Test fun malformedSchemaEntriesAreErrorsNotThrows() {
+        // Non-primitive "type" and "required" entries come from the caller's schema:
+        // they must surface as validation errors, never throw (a throw aborts the
+        // whole inference instead of letting it continue streaming).
+        val badType = validate("""{"a":1}""", """{"type":["object"],"properties":{"a":{}}}""")
+        assertNotNull(badType)
+        val badRequired = validate(
+            """{"a":1}""",
+            """{"properties":{"a":{}},"required":["a",{}]}""",
+        )
+        assertTrue(badRequired!!.contains("required"), badRequired)
+    }
+
     @Test fun constAndEnumConstraints() {
         val schema = """{"properties":{"kind":{"const":"note"},"level":{"enum":["low","high"]}}}"""
         assertTrue(validate("""{"kind":"task","level":"low"}""", schema)!!.contains("must be 'note'"))

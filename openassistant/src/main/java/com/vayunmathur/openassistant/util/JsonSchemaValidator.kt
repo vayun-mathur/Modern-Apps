@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
 
 object JsonSchemaValidator {
     fun validateJsonAgainstSchema(jsonString: String, schemaString: String): String? {
@@ -92,7 +91,12 @@ object JsonSchemaValidator {
 
     private fun validateType(data: JsonElement, schema: JsonObject, path: String): String? {
         val pathPrefix = if (path.isEmpty()) "" else "at $path: "
-        val expectedType = schema["type"]?.jsonPrimitive?.content ?: return null
+        val typeElement = schema["type"] ?: return null
+        // The schema arrives with the starting Intent and may be malformed: a non-string
+        // 'type' must be a validation error, never a throw (callers treat a throw as a
+        // failed inference instead of continuing to stream).
+        val expectedType = (typeElement as? JsonPrimitive)?.content
+            ?: return "${pathPrefix}Invalid 'type' in schema: must be a string"
         if (expectedType == "object" && data !is JsonObject) {
             return "${pathPrefix}Expected an object but got ${data::class.simpleName}"
         }
@@ -120,8 +124,11 @@ object JsonSchemaValidator {
     }
 
     private fun checkRequiredFields(data: JsonObject, schema: JsonObject, path: String): String? {
+        val pathPrefix = if (path.isEmpty()) "" else "at $path: "
         (schema["required"] as? JsonArray)?.forEach { req ->
-            val fieldName = req.jsonPrimitive.content
+            // A non-string entry is a malformed schema: report it, never throw.
+            val fieldName = (req as? JsonPrimitive)?.content
+                ?: return "${pathPrefix}Invalid 'required' entry in schema: must be a string"
             if (!data.containsKey(fieldName)) {
                 val fullPath = if (path.isEmpty()) fieldName else "$path.$fieldName"
                 return "Missing required field: '$fullPath'"
