@@ -40,6 +40,8 @@ fun SunBlock(
     daylightDurationSec: Double? = null,
     /** Where to put the sun marker. Pinned by previews so the arc renders identically. */
     nowEpochSec: Long = System.currentTimeMillis() / 1000,
+    /** `utc_offset_seconds` for the forecast location; null renders in the device zone. */
+    utcOffsetSeconds: Int? = null,
 ) {
     SquareBlock {
         Box(Modifier.align(Alignment.TopStart)) {
@@ -92,11 +94,11 @@ fun SunBlock(
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     RiseSetTimeRow(
-                        text = sunriseEpochSec?.let { formatClockTime(it, use24Hour) } ?: "—",
+                        text = sunriseEpochSec?.let { formatClockTime(it, use24Hour, utcOffsetSeconds) } ?: "—",
                         icon = { m, c -> IconSunny(m, c) },
                     )
                     RiseSetTimeRow(
-                        text = sunsetEpochSec?.let { formatClockTime(it, use24Hour) } ?: "—",
+                        text = sunsetEpochSec?.let { formatClockTime(it, use24Hour, utcOffsetSeconds) } ?: "—",
                         icon = { m, c -> IconClearNight(m, c) },
                     )
                     if (daylightDurationSec != null) {

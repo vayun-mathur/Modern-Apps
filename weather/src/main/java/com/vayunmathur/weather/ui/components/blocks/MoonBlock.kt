@@ -52,6 +52,8 @@ fun MoonBlock(
     use24Hour: Boolean,
     /** Where to put the moon marker. Pinned by previews so the arc renders identically. */
     nowEpochSec: Long = System.currentTimeMillis() / 1000,
+    /** `utc_offset_seconds` for the forecast location; null renders in the device zone. */
+    utcOffsetSeconds: Int? = null,
 ) {
     SquareBlock {
         Box(Modifier.align(Alignment.TopStart)) {
@@ -107,12 +109,12 @@ fun MoonBlock(
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     RiseSetTimeRow(
-                        text = moonriseEpochSec?.let { formatClockTime(it, use24Hour) }
+                        text = moonriseEpochSec?.let { formatClockTime(it, use24Hour, utcOffsetSeconds) }
                             ?: stringResource(R.string.weather_no_data),
                         icon = { m, c -> IconKeyboardArrowUp(m, c) },
                     )
                     RiseSetTimeRow(
-                        text = moonsetEpochSec?.let { formatClockTime(it, use24Hour) }
+                        text = moonsetEpochSec?.let { formatClockTime(it, use24Hour, utcOffsetSeconds) }
                             ?: stringResource(R.string.weather_no_data),
                         icon = { m, c -> IconKeyboardArrowDown(m, c) },
                     )

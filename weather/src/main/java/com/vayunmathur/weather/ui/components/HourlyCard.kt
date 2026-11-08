@@ -114,8 +114,8 @@ fun HourlyCard(
                     val cell = cells[index]
                     val isNow = cell.iso == nowIsoHour
                     HourlyItem(
-                        time = if (isNow) stringResource(R.string.now) else formatStripHour(cell.epochSec, use24Hour),
-                        dayLabel = formatDayLabel(cell.epochSec, nowEpochSec),
+                        time = if (isNow) stringResource(R.string.now) else formatStripHour(cell.epochSec, use24Hour, utcOffsetSeconds),
+                        dayLabel = formatDayLabel(cell.epochSec, nowEpochSec, utcOffsetSeconds),
                         precipitationProbability = cell.precip,
                         temperature = cell.temperature,
                         isNow = isNow,
@@ -226,10 +226,11 @@ private data class HourCell(
 )
 
 @Composable
-private fun formatDayLabel(epochSec: Long, nowEpochSec: Long): String {
-    val tz = TimeZone.currentSystemDefault()
-    val date = Instant.fromEpochSeconds(epochSec).toLocalDateTime(tz).date
-    val today = Instant.fromEpochSeconds(nowEpochSec).toLocalDateTime(tz).date
+private fun formatDayLabel(epochSec: Long, nowEpochSec: Long, utcOffsetSeconds: Int): String {
+    // Same shift-then-read-in-UTC as domain localTimeAt: Instant.toLocalDateTime(UtcOffset)
+    // is internal in this kotlinx-datetime version.
+    val date = Instant.fromEpochSeconds(epochSec + utcOffsetSeconds).toLocalDateTime(TimeZone.UTC).date
+    val today = Instant.fromEpochSeconds(nowEpochSec + utcOffsetSeconds).toLocalDateTime(TimeZone.UTC).date
     val tomorrow = today.plus(1, DateTimeUnit.DAY)
     return when (date) {
         today -> stringResource(R.string.today_short)
