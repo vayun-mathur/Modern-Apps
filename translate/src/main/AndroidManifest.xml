@@ -6,6 +6,10 @@
     <!-- Sensors permission at install instead of auto-granting it. -->
     <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
 
+    <!-- NLLB model downloads are network fetches: declare INTERNET directly -->
+    <!-- instead of riding it transitively from :library:downloadservice. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
