@@ -38,4 +38,16 @@ class BrowserUtilsTest {
         assertTrue(BrowserUtils.looksLikeUrl("nas.local"))
         assertTrue(BrowserUtils.looksLikeUrl("192.168.1.1"))
     }
+
+    @Test
+    fun `uppercase scheme is still a URL`() {
+        assertTrue(BrowserUtils.looksLikeUrl("HTTP://example.com/"))
+        assertTrue(BrowserUtils.looksLikeUrl("Https://Example.COM/a?b=1"))
+    }
+
+    @Test
+    fun `uppercase explicit scheme navigates verbatim`() {
+        assertEquals("HTTP://example.com/", BrowserUtils.toNavigationUrl("HTTP://example.com/"))
+        assertEquals("HTTPS://example.com/a", BrowserUtils.toNavigationUrl("HTTPS://example.com/a"))
+    }
 }

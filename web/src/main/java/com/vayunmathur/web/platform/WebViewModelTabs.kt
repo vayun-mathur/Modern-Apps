@@ -25,7 +25,7 @@ fun WebViewModel.onTabUrlChange(tabId: String, url: String) {
         // A native search tab shows its query, not its search:// pseudo-URL.
         omniboxText = displayTextForUrl(url)
     }
-    if (url.startsWith("http")) {
+    if (BrowserUtils.isWebUrl(url)) {
         val origin = BrowserUtils.originFromUrl(url)
         val host = BrowserUtils.hostFromUrl(url)
         scope.launch {
@@ -148,7 +148,7 @@ fun WebViewModel.navigateActiveTab(input: String) {
     val engine = SearchEngine.effective(searchEngine)
     if (engine == SearchEngine.SELF_HOSTED) {
         val trimmed = input.trim()
-        val isUrl = trimmed.startsWith("http://") || trimmed.startsWith("https://") ||
+        val isUrl = BrowserUtils.isWebUrl(trimmed) ||
             BrowserUtils.looksLikeUrl(trimmed)
         if (trimmed.isNotEmpty() && !isUrl) {
             val dest = nativeSearchUrl(trimmed)

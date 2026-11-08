@@ -72,7 +72,7 @@ fun BrowserPage(
     val history by viewModel.history.collectAsStateWithLifecycle()
     val isCurrentBookmarked = activeTab?.url?.let { url -> url.isNotBlank() && bookmarks.any { it.url == url } } ?: false
 
-    val shieldHost = activeTab?.url?.takeIf { it.startsWith("http") }?.let { BrowserUtils.hostFromUrl(it) }
+    val shieldHost = activeTab?.url?.takeIf { BrowserUtils.isWebUrl(it) }?.let { BrowserUtils.hostFromUrl(it) }
     // Navigating away from the site the panel describes has to close it, otherwise it would
     // silently start editing a different host's settings.
     LaunchedEffect(shieldHost) { viewModel.showShieldsPanel = false }

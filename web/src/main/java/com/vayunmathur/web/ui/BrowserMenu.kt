@@ -120,7 +120,7 @@ internal fun BrowserMenu(
                     onDismiss()
                     onShowInstallDialog()
                 },
-                enabled = activeTab.url.isNotBlank() && activeTab.url.startsWith("http") && pinSupported
+                enabled = activeTab.url.isNotBlank() && BrowserUtils.isWebUrl(activeTab.url) && pinSupported
             )
         }
         DropdownMenuItem(
@@ -212,7 +212,7 @@ internal fun InstallAppDialog(
                 onClick = {
                     val finalTitle = draftTitle.ifBlank { defaultTitle }
                     onDismiss()
-                    if (tabId != null && url.startsWith("http")) {
+                    if (tabId != null && BrowserUtils.isWebUrl(url)) {
                         viewModel.installAsPwa(
                             tabId = tabId,
                             url = url,

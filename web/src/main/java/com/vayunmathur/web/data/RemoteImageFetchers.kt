@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.vayunmathur.library.image.fetchers.FetchResult
 import com.vayunmathur.library.network.NetworkClient
+import com.vayunmathur.web.platform.BrowserUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -24,11 +25,11 @@ object RemoteImageFetchers {
             is String -> data
             is Uri -> {
                 val s = data.scheme
-                if (s == "http" || s == "https") data.toString() else return null
+                if (BrowserUtils.isWebScheme(s)) data.toString() else return null
             }
             else -> return null
         }
-        if (!url.startsWith("http://") && !url.startsWith("https://")) return null
+        if (!BrowserUtils.isWebUrl(url)) return null
         return withContext(Dispatchers.IO) {
             val resp = NetworkClient.execute(url)
             if (!resp.isSuccess) {

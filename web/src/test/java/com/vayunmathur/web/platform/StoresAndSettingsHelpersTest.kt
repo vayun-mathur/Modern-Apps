@@ -63,6 +63,13 @@ class StoresAndSettingsHelpersTest {
         assertNull(FaviconStore.forHost("data"))
     }
 
+    @Test fun faviconStoreAcceptsUppercaseHttpScheme() {
+        FaviconStore.init(context)
+        val bmp = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        FaviconStore.put("HTTP://upper-scheme.example/page", bmp, isPrivate = true)
+        assertEquals(bmp, FaviconStore.forUrl("HTTP://upper-scheme.example/other"))
+    }
+
     @Test fun thumbnailStoreRejectsUnsafeIdsAndMisses() {
         TabThumbnailStore.init(context)
         assertNull(TabThumbnailStore.get("tab-missing-1"))
