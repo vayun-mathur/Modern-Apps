@@ -24,7 +24,9 @@ class NavigationAndTelephonyTest {
     @BeforeTest fun reset() { AutoSessionState.onDisconnected() }
 
     @Test fun `navigation home renders the auto screen`() {
-        rule.setContent { Navigation(AutoViewModel(), PairingViewModel()) }
+        val autoVm = AutoViewModel()
+        val pairingVm = PairingViewModel()
+        rule.setContent { Navigation(autoVm, pairingVm) }
         rule.onNodeWithText(ctx.getString(AutoR.string.state_disconnected)).assertExists()
         rule.onNodeWithText(ctx.getString(AutoR.string.connect_hint)).assertExists()
     }
