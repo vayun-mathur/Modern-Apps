@@ -273,4 +273,8 @@
     <string name="tv_detail_screenshots">Zrzuty ekranu</string>
     <string name="updates_foreign_title">Zainstalowane z innych źródeł</string>
     <string name="updates_foreign_subtitle">Funkcja „Aktualizuj wszystkie” pomija te aplikacje – aby zaktualizować wybraną pozycję tutaj, dotknij przy niej „Aktualizuj”.</string>
+    <string name="install_confirm_title">Aktualizacja gotowa dla %1$s</string>
+    <string name="install_confirm_body">Dotknij, aby potwierdzić aktualizację.</string>
+    <string name="install_confirm_channel_name">Potwierdzenia instalacji</string>
+    <string name="install_confirm_channel_description">Prosi o potwierdzenie aktualizacji, która pojawiła się, gdy sklep był uruchomiony w tle.</string>
 </resources>
