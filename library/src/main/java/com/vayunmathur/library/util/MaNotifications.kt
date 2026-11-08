@@ -1,12 +1,15 @@
 package com.vayunmathur.library.util
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 
 /**
  * Shared notification-posting shell: channel registration plus a
@@ -51,8 +54,20 @@ object MaNotifications {
             importance,
             channelDescription,
         )
-        val manager = NotificationManagerCompat.from(context)
+        val manager = context.getSystemService(NotificationManager::class.java)
         if (!manager.areNotificationsEnabled()) return null
+        // POST_NOTIFICATIONS only exists on API 33+; below that the
+        // areNotificationsEnabled check above is the whole gate, and asking
+        // for a permission the platform does not know would deny everything.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return null
+            }
+        }
         var builder = NotificationCompat.Builder(context, channelId)
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
