@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.vayunmathur.taxi.R
+import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.taxi.data.lyft.LyftTokenStore
 import com.vayunmathur.taxi.network.TaxiPass3FakeHttp
 import com.vayunmathur.taxi.network.lyft.LyftToken
@@ -98,6 +99,29 @@ class TaxiPass3TrackingScreenTest {
         rule.onAllNodesWithText(str(R.string.cancel_ride))[buttons.lastIndex].performClick()
         waitForText(str(R.string.ride_cancelled))
         assertTrue(http.callsTo("/cancel").isNotEmpty())
+    }
+
+    @Test
+    fun trackingScreenFailedCancelKeepsTracking() {
+        http.on("/v1/activeride") { http.raw(200, rideJson("approaching"), url = it.url) }
+        http.on("/driver-location") {
+            http.raw(200, """{"location":{"lat":37.71,"lng":-122.41}}""", url = it.url)
+        }
+        http.on("/cancel") { http.raw(500, "kaput", "text/plain", it.url) }
+        rule.setContent { RideTrackingScreen(rideId = "r1") }
+        waitForText(str(R.string.cancel_ride))
+        rule.onNodeWithText(str(R.string.cancel_ride)).performClick()
+        waitForText(str(R.string.cancel_ride_title))
+        // Confirm (the dialog's Cancel ride action is the last one).
+        val buttons = rule.onAllNodesWithText(str(R.string.cancel_ride)).fetchSemanticsNodes()
+        assertTrue(buttons.size >= 2)
+        rule.onAllNodesWithText(str(R.string.cancel_ride))[buttons.lastIndex].performClick()
+        // The failure is reported, but the ride is still live: dismiss the
+        // message and the Cancel button must still be offered for a retry.
+        waitForText(str(R.string.cancel_failed, "Lyft returned HTTP 500: kaput"))
+        rule.onNodeWithText(str(UiR.string.close)).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(str(R.string.cancel_ride)).assertIsDisplayed()
     }
 
     @Test

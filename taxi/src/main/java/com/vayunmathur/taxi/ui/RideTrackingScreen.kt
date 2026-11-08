@@ -184,14 +184,19 @@ fun RideTrackingScreen(rideId: String) {
                     confirmingCancel = false
                     cancelling = true
                     scope.launch {
-                        cancelMessage = when (val result = provider.cancelRide(rideId)) {
+                        val result = provider.cancelRide(rideId)
+                        cancelMessage = when (result) {
                             is CancelResult.Done -> context.getString(R.string.ride_cancelled)
                             is CancelResult.Failed -> context.getString(R.string.cancel_failed, result.message)
                             CancelResult.Unsupported ->
                                 context.getString(R.string.cancel_failed, "unsupported")
                         }
                         cancelling = false
-                        ended = true
+                        // A failed cancel leaves the ride live: only a confirmed
+                        // cancel ends tracking, so the user can retry after a
+                        // transient failure instead of being stranded on a
+                        // screen that claims the ride ended.
+                        if (result is CancelResult.Done) ended = true
                     }
                 }) {
                     Text(stringResource(R.string.cancel_ride), color = MaterialTheme.colorScheme.error)
