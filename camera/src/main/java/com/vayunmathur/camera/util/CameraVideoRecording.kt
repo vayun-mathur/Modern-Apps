@@ -144,7 +144,7 @@ internal fun CameraViewModel.startRecording() {
     }
     currentRecording = pending.start(ContextCompat.getMainExecutor(app)) { event ->
         if (event is VideoRecordEvent.Finalize) {
-            onRecordingFinalized(cacheFile, timestamp, recordingMode, displayName)
+            onRecordingFinalized(cacheFile, timestamp, recordingMode, displayName, event)
         }
     }
     // Apply the current mic-mute state to the freshly-started recording.
@@ -167,9 +167,23 @@ private fun CameraViewModel.onRecordingFinalized(
     cacheFile: java.io.File,
     timestamp: String,
     recordingMode: CameraMode,
-    displayName: String
+    displayName: String,
+    event: VideoRecordEvent.Finalize
 ) {
     stopRecordingTimer()
+    // A recording that finalized with an error (encoder failure, no valid
+    // data, interrupted mux) leaves a truncated/unplayable cache file.
+    // Saving it anyway puts a corrupt video in the gallery (the Slo-Mo path
+    // already discards these; the normal path did not). Drop it instead.
+    if (event.hasError()) {
+        Log.error(
+            "CameraViewModel",
+            "Recording finalized with error ${event.error}; discarding ${cacheFile.name}",
+            event.cause
+        )
+        cacheFile.delete()
+        return
+    }
     viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
         if (!cacheFile.exists()) return@launch
         val fileToSave = if (recordingMode == CameraMode.TIMELAPSE) {
@@ -189,6 +203,11 @@ private fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.
     val processed = java.io.File(cacheFile.parent, "TL_$timestamp.mp4")
     return try {
         VideoProcessor.adjustSpeed(cacheFile, processed, TIMELAPSE_SPEED_FACTOR)
+        // Only trade the raw recording for the remux once the output is
+        // known-good; a missing/empty output keeps the raw file.
+        if (!processed.exists() || processed.length() == 0L) {
+            throw java.io.IOException("Timelapse remux produced no output")
+        }
         cacheFile.delete()
         processed
     } catch (e: java.io.IOException) {
@@ -200,6 +219,18 @@ private fun remuxTimelapse(cacheFile: java.io.File, timestamp: String): java.io.
     } catch (e: IllegalStateException) {
         // MediaMuxer can reject an av01 track (or an oversized keyframe)
         // on some devices; keep the raw recording rather than crash.
+        Log.error("CameraViewModel", "Timelapse remux failed; saving unprocessed", e)
+        processed.delete()
+        cacheFile
+    } catch (e: IllegalArgumentException) {
+        // Extractor/muxer argument failures (e.g. a sample that still
+        // exceeds the buffer) must not crash the finalize coroutine or
+        // lose the recording; keep the raw recording.
+        Log.error("CameraViewModel", "Timelapse remux failed; saving unprocessed", e)
+        processed.delete()
+        cacheFile
+    } catch (e: java.nio.BufferOverflowException) {
+        // Same fallback as above for an oversized sample write.
         Log.error("CameraViewModel", "Timelapse remux failed; saving unprocessed", e)
         processed.delete()
         cacheFile

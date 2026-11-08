@@ -26,17 +26,33 @@ object VideoProcessor {
 
             val videoTrackIndex = findVideoTrack(extractor, muxer)
             // No video track (audio-only input): clean up the half-created muxer and the empty
-            // output so the caller falls back to the raw recording instead of a 0-byte file.
+            // output, then fail so the caller falls back to the raw recording instead of
+            // saving a 0-byte file.
             if (videoTrackIndex == NO_TRACK) {
                 releaseQuietly(extractor, muxer, outputFile)
-                return
+                throw java.io.IOException("Timelapse input has no video track")
             }
 
             extractor.selectTrack(videoTrackIndex)
             muxer.start()
-            remuxAtSpeed(extractor, muxer, speedFactor)
+            val trackFormat = extractor.getTrackFormat(videoTrackIndex)
+            val maxInputSize = if (trackFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+                trackFormat.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
+            } else {
+                0
+            }
+            remuxAtSpeed(extractor, muxer, speedFactor, sampleBufferSize(maxInputSize))
 
-            try { muxer.stop() } catch (_: Exception) {}
+            // A failed stop() means the moov atom was never written and the
+            // output is unplayable. Swallowing it (the old behaviour) saved
+            // that corrupt file while the caller deleted the good raw
+            // recording, so surface it as a failure and drop the output.
+            try {
+                muxer.stop()
+            } catch (e: IllegalStateException) {
+                try { outputFile.delete() } catch (_: Exception) {}
+                throw java.io.IOException("Failed to finalize timelapse output", e)
+            }
         } finally {
             if (muxer != null) {
                 try { muxer.release() } catch (_: Exception) {}
@@ -85,8 +101,13 @@ object VideoProcessor {
      * newPts = (pts / totalDuration) * (totalDuration / speedFactor) == pts / speedFactor,
      * so timestamps can be remapped per-sample without buffering the whole stream.
      */
-    private fun remuxAtSpeed(extractor: MediaExtractor, muxer: MediaMuxer, speedFactor: Float) {
-        val buffer = ByteBuffer.allocate(SAMPLE_BUFFER_BYTES)
+    private fun remuxAtSpeed(
+        extractor: MediaExtractor,
+        muxer: MediaMuxer,
+        speedFactor: Float,
+        bufferBytes: Int
+    ) {
+        val buffer = ByteBuffer.allocate(bufferBytes)
         val info = MediaCodec.BufferInfo()
         val muxerTrackIndex = 0
         while (true) {
@@ -96,6 +117,20 @@ object VideoProcessor {
             extractor.advance()
         }
     }
+
+    /** Presentation timestamp after the speed remap (pts / speedFactor). Pure for unit tests. */
+    internal fun remappedPtsUs(sampleTimeUs: Long, speedFactor: Float): Long =
+        (sampleTimeUs.toDouble() / speedFactor).toLong()
+
+    /**
+     * Sample buffer size: the fixed floor, grown to the encoder's declared
+     * max input size when larger. A sample bigger than the buffer makes
+     * readSampleData fail with an unchecked exception instead of returning
+     * a truncated sample, which previously escaped the caller's
+     * IOException/IllegalStateException fallback and lost the recording.
+     */
+    internal fun sampleBufferSize(maxInputSize: Int): Int =
+        maxOf(SAMPLE_BUFFER_BYTES, maxInputSize)
 
     /** Writes one sample with its remapped presentation timestamp. */
     private fun writeSample(
@@ -110,7 +145,7 @@ object VideoProcessor {
         info.offset = 0
         info.size = size
         info.flags = sampleFlags(extractor)
-        info.presentationTimeUs = (extractor.sampleTime.toDouble() / speedFactor).toLong()
+        info.presentationTimeUs = remappedPtsUs(extractor.sampleTime, speedFactor)
         muxer.writeSampleData(trackIndex, buffer, info)
     }
 
