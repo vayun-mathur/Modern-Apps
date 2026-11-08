@@ -48,11 +48,12 @@ internal fun MapPageScope.MapSheets(
             )
         }
     },
-        // Ride above the keyboard: the scaffold anchors its sheet to the
-        // bottom of its own layout area, so IME padding has to shrink that
-        // area (here) rather than pad inside the sheet content — padding
-        // inside only moved the field up within a sheet the keyboard still
-        // covered. Applied in maps, not library/ui (which bans imePadding).
+        // Ride above the keyboard: the field keeps focus while typing, and
+        // the activity is edge-to-edge (MaActivity.enableEdgeToEdge), which
+        // disables the manifest's adjustResize — the container does not
+        // shrink on its own, and the scaffold only reads the navigation and
+        // status bars as values. Without this the peek-0.35 search sheet
+        // sits under the keys, input included.
         Modifier.imePadding(),
         sheet,
         // Roughly a third of the room the sheet has: enough to open on the field, the chips and

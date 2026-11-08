@@ -383,6 +383,7 @@ object PoiIndex {
     @Synchronized
     fun reloadArchive(file: File): Boolean {
         mapped = null
+        tried = true
         val fromArchive = PoiArchive.openArchive(file) ?: return false
         mapped = fromArchive
         return true
@@ -625,20 +626,26 @@ object PoiIndex {
         }
 
     /**
-     * Offline place search over the whole index (no bounding-box limit),
-     * ranked by match tier, then user signal, then distance to
-     * ([nearLat],[nearLon]).
+     * Name search, ranked by match quality, then user signal, then distance
+     * to ([nearLat],[nearLon]).
      *
-     * Token-based: every query token must match a word of the name (word
-     * prefix, substring, or a small edit distance), so multi-word names,
-     * diacritics and small typos resolve. Purely categorical queries
-     * ("coffee", "gas station") match by POI type instead. Candidate
-     * gathering uses the word index when mapped and the name-pool scan
-     * otherwise (and as the substring/fuzzy fallback); see
-     * [searchPoi][com.vayunmathur.maps.util.searchPoi] and [PoiSearch].
+     * Two implementations, picked by whether `poi_name_index.bin` was mapped:
      *
-     * [boost] (recents + saved places) only breaks ties within a rank — it
-     * never resurrects a non-match.
+     *  * **Indexed** — binary search to the query's place in a word-sorted index, then a
+     *    walk of the matching range, so the cost is the number of matches. Because every
+     *    word of a name is indexed, "pizza" still finds "Joe's Pizza".
+     *  * **Scan** — the name pool, then every record. Two passes whose cost is the whole
+     *    dataset, kept only because the side file is optional.
+     *
+     * **The two do not match exactly, by design.** The scan matches a substring anywhere,
+     * so "izza" finds "Pizza"; a sorted index can only answer prefix questions, so the
+     * indexed path matches a prefix *of any word*. That is a deliberate narrowing —
+     * mid-word matches are lost, whole-word ones are not.
+     *
+     * Ranking, same on both paths: every query token must match (multi-word
+     * queries matched nothing before); tokens within one edit of a word match
+     * too, ranked below exact ones; [boost] (recents + saved places) only
+     * breaks ties within a rank — it never resurrects a non-match.
      */
     fun searchByName(
         query: String,
@@ -649,11 +656,27 @@ object PoiIndex {
     ): List<PoiRecord> {
         val m = mapped ?: return emptyList()
         if (query.isBlank()) return emptyList()
-        // Token-based matching with category and fuzzy fallbacks; see
-        // PoiIndexWords.searchPoi and PoiSearch for the ranking contract.
-        // Boost (recents + saved places) only breaks ties within a rank.
-        return searchPoi(m, query, nearLat, nearLon, limit, boost)
+        // Fully-qualified: the package-level search lives in PoiIndexWords.kt.
+        if (m.nameIdx != null) {
+            return com.vayunmathur.maps.util.searchByWordIndex(
+                m, query, nearLat, nearLon, limit, CANDIDATE_CAP, boost,
+            )
+        }
+        return searchByScan(m, query, nearLat, nearLon, limit, boost)
     }
+
+    // Scan search lives in PoiIndexWords.kt (call it fully-qualified: calling
+    // itself here would recurse forever — StackOverflowError on every search).
+    private fun searchByScan(
+        m: Mapped,
+        query: String,
+        nearLat: Double,
+        nearLon: Double,
+        limit: Int,
+        boost: Map<String, Double>,
+    ): List<PoiRecord> =
+        com.vayunmathur.maps.util.searchByScan(m, query, nearLat, nearLon, limit, boost)
+
     // Spatial queries (nearest/inViewport) live in PoiIndexSpatial.kt as
     // extensions, alongside the grid they walk.
 
