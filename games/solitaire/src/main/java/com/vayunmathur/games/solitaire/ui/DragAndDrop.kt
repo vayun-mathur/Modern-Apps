@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +48,11 @@ fun DraggableCard(
     // duplicate underneath — is what the player sees travelling.
     val flight by actions.flightInfo.collectAsState()
     val isFlying = flight?.cards?.contains(card) == true
+    // Feeds the animated auto-complete its launch points; unlaid cards (the stock)
+    // stay absent and fly instantly instead.
+    LaunchedEffect(card, startPos) {
+        if (startPos != Offset.Zero) actions.registerCardPosition(card, startPos)
+    }
 
     Box(
         modifier = modifier

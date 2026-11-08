@@ -19,6 +19,8 @@ data class CardFlight(
     val sourceId: String,
     val targetId: String,
     val from: Offset,
+    /** Fast auto-complete hops fly shorter than a tap-to-move. */
+    val fast: Boolean = false,
 )
 
 /**
@@ -42,11 +44,18 @@ internal fun SolitaireViewModel.requestFlightImpl(sourceId: String, startPos: Of
 /**
  * Lands the staged flight. Clears it first so the overlay lifts the moment the
  * move commits; a flight whose source or target no longer applies is refused by
- * the move functions themselves.
+ * the move functions themselves. A fast flight landing mid-run advances the
+ * auto-complete instead of going through the drop handlers.
  */
 internal fun SolitaireViewModel.commitFlightImpl() {
     val flight = flightInfoInternal.value ?: return
     flightInfoInternal.value = null
+    if (flight.fast && autoCompleteRunningInternal.value &&
+        uiStateInternal.value.gameMode == GameMode.KLONDIKE
+    ) {
+        landAutoCompleteStep(flight)
+        return
+    }
     when (uiStateInternal.value.gameMode) {
         GameMode.KLONDIKE -> handleKlondikeDropImpl(flight.sourceId, flight.targetId)
         GameMode.FREECELL -> handleFreeCellDropImpl(flight.sourceId, flight.targetId)
@@ -61,4 +70,7 @@ internal fun SolitaireViewModel.cancelFlightImpl() {
 /** Drops any staged flight: undo, restart, mode switch and give-up all strand it. */
 internal fun SolitaireViewModel.clearFlight() {
     flightInfoInternal.value = null
+    // An abandoned run strands nothing: undo/give-up/mode-switch restore or
+    // replace the board, and the single pre-run history entry covers undo.
+    autoCompleteRunningInternal.value = false
 }

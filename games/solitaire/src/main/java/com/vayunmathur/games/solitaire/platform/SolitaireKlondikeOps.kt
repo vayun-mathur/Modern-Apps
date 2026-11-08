@@ -187,7 +187,18 @@ internal fun SolitaireViewModel.klondikeAutoCompleteImpl() {
     val state = uiStateInternal.value.klondike ?: return
     if (!canKlondikeAutoComplete(state)) return
     saveHistory()
-    var current = state
+    uiStateInternal.update { it.copy(klondike = runAutoCompleteLoop(state)) }
+    checkKlondikeWin()
+}
+
+/**
+ * The drain-and-draw loop both the instant auto-complete and the skip path share:
+ * move every fitting waste/tableau top to its foundation, draw one stock card when
+ * stuck, repeat until the stock is spent and nothing moves. Pure, so the animated
+ * run stages the same transitions one flight at a time.
+ */
+internal fun SolitaireViewModel.runAutoCompleteLoop(start: KlondikeState): KlondikeState {
+    var current = start
     var madeProgress = true
     while (madeProgress) {
         madeProgress = false
@@ -201,7 +212,121 @@ internal fun SolitaireViewModel.klondikeAutoCompleteImpl() {
             madeProgress = true
         }
     }
-    uiStateInternal.update { it.copy(klondike = current) }
+    return current
+}
+
+/**
+ * Animated auto-complete entry: the button tap (and re-tap) lands here. A tap
+ * mid-run skips straight to the finished board; otherwise the run stages one fast
+ * flight per step, suspending on each landing until the overlay commits it back
+ * through [landAutoCompleteStep]. One history entry covers the whole run, so a
+ * single undo restores the pre-run board, and the win is checked once at the end
+ * so the overlay cannot pop mid-flight.
+ */
+internal fun SolitaireViewModel.requestAutoCompleteImpl() {
+    if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return }
+    val state = uiStateInternal.value.klondike ?: return
+    if (!canKlondikeAutoComplete(state)) return
+    // A staged tap-to-move stays where it is; the run covers its card anyway.
+    cancelFlightImpl()
+    saveHistory()
+    autoCompleteRunningInternal.value = true
+    advanceAutoComplete(state)
+}
+
+/**
+ * Steps the run forward from [start], staging one fast flight when the moving
+ * card's position is known and applying the step instantly otherwise. Publishes
+ * at the top of every iteration so the landing re-derives from exactly the
+ * staged state — an unpublished instant draw ahead of a staged flight would
+ * otherwise make the landing recompute the wrong move from stale live state.
+ */
+internal fun SolitaireViewModel.advanceAutoComplete(start: KlondikeState) {
+    var current = start
+    while (true) {
+        uiStateInternal.update { it.copy(klondike = current) }
+        val after = moveWasteToFoundation(current) ?: moveTableauToFoundation(current)
+        if (after != null) {
+            val step = autoCompleteStep(current, after)
+            val from = step?.let { cardPositions[it.card] }
+            if (step != null && from != null) {
+                flightInfoInternal.value = CardFlight(
+                    cards = listOf(step.card),
+                    sourceId = step.sourceId,
+                    targetId = "foundation_${step.foundationIndex}",
+                    from = from,
+                    fast = true,
+                )
+                return
+            }
+            current = after
+            continue
+        }
+        if (current.stock.isNotEmpty()) {
+            current = current.copy(
+                stock = current.stock.dropLast(1),
+                waste = current.waste + current.stock.last()
+            )
+            continue
+        }
+        autoCompleteRunningInternal.value = false
+        checkKlondikeWin()
+        return
+    }
+}
+
+/** One staged step: which card moved, where it came from, which foundation it took. */
+private data class AutoCompleteStep(val card: Card, val sourceId: String, val foundationIndex: Int)
+
+/**
+ * Diffs the grown foundation between [before] and [after] into its step. Cards are
+ * unique, so the waste top decides "waste" and the matching tableau top decides
+ * its column unambiguously; null means the transition moved nothing recognisable.
+ */
+private fun autoCompleteStep(before: KlondikeState, after: KlondikeState): AutoCompleteStep? {
+    for (fi in before.foundations.indices) {
+        if (after.foundations[fi].size != before.foundations[fi].size + 1) continue
+        val card = after.foundations[fi].last()
+        val sourceId = if (before.waste.lastOrNull() == card) {
+            "waste"
+        } else {
+            val col = before.tableauPiles.indexOfFirst { it.faceUp.lastOrNull() == card }
+            if (col < 0) return null
+            "tableau_${col}_${before.tableauPiles[col].faceUp.lastIndex}"
+        }
+        return AutoCompleteStep(card, sourceId, fi)
+    }
+    return null
+}
+
+/**
+ * Continues the run after a fast flight lands. Re-runs the pure transition for the
+ * flight's source kind on the unchanged live state — deterministic first-fit, so it
+ * yields the same state the staging step computed — then advances from there. A
+ * null (unreachable: the flight was staged from this exact state) finishes
+ * conservatively rather than stranding the run.
+ */
+internal fun SolitaireViewModel.landAutoCompleteStep(flight: CardFlight) {
+    val current = uiStateInternal.value.klondike
+    val after = when {
+        current == null -> null
+        flight.sourceId == "waste" -> moveWasteToFoundation(current)
+        flight.sourceId.startsWith("tableau_") -> moveTableauToFoundation(current)
+        else -> null
+    }
+    if (after == null) {
+        autoCompleteRunningInternal.value = false
+        checkKlondikeWin()
+        return
+    }
+    advanceAutoComplete(after)
+}
+
+/** Skips the animation: drops any staged flight and runs the shared loop to the end. */
+internal fun SolitaireViewModel.skipAutoCompleteToEnd() {
+    clearFlight()
+    val state = uiStateInternal.value.klondike ?: return
+    uiStateInternal.update { it.copy(klondike = runAutoCompleteLoop(state)) }
     checkKlondikeWin()
 }
 

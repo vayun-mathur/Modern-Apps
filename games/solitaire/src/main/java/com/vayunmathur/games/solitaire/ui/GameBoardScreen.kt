@@ -16,6 +16,7 @@ import com.vayunmathur.library.ui.ConfirmDialog
 import com.vayunmathur.library.ui.R as UiR
 import com.vayunmathur.library.ui.AppScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,8 +77,13 @@ fun GameBoardScreen(state: SolitaireUiState, mode: GameMode, actions: SolitaireA
                 when (mode) {
                     GameMode.KLONDIKE -> state.klondike?.let {
                         KlondikeBoard(it, actions, Modifier.align(Alignment.CenterHorizontally).widthIn(max = boardMaxWidth).fillMaxWidth())
-                        if (canKlondikeAutoComplete(it)) {
-                            Button(onClick = { actions.klondikeAutoComplete() }, Modifier.align(Alignment.CenterHorizontally)) { Text(stringResource(R.string.auto_complete)) }
+                        // The button stays up mid-run as the skip switch: draining
+                        // foundations can otherwise hide it under the player's tap.
+                        val autoCompleteRunning by actions.autoCompleteRunning.collectAsState()
+                        if (canKlondikeAutoComplete(it) || autoCompleteRunning) {
+                            Button(onClick = { actions.klondikeAutoComplete() }, Modifier.align(Alignment.CenterHorizontally)) {
+                                Text(stringResource(if (autoCompleteRunning) R.string.skip else R.string.auto_complete))
+                            }
                         }
                     }
                     GameMode.SPIDER -> state.spider?.let { SpiderBoard(it, actions, Modifier.align(Alignment.CenterHorizontally).widthIn(max = boardMaxWidth).fillMaxWidth()) }

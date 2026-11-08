@@ -41,6 +41,19 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     internal val flightInfoInternal = MutableStateFlow<CardFlight?>(null)
     override val flightInfo: StateFlow<CardFlight?> = flightInfoInternal.asStateFlow()
 
+    internal val autoCompleteRunningInternal = MutableStateFlow(false)
+    override val autoCompleteRunning: StateFlow<Boolean> = autoCompleteRunningInternal.asStateFlow()
+
+    /**
+     * Last laid-out root position per card, fed by the boards. Bounded by the 52
+     * unique cards; entries from a previous deal are dropped on mode switch and
+     * re-registered as piles lay out, so a stale entry never survives a new game.
+     */
+    internal val cardPositions = mutableMapOf<Card, Offset>()
+    override fun registerCardPosition(card: Card, position: Offset) {
+        cardPositions[card] = position
+    }
+
     internal val statsRepository = SolitaireStatsRepository(application)
     internal val settingsRepository = SolitaireSettingsRepository(application)
     override val dropTargets: MutableMap<String, Rect> = mutableMapOf()
@@ -77,6 +90,7 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun selectMode(mode: GameMode, config: GameConfig = GameConfig()) {
         clearFlight()
+        cardPositions.clear()
         when (mode) {
             GameMode.KLONDIKE -> newKlondikeGame(config)
             GameMode.SPIDER -> newSpiderGame(config)
@@ -117,9 +131,13 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
     // --- Klondike ---
     // Public game operations live as extensions in SolitaireKlondikeOps.kt.
 
-    override fun drawFromStock() = drawFromStockImpl()
+    override fun drawFromStock() {
+        // Any tap mid-run skips the animation straight to the finished board.
+        if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return }
+        drawFromStockImpl()
+    }
 
-    override fun klondikeAutoComplete() = klondikeAutoCompleteImpl()
+    override fun klondikeAutoComplete() = requestAutoCompleteImpl()
 
     // --- Spider ---
     // Public game operations live as extensions in SolitaireSpiderOps.kt.
@@ -149,8 +167,10 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
 
     override fun autoMove(sourceId: String) = autoMoveImpl(sourceId)
 
-    override fun requestAutoMove(sourceId: String, startPos: Offset): Boolean =
-        requestFlightImpl(sourceId, startPos)
+    override fun requestAutoMove(sourceId: String, startPos: Offset): Boolean {
+        if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return false }
+        return requestFlightImpl(sourceId, startPos)
+    }
 
     override fun commitFlight() = commitFlightImpl()
 
@@ -164,7 +184,10 @@ class SolitaireViewModel(application: Application) : AndroidViewModel(applicatio
         sourceId: String,
         startPos: Offset,
         cardSize: IntSize,
-    ): Boolean = startDragImpl(sourceId, startPos, cardSize)
+    ): Boolean {
+        if (autoCompleteRunningInternal.value) { skipAutoCompleteToEnd(); return false }
+        return startDragImpl(sourceId, startPos, cardSize)
+    }
 
     override fun updateDrag(offset: Offset) = updateDragImpl(offset)
 

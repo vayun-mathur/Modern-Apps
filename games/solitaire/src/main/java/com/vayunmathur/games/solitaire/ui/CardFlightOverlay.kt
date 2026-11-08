@@ -32,6 +32,9 @@ private val OffsetConverter = TwoWayConverter<Offset, AnimationVector2D>(
     convertFromVector = { Offset(it.v1, it.v2) }
 )
 
+/** One auto-complete hop: snappy enough to stagger, slow enough to follow. */
+private const val FastFlightMillis = 110
+
 /**
  * Flies a staged tap-to-move from its tap point to its destination, then lands it.
  *
@@ -76,7 +79,10 @@ fun CardFlightOverlay(
         val position: Animatable<Offset, AnimationVector2D> =
             remember(current) { Animatable(from, OffsetConverter) }
         LaunchedEffect(current) {
-            position.animateTo(to, Motion.drop<Offset>())
+            position.animateTo(
+                to,
+                if (current.fast) Motion.over<Offset>(FastFlightMillis) else Motion.drop<Offset>()
+            )
             actions.commitFlight()
         }
 

@@ -3,6 +3,7 @@ package com.vayunmathur.games.solitaire.platform
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
+import com.vayunmathur.games.solitaire.data.Card
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -29,6 +30,16 @@ interface SolitaireActions {
 
     /** Drop zones, registered by the piles as they are laid out. */
     val dropTargets: MutableMap<String, Rect> get() = DiscardedDropTargets
+
+    /** True while an animated auto-complete run is in flight. A preview never runs one. */
+    val autoCompleteRunning: StateFlow<Boolean> get() = NoAutoComplete
+
+    /**
+     * Records where [card] was last laid out in root coordinates, so the animated
+     * auto-complete can fly it from there. Positions for cards never laid out (in
+     * the stock) are simply absent, and those steps apply instantly.
+     */
+    fun registerCardPosition(card: Card, position: Offset) {}
 
     fun startDrag(sourceId: String, startPos: Offset, cardSize: IntSize = IntSize.Zero): Boolean = false
     fun updateDrag(offset: Offset) {}
@@ -74,6 +85,7 @@ interface SolitaireActions {
 
 private val NoDrag: StateFlow<DragInfo?> = MutableStateFlow(null)
 private val NoFlight: StateFlow<CardFlight?> = MutableStateFlow(null)
+private val NoAutoComplete: StateFlow<Boolean> = MutableStateFlow(false)
 
 /** Somewhere for a [SolitaireActions.Noop] board to register its drop zones and forget them. */
 private val DiscardedDropTargets: MutableMap<String, Rect> = mutableMapOf()
