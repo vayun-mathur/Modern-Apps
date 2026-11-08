@@ -115,28 +115,6 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
     internal var markerPickProvider: ((Float, Float) -> Long)? by mutableStateOf(null)
 
     /**
-     * Touch-end rendezvous for the gesture-freeze release: the touch-end observer in
-     * `mapGestures` reports every pointer lift here, and `VulkanMapSurface` registers
-     * the release into it the same way it registers the pick providers above (cleared
-     * on dispose). Plain `var`, not snapshot state — it is written once per composition
-     * and read imperatively from pointer-input handlers, so no reader needs reactivity
-     * and a state read would only add wakes to the gesture path.
-     *
-     * Null until a surface registers: car and other non-Compose hosts never do, and
-     * keep today's quiet-timeout release with no behavior change.
-     */
-    internal var gestureEndHandler: (() -> Unit)? = null
-
-    /**
-     * True while [animateTo] or [animateZoomBy] is driving the camera. Read by the
-     * touch-end observer to gate the explicit release: a tap landing mid-animation
-     * must not release the animation's freeze, which would churn fetches at
-     * intermediate zooms. Plain `var` for the same reason as [gestureEndHandler] —
-     * written and read on the main thread with no reactive reader.
-     */
-    internal var animationActive = false
-
-    /**
      * Sets the measured viewport and enforces the minimum "fill" zoom so the map
      * always covers the viewport (no blank margins when zoomed all the way out),
      * matching maplibre's behavior.
@@ -187,24 +165,17 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
         // Longitude likewise: a flight from 179 E to 179 W hops the antimeridian rather than
         // sweeping across the whole planet.
         val lonStep = angleDelta(start.target.longitude, target.target.longitude)
-        // try/finally: cancellation must clear the flag or the touch-end observer would
-        // gate every later release on a dead animation and the freeze would stick.
-        animationActive = true
-        try {
-            Animatable(0f).animateTo(1f, tween(durationMs)) {
-                val t = value.toDouble()
-                position = CameraPosition(
-                    target = GeoPoint(
-                        wrapLongitude(start.target.longitude + lonStep * t),
-                        lerp(start.target.latitude, target.target.latitude, t),
-                    ),
-                    zoom = lerp(start.zoom, target.zoom, t),
-                    bearing = start.bearing + turn * t,
-                    pitch = lerp(start.pitch, target.pitch, t),
-                )
-            }
-        } finally {
-            animationActive = false
+        Animatable(0f).animateTo(1f, tween(durationMs)) {
+            val t = value.toDouble()
+            position = CameraPosition(
+                target = GeoPoint(
+                    wrapLongitude(start.target.longitude + lonStep * t),
+                    lerp(start.target.latitude, target.target.latitude, t),
+                ),
+                zoom = lerp(start.zoom, target.zoom, t),
+                bearing = start.bearing + turn * t,
+                pitch = lerp(start.pitch, target.pitch, t),
+            )
         }
     }
 
@@ -227,14 +198,8 @@ class CameraState(initial: CameraPosition = CameraPosition()) {
         val start = position
         val target = clampZoom(start.zoom + deltaZoom, vp, minZoom, maxZoom)
         if (target == start.zoom) return
-        // try/finally for the same gate the touch-end observer reads in `animateTo`.
-        animationActive = true
-        try {
-            Animatable(0f).animateTo(1f, tween(durationMs)) {
-                position = anchoredZoom(start, lerp(start.zoom, target, value.toDouble()), anchorDp, vp)
-            }
-        } finally {
-            animationActive = false
+        Animatable(0f).animateTo(1f, tween(durationMs)) {
+            position = anchoredZoom(start, lerp(start.zoom, target, value.toDouble()), anchorDp, vp)
         }
     }
 

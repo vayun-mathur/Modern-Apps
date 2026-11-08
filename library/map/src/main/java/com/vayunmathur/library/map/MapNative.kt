@@ -224,18 +224,6 @@ internal object MapNative {
     external fun setOnline(handle: Long, online: Boolean)
 
     /**
-     * Tell the renderer a gesture is active. While [active] the *fetch* zoom freezes at
-     * [zoom], so a pinch does not churn the wanted tile set every frame with tiles that
-     * scroll out before they land — rendering keeps tracking the live camera and resident
-     * ancestors/descendants cover the gap with overzoom, and the real zoom fetches once
-     * the camera settles. Pan-only motion never freezes (the zoom is unchanged).
-     *
-     * Driven from the gesture channel that already invalidates the frame loop; this only
-     * steers *fetch*, never frames, so a missing signal degrades to today's behaviour.
-     */
-    external fun setGestureActive(handle: Long, active: Boolean, zoom: Float)
-
-    /**
      * Show the user-location puck at [lon]/[lat], drawn by the renderer inside the same
      * frame as the basemap.
      *

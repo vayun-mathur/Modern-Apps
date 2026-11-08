@@ -83,7 +83,7 @@ pub(crate) enum Step {
     /// working, not a gap in the report.
     PipelineBinds,
     /// Wanted-set keys dropped without fetching: drain-and-replace queue
-    /// discards plus gesture-debounce holds (see `bridge::frame`).
+    /// discards (see `bridge::frame`).
     FetchCancelled,
     /// Fresh `vkAllocateMemory` calls the upload drain issued this frame: the
     /// proof the pooled staging path (see `upload_pool`) is working. Reads zero

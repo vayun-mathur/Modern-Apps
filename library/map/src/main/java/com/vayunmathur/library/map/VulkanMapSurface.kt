@@ -25,20 +25,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withTimeoutOrNull
-
-/**
- * How long the position flow may go quiet before the gesture counts as released.
- *
- * Matches the native settle window ([GestureDebounce] settles after 15 still frames ≈
- * 250ms) with margin: the Kotlin side releases first, so the native side never has to
- * rely on its own timeout while the host is driving. Short enough that the settled zoom
- * fetches promptly after the finger lifts; long enough that a slow gesture with pauses
- * does not flap the freeze on and off mid-pinch.
- */
-private const val GESTURE_QUIET_MILLIS = 200L
 
 /**
  * Hosts the Vulkan renderer in Compose.
@@ -141,10 +127,6 @@ internal fun VulkanMapSurface(
         MapSurfaceHost(context, cameraState, density, tileSource) { currentOnFrame() }
     }
     val renderer = host.renderer
-    // Single owner of the fetch-freeze engaged flag, shared by the touch-end observer
-    // (registered below) and the quiet-timeout loop further down — one flag means the
-    // two end signals cannot desync the session state between them.
-    val freeze = remember(host) { GestureFreeze(renderer) }
     // The renderer pulls its camera from here every frame; a new CameraState must replace the
     // one the host was built with, or the map keeps drawing the old camera.
     LaunchedEffect(host, cameraState) {
@@ -164,15 +146,9 @@ internal fun VulkanMapSurface(
         // buffer. Cleared on dispose so a projection without a live renderer answers 0, not a dead
         // handle.
         cameraState.markerPickProvider = { xDp: Float, yDp: Float -> renderer.pickAt(xDp, yDp) }
-        // The freeze-release counterpart: the touch-end observer in `mapGestures`
-        // reports every pointer lift here so the fetch freeze releases the instant
-        // the finger lifts, ~200ms before the quiet timeout below would. Cleared on
-        // dispose so a projection without a live renderer holds no dead renderer.
-        cameraState.gestureEndHandler = { freeze.release() }
         onDispose {
             cameraState.labelQueryProvider = null
             cameraState.markerPickProvider = null
-            cameraState.gestureEndHandler = null
         }
     }
 
@@ -239,49 +215,6 @@ internal fun VulkanMapSurface(
     // The body rides the same channel: switching Earth/Moon while idle still redraws.
     LaunchedEffect(host, cameraState) {
         snapshotFlow { cameraState.body }.collect { renderer.invalidate() }
-    }
-    // The gesture signal rides alongside the camera push channel: while any gesture or
-    // camera animation is driving the position, the native fetch zoom freezes so a pinch
-    // does not churn the wanted tile set — and releases on settle, so the final zoom
-    // fetches. `position` changes on every gesture frame; the release detector below
-    // watches the same flow go quiet, which means the finger lifted (or the animation
-    // ended). A host that never gestures never freezes. Animations freeze fetch too,
-    // deliberately: a 500ms `animateTo` crosses the same intermediate zooms a pinch does.
-    //
-    // Two end signals share one session through [GestureFreeze]: the touch-end observer
-    // releases the instant the finger lifts (fast path, ~200ms before the timeout), and
-    // the `withTimeoutOrNull` below fires the same release after
-    // [GESTURE_QUIET_MILLIS] of quiet as the backstop — covering animation ends, hosts
-    // without the observer, and any lift dispatch swallows. A fresh emission cancels
-    // the timeout and re-arms it; the loop exits only when the effect leaves the
-    // composition, releasing on the way out. No ticker coroutine, no new thread — and
-    // the release path never touches the frame loop beyond the wake the freeze owes.
-    LaunchedEffect(host, cameraState) {
-        // The last position already consumed: `snapshotFlow.first()` replays the current
-        // value immediately, so without this the loop would spin on a stale position
-        // instead of waiting for a new one. Seeded to the current position (which the
-        // original position effect below already invalidates for).
-        var last = cameraState.position
-        while (isActive) {
-            // A fresh flow per iteration, filtered to genuine changes: `first()` on an
-            // unfiltered flow returns the current value at once, which would defeat the
-            // quiet timeout below. Consecutive duplicates are impossible here — the
-            // filter holds until the position actually moves again.
-            val position = withTimeoutOrNull(GESTURE_QUIET_MILLIS) {
-                snapshotFlow { cameraState.position }.first { it != last }
-            }
-            if (position == null) {
-                // Quiet: the finger lifted or the animation ended. The freeze funnels
-                // both end signals through one flag, so this is a no-op when the
-                // touch-end observer already released.
-                freeze.release()
-                continue
-            }
-            last = position
-            freeze.markActive(position.zoom.toFloat())
-            renderer.invalidate()
-        }
-        freeze.release()
     }
     // Separately, because a viewport change is rare and a camera change is per-frame: keeping
     // them apart means the hot path compares one reference rather than allocating a pair.

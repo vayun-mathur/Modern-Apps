@@ -712,21 +712,6 @@ class SurfaceMapRenderer(
     }
 
     /**
-     * Tell the renderer a gesture is active. While active the native fetch zoom freezes,
-     * so a pinch does not churn the wanted tile set every frame — rendering keeps tracking
-     * the live camera. Driven from the gesture channel in `VulkanMapSurface`; safe to call
-     * redundantly (the native side ignores no-change sets), and safe to never call (the
-     * native settle timer releases the freeze on its own).
-     */
-    fun setGestureActive(active: Boolean, zoom: Float) {
-        if (handle != 0L) {
-            MapNative.setGestureActive(handle, active, zoom)
-        }
-        // No invalidate: the camera motion that accompanies the gesture already wakes the
-        // loop through the position push channel; a bare release signal needs no frame.
-    }
-
-    /**
      * Show the user's location, drawn inside the renderer's own frame so it stays glued to
      * the ground while the map moves. `null` draws nothing.
      */

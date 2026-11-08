@@ -192,35 +192,18 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     // other (and with the `kinds` the render call below takes), so two `get`s must
     // never straddle a `set`.
     let (snap_toggles, snap_kinds, generation) = map.toggles.get();
-    // Gesture debounce (MapLibre's "load while moving" rule): while a gesture is active
-    // the *fetch* zoom freezes, so a pinch does not churn the wanted set every frame
-    // with tiles that scroll out before they land. The freeze is per integer tile
-    // level — it advances as the live zoom crosses into a new level, so the entered
-    // level's wave starts mid-gesture rather than waiting for release (see
-    // `GestureDebounce::fetch_zoom`: that wait is the zoom-lags-while-pan-is-instant
-    // asymmetry). Rendering keeps the live camera — resident ancestors/descendants
-    // cover the gap with overzoom — and the settled zoom fetches once the camera
-    // settles. Pan-only motion never freezes (the zoom is unchanged, so ideal and
-    // fetch agree). Skipped on Moon frames with the selection below.
+    // Tile selection keys on the live camera zoom every frame, including mid-gesture:
+    // a pinch fetches each intermediate level as it crosses it. Skipped on Moon
+    // frames with the selection below.
     let moon = crate::camera::moon_active(&camera);
-    let fetch_zoom = if moon {
-        camera.zoom
-    } else {
-        map.gesture.fetch_zoom(camera.zoom)
-    };
+    let fetch_zoom = camera.zoom;
     // Moon frames: no selection, no fetch, no eviction. The Earth resident set,
     // in-flight set and backoffs below are all left exactly as they were, so
     // switching back to Earth resumes mid-stream rather than refetching.
     let (visible, keep): (Vec<select::TileId>, Vec<u64>) = if moon {
         (Vec::new(), Vec::new())
     } else {
-        // The fetch camera shares everything but the zoom: selection at the frozen level
-        // keeps the wanted set stable while the draw camera tracks the finger.
-        let fetch_camera = Camera {
-            zoom: fetch_zoom,
-            ..camera
-        };
-        let visible = select::visible(&fetch_camera, min_zoom, max_zoom);
+        let visible = select::visible(&camera, min_zoom, max_zoom);
         let keep: Vec<u64> = select::resident_set(&camera, min_zoom, max_zoom)
             .iter()
             .map(|t| t.key())
@@ -275,12 +258,8 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     // keys a worker already took stay marked and are never duplicated. Skipped while the
     // wanted set is steady (the common case) and before the first Earth frame.
     //
-    // The debounce counts here too: while the fetch zoom is frozen, keys that fell out of
-    // the frozen set are dropped without fetching (they belong to an intermediate zoom the
-    // gesture already left behind), and the count lands in `Step::FetchCancelled` below.
-    // `fetch_held` counts the debounce holds below; drain-and-replace discards count
-    // too. Both are "wanted, never fetched" — the `Step::FetchCancelled` proof that the
-    // gesture path is holding back storms rather than issuing them.
+    // Drain-and-replace discards are "wanted, never fetched" — the
+    // `Step::FetchCancelled` count of storms held back rather than issued.
     let mut fetch_cancelled = 0usize;
     if !moon && !map.last_visible.is_empty() && wanted_keys != map.last_visible {
         if let Ok(queue) = map.wanted_queue.try_lock() {
@@ -297,26 +276,6 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
     }
     // Centre-first enqueue (issue 815): the middle of the screen fills before the edges, so a
     // cold pan shows something useful as early as possible instead of scan order.
-    //
-    // Debounce hold: while the fetch zoom is frozen, tiles at the *live* zoom that are not
-    // in the frozen set are held back, not fetched. They belong to an intermediate level the
-    // gesture is passing through; fetching them spends a worker on bytes that scroll out
-    // before they land. The frozen set plus resident overzoom covers the screen instead.
-    // Held keys never enter `in_flight`, so they are re-considered (not retried) next frame.
-    let frozen_set: std::collections::HashSet<u64> = wanted_keys.clone();
-    let live_keys: std::collections::HashSet<u64> = if (fetch_zoom - camera.zoom).abs() > f64::EPSILON
-        && !moon
-    {
-        let live_camera = camera;
-        select::visible(&live_camera, min_zoom, max_zoom)
-            .iter()
-            .map(|t| t.key())
-            .collect()
-    } else {
-        std::collections::HashSet::new()
-    };
-    // Held keys never enter `in_flight`, so they are re-considered (not retried) next frame.
-    let fetch_held = live_keys.difference(&frozen_set).count();
     for tile in center_first(&visible).iter().chain(wash_extra.iter()) {
         let key = tile.key();
         if map.renderer.has_tile(key, generation, &snap_toggles, &snap_kinds)
@@ -350,10 +309,8 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_render<'l>(
             .retain(&keep, &visible, RESIDENT_TILE_CAP, RESIDENT_BYTE_BUDGET);
         map.last_visible = wanted_keys;
     }
-    // `fetch_held` (the hold count from the live-set diff above) plus the drain count
-    // from the drain-and-replace above both land here. Recorded every frame (including
-    // zero) so the overlay row tracks holds rather than going stale.
-    fetch_cancelled += fetch_held;
+    // The drain count from the drain-and-replace above lands here. Recorded every
+    // frame (including zero) so the overlay row tracks discards rather than going stale.
     map.renderer
         .step_times
         .borrow_mut()

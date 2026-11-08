@@ -17,7 +17,6 @@
 //!
 //! Split by domain; each module header names what it holds.
 mod frame;
-mod gesture;
 mod handle;
 mod layers;
 mod lifecycle;

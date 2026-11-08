@@ -4,7 +4,6 @@
 use super::handle::{
     handle_mut, AbsentSet, MapHandle, OnlineFlag, RetryMap, TileResult, ZoomRange, WORKER_COUNT,
 };
-use super::gesture::GestureDebounce;
 use super::log::log;
 use super::workers::spawn_worker;
 use crate::style::{self, LayerToggles, Palette, SharedToggles};
@@ -13,7 +12,7 @@ use crate::tile::source::BASEMAP_ARCHIVE_URL;
 use crate::vulkan::context::{ANativeWindow_acquire, ANativeWindow_fromSurface};
 use crate::vulkan::renderer::Renderer;
 use jni::objects::{JClass, JObject, JString};
-use jni::sys::{jfloat, jint, jlong};
+use jni::sys::{jint, jlong};
 use jni::EnvUnowned;
 use std::collections::HashSet;
 use std::os::raw::c_void;
@@ -156,7 +155,6 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_create<'l>(
         density: 1.0,
         last_zoom: None,
         absent_build_id: 0,
-        gesture: GestureDebounce::new(),
     });
     Box::into_raw(handle) as jlong
 }
@@ -246,26 +244,6 @@ pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_setOnline<'l>(
 ) {
     if let Some(map) = handle_mut(handle) {
         map.online.set(online);
-    }
-}
-
-/// The host's gesture signal: `true` while a finger is down or a fling runs.
-///
-/// Feeds [`GestureDebounce`](super::handle::GestureDebounce): while active the fetch zoom
-/// freezes at the passed level, so a pinch does not churn the wanted set every frame.
-/// Driven from the existing gesture channel (`MapGestures` → `VulkanMapSurface`), which
-/// already invalidates the frame loop on gesture motion — this only steers *fetch*, never
-/// frames, so a missing or late signal degrades to today's behaviour, never to a freeze.
-#[no_mangle]
-pub extern "system" fn Java_com_vayunmathur_library_map_MapNative_setGestureActive<'l>(
-    _env: EnvUnowned<'l>,
-    _class: JClass<'l>,
-    handle: jlong,
-    active: bool,
-    zoom: jfloat,
-) {
-    if let Some(map) = handle_mut(handle) {
-        map.set_gesture_active(active, zoom as f64);
     }
 }
 

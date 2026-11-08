@@ -2,7 +2,6 @@
 //!
 //! Pure move out of `bridge.rs`; no logic changes.
 use crate::style::{Layer, Palette, SharedToggles};
-use crate::bridge::gesture::GestureDebounce;
 use crate::tile::geometry::TileMesh;
 use crate::tile::select::TileId;
 /// Re-exported so `bridge::frame` keeps its `super::handle::RESIDENT_TILE_CAP` path: the
@@ -211,9 +210,6 @@ pub(crate) struct MapHandle {
     /// frame; `None` after a Moon frame, so returning from the Moon always takes the
     /// burst path once rather than comparing against a stale Earth zoom.
     pub(crate) last_zoom: Option<f64>,
-    /// Gesture-debounce fetch state: while a gesture is active the fetch zoom freezes
-    /// (see `GestureDebounce`), so a pinch does not churn the wanted set every frame.
-    pub(crate) gesture: GestureDebounce,
 }
 
 impl MapHandle {
@@ -244,16 +240,6 @@ impl MapHandle {
     /// looking at.
     pub(crate) fn forget_zoom(&mut self) {
         self.last_zoom = None;
-    }
-
-    /// The host's gesture signal: `true` while a finger is down or a fling runs.
-    ///
-    /// Freezes the *fetch* zoom at the current level until release (see
-    /// [`GestureDebounce`]); rendering keeps tracking the live camera. Cheap and
-    /// idempotent — the Kotlin gesture channel drives this, and a redundant set is a
-    /// comparison, not a fetch.
-    pub(crate) fn set_gesture_active(&mut self, active: bool, zoom: f64) {
-        self.gesture.set_active(active, zoom);
     }
 }
 

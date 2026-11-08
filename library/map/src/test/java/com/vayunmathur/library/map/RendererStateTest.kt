@@ -29,7 +29,6 @@ class RendererStateTest {
         r.setPalette(dark = true, muted = true)
         r.setLayers(LayerOptions(poi = true, transit = true))
         r.setOnline(false)
-        r.setGestureActive(true, 1.5f)
         r.setUserPuck(UserPuck(GeoPoint(1.0, 2.0), bearing = 45f))
         r.setMarkers(listOf(MapMarker(1L, GeoPoint(0.0, 0.0), MarkerIcon.SEARCH)))
         r.setVehicles(listOf(MapMarker(2L, GeoPoint(1.0, 1.0), MarkerIcon.VEHICLE_BUS)))
