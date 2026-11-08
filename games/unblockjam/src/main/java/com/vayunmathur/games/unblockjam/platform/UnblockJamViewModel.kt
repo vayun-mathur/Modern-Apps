@@ -170,6 +170,9 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
 
     /**
      * Loads the requested level if it differs from the currently-loaded one.
+     * Reloads even the same level when it was already won, so re-entering a
+     * solved level from the selector restarts it instead of showing a frozen
+     * won board (gestures and Undo/Restart are all disabled once won).
      * Safe to call from a [androidx.compose.runtime.LaunchedEffect] keyed on
      * ([packIndex], [levelIndex]).
      */
@@ -177,7 +180,8 @@ class UnblockJamViewModel(application: Application) : AndroidViewModel(applicati
         val current = _uiState.value
         if (current.packIndex == packIndex &&
             current.levelIndex == levelIndex &&
-            current.currentLevelData != null
+            current.currentLevelData != null &&
+            !current.isLevelWon
         ) return
         val levelData = levelsFor(packIndex)?.getOrNull(levelIndex) ?: return
         _uiState.value = UnblockJamUiState(
