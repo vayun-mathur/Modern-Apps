@@ -313,7 +313,15 @@ private fun applyPwaWebSettings(webView: WebView, ctx: Context) {
     settings.displayZoomControls = false
     settings.useWideViewPort = true
     settings.loadWithOverviewMode = true
-    settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    // Installed sites always run the aggressive shields preset (see createPwaWebViewClient),
+    // which resolves httpsOnly=true: refuse plaintext subresources like the browser tab does
+    // instead of the permissive default.
+    val pwaShields = EffectiveShields.resolve(ShieldsSettings.AGGRESSIVE_DEFAULTS)
+    settings.mixedContentMode = if (pwaShields.httpsOnly) {
+        WebSettings.MIXED_CONTENT_NEVER_ALLOW
+    } else {
+        WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+    }
     settings.setGeolocationEnabled(true)
     @Suppress("DEPRECATION")
     runCatching {

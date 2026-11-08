@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -184,6 +185,18 @@ class ChromeGrantAndPwaDownloadTest {
         // an exception (and with an intent or enqueue recorded) is the behavior.
         val dm = shadowOf(context.getSystemService(android.app.DownloadManager::class.java))
         assertNotNull(dm)
+    }
+
+    @Test fun pwaWebViewBlocksMixedContentPerAggressiveShields() {
+        // PWA windows always run the aggressive shields preset (httpsOnly=true),
+        // so the WebView must refuse plaintext subresources like the browser tab does.
+        rule.setContent {
+            com.vayunmathur.web.platform.PwaBrowser(initialUrl = "https://pwa.example/app", title = "PWA")
+        }
+        rule.waitForIdle()
+        val webView = findWebView(rule.activity.window.decorView)
+        assertNotNull(webView)
+        assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW, webView.settings.mixedContentMode)
     }
 
     @Test fun pwaBackPressFinishesWhenNoHistory() {
