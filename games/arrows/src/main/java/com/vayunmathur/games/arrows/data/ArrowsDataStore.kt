@@ -85,12 +85,21 @@ class ArrowsDataStore(private val context: Context) {
         }
     }
 
-    /** Bumps and returns the lifetime cleared count. */
-    suspend fun recordCleared(): Int {
-        var total = 0
+    /**
+     * Counts one cleared board, unless [key] was already banked.
+     *
+     * The check and the bump share one edit, so a won board replaying through a fresh ViewModel
+     * after process death — or two collectors firing at once — cannot count it twice. Returns the
+     * new total, or null if [key] was already counted.
+     */
+    suspend fun recordClearedOnce(key: Long): Int? {
+        var total: Int? = null
         context.dataStore.edit { prefs ->
-            total = (prefs[CLEARED_KEY] ?: 0) + 1
-            prefs[CLEARED_KEY] = total
+            if (prefs[BANKED_KEY] == key) return@edit
+            val next = (prefs[CLEARED_KEY] ?: 0) + 1
+            prefs[BANKED_KEY] = key
+            prefs[CLEARED_KEY] = next
+            total = next
         }
         return total
     }
@@ -112,6 +121,8 @@ class ArrowsDataStore(private val context: Context) {
 
     private companion object {
         val LEVEL_KEY = intPreferencesKey("current_level")
+        /** The clear key already banked; guards the lifetime counter across process death. */
+        val BANKED_KEY = longPreferencesKey("last_banked_clear")
         val REMOVED_KEY = stringSetPreferencesKey("removed_arrows")
         val HEARTS_KEY = intPreferencesKey("hearts")
         val GAME_MODE_KEY = stringPreferencesKey("game_mode")

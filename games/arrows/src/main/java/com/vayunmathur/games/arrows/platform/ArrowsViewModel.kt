@@ -339,17 +339,18 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
      * The one place a cleared board is recorded.
      *
      * Reached from the progress collector, so it can fire more than once for the same board as
-     * unrelated flows re-emit. Everything it touches is idempotent for a given day, except the
-     * lifetime counter, so that is guarded by [recordedClear].
+     * unrelated flows re-emit — and on a fresh ViewModel after process death, when the collector
+     * replays onto the still-persisted won board. The banked key in [ArrowsDataStore] makes the
+     * count exactly-once across all of those: the check and the bump are one atomic edit, which
+     * an in-memory guard could never be.
      */
     private fun onCleared(game: ArrowsGameState, daily: Boolean, day: Long) {
         // Daily clears are keyed by day and casual ones by negated level, which cannot collide.
         val key = if (daily) day else -game.level.toLong()
-        if (recordedClear == key) return
-        recordedClear = key
 
         viewModelScope.launch {
-            val total = dataStore.recordCleared()
+            // Null means this board was already banked — a replayed win, not a new clear.
+            val total = dataStore.recordClearedOnce(key) ?: return@launch
             val manager = achievementsManager
             manager.onAchievementUnlocked("first_board")
             if (game.hearts == STARTING_HEARTS) manager.onAchievementUnlocked("flawless")
@@ -366,9 +367,6 @@ class ArrowsViewModel(application: Application) : AndroidViewModel(application),
             }
         }
     }
-
-    /** Which clear has already been banked, so a re-emitted flow cannot double-count it. */
-    private var recordedClear: Long? = null
 
     companion object {
         /** Namespace shared by the daily-challenge store and its reminder. */
