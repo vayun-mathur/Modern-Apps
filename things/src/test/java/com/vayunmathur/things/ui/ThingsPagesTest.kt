@@ -45,7 +45,7 @@ class ThingsPagesTest {
                 scaleAge = "30", scaleHeight = "175", scaleAthlete = false,
                 onScaleSexChange = {}, onScaleAgeChange = {}, onScaleHeightChange = {},
                 onScaleAthleteChange = {}, onForgetBottle = onForgetBottle, onForgetScale = {},
-                onResetScale = {}, onHealthConnectClick = {}, onOpenDevices = onOpenDevices,
+                onResetScale = {}, onOpenDevices = onOpenDevices,
             )
         }
     }

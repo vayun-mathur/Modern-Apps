@@ -52,7 +52,6 @@ class MetadataPreviews {
                 onForgetBottle = {},
                 onForgetScale = {},
                 onResetScale = {},
-                onHealthConnectClick = {},
                 onOpenDevices = {},
             )
         }
@@ -122,7 +121,6 @@ class MetadataPreviews {
                 onForgetBottle = {},
                 onForgetScale = {},
                 onResetScale = {},
-                onHealthConnectClick = {},
                 onOpenDevices = {},
             )
         }

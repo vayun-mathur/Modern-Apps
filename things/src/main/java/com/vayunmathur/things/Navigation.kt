@@ -28,7 +28,6 @@ fun Navigation(
     onScaleScanClick: () -> Unit,
     onScaleDeviceClick: (ScaleBleManager.ScaleBleDevice) -> Unit,
     onForgetScale: () -> Unit,
-    onHealthConnectClick: () -> Unit,
 ) {
     // Home is always the root. Devices are powered off most of the time, so gating the landing
     // screen on a live connection would strand the user on a device-picker almost every launch.
@@ -39,7 +38,6 @@ fun Navigation(
             HomeEntry(
                 onForgetBottle = onForgetBottle,
                 onForgetScale = onForgetScale,
-                onHealthConnectClick = onHealthConnectClick,
                 onOpenDevices = { backStack.add(Route.Devices) },
             )
         }
@@ -63,7 +61,6 @@ fun Navigation(
 private fun HomeEntry(
     onForgetBottle: () -> Unit,
     onForgetScale: () -> Unit,
-    onHealthConnectClick: () -> Unit,
     onOpenDevices: () -> Unit,
 ) {
     HomePage(
@@ -103,7 +100,6 @@ private fun HomeEntry(
         onForgetBottle = onForgetBottle,
         onForgetScale = onForgetScale,
         onResetScale = { DeviceController.requestScaleReset() },
-        onHealthConnectClick = onHealthConnectClick,
         onOpenDevices = onOpenDevices,
     )
 }
