@@ -36,13 +36,16 @@ internal fun MapPageScope.MapSheets(
             SearchSheet(
                 searchState,
                 searchActions,
-                // Ride above the keyboard: the field keeps focus while typing, so
-                // without IME padding the keys cover the results being typed for.
-                Modifier.padding(top = Spacing.sm).imePadding(),
+                Modifier.padding(top = Spacing.sm),
             )
         }
     },
-        Modifier,
+        // Ride above the keyboard: the scaffold anchors its sheet to the
+        // bottom of its own layout area, so IME padding has to shrink that
+        // area (here) rather than pad inside the sheet content — padding
+        // inside only moved the field up within a sheet the keyboard still
+        // covered. Applied in maps, not library/ui (which bans imePadding).
+        Modifier.imePadding(),
         sheet,
         // Roughly a third of the room the sheet has: enough to open on the field, the chips and
         // the first result or two, and no more. This is a floor as much as an opening height —
