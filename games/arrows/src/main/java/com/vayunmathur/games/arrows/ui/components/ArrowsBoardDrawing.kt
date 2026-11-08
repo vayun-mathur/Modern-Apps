@@ -166,8 +166,8 @@ internal fun routePoint(route: List<Int>, at: Float, cols: Int, cell: Float): Of
 /**
  * One arrow: its body as a single joined stroke, and an arrowhead at the head.
  *
- * The stroke runs through cell centres, and a turn in the polyline is drawn as a rounded arc (see
- * [arrowBodyPath]) rather than a sharp corner. The tip reaches past the head's centre by
+ * The stroke runs through cell centres, and a turn in the polyline is drawn as a rounded arc
+ * (see [arrowBodyPath]) rather than a sharp corner. The tip reaches past the head's centre by
  * [HEAD_REACH] to leave room for the barbs while staying inside its own cell rather than poking
  * into the next one.
  */
@@ -181,15 +181,15 @@ internal fun DrawScope.drawArrow(piece: ArrowPiece, cols: Int, cell: Float, colo
  * The body path through [points] (cell centres, ending at the arrow tip), with every turn
  * replaced by a rounded quarter-circle arc.
  *
- * The arc's radius follows the grid: half a cell, the largest quarter circle that fits inside
- * one cell, so a turn reads as the arrow bending around the corner cell instead of pivoting on
- * its centre. It is clamped to half the shorter neighbouring segment so two arcs on adjacent
- * corners of a short hop can never overlap and swallow the straight between them; a straight
- * (collinear) point keeps a plain line, and a degenerate zero-length neighbour is skipped.
+ * The arc radius follows the grid: half a cell, the largest quarter circle that fits inside one
+ * cell, so a turn reads as the arrow bending around the corner cell instead of pivoting on its
+ * centre. It is clamped to half the shorter neighbouring segment so two arcs on adjacent corners
+ * of a short hop can never overlap and swallow the straight between them; a straight (collinear)
+ * point keeps a plain line, and a degenerate zero-length neighbour is skipped.
  *
- * Quadratic curves stand in for the circular arc: with the control point on the corner itself
- * the curve leaves one straight tangentially and joins the next the same way, which at stroke
- * width is indistinguishable from the true arc while needing no angle bookkeeping per turn.
+ * Quadratic curves stand in for the circular arc: with the control point on the corner itself the
+ * curve leaves one straight tangentially and joins the next the same way, which at stroke width is
+ * indistinguishable from the true arc while needing no angle bookkeeping per turn.
  */
 internal fun arrowBodyPath(points: List<Offset>, cell: Float): Path {
     val path = Path()
