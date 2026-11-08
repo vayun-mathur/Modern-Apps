@@ -88,6 +88,11 @@ class VideoEditViewModel(
     private var pendingExportUri: Uri? = null
     private var pendingOnComplete: (() -> Unit)? = null
 
+    // The transformer's in-flight output. Tracked so cancel/clear can delete
+    // it: Transformer.cancel() fires no listener callback, so the listener's
+    // own tempFile.delete() never runs on that path.
+    private var activeExportFile: File? = null
+
     /** Loads [id]'s video from the DB, falling back to a stand-in built from [initialUri]. */
     fun loadVideo(id: Long, initialUri: String?) {
         photoJob?.cancel()
@@ -209,6 +214,7 @@ class VideoEditViewModel(
         if (_exporting.value) return
         val state = _state.value
         val tempFile = File(context.cacheDir, "video_edit_${System.currentTimeMillis()}.mp4")
+        activeExportFile = tempFile
         val mediaItem = buildMediaItem(photo.uri.toUri(), state)
         val editedItem = EditedMediaItem.Builder(mediaItem)
             .setRemoveAudio(state.muted)
@@ -219,6 +225,7 @@ class VideoEditViewModel(
             .addListener(object : Transformer.Listener {
                 override fun onCompleted(composition: Composition, exportResult: ExportResult) {
                     stopProgress()
+                    activeExportFile = null
                     finishExport(context, photo, asCopy, tempFile, onComplete)
                 }
 
@@ -230,6 +237,7 @@ class VideoEditViewModel(
                     Log.error(TAG, "Export failed", exportException)
                     stopProgress()
                     tempFile.delete()
+                    activeExportFile = null
                     _exporting.value = false
                     onComplete()
                 }
@@ -238,7 +246,20 @@ class VideoEditViewModel(
         transformer = t
         _exporting.value = true
         _progress.value = 0f
-        t.start(editedItem, tempFile.absolutePath)
+        try {
+            t.start(editedItem, tempFile.absolutePath)
+        } catch (e: Exception) {
+            // Synchronous start failure (e.g. the source URI vanished): no
+            // listener callback will ever arrive, so tear down here or the
+            // UI sits on a progress dialog that never resolves.
+            Log.error(TAG, "Export start failed", e)
+            tempFile.delete()
+            activeExportFile = null
+            transformer = null
+            _exporting.value = false
+            onComplete()
+            return
+        }
         startProgress()
     }
 
@@ -265,6 +286,8 @@ class VideoEditViewModel(
     fun cancelExport() {
         transformer?.cancel()
         stopProgress()
+        activeExportFile?.delete()
+        activeExportFile = null
         pendingExportFile?.delete()
         pendingExportFile = null
         pendingExportUri = null
@@ -296,6 +319,7 @@ class VideoEditViewModel(
                 }
                 is WriteResult.Error -> {
                     Log.error(TAG, "Save failed", result.exception)
+                    tempFile.delete()
                     _exporting.value = false
                     onComplete()
                 }
@@ -346,6 +370,7 @@ class VideoEditViewModel(
         progressJob?.cancel()
         transformer?.cancel()
         transformer = null
+        activeExportFile?.delete()
         pendingExportFile?.delete()
     }
 

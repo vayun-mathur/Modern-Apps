@@ -35,6 +35,7 @@ import com.vayunmathur.photos.ui.EditorMode
 import com.vayunmathur.photos.ui.LayersPanel
 import com.vayunmathur.photos.util.LayerCompositor
 import com.vayunmathur.photos.util.VideoEditViewModel
+import com.vayunmathur.photos.util.pass3Photo
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -196,6 +197,20 @@ class Slice2Pass2LogicTest {
         }
         vm.onWritePermissionDenied()
         vm.cancelExport()
+    }
+
+    @Test fun exportStartFailureResetsStateAndLeavesNoTempFile() {
+        val vm = VideoEditViewModel(app, PhotosRepository.get(app))
+        var completed = false
+        // Unknown content URI: Transformer.start() throws synchronously.
+        vm.export(app, pass3Photo(1, "clip.mp4"), true) { completed = true }
+        assertTrue(completed, "onComplete must fire on unrecoverable failure")
+        assertFalse(vm.exporting.value)
+        val orphans = app.cacheDir.listFiles { f -> f.name.startsWith("video_edit_") } ?: emptyArray()
+        assertTrue(orphans.isEmpty(), "failed export must leave no temp file")
+        // Cancel stays a safe no-op after a failed start.
+        vm.cancelExport()
+        assertFalse(vm.exporting.value)
     }
 
     // ---- Overlays / canvas / layers panel ----
