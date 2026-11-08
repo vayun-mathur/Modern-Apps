@@ -3,6 +3,11 @@
 
     <!-- The projection session outlives any activity: it is bound to the cable or the wireless
          link, not to a screen the user is looking at. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

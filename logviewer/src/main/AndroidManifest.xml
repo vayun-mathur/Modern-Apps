@@ -12,6 +12,11 @@
          READ_OEM_UNLOCK_STATE backs the "bootloader unlocked" flag and QUERY_USERS backs the
          "userType:" line in every report header; dropping either would silently change the output
          of the app we are replacing. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.READ_LOGS" />
     <!-- tools:ignore because lint's SystemPermissionTypo check thinks this is a misspelling of
          READ_LOGS and offers to "correct" it. It is not: READ_LOGS_FULL is a real GrapheneOS

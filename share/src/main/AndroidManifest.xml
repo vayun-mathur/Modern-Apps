@@ -17,6 +17,11 @@
       ACCESS_FINE_LOCATION: minSdk is 31, so the pre-Android-12 location-backed scan fallback
       is unreachable and nothing here needs to derive position.
     -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission

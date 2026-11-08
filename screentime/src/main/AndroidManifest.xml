@@ -14,6 +14,11 @@
       ro.control_privapp_permissions=enforce.
     -->
     <!-- Pauses apps whose timer ran out or that focus mode covers. Arrives via the role. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.SUSPEND_APPS" />
     <!-- Friction sheets and the expired-timer screen draw over the opening app. Via the role. -->
     <uses-permission android:name="android.permission.SYSTEM_APPLICATION_OVERLAY" />

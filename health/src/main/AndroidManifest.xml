@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Offline app (#884): androidx.work merges in ACCESS_NETWORK_STATE, which nothing here uses. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
 

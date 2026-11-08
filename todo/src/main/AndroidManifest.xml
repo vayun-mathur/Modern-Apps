@@ -4,6 +4,11 @@
     <!-- Task reminders and the daily summary. USE_EXACT_ALARM is install-granted on API 33+;
         SCHEDULE_EXACT_ALARM covers 31-32. The scheduler still checks canScheduleExactAlarms()
         and falls back to inexact alarms. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM"

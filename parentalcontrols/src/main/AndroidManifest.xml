@@ -15,6 +15,11 @@
     -->
     <!-- Lets us call SupervisionManager.setPolicy/getPolicies, which is how a decision reaches
          the platform at all. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.MANAGE_SUPERVISION" />
     <!-- Reads per-app foreground time so a daily cap can resume mid-day after a reboot instead
          of handing back a fresh budget. This is an appop, not a role grant: it is declared here

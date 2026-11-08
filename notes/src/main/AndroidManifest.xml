@@ -5,6 +5,11 @@
     <!-- No network, deliberately: local notes only. :library:image merges in
          INTERNET (its HttpFetcher) and ACCESS_NETWORK_STATE, neither
          of which this app uses, so both are stripped here like music/ does. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 

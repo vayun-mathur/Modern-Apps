@@ -24,6 +24,11 @@
       a dialer.
     -->
     <!-- Countdown vibration waveform during the SOS countdown. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- The SOS receiver fires the call broadcast from the background alarm. -->
     <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />

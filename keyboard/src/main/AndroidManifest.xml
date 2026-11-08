@@ -3,6 +3,11 @@
 
     <!-- Dictation (long-press on enter). Requested at that point by VoicePermissionActivity,
          never at startup: an IME cannot show a runtime permission dialog itself. -->
+    <!-- MAOS: opt out of the GrapheneOS Sensors permission (OTHER_SENSORS). -->
+    <!-- This app uses no motion/environment sensors; MAOS withholds the -->
+    <!-- Sensors permission at install instead of auto-granting it. -->
+    <uses-permission android:name="com.vayunmathur.permission.SENSORS_OPTOUT" />
+
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- SpeechRecognizer.isRecognitionAvailable() and the bind behind it both need to see the
