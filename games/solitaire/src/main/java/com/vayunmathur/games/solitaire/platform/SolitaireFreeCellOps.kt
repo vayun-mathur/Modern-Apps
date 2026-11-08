@@ -182,11 +182,7 @@ internal fun SolitaireViewModel.handleFreeCellDropImpl(sourceId: String, targetI
     when {
         targetId.startsWith("freecell_") -> {
             val ci = targetId.removePrefix("freecell_").toInt()
-            // A free cell holds one card, so only a single-card drag may
-            // land here. Without this guard a multi-card drag dropped on
-            // a cell silently moved the pile's top card instead of the
-            // stack the player actually grabbed.
-            if (isSingleCardDrag(sourceId) && sourceId.startsWith("tableau_")) {
+            if (sourceId.startsWith("tableau_")) {
                 val col = sourceId.removePrefix("tableau_").substringBefore("_").toInt()
                 freeCellMoveToFreeCell(col, ci)
             }
@@ -225,24 +221,37 @@ internal fun SolitaireViewModel.handleFreeCellDropImpl(sourceId: String, targetI
 }
 
 internal fun SolitaireViewModel.freeCellAutoMoveImpl(sourceId: String) {
-    planFreeCellAutoMove(sourceId)?.apply?.invoke()
+    val targetId = resolveFreeCellAutoMoveTarget(sourceId) ?: return
+    handleFreeCellDropImpl(sourceId, targetId)
 }
 
 /**
- * The auto-move a tap on [sourceId] would make, decided without applying
- * it: the destination pile id plus the move itself. Tap-to-move animation
- * needs the destination (and its on-screen rectangle) before anything
- * moves; the instant path simply applies the plan.
+ * The destination [freeCellAutoMoveImpl] would take [sourceId] to — a foundation
+ * first, then a viable tableau column, then an empty cell — as a drop-target id,
+ * or null when there is no legal move. Pure: resolves without moving anything, so
+ * both the instant auto-move and the staged flight commit through the same drop
+ * handler.
  */
-internal fun SolitaireViewModel.planFreeCellAutoMove(sourceId: String): PlannedMove? {
+internal fun SolitaireViewModel.resolveFreeCellAutoMoveTarget(sourceId: String): String? {
     val state = uiStateInternal.value.freeCell ?: return null
     if (state.isWon) return null
     val cards = draggedCards(sourceId)
     if (cards.isEmpty()) return null
     val origin = freeCellMoveOrigin(sourceId) ?: return null
-    return planFoundationMove(state, cards, origin)
-        ?: planTableauMove(state, cards, origin)
-        ?: planEmptyCellMove(state, cards, origin)
+    if (cards.size == SINGLE_CARD) {
+        for (fi in state.foundations.indices) {
+            if (canPlaceOnFoundation(cards.first(), state.foundations[fi], fi)) return "foundation_$fi"
+        }
+    }
+    state.tableauPiles.indices.firstOrNull { toCol ->
+        toCol != origin.fromCol && isViableTableauTarget(state, cards, origin, toCol)
+    }?.let { return "tableau_$it" }
+    // Empty free cell — last resort for a single card off a tableau column.
+    if (cards.size == SINGLE_CARD && origin.fromCol != null) {
+        val emptyCell = state.freeCells.indexOfFirst { it == null }
+        if (emptyCell >= 0) return "freecell_$emptyCell"
+    }
+    return null
 }
 
 private data class FreeCellMoveOrigin(val fromCol: Int?, val fromIdx: Int, val fromCell: Int?)
@@ -266,47 +275,6 @@ private fun freeCellMoveOrigin(sourceId: String): FreeCellMoveOrigin? {
     return null
 }
 
-private fun SolitaireViewModel.planFoundationMove(
-    state: FreeCellState,
-    cards: List<Card>,
-    origin: FreeCellMoveOrigin,
-): PlannedMove? {
-    if (cards.size != SINGLE_CARD) return null
-    val topCard = cards.first()
-    for (fi in state.foundations.indices) {
-        if (!canPlaceOnFoundation(topCard, state.foundations[fi], fi)) continue
-        return when {
-            origin.fromCell != null -> PlannedMove("foundation_$fi") {
-                freeCellMoveFreeCellToFoundation(origin.fromCell, fi)
-            }
-            origin.fromCol != null -> PlannedMove("foundation_$fi") {
-                freeCellMoveTableauToFoundation(origin.fromCol, fi)
-            }
-            else -> return null
-        }
-    }
-    return null
-}
-
-private fun SolitaireViewModel.planTableauMove(
-    state: FreeCellState,
-    cards: List<Card>,
-    origin: FreeCellMoveOrigin,
-): PlannedMove? {
-    val target = state.tableauPiles.indices.firstOrNull { toCol ->
-        toCol != origin.fromCol && isViableTableauTarget(state, cards, origin, toCol)
-    } ?: return null
-    return when {
-        origin.fromCell != null -> PlannedMove("tableau_$target") {
-            freeCellMoveFromFreeCell(origin.fromCell, target)
-        }
-        origin.fromCol != null -> PlannedMove("tableau_$target") {
-            freeCellMoveTableauToTableau(origin.fromCol, origin.fromIdx, target)
-        }
-        else -> null
-    }
-}
-
 private fun isLoneCardChurn(
     state: FreeCellState,
     cards: List<Card>,
@@ -328,18 +296,6 @@ private fun SolitaireViewModel.isViableTableauTarget(
     if (!canPlaceOnFreeCellTableau(cards.first(), toPile)) return false
     // Skip moving a lone card between empty columns — pointless churn.
     return !isLoneCardChurn(state, cards, origin, toPile)
-}
-
-private fun SolitaireViewModel.planEmptyCellMove(
-    state: FreeCellState,
-    cards: List<Card>,
-    origin: FreeCellMoveOrigin,
-): PlannedMove? {
-    // Empty free cell — last resort for a single card off a tableau column.
-    if (cards.size != SINGLE_CARD || origin.fromCol == null) return null
-    val emptyCell = state.freeCells.indexOfFirst { it == null }
-    if (emptyCell < 0) return null
-    return PlannedMove("freecell_$emptyCell") { freeCellMoveToFreeCell(origin.fromCol, emptyCell) }
 }
 
 internal const val SINGLE_CARD = 1

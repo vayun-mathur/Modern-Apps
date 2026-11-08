@@ -95,91 +95,7 @@ internal fun SolitaireViewModel.candidateDropTargets(dropOffset: Offset, cardSiz
     return dropTargets.entries.filter { (_, rect) -> rect.contains(dropOffset) }.map { it.key }
 }
 
-/**
- * An auto-move decided by a plan function but not yet applied: [targetId]
- * is the destination pile (the id its drop target registers under) and
- * [apply] performs the move. Planning separately from applying is what
- * lets tap-to-move animate: the flight needs the destination rectangle
- * before the state changes.
- */
-internal class PlannedMove(val targetId: String, val apply: () -> Unit)
-
-/** How long a tap-to-move flight travels, milliseconds. */
-internal const val TAP_MOVE_MILLIS = 190
-
-/** How long one autocomplete flight travels, milliseconds. */
-internal const val AUTO_COMPLETE_STEP_MILLIS = 70
-
-/** Pause between autocomplete flights, milliseconds. */
-internal const val AUTO_COMPLETE_GAP_MILLIS = 15
-
 // --- Tap to move (auto) ---
-
-/**
- * Animated tap-to-move: plan the move, fly the card(s) from the tapped
- * card's rectangle to the destination pile, and apply the move only when
- * the flight lands. While a flight runs, further animated moves (and
- * undo, guarded in the ViewModel) are ignored so state cannot change
- * underneath a travelling card. Without a usable source or destination
- * rectangle (a preview, or a pile scrolled off screen) the move applies
- * instantly, exactly like [autoMoveImpl].
- */
-internal fun SolitaireViewModel.autoMoveAnimatedImpl(sourceId: String, from: Offset, cardSize: IntSize) {
-    if (isMoveAnimating()) return
-    val plan = when (uiStateInternal.value.gameMode) {
-        GameMode.KLONDIKE -> planKlondikeAutoMove(sourceId)
-        GameMode.FREECELL -> planFreeCellAutoMove(sourceId)
-        else -> null
-    } ?: return
-    val fromRect = when {
-        cardSize.width > 0 && cardSize.height > 0 ->
-            Rect(from, androidx.compose.ui.geometry.Size(cardSize.width.toFloat(), cardSize.height.toFloat()))
-        else -> cardPositions[sourceId]
-    }
-    val pileRect = dropTargets[plan.targetId]
-    if (fromRect == null || pileRect == null) {
-        plan.apply()
-        return
-    }
-    val flight = AnimatedMove(
-        id = nextAnimationId(),
-        cards = draggedCards(sourceId),
-        sourceId = sourceId,
-        targetId = plan.targetId,
-        from = fromRect,
-        to = landingRect(plan.targetId, pileRect, fromRect),
-        durationMillis = TAP_MOVE_MILLIS,
-    )
-    animatedMoveInternal.value = flight
-    launchMoveAnimation {
-        kotlinx.coroutines.delay(TAP_MOVE_MILLIS.toLong())
-        plan.apply()
-        animatedMoveInternal.value = null
-    }
-}
-
-/**
- * Where a flight lands inside its destination pile. Foundation and free
- * cell piles are exactly one card, so the pile rectangle is the landing
- * rectangle; a tableau pile's rectangle spans the whole column, and the
- * new card lands on its bottom edge.
- */
-internal fun landingRect(targetId: String, pileRect: Rect, cardRect: Rect): Rect =
-    if (targetId.startsWith("tableau_")) {
-        Rect(
-            left = pileRect.left,
-            top = pileRect.bottom - cardRect.height,
-            right = pileRect.left + cardRect.width,
-            bottom = pileRect.bottom,
-        )
-    } else {
-        Rect(
-            left = pileRect.left,
-            top = pileRect.top,
-            right = pileRect.left + cardRect.width,
-            bottom = pileRect.top + cardRect.height,
-        )
-    }
 
 internal fun SolitaireViewModel.autoMoveImpl(sourceId: String) {
     when (uiStateInternal.value.gameMode) {
@@ -194,7 +110,9 @@ internal fun SolitaireViewModel.autoMoveImpl(sourceId: String) {
  * Returns false (and starts nothing) when that source holds no card.
  */
 internal fun SolitaireViewModel.startDragImpl(sourceId: String, startPos: Offset, cardSize: IntSize): Boolean {
-    if (isMoveAnimating()) return false
+    // No drag may start under a travelling flight: the cards live in game
+    // state until the flight lands, so a mid-flight drag would corrupt both.
+    if (flightInfoInternal.value != null) return false
     val cards = draggedCards(sourceId)
     if (cards.isEmpty()) {
         dragInfoInternal.value = null

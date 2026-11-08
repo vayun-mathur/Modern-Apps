@@ -54,7 +54,7 @@ fun FreeCellBoard(state: FreeCellState, actions: SolitaireActions, modifier: Mod
         }
 
         DragOverlay(actions, cardWidth, cardHeight)
-        AnimatedMoveOverlay(actions, cardWidth, cardHeight)
+        CardFlightOverlay(actions, cardWidth, cardHeight)
         }
     }
 }

@@ -3,6 +3,7 @@ package com.vayunmathur.games.solitaire.platform
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntSize
+import com.vayunmathur.games.solitaire.data.Card
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -21,8 +22,24 @@ interface SolitaireActions {
     /** The drag in flight, or null. A preview has none, which is why the default is empty. */
     val dragInfo: StateFlow<DragInfo?> get() = NoDrag
 
+    /**
+     * A tap-to-move travelling to its destination, or null. The overlay animates it;
+     * the move itself commits only when the flight lands.
+     */
+    val flightInfo: StateFlow<CardFlight?> get() = NoFlight
+
     /** Drop zones, registered by the piles as they are laid out. */
     val dropTargets: MutableMap<String, Rect> get() = DiscardedDropTargets
+
+    /** True while an animated auto-complete run is in flight. A preview never runs one. */
+    val autoCompleteRunning: StateFlow<Boolean> get() = NoAutoComplete
+
+    /**
+     * Records where [card] was last laid out in root coordinates, so the animated
+     * auto-complete can fly it from there. Positions for cards never laid out (in
+     * the stock) are simply absent, and those steps apply instantly.
+     */
+    fun registerCardPosition(card: Card, position: Offset) {}
 
     fun startDrag(sourceId: String, startPos: Offset, cardSize: IntSize = IntSize.Zero): Boolean = false
     fun updateDrag(offset: Offset) {}
@@ -43,31 +60,19 @@ interface SolitaireActions {
      */
     fun autoMove(sourceId: String) {}
 
-    /** The tap/autocomplete card flight currently on screen, or null. */
-    val animatedMove: StateFlow<AnimatedMove?> get() = NoAnimatedMove
-
     /**
-     * On-screen rectangles of individual cards, keyed by the same source ids
-     * drags use, registered by the card widgets as they are laid out. The
-     * autocomplete cascade reads the source rectangle of each card it sends
-     * to a foundation from here.
+     * Animated tap-to-move: resolves the best legal destination for [sourceId] and
+     * stages the flight from [startPos], which the overlay animates before committing.
+     * Returns false (and stages nothing) when there is no legal move or a flight is
+     * already active. Klondike and FreeCell only, like [autoMove].
      */
-    val cardPositions: MutableMap<String, Rect> get() = DiscardedCardPositions
+    fun requestAutoMove(sourceId: String, startPos: Offset): Boolean = false
 
-    /**
-     * Animated tap-to-move: like [autoMove], but the card (or stack) flies
-     * from [from] (root coordinates of the tapped card, [cardSize] its size)
-     * to its destination before the move is applied. The default applies
-     * the move instantly, which is what previews want.
-     */
-    fun autoMoveAnimated(sourceId: String, from: Offset, cardSize: IntSize) { autoMove(sourceId) }
+    /** Lands the staged flight, performing its move. A no-op without one. */
+    fun commitFlight() {}
 
-    /**
-     * Animated autocomplete: the same completion as [klondikeAutoComplete],
-     * played as a rapid cascade of flights to the foundations. The default
-     * completes instantly, which is what previews want.
-     */
-    fun klondikeAutoCompleteAnimated() { klondikeAutoComplete() }
+    /** Drops the staged flight without moving anything. */
+    fun cancelFlight() {}
 
     fun undo() {}
     fun restart() {}
@@ -79,12 +84,9 @@ interface SolitaireActions {
 }
 
 private val NoDrag: StateFlow<DragInfo?> = MutableStateFlow(null)
-
-private val NoAnimatedMove: StateFlow<AnimatedMove?> = MutableStateFlow(null)
+private val NoFlight: StateFlow<CardFlight?> = MutableStateFlow(null)
+private val NoAutoComplete: StateFlow<Boolean> = MutableStateFlow(false)
 
 /** Somewhere for a [SolitaireActions.Noop] board to register its drop zones and forget them. */
 private val DiscardedDropTargets: MutableMap<String, Rect> = mutableMapOf()
-
-/** Somewhere for a [SolitaireActions.Noop] board to register card positions and forget them. */
-private val DiscardedCardPositions: MutableMap<String, Rect> = mutableMapOf()
 

@@ -26,9 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.vayunmathur.games.solitaire.data.Card
 import com.vayunmathur.games.solitaire.platform.SolitaireActions
-import com.vayunmathur.games.solitaire.platform.hides
-import com.vayunmathur.library.ui.Motion
-import com.vayunmathur.library.ui.animatedFloat
 
 /**
  * A card the player can pick up. [sourceId] identifies the pile position it comes from;
@@ -47,25 +44,25 @@ fun DraggableCard(
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     var startPos by remember { mutableStateOf(Offset.Zero) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
-    val flight by actions.animatedMove.collectAsState()
-
-    // Registered so the autocomplete cascade knows where this card sits.
-    DisposableEffect(sourceId) {
-        onDispose { actions.cardPositions.remove(sourceId) }
+    // Hidden while a staged flight covers this card, so the flight — not a
+    // duplicate underneath — is what the player sees travelling.
+    val flight by actions.flightInfo.collectAsState()
+    val isFlying = flight?.cards?.contains(card) == true
+    // Feeds the animated auto-complete its launch points; unlaid cards (the stock)
+    // stay absent and fly instantly instead.
+    LaunchedEffect(card, startPos) {
+        if (startPos != Offset.Zero) actions.registerCardPosition(card, startPos)
     }
+
     Box(
         modifier = modifier
             .onGloballyPositioned { coords ->
                 startPos = coords.positionInRoot()
                 cardSize = coords.size
-                actions.cardPositions[sourceId] = androidx.compose.ui.geometry.Rect(
-                    startPos.x, startPos.y,
-                    startPos.x + cardSize.width, startPos.y + cardSize.height
-                )
             }
             .pointerInput(card, sourceId) {
                 detectTapGestures(
-                    onTap = { actions.autoMoveAnimated(sourceId, startPos, cardSize) },
+                    onTap = { actions.requestAutoMove(sourceId, startPos) },
                 )
             }
             .pointerInput(card, sourceId) {
@@ -93,9 +90,7 @@ fun DraggableCard(
                 )
             }
             .graphicsLayer {
-                // Hidden while a drag carries the card, and while an
-                // animated flight carries it (the overlay draws it).
-                if (isDragging || flight?.hides(sourceId) == true) alpha = 0f
+                if (isDragging || isFlying) alpha = 0f
             }
     ) {
         content()
@@ -168,58 +163,6 @@ fun DropTarget(
         }
     ) {
         content()
-    }
-}
-
-/**
- * Draws the card(s) of the current animated flight travelling from their
- * source pile to their destination. Progress runs on the shared motion
- * scheme ([Motion.over] over the flight's own duration); the ViewModel
- * applies the move and clears the flight when the duration elapses, so
- * the travelling copy hands over to the real card at the destination.
- */
-@Composable
-fun AnimatedMoveOverlay(
-    actions: SolitaireActions,
-    cardWidth: Dp,
-    cardHeight: Dp,
-    modifier: Modifier = Modifier
-) {
-    val flight by actions.animatedMove.collectAsState()
-    var overlayPos by remember { mutableStateOf(Offset.Zero) }
-
-    val faceUpOverlap = 22.dp
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .zIndex(Float.MAX_VALUE)
-            .onGloballyPositioned { coords ->
-                overlayPos = coords.positionInRoot()
-            }
-    ) {
-        val current = flight ?: return@Box
-        var started by remember(current.id) { mutableStateOf(false) }
-        LaunchedEffect(current.id) { started = true }
-        val progress = animatedFloat(
-            target = if (started) 1f else 0f,
-            spec = Motion.over(current.durationMillis),
-        )
-        val x = current.from.left + (current.to.left - current.from.left) * progress
-        val y = current.from.top + (current.to.top - current.from.top) * progress
-        val relX = (x - overlayPos.x).toInt()
-        val relY = (y - overlayPos.y).toInt()
-
-        Box(modifier = Modifier.offset { IntOffset(relX, relY) }) {
-            current.cards.forEachIndexed { index, card ->
-                CardFace(
-                    card = card,
-                    modifier = Modifier.offset(y = faceUpOverlap * index),
-                    cardWidth = cardWidth,
-                    cardHeight = cardHeight
-                )
-            }
-        }
     }
 }
 

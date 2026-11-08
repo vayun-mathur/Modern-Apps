@@ -34,6 +34,8 @@
 
     <!-- MainActivity: Button to auto-complete Klondike when all tableau faceDown empty and not won. Verb phrase CTA -->
     <string name="auto_complete">Auto Complete</string>
+    <!-- GameBoardScreen: Button label replacing Auto Complete while the animation runs; tapping finishes instantly. Verb -->
+    <string name="skip">Skip</string>
 
     <!-- HomeScreen: Label under won/played ratio on per-mode stat card. Verb past -->
     <string name="won">won</string>
