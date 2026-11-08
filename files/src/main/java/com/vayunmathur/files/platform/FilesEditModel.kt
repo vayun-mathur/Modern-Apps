@@ -50,10 +50,15 @@ abstract class FilesEditModel(application: Application) :
 
     override fun rename(item: FileBrowserItem, newName: String) {
         if (isZipMode()) return
+        // The dialog passes raw text, which may contain separators: keep the
+        // rename inside the item's own folder, the same rule the create and
+        // share paths enforce via sanitizedFileName. A blank name or a bare
+        // "." / ".." is a no-op, like a blank create name.
+        val safeName = sanitizedFileName(newName) ?: return
         val path = item.realFile ?: return
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val target = File(path.parentFile, newName)
+                val target = File(path.parentFile, safeName)
                 path.atomicMoveTo(target)
                 selectedPathsState.value = emptySet()
                 loadDirectory()

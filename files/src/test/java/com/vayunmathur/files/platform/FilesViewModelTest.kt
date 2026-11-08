@@ -213,6 +213,23 @@ class FilesViewModelTest {
         assertEquals("two!", File(dirA, "two.md").readText())
     }
 
+    @Test
+    fun `rename with a path-like name stays in the same folder`() {
+        vm.rename(itemOf("one.txt"), "../escaped.txt")
+        await { File(dirA, "escaped.txt").isFile && !File(dirA, "one.txt").exists() }
+        assertFalse(File(base, "escaped.txt").exists(), "the new name must not escape the folder")
+        vm.rename(itemOf("two.md"), "sub/nested.md")
+        await { File(dirA, "nested.md").isFile && !File(dirA, "two.md").exists() }
+        assertFalse(
+            File(dirA, "sub/nested.md").exists(),
+            "the new name must not move into a subfolder",
+        )
+        // a bare parent reference is a no-op, like a blank create name
+        vm.rename(itemOf("nested.md"), "..")
+        Thread.sleep(400); ShadowLooper.idleMainLooper()
+        assertTrue(File(dirA, "nested.md").isFile)
+    }
+
     private fun itemOfZip(name: String) = FileBrowserItem(
         name = name, isDirectory = false, size = 1,
         realFile = File(dirA, "one.txt"), zipInnerPath = name, key = "zip:$name",
