@@ -145,7 +145,7 @@ class SudokuComponentsTest {
         // A "0" badge is unambiguous: no digit label is ever "0" (1-9, then letters).
         val full = (1..side).count { remaining(it) == 0 }
         assertTrue(full >= 1)
-        rule.onAllNodesWithText("0").assertCountEquals(full)
+        rule.onAllNodesWithText("0", useUnmergedTree = true).assertCountEquals(full)
 
         // A digit still missing copies shows its own count, whatever the givens dealt.
         // Counted exactly: digit labels share the same text (a "3" badge reads like the 3 key),
@@ -157,7 +157,7 @@ class SudokuComponentsTest {
             val labels = (1..side).count {
                 com.vayunmathur.games.sudoku.data.sudokuSymbol(it) == want
             }
-            rule.onAllNodesWithText(want).assertCountEquals(badges + labels)
+            rule.onAllNodesWithText(want, useUnmergedTree = true).assertCountEquals(badges + labels)
         }
     }
 
@@ -171,9 +171,10 @@ class SudokuComponentsTest {
         val entries = base.entries.toMutableList().also { it[blank] = wrong }
         val game = base.copy(entries = entries)
         assertTrue(game.isWrong(blank))
-        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = true) }
+        var highlight by mutableStateOf(true)
+        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = highlight) }
         rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
-        rule.setContent { SudokuGrid(game = game, onSelect = {}, highlightMistakes = false) }
+        highlight = false
         rule.onNodeWithContentDescription(cellDesc(game, blank)).assertExists()
     }
 
