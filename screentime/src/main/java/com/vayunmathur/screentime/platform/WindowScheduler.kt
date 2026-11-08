@@ -85,11 +85,13 @@ fun WindDownSchedule.activeAt(at: LocalDateTime): Boolean {
     val minute = at.hour * MINUTES_PER_HOUR + at.minute
     val day = at.dayOfWeek.value - 1
     val set = (daysMask shr day) and 1 == 1
-    if (!set) return false
     return if (startMinute <= endMinute) {
-        minute >= startMinute && minute < endMinute
+        set && minute >= startMinute && minute < endMinute
     } else {
-        minute >= startMinute || (minute < endMinute && isYesterdaySet(day))
+        // Overnight: the evening half belongs to today's bit, the morning tail to
+        // yesterday's - so "Mon 22:00-06:00" still applies at 02:00 on Tuesday.
+        // Same predicate as parental controls' TimeWindow.contains.
+        (set && minute >= startMinute) || (minute < endMinute && isYesterdaySet(day))
     }
 }
 
