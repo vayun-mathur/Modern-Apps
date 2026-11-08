@@ -56,6 +56,23 @@ class JsonValidationTest {
         assertNull(validate("""{"kind":"note","level":"high"}""", schema))
     }
 
+    @Test fun constAndEnumWithNonPrimitiveValues() {
+        val schema = """{"properties":{"kind":{"const":"note"},"level":{"enum":["low","high"]}}}"""
+        // Null is a primitive: mismatch, not a throw.
+        val nullErr = validate("""{"kind":null,"level":"low"}""", schema)
+        assertTrue(nullErr!!.contains("must be 'note'"), nullErr)
+        // Object / array values must yield validation errors, never throw.
+        val objErr = validate("""{"kind":{"nested":1},"level":"low"}""", schema)
+        assertTrue(objErr!!.contains("must be 'note'"), objErr)
+        val arrErr = validate("""{"kind":"note","level":["low"]}""", schema)
+        assertTrue(arrErr!!.contains("invalid value"), arrErr)
+        // Non-primitive const/enum entries in the schema itself must not throw either.
+        assertNotNull(validate(
+            """{"kind":"note","level":"low"}""",
+            """{"properties":{"kind":{"const":{"nested":1}},"level":{"enum":[["low"],"high"]}}}""",
+        ))
+    }
+
     @Test fun arrayItemsAreValidated() {
         val schema = """{"type":"array","items":{"type":"object","properties":{"n":{}},"required":["n"]}}"""
         assertNull(validate("""[{"n":1},{"n":2}]""", schema))
