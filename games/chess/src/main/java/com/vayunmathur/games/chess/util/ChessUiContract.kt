@@ -18,6 +18,14 @@ interface ChessActions {
     fun onSquareClick(position: Position) {}
     fun onPromote(pieceType: PieceType) {}
 
+    /**
+     * Drag-and-drop: the press started on [from] and lifted on [to]. A drop is the tap flow
+     * in one gesture — pressing the piece selects it, releasing on a square taps that
+     * square — so a legal drop commits exactly what two taps would. Anything else is a
+     * single tap on [from], preserving tap-selection.
+     */
+    fun onSquareDrop(from: Position, to: Position) {}
+
     companion object {
         val Noop: ChessActions = object : ChessActions {}
     }
@@ -27,6 +35,12 @@ interface ChessActions {
 interface PuzzleActions {
     fun onSquareClick(position: Position) {}
     fun onPromote(pieceType: PieceType) {}
+
+    /**
+     * Drag-and-drop: the press started on [from] and lifted on [to]. Same two-taps-in-one
+     * gesture arrangement as [ChessActions.onSquareDrop].
+     */
+    fun onSquareDrop(from: Position, to: Position) {}
 
     /** Loads a fresh random puzzle from the [difficulty] band. */
     fun loadRandom(difficulty: PuzzleDifficulty) {}

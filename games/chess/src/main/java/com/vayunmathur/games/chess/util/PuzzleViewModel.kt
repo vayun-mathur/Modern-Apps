@@ -190,6 +190,19 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application),
         advanceAfterPlayerMove(newBoard)
     }
 
+    override fun onSquareDrop(from: Position, to: Position) {
+        if (from == to) {
+            onSquareClick(from)
+            return
+        }
+        // Same two-taps-in-one-gesture arrangement as the game board: the press selects,
+        // the release taps the target, so a legal drop reaches attemptPlayerMove exactly as
+        // two taps would (correct answer, or Failed on a legal-but-wrong move). Anything
+        // else lands as a tap on [from].
+        if (_uiState.value.selectedPiece != from) onSquareClick(from)
+        if (_uiState.value.selectedPiece == from) onSquareClick(to)
+    }
+
     override fun onPromote(pieceType: PieceType) {
         val state = _uiState.value
         val puzzle = state.puzzle ?: return

@@ -4,7 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,34 +29,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
 import com.vayunmathur.games.chess.data.Move
 import com.vayunmathur.games.chess.data.Piece
 import com.vayunmathur.games.chess.data.PieceColor
@@ -80,9 +70,7 @@ import com.vayunmathur.library.ui.ExperimentalMaterial3Api
 import com.vayunmathur.library.ui.Icon
 import com.vayunmathur.library.ui.IconButton
 import com.vayunmathur.library.ui.MaterialTheme
-import com.vayunmathur.library.ui.Motion
 import com.vayunmathur.library.ui.R as UiR
-import com.vayunmathur.library.ui.animatedFloat
 import com.vayunmathur.library.ui.SegmentedButton
 import com.vayunmathur.library.ui.SegmentedButtonDefaults
 import com.vayunmathur.library.ui.SingleChoiceSegmentedButtonRow
@@ -405,19 +393,13 @@ private fun GameBoardGrid(
     state: ChessUiState,
     actions: ChessActions,
 ) {
-    // Drag only while the human side is actually to move: never when the
-    // game is over or while the AI is thinking.
-    val dragEnabled = state.gameResult == null && when (val mode = state.gameMode) {
-        GameMode.TwoPlayer -> true
-        is GameMode.VsAI -> state.turn == mode.playerColor
-    }
     BoardGrid(
         board = state.board,
         selectedPiece = state.selectedPiece,
         isFlipped = state.isBoardFlipped,
         turn = state.turn,
         onSquareClick = actions::onSquareClick,
-        dragEnabled = dragEnabled,
+        onSquareDrop = actions::onSquareDrop
     )
 }
 
@@ -668,27 +650,6 @@ private fun legalDestinations(
     }
 }
 
-/**
- * The shared 8x8 board: tap-to-select / tap-to-move, plus optional
- * drag-to-move ([dragEnabled]).
- *
- * Dragging is layered on the exact tap path so every mode keeps its own
- * semantics: a drag starts by "tapping" the piece square (the owning
- * ViewModel selects it, which also lights the legal destinations exactly
- * as a tap does) and a drop on a legal square "taps" that square, so
- * validation, puzzle/learn failure rules and the promotion picker all run
- * unchanged. Dropping anywhere else — or cancelling — animates the piece
- * back to its square and undoes the drag's own selection; a piece that
- * was already tapped-selected stays selected. Only pieces of the side to
- * move ([turn]) can be picked up, and callers gate [dragEnabled] on
- * their input state (game in progress / AI thinking, puzzle solving,
- * lesson playing). The default keeps the online board tap-only.
- *
- * [dragMoveLegal] decides which squares count as legal drops while
- * dragging (and are highlighted). It defaults to [Board.isValidMove];
- * Learn passes its pseudo-legal variant for kingless/illegal-move
- * lessons, mirroring LearnViewModel.
- */
 @Composable
 fun BoardGrid(
     board: com.vayunmathur.games.chess.data.Board,
@@ -696,188 +657,37 @@ fun BoardGrid(
     isFlipped: Boolean,
     turn: PieceColor,
     onSquareClick: (Position) -> Unit,
-    showLastMove: Boolean = false,
-    dragEnabled: Boolean = false,
-    dragMoveLegal: ((Position, Position) -> Boolean)? = null,
+    onSquareDrop: (Position, Position) -> Unit = { _, _ -> },
+    showLastMove: Boolean = false
 ) {
+    val drag = remember { BoardDragState() }
+    // During a drag the hints follow the dragged piece, otherwise the selection.
+    val hintSource = drag.source ?: selectedPiece
     // The squares the selected piece can legally move to (for move-hint dots).
-    val destinations = remember(board, selectedPiece) {
-        legalDestinations(board, selectedPiece)
+    val destinations = remember(board, hintSource) {
+        legalDestinations(board, hintSource)
     }
     // The puzzle board seeds a synthetic zero-length lastMove to encode turn; skip it.
     val lastMove = board.lastMove?.takeIf { showLastMove && it.start != it.end }
-
-    val click by rememberUpdatedState(onSquareClick)
-    val liveBoard by rememberUpdatedState(board)
-    val liveTurn by rememberUpdatedState(turn)
-    val liveFlipped by rememberUpdatedState(isFlipped)
-    val liveSelected by rememberUpdatedState(selectedPiece)
-    val legal by rememberUpdatedState(dragMoveLegal)
-
-    var boardSizePx by remember { mutableIntStateOf(0) }
-    var dragFrom by remember { mutableStateOf<Position?>(null) }
-    var dragPiece by remember { mutableStateOf<Piece?>(null) }
-    var dragPoint by remember { mutableStateOf(Offset.Zero) }
-    var dragAutoSelected by remember { mutableStateOf(false) }
-    var settleFrom by remember { mutableStateOf<Offset?>(null) }
-    var settling by remember { mutableStateOf(false) }
-    // Shared motion helper (library.ui), never a raw compose-animation call:
-    // 1f while the finger is down, tweened to 0f over Motion.DropMillis on
-    // a snap-back, easing the overlay from the release point home.
-    val settleProgress = animatedFloat(if (settling) 0f else 1f, Motion.drop())
-
-    LaunchedEffect(settling) {
-        if (settling) {
-            delay(Motion.DropMillis.toLong())
-            settling = false
-            settleFrom = null
-            dragFrom = null
-            dragPiece = null
-        }
-    }
-
-    fun positionAt(point: Offset): Position? {
-        if (boardSizePx <= 0) return null
-        val cell = boardSizePx / BOARD_SQUARES.toFloat()
-        val visualCol = (point.x / cell).toInt()
-        val visualRow = (point.y / cell).toInt()
-        if (visualCol !in 0 until BOARD_SQUARES || visualRow !in 0 until BOARD_SQUARES) {
-            return null
-        }
-        return if (liveFlipped) {
-            Position(BOARD_SQUARES - 1 - visualRow, BOARD_SQUARES - 1 - visualCol)
-        } else {
-            Position(visualRow, visualCol)
-        }
-    }
-
-    fun originCenter(pos: Position): Offset {
-        val cell = boardSizePx / BOARD_SQUARES.toFloat()
-        val visualRow = if (isFlipped) BOARD_SQUARES - 1 - pos.row else pos.row
-        val visualCol = if (isFlipped) BOARD_SQUARES - 1 - pos.col else pos.col
-        return Offset((visualCol + 0.5f) * cell, (visualRow + 0.5f) * cell)
-    }
-
-    fun finishDrag(commit: Boolean) {
-        val from = dragFrom ?: return
-        val to = if (commit) positionAt(dragPoint) else null
-        val isLegal = to != null && to != from &&
-            (legal?.invoke(from, to) ?: liveBoard.isValidMove(from, to))
-        if (isLegal) {
-            // Commit through the tap path; the ViewModel validates again
-            // and owns promotion/failure handling.
-            settling = false
-            settleFrom = null
-            dragFrom = null
-            dragPiece = null
-            click(to)
-        } else {
-            // Snap back: undo only the selection this drag created.
-            if (dragAutoSelected) click(from)
-            settleFrom = dragPoint
-            settling = true
-        }
-        dragAutoSelected = false
-    }
-
-    val dragDestinations = remember(board, dragFrom, dragMoveLegal) {
-        val from = dragFrom ?: return@remember emptySet()
-        buildSet {
-            for (i in 0 until BOARD_SQUARES) {
-                for (j in 0 until BOARD_SQUARES) {
-                    val end = Position(i, j)
-                    if (dragMoveLegal?.invoke(from, end) ?: board.isValidMove(from, end)) {
-                        add(end)
-                    }
-                }
-            }
-        }
-    }
-    val shownDestinations = if (dragFrom != null && !settling) dragDestinations else destinations
-
-    Box(
+    Column(
         Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .onSizeChanged { boardSizePx = it.width }
-            .pointerInput(dragEnabled) {
-                if (!dragEnabled) return@pointerInput
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        if (settling) return@detectDragGestures
-                        val from = positionAt(offset) ?: return@detectDragGestures
-                        val piece = liveBoard.pieces[from.row][from.col]
-                            ?: return@detectDragGestures
-                        if (piece.color != liveTurn) return@detectDragGestures
-                        dragFrom = from
-                        dragPiece = piece
-                        dragPoint = offset
-                        dragAutoSelected = liveSelected != from
-                        if (dragAutoSelected) click(from)
-                    },
-                    onDrag = { change, _ ->
-                        if (dragFrom != null && !settling) {
-                            change.consume()
-                            dragPoint = change.position
-                        }
-                    },
-                    onDragEnd = { finishDrag(commit = true) },
-                    onDragCancel = { finishDrag(commit = false) },
-                )
-            }
+            .onSizeChanged { drag.boardPx = it.width.toFloat() }
+            .boardDragGesture(drag, onSquareDrop)
+            .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
     ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer { if (isFlipped) rotationZ = FLIPPED_ROTATION }
-        ) {
-            for (i in board.pieces.indices) {
-                BoardRow(
-                    board = board,
-                    row = i,
-                    selectedPiece = selectedPiece,
-                    isFlipped = isFlipped,
-                    turn = turn,
-                    lastMove = lastMove,
-                    destinations = shownDestinations,
-                    hiddenPiece = dragFrom,
-                    onSquareClick = onSquareClick
-                )
-            }
-        }
-        // The lifted piece, drawn in unrotated board space above the grid.
-        val from = dragFrom
-        val piece = dragPiece
-        if (from != null && piece != null && boardSizePx > 0) {
-            val cellPx = boardSizePx / BOARD_SQUARES.toFloat()
-            val center = if (settling) {
-                val startPoint = settleFrom ?: dragPoint
-                val home = originCenter(from)
-                Offset(
-                    home.x + (startPoint.x - home.x) * settleProgress,
-                    home.y + (startPoint.y - home.y) * settleProgress,
-                )
-            } else {
-                dragPoint
-            }
-            val cellDp = with(LocalDensity.current) { cellPx.toDp() }
-            Box(
-                Modifier
-                    .offset {
-                        IntOffset(
-                            (center.x - cellPx / 2f).roundToInt(),
-                            (center.y - cellPx / 2f).roundToInt(),
-                        )
-                    }
-                    .size(cellDp)
-                    .graphicsLayer {
-                        scaleX = 1.08f
-                        scaleY = 1.08f
-                        alpha = 0.95f
-                    }
-            ) {
-                ChessPiece(piece)
-            }
+        for (i in board.pieces.indices) {
+            BoardRow(
+                board = board,
+                row = i,
+                selectedPiece = hintSource,
+                isFlipped = isFlipped,
+                turn = turn,
+                lastMove = lastMove,
+                destinations = destinations,
+                onSquareClick = onSquareClick
+            )
         }
     }
 }
@@ -891,7 +701,6 @@ private fun ColumnScope.BoardRow(
     turn: PieceColor,
     lastMove: com.vayunmathur.games.chess.data.Move?,
     destinations: Set<Position>,
-    hiddenPiece: Position?,
     onSquareClick: (Position) -> Unit,
 ) {
     Row(modifier = Modifier.weight(1f)) {
@@ -908,11 +717,8 @@ private fun ColumnScope.BoardRow(
                     }
                     .then(highlightModifier(highlight))
             ) {
-                // The dragged piece is drawn by BoardGrid's overlay instead.
-                if (Position(row, j) != hiddenPiece) {
-                    piece?.let {
-                        ChessPiece(it, isFlipped = isFlipped)
-                    }
+                piece?.let {
+                    ChessPiece(it, isFlipped = isFlipped)
                 }
                 if (Position(row, j) in destinations) {
                     MoveHintDot(piece != null)
