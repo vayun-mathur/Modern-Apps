@@ -242,9 +242,9 @@ class WebViewModelTest {
     @Test fun historyBookmarkAndDownloadFlowsReachRepository() {
         val v = vm(incognito = false)
         v.newTab(url = "https://hist.example")
-        v.recordHistoryVisit("https://hist.example/page", "Hist")
-        v.recordHistoryVisit("", "blank")
-        v.recordHistoryVisit("about:blank", "blank")
+        v.recordHistoryVisit("https://hist.example/page", "Hist", isPrivateTab = false)
+        v.recordHistoryVisit("", "blank", isPrivateTab = false)
+        v.recordHistoryVisit("about:blank", "blank", isPrivateTab = false)
         v.addBookmark("https://bm.example", "BM")
         v.createFolder("Folder1")
         v.addDownload("https://dl.example/f.txt", "f.txt", "text/plain", 12)
@@ -259,6 +259,32 @@ class WebViewModelTest {
         awaitCondition("history cleared") { v.history.value.none { it.url == "https://hist.example/page" } }
         v.clearAllDownloads()
         awaitCondition("downloads cleared") { v.downloads.value.isEmpty() }
+    }
+
+    @Test fun historyVisitUsesOwningTabPrivacyNotActiveTab() {
+        val v = vm(incognito = false)
+        v.newTab(url = "https://public.example/")
+        v.newTab(url = "https://secret.example/", isPrivate = true, makeActive = false)
+        // The private tab finishes loading while the normal tab stays active.
+        assertEquals("https://public.example/", v.activeTab?.url)
+        v.recordHistoryVisit("https://secret.example/", "Secret", isPrivateTab = true)
+        v.recordHistoryVisit("https://public.example/", "Public", isPrivateTab = false)
+        awaitCondition("public visit recorded") { v.history.value.any { it.url == "https://public.example/" } }
+        assertTrue(
+            v.history.value.none { it.url == "https://secret.example/" },
+            "private tab visit leaked into history while another tab was active",
+        )
+    }
+
+    @Test fun historyVisitRecordsBackgroundNormalTabWhilePrivateTabActive() {
+        val v = vm(incognito = false)
+        v.newTab(url = "https://public.example/", makeActive = false)
+        v.newTab(url = "https://secret.example/", isPrivate = true)
+        assertTrue(v.activeTab?.isPrivate == true)
+        v.recordHistoryVisit("https://public.example/", "Public", isPrivateTab = false)
+        awaitCondition("background normal visit recorded") {
+            v.history.value.any { it.url == "https://public.example/" }
+        }
     }
 
     @Test fun folderDeletionRemovesItsBookmarks() {

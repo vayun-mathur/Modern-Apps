@@ -104,7 +104,7 @@ internal fun createBrowserWebViewClient(
         val title = view.title?.takeIf { it.isNotBlank() } ?: url ?: ""
         if (title.isNotBlank()) {
             viewModel.onTabTitleChange(tabId, title)
-            viewModel.recordHistoryVisit(url ?: "", title)
+            viewModel.recordHistoryVisit(url ?: "", title, isPrivateTab)
         }
         url?.let { u ->
             if (BrowserUtils.isWebUrl(u)) {
