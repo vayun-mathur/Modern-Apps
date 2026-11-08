@@ -24,7 +24,18 @@ class NoteStoresTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
     private val imagesDir: File get() = File(context.filesDir, "note_images")
 
-    @BeforeTest fun clean() { imagesDir.deleteRecursively() }
+    @BeforeTest fun clean() {
+        imagesDir.deleteRecursively()
+        // androidx FileProvider caches its path strategy per authority in a static map, but
+        // Robolectric gives every test a fresh temp cacheDir, so a strategy cached by an
+        // earlier test points at a deleted dir and later getUriForFile calls fail with
+        // IllegalArgumentException. Clear it so each test resolves against its own dirs.
+        try {
+            val cache = Class.forName("androidx.core.content.FileProvider")
+                .getDeclaredField("sCache").apply { isAccessible = true }.get(null) as MutableMap<*, *>
+            cache.clear()
+        } catch (_: Exception) { /* sCache renamed in a future core version: tests will say so */ }
+    }
 
     private fun writeImageFile(name: String, w: Int = 40, h: Int = 20): File {
         imagesDir.mkdirs()
