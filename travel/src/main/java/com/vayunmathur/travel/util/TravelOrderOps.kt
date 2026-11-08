@@ -151,7 +151,13 @@ fun TravelViewModel.confirmCancellation(orderId: String) {
                 val ref = stored?.bookingReference.orEmpty()
                 val status = runCatching {
                     TravelOrderApi.cancellationStatus(confirmed.id, ref, stored?.lastName.orEmpty())
-                }.getOrNull() ?: return@launch
+                }.getOrNull()
+                if (status == null) {
+                    // Transient failure: keep polling instead of stranding
+                    // the UI in polling=true (matches pollTrip); the round
+                    // limit below still bounds the wait.
+                    return@repeat
+                }
                 if (status.status == "succeeded") {
                     stored?.let {
                         repository.upsertBookedTrip(it.copy(status = TRIP_STATUS_CANCELLED, awaitingPayment = false))
@@ -272,7 +278,12 @@ private fun TravelViewModel.pollChangeStatus(ref: String, lastName: String) {
         repeat(STATUS_POLL_ROUNDS) { round ->
             if (round > 0) delay(STATUS_POLL_INTERVAL_MS)
             val status = runCatching { TravelOrderApi.changeStatus(ref, lastName) }.getOrNull()
-                ?: return@launch
+            if (status == null) {
+                // Transient failure: keep polling instead of stranding the
+                // UI in polling=true (matches pollTrip); the round limit
+                // below still bounds the wait.
+                return@repeat
+            }
             if (status.status == "confirmed") {
                 changeMutable.value = changeMutable.value.copy(polling = false, done = true)
                 return@launch
