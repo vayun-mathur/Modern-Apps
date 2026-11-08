@@ -216,6 +216,12 @@ class SecureFolderManager(val context: Context) {
             encryptFailure(outputFile, thumbFile, e)
         } catch (e: GeneralSecurityException) {
             encryptFailure(outputFile, thumbFile, e)
+        } catch (e: SecurityException) {
+            // Revoked/expired read grant mid-move: openInputStream throws the
+            // raw SecurityException (never wrapped). Clean up partials and
+            // rethrow so the per-photo caller skips this photo, same as any
+            // other per-photo failure.
+            encryptFailure(outputFile, thumbFile, e)
         }
     }
 
