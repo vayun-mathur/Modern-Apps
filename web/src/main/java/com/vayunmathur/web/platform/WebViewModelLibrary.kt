@@ -10,9 +10,11 @@ private const val TAG = "WebViewModel"
 
 // ---- History and bookmarks ----
 
-fun WebViewModel.recordHistoryVisit(url: String, title: String) {
+fun WebViewModel.recordHistoryVisit(url: String, title: String, isPrivateTab: Boolean) {
     if (url.isBlank() || url == "about:blank" || url.startsWith("data:")) return
-    if (activeTab?.isPrivate == true) return
+    // The owning tab's privacy flag, not the active tab's: background tabs finish
+    // loading while another tab is active, and the active tab may differ.
+    if (isPrivateTab) return
     scope.launch {
         runCatching { repository.history.upsert(HistoryEntry(url = url, title = title)) }
             .onFailure { Log.error(TAG, "recordHistory", it) }
